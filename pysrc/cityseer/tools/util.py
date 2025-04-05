@@ -11,12 +11,10 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-import geopandas as gpd
 import networkx as nx
 import numpy as np
 import numpy.typing as npt
-import pandas as pd
-from pyproj import Transformer
+from pyproj import CRS, Transformer
 from pyproj.aoi import AreaOfInterest
 from pyproj.database import query_utm_crs_info
 from shapely import coords, geometry, ops, strtree
@@ -27,9 +25,6 @@ from cityseer import config
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# define types
-MultiGraph = Any
-MultiDiGraph = Any
 # coords can be 2d or 3d
 NodeKey = str
 NodeData = dict[str, Any]
@@ -38,6 +33,70 @@ EdgeData = dict[str, Any]
 EdgeMapping = tuple[NodeKey, NodeKey, int, dict[Any, Any]]
 CoordsType = tuple[float, float] | tuple[float, float, float] | npt.NDArray[np.float64]
 ListCoordsType = list[CoordsType] | coords.CoordinateSequence
+
+
+def validate_cityseer_networkx_graph(
+    nx_multigraph: nx.MultiGraph,
+    validate_edges: bool = True,
+) -> nx.MultiGraph:
+    """
+    Validates a `networkX` `MultiGraph` for use with `cityseer`.
+    Parameters
+    ----------
+    nx_multigraph: MultiGraph
+        A `networkX` `MultiGraph` with a `crs` attribute denoting a projected coordinate system, containing `x` and `y`
+        node attributes, and `geom` edge attributes containing `LineString` geoms.
+    validate_edges: bool
+
+
+    Returns
+    -------
+    MultiGraph
+        A `networkX` `MultiGraph` with nodes of degree=2 removed. Adjacent edges will be combined into a unified new
+        edge with associated `geom` attributes spliced together.
+
+    """
+    g_multi_copy: nx.MultiGraph = nx_multigraph.copy()  # type: ignore
+    if config.SKIP_VALIDATION is True:
+        return g_multi_copy
+    # check graph type
+    if not isinstance(g_multi_copy, nx.MultiGraph):
+        raise TypeError(f"Expected an undirected networkX MultiGraph but encountered {type(g_multi_copy)}.")
+    # check CRS
+    if "crs" not in g_multi_copy.graph:
+        raise KeyError("No CRS code found in graph. Please specify a CRS code via the crs_code parameter.")
+    g_multi_copy.graph["crs"] = CRS(g_multi_copy.graph["crs"])
+    if not g_multi_copy.graph["crs"].is_projected:
+        logger.warning(f"The to_crs_code parameter {g_multi_copy.graph['crs'].to_epsg()} is not a projected CRS")
+    #
+    #
+    for nd_key, node_data in g_multi_copy.nodes(data=True):
+        if "x" not in node_data:
+            raise KeyError(f'Encountered node missing "x" coordinate attribute at node {nd_key}.')
+        if "y" not in node_data:
+            raise KeyError(f'Encountered node missing "y" coordinate attribute at node {nd_key}.')
+    #
+    if validate_edges is True:
+        for start_nd_key, end_nd_key, edge_data in g_multi_copy.edges(data=True):
+            # check if geom present
+            if "geom" not in edge_data:
+                raise KeyError(
+                    f"No edge geom found for edge {start_nd_key}-{end_nd_key}: Please add an edge 'geom' "
+                    "attribute consisting of a shapely LineString. Simple (straight) geometries can be inferred "
+                    "automatically through the nx_simple_geoms() method."
+                )
+            # check if geometry is a LineString
+            line_geom: geometry.LineString = edge_data["geom"]
+            if line_geom.geom_type != "LineString":
+                raise TypeError(
+                    f"Found {line_geom.geom_type} instead of LineString at edge {start_nd_key}-{end_nd_key}."
+                )
+            if line_geom.is_empty:
+                raise TypeError(f"Found empty geom for edge {start_nd_key}-{end_nd_key}.")
+            if not line_geom.is_valid:
+                raise TypeError(f"Found invalid geom for edge {start_nd_key}-{end_nd_key}.")
+
+    return g_multi_copy
 
 
 def measure_bearing(xy_1: npt.NDArray[np.float64], xy_2: npt.NDArray[np.float64]) -> float:
@@ -419,16 +478,16 @@ class EdgeInfo:
         edge_idx: int,
     ):
         """Set accumulated edge data to specified graph and edge."""
-        nx_multigraph[start_node_key][end_node_key][edge_idx]["names"] = self.names
-        nx_multigraph[start_node_key][end_node_key][edge_idx]["routes"] = self.routes
-        nx_multigraph[start_node_key][end_node_key][edge_idx]["highways"] = self.highways
-        nx_multigraph[start_node_key][end_node_key][edge_idx]["levels"] = self.levels
+        nx_multigraph[start_node_key][end_node_key][edge_idx]["names"] = self.names  # type: ignore
+        nx_multigraph[start_node_key][end_node_key][edge_idx]["routes"] = self.routes  # type: ignore
+        nx_multigraph[start_node_key][end_node_key][edge_idx]["highways"] = self.highways  # type: ignore
+        nx_multigraph[start_node_key][end_node_key][edge_idx]["levels"] = self.levels  # type: ignore
         for k, v in self.props.items():
-            nx_multigraph[start_node_key][end_node_key][edge_idx][k] = v
+            nx_multigraph[start_node_key][end_node_key][edge_idx][k] = v  # type: ignore
 
 
 def add_node(
-    nx_multigraph: MultiGraph,
+    nx_multigraph: nx.MultiGraph,
     nodes_names: list[NodeKey],
     x: float,
     y: float,
@@ -484,7 +543,7 @@ def add_node(
     return new_nd_name, False  # is_dupe
 
 
-def create_nodes_strtree(nx_multigraph: MultiGraph) -> tuple[strtree.STRtree, list[dict[str, Any]]]:
+def create_nodes_strtree(nx_multigraph: nx.MultiGraph) -> tuple[strtree.STRtree, list[dict[str, Any]]]:
     """
     Create a nodes-based STRtree spatial index.
     """
@@ -509,7 +568,7 @@ def create_nodes_strtree(nx_multigraph: MultiGraph) -> tuple[strtree.STRtree, li
     return nodes_tree, node_lookups
 
 
-def create_edges_strtree(nx_multigraph: MultiGraph) -> tuple[strtree.STRtree, list[dict[str, Any]]]:
+def create_edges_strtree(nx_multigraph: nx.MultiGraph) -> tuple[strtree.STRtree, list[dict[str, Any]]]:
     """
     Create an edges-based STRtree spatial index.
     """
@@ -530,68 +589,6 @@ def create_edges_strtree(nx_multigraph: MultiGraph) -> tuple[strtree.STRtree, li
         edge_lookups.append({"start_nd_key": start_nd_key, "end_nd_key": end_nd_key, "edge_idx": edge_idx})
     edge_tree = strtree.STRtree(edge_geoms)
     return edge_tree, edge_lookups
-
-
-def blend_metrics(
-    nodes_gdf: gpd.GeoDataFrame,
-    edges_gdf: gpd.GeoDataFrame,
-    method: str,
-) -> MultiGraph:
-    """
-    Blends metrics from a nodes GeoDataFrame into an edges GeoDataFrame.
-
-    This is useful for situations where it is preferable to visualise the computed metrics as LineStrings instead of
-    points. The line will be assigned the value from the adjacent two nodes based on the selected "min", "max", or "avg"
-    method.
-
-    Parameters
-    ----------
-    nodes_gdf: GeoDataFrame
-        A nodes `GeoDataFrame` as derived from [`network_structure_from_nx`](tools/io#network-structure-from-nx).
-    edges_gdf: GeoDataFrame
-        An edges `GeoDataFrame` as derived from [`network_structure_from_nx`](tools/io#network-structure-from-nx).
-    method: str
-        The method used for determining the line value from the adjacent points. Must be one of "min", "max", or "avg".
-
-    Returns
-    -------
-    merged_gdf: GeoDataFrame
-        An edges `GeoDataFrame` created by merging the node metrics from the provided nodes `GeoDataFrame` into the
-        provided edges `GeoDataFrame`.
-
-    """
-    if method not in ["min", "max", "avg"]:
-        raise ValueError('Method should be one of "min", "max", or "avg"')
-    merged_edges_gdf = edges_gdf.copy()
-    for node_column in nodes_gdf.columns:
-        if not node_column.startswith("cc_"):
-            continue
-        # suffix is only applied for overlapping column names
-        merged_edges_gdf = pd.merge(
-            merged_edges_gdf,
-            nodes_gdf[[node_column]],  # type: ignore
-            left_on="nx_start_node_key",
-            right_index=True,  # type: ignore
-        )
-        merged_edges_gdf = pd.merge(
-            merged_edges_gdf,
-            nodes_gdf[[node_column]],  # type: ignore
-            left_on="nx_end_node_key",
-            right_index=True,
-            suffixes=("", "_end_nd"),
-        )
-        # merge
-        end_nd_col = f"{node_column}_end_nd"
-        if method == "avg":
-            merged_edges_gdf[node_column] = (merged_edges_gdf[node_column] + merged_edges_gdf[end_nd_col]) / 2
-        elif method == "min":
-            merged_edges_gdf[node_column] = merged_edges_gdf[[node_column, end_nd_col]].min(axis=1)
-        else:
-            merged_edges_gdf[node_column] = merged_edges_gdf[[node_column, end_nd_col]].max(axis=1)
-        # cleanup
-        merged_edges_gdf = merged_edges_gdf.drop(columns=[end_nd_col])
-
-    return merged_edges_gdf
 
 
 def project_geom(geom, from_crs_code: int | str, to_crs_code: int | str):

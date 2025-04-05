@@ -10,12 +10,14 @@ from __future__ import annotations
 import logging
 import string
 from collections.abc import Generator
-from typing import Any, cast
+from pathlib import Path
+from typing import Any
 
 import geopandas as gpd
 import networkx as nx
 import numpy as np
 import numpy.typing as npt
+from pyproj import CRS
 from shapely import geometry
 
 from cityseer.tools import util
@@ -221,6 +223,9 @@ def mock_graph(wgs84_coords: bool = False) -> MultiGraph:
             wgs_pnt = util.project_geom(geometry.Point(easting, northing), 32630, 4326)  # type: ignore
             nx_multigraph.nodes[node_idx]["x"] = wgs_pnt.x
             nx_multigraph.nodes[node_idx]["y"] = wgs_pnt.y
+        nx_multigraph.graph["crs"] = CRS(4326)
+    else:
+        nx_multigraph.graph["crs"] = CRS(32630)  # UTM zone 30N
 
     return nx_multigraph
 
@@ -291,7 +296,7 @@ def mock_data_gdf(nx_multigraph: MultiGraph, length: int = 50, random_seed: int 
     ys = np.random.uniform(min_y, max_y, length)
     data_gpd = gpd.GeoDataFrame(
         {
-            "uid": [str(i) for i in np.arange(length)],
+            "uid": [i for i in np.arange(length)],
             "geometry": gpd.points_from_xy(xs, ys),
             "data_id": np.arange(length),
         }
@@ -299,9 +304,9 @@ def mock_data_gdf(nx_multigraph: MultiGraph, length: int = 50, random_seed: int 
     data_gpd = data_gpd.set_index("uid")
     # last 5 datapoints are a cluster of nodes where the nodes share the same data_id for deduplication checks
     for idx, loc_idx in enumerate(range(length - 5, length)):
-        data_gpd.loc[str(loc_idx), "data_id"] = length - 5
-        data_gpd.loc[str(loc_idx), "geometry"] = geometry.Point(700100 + idx * 10, 5719100 + idx * 10)  # type: ignore
-    data_gpd = cast(gpd.GeoDataFrame, data_gpd)  # type: ignore
+        data_gpd.loc[loc_idx, "data_id"] = length - 5
+        data_gpd.loc[loc_idx, "geometry"] = geometry.Point(700100 + idx * 10, 5719100 + idx * 10)  # type: ignore
+
     return data_gpd
 
 
@@ -464,3 +469,62 @@ def mock_species_data(
         probs = counts / len(data)
 
         yield counts.tolist(), probs.tolist()  # type: ignore
+
+
+def mock_gtfs_stops_txt(path: str):
+    """
+    Generate stops and stop times CSVs containing mock GTFS stops data for testing purposes.
+    """
+    output_path = Path(path)
+    output_path.mkdir(parents=True, exist_ok=True)
+
+    stops = {
+        "stop_id": ["1", "2", "3", "4", "5"],
+        "stop_name": ["Stop A", "Stop B", "Stop C", "Stop D", "Stop E"],
+        "stop_lat": [51.5875, 51.5905, 51.5935, 51.5933, 51.596],
+        "stop_lon": [-0.0965, -0.0985, -0.1022, -0.107, -0.1075],
+    }
+    stops_gdf = gpd.GeoDataFrame(stops, geometry=gpd.points_from_xy(stops["stop_lon"], stops["stop_lat"]))
+    stops_gdf.to_csv(output_path / "stops.txt", index=False)
+
+    stop_times = {
+        "trip_id": ["1", "1", "1", "1", "1", "2", "2", "2", "2", "2", "3", "3", "3", "3", "3"],
+        "arrival_time": [
+            "08:00:00",
+            "08:02:00",
+            "08:04:00",
+            "08:06:00",
+            "08:08:00",
+            "08:02:00",
+            "08:04:00",
+            "08:06:00",
+            "08:08:00",
+            "08:10:00",
+            "08:04:00",
+            "08:06:00",
+            "08:08:00",
+            "08:10:00",
+            "08:12:00",
+        ],
+        "departure_time": [
+            "08:00:00",
+            "08:02:00",
+            "08:04:00",
+            "08:06:00",
+            "08:08:00",
+            "08:02:00",
+            "08:04:00",
+            "08:06:00",
+            "08:08:00",
+            "08:10:00",
+            "08:04:00",
+            "08:06:00",
+            "08:08:00",
+            "08:10:00",
+            "08:12:00",
+        ],
+        "stop_id": ["1", "2", "3", "4", "5", "1", "2", "3", "4", "5", "1", "2", "3", "4", "5"],
+        "stop_sequence": [1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 1, 2, 3, 4, 5],
+    }
+    stop_times_gdf = gpd.GeoDataFrame(stop_times)
+    stop_times_gdf.to_csv(output_path / "stop_times.txt", index=False)

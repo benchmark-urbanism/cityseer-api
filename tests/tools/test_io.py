@@ -4,7 +4,7 @@ import pytest
 from cityseer import config
 from cityseer.metrics import layers, networks
 from cityseer.tools import graphs, io, mock, util
-from pyproj import Transformer
+from pyproj import CRS, Transformer
 from shapely import geometry, wkt
 
 LNG = -0.1270
@@ -18,20 +18,31 @@ BUFF_POLY_UTM = "POLYGON ((699518.8923665844 5711511.241661096, 699517.929311918
 
 def test_nx_epsg_conversion():
     G_wgs = mock.mock_graph(wgs84_coords=True)
+    G_wgs = graphs.nx_simple_geoms(G_wgs)
     nd_data = G_wgs.nodes["0"]
     utm_code = util.extract_utm_epsg_code(nd_data["x"], nd_data["y"])
+    #
     G_utm = mock.mock_graph()
-    G_27700 = io.nx_epsg_conversion(G_utm, from_crs_code=utm_code, to_crs_code=27700)
-    G_27700_2 = io.nx_epsg_conversion(G_utm, from_crs_code=utm_code, to_crs_code="27700")
-    G_27700_3 = io.nx_epsg_conversion(G_utm, from_crs_code=utm_code, to_crs_code="EPSG:27700")
+    G_utm = graphs.nx_simple_geoms(G_utm)
+    #
+    G_27700 = io.nx_epsg_conversion(G_utm, to_crs_code=27700)
+    assert G_27700.graph["crs"].to_epsg() == 27700
+    G_27700_2 = io.nx_epsg_conversion(G_utm, to_crs_code="27700")
+    assert G_27700_2.graph["crs"].to_epsg() == 27700
+    G_27700_3 = io.nx_epsg_conversion(G_utm, to_crs_code="EPSG:27700")
+    assert G_27700_3.graph["crs"].to_epsg() == 27700
+    #
     for node_key in G_27700.nodes():
         nd_1 = G_27700.nodes[node_key]
         nd_2 = G_27700_2.nodes[node_key]
         nd_3 = G_27700_3.nodes[node_key]
         assert nd_1["x"] == nd_2["x"] == nd_3["x"]
         assert nd_1["y"] == nd_2["y"] == nd_3["y"]
-    G_moll = io.nx_epsg_conversion(G_utm, from_crs_code=utm_code, to_crs_code="ESRI:54009")
-    G_round = io.nx_epsg_conversion(G_moll, from_crs_code="ESRI:54009", to_crs_code=utm_code)
+    #
+    G_moll = io.nx_epsg_conversion(G_utm, to_crs_code="ESRI:54009")
+    assert G_moll.graph["crs"] == CRS("ESRI:54009")
+    G_round = io.nx_epsg_conversion(G_moll, to_crs_code=utm_code)
+    assert G_round.graph["crs"].to_epsg() == utm_code
     for node_key in G_utm.nodes():
         nd_1 = G_utm.nodes[node_key]
         nd_2 = G_round.nodes[node_key]
@@ -42,50 +53,52 @@ def test_nx_epsg_conversion():
 def test_nx_wgs_to_utm():
     # check that node coordinates are correctly converted
     G_utm = mock.mock_graph()
+    G_utm = graphs.nx_simple_geoms(G_utm)
+    G_utm.graph["crs"] = CRS(32630)
+    #
     G_wgs = mock.mock_graph(wgs84_coords=True)
+    G_wgs = graphs.nx_simple_geoms(G_wgs)
+    G_utm.graph["crs"] = CRS(4326)
+    #
     G_converted = io.nx_wgs_to_utm(G_wgs)
+    assert G_converted.graph["crs"].to_epsg() == 32630
+    #
     for n, d in G_utm.nodes(data=True):
         # rounding can be tricky
         assert np.allclose(d["x"], G_converted.nodes[n]["x"], atol=0.1, rtol=0)
         assert np.allclose(d["y"], G_converted.nodes[n]["y"], atol=0.1, rtol=0)
 
     # check that edge coordinates are correctly converted
-    G_utm = mock.mock_graph()
-    G_utm = graphs.nx_simple_geoms(G_utm)
-
-    G_wgs = mock.mock_graph(wgs84_coords=True)
-    G_wgs = graphs.nx_simple_geoms(G_wgs)
-
-    G_converted = io.nx_wgs_to_utm(G_wgs)
     for s, e, k, d in G_utm.edges(data=True, keys=True):
         assert round(d["geom"].length, 1) == round(G_converted[s][e][k]["geom"].length, 1)
 
     # check that non-LineString geoms throw an error
-    G_wgs = mock.mock_graph(wgs84_coords=True)
+    G_wgs_copy = G_wgs.copy()
     for s, e, k in G_wgs.edges(keys=True):
-        G_wgs[s][e][k]["geom"] = geometry.Point([G_wgs.nodes[s]["x"], G_wgs.nodes[s]["y"]])
+        G_wgs_copy[s][e][k]["geom"] = geometry.Point([G_wgs_copy.nodes[s]["x"], G_wgs_copy.nodes[s]["y"]])
     with pytest.raises(TypeError):
-        io.nx_wgs_to_utm(G_wgs)
+        io.nx_wgs_to_utm(G_wgs_copy)
 
     # check that missing node keys throw an error
+    G_wgs_copy = G_wgs.copy()
     for k in ["x", "y"]:
-        G_wgs = mock.mock_graph(wgs84_coords=True)
-        for n in G_wgs.nodes():
+        G_wgs_copy = mock.mock_graph(wgs84_coords=True)
+        for n in G_wgs_copy.nodes():
             # delete key from first node and break
-            del G_wgs.nodes[n][k]
+            del G_wgs_copy.nodes[n][k]
             break
         # check that missing key throws an error
         with pytest.raises(KeyError):
-            io.nx_wgs_to_utm(G_wgs)
+            io.nx_wgs_to_utm(G_wgs_copy)
 
     # check that non WGS coordinates throw error
-    G_utm = mock.mock_graph()
     with pytest.raises(ValueError):
         io.nx_wgs_to_utm(G_utm)
 
     # check that non-matching UTM zones are coerced to the same zone
     # this scenario spans two UTM zones
     G_wgs_b = nx.MultiGraph()
+    G_wgs_b.graph["crs"] = CRS(4326)
     nodes = [
         (1, {"x": -0.0005, "y": 51.572}),
         (2, {"x": -0.0005, "y": 51.571}),
@@ -96,6 +109,7 @@ def test_nx_wgs_to_utm():
     G_wgs_b.add_nodes_from(nodes)
     edges = [(1, 2), (2, 3), (3, 4), (4, 5), (5, 2)]
     G_wgs_b.add_edges_from(edges)
+    G_wgs_b = graphs.nx_simple_geoms(G_wgs_b)
     G_utm_30 = io.nx_wgs_to_utm(G_wgs_b)
     G_utm_30 = graphs.nx_simple_geoms(G_utm_30)
 
@@ -150,11 +164,13 @@ def test_osm_graph_from_poly():
     assert isinstance(network_from_wgs, nx.MultiGraph)
     assert len(network_from_wgs.nodes) > 0
     assert len(network_from_wgs.edges) > 0
+    assert network_from_wgs.graph["crs"].to_epsg() == 32630
     # check that from CRS conversions are working
     # 32630 corresponds to UTM 30N
     poly_utm, utm_epsg = io.buffered_point_poly(LNG, LAT, BUFFER, projected=True)
     assert utm_epsg == 32630
     network_from_utm = io.osm_graph_from_poly(poly_utm, poly_crs_code=utm_epsg, simplify=False)
+    assert network_from_utm.graph["crs"].to_epsg() == 32630
     # visual check for debugging
     # plot.plot_nx(network_from_utm)
     assert isinstance(network_from_utm, nx.MultiGraph)
@@ -166,6 +182,7 @@ def test_osm_graph_from_poly():
     # check that to CRS conversions are working
     # this will convert out graph to BNG - EPSG 27700
     network_to_bng = io.osm_graph_from_poly(poly_wgs, to_crs_code=27700, simplify=False)
+    assert network_to_bng.graph["crs"].to_epsg() == 27700
     # networks should still match
     assert list(network_to_bng.nodes) == list(network_from_wgs.nodes)
     assert list(network_to_bng.edges) == list(network_from_wgs.edges)
@@ -208,9 +225,13 @@ def test_network_structure_from_nx(diamond_graph):
     G_test_dual.nodes["1_2_k0"]["live"] = True
     G_test_dual.nodes["1_3_k0"]["live"] = True
     G_test_dual.nodes["2_3_k0"]["live"] = False
-    for G, is_dual in zip((G_test, G_test_dual), (False, True), strict=False):
+    for G, is_dual in zip((G_test, G_test_dual), (False, True), strict=True):
         # generate test maps
-        nodes_gdf, edges_gdf, network_structure = io.network_structure_from_nx(G, 3395)
+        nodes_gdf, edges_gdf, network_structure = io.network_structure_from_nx(G)
+        network_structure.validate()
+        # check CRS
+        assert nodes_gdf.crs.to_epsg() == 32630
+        assert edges_gdf.crs.to_epsg() == 32630
         network_structure.validate()
         # debug plot
         # plot.plot_graphs(primal=G)
@@ -220,7 +241,7 @@ def test_network_structure_from_nx(diamond_graph):
         # edges = x2
         assert network_structure.edge_count == G.number_of_edges() * 2
         # CRS check
-        assert nodes_gdf.crs.to_epsg() == 3395
+        assert nodes_gdf.crs.to_epsg() == 32630
         # dual specific checks
         if is_dual is True:
             # check that primal geom is copied across
@@ -247,6 +268,7 @@ def test_network_structure_from_nx(diamond_graph):
             imp_factor = edge_payload.imp_factor
             in_bearing = edge_payload.in_bearing
             out_bearing = edge_payload.out_bearing
+            seconds = edge_payload.seconds
             # check against edges_gdf
             gdf_edge_key = f"{start_nd_key}-{end_nd_key}"
             assert edges_gdf.loc[gdf_edge_key, "start_ns_node_idx"] == start_ns_node_idx
@@ -259,6 +281,7 @@ def test_network_structure_from_nx(diamond_graph):
             assert edges_gdf.loc[gdf_edge_key, "imp_factor"] - imp_factor < config.ATOL
             assert edges_gdf.loc[gdf_edge_key, "in_bearing"] - in_bearing < config.ATOL
             assert edges_gdf.loc[gdf_edge_key, "out_bearing"] - out_bearing < config.ATOL
+            assert np.isnan(seconds)
             # manual checks
             if not is_dual:
                 if (start_nd_key, end_nd_key) == ("0", "1"):
@@ -605,18 +628,22 @@ def test_network_structure_from_nx(diamond_graph):
     # check that non string indices throw an error
     G_test = diamond_graph.copy()
     G_test.add_node(0)
+    G_test.nodes[0]["x"] = 0
+    G_test.nodes[0]["y"] = 0
+    with pytest.raises(TypeError):
+        io.network_structure_from_nx(G_test)
+    # check that missing geoms throw an error
+    G_test = diamond_graph.copy()
+    G_test.add_node(0)
     G_test.add_node(1)
     G_test.add_edge(0, 1)
-    with pytest.raises(TypeError):
-        io.network_structure_from_nx(G_test, 3395)
-    # check that missing geoms throw an error
     G_test = diamond_graph.copy()
     for start_nd, end_nd, edge_key in G_test.edges(keys=True):
         # delete key from first node and break
         del G_test[start_nd][end_nd][edge_key]["geom"]
         break
     with pytest.raises(KeyError):
-        io.network_structure_from_nx(G_test, 3395)
+        io.network_structure_from_nx(G_test)
     # check that non-LineString geoms throw an error
     G_test = diamond_graph.copy()
     for start_nd, end_nd, edge_key in G_test.edges(keys=True):
@@ -624,7 +651,7 @@ def test_network_structure_from_nx(diamond_graph):
             [G_test.nodes[start_nd]["x"], G_test.nodes[start_nd]["y"]]
         )
     with pytest.raises(TypeError):
-        io.network_structure_from_nx(G_test, 3395)
+        io.network_structure_from_nx(G_test)
     # check that missing node keys throw an error
     G_test = diamond_graph.copy()
     for edge_key in ["x", "y"]:
@@ -633,7 +660,7 @@ def test_network_structure_from_nx(diamond_graph):
             del G_test.nodes[nd_idx][edge_key]
             break
         with pytest.raises(KeyError):
-            io.network_structure_from_nx(G_test, 3395)
+            io.network_structure_from_nx(G_test)
     # check that invalid imp_factors are caught
     G_test = diamond_graph.copy()
     # corrupt imp_factor value and break
@@ -642,12 +669,12 @@ def test_network_structure_from_nx(diamond_graph):
             G_test[start_nd][end_nd][edge_key]["imp_factor"] = corrupt_val
             break
         with pytest.raises(ValueError):
-            io.network_structure_from_nx(G_test, 3395)
+            io.network_structure_from_nx(G_test)
 
 
 def test_network_structure_from_gpd(primal_graph):
     G: nx.MultiGraph = primal_graph.copy()
-    nodes_gdf, edges_gdf, network_structure = io.network_structure_from_nx(G, 3395)
+    nodes_gdf, edges_gdf, network_structure = io.network_structure_from_nx(G)
     # round trip network structure
     network_structure_round = io.network_structure_from_gpd(nodes_gdf, edges_gdf)
     # node indices
@@ -713,6 +740,134 @@ def test_network_structure_from_gpd(primal_graph):
             )
 
 
+def find_path(start_idx, target_idx, tree_map):
+    """
+    for extracting paths from predecessor map
+    """
+    s_path: list[int] = []
+    pred_idx: int = start_idx
+    while True:
+        s_path.append(pred_idx)
+        if pred_idx == target_idx:
+            break
+        pred_idx = tree_map[pred_idx].pred
+
+    return list(reversed(s_path))
+
+
+def test_add_transport_gtfs(primal_graph):
+    """ """
+    # prepare GTFS data
+    gtfs_data_path = "temp"
+    mock.mock_gtfs_stops_txt(gtfs_data_path)
+    distances = [1000]
+    #
+    nodes_gdf, edges_gdf, network_structure = io.network_structure_from_nx(primal_graph)
+    nodes_gdf = networks.node_centrality_shortest(
+        network_structure=network_structure,
+        nodes_gdf=nodes_gdf,
+        distances=distances,
+    )
+    # clean copy for transport
+    nodes_gdf_w_trans, edges_gdf_w_trans, network_structure_w_trans = io.network_structure_from_nx(primal_graph)
+    nodes_gdf_w_trans, edges_gdf_w_trans, network_structure_w_trans, stops, avg_stop_pairs = io.add_transport_gtfs(
+        gtfs_data_path, nodes_gdf_w_trans, edges_gdf_w_trans, network_structure_w_trans
+    )
+    nodes_gdf_w_trans = networks.node_centrality_shortest(
+        network_structure=network_structure_w_trans,
+        nodes_gdf=nodes_gdf_w_trans,
+        distances=distances,
+    )
+    # from cityseer.tools import plot
+    # plot.plot_network_structure(network_structure_w_trans, stops)
+    #
+    expected_path = [11, 12, 8, 9, 4, 1, 0, 31, 33, 38, 45, 56]
+    expected_path_w_trans = [11, 61, 60, 59, 58, 57, 56]
+    for reverse in [False, True]:
+        list_idx = nodes_gdf_w_trans.index.tolist()
+        if reverse is False:
+            src_idx = list_idx.index("11")
+            target_idx = list_idx.index("56")
+        else:
+            src_idx = list_idx.index("56")
+            target_idx = list_idx.index("11")
+        max_seconds_5000 = 5000 / config.SPEED_M_S
+        # path without transport
+        visited_nodes, tree_map = network_structure.dijkstra_tree_shortest(
+            src_idx,
+            int(max_seconds_5000),
+            config.SPEED_M_S,
+        )
+        path = find_path(target_idx, src_idx, tree_map)
+        # path with transport
+        visited_nodes_w_trans, tree_map_w_trans = network_structure_w_trans.dijkstra_tree_shortest(
+            src_idx,
+            int(max_seconds_5000),
+            config.SPEED_M_S,
+        )
+        path_w_trans = find_path(target_idx, src_idx, tree_map_w_trans)
+        if reverse is False:
+            assert path == expected_path
+            assert path_w_trans == expected_path_w_trans
+        else:
+            assert path == list(reversed(expected_path))
+            assert path_w_trans == list(reversed(expected_path_w_trans))
+    # dual
+    dual_graph = graphs.nx_to_dual(primal_graph)
+    nodes_gdf, edges_gdf, network_structure = io.network_structure_from_nx(dual_graph)
+    nodes_gdf = networks.node_centrality_shortest(
+        network_structure=network_structure,
+        nodes_gdf=nodes_gdf,
+        distances=distances,
+    )
+    # clean copy for transport
+    nodes_gdf_w_trans, edges_gdf_w_trans, network_structure_w_trans = io.network_structure_from_nx(dual_graph)
+    nodes_gdf_w_trans, edges_gdf_w_trans, network_structure_w_trans, stops, avg_stop_pairs = io.add_transport_gtfs(
+        gtfs_data_path, nodes_gdf_w_trans, edges_gdf_w_trans, network_structure_w_trans
+    )
+    nodes_gdf_w_trans = networks.node_centrality_shortest(
+        network_structure=network_structure_w_trans,
+        nodes_gdf=nodes_gdf_w_trans,
+        distances=distances,
+    )
+    #
+    # from cityseer.tools import plot
+    # plot.plot_network_structure(network_structure_w_trans, stops)
+    expected_path = [20, 16, 15, 9, 4, 0, 2, 51, 55, 63, 71]
+    expected_path_w_trans = [20, 83, 82, 81, 80, 79, 71]
+    for reverse in [False, True]:
+        list_idx = nodes_gdf_w_trans.index.tolist()
+        if reverse is False:
+            src_idx = list_idx.index("11_12_k0")
+            target_idx = list_idx.index("45_56_k0")
+        else:
+            src_idx = list_idx.index("45_56_k0")
+            target_idx = list_idx.index("11_12_k0")
+        max_seconds_5000 = 5000 / config.SPEED_M_S
+        # path without transport
+        visited_nodes, tree_map = network_structure.dijkstra_tree_shortest(
+            src_idx,
+            int(max_seconds_5000),
+            config.SPEED_M_S,
+        )
+        path = find_path(target_idx, src_idx, tree_map)
+        # path with transport
+        visited_nodes_w_trans, tree_map_w_trans = network_structure_w_trans.dijkstra_tree_shortest(
+            src_idx,
+            int(max_seconds_5000),
+            config.SPEED_M_S,
+        )
+        path_w_trans = find_path(target_idx, src_idx, tree_map_w_trans)
+        # from cityseer.tools import plot
+        # plot.plot_network_structure(network_structure_w_trans, stops)
+        if reverse is False:
+            assert path == expected_path
+            assert path_w_trans == expected_path_w_trans
+        else:
+            assert path == list(reversed(expected_path))
+            assert path_w_trans == list(reversed(expected_path_w_trans))
+
+
 def test_nx_from_cityseer_geopandas(primal_graph):
     # also see test_networks.test_to_nx_multigraph for tests on implementation via Network layer
     # check round trip to and from graph maps results in same graph
@@ -721,7 +876,7 @@ def test_nx_from_cityseer_geopandas(primal_graph):
     for node_key in primal_graph.nodes():
         primal_graph.nodes[node_key]["live"] = bool(np.random.randint(0, 2))
     # test directly from and to graph maps
-    nodes_gdf, edges_gdf, network_structure = io.network_structure_from_nx(primal_graph, 3395)
+    nodes_gdf, edges_gdf, network_structure = io.network_structure_from_nx(primal_graph)
     G_round_trip = io.nx_from_cityseer_geopandas(nodes_gdf, edges_gdf)
     assert list(G_round_trip.nodes) == list(primal_graph.nodes)
     assert list(G_round_trip.edges) == list(primal_graph.edges)
@@ -736,7 +891,7 @@ def test_nx_from_cityseer_geopandas(primal_graph):
         assert "live" in G_round_trip_miss.nodes["0"]
         assert "weight" in G_round_trip_miss.nodes["0"]
     # check with metrics
-    nodes_gdf, edges_gdf, network_structure = io.network_structure_from_nx(primal_graph, 3395)
+    nodes_gdf, edges_gdf, network_structure = io.network_structure_from_nx(primal_graph)
     nodes_gdf = networks.node_centrality_shortest(
         network_structure=network_structure, nodes_gdf=nodes_gdf, compute_closeness=True, distances=[500, 1000]
     )
@@ -778,7 +933,7 @@ def test_nx_from_cityseer_geopandas(primal_graph):
     # set live explicitly
     for node_key in G_decomposed.nodes():
         G_decomposed.nodes[node_key]["live"] = bool(np.random.randint(0, 2))
-    nodes_gdf_decomp, edges_gdf_decomp, network_structure_decomp = io.network_structure_from_nx(G_decomposed, 3395)
+    nodes_gdf_decomp, edges_gdf_decomp, network_structure_decomp = io.network_structure_from_nx(G_decomposed)
     G_round_trip_decomp = io.nx_from_cityseer_geopandas(nodes_gdf_decomp, edges_gdf_decomp)
     assert list(G_round_trip_decomp.nodes) == list(G_decomposed.nodes)
     for node_key, iter_node_data in G_round_trip_decomp.nodes(data=True):
@@ -791,7 +946,8 @@ def test_nx_from_cityseer_geopandas(primal_graph):
 
 def test_geopandas_from_nx(primal_graph):
     """ """
-    edges_gdf = io.geopandas_from_nx(primal_graph, 3395)
+    edges_gdf = io.geopandas_from_nx(primal_graph)
+    assert edges_gdf.crs == primal_graph.graph["crs"]
     assert len(edges_gdf) == len(primal_graph.edges)
     for _idx, row_data in edges_gdf.iterrows():
         assert (
@@ -803,7 +959,7 @@ def test_geopandas_from_nx(primal_graph):
 def test_nx_from_generic_geopandas(primal_graph):
     """ """
     # generate a GDF for testing with
-    nodes_gdf, edges_gdf, network_structure = io.network_structure_from_nx(primal_graph, 3395)
+    nodes_gdf, edges_gdf, network_structure = io.network_structure_from_nx(primal_graph)
     generic_gdf = edges_gdf[["geom"]]
     # generic_gdf has directed edges but nx_from_generic_geopandas will deduplicate
     nx_from_generic = io.nx_from_generic_geopandas(generic_gdf)
@@ -817,8 +973,17 @@ def test_nx_from_generic_geopandas(primal_graph):
     for _s, _e, d in nx_from_generic.edges(data=True):
         total_lens_generic += d["geom"].length
     assert total_lens_input - total_lens_generic < config.ATOL
+    # check CRS handling
+    with pytest.raises(ValueError):
+        generic_gdf = edges_gdf[["geom"]]
+        generic_gdf = generic_gdf.set_crs(None)
+        io.nx_from_generic_geopandas(generic_gdf)
+    with pytest.raises(ValueError):
+        generic_gdf = edges_gdf[["geom"]]
+        generic_gdf = generic_gdf.to_crs(4326)
+        io.nx_from_generic_geopandas(generic_gdf)
     # test OSM keys
-    out_gpd = io.geopandas_from_nx(primal_graph, crs=3395)
+    out_gpd = io.geopandas_from_nx(primal_graph)
     out_gpd["names"] = ""
     out_gpd.loc[0, "names"] = "(boo,)"
     out_gpd["routes"] = ""

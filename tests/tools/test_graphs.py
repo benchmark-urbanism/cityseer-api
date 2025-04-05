@@ -6,6 +6,7 @@ import numpy as np
 import pytest
 from cityseer import config
 from cityseer.tools import graphs, mock
+from pyproj import CRS
 from shapely import geometry, ops
 
 
@@ -49,7 +50,7 @@ def make_messy_graph(G):
         if i % 3 == 0:
             flipped_coords = np.fliplr(d["geom"].coords.xy)
             G_messy[s][e][k]["geom"] = geometry.LineString(
-                [[x, y] for x, y in zip(flipped_coords[0], flipped_coords[1], strict=False)]
+                [[x, y] for x, y in zip(flipped_coords[0], flipped_coords[1], strict=True)]
             )
         # split each second geom
         if i % 2 == 0:
@@ -58,7 +59,7 @@ def make_messy_graph(G):
             if (G.nodes[s]["x"], G.nodes[s]["y"]) != line_geom.coords[0][:2]:
                 flipped_coords = np.fliplr(line_geom.coords.xy)
                 line_geom = geometry.LineString(
-                    [[x, y] for x, y in zip(flipped_coords[0], flipped_coords[1], strict=False)]
+                    [[x, y] for x, y in zip(flipped_coords[0], flipped_coords[1], strict=True)]
                 )
             # remove old edge
             G_messy.remove_edge(s, e)
@@ -157,6 +158,7 @@ def test_nx_remove_filler_nodes(primal_graph):
     G_lollipop.add_nodes_from(nodes)
     edges = [(1, 2), (2, 3), (3, 4), (4, 5), (5, 2)]
     G_lollipop.add_edges_from(edges)
+    G_lollipop.graph["crs"] = CRS(32630)
     # add edge geoms
     G_lollipop = graphs.nx_simple_geoms(G_lollipop)
     # flip some geometry
@@ -215,6 +217,7 @@ def test_nx_remove_filler_nodes(primal_graph):
         ("2-up", "1-up"),
     ]
     G_stairway.add_edges_from(edges)
+    G_stairway.graph["crs"] = CRS(32630)
     # add edge geoms
     G_stairway = graphs.nx_simple_geoms(G_stairway)
     # flip some geometry
@@ -443,6 +446,11 @@ def test_nx_remove_dangling_nodes(primal_graph):
     G_biggest_component = nx.MultiGraph(G_messy_no_fillers.subgraph(biggest_component))
     assert G_biggest_component.nodes == G_post.nodes
     assert G_biggest_component.edges == G_post.edges
+    # check paramter types
+    with pytest.raises(ValueError):
+        graphs.nx_remove_dangling_nodes(G_messy, remove_disconnected=True)
+    with pytest.raises(ValueError):
+        graphs.nx_remove_dangling_nodes(G_messy, despine=True)
 
 
 def test_nx_merge_parallel_edges():
@@ -453,6 +461,7 @@ def test_nx_merge_parallel_edges():
 def test_nx_iron_edges():
     """ """
     nx_multi = nx.MultiGraph()
+    nx_multi.graph["crs"] = CRS(32630)
     nx_multi.add_node(0, x=0, y=0)
     nx_multi.add_node(1, x=0, y=2)
     # 1 - jogged line should be preserved
@@ -475,6 +484,7 @@ def test_nx_iron_edges():
     assert list(out_geom.coords) == [(0.0, 0.0), (0.0, 50.0)]
     # 5 loops should be left alone
     nx_multi = nx.MultiGraph()
+    nx_multi.graph["crs"] = CRS(32630)
     nx_multi.add_node(0, x=0, y=0)
     line_geom = geometry.LineString([[0, 0], [0, 100], [100, 100], [100, 0], [0, 0]])
     nx_multi.add_edge(0, 0, geom=line_geom)
@@ -712,7 +722,7 @@ def test_nx_to_dual(primal_graph, diamond_graph):
         if i % 3 == 0:
             flipped_coords = np.fliplr(d["geom"].coords.xy)
             G[s][e][k]["geom"] = geometry.LineString(
-                [[x, y] for x, y in zip(flipped_coords[0], flipped_coords[1], strict=False)]
+                [[x, y] for x, y in zip(flipped_coords[0], flipped_coords[1], strict=True)]
             )
     G_dual = graphs.nx_to_dual(G)
     # from cityseer.tools import plot
@@ -740,8 +750,3 @@ def test_nx_weight_by_dissolved_edges(parallel_segments_graph):
         assert nd_data["weight"] > 0
     for _nd_key, nd_data in G_0.nodes(data=True):
         assert nd_data["weight"] == 1
-
-
-def test_nx_generate_vis_lines(primal_graph):
-    """ """
-    graphs.nx_generate_vis_lines(primal_graph)

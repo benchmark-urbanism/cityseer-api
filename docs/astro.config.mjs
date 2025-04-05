@@ -1,6 +1,4 @@
-import prefetch from '@astrojs/prefetch'
 import sitemap from '@astrojs/sitemap'
-import tailwind from '@astrojs/tailwind'
 import vue from '@astrojs/vue'
 import remarkAllyEmoji from '@fec/remark-a11y-emoji'
 import { defineConfig } from 'astro/config'
@@ -15,6 +13,8 @@ import remarkGfm from 'remark-gfm'
 import remarkMath from 'remark-math'
 import remarkSmartypants from 'remark-smartypants'
 import { visit } from 'unist-util-visit'
+
+import tailwindcss from '@tailwindcss/vite';
 
 function admonitionRemarkPlugin() {
   return (tree) => {
@@ -60,12 +60,16 @@ export default defineConfig({
   outDir: './dist',
   site: 'https://cityseer.benchmarkurbanism.com/',
   base: '/',
+
   // firebase hosting is set to false
   trailingSlash: 'never',
+
   output: 'static',
+
   build: {
     format: 'directory',
   },
+
   markdown: {
     drafts: false,
     shikiConfig: {
@@ -136,16 +140,15 @@ export default defineConfig({
       ],
     ],
   },
+
   integrations: [
     vue(),
-    tailwind({
-      config: {
-        path: './tailwind.config.cjs',
-        applyAstroPreset: false,
-        applyBaseStyles: false,
-      },
-    }),
     sitemap(),
-    prefetch(),
   ],
+
+  prefetch: true,
+
+  vite: {
+    plugins: [tailwindcss()]
+  }
 })

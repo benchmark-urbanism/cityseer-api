@@ -9,9 +9,10 @@ from cityseer.tools import io, mock
 
 def test_aggregate_to_src_idx(primal_graph):
     for max_dist in [400, 750]:
+        max_seconds = max_dist / config.SPEED_M_S
         for deduplicate in [False, True]:
             # generate data
-            _nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(primal_graph, 3395)
+            _nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(primal_graph)
             data_gdf = mock.mock_data_gdf(primal_graph)
             if deduplicate is False:
                 data_map, data_gdf = layers.assign_gdf_to_network(
@@ -24,25 +25,29 @@ def test_aggregate_to_src_idx(primal_graph):
             # in this case, use same assignment max dist as search max dist
             # for debugging
             # from cityseer.tools import plot
-            # plot.plot_network_structure(network_structure, data_map)
-            for angular in [True, False]:
+            # plot.plot_network_structure(network_structure, data_gdf)
+            for angular in [False, True]:
                 for netw_src_idx in network_structure.node_indices():
                     # aggregate to src...
                     reachable_entries = data_map.aggregate_to_src_idx(
-                        netw_src_idx, network_structure, max_dist, angular=angular
+                        netw_src_idx, network_structure, int(max_seconds), config.SPEED_M_S, angular=angular
                     )
                     # compare to manual checks on distances:
                     # get the network distances
                     if angular is False:
-                        _nodes, tree_map = network_structure.dijkstra_tree_shortest(netw_src_idx, max_dist)
+                        _nodes, tree_map = network_structure.dijkstra_tree_shortest(
+                            netw_src_idx, int(max_seconds), config.SPEED_M_S
+                        )
                     else:
-                        _nodes, tree_map = network_structure.dijkstra_tree_simplest(netw_src_idx, max_dist)
+                        _nodes, tree_map = network_structure.dijkstra_tree_simplest(
+                            netw_src_idx, int(max_seconds), config.SPEED_M_S
+                        )
                     # verify distances vs. the max
                     for data_key, data_entry in data_map.entries.items():
                         # nearest
                         if data_entry.nearest_assign is not None:
                             nearest_netw_node = network_structure.get_node_payload(data_entry.nearest_assign)
-                            nearest_assign_dist = tree_map[data_entry.nearest_assign].short_dist
+                            nearest_assign_dist = tree_map[data_entry.nearest_assign].agg_seconds * config.SPEED_M_S
                             # add tail
                             if not np.isposinf(nearest_assign_dist):
                                 nearest_assign_dist += nearest_netw_node.coord.hypot(data_entry.coord)
@@ -51,7 +56,9 @@ def test_aggregate_to_src_idx(primal_graph):
                         # next nearest
                         if data_entry.next_nearest_assign is not None:
                             next_nearest_netw_node = network_structure.get_node_payload(data_entry.next_nearest_assign)
-                            next_nearest_assign_dist = tree_map[data_entry.next_nearest_assign].short_dist
+                            next_nearest_assign_dist = (
+                                tree_map[data_entry.next_nearest_assign].agg_seconds * config.SPEED_M_S
+                            )
                             # add tail
                             if not np.isposinf(next_nearest_assign_dist):
                                 next_nearest_assign_dist += next_nearest_netw_node.coord.hypot(data_entry.coord)
@@ -86,12 +93,15 @@ def test_aggregate_to_src_idx(primal_graph):
 
 def test_accessibility(primal_graph):
     # generate node and edge maps
-    _nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(primal_graph, 3395)
+    _nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(primal_graph)
     data_gdf = mock.mock_landuse_categorical_data(primal_graph, random_seed=13)
     distances = [200, 400, 800, 1600]
     max_dist = max(distances)
+    max_seconds = max_dist / config.SPEED_M_S
     data_map, data_gdf = layers.assign_gdf_to_network(data_gdf, network_structure, max_dist, data_id_col="data_id")
-    landuses_map = data_gdf["categorical_landuses"].to_dict()
+    data_keys: list[str] = data_gdf["datamap_key"]  # type: ignore
+    landuses: list[str] = data_gdf["categorical_landuses"]  # type: ignore
+    landuses_map: dict[str, str] = dict(zip(data_keys, landuses, strict=True))
     # all datapoints and types are completely unique except for the last five - which all point to the same source
     accessibility_keys = ["a", "b", "c", "z"]  # the duplicate keys are per landuse 'z'
     # generate
@@ -103,7 +113,7 @@ def test_accessibility(primal_graph):
     )
     # test manual metrics against all nodes
     betas = rustalgos.betas_from_distances(distances)
-    for dist, beta in zip(distances, betas, strict=False):
+    for dist, beta in zip(distances, betas, strict=True):
         for src_idx in network_structure.node_indices():  # type: ignore
             # aggregate
             a_nw = 0
@@ -119,7 +129,9 @@ def test_accessibility(primal_graph):
             c_dist = np.nan
             z_dist = np.nan
             # iterate reachable
-            reachable_entries = data_map.aggregate_to_src_idx(src_idx, network_structure, max_dist)
+            reachable_entries = data_map.aggregate_to_src_idx(
+                src_idx, network_structure, int(max_seconds), config.SPEED_M_S
+            )
             for data_key, data_dist in reachable_entries.items():
                 # double check distance is within threshold
                 assert data_dist <= max_dist
@@ -211,12 +223,15 @@ def test_accessibility(primal_graph):
 
 def test_mixed_uses(primal_graph):
     # generate node and edge maps
-    _nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(primal_graph, 3395)
+    _nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(primal_graph)
     data_gdf = mock.mock_landuse_categorical_data(primal_graph, random_seed=13)
     distances = [200, 400, 800, 1600]
     max_dist = max(distances)
+    max_seconds = max_dist / config.SPEED_M_S
     data_map, data_gdf = layers.assign_gdf_to_network(data_gdf, network_structure, max_dist, data_id_col="data_id")
-    landuses_map = data_gdf["categorical_landuses"].to_dict()
+    data_keys: list[str] = data_gdf["datamap_key"]  # type: ignore
+    landuses: list[str] = data_gdf["categorical_landuses"]  # type: ignore
+    landuses_map: dict[str, str] = dict(zip(data_keys, landuses, strict=True))
     # test against various distances
     betas = rustalgos.betas_from_distances(distances)
     for angular in [False, True]:
@@ -233,9 +248,9 @@ def test_mixed_uses(primal_graph):
         )
         for netw_src_idx in network_structure.node_indices():
             reachable_entries = data_map.aggregate_to_src_idx(
-                netw_src_idx, network_structure, max_dist, angular=angular
+                netw_src_idx, network_structure, int(max_seconds), config.SPEED_M_S, angular=angular
             )
-            for dist_cutoff, beta in zip(distances, betas, strict=False):
+            for dist_cutoff, beta in zip(distances, betas, strict=True):
                 class_agg = dict()
                 # iterate reachable
                 for data_key, data_dist in reachable_entries.items():
@@ -307,13 +322,18 @@ def test_mixed_uses(primal_graph):
 def test_stats(primal_graph):
     # generate node and edge maps
     # generate node and edge maps
-    _nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(primal_graph, 3395)
+    _nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(primal_graph)
     data_gdf = mock.mock_numerical_data(primal_graph, num_arrs=2, random_seed=13)
     # use a large enough distance such that simple non-weighted checks can be run for max, mean, variance
     max_assign_dist = 3200
     # don't deduplicate with data_id column otherwise below tallys won't work
     data_map, data_gdf = layers.assign_gdf_to_network(data_gdf, network_structure, max_assign_dist)
-    numerical_maps = [data_gdf["mock_numerical_1"].to_dict(), data_gdf["mock_numerical_2"].to_dict()]
+    data_keys: list[str] = data_gdf["datamap_key"]  # type: ignore
+    numerical_maps = []
+    for stats_col in ["mock_numerical_1", "mock_numerical_2"]:
+        stats: list[str] = data_gdf[stats_col]  # type: ignore
+        stats_map: dict[str, str] = dict(zip(data_keys, stats, strict=True))
+        numerical_maps.append(stats_map)
     # for debugging
     # from cityseer.tools import plot
     # plot.plot_network_structure(network_structure, data_gdf)
@@ -338,7 +358,7 @@ def test_stats(primal_graph):
     )
     stats_result = stats_results[0]
     for stats_result, mock_num_arr in zip(
-        stats_results, [data_gdf["mock_numerical_1"].values, data_gdf["mock_numerical_2"].values], strict=False
+        stats_results, [data_gdf["mock_numerical_1"].values, data_gdf["mock_numerical_2"].values], strict=True
     ):
         for dist_key in distances:
             # i.e. this scenarios considers all datapoints as unique (no two datapoints point to the same source)
@@ -452,7 +472,7 @@ def test_stats(primal_graph):
         numerical_maps=numerical_maps,
         distances=distances,
     )
-    for stats_result, stats_result_dedupe in zip(stats_results, stats_results_dedupe, strict=False):
+    for stats_result, stats_result_dedupe in zip(stats_results, stats_results_dedupe, strict=True):
         for dist_key in distances:
             # min and max are be the same
             assert np.allclose(

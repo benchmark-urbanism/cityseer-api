@@ -97,14 +97,14 @@ def distances_from_betas(betas: list[float], min_threshold_wt: float | None = No
 
     Parameters
     ----------
-    distance: int | tuple[int]
+    distance: list[int]
         $d_{max}$ value/s to convert to decay parameters $\beta$.
     min_threshold_wt: float
         The cutoff weight $w_{min}$ on which to model the decay parameters $\beta$.
 
     Returns
     -------
-    tuple[float]
+    list[float]
         A numpy array of decay parameters $\beta$.
 
     Examples
@@ -202,50 +202,124 @@ def betas_from_distances(distances: list[int], min_threshold_wt: float | None = 
     | 0.005 | 800m |
     | 0.0025 | 1600m |
 
-    Overriding the default $w_{min}$ will adjust the $d_{max}$ accordingly, for example:
-
-    | $\beta$ | $w_{min}$ | $d_{max}$ |
-    |:-------:|:---------:|:---------:|
-    | 0.02 | 0.01 | 230m |
-    | 0.01 | 0.01 | 461m |
-    | 0.005 | 0.01 | 921m |
-    | 0.0025 | 0.01 | 1842m |
+    Overriding the default $w_{min}$ will adjust the $d_{max}$ accordingly.
 
     """
     ...
 
-def pair_distances_and_betas(
-    distances: list[int] | None = None,
-    betas: list[float] | None = None,
-    min_threshold_wt: float | None = None,
-) -> tuple[list[int], list[float]]:
+def distances_from_seconds(
+    seconds: list[int],
+    speed_m_s: float | None = None,
+) -> list[int]:
     r"""
-    Pair distances and betas, where one or the other parameter is provided.
+    Map seconds to equivalent distance thresholds $d_{max}$.
+
+    :::note
+    It is generally not necessary to utilise this function directly.
+    :::
+
+    The default `speed_m_s` of $1.333$ yields the following $d_{max}$ walking thresholds:
+
+    | $seconds$ | $d_{max}$ |
+    |:-------:|:---------:|
+    | 300 | 400m |
+    | 600 | 800m |
+    | 1200 | 1600m |
+
+    Setting the `speed_m_s` to a higher or lower number will affect the $d_{max}$ accordingly.
 
     Parameters
     ----------
-    distances: list[int] | tuple[int]
-        Distances corresponding to the local $d_{max}$ thresholds to be used for calculations. The $\beta$ parameters
-        (for distance-weighted metrics) will be determined implicitly. If the `distances` parameter is not provided,
-        then the `beta` parameter must be provided instead.
-    betas: tuple[float]
-        A $\beta$, or array of $\beta$ to be used for the exponential decay function for weighted metrics. The
-        `distance` parameters for unweighted metrics will be determined implicitly. If the `betas` parameter is not
-        provided, then the `distance` parameter must be provided instead.
-    min_threshold_wt: float
-        The default `min_threshold_wt` parameter can be overridden to generate custom mappings between the
-        `distance` and `beta` parameters. See [`distance_from_beta`](#distance-from-beta) for more information.
+    seconds: list[int]
+        Seconds to convert to distance thresholds $d_{max}$.
+    speed_m_s: float
+        The walking speed in metres per second.
 
     Returns
     -------
-    distances: tuple[int]
+    list[int]
+        A numpy array of distance thresholds $d_{max}$.
+
+    """
+
+def seconds_from_distances(
+    distances: list[int],
+    speed_m_s: float | None = None,
+) -> list[float]:
+    r"""
+    Map distances into equivalent walking time in seconds.
+
+    :::note
+    It is generally not necessary to utilise this function directly.
+    :::
+
+    The default `speed_m_s` of $1.33333$ yields the following walking times:
+
+    | $d_{max}$ | $seconds$ |
+    |:-------:|:---------:|
+    | 400m | 300 |
+    | 800m | 600 |
+    | 1600m | 1200 |
+
+    Setting the `speed_m_s` to a higher or lower number will affect the walking time accordingly.
+
+    Parameters
+    ----------
+    distances: list[int]
+        Distances to convert to seconds.
+    speed_m_s: float
+        The walking speed in metres per second.
+
+    Returns
+    -------
+    list[int]
+        A numpy array of walking time in seconds.
+
+    """
+
+def pair_distances_betas_time(
+    distances: list[int] | None = None,
+    betas: list[float] | None = None,
+    minutes: list[float] | None = None,
+    min_threshold_wt: float | None = None,
+    speed_m_s: float | None = None,
+) -> tuple[list[int], list[float], list[float]]:
+    r"""
+    Pair distances, betas, and time, where only one parameter is provided.
+
+    Parameters
+    ----------
+    distances: list[int]
         Distances corresponding to the local $d_{max}$ thresholds to be used for calculations. The $\beta$ parameters
         (for distance-weighted metrics) will be determined implicitly. If the `distances` parameter is not provided,
-        then the `beta` parameter must be provided instead.
+        then the `betas` or `minutes` parameter must be provided instead.
     betas: tuple[float]
         A $\beta$, or array of $\beta$ to be used for the exponential decay function for weighted metrics. The
         `distance` parameters for unweighted metrics will be determined implicitly. If the `betas` parameter is not
+        provided, then the `distances` or `minutes` parameter must be provided instead.
+    minutes: list[float]
+        Walking times in minutes to be used for calculations. The `distance` and `beta` parameters will be determined
+        implicitly. If the `minutes` parameter is not provided, then the `distances` or `betas` parameters must be
+        provided instead.
+    min_threshold_wt: float
+        The default `min_threshold_wt` parameter can be overridden to generate custom mappings between the
+        `distance` and `beta` parameters. See [`distance_from_beta`](#distance-from-beta) for more information.
+    speed_m_s: float
+        The default walking speed in meters per second can optionally be overridden to configure the distances covered
+        by the respective walking times.
+
+    Returns
+    -------
+    distances: list[int]
+        Distances corresponding to the local $d_{max}$ thresholds to be used for calculations. The $\beta$ parameters
+        (for distance-weighted metrics) will be determined implicitly. If the `distances` parameter is not provided,
+        then the `beta` parameter must be provided instead.
+    betas: list[float]
+        A $\beta$, or array of $\beta$ to be used for the exponential decay function for weighted metrics. The
+        `distance` parameters for unweighted metrics will be determined implicitly. If the `betas` parameter is not
         provided, then the `distance` parameter must be provided instead.
+    seconds: list[int]
+        Walking times in seconds corresponding to the distances used for calculations.
 
     Examples
     --------
@@ -266,14 +340,14 @@ def avg_distances_for_betas(betas: list[float], min_threshold_wt: float | None =
 
     Parameters
     ----------
-    beta: tuple[float]
+    beta: list[float]
         $\beta$ representing a spatial impedance / distance decay for which to compute the average walking distance.
     min_threshold_wt: float
         The cutoff weight $w_{min}$ on which to model the decay parameters $\beta$.
 
     Returns
     -------
-    tuple[float]
+    list[float]
         The average walking distance for a given $\beta$.
 
     Examples
@@ -315,16 +389,16 @@ def clip_wts_curve(distances: list[int], betas: list[float], spatial_tolerance: 
 
     Parameters
     ----------
-    distances: tuple[int]
+    distances: list[int]
         An array of distances corresponding to the local $d_{max}$ thresholds to be used for calculations.
-    betas: tuple[float]
+    betas: list[float]
         An array of $\beta$ to be used for the exponential decay function for weighted metrics.
     spatial_tolerance: int
         The spatial buffer distance corresponding to the tolerance for spatial inaccuracy.
 
     Returns
     -------
-    max_curve_wts: tuple[float]
+    max_curve_wts: list[float]
         An array of maximum weights at which curves for corresponding $\beta$ will be clipped.
 
     """
@@ -348,10 +422,12 @@ class EdgePayload:
     imp_factor: float
     in_bearing: float
     out_bearing: float
+    seconds: float
     def validate(self) -> bool: ...
 
 class NodeVisit:
     visited: bool
+    discovered: bool
     pred: int | None
     short_dist: float
     simpl_dist: float
@@ -359,6 +435,7 @@ class NodeVisit:
     origin_seg: int | None
     last_seg: int | None
     out_bearing: float
+    agg_seconds: float
     @classmethod
     def new(cls) -> NodeVisit: ...
 
@@ -448,11 +525,12 @@ class NetworkStructure:
         edge_idx: int,
         start_nd_key: str,
         end_nd_key: str,
-        length: float,
-        angle_sum: float,
-        imp_factor: float,
-        in_bearing: float,
-        out_bearing: float,
+        length: float | None = None,
+        angle_sum: float | None = None,
+        imp_factor: float | None = None,
+        in_bearing: float | None = None,
+        out_bearing: float | None = None,
+        seconds: float | None = None,
     ) -> int:
         """
         Add an edge to the `NetworkStructure`.
@@ -492,6 +570,8 @@ class NetworkStructure:
             The edge's inwards angular bearing.
         out_bearing: float
             The edge's outwards angular bearing.
+        seconds: int
+            The edge's traversal time in seconds.
 
         """
         ...
@@ -509,21 +589,23 @@ class NetworkStructure:
     ) -> tuple[float, int | None, int | None]: ...
     def assign_to_network(self, data_coord: Any, max_dist: float) -> tuple[int | None, int | None]: ...
     def dijkstra_tree_shortest(
-        self, src_idx: int, max_dist: int, jitter_scale: float | None = None
+        self, src_idx: int, max_seconds: float, speed_m_s: float, jitter_scale: float | None = None
     ) -> tuple[list[int], list[NodeVisit]]: ...
     def dijkstra_tree_simplest(
-        self, src_idx: int, max_dist: int, jitter_scale: float | None = None
+        self, src_idx: int, max_seconds: float, speed_m_s: float, jitter_scale: float | None = None
     ) -> tuple[list[int], list[NodeVisit]]: ...
     def dijkstra_tree_segment(
-        self, src_idx: int, max_dist: int, jitter_scale: float | None = None
+        self, src_idx: int, max_seconds: float, speed_m_s: float, jitter_scale: float | None = None
     ) -> tuple[list[int], list[int], list[NodeVisit], list[EdgeVisit]]: ...
     def local_node_centrality_shortest(
         self,
         distances: list[int] | None = None,
         betas: list[float] | None = None,
+        minutes: list[float] | None = None,
         compute_closeness: bool | None = True,
         compute_betweenness: bool | None = True,
         min_threshold_wt: float | None = None,
+        speed_m_s: float | None = None,
         jitter_scale: float | None = None,
         pbar_disabled: bool | None = None,
     ) -> CentralityShortestResult: ...
@@ -531,9 +613,11 @@ class NetworkStructure:
         self,
         distances: list[int] | None = None,
         betas: list[float] | None = None,
+        minutes: list[float] | None = None,
         compute_closeness: bool | None = True,
         compute_betweenness: bool | None = True,
         min_threshold_wt: float | None = None,
+        speed_m_s: float | None = None,
         angular_scaling_unit: float | None = None,
         farness_scaling_offset: float | None = None,
         jitter_scale: float | None = None,
@@ -543,9 +627,11 @@ class NetworkStructure:
         self,
         distances: list[int] | None = None,
         betas: list[float] | None = None,
+        minutes: list[float] | None = None,
         compute_closeness: bool | None = True,
         compute_betweenness: bool | None = True,
         min_threshold_wt: float | None = None,
+        speed_m_s: float | None = None,
         jitter_scale: float | None = None,
         pbar_disabled: bool | None = None,
     ) -> CentralitySegmentResult: ...
@@ -654,7 +740,8 @@ class DataMap:
         self,
         netw_src_idx: int,
         network_structure: NetworkStructure,
-        max_dist: int,
+        max_seconds: float,
+        speed_m_s: float,
         jitter_scale: float | None = None,
         angular: bool | None = None,
     ) -> dict[str, float]: ...
@@ -665,9 +752,11 @@ class DataMap:
         accessibility_keys: list[str],
         distances: list[int] | None = None,
         betas: list[float] | None = None,
+        minutes: list[float] | None = None,
         angular: bool | None = None,
         spatial_tolerance: int | None = None,
         min_threshold_wt: float | None = None,
+        speed_m_s: float | None = None,
         jitter_scale: float | None = None,
         pbar_disabled: bool | None = None,
     ) -> dict[str, AccessibilityResult]: ...
@@ -681,9 +770,11 @@ class DataMap:
         compute_gini: bool | None = False,
         distances: list[int] | None = None,
         betas: list[float] | None = None,
+        minutes: list[float] | None = None,
         angular: bool | None = None,
         spatial_tolerance: int | None = None,
         min_threshold_wt: float | None = None,
+        speed_m_s: float | None = None,
         jitter_scale: float | None = None,
         pbar_disabled: bool | None = None,
     ) -> MixedUsesResult: ...
@@ -693,9 +784,11 @@ class DataMap:
         numerical_maps: list[dict[str, float]],
         distances: list[int] | None = None,
         betas: list[float] | None = None,
+        minutes: list[float] | None = None,
         angular: bool | None = None,
         spatial_tolerance: int | None = None,
         min_threshold_wt: float | None = None,
+        speed_m_s: float | None = None,
         jitter_scale: float | None = None,
         pbar_disabled: bool | None = None,
     ) -> list[StatsResult]: ...

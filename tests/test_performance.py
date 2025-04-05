@@ -68,9 +68,9 @@ def test_local_centrality_time(primal_graph):
         return
     os.environ["CITYSEER_QUIET_MODE"] = "1"
     # load the test graph
-    _nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(primal_graph, 3395)
+    _nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(primal_graph)
     # needs a large enough beta so that distance thresholds aren't encountered
-    distances, _betas = rustalgos.pair_distances_and_betas(distances=[5000])
+    distances, _betas, _seconds = rustalgos.pair_distances_betas_time(distances=[5000])
 
     def dijkstra_tree_shortest_wrapper():
         network_structure.dijkstra_tree_shortest(

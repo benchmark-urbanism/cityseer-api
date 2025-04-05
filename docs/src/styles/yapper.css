@@ -1,4 +1,6 @@
 .module {
+  @reference "@src/styles/global.css";
+  
   @apply m-3 py-3 text-sm font-normal;
 
   & p {

@@ -5,9 +5,16 @@
     "paths": {
       "@src/*": ["src/*"]
     },
-    "strictNullChecks": true
+    "strictNullChecks": true,
+    "plugins": [
+      {
+        "name": "@astrojs/ts-plugin"
+      },
+    ],
   },
   "vueCompilerOptions": {
-    "plugins": ["@volar/vue-language-plugin-pug"]
-  }
+    "plugins": ["@vue/language-plugin-pug"]
+  },
+  "include": [".astro/types.d.ts", "**/*"],
+  "exclude": ["dist"]
 }

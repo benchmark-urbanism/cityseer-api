@@ -66,7 +66,7 @@ def test_check_categorical_data(primal_graph):
 
 def test_distances_from_betas():
     # some basic checks using float form
-    for b, d in zip([0.04, 0.0025], [100, 1600], strict=False):
+    for b, d in zip([0.04, 0.0025], [100, 1600], strict=True):
         # simple straight check against corresponding distance
         assert rustalgos.distances_from_betas([b]) == [d]
         # circular check
@@ -97,7 +97,7 @@ def test_distances_from_betas():
 
 def test_betas_from_distances():
     # some basic checks
-    for dist, b in zip([100, 1600], [0.04, 0.0025], strict=False):
+    for dist, b in zip([100, 1600], [0.04, 0.0025], strict=True):
         # simple straight check against corresponding distance
         assert np.allclose(rustalgos.betas_from_distances([dist]), [b], atol=config.ATOL, rtol=config.RTOL)
         # circular check
@@ -136,19 +136,85 @@ def test_betas_from_distances():
             rustalgos.betas_from_distances(d)
 
 
-def test_pair_distances_and_betas():
-    betas = [0.02, 0.01, 0.005, 0.0025]
-    distances = rustalgos.distances_from_betas(betas)
-    # should raise if both provided
+def test_distances_from_seconds():
+    distances = [400, 600, 800, 1600, 2000, 2400]
+    minutes = [5, 7.5, 10, 20, 25, 30]
+    seconds = [round(t * 60) for t in minutes]
+    for dist, time in zip(distances, seconds, strict=True):
+        assert np.allclose(
+            rustalgos.distances_from_seconds([time]),
+            dist,
+            atol=config.ATOL,
+            rtol=config.RTOL,
+        )
+    # array form check
+    ds = rustalgos.distances_from_seconds(seconds)
+    assert np.allclose(distances, ds, atol=config.ATOL, rtol=config.RTOL)
+    # round trip check
+    ts = rustalgos.seconds_from_distances(ds)
+    assert np.allclose(seconds, ts, atol=config.ATOL, rtol=config.RTOL)
+    # check that duplicates or decreasing ordering is caught
     with pytest.raises(ValueError):
-        rustalgos.pair_distances_and_betas(distances, betas)
-    # should raise if neither provided
+        rustalgos.distances_from_seconds([10, 10])
     with pytest.raises(ValueError):
-        rustalgos.pair_distances_and_betas(None, None)
-    distances, betas_1 = rustalgos.pair_distances_and_betas(distances, None)
-    assert np.allclose(betas_1, betas, atol=config.ATOL, rtol=config.RTOL)
-    distances_1, betas = rustalgos.pair_distances_and_betas(None, betas)
-    assert np.allclose(distances_1, distances, atol=config.ATOL, rtol=config.RTOL)
+        rustalgos.distances_from_seconds([10, 5])
+
+
+def test_seconds_from_distances():
+    distances = [400, 600, 800, 1600, 2000, 2400]
+    minutes = [5, 7.5, 10, 20, 25, 30]
+    seconds = [round(t * 60) for t in minutes]
+    for dist, time in zip(distances, seconds, strict=True):
+        assert np.allclose(
+            rustalgos.seconds_from_distances([dist]),
+            time,
+            atol=config.ATOL,
+            rtol=config.RTOL,
+        )
+    # array form check
+    ts = rustalgos.seconds_from_distances(distances)
+    assert np.allclose(seconds, ts, atol=config.ATOL, rtol=config.RTOL)
+    # round trip check
+    ds = rustalgos.distances_from_seconds(ts)
+    assert np.allclose(distances, ds, atol=config.ATOL, rtol=config.RTOL)
+    # check that duplicates or decreasing ordering is caught
+    with pytest.raises(ValueError):
+        rustalgos.seconds_from_distances([100, 100])
+    with pytest.raises(ValueError):
+        rustalgos.seconds_from_distances([100, 50])
+
+
+def test_pair_distances_betas_time():
+    distances = [400, 600, 800, 1600, 2000, 10000, 20000]
+    minutes = [5.0, 7.5, 10.0, 20.0, 25.0, 125.0, 250.0]
+    seconds = [round(t * 60) for t in minutes]
+    betas = [0.01, 0.00667, 0.005, 0.0025, 0.002, 0.0004, 0.0002]
+    # should raise
+    with pytest.raises(ValueError):
+        rustalgos.pair_distances_betas_time(None, None, None)
+    with pytest.raises(ValueError):
+        rustalgos.pair_distances_betas_time(distances, betas, None)
+    with pytest.raises(ValueError):
+        rustalgos.pair_distances_betas_time(distances, None, minutes)
+    with pytest.raises(ValueError):
+        rustalgos.pair_distances_betas_time(None, betas, minutes)
+    with pytest.raises(ValueError):
+        rustalgos.pair_distances_betas_time(distances, betas, minutes)
+    # should match
+    ds, bs, ts = rustalgos.pair_distances_betas_time(distances, None, None)
+    assert np.allclose(ds, distances, atol=config.ATOL, rtol=config.RTOL)
+    assert np.allclose(bs, betas, atol=config.ATOL, rtol=config.RTOL)
+    assert np.allclose(ts, seconds, atol=config.ATOL, rtol=config.RTOL)
+    #
+    ds, bs, ts = rustalgos.pair_distances_betas_time(None, betas, None)
+    assert np.allclose(ds, distances, atol=config.ATOL, rtol=config.RTOL)
+    assert np.allclose(bs, betas, atol=config.ATOL, rtol=config.RTOL)
+    assert np.allclose(ts, seconds, atol=config.ATOL, rtol=config.RTOL)
+    #
+    ds, bs, ts = rustalgos.pair_distances_betas_time(None, None, minutes)
+    assert np.allclose(ds, distances, atol=config.ATOL, rtol=config.RTOL)
+    assert np.allclose(bs, betas, atol=config.ATOL, rtol=config.RTOL)
+    assert np.allclose(ts, seconds, atol=config.ATOL, rtol=config.RTOL)
 
 
 def test_avg_distances_for_betas():
@@ -186,7 +252,7 @@ def test_clipped_beta_wt():
         # calculate curve thresholds
         max_curve_wts = rustalgos.clip_wts_curve(distances, betas, spatial_tolerance)
         # iter
-        for dist, beta, max_wt in zip(distances, betas, max_curve_wts, strict=False):
+        for dist, beta, max_wt in zip(distances, betas, max_curve_wts, strict=True):
             # try a range of datapoint distances
             for data_dist in [0, 25, 50, 100, 400, 800, 1600]:
                 # continue if data distance exceeds current distance threshold - these are ignored in computations

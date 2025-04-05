@@ -11,7 +11,6 @@ import '@src/styles/yapper.css'
 const currentPath = Astro.url.pathname
 const navPaths = [
   '/intro',
-  '/guide',
   '/tools/io',
   '/tools/graphs',
   '/tools/plot',
@@ -21,7 +20,6 @@ const navPaths = [
   '/metrics/layers',
   '/metrics/visibility',
   '/rustalgos/rustalgos',
-  '/attribution',
 ]
 ---
 
@@ -32,11 +30,11 @@ const navPaths = [
   <div id="cols">
     <div id="nav-col">
       <div class="flex flex-col items-end object-contain">
-        <a href="/" title="home" class="hover:scale-105 transition-all object-contain">
-          <img src={logoURL.src} alt="logo" class="w-full h-full max-w-xs py-10 px-4" />
+        <a href="/" title="home" class="object-contain transition-all hover:scale-105">
+          <img src={logoURL.src} alt="logo" class="h-full w-full max-w-xs px-4 py-10" />
         </a>
         <NavColumn client:visible navPaths={navPaths} currentPath={currentPath} />
-        <div class="flex-grow"></div>
+        <div class="grow"></div>
         <div class="self-start px-8 py-2">
           <RepoLink />
         </div>
@@ -51,16 +49,18 @@ const navPaths = [
 </CommonLayout>
 
 <style>
+  @reference "../styles/global.css";
+
   #cols {
-    @apply flex h-full min-w-full max-w-full;
+    @apply flex h-full max-w-full min-w-full;
   }
 
   #nav-col {
-    @apply flex sticky min-h-screen max-h-screen overflow-y-auto top-0 w-1/4;
+    @apply sticky top-0 flex max-h-screen min-h-screen w-1/4 overflow-y-auto;
   }
 
   #content-col {
-    @apply flex flex-col max-w-3xl p-8;
+    @apply flex max-w-3xl flex-col p-8;
   }
 
   @media only screen and (max-width: 958px) {
@@ -69,7 +69,7 @@ const navPaths = [
     }
 
     #nav-col {
-      @apply static w-full min-h-0 max-h-full overflow-y-visible justify-center;
+      @apply static max-h-full min-h-0 w-full justify-center overflow-y-visible;
     }
 
     #content-col {

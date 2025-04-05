@@ -11,6 +11,69 @@ layout: ../../layouts/PageLayout.astro
 
 <div class="function">
 
+## validate_cityseer_networkx_graph
+
+
+<div class="content">
+<span class="name">validate_cityseer_networkx_graph</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">nx_multigraph</span>
+    <span class="pc">:</span>
+    <span class="pa"> networkx.classes.multigraph.MultiGraph</span>
+  </div>
+  <div class="param">
+    <span class="pn">validate_edges</span>
+    <span class="pc">:</span>
+    <span class="pa"> bool = True</span>
+  </div>
+  <span class="pt">)-&gt;[</span>
+  <span class="pr">MultiGraph</span>
+  <span class="pt">]</span>
+</div>
+</div>
+
+
+ Validates a `networkX` `MultiGraph` for use with `cityseer`.
+### Parameters
+<div class="param-set">
+  <div class="def">
+    <div class="name">nx_multigraph</div>
+    <div class="type">MultiGraph</div>
+  </div>
+  <div class="desc">
+
+ A `networkX` `MultiGraph` with a `crs` attribute denoting a projected coordinate system, containing `x` and `y` node attributes, and `geom` edge attributes containing `LineString` geoms.</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">validate_edges</div>
+    <div class="type">bool</div>
+  </div>
+  <div class="desc">
+
+
+</div>
+</div>
+
+### Returns
+<div class="param-set">
+  <div class="def">
+    <div class="name"></div>
+    <div class="type">MultiGraph</div>
+  </div>
+  <div class="desc">
+
+ A `networkX` `MultiGraph` with nodes of degree=2 removed. Adjacent edges will be combined into a unified new edge with associated `geom` attributes spliced together.</div>
+</div>
+
+
+</div>
+
+
+<div class="function">
+
 ## measure_bearing
 
 
@@ -621,6 +684,8 @@ layout: ../../layouts/PageLayout.astro
   <span class="pt">(</span>
   <div class="param">
     <span class="pn">nx_multigraph</span>
+    <span class="pc">:</span>
+    <span class="pa"> networkx.classes.multigraph.MultiGraph</span>
   </div>
   <div class="param">
     <span class="pn">nodes_names</span>
@@ -665,6 +730,8 @@ layout: ../../layouts/PageLayout.astro
   <span class="pt">(</span>
   <div class="param">
     <span class="pn">nx_multigraph</span>
+    <span class="pc">:</span>
+    <span class="pa"> networkx.classes.multigraph.MultiGraph</span>
   </div>
   <span class="pt">)-&gt;[</span>
   <span class="pr">STRtree</span>
@@ -690,6 +757,8 @@ layout: ../../layouts/PageLayout.astro
   <span class="pt">(</span>
   <div class="param">
     <span class="pn">nx_multigraph</span>
+    <span class="pc">:</span>
+    <span class="pa"> networkx.classes.multigraph.MultiGraph</span>
   </div>
   <span class="pt">)-&gt;[</span>
   <span class="pr">STRtree</span>
@@ -701,81 +770,6 @@ layout: ../../layouts/PageLayout.astro
 
 
  Create an edges-based STRtree spatial index.
-
-</div>
-
-
-<div class="function">
-
-## blend_metrics
-
-
-<div class="content">
-<span class="name">blend_metrics</span><div class="signature multiline">
-  <span class="pt">(</span>
-  <div class="param">
-    <span class="pn">nodes_gdf</span>
-    <span class="pc">:</span>
-    <span class="pa"> geopandas.geodataframe.GeoDataFrame</span>
-  </div>
-  <div class="param">
-    <span class="pn">edges_gdf</span>
-    <span class="pc">:</span>
-    <span class="pa"> geopandas.geodataframe.GeoDataFrame</span>
-  </div>
-  <div class="param">
-    <span class="pn">method</span>
-    <span class="pc">:</span>
-    <span class="pa"> str</span>
-  </div>
-  <span class="pt">)</span>
-</div>
-</div>
-
-
- Blends metrics from a nodes GeoDataFrame into an edges GeoDataFrame. This is useful for situations where it is preferable to visualise the computed metrics as LineStrings instead of points. The line will be assigned the value from the adjacent two nodes based on the selected "min", "max", or "avg" method.
-### Parameters
-<div class="param-set">
-  <div class="def">
-    <div class="name">nodes_gdf</div>
-    <div class="type">GeoDataFrame</div>
-  </div>
-  <div class="desc">
-
- A nodes `GeoDataFrame` as derived from [`network_structure_from_nx`](tools/io#network-structure-from-nx).</div>
-</div>
-
-<div class="param-set">
-  <div class="def">
-    <div class="name">edges_gdf</div>
-    <div class="type">GeoDataFrame</div>
-  </div>
-  <div class="desc">
-
- An edges `GeoDataFrame` as derived from [`network_structure_from_nx`](tools/io#network-structure-from-nx).</div>
-</div>
-
-<div class="param-set">
-  <div class="def">
-    <div class="name">method</div>
-    <div class="type">str</div>
-  </div>
-  <div class="desc">
-
- The method used for determining the line value from the adjacent points. Must be one of &quot;min&quot;, &quot;max&quot;, or &quot;avg&quot;.</div>
-</div>
-
-### Returns
-<div class="param-set">
-  <div class="def">
-    <div class="name">merged_gdf</div>
-    <div class="type">GeoDataFrame</div>
-  </div>
-  <div class="desc">
-
- An edges `GeoDataFrame` created by merging the node metrics from the provided nodes `GeoDataFrame` into the provided edges `GeoDataFrame`.</div>
-</div>
-
 
 </div>
 

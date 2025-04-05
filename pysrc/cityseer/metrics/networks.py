@@ -56,7 +56,6 @@ from __future__ import annotations
 
 import logging
 from functools import partial
-from typing import Any
 
 import geopandas as gpd
 
@@ -65,12 +64,9 @@ from cityseer import config, rustalgos
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-
-# type hack until networkx supports type-hinting
-MultiGraph = Any
-
 # separate out so that ast parser can parse function def
 MIN_THRESH_WT = config.MIN_THRESH_WT
+SPEED_M_S = config.SPEED_M_S
 
 
 def node_centrality_shortest(
@@ -78,9 +74,11 @@ def node_centrality_shortest(
     nodes_gdf: gpd.GeoDataFrame,
     distances: list[int] | None = None,
     betas: list[float] | None = None,
+    minutes: list[float] | None = None,
     compute_closeness: bool | None = True,
     compute_betweenness: bool | None = True,
     min_threshold_wt: float = MIN_THRESH_WT,
+    speed_m_s: float = SPEED_M_S,
     jitter_scale: float = 0.0,
 ) -> gpd.GeoDataFrame:
     r"""
@@ -102,13 +100,18 @@ def node_centrality_shortest(
         [`io.network_structure_from_nx`](/tools/io#network-structure-from-nx) method. The outputs of
         calculations will be written to this `GeoDataFrame`, which is then returned from the method.
     distances: list[int]
-        Distances corresponding to the local $d_{max}$ thresholds to be used for calculations. The $\beta$ parameters
-        (for distance-weighted metrics) will be determined implicitly. If the `distances` parameter is not provided,
-        then the `beta` parameter must be provided instead.
+        Distances corresponding to the local $d_{max}$ thresholds to be used for calculations. The $\beta$
+        for distance-weighted metrics will be determined implicitly using `min_threshold_wt`. If the `distances`
+        parameter is not provided, then the `beta` or `minutes` parameters must be provided instead.
     betas: list[float]
-        A $\beta$, or array of $\beta$ to be used for the exponential decay function for weighted metrics. The
-        `distance` parameters for unweighted metrics will be determined implicitly. If the `betas` parameter is not
-        provided, then the `distance` parameter must be provided instead.
+        A list of $\beta$ to be used for the exponential decay function for weighted metrics. The $d_{max}$ thresholds
+        for unweighted metrics will be determined implicitly. If the `betas` parameter is not provided, then the
+        `distances` or `minutes` parameter must be provided instead.
+    minutes: list[float]
+        A list of walking times in minutes to be used for calculations. The $d_{max}$ thresholds for unweighted metrics
+        and $\beta$ for distance-weighted metrics will be determined implicitly using the `speed_m_s` and
+        `min_threshold_wt` parameters. If the `minutes` parameter is not provided, then the `distances` or `betas`
+        parameters must be provided instead.
     compute_closeness: bool
         Compute closeness centralities. True by default.
     compute_betweenness: bool
@@ -117,6 +120,9 @@ def node_centrality_shortest(
         The default `min_threshold_wt` parameter can be overridden to generate custom mappings between the
         `distance` and `beta` parameters. See [`rustalgos.distances_from_beta`](/rustalgos#distances-from-betas) for
         more information.
+    speed_m_s: float
+        The default `speed_m_s` parameter can be configured to generate custom mappings between walking times and
+        distance thresholds $d_{max}$.
     jitter_scale: float
         The scale of random jitter to add to shortest path calculations, useful for situations with highly
         rectilinear grids or for smoothing metrics on messy network representations. A random sample is drawn from a
@@ -155,15 +161,16 @@ def node_centrality_shortest(
 
     """
     logger.info("Computing shortest path node centrality.")
-    if distances is None and betas is not None:
-        distances = rustalgos.distances_from_betas(betas, min_threshold_wt=min_threshold_wt)
     # wrap the main function call for passing to the progress wrapper
     partial_func = partial(
         network_structure.local_node_centrality_shortest,
         distances=distances,
+        betas=betas,
+        minutes=minutes,
         compute_closeness=compute_closeness,
         compute_betweenness=compute_betweenness,
         min_threshold_wt=min_threshold_wt,
+        speed_m_s=speed_m_s,
         jitter_scale=jitter_scale,
     )
     # wraps progress bar
@@ -171,6 +178,13 @@ def node_centrality_shortest(
         total=network_structure.node_count(), rust_struct=network_structure, partial_func=partial_func
     )
     # unpack
+    distances = config.log_thresholds(
+        distances=distances,
+        betas=betas,
+        minutes=minutes,
+        min_threshold_wt=min_threshold_wt,
+        speed_m_s=speed_m_s,
+    )
     if compute_closeness is True:
         for measure_key, attr_key in [
             ("beta", "node_beta"),
@@ -201,9 +215,11 @@ def node_centrality_simplest(
     nodes_gdf: gpd.GeoDataFrame,
     distances: list[int] | None = None,
     betas: list[float] | None = None,
+    minutes: list[float] | None = None,
     compute_closeness: bool | None = True,
     compute_betweenness: bool | None = True,
     min_threshold_wt: float = MIN_THRESH_WT,
+    speed_m_s: float = SPEED_M_S,
     angular_scaling_unit: float = 90,
     farness_scaling_offset: float = 1,
     jitter_scale: float = 0.0,
@@ -227,13 +243,18 @@ def node_centrality_simplest(
         [`io.network_structure_from_nx`](/tools/io#network-structure-from-nx) method. The outputs of
         calculations will be written to this `GeoDataFrame`, which is then returned from the method.
     distances: list[int]
-        Distances corresponding to the local $d_{max}$ thresholds to be used for calculations. The $\beta$ parameters
-        (for distance-weighted metrics) will be determined implicitly. If the `distances` parameter is not provided,
-        then the `beta` parameter must be provided instead.
+        Distances corresponding to the local $d_{max}$ thresholds to be used for calculations. The $\beta$
+        for distance-weighted metrics will be determined implicitly using `min_threshold_wt`. If the `distances`
+        parameter is not provided, then the `beta` or `minutes` parameters must be provided instead.
     betas: list[float]
-        A $\beta$, or array of $\beta$ to be used for the exponential decay function for weighted metrics. The
-        `distance` parameters for unweighted metrics will be determined implicitly. If the `betas` parameter is not
-        provided, then the `distance` parameter must be provided instead.
+        A list of $\beta$ to be used for the exponential decay function for weighted metrics. The $d_{max}$ thresholds
+        for unweighted metrics will be determined implicitly. If the `betas` parameter is not provided, then the
+        `distances` or `minutes` parameter must be provided instead.
+    minutes: list[float]
+        A list of walking times in minutes to be used for calculations. The $d_{max}$ thresholds for unweighted metrics
+        and $\beta$ for distance-weighted metrics will be determined implicitly using the `speed_m_s` and
+        `min_threshold_wt` parameters. If the `minutes` parameter is not provided, then the `distances` or `betas`
+        parameters must be provided instead.
     compute_closeness: bool
         Compute closeness centralities. True by default.
     compute_betweenness: bool
@@ -242,6 +263,9 @@ def node_centrality_simplest(
         The default `min_threshold_wt` parameter can be overridden to generate custom mappings between the
         `distance` and `beta` parameters. See [`rustalgos.distances_from_beta`](/rustalgos#distances-from-betas) for
         more information.
+    speed_m_s: float
+        The default `speed_m_s` parameter can be configured to generate custom mappings between walking times and
+        distance thresholds $d_{max}$.
     angular_scaling_unit: float
         The number by which to divide angular distances for scaling. 90 by default. For example, if the cumulative
         angular distance for a given route is 180 then this will be scaled per 180 / 90 = 2.
@@ -282,14 +306,15 @@ def node_centrality_simplest(
 
     """
     logger.info("Computing simplest path node centrality.")
-    if distances is None and betas is not None:
-        distances = rustalgos.distances_from_betas(betas, min_threshold_wt=min_threshold_wt)
     partial_func = partial(
         network_structure.local_node_centrality_simplest,
         distances=distances,
+        betas=betas,
+        minutes=minutes,
         compute_closeness=compute_closeness,
         compute_betweenness=compute_betweenness,
         min_threshold_wt=min_threshold_wt,
+        speed_m_s=speed_m_s,
         angular_scaling_unit=angular_scaling_unit,
         farness_scaling_offset=farness_scaling_offset,
         jitter_scale=jitter_scale,
@@ -297,6 +322,14 @@ def node_centrality_simplest(
     # wraps progress bar
     result = config.wrap_progress(
         total=network_structure.node_count(), rust_struct=network_structure, partial_func=partial_func
+    )
+    # unpack
+    distances = config.log_thresholds(
+        distances=distances,
+        betas=betas,
+        minutes=minutes,
+        min_threshold_wt=min_threshold_wt,
+        speed_m_s=speed_m_s,
     )
     if compute_closeness is True:
         for distance in distances:  # type: ignore
@@ -323,9 +356,11 @@ def segment_centrality(
     nodes_gdf: gpd.GeoDataFrame,
     distances: list[int] | None = None,
     betas: list[float] | None = None,
+    minutes: list[float] | None = None,
     compute_closeness: bool | None = True,
     compute_betweenness: bool | None = True,
     min_threshold_wt: float = MIN_THRESH_WT,
+    speed_m_s: float = SPEED_M_S,
     jitter_scale: float = 0.0,
 ) -> gpd.GeoDataFrame:
     r"""
@@ -346,13 +381,18 @@ def segment_centrality(
         [`io.network_structure_from_nx`](/tools/io#network-structure-from-nx) method. The outputs of
         calculations will be written to this `GeoDataFrame`, which is then returned from the method.
     distances: list[int]
-        Distances corresponding to the local $d_{max}$ thresholds to be used for calculations. The $\beta$ parameters
-        (for distance-weighted metrics) will be determined implicitly. If the `distances` parameter is not provided,
-        then the `beta` parameter must be provided instead.
+        Distances corresponding to the local $d_{max}$ thresholds to be used for calculations. The $\beta$
+        for distance-weighted metrics will be determined implicitly using `min_threshold_wt`. If the `distances`
+        parameter is not provided, then the `beta` or `minutes` parameters must be provided instead.
     betas: list[float]
-        A $\beta$, or array of $\beta$ to be used for the exponential decay function for weighted metrics. The
-        `distance` parameters for unweighted metrics will be determined implicitly. If the `betas` parameter is not
-        provided, then the `distance` parameter must be provided instead.
+        A list of $\beta$ to be used for the exponential decay function for weighted metrics. The $d_{max}$ thresholds
+        for unweighted metrics will be determined implicitly. If the `betas` parameter is not provided, then the
+        `distances` or `minutes` parameter must be provided instead.
+    minutes: list[float]
+        A list of walking times in minutes to be used for calculations. The $d_{max}$ thresholds for unweighted metrics
+        and $\beta$ for distance-weighted metrics will be determined implicitly using the `speed_m_s` and
+        `min_threshold_wt` parameters. If the `minutes` parameter is not provided, then the `distances` or `betas`
+        parameters must be provided instead.
     compute_closeness: bool
         Compute closeness centralities. True by default.
     compute_betweenness: bool
@@ -361,6 +401,9 @@ def segment_centrality(
         The default `min_threshold_wt` parameter can be overridden to generate custom mappings between the
         `distance` and `beta` parameters. See [`rustalgos.distances_from_beta`](/rustalgos#distances-from-betas) for
         more information.
+    speed_m_s: float
+        The default `speed_m_s` parameter can be configured to generate custom mappings between walking times and
+        distance thresholds $d_{max}$.
     jitter_scale: float
         The scale of random jitter to add to shortest path calculations, useful for situations with highly
         rectilinear grids or for smoothing metrics on messy network representations. A random sample is drawn from a
@@ -390,19 +433,28 @@ def segment_centrality(
 
     """
     logger.info("Computing shortest path segment centrality.")
-    if distances is None and betas is not None:
-        distances = rustalgos.distances_from_betas(betas, min_threshold_wt=min_threshold_wt)
     partial_func = partial(
         network_structure.local_segment_centrality,
         distances=distances,
+        betas=betas,
+        minutes=minutes,
         compute_closeness=compute_closeness,
         compute_betweenness=compute_betweenness,
         min_threshold_wt=min_threshold_wt,
+        speed_m_s=speed_m_s,
         jitter_scale=jitter_scale,
     )
     # wraps progress bar
     result = config.wrap_progress(
         total=network_structure.node_count(), rust_struct=network_structure, partial_func=partial_func
+    )
+    # unpack
+    distances = config.log_thresholds(
+        distances=distances,
+        betas=betas,
+        minutes=minutes,
+        min_threshold_wt=min_threshold_wt,
+        speed_m_s=speed_m_s,
     )
     if compute_closeness is True:
         for measure_key, attr_key in [

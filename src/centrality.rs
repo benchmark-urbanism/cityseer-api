@@ -1,5 +1,6 @@
 use crate::common;
 use crate::common::MetricResult;
+use crate::common::WALKING_SPEED;
 use crate::graph::{EdgeVisit, NetworkStructure, NodeVisit};
 use numpy::PyArray1;
 use petgraph::graph::NodeIndex;
@@ -56,12 +57,12 @@ pub struct CentralitySegmentResult {
 // NodeDistance for heap
 struct NodeDistance {
     node_idx: usize,
-    distance: f32,
+    metric: f32,
 }
 // Implement PartialOrd and Ord focusing on distance for comparison
 impl PartialOrd for NodeDistance {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        other.distance.partial_cmp(&self.distance)
+        other.metric.partial_cmp(&self.metric)
     }
 }
 impl Ord for NodeDistance {
@@ -73,7 +74,7 @@ impl Ord for NodeDistance {
 // can't derive PartialEq for f32, so use a custom approach
 impl PartialEq for NodeDistance {
     fn eq(&self, other: &Self) -> bool {
-        self.node_idx == other.node_idx && (self.distance - other.distance).abs() < f32::EPSILON
+        self.node_idx == other.node_idx && (self.metric - other.metric).abs() < f32::EPSILON
     }
 }
 // Implement Eq since we've provided a custom PartialEq
@@ -91,11 +92,13 @@ impl NetworkStructure {
     impedance heuristic - which can be different from metres. Distance map in metres is used for defining max
     distances and computing equivalent distance measures.
     */
-    #[pyo3(signature = (src_idx, max_dist, jitter_scale=None))]
+
+    #[pyo3(signature = (src_idx, max_seconds, speed_m_s, jitter_scale=None))]
     pub fn dijkstra_tree_shortest(
         &self,
         src_idx: usize,
-        max_dist: u32,
+        max_seconds: u32,
+        speed_m_s: f32,
         jitter_scale: Option<f32>,
     ) -> (Vec<usize>, Vec<NodeVisit>) {
         /* shortest path implementation */
@@ -106,13 +109,14 @@ impl NetworkStructure {
         let mut visited_nodes: Vec<usize> = Vec::new();
         // the starting node's impedance and distance will be zero
         tree_map[src_idx].short_dist = 0.0;
+        tree_map[src_idx].agg_seconds = 0.0;
         tree_map[src_idx].discovered = true;
         // min heap
         let mut active: BinaryHeap<NodeDistance> = BinaryHeap::new();
         // prime the min heap with the src node
         active.push(NodeDistance {
             node_idx: src_idx,
-            distance: 0.0,
+            metric: 0.0,
         });
         // random number generator
         let mut rng = rand::rng();
@@ -150,25 +154,28 @@ impl NetworkStructure {
                 if !tree_map[nb_nd_idx.index()].pred.is_none() {
                     // bump farther location
                     // prevents mismatching if cycle exceeds threshold in one direction or another
-                    if tree_map[node_idx].short_dist <= tree_map[nb_nd_idx.index()].short_dist {
+                    if tree_map[node_idx].agg_seconds <= tree_map[nb_nd_idx.index()].agg_seconds {
                         tree_map[nb_nd_idx.index()].cycles += 0.5;
                     } else {
                         tree_map[node_idx].cycles += 0.5;
                     }
                 }
                 // impedance and distance is previous plus new
-                let short_preceding_dist = edge_payload.length * edge_payload.imp_factor;
-                let short_total_dist = tree_map[node_idx].short_dist + short_preceding_dist;
-                // bail if distance is greater than threshold
+                let edge_seconds = if edge_payload.seconds.is_nan() {
+                    (edge_payload.length * edge_payload.imp_factor) / speed_m_s
+                } else {
+                    edge_payload.seconds
+                };
+                let total_seconds = tree_map[node_idx].agg_seconds + edge_seconds;
+                // bail if time is greater than threshold
                 // otherwise, add the next node to the heap
-                // use unjittered distance for this step
-                if short_total_dist > max_dist as f32 {
+                if total_seconds > max_seconds as f32 {
                     continue;
                 } else if !tree_map[nb_nd_idx.index()].discovered {
                     tree_map[nb_nd_idx.index()].discovered = true;
                     active.push(NodeDistance {
                         node_idx: nb_nd_idx.index(),
-                        distance: short_total_dist,
+                        metric: total_seconds,
                     });
                 }
                 // inject jitter
@@ -177,21 +184,24 @@ impl NetworkStructure {
                     jitter = rng.random::<f32>() * jitter_scale;
                 }
                 /*
-                if impedance less than prior distances for this node then update shortest path
+                if impedance less than prior for this node then update shortest path
                 */
-                if short_total_dist + jitter < tree_map[nb_nd_idx.index()].short_dist {
-                    tree_map[nb_nd_idx.index()].short_dist = short_total_dist + jitter;
+                if total_seconds + jitter < tree_map[nb_nd_idx.index()].agg_seconds {
+                    tree_map[nb_nd_idx.index()].short_dist = total_seconds * speed_m_s;
+                    tree_map[nb_nd_idx.index()].agg_seconds = total_seconds + jitter;
                     tree_map[nb_nd_idx.index()].pred = Some(node_idx);
                 }
             }
         }
         (visited_nodes, tree_map)
     }
-    #[pyo3(signature = (src_idx, max_dist, jitter_scale=None))]
+
+    #[pyo3(signature = (src_idx, max_seconds, speed_m_s, jitter_scale=None))]
     pub fn dijkstra_tree_simplest(
         &self,
         src_idx: usize,
-        max_dist: u32,
+        max_seconds: u32,
+        speed_m_s: f32,
         jitter_scale: Option<f32>,
     ) -> (Vec<usize>, Vec<NodeVisit>) {
         /* simplest path implementation */
@@ -202,14 +212,14 @@ impl NetworkStructure {
         let mut visited_nodes: Vec<usize> = Vec::new();
         // the starting node's impedance and distance will be zero
         // tracks shortest path distance for search cut-off
-        tree_map[src_idx].short_dist = 0.0;
         tree_map[src_idx].simpl_dist = 0.0;
+        tree_map[src_idx].agg_seconds = 0.0;
         tree_map[src_idx].discovered = true;
         // prime the active heap with the src node
         let mut active: BinaryHeap<NodeDistance> = BinaryHeap::new();
         active.push(NodeDistance {
             node_idx: src_idx,
-            distance: 0.0,
+            metric: 0.0,
         });
         // random number generator
         let mut rng = rand::rng();
@@ -239,16 +249,16 @@ impl NetworkStructure {
                 {
                     continue;
                 }
-                // impedance and distance is previous plus new
-                let short_preceding_dist = edge_payload.length * edge_payload.imp_factor;
-                let short_total_dist = tree_map[node_idx].short_dist + short_preceding_dist;
                 /*
                 angular impedance includes two parts:
                 A - turn from prior simplest-path route segment
                 B - angular change across current segment
                 */
                 let mut turn: f32 = 0.0;
-                if node_idx != src_idx {
+                if node_idx != src_idx
+                    && edge_payload.in_bearing.is_finite()
+                    && tree_map[node_idx].out_bearing.is_finite()
+                {
                     turn = ((edge_payload.in_bearing - tree_map[node_idx].out_bearing + 180.0)
                         % 360.0
                         - 180.0)
@@ -256,16 +266,22 @@ impl NetworkStructure {
                 }
                 let simpl_preceding_dist = turn + edge_payload.angle_sum;
                 let simpl_total_dist = tree_map[node_idx].simpl_dist + simpl_preceding_dist;
-                // bail if distance is greater than threshold
+                // time
+                let edge_seconds = if edge_payload.seconds.is_nan() {
+                    edge_payload.length / speed_m_s
+                } else {
+                    edge_payload.seconds
+                };
+                let total_seconds = tree_map[node_idx].agg_seconds + edge_seconds;
+                // bail if time is greater than threshold
                 // otherwise, add the next node to the heap
-                // use unjittered distance for this step
-                if short_total_dist > max_dist as f32 {
+                if total_seconds > max_seconds as f32 {
                     continue;
                 } else if !tree_map[nb_nd_idx.index()].discovered {
                     tree_map[nb_nd_idx.index()].discovered = true;
                     active.push(NodeDistance {
                         node_idx: nb_nd_idx.index(),
-                        distance: simpl_total_dist,
+                        metric: simpl_total_dist,
                     });
                 }
                 // inject jitter
@@ -274,11 +290,11 @@ impl NetworkStructure {
                     jitter = rng.random::<f32>() * jitter_scale;
                 }
                 /*
-                if impedance less than prior distances for this node then update shortest path
+                if impedance less than prior for this node then update shortest path
                 */
                 if simpl_total_dist + jitter < tree_map[nb_nd_idx.index()].simpl_dist {
                     tree_map[nb_nd_idx.index()].simpl_dist = simpl_total_dist + jitter;
-                    tree_map[nb_nd_idx.index()].short_dist = short_total_dist;
+                    tree_map[nb_nd_idx.index()].agg_seconds = total_seconds;
                     tree_map[nb_nd_idx.index()].pred = Some(node_idx);
                     tree_map[nb_nd_idx.index()].out_bearing = edge_payload.out_bearing;
                 }
@@ -286,11 +302,13 @@ impl NetworkStructure {
         }
         (visited_nodes, tree_map)
     }
-    #[pyo3(signature = (src_idx, max_dist, jitter_scale=None))]
+
+    #[pyo3(signature = (src_idx, max_seconds, speed_m_s, jitter_scale=None))]
     pub fn dijkstra_tree_segment(
         &self,
         src_idx: usize,
-        max_dist: u32,
+        max_seconds: u32,
+        speed_m_s: f32,
         jitter_scale: Option<f32>,
     ) -> (Vec<usize>, Vec<usize>, Vec<NodeVisit>, Vec<EdgeVisit>) {
         /* shortest path segment implementation */
@@ -304,12 +322,13 @@ impl NetworkStructure {
         let mut visited_edges: Vec<usize> = Vec::new();
         // the starting node's impedance and distance will be zero
         tree_map[src_idx].short_dist = 0.0;
+        tree_map[src_idx].agg_seconds = 0.0;
         tree_map[src_idx].discovered = true;
         // prime the active heap with the src node
         let mut active: BinaryHeap<NodeDistance> = BinaryHeap::new();
         active.push(NodeDistance {
             node_idx: src_idx,
-            distance: 0.0,
+            metric: 0.0,
         });
         // random number generator
         let mut rng = rand::rng();
@@ -349,18 +368,20 @@ impl NetworkStructure {
                     edge_map[edge_idx.index()].edge_idx = Some(edge_payload.edge_idx);
                 }
                 // impedance and distance is previous plus new
-                let short_preceding_dist = edge_payload.length * edge_payload.imp_factor;
-                let short_total_dist = tree_map[node_idx].short_dist + short_preceding_dist;
-                // bail if distance is greater than threshold
-                // otherwise, add the next node to the heap
-                // use unjittered distance for this step
-                if short_total_dist > max_dist as f32 {
+                let edge_seconds = if edge_payload.seconds.is_nan() {
+                    (edge_payload.length * edge_payload.imp_factor) / speed_m_s
+                } else {
+                    edge_payload.seconds
+                };
+                let total_seconds = tree_map[node_idx].agg_seconds + edge_seconds;
+                // bail if time is greater than threshold
+                if total_seconds > max_seconds as f32 {
                     continue;
                 } else if !tree_map[nb_nd_idx.index()].discovered {
                     tree_map[nb_nd_idx.index()].discovered = true;
                     active.push(NodeDistance {
                         node_idx: nb_nd_idx.index(),
-                        distance: short_total_dist,
+                        metric: total_seconds,
                     });
                 }
                 // inject jitter
@@ -369,17 +390,17 @@ impl NetworkStructure {
                     jitter = rng.random::<f32>() * jitter_scale;
                 }
                 /*
-                if impedance less than prior distances for this node then update shortest path
+                if impedance less than prior for this node then update shortest path
                 */
-                if short_total_dist + jitter < tree_map[nb_nd_idx.index()].short_dist {
+                if total_seconds + jitter < tree_map[nb_nd_idx.index()].agg_seconds {
                     let origin_seg = if node_idx == src_idx {
                         edge_idx.index()
                     } else {
                         tree_map[node_idx].origin_seg.unwrap()
                     };
-                    tree_map[nb_nd_idx.index()].short_dist = short_total_dist + jitter;
+                    tree_map[nb_nd_idx.index()].short_dist = total_seconds * speed_m_s;
+                    tree_map[nb_nd_idx.index()].agg_seconds = total_seconds + jitter;
                     tree_map[nb_nd_idx.index()].pred = Some(node_idx);
-                    tree_map[nb_nd_idx.index()].out_bearing = edge_payload.out_bearing;
                     tree_map[nb_nd_idx.index()].origin_seg = Some(origin_seg);
                     tree_map[nb_nd_idx.index()].last_seg = Some(edge_idx.index());
                 }
@@ -387,12 +408,15 @@ impl NetworkStructure {
         }
         (visited_nodes, visited_edges, tree_map, edge_map)
     }
+
     #[pyo3(signature = (
         distances=None,
         betas=None,
+        minutes=None,
         compute_closeness=None,
         compute_betweenness=None,
         min_threshold_wt=None,
+        speed_m_s=None,
         jitter_scale=None,
         pbar_disabled=None
     ))]
@@ -400,18 +424,26 @@ impl NetworkStructure {
         &self,
         distances: Option<Vec<u32>>,
         betas: Option<Vec<f32>>,
+        minutes: Option<Vec<f32>>,
         compute_closeness: Option<bool>,
         compute_betweenness: Option<bool>,
         min_threshold_wt: Option<f32>,
+        speed_m_s: Option<f32>,
         jitter_scale: Option<f32>,
         pbar_disabled: Option<bool>,
         py: Python,
     ) -> PyResult<CentralityShortestResult> {
         // setup
         self.validate()?;
-        let (distances, betas) =
-            common::pair_distances_and_betas(distances, betas, min_threshold_wt)?;
-        let max_dist: u32 = distances.iter().max().unwrap().clone();
+        let (distances, betas, seconds) = common::pair_distances_betas_time(
+            distances,
+            betas,
+            minutes,
+            min_threshold_wt,
+            speed_m_s,
+        )?;
+        let speed_m_s = speed_m_s.unwrap_or(WALKING_SPEED);
+        let max_walk_seconds = *seconds.iter().max().unwrap();
         let compute_closeness = compute_closeness.unwrap_or(true);
         let compute_betweenness = compute_betweenness.unwrap_or(true);
         if !compute_closeness && !compute_betweenness {
@@ -445,14 +477,18 @@ impl NetworkStructure {
                 if !self.is_node_live(*src_idx).unwrap() {
                     return;
                 }
-                let (visited_nodes, tree_map) =
-                    self.dijkstra_tree_shortest(*src_idx, max_dist, jitter_scale);
+                let (visited_nodes, tree_map) = self.dijkstra_tree_shortest(
+                    *src_idx,
+                    max_walk_seconds,
+                    speed_m_s,
+                    jitter_scale,
+                );
                 for to_idx in visited_nodes.iter() {
                     let node_visit = tree_map[*to_idx].clone();
                     if to_idx == src_idx {
                         continue;
                     }
-                    if !node_visit.short_dist.is_finite() {
+                    if !node_visit.agg_seconds.is_finite() {
                         continue;
                     }
                     let wt = self.get_node_weight(*to_idx).unwrap();
@@ -547,9 +583,11 @@ impl NetworkStructure {
     #[pyo3(signature = (
         distances=None,
         betas=None,
+        minutes=None,
         compute_closeness=None,
         compute_betweenness=None,
         min_threshold_wt=None,
+        speed_m_s=None,
         angular_scaling_unit=None,
         farness_scaling_offset=None,
         jitter_scale=None,
@@ -559,9 +597,11 @@ impl NetworkStructure {
         &self,
         distances: Option<Vec<u32>>,
         betas: Option<Vec<f32>>,
+        minutes: Option<Vec<f32>>,
         compute_closeness: Option<bool>,
         compute_betweenness: Option<bool>,
         min_threshold_wt: Option<f32>,
+        speed_m_s: Option<f32>,
         angular_scaling_unit: Option<f32>,
         farness_scaling_offset: Option<f32>,
         jitter_scale: Option<f32>,
@@ -570,9 +610,15 @@ impl NetworkStructure {
     ) -> PyResult<CentralitySimplestResult> {
         // setup
         self.validate()?;
-        let (distances, _betas) =
-            common::pair_distances_and_betas(distances, betas, min_threshold_wt)?;
-        let max_dist: u32 = distances.iter().max().unwrap().clone();
+        let (distances, _betas, seconds) = common::pair_distances_betas_time(
+            distances,
+            betas,
+            minutes,
+            min_threshold_wt,
+            speed_m_s,
+        )?;
+        let speed_m_s = speed_m_s.unwrap_or(WALKING_SPEED);
+        let max_walk_seconds = *seconds.iter().max().unwrap();
         let compute_closeness = compute_closeness.unwrap_or(true);
         let compute_betweenness = compute_betweenness.unwrap_or(true);
         if !compute_closeness && !compute_betweenness {
@@ -606,21 +652,25 @@ impl NetworkStructure {
                 if !self.is_node_live(*src_idx).unwrap() {
                     return;
                 }
-                let (visited_nodes, tree_map) =
-                    self.dijkstra_tree_simplest(*src_idx, max_dist, jitter_scale);
+                let (visited_nodes, tree_map) = self.dijkstra_tree_simplest(
+                    *src_idx,
+                    max_walk_seconds,
+                    speed_m_s,
+                    jitter_scale,
+                );
                 for to_idx in visited_nodes.iter() {
                     let node_visit = tree_map[*to_idx].clone();
                     if to_idx == src_idx {
                         continue;
                     }
-                    if !node_visit.short_dist.is_finite() {
+                    if !node_visit.agg_seconds.is_finite() {
                         continue;
                     }
                     let wt = self.get_node_weight(*to_idx).unwrap();
                     if compute_closeness {
-                        for i in 0..distances.len() {
-                            let distance = distances[i];
-                            if node_visit.short_dist <= distance as f32 {
+                        for i in 0..seconds.len() {
+                            let sec = seconds[i];
+                            if node_visit.agg_seconds <= sec as f32 {
                                 node_density.metric[i][*src_idx]
                                     .fetch_add(1.0 * wt, AtomicOrdering::Relaxed);
                                 let far_ang = farness_scaling_offset
@@ -643,9 +693,9 @@ impl NetworkStructure {
                             if inter_idx == *src_idx {
                                 break;
                             }
-                            for i in 0..distances.len() {
-                                let distance = distances[i];
-                                if node_visit.short_dist <= distance as f32 {
+                            for i in 0..seconds.len() {
+                                let sec = seconds[i];
+                                if node_visit.agg_seconds <= sec as f32 {
                                     node_betweenness.metric[i][inter_idx]
                                         .fetch_add(1.0 * wt, AtomicOrdering::Acquire);
                                 }
@@ -683,9 +733,11 @@ impl NetworkStructure {
     #[pyo3(signature = (
         distances=None,
         betas=None,
+        minutes=None,
         compute_closeness=None,
         compute_betweenness=None,
         min_threshold_wt=None,
+        speed_m_s=None,
         jitter_scale=None,
         pbar_disabled=None
     ))]
@@ -693,9 +745,11 @@ impl NetworkStructure {
         &self,
         distances: Option<Vec<u32>>,
         betas: Option<Vec<f32>>,
+        minutes: Option<Vec<f32>>,
         compute_closeness: Option<bool>,
         compute_betweenness: Option<bool>,
         min_threshold_wt: Option<f32>,
+        speed_m_s: Option<f32>,
         jitter_scale: Option<f32>,
         pbar_disabled: Option<bool>,
         py: Python,
@@ -708,9 +762,15 @@ impl NetworkStructure {
         2. dijkstra sorts all active nodes by distance: explores from near to far: edges discovered accordingly
         */
         self.validate()?;
-        let (distances, betas) =
-            common::pair_distances_and_betas(distances, betas, min_threshold_wt)?;
-        let max_dist: u32 = distances.iter().max().unwrap().clone();
+        let (distances, betas, seconds) = common::pair_distances_betas_time(
+            distances,
+            betas,
+            minutes,
+            min_threshold_wt,
+            speed_m_s,
+        )?;
+        let speed_m_s = speed_m_s.unwrap_or(WALKING_SPEED);
+        let max_walk_seconds = *seconds.iter().max().unwrap();
         let compute_closeness = compute_closeness.unwrap_or(true);
         let compute_betweenness = compute_betweenness.unwrap_or(true);
         if !compute_closeness && !compute_betweenness {
@@ -751,7 +811,7 @@ impl NetworkStructure {
                     return;
                 }
                 let (visited_nodes, visited_edges, tree_map, edge_map) =
-                    self.dijkstra_tree_segment(*src_idx, max_dist, jitter_scale);
+                    self.dijkstra_tree_segment(*src_idx, max_walk_seconds, speed_m_s, jitter_scale);
                 for edge_idx in visited_edges.iter() {
                     let edge_visit = edge_map[*edge_idx].clone();
                     let node_visit_n = tree_map[edge_visit.start_nd_idx.unwrap()].clone();

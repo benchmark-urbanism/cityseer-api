@@ -1,37 +1,100 @@
 # pyright: basic
 from __future__ import annotations
 
+import geopandas as gpd
 import numpy as np
 import pytest
 from cityseer import config
 from cityseer.metrics import layers
 from cityseer.tools import io, mock
+from shapely import geometry
 
 
 def test_assign_gdf_to_network(primal_graph):
-    _nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(primal_graph, 3395)
+    _nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(primal_graph)
+    for typ in [int, float, str]:
+        data_gdf = mock.mock_data_gdf(primal_graph)
+        data_gdf.index = data_gdf.index.astype(typ)
+        # check initial and cached - second iter uses cached
+        for _ in range(2):
+            for to_poly in [False, True]:
+                # handle both points and polys
+                if to_poly is True:
+                    data_gdf.geometry = data_gdf.geometry.buffer(10)
+                #
+                data_map, data_gdf = layers.assign_gdf_to_network(
+                    data_gdf, network_structure, 400, data_id_col="data_id"
+                )
+                # check assignments
+                for row_idx, data_row in data_gdf.iterrows():
+                    assert str(row_idx) == data_row["datamap_key"]
+                    data_map_key = data_row["datamap_key"]
+                    data_entry = data_map.get_entry(data_map_key)
+                    # compute manually
+                    nearest_idx, next_nearest_idx = network_structure.assign_to_network(data_entry.coord, 400)
+                    assert nearest_idx == data_entry.nearest_assign
+                    assert next_nearest_idx == data_entry.next_nearest_assign
+                    assert data_row["nearest_assign"] == data_entry.nearest_assign
+                    assert data_row["next_nearest_assign"] == data_entry.next_nearest_assign
+                    # data_id_col
+                    assert str(data_row["data_id"]) == data_entry.data_id
+                # check all points are assigned
+                assert data_map.all_assigned()
+    # check recompute triggered when columns are dropped
+    for col in ["nearest_assign", "next_nearest_assign", "datamap_key", "dedupe_key"]:
+        data_map, data_gdf = layers.assign_gdf_to_network(data_gdf, network_structure, 400, data_id_col="data_id")
+        data_gdf = data_gdf.drop(columns=[col])
+        # should regenerate the columns
+        data_map, data_gdf = layers.assign_gdf_to_network(data_gdf, network_structure, 400, data_id_col="data_id")
+        # check assignments
+        for row_idx, data_row in data_gdf.iterrows():
+            assert str(row_idx) == data_row["datamap_key"]
+            data_map_key = data_row["datamap_key"]
+            data_entry = data_map.get_entry(data_map_key)
+            nearest_idx, next_nearest_idx = network_structure.assign_to_network(data_entry.coord, 400)
+            assert nearest_idx == data_entry.nearest_assign
+            assert next_nearest_idx == data_entry.next_nearest_assign
+            assert data_row["nearest_assign"] == data_entry.nearest_assign
+            assert data_row["next_nearest_assign"] == data_entry.next_nearest_assign
+            # data_id_col
+            assert str(data_row["data_id"]) == data_entry.data_id
+    # start fresh with data id of None
     data_gdf = mock.mock_data_gdf(primal_graph)
-    data_map, data_gdf = layers.assign_gdf_to_network(data_gdf, network_structure, 400, data_id_col="data_id")
-    # check assignments
-    for data_key in data_map.entry_keys():
-        data_entry = data_map.get_entry(data_key)
-        # compute manually
-        nearest_idx, next_nearest_idx = network_structure.assign_to_network(data_entry.coord, 400)
-        assert nearest_idx == data_entry.nearest_assign
-        assert next_nearest_idx == data_entry.next_nearest_assign
-        assert data_gdf.at[data_key, "nearest_assign"] == data_entry.nearest_assign
-        assert data_gdf.at[data_key, "next_nearest_assign"] == data_entry.next_nearest_assign
-        assert str(data_gdf.at[data_key, "data_id"]) == data_entry.data_id
-    assert data_map.all_assigned()
+    data_map, data_gdf = layers.assign_gdf_to_network(data_gdf, network_structure, 400, data_id_col=None)
+    for row_idx, data_row in data_gdf.iterrows():
+        assert str(row_idx) == data_row["datamap_key"]
+        data_map_key = data_row["datamap_key"]
+        data_entry = data_map.get_entry(data_map_key)
+        assert data_entry.data_id is None
     # check with different geometry column name
     data_gdf = mock.mock_data_gdf(primal_graph)
     data_gdf.rename(columns={"geometry": "geom"}, inplace=True)
     data_gdf.set_geometry("geom", inplace=True)
     data_map, data_gdf = layers.assign_gdf_to_network(data_gdf, network_structure, 400, data_id_col="data_id")
+    # catch non unique indices
+    data_gdf = gpd.GeoDataFrame(
+        {
+            "data_id": [1, 2, 2],
+            "geometry": [
+                geometry.Point(0, 0),
+                geometry.Point(1, 1),
+                geometry.Point(2, 2),
+            ],
+        },
+        crs="EPSG:3857",
+    )
+    data_gdf.set_index("data_id", inplace=True)
+    with pytest.raises(ValueError):
+        data_map, data_gdf = layers.assign_gdf_to_network(data_gdf, network_structure, 400)
+    # catch duplicate geom types
+    data_gdf = mock.mock_data_gdf(primal_graph)
+    data_gdf.geometry[0] = data_gdf.geometry[0].buffer(10)
+    with pytest.raises(ValueError):
+        data_map, data_gdf = layers.assign_gdf_to_network(data_gdf, network_structure, 400)
 
 
 def test_compute_accessibilities(primal_graph):
-    nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(primal_graph, 3395)
+    nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(primal_graph)
     data_gdf = mock.mock_landuse_categorical_data(primal_graph)
     distances = [400, 800]
     max_assign_dist = 400
@@ -50,7 +113,6 @@ def test_compute_accessibilities(primal_graph):
                     angular=angular,
                 )
                 # test against manual implementation over underlying method
-                landuses_map = data_gdf["categorical_landuses"].to_dict()
                 data_map, data_gdf = layers.assign_gdf_to_network(
                     data_gdf,
                     network_structure,
@@ -58,6 +120,9 @@ def test_compute_accessibilities(primal_graph):
                     data_id_col=data_id_col,
                 )
                 # accessibilities
+                data_keys: list[str] = data_gdf["datamap_key"]  # type: ignore
+                landuses: list[str] = data_gdf["categorical_landuses"]  # type: ignore
+                landuses_map: dict[str, str] = dict(zip(data_keys, landuses, strict=True))
                 accessibility_data = data_map.accessibility(
                     network_structure,
                     landuses_map,
@@ -108,13 +173,12 @@ def test_compute_accessibilities(primal_graph):
 
 
 def test_compute_mixed_uses(primal_graph):
-    nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(primal_graph, 3395)
+    nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(primal_graph)
     data_gdf = mock.mock_landuse_categorical_data(primal_graph)
     distances = [400, 800]
     max_assign_dist = 400
     # test against manual implementation over underlying method
     max_dist = max(distances)
-    landuses_map = data_gdf["categorical_landuses"].to_dict()
     for data_id_col in [None, "data_id"]:
         for angular in [False, True]:
             nodes_gdf, data_gdf = layers.compute_mixed_uses(
@@ -135,6 +199,9 @@ def test_compute_mixed_uses(primal_graph):
             data_map, data_gdf = layers.assign_gdf_to_network(
                 data_gdf, network_structure, max_dist, data_id_col=data_id_col
             )
+            data_keys: list[str] = data_gdf["datamap_key"]  # type: ignore
+            landuses: list[str] = data_gdf["categorical_landuses"]  # type: ignore
+            landuses_map: dict[str, str] = dict(zip(data_keys, landuses, strict=True))
             mu_data = data_map.mixed_uses(
                 network_structure,
                 landuses_map,
@@ -181,7 +248,7 @@ def test_compute_stats(primal_graph):
     """
     Test stats component
     """
-    nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(primal_graph, 3395)
+    nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(primal_graph)
     data_gdf = mock.mock_numerical_data(primal_graph, num_arrs=2)
     max_assign_dist = 400
     data_map, data_gdf = layers.assign_gdf_to_network(data_gdf, network_structure, max_assign_dist)
@@ -200,10 +267,13 @@ def test_compute_stats(primal_graph):
             )
             # compare to manual
             for stats_key in ["mock_numerical_1", "mock_numerical_2"]:
+                data_keys: list[str] = data_gdf["datamap_key"]  # type: ignore
+                stats: list[str] = data_gdf[stats_key]  # type: ignore
+                stats_map: dict[str, str] = dict(zip(data_keys, stats, strict=True))
                 # generate stats
                 stats_results = data_map.stats(
                     network_structure,
-                    numerical_maps=[data_gdf[stats_key].to_dict()],
+                    numerical_maps=[stats_map],
                     distances=distances,
                     angular=angular,
                 )

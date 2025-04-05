@@ -1,5 +1,5 @@
 module.exports = {
-  extends: ['stylelint-config-standard'],
+  extends: ["stylelint-config-recommended", "stylelint-config-tailwindcss"],
   plugins: [],
   rules: {
     'selector-nested-pattern': '^&',

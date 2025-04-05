@@ -510,7 +510,7 @@ from matplotlib import colors
 G = mock.mock_graph()
 G = graphs.nx_simple_geoms(G)
 G = graphs.nx_decompose(G, 50)
-nodes_gdf, edges_gdf, network_structure = io.network_structure_from_nx(G, crs=3395)
+nodes_gdf, edges_gdf, network_structure = io.network_structure_from_nx(G)
 networks.node_centrality_shortest(network_structure=network_structure, nodes_gdf=nodes_gdf, distances=[800])
 G_after = io.nx_from_cityseer_geopandas(nodes_gdf, edges_gdf)
 # let's extract and normalise the values
@@ -713,7 +713,7 @@ This method is primarily intended for package testing and development.
   </div>
   <div class="desc">
 
- A `data_gdf` `GeoDataFrame` with `nearest_assigned` and `next_neareset_assign` columns.</div>
+ A `data_gdf` `GeoDataFrame` with `nearest_assigned` and `next_nearest_assign` columns.</div>
 </div>
 
 <div class="param-set">
@@ -824,7 +824,7 @@ mainly to visually confirm the correct behaviour of particular algorithms during
   </div>
   <div class="desc">
 
- A `data_gdf` `GeoDataFrame` with `nearest_assigned` and `next_neareset_assign` columns.</div>
+ A `data_gdf` `GeoDataFrame` with `nearest_assigned` and `next_nearest_assign` columns.</div>
 </div>
 
 <div class="param-set">

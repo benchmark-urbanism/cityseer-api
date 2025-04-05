@@ -82,6 +82,11 @@ may therefore be preferable when working at small thresholds on decomposed netwo
     <span class="pa"> list[float] | None = None</span>
   </div>
   <div class="param">
+    <span class="pn">minutes</span>
+    <span class="pc">:</span>
+    <span class="pa"> list[float] | None = None</span>
+  </div>
+  <div class="param">
     <span class="pn">compute_closeness</span>
     <span class="pc">:</span>
     <span class="pa"> bool | None = True</span>
@@ -95,6 +100,11 @@ may therefore be preferable when working at small thresholds on decomposed netwo
     <span class="pn">min_threshold_wt</span>
     <span class="pc">:</span>
     <span class="pa"> float = 0.01831563888873418</span>
+  </div>
+  <div class="param">
+    <span class="pn">speed_m_s</span>
+    <span class="pc">:</span>
+    <span class="pa"> float = 1.33333</span>
   </div>
   <div class="param">
     <span class="pn">jitter_scale</span>
@@ -141,7 +151,7 @@ manually specified.
   </div>
   <div class="desc">
 
- Distances corresponding to the local $d_{max}$ thresholds to be used for calculations. The $\beta$ parameters (for distance-weighted metrics) will be determined implicitly. If the `distances` parameter is not provided, then the `beta` parameter must be provided instead.</div>
+ Distances corresponding to the local $d_{max}$ thresholds to be used for calculations. The $\beta$ for distance-weighted metrics will be determined implicitly using `min_threshold_wt`. If the `distances` parameter is not provided, then the `beta` or `minutes` parameters must be provided instead.</div>
 </div>
 
 <div class="param-set">
@@ -151,7 +161,17 @@ manually specified.
   </div>
   <div class="desc">
 
- A $\beta$, or array of $\beta$ to be used for the exponential decay function for weighted metrics. The `distance` parameters for unweighted metrics will be determined implicitly. If the `betas` parameter is not provided, then the `distance` parameter must be provided instead.</div>
+ A list of $\beta$ to be used for the exponential decay function for weighted metrics. The $d_{max}$ thresholds for unweighted metrics will be determined implicitly. If the `betas` parameter is not provided, then the `distances` or `minutes` parameter must be provided instead.</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">minutes</div>
+    <div class="type">list[float]</div>
+  </div>
+  <div class="desc">
+
+ A list of walking times in minutes to be used for calculations. The $d_{max}$ thresholds for unweighted metrics and $\beta$ for distance-weighted metrics will be determined implicitly using the `speed_m_s` and `min_threshold_wt` parameters. If the `minutes` parameter is not provided, then the `distances` or `betas` parameters must be provided instead.</div>
 </div>
 
 <div class="param-set">
@@ -182,6 +202,16 @@ manually specified.
   <div class="desc">
 
  The default `min_threshold_wt` parameter can be overridden to generate custom mappings between the `distance` and `beta` parameters. See [`rustalgos.distances_from_beta`](/rustalgos#distances-from-betas) for more information.</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">speed_m_s</div>
+    <div class="type">float</div>
+  </div>
+  <div class="desc">
+
+ The default `speed_m_s` parameter can be configured to generate custom mappings between walking times and distance thresholds $d_{max}$.</div>
 </div>
 
 <div class="param-set">
@@ -252,6 +282,11 @@ manually specified.
     <span class="pa"> list[float] | None = None</span>
   </div>
   <div class="param">
+    <span class="pn">minutes</span>
+    <span class="pc">:</span>
+    <span class="pa"> list[float] | None = None</span>
+  </div>
+  <div class="param">
     <span class="pn">compute_closeness</span>
     <span class="pc">:</span>
     <span class="pa"> bool | None = True</span>
@@ -265,6 +300,11 @@ manually specified.
     <span class="pn">min_threshold_wt</span>
     <span class="pc">:</span>
     <span class="pa"> float = 0.01831563888873418</span>
+  </div>
+  <div class="param">
+    <span class="pn">speed_m_s</span>
+    <span class="pc">:</span>
+    <span class="pa"> float = 1.33333</span>
   </div>
   <div class="param">
     <span class="pn">angular_scaling_unit</span>
@@ -321,7 +361,7 @@ manually specified.
   </div>
   <div class="desc">
 
- Distances corresponding to the local $d_{max}$ thresholds to be used for calculations. The $\beta$ parameters (for distance-weighted metrics) will be determined implicitly. If the `distances` parameter is not provided, then the `beta` parameter must be provided instead.</div>
+ Distances corresponding to the local $d_{max}$ thresholds to be used for calculations. The $\beta$ for distance-weighted metrics will be determined implicitly using `min_threshold_wt`. If the `distances` parameter is not provided, then the `beta` or `minutes` parameters must be provided instead.</div>
 </div>
 
 <div class="param-set">
@@ -331,7 +371,17 @@ manually specified.
   </div>
   <div class="desc">
 
- A $\beta$, or array of $\beta$ to be used for the exponential decay function for weighted metrics. The `distance` parameters for unweighted metrics will be determined implicitly. If the `betas` parameter is not provided, then the `distance` parameter must be provided instead.</div>
+ A list of $\beta$ to be used for the exponential decay function for weighted metrics. The $d_{max}$ thresholds for unweighted metrics will be determined implicitly. If the `betas` parameter is not provided, then the `distances` or `minutes` parameter must be provided instead.</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">minutes</div>
+    <div class="type">list[float]</div>
+  </div>
+  <div class="desc">
+
+ A list of walking times in minutes to be used for calculations. The $d_{max}$ thresholds for unweighted metrics and $\beta$ for distance-weighted metrics will be determined implicitly using the `speed_m_s` and `min_threshold_wt` parameters. If the `minutes` parameter is not provided, then the `distances` or `betas` parameters must be provided instead.</div>
 </div>
 
 <div class="param-set">
@@ -362,6 +412,16 @@ manually specified.
   <div class="desc">
 
  The default `min_threshold_wt` parameter can be overridden to generate custom mappings between the `distance` and `beta` parameters. See [`rustalgos.distances_from_beta`](/rustalgos#distances-from-betas) for more information.</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">speed_m_s</div>
+    <div class="type">float</div>
+  </div>
+  <div class="desc">
+
+ The default `speed_m_s` parameter can be configured to generate custom mappings between walking times and distance thresholds $d_{max}$.</div>
 </div>
 
 <div class="param-set">
@@ -451,6 +511,11 @@ The following keys use the simplest-path (shortest-angular-path) heuristic, and 
     <span class="pa"> list[float] | None = None</span>
   </div>
   <div class="param">
+    <span class="pn">minutes</span>
+    <span class="pc">:</span>
+    <span class="pa"> list[float] | None = None</span>
+  </div>
+  <div class="param">
     <span class="pn">compute_closeness</span>
     <span class="pc">:</span>
     <span class="pa"> bool | None = True</span>
@@ -464,6 +529,11 @@ The following keys use the simplest-path (shortest-angular-path) heuristic, and 
     <span class="pn">min_threshold_wt</span>
     <span class="pc">:</span>
     <span class="pa"> float = 0.01831563888873418</span>
+  </div>
+  <div class="param">
+    <span class="pn">speed_m_s</span>
+    <span class="pc">:</span>
+    <span class="pa"> float = 1.33333</span>
   </div>
   <div class="param">
     <span class="pn">jitter_scale</span>
@@ -508,7 +578,7 @@ The following keys use the simplest-path (shortest-angular-path) heuristic, and 
   </div>
   <div class="desc">
 
- Distances corresponding to the local $d_{max}$ thresholds to be used for calculations. The $\beta$ parameters (for distance-weighted metrics) will be determined implicitly. If the `distances` parameter is not provided, then the `beta` parameter must be provided instead.</div>
+ Distances corresponding to the local $d_{max}$ thresholds to be used for calculations. The $\beta$ for distance-weighted metrics will be determined implicitly using `min_threshold_wt`. If the `distances` parameter is not provided, then the `beta` or `minutes` parameters must be provided instead.</div>
 </div>
 
 <div class="param-set">
@@ -518,7 +588,17 @@ The following keys use the simplest-path (shortest-angular-path) heuristic, and 
   </div>
   <div class="desc">
 
- A $\beta$, or array of $\beta$ to be used for the exponential decay function for weighted metrics. The `distance` parameters for unweighted metrics will be determined implicitly. If the `betas` parameter is not provided, then the `distance` parameter must be provided instead.</div>
+ A list of $\beta$ to be used for the exponential decay function for weighted metrics. The $d_{max}$ thresholds for unweighted metrics will be determined implicitly. If the `betas` parameter is not provided, then the `distances` or `minutes` parameter must be provided instead.</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">minutes</div>
+    <div class="type">list[float]</div>
+  </div>
+  <div class="desc">
+
+ A list of walking times in minutes to be used for calculations. The $d_{max}$ thresholds for unweighted metrics and $\beta$ for distance-weighted metrics will be determined implicitly using the `speed_m_s` and `min_threshold_wt` parameters. If the `minutes` parameter is not provided, then the `distances` or `betas` parameters must be provided instead.</div>
 </div>
 
 <div class="param-set">
@@ -549,6 +629,16 @@ The following keys use the simplest-path (shortest-angular-path) heuristic, and 
   <div class="desc">
 
  The default `min_threshold_wt` parameter can be overridden to generate custom mappings between the `distance` and `beta` parameters. See [`rustalgos.distances_from_beta`](/rustalgos#distances-from-betas) for more information.</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">speed_m_s</div>
+    <div class="type">float</div>
+  </div>
+  <div class="desc">
+
+ The default `speed_m_s` parameter can be configured to generate custom mappings between walking times and distance thresholds $d_{max}$.</div>
 </div>
 
 <div class="param-set">

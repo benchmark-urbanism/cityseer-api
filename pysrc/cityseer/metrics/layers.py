@@ -4,11 +4,16 @@ import logging
 from functools import partial
 
 import geopandas as gpd
+from tqdm import tqdm
 
 from cityseer import config, rustalgos
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# separate out so that ast parser can parse function def
+MIN_THRESH_WT = config.MIN_THRESH_WT
+SPEED_M_S = config.SPEED_M_S
 
 
 def assign_gdf_to_network(
@@ -47,7 +52,7 @@ def assign_gdf_to_network(
     data_map: rustalgos.DataMap
         A [`rustalgos.DataMap`](/rustalgos#datamap) instance.
     data_gdf: GeoDataFrame
-        The input `data_gdf` is returned with two additional columns: `nearest_assigned` and `next_neareset_assign`.
+        The input `data_gdf` is returned with two additional columns: `nearest_assigned` and `next_nearest_assign`.
 
     Examples
     --------
@@ -75,40 +80,56 @@ def assign_gdf_to_network(
     _Assignment of data to network nodes becomes more contextually precise on decomposed graphs._
 
     """
+    # check for unique index
+    if data_gdf.index.duplicated().any():
+        raise ValueError("The data GeoDataFrame index must contain unique entries.")
+    # check single data geom type
+    if data_gdf.geometry.geom_type.nunique() != 1:
+        raise ValueError("The data GeoDataFrame must contain a single geometry type.")
+    # check data type
     data_map = rustalgos.DataMap()
     calculate_assigned = False
     # add column to data_gdf
-    if not ("nearest_assign" in data_gdf.columns and "next_nearest_assign" in data_gdf.columns):
+    if (
+        "datamap_key" not in data_gdf.columns
+        or "nearest_assign" not in data_gdf.columns
+        or "next_nearest_assign" not in data_gdf.columns
+        or (data_id_col is not None and "dedupe_key" not in data_gdf.columns)
+    ):
         calculate_assigned = True
+        data_gdf["datamap_key"] = data_gdf.index.astype(str)
+        if data_id_col is not None:
+            data_gdf["dedupe_key"] = data_gdf[data_id_col].astype(str)
         data_gdf["nearest_assign"] = None
         data_gdf["next_nearest_assign"] = None
     # prepare the data_map
-    for data_key, data_row in data_gdf.iterrows():  # type: ignore
-        if not isinstance(data_key, str):
-            raise ValueError("Data keys must be string instances.")
-        data_id = None if data_id_col is None else str(data_row[data_id_col])  # type: ignore
+    for _data_key, data_row in data_gdf.iterrows():  # type: ignore
+        data_id: str | None = None if data_id_col is None else data_row["dedupe_key"]  # type: ignore
         data_map.insert(
-            data_key,
-            # get key from GDF in case of different geom column name
-            data_row[data_gdf.geometry.name].x,  # type: ignore
-            data_row[data_gdf.geometry.name].y,  # type: ignore
-            data_id,
+            data_row["datamap_key"],  # type: ignore
+            data_row[data_gdf.geometry.name].centroid.x,  # type: ignore
+            data_row[data_gdf.geometry.name].centroid.y,  # type: ignore
+            data_id,  # type: ignore
             data_row["nearest_assign"],  # type: ignore
             data_row["next_nearest_assign"],  # type: ignore
         )
     # only compute if not already computed
     if calculate_assigned is True:
-        for data_key in data_map.entry_keys():
+        logger.info("Assigning data to network.")
+        gdf_idx_mapping = {v: i for i, v in data_gdf["datamap_key"].to_dict().items()}  # type: ignore
+        for data_key in tqdm(data_map.entry_keys(), total=data_map.count(), disable=config.QUIET_MODE):
             data_coord = data_map.get_data_coord(data_key)
             nearest_idx, next_nearest_idx = network_structure.assign_to_network(data_coord, max_netw_assign_dist)
+            gdf_idx = gdf_idx_mapping[data_key]
             if nearest_idx is not None:
                 data_map.set_nearest_assign(data_key, nearest_idx)
-                data_gdf.at[data_key, "nearest_assign"] = nearest_idx
+                data_gdf.at[gdf_idx, "nearest_assign"] = nearest_idx
             if next_nearest_idx is not None:
                 data_map.set_next_nearest_assign(data_key, next_nearest_idx)
-                data_gdf.at[data_key, "next_nearest_assign"] = next_nearest_idx
+                data_gdf.at[gdf_idx, "next_nearest_assign"] = next_nearest_idx
     if data_map.none_assigned():
         logger.warning("No assignments for nearest assigned direction.")
+
     return data_map, data_gdf
 
 
@@ -121,10 +142,12 @@ def compute_accessibilities(
     max_netw_assign_dist: int = 400,
     distances: list[int] | None = None,
     betas: list[float] | None = None,
+    minutes: list[float] | None = None,
     data_id_col: str | None = None,
     angular: bool = False,
     spatial_tolerance: int = 0,
-    min_threshold_wt: float | None = None,
+    min_threshold_wt: float = MIN_THRESH_WT,
+    speed_m_s: float = SPEED_M_S,
     jitter_scale: float = 0.0,
 ) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
     r"""
@@ -158,13 +181,18 @@ def compute_accessibilities(
     max_netw_assign_dist: int
         The maximum distance to consider when assigning respective data points to the nearest adjacent network nodes.
     distances: list[int]
-        Distances corresponding to the local $d_{max}$ thresholds to be used for calculations. The $\beta$ parameters
-        (for distance-weighted metrics) will be determined implicitly. If the `distances` parameter is not provided,
-        then the `beta` parameter must be provided instead.
+        Distances corresponding to the local $d_{max}$ thresholds to be used for calculations. The $\beta$
+        for distance-weighted metrics will be determined implicitly using `min_threshold_wt`. If the `distances`
+        parameter is not provided, then the `beta` or `minutes` parameters must be provided instead.
     betas: list[float]
-        A $\beta$, or array of $\beta$ to be used for the exponential decay function for weighted metrics. The
-        `distance` parameters for unweighted metrics will be determined implicitly. If the `betas` parameter is not
-        provided, then the `distance` parameter must be provided instead.
+        A list of $\beta$ to be used for the exponential decay function for weighted metrics. The $d_{max}$ thresholds
+        for unweighted metrics will be determined implicitly. If the `betas` parameter is not provided, then the
+        `distances` or `minutes` parameter must be provided instead.
+    minutes: list[float]
+        A list of walking times in minutes to be used for calculations. The $d_{max}$ thresholds for unweighted metrics
+        and $\beta$ for distance-weighted metrics will be determined implicitly using the `speed_m_s` and
+        `min_threshold_wt` parameters. If the `minutes` parameter is not provided, then the `distances` or `betas`
+        parameters must be provided instead.
     data_id_col: str
         An optional column name for data point keys. This is used for deduplicating points representing a shared source
         of information. For example, where a single greenspace is represented by many entrances as datapoints, only the
@@ -182,6 +210,9 @@ def compute_accessibilities(
         The default `min_threshold_wt` parameter can be overridden to generate custom mappings between the
         `distance` and `beta` parameters. See [`rustalgos.distances_from_beta`](/rustalgos#distances-from-betas) for
         more information.
+    speed_m_s: float
+        The default `speed_m_s` parameter can be configured to generate custom mappings between walking times and
+        distance thresholds $d_{max}$.
     jitter_scale: float
         The scale of random jitter to add to shortest path calculations, useful for situations with highly
         rectilinear grids or for smoothing metrics on messy network representations. A random sample is drawn from a
@@ -197,7 +228,7 @@ def compute_accessibilities(
         columns will be returned for each input landuse class and distance combination; a simple count of reachable
         locations, a distance weighted count of reachable locations, and the smallest distance to the nearest location.
     data_gdf: GeoDataFrame
-        The input `data_gdf` is returned with two additional columns: `nearest_assigned` and `next_neareset_assign`.
+        The input `data_gdf` is returned with two additional columns: `nearest_assigned` and `next_nearest_assign`.
 
     Examples
     --------
@@ -208,7 +239,7 @@ def compute_accessibilities(
     # prepare a mock graph
     G = mock.mock_graph()
     G = graphs.nx_simple_geoms(G)
-    nodes_gdf, edges_gdf, network_structure = io.network_structure_from_nx(G, crs=3395)
+    nodes_gdf, edges_gdf, network_structure = io.network_structure_from_nx(G)
     print(nodes_gdf.head())
     landuses_gdf = mock.mock_landuse_categorical_data(G)
     print(landuses_gdf.head())
@@ -230,13 +261,14 @@ def compute_accessibilities(
     ```
 
     """
+    logger.info(f"Computing land-use accessibility for: {', '.join(accessibility_keys)}")
     if landuse_column_label not in data_gdf.columns:
         raise ValueError("The specified landuse column name can't be found in the GeoDataFrame.")
     data_map, data_gdf = assign_gdf_to_network(data_gdf, network_structure, max_netw_assign_dist, data_id_col)
-    if not config.QUIET_MODE:
-        logger.info(f"Computing land-use accessibility for: {', '.join(accessibility_keys)}")
     # extract landuses
-    landuses_map: dict[str, str] = data_gdf[landuse_column_label].to_dict()  # type: ignore
+    data_keys: list[str] = data_gdf["datamap_key"]  # type: ignore
+    landuses: list[str] = data_gdf[landuse_column_label]  # type: ignore
+    landuses_map: dict[str, str] = dict(zip(data_keys, landuses, strict=True))
     # call the underlying function
     partial_func = partial(
         data_map.accessibility,
@@ -245,15 +277,24 @@ def compute_accessibilities(
         accessibility_keys=accessibility_keys,
         distances=distances,
         betas=betas,
+        minutes=minutes,
         angular=angular,
         spatial_tolerance=spatial_tolerance,
         min_threshold_wt=min_threshold_wt,
+        speed_m_s=speed_m_s,
         jitter_scale=jitter_scale,
     )
     # wraps progress bar
     result = config.wrap_progress(total=network_structure.node_count(), rust_struct=data_map, partial_func=partial_func)
+    # unpack
+    distances = config.log_thresholds(
+        distances=distances,
+        betas=betas,
+        minutes=minutes,
+        min_threshold_wt=min_threshold_wt,
+        speed_m_s=speed_m_s,
+    )
     # unpack accessibility data
-    distances, betas = rustalgos.pair_distances_and_betas(distances, betas)
     for acc_key in accessibility_keys:
         for dist_key in distances:
             ac_nw_data_key = config.prep_gdf_key(acc_key, dist_key, angular, weighted=False)
@@ -279,10 +320,12 @@ def compute_mixed_uses(
     compute_gini: bool | None = False,
     distances: list[int] | None = None,
     betas: list[float] | None = None,
+    minutes: list[float] | None = None,
     data_id_col: str | None = None,
     angular: bool = False,
     spatial_tolerance: int = 0,
-    min_threshold_wt: float | None = None,
+    min_threshold_wt: float = MIN_THRESH_WT,
+    speed_m_s: float = SPEED_M_S,
     jitter_scale: float = 0.0,
 ) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
     r"""
@@ -332,13 +375,18 @@ def compute_mixed_uses(
     compute_gini: bool
         Compute the gini form of diversity index. Hill diversity of q=2 is generally preferable.
     distances: list[int]
-        Distances corresponding to the local $d_{max}$ thresholds to be used for calculations. The $\beta$ parameters
-        (for distance-weighted metrics) will be determined implicitly. If the `distances` parameter is not provided,
-        then the `beta` parameter must be provided instead.
+        Distances corresponding to the local $d_{max}$ thresholds to be used for calculations. The $\beta$
+        for distance-weighted metrics will be determined implicitly using `min_threshold_wt`. If the `distances`
+        parameter is not provided, then the `beta` or `minutes` parameters must be provided instead.
     betas: list[float]
-        A $\beta$, or array of $\beta$ to be used for the exponential decay function for weighted metrics. The
-        `distance` parameters for unweighted metrics will be determined implicitly. If the `betas` parameter is not
-        provided, then the `distance` parameter must be provided instead.
+        A list of $\beta$ to be used for the exponential decay function for weighted metrics. The $d_{max}$ thresholds
+        for unweighted metrics will be determined implicitly. If the `betas` parameter is not provided, then the
+        `distances` or `minutes` parameter must be provided instead.
+    minutes: list[float]
+        A list of walking times in minutes to be used for calculations. The $d_{max}$ thresholds for unweighted metrics
+        and $\beta$ for distance-weighted metrics will be determined implicitly using the `speed_m_s` and
+        `min_threshold_wt` parameters. If the `minutes` parameter is not provided, then the `distances` or `betas`
+        parameters must be provided instead.
     data_id_col: str
         An optional column name for data point keys. This is used for deduplicating points representing a shared source
         of information. For example, where a single greenspace is represented by many entrances as datapoints, only the
@@ -356,6 +404,9 @@ def compute_mixed_uses(
         The default `min_threshold_wt` parameter can be overridden to generate custom mappings between the
         `distance` and `beta` parameters. See [`rustalgos.distances_from_beta`](/rustalgos#distances-from-betas) for
         more information.
+    speed_m_s: float
+        The default `speed_m_s` parameter can be configured to generate custom mappings between walking times and
+        distance thresholds $d_{max}$.
     jitter_scale: float
         The scale of random jitter to add to shortest path calculations, useful for situations with highly
         rectilinear grids or for smoothing metrics on messy network representations. A random sample is drawn from a
@@ -411,7 +462,7 @@ def compute_mixed_uses(
     # prepare a mock graph
     G = mock.mock_graph()
     G = graphs.nx_simple_geoms(G)
-    nodes_gdf, edges_gdf, network_structure = io.network_structure_from_nx(G, crs=3395)
+    nodes_gdf, edges_gdf, network_structure = io.network_structure_from_nx(G)
     print(nodes_gdf.head())
     landuses_gdf = mock.mock_landuse_categorical_data(G)
     print(landuses_gdf.head())
@@ -434,19 +485,21 @@ def compute_mixed_uses(
     :::
 
     """
+    logger.info("Computing mixed-use measures.")
     if landuse_column_label not in data_gdf.columns:
         raise ValueError("The specified landuse column name can't be found in the GeoDataFrame.")
     data_map, data_gdf = assign_gdf_to_network(data_gdf, network_structure, max_netw_assign_dist, data_id_col)
-    if not config.QUIET_MODE:
-        logger.info("Computing mixed-use measures.")
     # extract landuses
-    landuses_map: dict[str, str] = data_gdf[landuse_column_label].to_dict()  # type: ignore
+    data_keys: list[str] = data_gdf["datamap_key"]  # type: ignore
+    landuses: list[str] = data_gdf[landuse_column_label]  # type: ignore
+    landuses_map: dict[str, str] = dict(zip(data_keys, landuses, strict=True))
     partial_func = partial(
         data_map.mixed_uses,
         network_structure=network_structure,
         landuses_map=landuses_map,
         distances=distances,
         betas=betas,
+        minutes=minutes,
         compute_hill=compute_hill,
         compute_hill_weighted=compute_hill_weighted,
         compute_shannon=compute_shannon,
@@ -454,12 +507,20 @@ def compute_mixed_uses(
         angular=angular,
         spatial_tolerance=spatial_tolerance,
         min_threshold_wt=min_threshold_wt,
+        speed_m_s=speed_m_s,
         jitter_scale=jitter_scale,
     )
     # wraps progress bar
     result = config.wrap_progress(total=network_structure.node_count(), rust_struct=data_map, partial_func=partial_func)
+    # unpack
+    distances = config.log_thresholds(
+        distances=distances,
+        betas=betas,
+        minutes=minutes,
+        min_threshold_wt=min_threshold_wt,
+        speed_m_s=speed_m_s,
+    )
     # unpack mixed-uses data
-    distances, betas = rustalgos.pair_distances_and_betas(distances, betas)
     for dist_key in distances:
         for q_key in [0, 1, 2]:
             if compute_hill:
@@ -486,10 +547,12 @@ def compute_stats(
     max_netw_assign_dist: int = 400,
     distances: list[int] | None = None,
     betas: list[float] | None = None,
+    minutes: list[float] | None = None,
     data_id_col: str | None = None,
     angular: bool = False,
     spatial_tolerance: int = 0,
-    min_threshold_wt: float | None = None,
+    min_threshold_wt: float = MIN_THRESH_WT,
+    speed_m_s: float = SPEED_M_S,
     jitter_scale: float = 0.0,
 ) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
     r"""
@@ -520,13 +583,18 @@ def compute_stats(
     max_netw_assign_dist: int
         The maximum distance to consider when assigning respective data points to the nearest adjacent network nodes.
     distances: list[int]
-        Distances corresponding to the local $d_{max}$ thresholds to be used for calculations. The $\beta$ parameters
-        (for distance-weighted metrics) will be determined implicitly. If the `distances` parameter is not provided,
-        then the `beta` parameter must be provided instead.
+        Distances corresponding to the local $d_{max}$ thresholds to be used for calculations. The $\beta$
+        for distance-weighted metrics will be determined implicitly using `min_threshold_wt`. If the `distances`
+        parameter is not provided, then the `beta` or `minutes` parameters must be provided instead.
     betas: list[float]
-        A $\beta$, or array of $\beta$ to be used for the exponential decay function for weighted metrics. The
-        `distance` parameters for unweighted metrics will be determined implicitly. If the `betas` parameter is not
-        provided, then the `distance` parameter must be provided instead.
+        A list of $\beta$ to be used for the exponential decay function for weighted metrics. The $d_{max}$ thresholds
+        for unweighted metrics will be determined implicitly. If the `betas` parameter is not provided, then the
+        `distances` or `minutes` parameter must be provided instead.
+    minutes: list[float]
+        A list of walking times in minutes to be used for calculations. The $d_{max}$ thresholds for unweighted metrics
+        and $\beta$ for distance-weighted metrics will be determined implicitly using the `speed_m_s` and
+        `min_threshold_wt` parameters. If the `minutes` parameter is not provided, then the `distances` or `betas`
+        parameters must be provided instead.
     data_id_col: str
         An optional column name for data point keys. This is used for deduplicating points representing a shared source
         of information. For example, where a single greenspace is represented by many entrances as datapoints, only the
@@ -544,6 +612,9 @@ def compute_stats(
         The default `min_threshold_wt` parameter can be overridden to generate custom mappings between the
         `distance` and `beta` parameters. See [`rustalgos.distances_from_beta`](/rustalgos#distances-from-betas) for
         more information.
+    speed_m_s: float
+        The default `speed_m_s` parameter can be configured to generate custom mappings between walking times and
+        distance thresholds $d_{max}$.
     jitter_scale: float
         The scale of random jitter to add to shortest path calculations, useful for situations with highly
         rectilinear grids or for smoothing metrics on messy network representations. A random sample is drawn from a
@@ -557,7 +628,7 @@ def compute_stats(
     nodes_gdf: GeoDataFrame
         The input `node_gdf` parameter is returned with additional columns populated with the calcualted metrics.
     data_gdf: GeoDataFrame
-        The input `data_gdf` is returned with two additional columns: `nearest_assigned` and `next_neareset_assign`.
+        The input `data_gdf` is returned with two additional columns: `nearest_assigned` and `next_nearest_assign`.
 
     Examples
     --------
@@ -570,7 +641,7 @@ def compute_stats(
     # prepare a mock graph
     G = mock.mock_graph()
     G = graphs.nx_simple_geoms(G)
-    nodes_gdf, edges_gdf, network_structure = io.network_structure_from_nx(G, crs=3395)
+    nodes_gdf, edges_gdf, network_structure = io.network_structure_from_nx(G)
     print(nodes_gdf.head())
     numerical_gdf = mock.mock_numerical_data(G, num_arrs=3)
     print(numerical_gdf.head())
@@ -598,15 +669,16 @@ def compute_stats(
     :::
 
     """
+    logger.info("Computing statistics.")
     data_map, data_gdf = assign_gdf_to_network(data_gdf, network_structure, max_netw_assign_dist, data_id_col)
-    if not config.QUIET_MODE:
-        logger.info("Computing statistics.")
-    # extract landuses
+    # extract stats columns
+    data_keys: list[str] = data_gdf["datamap_key"]  # type: ignore
     stats_maps = []
     for stats_column_label in stats_column_labels:
         if stats_column_label not in data_gdf.columns:
             raise ValueError("The specified numerical stats column name can't be found in the GeoDataFrame.")
-        stats_maps.append(data_gdf[stats_column_label].to_dict())  # type: ignore
+        stats: list[str] = data_gdf[stats_column_label]  # type: ignore
+        stats_maps.append(dict(zip(data_keys, stats, strict=True)))
     # stats
     partial_func = partial(
         data_map.stats,
@@ -614,15 +686,24 @@ def compute_stats(
         numerical_maps=stats_maps,
         distances=distances,
         betas=betas,
+        minutes=minutes,
         angular=angular,
         spatial_tolerance=spatial_tolerance,
         min_threshold_wt=min_threshold_wt,
+        speed_m_s=speed_m_s,
         jitter_scale=jitter_scale,
     )
     # wraps progress bar
     result = config.wrap_progress(total=network_structure.node_count(), rust_struct=data_map, partial_func=partial_func)
+    # unpack
+    distances = config.log_thresholds(
+        distances=distances,
+        betas=betas,
+        minutes=minutes,
+        min_threshold_wt=min_threshold_wt,
+        speed_m_s=speed_m_s,
+    )
     # unpack the numerical arrays
-    distances, betas = rustalgos.pair_distances_and_betas(distances, betas)
     for idx, stats_column_label in enumerate(stats_column_labels):
         for dist_key in distances:
             k = config.prep_gdf_key(f"{stats_column_label}_sum", dist_key, angular=angular, weighted=False)

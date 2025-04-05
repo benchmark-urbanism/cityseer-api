@@ -11,7 +11,7 @@ nav#nav-tree
     ).nav-link {{ nav.path }}
     // when active, each entry has a nested-tree to H2 headers
     div(
-      @click='headingTargetsAnim()'
+      @click='headinganim()'
       v-show='nav.headerInfo.length'
     ).flex.flex-col.items-end.py-2
       a(
@@ -20,11 +20,16 @@ nav#nav-tree
         :title='header.title'
         v-for='header in nav.headerInfo'
       ).nested-link {{ header.title }}
+
 </template>
 
 <script setup>
-import { useIntersectionObserver, useTimeoutFn } from '@vueuse/core'
-import anime from 'animejs/lib/anime.js'
+import { useIntersectionObserver, useTimeoutFn }
+
+ from '@vueuse/core'
+import { animate, stagger}
+
+ from 'animejs'
 import { nextTick, onMounted, reactive } from 'vue'
 
 const props = defineProps({
@@ -104,47 +109,73 @@ const prepareSideBarNav = () => {
     })
   })
   useTimeoutFn(() => {
-    headingTargetsAnim()
+    headinganim()
   }, 100)
 }
-const headingTargetsAnim = () => {
+
+const headinganim = () => {
   nextTick(() => {
-    anime({
+    animate({
       targets: '.nested-link',
       scale: [0.95, 1],
       duration: 50,
-      delay: anime.stagger(5),
+      delay: stagger(5),
     })
   })
 }
+
 </script>
 
-<style lang="postcss" scoped>
+<style scoped>
 .nav-link {
-  @apply border-b px-2 py-2 text-right text-sm font-medium leading-none text-theme transition-all;
-  &:hover {
-    @apply -translate-x-1 border-light-grey bg-dark-grey;
-  }
+  border-bottom: 1px solid var(--color-dark-grey);
+  padding: 0.15rem 0.3rem;
+  text-align: right;
+  font-size: var(--text-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-theme);
+  transition: all 0.3s ease;
 }
+
+.nav-link:hover {
+  transform: translateX(-0.25rem);
+  border-color: var(--color-light-grey);
+  background-color: var(--color-dark-grey);
+}
+
 .nav-link-active {
-  @apply -translate-x-1 border-b border-light-grey bg-dark-grey;
+  transform: translateX(-0.3rem);
+  border-bottom: 1px solid var(--color-light-grey);
+  background-color: var(--color-dark-grey);
 }
+
 .nested-link {
-  @apply border-theme py-1 pr-3 text-right text-xs font-light text-lighter-grey transition-all;
-  &:hover,
-  &:active {
-    @apply border-r-2;
-  }
+  border-color: var(--color-theme);
+  padding: 0.1rem 0.3rem;
+  text-align: right;
+  font-size: var(--text-xs);
+  font-weight: var(--font-weight-extralight);
+  color: var(--color-lighter-grey);
+  transition: all 0.3s ease;
 }
+
+.nested-link:hover,
+.nested-link:active {
+  border-right: 2px solid var(--color-theme);
+}
+
 .nested-link-visible {
-  @apply border-r-2;
+  border-right: 2px solid var(--color-theme);
 }
-@media only screen and (max-width: 958px) {
+
+@media only screen and (width <= 958px) {
   .nav-link {
-    @apply text-left text-sm;
+    text-align: left;
+    font-size: var(--text-sm);
   }
+
   .nested-link {
-    @apply text-xs;
+    font-size: var(--text-xs);
   }
 }
 </style>

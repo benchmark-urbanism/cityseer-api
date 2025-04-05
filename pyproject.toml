@@ -1,6 +1,6 @@
 [project]
 name = "cityseer"
-version = '4.19.1'
+version = '4.20.0'
 description = "Computational tools for network-based pedestrian-scale urban analysis"
 readme = "README.md"
 requires-python = ">=3.11, <3.14"
@@ -74,12 +74,12 @@ dev-dependencies = [
   "maturin>=1.8.3",
   "pip>=23.2",
   "pdoc>=14.1.0",
-  "docstring-parser>=0.15",
   "dominate>=2.8.0",
-  "utm>=0.7.0",
   "ruff>=0.5.1",
-  "pyright>=1.1.380",
   "poethepoet>=0.29.0",
+  "types-networkx>=3.4.2.20250319",
+  "pyright>=1.1.398",
+  "docstring-parser>=0.16",
 ]
 
 [build-system]
@@ -97,6 +97,7 @@ packages = ["cityseer"]
 [tool.ruff]
 line-length = 120
 indent-width = 4
+exclude = ["draft/**"]
 
 [tool.ruff.lint]
 select = [
@@ -137,6 +138,7 @@ exclude = [
   "tests/",
   "dist",
   ".venv",
+  'draft/**',
 ]
 typeCheckingMode = "strict"
 stubPath = "pysrc/cityseer/stubs"

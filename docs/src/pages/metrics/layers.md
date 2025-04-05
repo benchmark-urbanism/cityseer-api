@@ -102,7 +102,7 @@ layout: ../../layouts/PageLayout.astro
   </div>
   <div class="desc">
 
- The input `data_gdf` is returned with two additional columns: `nearest_assigned` and `next_neareset_assign`.</div>
+ The input `data_gdf` is returned with two additional columns: `nearest_assigned` and `next_nearest_assign`.</div>
 </div>
 
 ### Notes
@@ -180,6 +180,11 @@ representation of variations of metrics along street-fronts.
     <span class="pa"> list[float] | None = None</span>
   </div>
   <div class="param">
+    <span class="pn">minutes</span>
+    <span class="pc">:</span>
+    <span class="pa"> list[float] | None = None</span>
+  </div>
+  <div class="param">
     <span class="pn">data_id_col</span>
     <span class="pc">:</span>
     <span class="pa"> str | None = None</span>
@@ -197,7 +202,12 @@ representation of variations of metrics along street-fronts.
   <div class="param">
     <span class="pn">min_threshold_wt</span>
     <span class="pc">:</span>
-    <span class="pa"> float | None = None</span>
+    <span class="pa"> float = 0.01831563888873418</span>
+  </div>
+  <div class="param">
+    <span class="pn">speed_m_s</span>
+    <span class="pc">:</span>
+    <span class="pa"> float = 1.33333</span>
   </div>
   <div class="param">
     <span class="pn">jitter_scale</span>
@@ -281,7 +291,7 @@ representation of variations of metrics along street-fronts.
   </div>
   <div class="desc">
 
- Distances corresponding to the local $d_{max}$ thresholds to be used for calculations. The $\beta$ parameters (for distance-weighted metrics) will be determined implicitly. If the `distances` parameter is not provided, then the `beta` parameter must be provided instead.</div>
+ Distances corresponding to the local $d_{max}$ thresholds to be used for calculations. The $\beta$ for distance-weighted metrics will be determined implicitly using `min_threshold_wt`. If the `distances` parameter is not provided, then the `beta` or `minutes` parameters must be provided instead.</div>
 </div>
 
 <div class="param-set">
@@ -291,7 +301,17 @@ representation of variations of metrics along street-fronts.
   </div>
   <div class="desc">
 
- A $\beta$, or array of $\beta$ to be used for the exponential decay function for weighted metrics. The `distance` parameters for unweighted metrics will be determined implicitly. If the `betas` parameter is not provided, then the `distance` parameter must be provided instead.</div>
+ A list of $\beta$ to be used for the exponential decay function for weighted metrics. The $d_{max}$ thresholds for unweighted metrics will be determined implicitly. If the `betas` parameter is not provided, then the `distances` or `minutes` parameter must be provided instead.</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">minutes</div>
+    <div class="type">list[float]</div>
+  </div>
+  <div class="desc">
+
+ A list of walking times in minutes to be used for calculations. The $d_{max}$ thresholds for unweighted metrics and $\beta$ for distance-weighted metrics will be determined implicitly using the `speed_m_s` and `min_threshold_wt` parameters. If the `minutes` parameter is not provided, then the `distances` or `betas` parameters must be provided instead.</div>
 </div>
 
 <div class="param-set">
@@ -336,6 +356,16 @@ representation of variations of metrics along street-fronts.
 
 <div class="param-set">
   <div class="def">
+    <div class="name">speed_m_s</div>
+    <div class="type">float</div>
+  </div>
+  <div class="desc">
+
+ The default `speed_m_s` parameter can be configured to generate custom mappings between walking times and distance thresholds $d_{max}$.</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
     <div class="name">jitter_scale</div>
     <div class="type">float</div>
   </div>
@@ -362,7 +392,7 @@ representation of variations of metrics along street-fronts.
   </div>
   <div class="desc">
 
- The input `data_gdf` is returned with two additional columns: `nearest_assigned` and `next_neareset_assign`.</div>
+ The input `data_gdf` is returned with two additional columns: `nearest_assigned` and `next_nearest_assign`.</div>
 </div>
 
 ### Notes
@@ -374,7 +404,7 @@ from cityseer.tools import mock, graphs, io
 # prepare a mock graph
 G = mock.mock_graph()
 G = graphs.nx_simple_geoms(G)
-nodes_gdf, edges_gdf, network_structure = io.network_structure_from_nx(G, crs=3395)
+nodes_gdf, edges_gdf, network_structure = io.network_structure_from_nx(G)
 print(nodes_gdf.head())
 landuses_gdf = mock.mock_landuse_categorical_data(G)
 print(landuses_gdf.head())
@@ -463,6 +493,11 @@ print(nodes_gdf["cc_c_nearest_max_800"])
     <span class="pa"> list[float] | None = None</span>
   </div>
   <div class="param">
+    <span class="pn">minutes</span>
+    <span class="pc">:</span>
+    <span class="pa"> list[float] | None = None</span>
+  </div>
+  <div class="param">
     <span class="pn">data_id_col</span>
     <span class="pc">:</span>
     <span class="pa"> str | None = None</span>
@@ -480,7 +515,12 @@ print(nodes_gdf["cc_c_nearest_max_800"])
   <div class="param">
     <span class="pn">min_threshold_wt</span>
     <span class="pc">:</span>
-    <span class="pa"> float | None = None</span>
+    <span class="pa"> float = 0.01831563888873418</span>
+  </div>
+  <div class="param">
+    <span class="pn">speed_m_s</span>
+    <span class="pc">:</span>
+    <span class="pa"> float = 1.33333</span>
   </div>
   <div class="param">
     <span class="pn">jitter_scale</span>
@@ -598,7 +638,7 @@ print(nodes_gdf["cc_c_nearest_max_800"])
   </div>
   <div class="desc">
 
- Distances corresponding to the local $d_{max}$ thresholds to be used for calculations. The $\beta$ parameters (for distance-weighted metrics) will be determined implicitly. If the `distances` parameter is not provided, then the `beta` parameter must be provided instead.</div>
+ Distances corresponding to the local $d_{max}$ thresholds to be used for calculations. The $\beta$ for distance-weighted metrics will be determined implicitly using `min_threshold_wt`. If the `distances` parameter is not provided, then the `beta` or `minutes` parameters must be provided instead.</div>
 </div>
 
 <div class="param-set">
@@ -608,7 +648,17 @@ print(nodes_gdf["cc_c_nearest_max_800"])
   </div>
   <div class="desc">
 
- A $\beta$, or array of $\beta$ to be used for the exponential decay function for weighted metrics. The `distance` parameters for unweighted metrics will be determined implicitly. If the `betas` parameter is not provided, then the `distance` parameter must be provided instead.</div>
+ A list of $\beta$ to be used for the exponential decay function for weighted metrics. The $d_{max}$ thresholds for unweighted metrics will be determined implicitly. If the `betas` parameter is not provided, then the `distances` or `minutes` parameter must be provided instead.</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">minutes</div>
+    <div class="type">list[float]</div>
+  </div>
+  <div class="desc">
+
+ A list of walking times in minutes to be used for calculations. The $d_{max}$ thresholds for unweighted metrics and $\beta$ for distance-weighted metrics will be determined implicitly using the `speed_m_s` and `min_threshold_wt` parameters. If the `minutes` parameter is not provided, then the `distances` or `betas` parameters must be provided instead.</div>
 </div>
 
 <div class="param-set">
@@ -649,6 +699,16 @@ print(nodes_gdf["cc_c_nearest_max_800"])
   <div class="desc">
 
  The default `min_threshold_wt` parameter can be overridden to generate custom mappings between the `distance` and `beta` parameters. See [`rustalgos.distances_from_beta`](/rustalgos#distances-from-betas) for more information.</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">speed_m_s</div>
+    <div class="type">float</div>
+  </div>
+  <div class="desc">
+
+ The default `speed_m_s` parameter can be configured to generate custom mappings between walking times and distance thresholds $d_{max}$.</div>
 </div>
 
 <div class="param-set">
@@ -704,7 +764,7 @@ from cityseer.tools import mock, graphs, io
 # prepare a mock graph
 G = mock.mock_graph()
 G = graphs.nx_simple_geoms(G)
-nodes_gdf, edges_gdf, network_structure = io.network_structure_from_nx(G, crs=3395)
+nodes_gdf, edges_gdf, network_structure = io.network_structure_from_nx(G)
 print(nodes_gdf.head())
 landuses_gdf = mock.mock_landuse_categorical_data(G)
 print(landuses_gdf.head())
@@ -774,6 +834,11 @@ been applied.
     <span class="pa"> list[float] | None = None</span>
   </div>
   <div class="param">
+    <span class="pn">minutes</span>
+    <span class="pc">:</span>
+    <span class="pa"> list[float] | None = None</span>
+  </div>
+  <div class="param">
     <span class="pn">data_id_col</span>
     <span class="pc">:</span>
     <span class="pa"> str | None = None</span>
@@ -791,7 +856,12 @@ been applied.
   <div class="param">
     <span class="pn">min_threshold_wt</span>
     <span class="pc">:</span>
-    <span class="pa"> float | None = None</span>
+    <span class="pa"> float = 0.01831563888873418</span>
+  </div>
+  <div class="param">
+    <span class="pn">speed_m_s</span>
+    <span class="pc">:</span>
+    <span class="pa"> float = 1.33333</span>
   </div>
   <div class="param">
     <span class="pn">jitter_scale</span>
@@ -865,7 +935,7 @@ been applied.
   </div>
   <div class="desc">
 
- Distances corresponding to the local $d_{max}$ thresholds to be used for calculations. The $\beta$ parameters (for distance-weighted metrics) will be determined implicitly. If the `distances` parameter is not provided, then the `beta` parameter must be provided instead.</div>
+ Distances corresponding to the local $d_{max}$ thresholds to be used for calculations. The $\beta$ for distance-weighted metrics will be determined implicitly using `min_threshold_wt`. If the `distances` parameter is not provided, then the `beta` or `minutes` parameters must be provided instead.</div>
 </div>
 
 <div class="param-set">
@@ -875,7 +945,17 @@ been applied.
   </div>
   <div class="desc">
 
- A $\beta$, or array of $\beta$ to be used for the exponential decay function for weighted metrics. The `distance` parameters for unweighted metrics will be determined implicitly. If the `betas` parameter is not provided, then the `distance` parameter must be provided instead.</div>
+ A list of $\beta$ to be used for the exponential decay function for weighted metrics. The $d_{max}$ thresholds for unweighted metrics will be determined implicitly. If the `betas` parameter is not provided, then the `distances` or `minutes` parameter must be provided instead.</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">minutes</div>
+    <div class="type">list[float]</div>
+  </div>
+  <div class="desc">
+
+ A list of walking times in minutes to be used for calculations. The $d_{max}$ thresholds for unweighted metrics and $\beta$ for distance-weighted metrics will be determined implicitly using the `speed_m_s` and `min_threshold_wt` parameters. If the `minutes` parameter is not provided, then the `distances` or `betas` parameters must be provided instead.</div>
 </div>
 
 <div class="param-set">
@@ -920,6 +1000,16 @@ been applied.
 
 <div class="param-set">
   <div class="def">
+    <div class="name">speed_m_s</div>
+    <div class="type">float</div>
+  </div>
+  <div class="desc">
+
+ The default `speed_m_s` parameter can be configured to generate custom mappings between walking times and distance thresholds $d_{max}$.</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
     <div class="name">jitter_scale</div>
     <div class="type">float</div>
   </div>
@@ -946,7 +1036,7 @@ been applied.
   </div>
   <div class="desc">
 
- The input `data_gdf` is returned with two additional columns: `nearest_assigned` and `next_neareset_assign`.</div>
+ The input `data_gdf` is returned with two additional columns: `nearest_assigned` and `next_nearest_assign`.</div>
 </div>
 
 ### Notes
@@ -960,7 +1050,7 @@ from cityseer.tools import mock, graphs, io
 # prepare a mock graph
 G = mock.mock_graph()
 G = graphs.nx_simple_geoms(G)
-nodes_gdf, edges_gdf, network_structure = io.network_structure_from_nx(G, crs=3395)
+nodes_gdf, edges_gdf, network_structure = io.network_structure_from_nx(G)
 print(nodes_gdf.head())
 numerical_gdf = mock.mock_numerical_data(G, num_arrs=3)
 print(numerical_gdf.head())

@@ -1,6 +1,65 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+/* stylelint-disable-next-line */
+@import "tailwindcss";
+
+/* stylelint-disable-next-line */
+@theme {
+  --font-defaults: raleway, serif;
+  --font-headings: raleway, sans-serif;
+  --font-mono: roboto mono, monospace;
+  --text-xxs: 0.7rem;
+  --text-xs: 0.8rem;
+  --text-sm: 0.9rem;
+  --text-base: 1rem;
+  --text-lg: 1.05rem;
+  --text-xl: 1.1rem;
+  --text-2xl: 1.1rem;
+  --text-3xl: 1.3rem;
+  --text-4xl: 2.2rem;
+  --font-weight-extralight: 200;
+  --font-weight-light: 300;
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+  --border-width-0: 0;
+  --border-width-1: 1px;
+  --border-width-2: 2px;
+  --border-width-3: 3px;
+  --border-width-4: 4px;
+  --border-width-default: 1px;
+  --border-color-theme: #d32333;
+  --border-color-lighter-grey: #f1f1f1;
+  --border-color-light-grey: #a8a8a8;
+  --border-color-mid-grey: #404040;
+  --border-color-dark-grey: #1d1d1d;
+  --border-color-darker-grey: #19181b;
+  --border-color-black: #000;
+  --border-color-white: #fff;
+  --color-theme: #d32333;
+  --color-lighter-grey: #f1f1f1;
+  --color-light-grey: #a8a8a8;
+  --color-mid-grey: #404040;
+  --color-dark-grey: #1d1d1d;
+  --color-darker-grey: #19181b;
+}
+
+/*
+  The default border color has changed to `currentcolor` in Tailwind CSS v4,
+  so we've added these compatibility styles to make sure everything still
+  looks the same as it did with Tailwind CSS v3.
+
+  If we ever want to remove these styles, we need to add an explicit border
+  color utility to any element that depends on these defaults.
+*/
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: currentcolor;
+  }
+}
 
 @layer base {
   html {
@@ -64,11 +123,11 @@
   }
 
   :not(pre) > code {
-    @apply rounded-sm bg-dark-grey px-1 font-mono text-xs font-medium text-lighter-grey;
+    @apply rounded-xs bg-dark-grey px-1 font-mono text-xs font-medium text-lighter-grey;
   }
 
   pre {
-    @apply my-4 overflow-x-auto whitespace-pre-wrap rounded border border-darker-grey p-2;
+    @apply my-4 overflow-x-auto whitespace-pre-wrap rounded-sm border border-darker-grey p-2;
 
     & code {
       @apply text-xs font-normal tracking-tight;
@@ -194,7 +253,7 @@
 
 .box,
 blockquote {
-  @apply my-3 rounded border bg-dark-grey px-2 border-mid-grey;
+  @apply my-3 rounded-sm border bg-dark-grey px-2 border-mid-grey;
 
   & p {
     @apply text-xs;

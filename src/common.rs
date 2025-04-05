@@ -1,7 +1,7 @@
 use atomic_float::AtomicF32;
 use numpy::borrow::PyReadonlyArray2;
 use numpy::{IntoPyArray, PyArray1};
-use pyo3::exceptions;
+use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use std::collections::HashMap;
 use std::f32::consts::PI;
@@ -9,6 +9,8 @@ use std::sync::atomic::Ordering;
 
 /// Minimum threshold weight for distance and beta calculations.
 static MIN_THRESH_WT: f32 = 0.01831563888873418;
+/// Walking speed in meters per second.
+pub static WALKING_SPEED: f32 = 1.33333;
 
 /// Represents a 2D coordinate with `x` and `y` values.
 #[pyclass]
@@ -136,7 +138,7 @@ pub fn check_numerical_data(data_arr: PyReadonlyArray2<f32>) -> PyResult<()> {
     for inner_arr in data_slice.rows() {
         for &num in inner_arr.iter() {
             if !num.is_finite() {
-                return Err(exceptions::PyValueError::new_err(
+                return Err(PyValueError::new_err(
                     "The numeric data values must be finite.",
                 ));
             }
@@ -150,9 +152,7 @@ pub fn check_numerical_data(data_arr: PyReadonlyArray2<f32>) -> PyResult<()> {
 #[pyo3(signature = (betas, min_threshold_wt=None))]
 pub fn distances_from_betas(betas: Vec<f32>, min_threshold_wt: Option<f32>) -> PyResult<Vec<u32>> {
     if betas.is_empty() {
-        return Err(exceptions::PyValueError::new_err(
-            "Empty iterable of betas.",
-        ));
+        return Err(PyValueError::new_err("Empty iterable of betas."));
     }
     let min_threshold_wt = min_threshold_wt.unwrap_or(MIN_THRESH_WT);
     let mut clean: Vec<f32> = Vec::new();
@@ -160,17 +160,17 @@ pub fn distances_from_betas(betas: Vec<f32>, min_threshold_wt: Option<f32>) -> P
 
     for &beta in &betas {
         if beta < 0.0 {
-            return Err(exceptions::PyValueError::new_err(
+            return Err(PyValueError::new_err(
                 "Provide the beta value without the leading negative.",
             ));
         }
         if beta == 0.0 {
-            return Err(exceptions::PyValueError::new_err(
+            return Err(PyValueError::new_err(
                 "Provide a beta value greater than zero.",
             ));
         }
         if clean.contains(&beta) || clean.iter().any(|&x| x < beta) {
-            return Err(exceptions::PyValueError::new_err(
+            return Err(PyValueError::new_err(
                 "Betas must be free of duplicates and sorted in decreasing order.",
             ));
         }
@@ -188,54 +188,111 @@ pub fn betas_from_distances(
     min_threshold_wt: Option<f32>,
 ) -> PyResult<Vec<f32>> {
     if distances.is_empty() {
-        return Err(exceptions::PyValueError::new_err(
-            "Empty iterable of distances.",
-        ));
+        return Err(PyValueError::new_err("Empty iterable of distances."));
     }
-    let min_threshold_wt = min_threshold_wt.unwrap_or(MIN_THRESH_WT);
+    let mtw = min_threshold_wt.unwrap_or(MIN_THRESH_WT);
     let mut clean: Vec<u32> = Vec::new();
     let mut betas: Vec<f32> = Vec::new();
-
     for &distance in &distances {
         if distance == 0 {
-            return Err(exceptions::PyValueError::new_err(
+            return Err(PyValueError::new_err(
                 "Distances must be positive integers.",
             ));
         }
         if clean.contains(&distance) || clean.iter().any(|&x| x > distance) {
-            return Err(exceptions::PyValueError::new_err(
+            return Err(PyValueError::new_err(
                 "Distances must be free of duplicates and sorted in increasing order.",
             ));
         }
         clean.push(distance);
-        betas.push(-min_threshold_wt.ln() / distance as f32);
+        betas.push((((-(mtw as f64).ln() / distance as f64) * 100000.0).round() / 100000.0) as f32);
     }
     Ok(betas)
 }
 
-/// Pairs distances and betas, ensuring consistency.
 #[pyfunction]
-#[pyo3(signature = (distances=None, betas=None, min_threshold_wt=None))]
-pub fn pair_distances_and_betas(
+#[pyo3(signature = (seconds, speed_m_s=None))]
+pub fn distances_from_seconds(seconds: Vec<u32>, speed_m_s: Option<f32>) -> PyResult<Vec<u32>> {
+    if seconds.is_empty() {
+        return Err(PyValueError::new_err("Empty iterable of seconds."));
+    }
+    let speed_m_s = speed_m_s.unwrap_or(WALKING_SPEED);
+    let mut clean = Vec::new();
+    let mut distances = Vec::new();
+    for &time in &seconds {
+        if clean.contains(&time) || clean.iter().any(|&x| x > time) {
+            return Err(PyValueError::new_err(
+                "Times must be free of duplicates and sorted in increasing order.",
+            ));
+        }
+        clean.push(time);
+        distances.push((time as f32 * speed_m_s).round() as u32)
+    }
+    Ok(distances)
+}
+
+#[pyfunction]
+#[pyo3(signature = (distances, speed_m_s=None))]
+pub fn seconds_from_distances(distances: Vec<u32>, speed_m_s: Option<f32>) -> PyResult<Vec<u32>> {
+    if distances.is_empty() {
+        return Err(PyValueError::new_err("Empty iterable of distances."));
+    }
+    if distances.iter().any(|&dist| dist <= 0) {
+        return Err(PyValueError::new_err(
+            "Distances must be positive integers.",
+        ));
+    }
+    let speed_m_s = speed_m_s.unwrap_or(WALKING_SPEED);
+    let mut clean: Vec<u32> = Vec::new();
+    let mut seconds: Vec<u32> = Vec::new();
+    for &distance in &distances {
+        if distance == 0 {
+            return Err(PyValueError::new_err(
+                "Distances must be positive integers.",
+            ));
+        }
+        if clean.contains(&distance) || clean.iter().any(|&x| x > distance) {
+            return Err(PyValueError::new_err(
+                "Distances must be free of duplicates and sorted in increasing order.",
+            ));
+        }
+        clean.push(distance);
+        seconds.push((distance as f32 / speed_m_s).round() as u32);
+    }
+    Ok(seconds)
+}
+
+#[pyfunction]
+#[pyo3(signature = (distances=None, betas=None, minutes=None, min_threshold_wt=None, speed_m_s=None))]
+pub fn pair_distances_betas_time(
     distances: Option<Vec<u32>>,
     betas: Option<Vec<f32>>,
+    minutes: Option<Vec<f32>>,
     min_threshold_wt: Option<f32>,
-) -> PyResult<(Vec<u32>, Vec<f32>)> {
-    match (distances, betas) {
-        (Some(_), Some(_)) => Err(exceptions::PyValueError::new_err(
-            "Please provide either distances or betas, not both.",
-        )),
-        (None, None) => Err(exceptions::PyValueError::new_err(
-            "Please provide either distances or betas. Neither has been provided.",
-        )),
-        (Some(distances), None) => {
-            let betas = betas_from_distances(distances.clone(), min_threshold_wt)?;
-            Ok((distances, betas))
+    speed_m_s: Option<f32>,
+) -> PyResult<(Vec<u32>, Vec<f32>, Vec<u32>)> {
+    let min_threshold_wt = min_threshold_wt.unwrap_or(MIN_THRESH_WT);
+    let speed_m_s = speed_m_s.unwrap_or(WALKING_SPEED);
+    match (distances, betas, minutes) {
+        (Some(distances), None, None) => {
+            let betas = betas_from_distances(distances.clone(), Some(min_threshold_wt))?;
+            let seconds = seconds_from_distances(distances.clone(), Some(speed_m_s))?;
+            Ok((distances, betas, seconds))
         }
-        (None, Some(betas)) => {
-            let distances = distances_from_betas(betas.clone(), min_threshold_wt)?;
-            Ok((distances, betas))
+        (None, Some(betas), None) => {
+            let distances = distances_from_betas(betas.clone(), Some(min_threshold_wt))?;
+            let seconds = seconds_from_distances(distances.clone(), Some(speed_m_s))?;
+            Ok((distances, betas, seconds))
         }
+        (None, None, Some(minutes)) => {
+            let seconds: Vec<u32> = minutes.iter().map(|&x| (x * 60.0).round() as u32).collect();
+            let distances = distances_from_seconds(seconds.clone(), Some(speed_m_s))?;
+            let betas = betas_from_distances(distances.clone(), Some(min_threshold_wt))?;
+            Ok((distances, betas, seconds))
+        }
+        _ => Err(PyValueError::new_err(
+            "Please provide exactly one of distances, betas, or minutes.",
+        )),
     }
 }
 
@@ -247,9 +304,7 @@ pub fn avg_distances_for_betas(
     min_threshold_wt: Option<f32>,
 ) -> PyResult<Vec<f32>> {
     if betas.is_empty() {
-        return Err(exceptions::PyValueError::new_err(
-            "Empty iterable of betas.",
-        ));
+        return Err(PyValueError::new_err("Empty iterable of betas."));
     }
     let min_threshold_wt = min_threshold_wt.unwrap_or(MIN_THRESH_WT);
     let distances = distances_from_betas(betas.clone(), Some(min_threshold_wt))?;
@@ -258,7 +313,7 @@ pub fn avg_distances_for_betas(
         .zip(distances.iter())
         .map(|(&beta, &distance)| {
             if distance == 0 {
-                return Err(exceptions::PyValueError::new_err(
+                return Err(PyValueError::new_err(
                     "Distances must be positive integers.",
                 ));
             }
@@ -282,7 +337,7 @@ pub fn clip_wts_curve(
         .zip(betas.iter())
         .map(|(&dist, &beta)| {
             if spatial_tolerance > dist {
-                return Err(exceptions::PyValueError::new_err(
+                return Err(PyValueError::new_err(
                     "Clipping distance cannot be greater than the given distance threshold.",
                 ));
             }
@@ -296,7 +351,7 @@ pub fn clip_wts_curve(
 #[pyfunction]
 pub fn clipped_beta_wt(beta: f32, max_curve_wt: f32, data_dist: f32) -> PyResult<f32> {
     if !(0.0..=1.0).contains(&max_curve_wt) {
-        return Err(exceptions::PyValueError::new_err(
+        return Err(PyValueError::new_err(
             "Max curve weight must be in the range [0, 1].",
         ));
     }

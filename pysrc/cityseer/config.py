@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import os
 import threading
 import time
@@ -10,6 +11,9 @@ import numpy as np
 from tqdm import tqdm
 
 from cityseer import rustalgos
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 np.seterr(invalid="ignore")
 
@@ -50,13 +54,32 @@ def check_debug() -> bool:
 
 
 DEBUG_MODE: bool = check_debug()
-
-
+# for turning off validation
+SKIP_VALIDATION: bool = False
 # for calculating default betas vs. distances
 MIN_THRESH_WT: float = 0.01831563888873418
+SPEED_M_S = 1.33333
 # for all_close equality checks
 ATOL: float = 0.001
 RTOL: float = 0.0001
+
+
+def log_thresholds(
+    distances: list[int] | None = None,
+    betas: list[float] | None = None,
+    minutes: list[float] | None = None,
+    min_threshold_wt: float = MIN_THRESH_WT,
+    speed_m_s: float = SPEED_M_S,
+):
+    # pair distances, betas, and time for logging - DO AFTER PARTIAL FUNC
+    distances, betas, seconds = rustalgos.pair_distances_betas_time(
+        distances, betas, minutes, min_threshold_wt=min_threshold_wt, speed_m_s=speed_m_s
+    )
+    # log distances, betas, minutes
+    logger.info("Metrics computed for:")
+    for distance, beta, walking_time in zip(distances, betas, seconds, strict=True):
+        logger.info(f"Distance: {distance}m, Beta: {round(beta, 5)}, Walking Time: {walking_time / 60} minutes.")
+    return distances
 
 
 RustResults = (
@@ -82,7 +105,10 @@ def wrap_progress(
 
     result_queue: Queue[RustResults] = Queue()
     thread = threading.Thread(target=wrapper, args=(result_queue,))
-    pbar = tqdm(total=total)
+    pbar = tqdm(
+        total=total,
+        disable=QUIET_MODE,
+    )
     thread.start()
     while thread.is_alive():
         time.sleep(1)
@@ -91,4 +117,5 @@ def wrap_progress(
     pbar.close()
     result = result_queue.get()
     thread.join()
+
     return result

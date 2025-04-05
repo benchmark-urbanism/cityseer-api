@@ -35,7 +35,7 @@ logger = logging.getLogger(__name__)
 MultiGraph = Any
 
 
-class ColourMap:
+class _ColourMap:
     """Specifies global colour presets."""
 
     primary: str = "#0091ea"
@@ -47,7 +47,7 @@ class ColourMap:
     background: str = "#19181B"
 
 
-COLOUR_MAP = ColourMap()
+COLOUR_MAP = _ColourMap()
 
 ColourType = str | npt.ArrayLike
 
@@ -227,7 +227,10 @@ def plot_nx_primal_or_dual(  # noqa
         start_node_key: NodeKey
         end_node_key: NodeKey
         node_data: NodeData
-        for start_node_key, end_node_key, node_data in tqdm(_graph.edges(data=True)):  # type: ignore
+        for start_node_key, end_node_key, node_data in tqdm(
+            _graph.edges(data=True),
+            disable=config.QUIET_MODE,
+        ):  # type: ignore
             # filter out if start and end nodes are not in the active node list
             if start_node_key not in node_list or end_node_key not in node_list:
                 continue
@@ -241,7 +244,7 @@ def plot_nx_primal_or_dual(  # noqa
                         f"Can't plot geoms because a 'geom' key can't be found for edge {start_node_key} to "
                         f"{end_node_key}. Use the nx_simple_geoms() method if you need to create geoms for a graph."
                     ) from err
-                edge_geoms.append(tuple(zip(x_arr, y_arr, strict=False)))  # type: ignore
+                edge_geoms.append(tuple(zip(x_arr, y_arr, strict=True)))  # type: ignore
             else:
                 edge_list.append((start_node_key, end_node_key))
         # plot geoms manually if required
@@ -369,7 +372,7 @@ def plot_nx(
     G = mock.mock_graph()
     G = graphs.nx_simple_geoms(G)
     G = graphs.nx_decompose(G, 50)
-    nodes_gdf, edges_gdf, network_structure = io.network_structure_from_nx(G, crs=3395)
+    nodes_gdf, edges_gdf, network_structure = io.network_structure_from_nx(G)
     networks.node_centrality_shortest(network_structure=network_structure, nodes_gdf=nodes_gdf, distances=[800])
     G_after = io.nx_from_cityseer_geopandas(nodes_gdf, edges_gdf)
     # let's extract and normalise the values
@@ -407,7 +410,7 @@ def plot_nx(
     )
 
 
-class SimpleLabelEncoder:
+class _SimpleLabelEncoder:
     def __init__(self):
         self.classes_ = {}
 
@@ -449,7 +452,7 @@ def plot_assignment(
     nx_multigraph: MultiGraph
         A `NetworkX` MultiGraph.
     data_gdf: GeoDataFrame
-        A `data_gdf` `GeoDataFrame` with `nearest_assigned` and `next_neareset_assign` columns.
+        A `data_gdf` `GeoDataFrame` with `nearest_assigned` and `next_nearest_assign` columns.
     path: str
         An optional filepath: if provided, the image will be saved to the path instead of being displayed. Defaults to
         None.
@@ -512,7 +515,7 @@ def plot_assignment(
         data_cmap = None
     else:
         # generate categorical colormap
-        lab_enc = SimpleLabelEncoder()
+        lab_enc = _SimpleLabelEncoder()
         lab_enc.fit(data_labels)
         # map the int encodings to the respective classes
         classes_int: npt.ArrayLike = lab_enc.transform(data_labels)
@@ -583,7 +586,7 @@ def plot_network_structure(
     network_structure: rustalgos.NetworkStructure
         A [`rustalgos.NetworkStructure`](/rustalgos/rustalgos#networkstructure) instance.
     data_gdf: GeoDataFrame
-        A `data_gdf` `GeoDataFrame` with `nearest_assigned` and `next_neareset_assign` columns.
+        A `data_gdf` `GeoDataFrame` with `nearest_assigned` and `next_nearest_assign` columns.
     poly: geometry.Polygon
         An optional polygon. Defaults to None.
 
@@ -669,7 +672,7 @@ def plot_network_structure(
     plt.show()
 
 
-def minmax_scale_manual(data, feature_range=(0, 1)):
+def _minmax_scale_manual(data, feature_range=(0, 1)):
     """Manually scales data to a given range (default 0 to 1)."""
     data = np.asarray(data, dtype=float)  # Ensure numeric array
     min_val, max_val = np.min(data), np.max(data)
@@ -746,7 +749,7 @@ def plot_scatter(
     # normalise
     c_norm = mpl.colors.Normalize(vmin=v_min, vmax=v_max, clip=True)  # type: ignore
     colours: npt.ArrayLike = c_norm(v_shape)
-    sizes: npt.ArrayLike = minmax_scale_manual(colours, (s_min, s_max))  # type: ignore
+    sizes: npt.ArrayLike = _minmax_scale_manual(colours, (s_min, s_max))  # type: ignore
     # plot
     img: Any = ax.scatter(
         xs[select_idx],
@@ -867,7 +870,7 @@ def plot_nx_edges(
     # normalise
     c_norm = mpl.colors.Normalize(vmin=v_shape.min(), vmax=v_shape.max())  # type: ignore
     colours: npt.ArrayLike = c_norm(v_shape)
-    sizes: npt.ArrayLike = minmax_scale_manual(colours, (lw_min, lw_max))  # type: ignore
+    sizes: npt.ArrayLike = _minmax_scale_manual(colours, (lw_min, lw_max))  # type: ignore
     # sort so that larger lines plot over smaller lines
     sort_idx: npt.ArrayLike = np.argsort(colours)
     if invert_plot_order:
@@ -886,7 +889,7 @@ def plot_nx_edges(
                 continue
             if np.any(ys < min_y) or np.any(ys > max_y):
                 continue
-            plot_geoms.append(tuple(zip(xs, ys, strict=False)))
+            plot_geoms.append(tuple(zip(xs, ys, strict=True)))
             plot_colours.append(cmap(colours[idx]))  # type: ignore
             plot_lws.append(sizes[idx])  # type: ignore
         lines = LineCollection(
@@ -937,7 +940,7 @@ def plot_nx_edges(
                     continue
                 if np.any(ys < min_y) or np.any(ys > max_y):
                     continue
-                plot_geoms.append(tuple(zip(xs, ys, strict=False)))
+                plot_geoms.append(tuple(zip(xs, ys, strict=True)))
                 plot_colours.append(item_c)
                 plot_lws.append(item_lw)
         lines = LineCollection(

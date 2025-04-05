@@ -23,14 +23,14 @@ layout: ../../layouts/PageLayout.astro
     <span class="pa"> networkx.classes.multigraph.MultiGraph</span>
   </div>
   <div class="param">
-    <span class="pn">from_crs_code</span>
+    <span class="pn">to_crs_code</span>
     <span class="pc">:</span>
     <span class="pa"> int | str</span>
   </div>
   <div class="param">
-    <span class="pn">to_crs_code</span>
+    <span class="pn">from_crs_code</span>
     <span class="pc">:</span>
-    <span class="pa"> int | str</span>
+    <span class="pa"> None = None</span>
   </div>
   <span class="pt">)-&gt;[</span>
   <span class="pr">MultiGraph</span>
@@ -53,22 +53,22 @@ layout: ../../layouts/PageLayout.astro
 
 <div class="param-set">
   <div class="def">
-    <div class="name">from_crs_code</div>
-    <div class="type">int | str</div>
-  </div>
-  <div class="desc">
-
- An integer representing a valid EPSG code specifying the CRS from which the graph must be converted. For example, [4326](https://epsg.io/4326) if converting data from an OpenStreetMap response.</div>
-</div>
-
-<div class="param-set">
-  <div class="def">
     <div class="name">to_crs_code</div>
     <div class="type">int | str</div>
   </div>
   <div class="desc">
 
- An integer representing a valid EPSG code specifying the CRS into which the graph must be projected. For example, [27700](https://epsg.io/27700) if converting to British National Grid.</div>
+ A `pyproj` compatible `str` or `int` representing a valid CRS into which the graph must be projected. For example, [27700](https://epsg.io/27700) if converting to British National Grid.</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">from_crs_code</div>
+    <div class="type">None</div>
+  </div>
+  <div class="desc">
+
+ The &quot;from_crs_code&quot; parameter is deprecated and will be removed in a future release. The CRS can be set directly in the graph if not already present at G.graph[&quot;crs&quot;]; for example, G.graph[&quot;crs&quot;] = pyproj.CRS(27700)'</div>
 </div>
 
 ### Returns
@@ -427,7 +427,7 @@ builds a graph automatically.
   </div>
   <div class="desc">
 
- An optional integer representing a valid EPSG code for the generated network returned from this function. If this parameter is provided, then the network will be converted to the specified EPSG coordinate reference system. If not provided, then the OSM network will be projected into a local UTM coordinate reference system.</div>
+ An optional `pyproj` compatible `str` or `int` representing a valid CRS for the generated network returned from this function. If this parameter is provided, then the network will be converted to the specified CRS. If not provided, then the OSM network will be projected into a local UTM coordinate reference system.</div>
 </div>
 
 <div class="param-set">
@@ -638,6 +638,8 @@ out qt;
   <span class="pt">(</span>
   <div class="param">
     <span class="pn">nx_multidigraph</span>
+    <span class="pc">:</span>
+    <span class="pa"> networkx.classes.multidigraph.MultiDiGraph</span>
   </div>
   <div class="param">
     <span class="pn">node_attributes</span>
@@ -832,7 +834,7 @@ out qt;
   <div class="param">
     <span class="pn">crs</span>
     <span class="pc">:</span>
-    <span class="pa"> str | int</span>
+    <span class="pa"> None = None</span>
   </div>
   <span class="pt">)-&gt;[</span>
   <span class="pr">GeoDataFrame</span>
@@ -858,11 +860,11 @@ out qt;
 <div class="param-set">
   <div class="def">
     <div class="name">crs</div>
-    <div class="type">str | int</div>
+    <div class="type">None</div>
   </div>
   <div class="desc">
 
- CRS for initialising the returned structures. This is used for initialising the GeoPandas [`GeoDataFrame`](https://geopandas.org/en/stable/docs/reference/api/geopandas.GeoDataFrame.html#geopandas-geodataframe).</div>
+ The &quot;crs&quot; parameter is deprecated and will be removed in a future release. The CRS can be set directly in the graph if not already present at G.graph[&quot;crs&quot;]; for example, G.graph[&quot;crs&quot;] = pyproj.CRS(27700)'</div>
 </div>
 
 ### Returns
@@ -964,6 +966,60 @@ out qt;
 
 <div class="function">
 
+## add_transport_gtfs
+
+
+<div class="content">
+<span class="name">add_transport_gtfs</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">gtfs_data_path</span>
+    <span class="pc">:</span>
+    <span class="pa"> str</span>
+  </div>
+  <div class="param">
+    <span class="pn">nodes_gdf</span>
+    <span class="pc">:</span>
+    <span class="pa"> geopandas.geodataframe.GeoDataFrame</span>
+  </div>
+  <div class="param">
+    <span class="pn">edges_gdf</span>
+    <span class="pc">:</span>
+    <span class="pa"> geopandas.geodataframe.GeoDataFrame</span>
+  </div>
+  <div class="param">
+    <span class="pn">network_structure</span>
+    <span class="pc">:</span>
+    <span class="pa"> NetworkStructure</span>
+  </div>
+  <div class="param">
+    <span class="pn">max_netw_assign_dist</span>
+    <span class="pc">:</span>
+    <span class="pa"> int = 400</span>
+  </div>
+  <div class="param">
+    <span class="pn">speed_m_s</span>
+    <span class="pc">:</span>
+    <span class="pa"> float = 1.33333</span>
+  </div>
+  <span class="pt">)-&gt;[</span>
+  <span class="pr">GeoDataFrame</span>
+  <span class="pr">GeoDataFrame</span>
+  <span class="pr">NetworkStructure</span>
+  <span class="pr">DataFrame</span>
+  <span class="pr">DataFrame</span>
+  <span class="pt">]</span>
+</div>
+</div>
+
+
+ Add GTFS data to network structure.
+
+</div>
+
+
+<div class="function">
+
 ## nx_from_cityseer_geopandas
 
 
@@ -1042,7 +1098,7 @@ out qt;
   <div class="param">
     <span class="pn">crs</span>
     <span class="pc">:</span>
-    <span class="pa"> str | int</span>
+    <span class="pa"> None = None</span>
   </div>
   <span class="pt">)-&gt;[</span>
   <span class="pr">GeoDataFrame</span>
@@ -1066,11 +1122,11 @@ out qt;
 <div class="param-set">
   <div class="def">
     <div class="name">crs</div>
-    <div class="type">str | int</div>
+    <div class="type">None</div>
   </div>
   <div class="desc">
 
- CRS for initialising the returned structures. This is used for initialising the GeoPandas [`GeoDataFrame`](https://geopandas.org/en/stable/docs/reference/api/geopandas.GeoDataFrame.html#geopandas-geodataframe).</div>
+ The &quot;crs&quot; parameter is deprecated and will be removed in a future release. The CRS can be set directly in the graph if not already present at G.graph[&quot;crs&quot;]; for example, G.graph[&quot;crs&quot;] = pyproj.CRS(27700)'</div>
 </div>
 
 ### Returns

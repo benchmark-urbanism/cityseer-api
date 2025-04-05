@@ -43,15 +43,27 @@ pub struct EdgePayload {
     pub in_bearing: f32,
     #[pyo3(get)]
     pub out_bearing: f32,
+    #[pyo3(get)]
+    pub seconds: f32,
 }
 #[pymethods]
 impl EdgePayload {
     fn validate(&self) -> bool {
-        self.length.is_finite()
+        // if seconds is NaN, then all other values must be finite
+        if self.seconds.is_nan() {
+            return (self.length.is_finite())
+                && (self.angle_sum.is_finite())
+                && (self.imp_factor.is_finite())
+                && (self.in_bearing.is_finite())
+                && (self.out_bearing.is_finite());
+        }
+        // if seconds is finite, then other values are optional
+        self.seconds.is_finite()
+            && self.length.is_finite()
             && self.angle_sum.is_finite()
             && self.imp_factor.is_finite()
-            && self.in_bearing.is_finite()
-            && self.out_bearing.is_finite()
+            && (self.in_bearing.is_finite() || self.in_bearing.is_nan())
+            && (self.out_bearing.is_finite() || self.out_bearing.is_nan())
     }
 }
 #[pyclass]
@@ -75,6 +87,8 @@ pub struct NodeVisit {
     pub last_seg: Option<usize>,
     #[pyo3(get)]
     pub out_bearing: f32,
+    #[pyo3(get)]
+    pub agg_seconds: f32,
 }
 #[pymethods]
 impl NodeVisit {
@@ -90,6 +104,7 @@ impl NodeVisit {
             origin_seg: None,
             last_seg: None,
             out_bearing: f32::NAN,
+            agg_seconds: f32::INFINITY,
         }
     }
 }
@@ -212,11 +227,12 @@ impl NetworkStructure {
         edge_idx: usize,
         start_nd_key: String,
         end_nd_key: String,
-        length: f32,
-        angle_sum: f32,
-        imp_factor: f32,
-        in_bearing: f32,
-        out_bearing: f32,
+        length: Option<f32>,
+        angle_sum: Option<f32>,
+        imp_factor: Option<f32>,
+        in_bearing: Option<f32>,
+        out_bearing: Option<f32>,
+        seconds: Option<f32>,
     ) -> usize {
         let _node_idx_a = NodeIndex::new(start_nd_idx.try_into().unwrap());
         let _node_idx_b = NodeIndex::new(end_nd_idx.try_into().unwrap());
@@ -227,11 +243,12 @@ impl NetworkStructure {
                 start_nd_key,
                 end_nd_key,
                 edge_idx,
-                length,
-                angle_sum,
-                imp_factor,
-                in_bearing,
-                out_bearing,
+                length: length.unwrap_or(1.0),
+                angle_sum: angle_sum.unwrap_or(1.0),
+                imp_factor: imp_factor.unwrap_or(1.0),
+                in_bearing: in_bearing.unwrap_or(f32::NAN),
+                out_bearing: out_bearing.unwrap_or(f32::NAN),
+                seconds: seconds.unwrap_or(f32::NAN),
             },
         );
         new_edge_idx.index().try_into().unwrap()

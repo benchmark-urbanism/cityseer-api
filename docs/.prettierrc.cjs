@@ -10,7 +10,7 @@ module.exports = {
   pugEmptyAttributes: 'all',
   pugClassLocation: 'after-attributes',
   pugExplicitDiv: true,
-  plugins: ['prettier-plugin-astro'],
+  plugins: ['prettier-plugin-astro', "prettier-plugin-tailwindcss"],
   overrides: [
     {
       files: '*.astro',
