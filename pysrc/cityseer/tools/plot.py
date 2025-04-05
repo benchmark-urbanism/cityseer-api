@@ -410,7 +410,7 @@ def plot_nx(
     )
 
 
-class SimpleLabelEncoder:
+class _SimpleLabelEncoder:
     def __init__(self):
         self.classes_ = {}
 
@@ -515,7 +515,7 @@ def plot_assignment(
         data_cmap = None
     else:
         # generate categorical colormap
-        lab_enc = SimpleLabelEncoder()
+        lab_enc = _SimpleLabelEncoder()
         lab_enc.fit(data_labels)
         # map the int encodings to the respective classes
         classes_int: npt.ArrayLike = lab_enc.transform(data_labels)
