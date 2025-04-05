@@ -7,6 +7,7 @@ div.flex.justify-center.py-4
   )
     span#arXiv-logo arXiv.org
     div.text-sm.font-medium.leading-none arXiv id: {{ arXivIdentifier }}
+
 </template>
 
 <script setup>
@@ -30,9 +31,11 @@ const arXivIdentifier = computed(() => {
   @apply flex flex-col items-center justify-center;
   @apply m-2 rounded-sm border-0.5 border-mid-grey bg-dark-grey p-2 shadow;
 }
+
 #arXiv-logo {
   @apply m-2 bg-theme px-1 font-mono text-white transition-all;
 }
+
 #arXiv-container:hover > #arXiv-logo {
   @apply scale-105;
 }

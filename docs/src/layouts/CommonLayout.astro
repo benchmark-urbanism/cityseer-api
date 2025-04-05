@@ -3,37 +3,45 @@ import '@src/styles/tailwind.css'
 ---
 
 <html lang="en-GB">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="author" content="Benchmark Urbanism (Cityseer Ltd.)" />
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <!-- favicons -->
+    <link rel="icon" href="/favicon.ico" />
+    <link rel="icon" href="/favicons/favicon.ico" />
+    <link rel="icon" href="/favicons/icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/favicons/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Raleway:ital,wght@0,200;0,300;0,400;0,500;0,600;0,700;1,300&display=swap"
+    />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@200;300;400;500;600;700&display=swap"
+    />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16/dist/katex.min.css" />
+    <slot name="metaContent" />
+    <meta
+      set:html
+      name="description"
+      content="Cityseer API is a collection of computational tools for fine-grained network and land-use analysis, useful for assessing the morphological precursors to vibrant neighbourhoods. It is underpinned by rigorous network-based methods that have been developed from the ground-up specifically for hyperlocal analysis at the pedestrian scale."
+    />
+    <meta
+      set:html
+      name="keywords"
+      content="cityseer, urban, metrics, analytics, big data, predictive analytics, urban design, planning, property development, machine learning, API"
+    />
+  </head>
 
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="author" content="Benchmark Urbanism (Cityseer Ltd.)" />
-  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-  <!-- favicons -->
-  <link rel="icon" href="/favicon.ico" />
-  <link rel="icon" href="/favicons/favicon.ico" />
-  <link rel="icon" href="/favicons/icon.svg" type="image/svg+xml" />
-  <link rel="apple-touch-icon" href="/favicons/apple-touch-icon.png" />
-  <link rel="manifest" href="/manifest.webmanifest" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" />
-  <link rel="stylesheet"
-    href="https://fonts.googleapis.com/css2?family=Raleway:ital,wght@0,200;0,300;0,400;0,500;0,600;0,700;1,300&display=swap" />
-  <link rel="stylesheet"
-    href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@200;300;400;500;600;700&display=swap" />
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16/dist/katex.min.css" />
-  <slot name="metaContent" />
-  <meta set:html name="description"
-    content='Cityseer API is a collection of computational tools for fine-grained network and land-use analysis, useful for assessing the morphological precursors to vibrant neighbourhoods. It is underpinned by rigorous network-based methods that have been developed from the ground-up specifically for hyperlocal analysis at the pedestrian scale.' />
-  <meta set:html name="keywords"
-    content='cityseer, urban, metrics, analytics, big data, predictive analytics, urban design, planning, property development, machine learning, API' />
-</head>
-
-<body>
-  <main id='app-container'>
-    <slot />
-  </main>
-</body>
-
+  <body>
+    <main id="app-container">
+      <slot />
+    </main>
+  </body>
 </html>
 
 <style>
@@ -41,5 +49,6 @@ import '@src/styles/tailwind.css'
     @apply min-h-screen w-screen flex justify-center;
   }
 
-  @media only screen and (max-width: 958px) {}
+  @media only screen and (max-width: 958px) {
+  }
 </style>

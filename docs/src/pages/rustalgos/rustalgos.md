@@ -3092,22 +3092,22 @@ datapoints are not located with high spatial precision.
 
  
 
-<span class="name">node_ys</span><span class="annotation">: list[float]</span>
-
-
- 
-
 <span class="name">node_xs</span><span class="annotation">: list[float]</span>
 
 
  
 
-<span class="name">node_xys</span><span class="annotation">: list[tuple[float, float]]</span>
+<span class="name">node_lives</span><span class="annotation">: list[bool]</span>
 
 
  
 
-<span class="name">node_lives</span><span class="annotation">: list[bool]</span>
+<span class="name">node_ys</span><span class="annotation">: list[float]</span>
+
+
+ 
+
+<span class="name">node_xys</span><span class="annotation">: list[tuple[float, float]]</span>
 
 
  
@@ -3293,7 +3293,12 @@ datapoints are not located with high spatial precision.
   <span class="pr">complex</span>
   <span class="pr">str</span>
   <span class="pr">bytes</span>
-  <span class="pr">_NestedSequence[bool | int | float | complex | str | bytes]]</span>
+  <span class="pr">Union[bool</span>
+  <span class="pr">int</span>
+  <span class="pr">float</span>
+  <span class="pr">complex</span>
+  <span class="pr">str</span>
+  <span class="pr">bytes]]]</span>
   <span class="pr">Union[Buffer</span>
   <span class="pr">Any]]</span>
   <span class="pr">Any]]]</span>
@@ -3303,7 +3308,12 @@ datapoints are not located with high spatial precision.
   <span class="pr">complex</span>
   <span class="pr">str</span>
   <span class="pr">bytes</span>
-  <span class="pr">_NestedSequence[bool | int | float | complex | str | bytes]]</span>
+  <span class="pr">Union[bool</span>
+  <span class="pr">int</span>
+  <span class="pr">float</span>
+  <span class="pr">complex</span>
+  <span class="pr">str</span>
+  <span class="pr">bytes]]]</span>
   <span class="pr">Union[Buffer</span>
   <span class="pr">Any]]</span>
   <span class="pr">Any]]]</span>
@@ -3313,7 +3323,12 @@ datapoints are not located with high spatial precision.
   <span class="pr">complex</span>
   <span class="pr">str</span>
   <span class="pr">bytes</span>
-  <span class="pr">_NestedSequence[bool | int | float | complex | str | bytes]]</span>
+  <span class="pr">Union[bool</span>
+  <span class="pr">int</span>
+  <span class="pr">float</span>
+  <span class="pr">complex</span>
+  <span class="pr">str</span>
+  <span class="pr">bytes]]]</span>
   <span class="pt">]</span>
 </div>
 </div>
@@ -3366,7 +3381,12 @@ datapoints are not located with high spatial precision.
   <span class="pr">complex</span>
   <span class="pr">str</span>
   <span class="pr">bytes</span>
-  <span class="pr">_NestedSequence[bool | int | float | complex | str | bytes]]</span>
+  <span class="pr">_NestedSequence[Union[bool</span>
+  <span class="pr">int</span>
+  <span class="pr">float</span>
+  <span class="pr">complex</span>
+  <span class="pr">str</span>
+  <span class="pr">bytes]]]</span>
   <span class="pt">]</span>
 </div>
 </div>

@@ -23,17 +23,7 @@ layout: ../../layouts/PageLayout.astro
     <span class="pa"> networkx.classes.multigraph.MultiGraph</span>
   </div>
   <div class="param">
-    <span class="pn">crs_code</span>
-    <span class="pc">:</span>
-    <span class="pa"> str | int | None = None</span>
-  </div>
-  <div class="param">
-    <span class="pn">check_nodes</span>
-    <span class="pc">:</span>
-    <span class="pa"> bool = True</span>
-  </div>
-  <div class="param">
-    <span class="pn">check_edges</span>
+    <span class="pn">validate_edges</span>
     <span class="pc">:</span>
     <span class="pa"> bool = True</span>
   </div>
@@ -45,6 +35,39 @@ layout: ../../layouts/PageLayout.astro
 
 
  Validates a `networkX` `MultiGraph` for use with `cityseer`.
+### Parameters
+<div class="param-set">
+  <div class="def">
+    <div class="name">nx_multigraph</div>
+    <div class="type">MultiGraph</div>
+  </div>
+  <div class="desc">
+
+ A `networkX` `MultiGraph` with a `crs` attribute denoting a projected coordinate system, containing `x` and `y` node attributes, and `geom` edge attributes containing `LineString` geoms.</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">validate_edges</div>
+    <div class="type">bool</div>
+  </div>
+  <div class="desc">
+
+
+</div>
+</div>
+
+### Returns
+<div class="param-set">
+  <div class="def">
+    <div class="name"></div>
+    <div class="type">MultiGraph</div>
+  </div>
+  <div class="desc">
+
+ A `networkX` `MultiGraph` with nodes of degree=2 removed. Adjacent edges will be combined into a unified new edge with associated `geom` attributes spliced together.</div>
+</div>
+
 
 </div>
 
@@ -59,13 +82,9 @@ layout: ../../layouts/PageLayout.astro
   <span class="pt">(</span>
   <div class="param">
     <span class="pn">xy_1</span>
-    <span class="pc">:</span>
-    <span class="pa"> numpy.ndarray[tuple[int, ...], numpy.dtype[numpy.float64]]</span>
   </div>
   <div class="param">
     <span class="pn">xy_2</span>
-    <span class="pc">:</span>
-    <span class="pa"> numpy.ndarray[tuple[int, ...], numpy.dtype[numpy.float64]]</span>
   </div>
   <span class="pt">)-&gt;[</span>
   <span class="pr">float</span>
@@ -89,18 +108,12 @@ layout: ../../layouts/PageLayout.astro
   <span class="pt">(</span>
   <div class="param">
     <span class="pn">coords_1</span>
-    <span class="pc">:</span>
-    <span class="pa"> numpy.ndarray[tuple[int, ...], numpy.dtype[numpy.float64]]</span>
   </div>
   <div class="param">
     <span class="pn">coords_2</span>
-    <span class="pc">:</span>
-    <span class="pa"> numpy.ndarray[tuple[int, ...], numpy.dtype[numpy.float64]]</span>
   </div>
   <div class="param">
     <span class="pn">coords_3</span>
-    <span class="pc">:</span>
-    <span class="pa"> numpy.ndarray[tuple[int, ...], numpy.dtype[numpy.float64]]</span>
   </div>
   <span class="pt">)-&gt;[</span>
   <span class="pr">float</span>
@@ -124,13 +137,9 @@ layout: ../../layouts/PageLayout.astro
   <span class="pt">(</span>
   <div class="param">
     <span class="pn">linestring_coords_a</span>
-    <span class="pc">:</span>
-    <span class="pa"> list[tuple[float, float] | tuple[float, float, float] | numpy.ndarray[tuple[int, ...], numpy.dtype[numpy.float64]]] | shapely.coords.CoordinateSequence</span>
   </div>
   <div class="param">
     <span class="pn">linestring_coords_b</span>
-    <span class="pc">:</span>
-    <span class="pa"> list[tuple[float, float] | tuple[float, float, float] | numpy.ndarray[tuple[int, ...], numpy.dtype[numpy.float64]]] | shapely.coords.CoordinateSequence</span>
   </div>
   <span class="pt">)</span>
 </div>
@@ -152,8 +161,6 @@ layout: ../../layouts/PageLayout.astro
   <span class="pt">(</span>
   <div class="param">
     <span class="pn">linestring_coords</span>
-    <span class="pc">:</span>
-    <span class="pa"> list[tuple[float, float] | tuple[float, float, float] | numpy.ndarray[tuple[int, ...], numpy.dtype[numpy.float64]]] | shapely.coords.CoordinateSequence</span>
   </div>
   <span class="pt">)-&gt;[</span>
   <span class="pr">float</span>
@@ -177,8 +184,6 @@ layout: ../../layouts/PageLayout.astro
   <span class="pt">(</span>
   <div class="param">
     <span class="pn">linestring_coords</span>
-    <span class="pc">:</span>
-    <span class="pa"> list[tuple[float, float] | tuple[float, float, float] | numpy.ndarray[tuple[int, ...], numpy.dtype[numpy.float64]]] | shapely.coords.CoordinateSequence</span>
   </div>
   <span class="pt">)-&gt;[</span>
   <span class="pr">float</span>
@@ -202,20 +207,14 @@ layout: ../../layouts/PageLayout.astro
   <span class="pt">(</span>
   <div class="param">
     <span class="pn">linestring_coords</span>
-    <span class="pc">:</span>
-    <span class="pa"> list[tuple[float, float] | tuple[float, float, float] | numpy.ndarray[tuple[int, ...], numpy.dtype[numpy.float64]]] | shapely.coords.CoordinateSequence</span>
   </div>
   <div class="param">
     <span class="pn">x_y</span>
-    <span class="pc">:</span>
-    <span class="pa"> tuple[float, float] | tuple[float, float, float] | numpy.ndarray[tuple[int, ...], numpy.dtype[numpy.float64]]</span>
   </div>
   <span class="pt">)-&gt;[</span>
   <span class="pr">list[tuple[float</span>
   <span class="pr">float] | tuple[float</span>
   <span class="pr">float</span>
-  <span class="pr">ndarray[tuple[int</span>
-  <span class="pr">]</span>
   <span class="pr">CoordinateSequence</span>
   <span class="pt">]</span>
 </div>
@@ -269,20 +268,14 @@ layout: ../../layouts/PageLayout.astro
   <span class="pt">(</span>
   <div class="param">
     <span class="pn">linestring_coords</span>
-    <span class="pc">:</span>
-    <span class="pa"> list[tuple[float, float] | tuple[float, float, float] | numpy.ndarray[tuple[int, ...], numpy.dtype[numpy.float64]]] | shapely.coords.CoordinateSequence</span>
   </div>
   <div class="param">
     <span class="pn">x_y</span>
-    <span class="pc">:</span>
-    <span class="pa"> tuple[float, float] | tuple[float, float, float] | numpy.ndarray[tuple[int, ...], numpy.dtype[numpy.float64]]</span>
   </div>
   <span class="pt">)-&gt;[</span>
   <span class="pr">list[tuple[float</span>
   <span class="pr">float] | tuple[float</span>
   <span class="pr">float</span>
-  <span class="pr">ndarray[tuple[int</span>
-  <span class="pr">]</span>
   <span class="pr">CoordinateSequence</span>
   <span class="pt">]</span>
 </div>
@@ -336,13 +329,9 @@ layout: ../../layouts/PageLayout.astro
   <span class="pt">(</span>
   <div class="param">
     <span class="pn">linestring_coords</span>
-    <span class="pc">:</span>
-    <span class="pa"> list[tuple[float, float] | tuple[float, float, float] | numpy.ndarray[tuple[int, ...], numpy.dtype[numpy.float64]]] | shapely.coords.CoordinateSequence</span>
   </div>
   <div class="param">
     <span class="pn">x_y</span>
-    <span class="pc">:</span>
-    <span class="pa"> tuple[float, float] | tuple[float, float, float] | numpy.ndarray[tuple[int, ...], numpy.dtype[numpy.float64]]</span>
   </div>
   <div class="param">
     <span class="pn">reverse</span>
@@ -358,8 +347,6 @@ layout: ../../layouts/PageLayout.astro
   <span class="pr">list[tuple[float</span>
   <span class="pr">float] | tuple[float</span>
   <span class="pr">float</span>
-  <span class="pr">ndarray[tuple[int</span>
-  <span class="pr">]</span>
   <span class="pr">CoordinateSequence</span>
   <span class="pt">]</span>
 </div>
@@ -448,8 +435,6 @@ layout: ../../layouts/PageLayout.astro
   </div>
   <div class="param">
     <span class="pn">linestring_coords</span>
-    <span class="pc">:</span>
-    <span class="pa"> list[tuple[float, float] | tuple[float, float, float] | numpy.ndarray[tuple[int, ...], numpy.dtype[numpy.float64]]] | shapely.coords.CoordinateSequence</span>
   </div>
   <div class="param">
     <span class="pn">tolerance</span>
@@ -460,8 +445,6 @@ layout: ../../layouts/PageLayout.astro
   <span class="pr">list[tuple[float</span>
   <span class="pr">float] | tuple[float</span>
   <span class="pr">float</span>
-  <span class="pr">ndarray[tuple[int</span>
-  <span class="pr">]</span>
   <span class="pr">CoordinateSequence</span>
   <span class="pt">]</span>
 </div>
@@ -545,18 +528,12 @@ layout: ../../layouts/PageLayout.astro
   <span class="pt">(</span>
   <div class="param">
     <span class="pn">linestring_coords_a</span>
-    <span class="pc">:</span>
-    <span class="pa"> list[tuple[float, float] | tuple[float, float, float] | numpy.ndarray[tuple[int, ...], numpy.dtype[numpy.float64]]] | shapely.coords.CoordinateSequence</span>
   </div>
   <div class="param">
     <span class="pn">linestring_coords_b</span>
-    <span class="pc">:</span>
-    <span class="pa"> list[tuple[float, float] | tuple[float, float, float] | numpy.ndarray[tuple[int, ...], numpy.dtype[numpy.float64]]] | shapely.coords.CoordinateSequence</span>
   </div>
   <div class="param">
     <span class="pn">force_xy</span>
-    <span class="pc">:</span>
-    <span class="pa"> tuple[float, float] | tuple[float, float, float] | numpy.ndarray[tuple[int, ...], numpy.dtype[numpy.float64]] | None = None</span>
   </div>
   <div class="param">
     <span class="pn">tolerance</span>
@@ -567,8 +544,6 @@ layout: ../../layouts/PageLayout.astro
   <span class="pr">list[tuple[float</span>
   <span class="pr">float] | tuple[float</span>
   <span class="pr">float</span>
-  <span class="pr">ndarray[tuple[int</span>
-  <span class="pr">]</span>
   <span class="pr">CoordinateSequence</span>
   <span class="pt">]</span>
 </div>

@@ -276,7 +276,7 @@ layout: ../../layouts/PageLayout.astro
   </div>
   <div class="desc">
 
- A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `y` node attributes, and `geom` edge attributes containing `LineString` geoms. Edges should contain &quot;names&quot;, &quot;routes&quot;, or &quot;highways&quot; keys corresponding to the specified `method` parameter.</div>
+ A `networkX` `MultiGraph` with a `crs` attribute denoting a projected coordinate system, containing `x` and `y` node attributes, and `geom` edge attributes containing `LineString` geoms. Edges should contain &quot;names&quot;, &quot;routes&quot;, or &quot;highways&quot; keys corresponding to the specified `method` parameter.</div>
 </div>
 
 <div class="param-set">
@@ -344,7 +344,7 @@ layout: ../../layouts/PageLayout.astro
   </div>
   <div class="desc">
 
- A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `y` node attributes, and `geom` edge attributes containing `LineString` geoms. Edges should contain &quot;names&quot;, &quot;routes&quot;, or &quot;highways&quot; keys corresponding to the specified `method` parameter.</div>
+ A `networkX` `MultiGraph` with a `crs` attribute denoting a projected coordinate system, containing `x` and `y` node attributes, and `geom` edge attributes containing `LineString` geoms. Edges should contain &quot;names&quot;, &quot;routes&quot;, or &quot;highways&quot; keys corresponding to the specified `method` parameter.</div>
 </div>
 
 ### Returns

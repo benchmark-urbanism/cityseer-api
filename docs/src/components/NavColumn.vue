@@ -20,10 +20,13 @@ nav#nav-tree
         :title='header.title'
         v-for='header in nav.headerInfo'
       ).nested-link {{ header.title }}
+
 </template>
 
 <script setup>
-import { useIntersectionObserver, useTimeoutFn } from '@vueuse/core'
+import { useIntersectionObserver, useTimeoutFn }
+
+ from '@vueuse/core'
 import anime from 'animejs/lib/anime.js'
 import { nextTick, onMounted, reactive } from 'vue'
 
@@ -107,7 +110,8 @@ const prepareSideBarNav = () => {
     headingTargetsAnim()
   }, 100)
 }
-const headingTargetsAnim = () => {
+
+const headingtargetsanim = () => {
   nextTick(() => {
     anime({
       targets: '.nested-link',
@@ -117,32 +121,40 @@ const headingTargetsAnim = () => {
     })
   })
 }
+
 </script>
 
 <style lang="postcss" scoped>
 .nav-link {
   @apply border-b px-2 py-2 text-right text-sm font-medium leading-none text-theme transition-all;
+
   &:hover {
     @apply -translate-x-1 border-light-grey bg-dark-grey;
   }
 }
+
 .nav-link-active {
   @apply -translate-x-1 border-b border-light-grey bg-dark-grey;
 }
+
 .nested-link {
   @apply border-theme py-1 pr-3 text-right text-xs font-light text-lighter-grey transition-all;
+
   &:hover,
   &:active {
     @apply border-r-2;
   }
 }
+
 .nested-link-visible {
   @apply border-r-2;
 }
-@media only screen and (max-width: 958px) {
+
+@media only screen and (width <= 958px) {
   .nav-link {
     @apply text-left text-sm;
   }
+
   .nested-link {
     @apply text-xs;
   }

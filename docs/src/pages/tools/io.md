@@ -23,14 +23,14 @@ layout: ../../layouts/PageLayout.astro
     <span class="pa"> networkx.classes.multigraph.MultiGraph</span>
   </div>
   <div class="param">
-    <span class="pn">from_crs_code</span>
+    <span class="pn">to_crs_code</span>
     <span class="pc">:</span>
     <span class="pa"> int | str</span>
   </div>
   <div class="param">
-    <span class="pn">to_crs_code</span>
+    <span class="pn">from_crs_code</span>
     <span class="pc">:</span>
-    <span class="pa"> int | str</span>
+    <span class="pa"> None = None</span>
   </div>
   <span class="pt">)-&gt;[</span>
   <span class="pr">MultiGraph</span>
@@ -53,22 +53,22 @@ layout: ../../layouts/PageLayout.astro
 
 <div class="param-set">
   <div class="def">
-    <div class="name">from_crs_code</div>
-    <div class="type">int | str</div>
-  </div>
-  <div class="desc">
-
- A `pyproj` compatible `str` or `int` representing a valid CRS from which the graph must be converted. For example, [4326](https://epsg.io/4326) if converting data from an OpenStreetMap response.</div>
-</div>
-
-<div class="param-set">
-  <div class="def">
     <div class="name">to_crs_code</div>
     <div class="type">int | str</div>
   </div>
   <div class="desc">
 
  A `pyproj` compatible `str` or `int` representing a valid CRS into which the graph must be projected. For example, [27700](https://epsg.io/27700) if converting to British National Grid.</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">from_crs_code</div>
+    <div class="type">None</div>
+  </div>
+  <div class="desc">
+
+ The &quot;from_crs_code&quot; parameter is deprecated and will be removed in a future release. The CRS can be set directly in the graph if not already present at G.graph[&quot;crs&quot;]; for example, G.graph[&quot;crs&quot;] = pyproj.CRS(27700)'</div>
 </div>
 
 ### Returns
@@ -834,7 +834,7 @@ out qt;
   <div class="param">
     <span class="pn">crs</span>
     <span class="pc">:</span>
-    <span class="pa"> str | int | None = None</span>
+    <span class="pa"> None = None</span>
   </div>
   <span class="pt">)-&gt;[</span>
   <span class="pr">GeoDataFrame</span>
@@ -860,11 +860,11 @@ out qt;
 <div class="param-set">
   <div class="def">
     <div class="name">crs</div>
-    <div class="type">int | str | None</div>
+    <div class="type">None</div>
   </div>
   <div class="desc">
 
- A `pyproj` compatible `str` or `int` representing a valid CRS. Optional if the `nx_multigraph` graph contains a `crs` attribute, otherwise required to set the CRS of the derivative data structures.</div>
+ The &quot;crs&quot; parameter is deprecated and will be removed in a future release. The CRS can be set directly in the graph if not already present at G.graph[&quot;crs&quot;]; for example, G.graph[&quot;crs&quot;] = pyproj.CRS(27700)'</div>
 </div>
 
 ### Returns
@@ -1098,7 +1098,7 @@ out qt;
   <div class="param">
     <span class="pn">crs</span>
     <span class="pc">:</span>
-    <span class="pa"> str | int | None = None</span>
+    <span class="pa"> None = None</span>
   </div>
   <span class="pt">)-&gt;[</span>
   <span class="pr">GeoDataFrame</span>
@@ -1122,11 +1122,11 @@ out qt;
 <div class="param-set">
   <div class="def">
     <div class="name">crs</div>
-    <div class="type">int | str | None</div>
+    <div class="type">None</div>
   </div>
   <div class="desc">
 
- A `pyproj` compatible `str` or `int` representing a valid CRS. Optional if the `nx_multigraph` graph contains a `crs` attribute, otherwise required to set the CRS of the derivative data structures.</div>
+ The &quot;crs&quot; parameter is deprecated and will be removed in a future release. The CRS can be set directly in the graph if not already present at G.graph[&quot;crs&quot;]; for example, G.graph[&quot;crs&quot;] = pyproj.CRS(27700)'</div>
 </div>
 
 ### Returns

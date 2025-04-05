@@ -38,7 +38,7 @@ layout: ../../layouts/PageLayout.astro
   </div>
   <div class="desc">
 
- A `networkX` `MultiGraph` with `x` and `y` node attributes.</div>
+ A `networkX` `MultiGraph` with a `crs` attribute denoting a projected coordinate system, containing `x` and `y` node attributes.</div>
 </div>
 
 ### Returns
@@ -92,7 +92,7 @@ side-effects as a function of varied node intensities when computing network cen
   </div>
   <div class="desc">
 
- A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `y` node attributes, and `geom` edge attributes containing `LineString` geoms.</div>
+ A `networkX` `MultiGraph` with a `crs` attribute denoting a projected coordinate system, containing `x` and `y` node attributes, and `geom` edge attributes containing `LineString` geoms.</div>
 </div>
 
 ### Returns
@@ -149,7 +149,7 @@ side-effects as a function of varied node intensities when computing network cen
   </div>
   <div class="desc">
 
- A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `y` node attributes, and `geom` edge attributes containing `LineString` geoms.</div>
+ A `networkX` `MultiGraph` with a `crs` attribute denoting a projected coordinate system, containing `x` and `y` node attributes, and `geom` edge attributes containing `LineString` geoms.</div>
 </div>
 
 <div class="param-set">
@@ -240,7 +240,7 @@ side-effects as a function of varied node intensities when computing network cen
   </div>
   <div class="desc">
 
- A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `y` node attributes, and `geom` edge attributes containing `LineString` geoms.</div>
+ A `networkX` `MultiGraph` with a `crs` attribute denoting a projected coordinate system, containing `x` and `y` node attributes, and `geom` edge attributes containing `LineString` geoms.</div>
 </div>
 
 <div class="param-set">
@@ -327,7 +327,7 @@ side-effects as a function of varied node intensities when computing network cen
   </div>
   <div class="desc">
 
- A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `y` node attributes, and `geom` edge attributes containing `LineString` geoms.</div>
+ A `networkX` `MultiGraph` with a `crs` attribute denoting a projected coordinate system, containing `x` and `y` node attributes, and `geom` edge attributes containing `LineString` geoms.</div>
 </div>
 
 ### Returns
@@ -389,7 +389,7 @@ side-effects as a function of varied node intensities when computing network cen
   </div>
   <div class="desc">
 
- A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `y` node attributes, and `geom` edge attributes containing `LineString` geoms.</div>
+ A `networkX` `MultiGraph` with a `crs` attribute denoting a projected coordinate system, containing `x` and `y` node attributes, and `geom` edge attributes containing `LineString` geoms.</div>
 </div>
 
 <div class="param-set">
@@ -476,7 +476,7 @@ side-effects as a function of varied node intensities when computing network cen
   </div>
   <div class="desc">
 
- A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `y` node attributes, and `geom` edge attributes containing `LineString` geoms.</div>
+ A `networkX` `MultiGraph` with a `crs` attribute denoting a projected coordinate system, containing `x` and `y` node attributes, and `geom` edge attributes containing `LineString` geoms.</div>
 </div>
 
 <div class="param-set">
@@ -599,7 +599,7 @@ side-effects as a function of varied node intensities when computing network cen
   </div>
   <div class="desc">
 
- A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `y` node attributes, and `geom` edge attributes containing `LineString` geoms.</div>
+ A `networkX` `MultiGraph` with a `crs` attribute denoting a projected coordinate system, containing `x` and `y` node attributes, and `geom` edge attributes containing `LineString` geoms.</div>
 </div>
 
 <div class="param-set">
@@ -851,7 +851,7 @@ side-effects as a function of varied node intensities when computing network cen
   </div>
   <div class="desc">
 
- A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `y` node attributes, and `geom` edge attributes containing `LineString` geoms.</div>
+ A `networkX` `MultiGraph` with a `crs` attribute denoting a projected coordinate system, containing `x` and `y` node attributes, and `geom` edge attributes containing `LineString` geoms.</div>
 </div>
 
 <div class="param-set">
@@ -1014,7 +1014,7 @@ unnecessarily for subsequent analysis. For larger-scale urban analysis, it is ge
   </div>
   <div class="desc">
 
- A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `y` node attributes, and `geom` edge attributes containing `LineString` geoms.</div>
+ A `networkX` `MultiGraph` with a `crs` attribute denoting a projected coordinate system, containing `x` and `y` node attributes, and `geom` edge attributes containing `LineString` geoms.</div>
 </div>
 
 <div class="param-set">
@@ -1102,7 +1102,7 @@ primal. The same type of situation does not arise in the dual because the nodes 
   </div>
   <div class="desc">
 
- A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `y` node attributes, and `geom` edge attributes containing `LineString` geoms.</div>
+ A `networkX` `MultiGraph` with a `crs` attribute denoting a projected coordinate system, containing `x` and `y` node attributes, and `geom` edge attributes containing `LineString` geoms.</div>
 </div>
 
 ### Returns
@@ -1174,7 +1174,7 @@ plot.plot_nx_primal_or_dual(G_simple, G_dual, plot_geoms=False)
   </div>
   <div class="desc">
 
- A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `y` node attributes, and `geom` edge attributes containing `LineString` geoms.</div>
+ A `networkX` `MultiGraph` with a `crs` attribute denoting a projected coordinate system, containing `x` and `y` node attributes, and `geom` edge attributes containing `LineString` geoms.</div>
 </div>
 
 <div class="param-set">
@@ -1241,7 +1241,7 @@ plot.plot_nx_primal_or_dual(G_simple, G_dual, plot_geoms=False)
   </div>
   <div class="desc">
 
- A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `y` node attributes, and `geom` edge attributes containing `LineString` geoms.</div>
+ A `networkX` `MultiGraph` with a `crs` attribute denoting a projected coordinate system, containing `x` and `y` node attributes, and `geom` edge attributes containing `LineString` geoms.</div>
 </div>
 
 ### Returns

@@ -1,4 +1,3 @@
-import prefetch from '@astrojs/prefetch'
 import sitemap from '@astrojs/sitemap'
 import tailwind from '@astrojs/tailwind'
 import vue from '@astrojs/vue'
@@ -146,6 +145,6 @@ export default defineConfig({
       },
     }),
     sitemap(),
-    prefetch(),
   ],
+  prefetch: true
 })
