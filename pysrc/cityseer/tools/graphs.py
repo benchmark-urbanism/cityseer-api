@@ -660,9 +660,8 @@ def nx_deduplicate_edges(
     """
     Deduplicates non-motorised edges where parallel to nearby motorised edges.
 
-    Remove non-motorised edges where adjacent to motorised edges. This helps to simplify complex network representations
-    for the purpose of network centralities or visualisation. Short dead-end non-motorised edges falling within the
-    specified dissolve distance will also be removed.
+    This helps to simplify complex network representations for the purpose of network centralities or visualisation.
+    Short dead-end non-motorised edges falling within the specified dissolve distance will also be removed.
 
     Parameters
     ----------
