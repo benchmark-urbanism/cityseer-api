@@ -1,6 +1,6 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import url("tailwindcss");
+
+@config "src/styles/tailwind.config.js";
 
 @layer base {
   html {
@@ -64,11 +64,11 @@
   }
 
   :not(pre) > code {
-    @apply rounded-sm bg-dark-grey px-1 font-mono text-xs font-medium text-lighter-grey;
+    @apply rounded-xs bg-dark-grey px-1 font-mono text-xs font-medium text-lighter-grey;
   }
 
   pre {
-    @apply my-4 overflow-x-auto whitespace-pre-wrap rounded border border-darker-grey p-2;
+    @apply my-4 overflow-x-auto whitespace-pre-wrap rounded-sm border border-darker-grey p-2;
 
     & code {
       @apply text-xs font-normal tracking-tight;
@@ -194,7 +194,7 @@
 
 .box,
 blockquote {
-  @apply my-3 rounded border bg-dark-grey px-2 border-mid-grey;
+  @apply my-3 rounded-sm border bg-dark-grey px-2 border-mid-grey;
 
   & p {
     @apply text-xs;

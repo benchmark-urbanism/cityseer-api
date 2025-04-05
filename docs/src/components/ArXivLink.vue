@@ -29,7 +29,7 @@ const arXivIdentifier = computed(() => {
 <style lang="postcss" scoped>
 #arXiv-container {
   @apply flex flex-col items-center justify-center;
-  @apply m-2 rounded-sm border-0.5 border-mid-grey bg-dark-grey p-2 shadow;
+  @apply m-2 rounded-xs border-0.5 border-mid-grey bg-dark-grey p-2 shadow-sm;
 }
 
 #arXiv-logo {

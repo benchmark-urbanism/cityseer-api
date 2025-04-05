@@ -11,7 +11,7 @@ nav#nav-tree
     ).nav-link {{ nav.path }}
     // when active, each entry has a nested-tree to H2 headers
     div(
-      @click='headingTargetsAnim()'
+      @click='headingAnim()'
       v-show='nav.headerInfo.length'
     ).flex.flex-col.items-end.py-2
       a(
@@ -27,7 +27,7 @@ nav#nav-tree
 import { useIntersectionObserver, useTimeoutFn }
 
  from '@vueuse/core'
-import anime from 'animejs/lib/anime.js'
+import { animate, stagger} from 'animejs'
 import { nextTick, onMounted, reactive } from 'vue'
 
 const props = defineProps({
@@ -107,17 +107,17 @@ const prepareSideBarNav = () => {
     })
   })
   useTimeoutFn(() => {
-    headingTargetsAnim()
+    headingAnim()
   }, 100)
 }
 
-const headingtargetsanim = () => {
+const headingAnim = () => {
   nextTick(() => {
-    anime({
+    animate({
       targets: '.nested-link',
       scale: [0.95, 1],
       duration: 50,
-      delay: anime.stagger(5),
+      delay: stagger(5),
     })
   })
 }
