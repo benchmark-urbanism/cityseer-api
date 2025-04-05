@@ -750,8 +750,3 @@ def test_nx_weight_by_dissolved_edges(parallel_segments_graph):
         assert nd_data["weight"] > 0
     for _nd_key, nd_data in G_0.nodes(data=True):
         assert nd_data["weight"] == 1
-
-
-def test_nx_generate_vis_lines(primal_graph):
-    """ """
-    graphs.nx_generate_vis_lines(primal_graph)
