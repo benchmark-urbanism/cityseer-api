@@ -1305,6 +1305,8 @@ def add_transport_gtfs(
 ) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame, rustalgos.NetworkStructure, pd.DataFrame, pd.DataFrame]:
     """
     Add GTFS data to network structure.
+
+    > This function is still in development and may change in future releases. Testing is ongoing.
     """
     gtfs_path = Path(gtfs_data_path)
     logger.info(f"Loading GTFS data from {gtfs_data_path}")
