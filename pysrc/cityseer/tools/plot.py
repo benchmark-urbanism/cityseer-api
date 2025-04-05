@@ -672,7 +672,7 @@ def plot_network_structure(
     plt.show()
 
 
-def minmax_scale_manual(data, feature_range=(0, 1)):
+def _minmax_scale_manual(data, feature_range=(0, 1)):
     """Manually scales data to a given range (default 0 to 1)."""
     data = np.asarray(data, dtype=float)  # Ensure numeric array
     min_val, max_val = np.min(data), np.max(data)
@@ -749,7 +749,7 @@ def plot_scatter(
     # normalise
     c_norm = mpl.colors.Normalize(vmin=v_min, vmax=v_max, clip=True)  # type: ignore
     colours: npt.ArrayLike = c_norm(v_shape)
-    sizes: npt.ArrayLike = minmax_scale_manual(colours, (s_min, s_max))  # type: ignore
+    sizes: npt.ArrayLike = _minmax_scale_manual(colours, (s_min, s_max))  # type: ignore
     # plot
     img: Any = ax.scatter(
         xs[select_idx],
@@ -870,7 +870,7 @@ def plot_nx_edges(
     # normalise
     c_norm = mpl.colors.Normalize(vmin=v_shape.min(), vmax=v_shape.max())  # type: ignore
     colours: npt.ArrayLike = c_norm(v_shape)
-    sizes: npt.ArrayLike = minmax_scale_manual(colours, (lw_min, lw_max))  # type: ignore
+    sizes: npt.ArrayLike = _minmax_scale_manual(colours, (lw_min, lw_max))  # type: ignore
     # sort so that larger lines plot over smaller lines
     sort_idx: npt.ArrayLike = np.argsort(colours)
     if invert_plot_order:
