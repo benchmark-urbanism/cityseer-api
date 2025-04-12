@@ -6,7 +6,7 @@ from functools import partial
 import geopandas as gpd
 from tqdm import tqdm
 
-from cityseer import config, rustalgos
+from .. import config, rustalgos
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -18,12 +18,12 @@ SPEED_M_S = config.SPEED_M_S
 
 def assign_gdf_to_network(
     data_gdf: gpd.GeoDataFrame,
-    network_structure: rustalgos.NetworkStructure,
+    network_structure: rustalgos.graph.NetworkStructure,
     max_netw_assign_dist: int | float,
     data_id_col: str | None = None,
-) -> tuple[rustalgos.DataMap, gpd.GeoDataFrame]:
+) -> tuple[rustalgos.data.DataMap, gpd.GeoDataFrame]:
     """
-    Assign a `GeoDataFrame` to a [`rustalgos.NetworkStructure`](/rustalgos/rustalgos#networkstructure).
+    Assign a `GeoDataFrame` to a [`rustalgos.graph.NetworkStructure`](/rustalgos/rustalgos#networkstructure).
 
     A `NetworkStructure` provides the backbone for the calculation of land-use and statistical aggregations over the
     network. Data points will be assigned to the two closest network nodes — one in either direction — based on the
@@ -37,8 +37,8 @@ def assign_gdf_to_network(
         representing data points. The coordinates of data points should correspond as precisely as possible to the
         location of the feature in space; or, in the case of buildings, should ideally correspond to the location of the
         building entrance.
-    network_structure: rustalgos.NetworkStructure
-        A [`rustalgos.NetworkStructure`](/rustalgos/rustalgos#networkstructure).
+    network_structure: rustalgos.graph.NetworkStructure
+        A [`rustalgos.graph.NetworkStructure`](/rustalgos/rustalgos#networkstructure).
     max_netw_assign_dist: int
         The maximum distance to consider when assigning respective data points to the nearest adjacent network nodes.
     data_id_col: str
@@ -49,8 +49,8 @@ def assign_gdf_to_network(
 
     Returns
     -------
-    data_map: rustalgos.DataMap
-        A [`rustalgos.DataMap`](/rustalgos#datamap) instance.
+    data_map: rustalgos.data.DataMap
+        A [`rustalgos.data.DataMap`](/rustalgos#datamap) instance.
     data_gdf: GeoDataFrame
         The input `data_gdf` is returned with two additional columns: `nearest_assigned` and `next_nearest_assign`.
 
@@ -87,7 +87,7 @@ def assign_gdf_to_network(
     if data_gdf.geometry.geom_type.nunique() != 1:
         raise ValueError("The data GeoDataFrame must contain a single geometry type.")
     # check data type
-    data_map = rustalgos.DataMap()
+    data_map = rustalgos.data.DataMap()
     calculate_assigned = False
     # add column to data_gdf
     if (
@@ -138,7 +138,7 @@ def compute_accessibilities(
     landuse_column_label: str,
     accessibility_keys: list[str],
     nodes_gdf: gpd.GeoDataFrame,
-    network_structure: rustalgos.NetworkStructure,
+    network_structure: rustalgos.graph.NetworkStructure,
     max_netw_assign_dist: int = 400,
     distances: list[int] | None = None,
     betas: list[float] | None = None,
@@ -176,7 +176,7 @@ def compute_accessibilities(
         [`io.network_structure_from_nx`](/tools/io#network-structure-from-nx) function. The outputs of
         calculations will be written to this `GeoDataFrame`, which is then returned from the function.
     network_structure
-        A [`rustalgos.NetworkStructure`](/rustalgos/rustalgos#networkstructure). Best generated with the
+        A [`rustalgos.graph.NetworkStructure`](/rustalgos/rustalgos#networkstructure). Best generated with the
         [`io.network_structure_from_nx`](/tools/io#network-structure-from-nx) function.
     max_netw_assign_dist: int
         The maximum distance to consider when assigning respective data points to the nearest adjacent network nodes.
@@ -208,8 +208,8 @@ def compute_accessibilities(
         [`rustalgos.clip_weights_curve`](/rustalgos#clip-weights-curve).
     min_threshold_wt: float
         The default `min_threshold_wt` parameter can be overridden to generate custom mappings between the
-        `distance` and `beta` parameters. See [`rustalgos.distances_from_beta`](/rustalgos#distances-from-betas) for
-        more information.
+        `distance` and `beta` parameters. See [`rustalgos.distances_from_beta`](/rustalgos#distances-from-betas)
+        for more information.
     speed_m_s: float
         The default `speed_m_s` parameter can be configured to generate custom mappings between walking times and
         distance thresholds $d_{max}$.
@@ -312,7 +312,7 @@ def compute_mixed_uses(
     data_gdf: gpd.GeoDataFrame,
     landuse_column_label: str,
     nodes_gdf: gpd.GeoDataFrame,
-    network_structure: rustalgos.NetworkStructure,
+    network_structure: rustalgos.graph.NetworkStructure,
     max_netw_assign_dist: int = 400,
     compute_hill: bool | None = True,
     compute_hill_weighted: bool | None = True,
@@ -361,7 +361,7 @@ def compute_mixed_uses(
         [`io.network_structure_from_nx`](/tools/io#network-structure-from-nx) function. The outputs of
         calculations will be written to this `GeoDataFrame`, which is then returned from the function.
     network_structure
-        A [`rustalgos.NetworkStructure`](/rustalgos/rustalgos#networkstructure). Best generated with the
+        A [`rustalgos.graph.NetworkStructure`](/rustalgos/rustalgos#networkstructure). Best generated with the
         [`io.network_structure_from_nx`](/tools/io#network-structure-from-nx) function.
     max_netw_assign_dist: int
         The maximum distance to consider when assigning respective data points to the nearest adjacent network nodes.
@@ -402,8 +402,8 @@ def compute_mixed_uses(
         [`rustalgos.clip_weights_curve`](/rustalgos#clip-weights-curve).
     min_threshold_wt: float
         The default `min_threshold_wt` parameter can be overridden to generate custom mappings between the
-        `distance` and `beta` parameters. See [`rustalgos.distances_from_beta`](/rustalgos#distances-from-betas) for
-        more information.
+        `distance` and `beta` parameters. See [`rustalgos.distances_from_beta`](/rustalgos#distances-from-betas)
+        for more information.
     speed_m_s: float
         The default `speed_m_s` parameter can be configured to generate custom mappings between walking times and
         distance thresholds $d_{max}$.
@@ -543,7 +543,7 @@ def compute_stats(
     data_gdf: gpd.GeoDataFrame,
     stats_column_labels: list[str],
     nodes_gdf: gpd.GeoDataFrame,
-    network_structure: rustalgos.NetworkStructure,
+    network_structure: rustalgos.graph.NetworkStructure,
     max_netw_assign_dist: int = 400,
     distances: list[int] | None = None,
     betas: list[float] | None = None,
@@ -578,7 +578,7 @@ def compute_stats(
         [`io.network_structure_from_nx`](/tools/io#network-structure-from-nx) function. The outputs of
         calculations will be written to this `GeoDataFrame`, which is then returned from the function.
     network_structure
-        A [`rustalgos.NetworkStructure`](/rustalgos/rustalgos#networkstructure). Best generated with the
+        A [`rustalgos.graph.NetworkStructure`](/rustalgos/rustalgos#networkstructure). Best generated with the
         [`io.network_structure_from_nx`](/tools/io#network-structure-from-nx) function.
     max_netw_assign_dist: int
         The maximum distance to consider when assigning respective data points to the nearest adjacent network nodes.
@@ -610,8 +610,8 @@ def compute_stats(
         [`rustalgos.clip_weights_curve`](/rustalgos#clip-weights-curve).
     min_threshold_wt: float
         The default `min_threshold_wt` parameter can be overridden to generate custom mappings between the
-        `distance` and `beta` parameters. See [`rustalgos.distances_from_beta`](/rustalgos#distances-from-betas) for
-        more information.
+        `distance` and `beta` parameters. See [`rustalgos.distances_from_beta`](/rustalgos#distances-from-betas)
+        for more information.
     speed_m_s: float
         The default `speed_m_s` parameter can be configured to generate custom mappings between walking times and
         distance thresholds $d_{max}$.

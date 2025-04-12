@@ -71,7 +71,10 @@ def test_distances_from_betas():
         assert rustalgos.distances_from_betas([b]) == [d]
         # circular check
         assert np.allclose(
-            rustalgos.betas_from_distances(rustalgos.distances_from_betas([b])), [b], atol=config.ATOL, rtol=config.RTOL
+            rustalgos.betas_from_distances(rustalgos.distances_from_betas([b])),
+            [b],
+            atol=config.ATOL,
+            rtol=config.RTOL,
         )
     # check that custom min_threshold_wt works
     d = rustalgos.distances_from_betas([0.04], min_threshold_wt=0.001)

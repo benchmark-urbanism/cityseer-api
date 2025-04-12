@@ -19,15 +19,15 @@ import numpy.typing as npt
 import osmnx as ox
 import pandas as pd
 import requests
-from osmnx._errors import InsufficientResponseError
+from osmnx._errors import InsufficientResponseError  # type: ignore
 from pyproj import CRS, Transformer
 from shapely import geometry
 from shapely.strtree import STRtree
 from tqdm import tqdm
 
-from cityseer import config, rustalgos
-from cityseer.tools import graphs, util
-from cityseer.tools.util import EdgeData, ListCoordsType, NodeData, NodeKey
+from .. import config, rustalgos
+from ..tools import graphs, util
+from ..tools.util import EdgeData, ListCoordsType, NodeData, NodeKey
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -994,7 +994,7 @@ def nx_from_open_roads(
 def network_structure_from_nx(
     nx_multigraph: nx.MultiGraph,
     crs: None = None,
-) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame, rustalgos.NetworkStructure]:
+) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame, rustalgos.graph.NetworkStructure]:
     """
     Transpose a `networkX` `MultiGraph` into a `gpd.GeoDataFrame` and `NetworkStructure` for use by `cityseer`.
 
@@ -1023,8 +1023,8 @@ def network_structure_from_nx(
         A `gpd.GeoDataFrame` with `ns_edge_idx`, `start_ns_node_idx`, `end_ns_node_idx`, `edge_idx`, `nx_start_node_key`
         ,`nx_end_node_key`, `length`, `angle_sum`, `imp_factor`, `in_bearing`, `out_bearing`, `total_bearing`, `geom`
         attributes.
-    rustalgos.NetworkStructure
-        A [`rustalgos.NetworkStructure`](/rustalgos/rustalgos#networkstructure) instance.
+    rustalgos.graph.NetworkStructure
+        A [`rustalgos.graph.NetworkStructure`](/rustalgos/rustalgos#networkstructure) instance.
 
     """
     if crs is not None:
@@ -1038,7 +1038,7 @@ def network_structure_from_nx(
     logger.info("Preparing node and edge arrays from networkX graph.")
     g_multi_copy = util.validate_cityseer_networkx_graph(nx_multigraph)
     # prepare the network structure
-    network_structure = rustalgos.NetworkStructure()
+    network_structure = rustalgos.graph.NetworkStructure()
     # generate the network information
     agg_node_data: dict[str, tuple[Any, ...]] = {}
     agg_node_dual_data: dict[str, tuple[Any, Any, Any, Any]] = {}
@@ -1196,7 +1196,7 @@ def network_structure_from_nx(
 def network_structure_from_gpd(
     nodes_gdf: gpd.GeoDataFrame,
     edges_gdf: gpd.GeoDataFrame,
-) -> rustalgos.NetworkStructure:
+) -> rustalgos.graph.NetworkStructure:
     """
     Reassembles a `NetworkStructure` from cityseer nodes and edges GeoDataFrames.
 
@@ -1217,12 +1217,12 @@ def network_structure_from_gpd(
 
     Returns
     -------
-    rustalgos.NetworkStructure
-        A [`rustalgos.NetworkStructure`](/rustalgos/rustalgos#networkstructure) instance.
+    rustalgos.graph.NetworkStructure
+        A [`rustalgos.graph.NetworkStructure`](/rustalgos/rustalgos#networkstructure) instance.
 
     """
     # prepare the network structure
-    network_structure = rustalgos.NetworkStructure()
+    network_structure = rustalgos.graph.NetworkStructure()
     # check column integrity
     nodes_cols = [
         "x",
@@ -1299,10 +1299,10 @@ def add_transport_gtfs(
     gtfs_data_path: str,
     nodes_gdf: gpd.GeoDataFrame,
     edges_gdf: gpd.GeoDataFrame,
-    network_structure: rustalgos.NetworkStructure,
+    network_structure: rustalgos.graph.NetworkStructure,
     max_netw_assign_dist: int = 400,
     speed_m_s: float = SPEED_M_S,
-) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame, rustalgos.NetworkStructure, pd.DataFrame, pd.DataFrame]:
+) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame, rustalgos.graph.NetworkStructure, pd.DataFrame, pd.DataFrame]:
     """
     Add GTFS data to network structure.
 

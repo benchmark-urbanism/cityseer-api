@@ -72,10 +72,14 @@ def test_local_centrality_time(primal_graph):
     # needs a large enough beta so that distance thresholds aren't encountered
     distances, _betas, _seconds = rustalgos.pair_distances_betas_time(distances=[5000])
 
+    speed_m_s = 1.3333
+    max_seconds = int(5000 / speed_m_s)
+
     def dijkstra_tree_shortest_wrapper():
         network_structure.dijkstra_tree_shortest(
             src_idx=0,
-            max_dist=5000,
+            max_seconds=max_seconds,
+            speed_m_s=speed_m_s,
         )
 
     # prime the function
@@ -89,7 +93,8 @@ def test_local_centrality_time(primal_graph):
     def dijkstra_tree_simplest_wrapper():
         network_structure.dijkstra_tree_simplest(
             src_idx=0,
-            max_dist=5000,
+            max_seconds=max_seconds,
+            speed_m_s=speed_m_s,
         )
 
     # prime the function
@@ -103,7 +108,8 @@ def test_local_centrality_time(primal_graph):
     def dijkstra_tree_segment_wrapper():
         network_structure.dijkstra_tree_segment(
             src_idx=0,
-            max_dist=5000,
+            max_seconds=max_seconds,
+            speed_m_s=speed_m_s,
         )
 
     # prime the function

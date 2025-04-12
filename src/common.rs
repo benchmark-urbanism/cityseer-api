@@ -26,26 +26,31 @@ pub struct Coord {
 impl Coord {
     /// Creates a new `Coord` instance.
     #[new]
+    #[inline]
     pub fn new(x: f32, y: f32) -> Self {
         Self { x, y }
     }
 
     /// Returns the coordinates as a tuple `(x, y)`.
+    #[inline]
     pub fn xy(&self) -> (f32, f32) {
         (self.x, self.y)
     }
 
     /// Validates that the coordinates are finite.
+    #[inline]
     pub fn validate(&self) -> bool {
         self.x.is_finite() && self.y.is_finite()
     }
 
     /// Calculates the Euclidean distance between this coordinate and another.
+    #[inline]
     pub fn hypot(&self, other_coord: Coord) -> f32 {
-        ((self.x - other_coord.x).powi(2) + (self.y - other_coord.y).powi(2)).sqrt()
+        (self.x - other_coord.x).hypot(self.y - other_coord.y)
     }
 
     /// Computes the difference between this coordinate and another as a vector.
+    #[inline]
     pub fn difference(&self, other_coord: Coord) -> Coord {
         Coord::new(self.x - other_coord.x, self.y - other_coord.y)
     }
@@ -152,30 +157,30 @@ pub fn check_numerical_data(data_arr: PyReadonlyArray2<f32>) -> PyResult<()> {
 #[pyo3(signature = (betas, min_threshold_wt=None))]
 pub fn distances_from_betas(betas: Vec<f32>, min_threshold_wt: Option<f32>) -> PyResult<Vec<u32>> {
     if betas.is_empty() {
-        return Err(PyValueError::new_err("Empty iterable of betas."));
+        return Err(PyValueError::new_err("Input 'betas' cannot be empty."));
     }
     let min_threshold_wt = min_threshold_wt.unwrap_or(MIN_THRESH_WT);
-    let mut clean: Vec<f32> = Vec::new();
-    let mut distances: Vec<u32> = Vec::new();
+    let mut distances: Vec<u32> = Vec::with_capacity(betas.len());
 
     for &beta in &betas {
-        if beta < 0.0 {
+        if beta <= 0.0 {
             return Err(PyValueError::new_err(
-                "Provide the beta value without the leading negative.",
+                "Beta values must be greater than zero.",
             ));
         }
-        if beta == 0.0 {
+        let distance = (min_threshold_wt.ln() / -beta).round() as u32;
+        if let Some(&last_dist) = distances.last() {
+            if distance <= last_dist {
+                return Err(PyValueError::new_err(
+                    "Betas must be unique and sorted in strictly decreasing order (resulting distances must strictly increase).",
+                ));
+            }
+        } else if distance == 0 {
             return Err(PyValueError::new_err(
-                "Provide a beta value greater than zero.",
+                "Derived distance must be positive. Check beta values.",
             ));
         }
-        if clean.contains(&beta) || clean.iter().any(|&x| x < beta) {
-            return Err(PyValueError::new_err(
-                "Betas must be free of duplicates and sorted in decreasing order.",
-            ));
-        }
-        clean.push(beta);
-        distances.push((min_threshold_wt.ln() / -beta).round() as u32);
+        distances.push(distance);
     }
     Ok(distances)
 }
@@ -188,24 +193,29 @@ pub fn betas_from_distances(
     min_threshold_wt: Option<f32>,
 ) -> PyResult<Vec<f32>> {
     if distances.is_empty() {
-        return Err(PyValueError::new_err("Empty iterable of distances."));
+        return Err(PyValueError::new_err("Input 'distances' cannot be empty."));
     }
     let mtw = min_threshold_wt.unwrap_or(MIN_THRESH_WT);
-    let mut clean: Vec<u32> = Vec::new();
-    let mut betas: Vec<f32> = Vec::new();
+    let mut betas: Vec<f32> = Vec::with_capacity(distances.len());
+    let mut prev_distance: Option<u32> = None;
+
     for &distance in &distances {
         if distance == 0 {
             return Err(PyValueError::new_err(
                 "Distances must be positive integers.",
             ));
         }
-        if clean.contains(&distance) || clean.iter().any(|&x| x > distance) {
-            return Err(PyValueError::new_err(
-                "Distances must be free of duplicates and sorted in increasing order.",
-            ));
+        if let Some(last_dist) = prev_distance {
+            if distance <= last_dist {
+                return Err(PyValueError::new_err(
+                    "Distances must be unique and sorted in strictly increasing order.",
+                ));
+            }
         }
-        clean.push(distance);
-        betas.push((((-(mtw as f64).ln() / distance as f64) * 100000.0).round() / 100000.0) as f32);
+        let beta = -mtw.ln() / distance as f32;
+        let beta_rounded = (beta * 100000.0).round() / 100000.0;
+        betas.push(beta_rounded);
+        prev_distance = Some(distance);
     }
     Ok(betas)
 }
@@ -214,19 +224,43 @@ pub fn betas_from_distances(
 #[pyo3(signature = (seconds, speed_m_s=None))]
 pub fn distances_from_seconds(seconds: Vec<u32>, speed_m_s: Option<f32>) -> PyResult<Vec<u32>> {
     if seconds.is_empty() {
-        return Err(PyValueError::new_err("Empty iterable of seconds."));
+        return Err(PyValueError::new_err("Input 'seconds' cannot be empty."));
     }
     let speed_m_s = speed_m_s.unwrap_or(WALKING_SPEED);
-    let mut clean = Vec::new();
-    let mut distances = Vec::new();
+    if speed_m_s <= 0.0 {
+        return Err(PyValueError::new_err("Speed must be positive."));
+    }
+    let mut distances = Vec::with_capacity(seconds.len());
+    let mut prev_time: Option<u32> = None;
+
     for &time in &seconds {
-        if clean.contains(&time) || clean.iter().any(|&x| x > time) {
+        if time == 0 {
             return Err(PyValueError::new_err(
-                "Times must be free of duplicates and sorted in increasing order.",
+                "Time values must be positive integers.",
             ));
         }
-        clean.push(time);
-        distances.push((time as f32 * speed_m_s).round() as u32)
+        if let Some(last_time) = prev_time {
+            if time <= last_time {
+                return Err(PyValueError::new_err(
+                    "Times must be unique and sorted in strictly increasing order.",
+                ));
+            }
+        }
+        let distance = (time as f32 * speed_m_s).round() as u32;
+        if distance == 0 {
+            return Err(PyValueError::new_err(
+                "Derived distance must be positive. Check time and speed values.",
+            ));
+        }
+        if let Some(&last_dist) = distances.last() {
+            if distance <= last_dist {
+                return Err(PyValueError::new_err(
+                    "Derived distances must be strictly increasing (check input times and speed).",
+                ));
+            }
+        }
+        distances.push(distance);
+        prev_time = Some(time);
     }
     Ok(distances)
 }
@@ -235,29 +269,43 @@ pub fn distances_from_seconds(seconds: Vec<u32>, speed_m_s: Option<f32>) -> PyRe
 #[pyo3(signature = (distances, speed_m_s=None))]
 pub fn seconds_from_distances(distances: Vec<u32>, speed_m_s: Option<f32>) -> PyResult<Vec<u32>> {
     if distances.is_empty() {
-        return Err(PyValueError::new_err("Empty iterable of distances."));
-    }
-    if distances.iter().any(|&dist| dist <= 0) {
-        return Err(PyValueError::new_err(
-            "Distances must be positive integers.",
-        ));
+        return Err(PyValueError::new_err("Input 'distances' cannot be empty."));
     }
     let speed_m_s = speed_m_s.unwrap_or(WALKING_SPEED);
-    let mut clean: Vec<u32> = Vec::new();
-    let mut seconds: Vec<u32> = Vec::new();
+    if speed_m_s <= 0.0 {
+        return Err(PyValueError::new_err("Speed must be positive."));
+    }
+    let mut seconds: Vec<u32> = Vec::with_capacity(distances.len());
+    let mut prev_distance: Option<u32> = None;
+
     for &distance in &distances {
         if distance == 0 {
             return Err(PyValueError::new_err(
                 "Distances must be positive integers.",
             ));
         }
-        if clean.contains(&distance) || clean.iter().any(|&x| x > distance) {
+        if let Some(last_dist) = prev_distance {
+            if distance <= last_dist {
+                return Err(PyValueError::new_err(
+                    "Distances must be unique and sorted in strictly increasing order.",
+                ));
+            }
+        }
+        let time = (distance as f32 / speed_m_s).round() as u32;
+        if time == 0 {
             return Err(PyValueError::new_err(
-                "Distances must be free of duplicates and sorted in increasing order.",
+                "Derived time must be positive. Check distance and speed values.",
             ));
         }
-        clean.push(distance);
-        seconds.push((distance as f32 / speed_m_s).round() as u32);
+        if let Some(&last_time) = seconds.last() {
+            if time <= last_time {
+                return Err(PyValueError::new_err(
+                    "Derived times must be strictly increasing (check input distances and speed).",
+                ));
+            }
+        }
+        seconds.push(time);
+        prev_distance = Some(distance);
     }
     Ok(seconds)
 }
@@ -291,7 +339,7 @@ pub fn pair_distances_betas_time(
             Ok((distances, betas, seconds))
         }
         _ => Err(PyValueError::new_err(
-            "Please provide exactly one of distances, betas, or minutes.",
+            "Please provide exactly one of the following arguments: 'distances', 'betas', or 'minutes'.",
         )),
     }
 }
@@ -304,22 +352,24 @@ pub fn avg_distances_for_betas(
     min_threshold_wt: Option<f32>,
 ) -> PyResult<Vec<f32>> {
     if betas.is_empty() {
-        return Err(PyValueError::new_err("Empty iterable of betas."));
+        return Err(PyValueError::new_err("Input 'betas' cannot be empty."));
     }
     let min_threshold_wt = min_threshold_wt.unwrap_or(MIN_THRESH_WT);
     let distances = distances_from_betas(betas.clone(), Some(min_threshold_wt))?;
+
     let avg_distances: Vec<f32> = betas
         .iter()
         .zip(distances.iter())
         .map(|(&beta, &distance)| {
-            if distance == 0 {
-                return Err(PyValueError::new_err(
-                    "Distances must be positive integers.",
-                ));
-            }
             let auc = ((-beta * distance as f32).exp() - 1.0) / -beta;
             let wt = auc / distance as f32;
-            Ok(-wt.ln() / beta)
+            if wt <= 0.0 || beta == 0.0 {
+                Err(PyValueError::new_err(format!(
+                    "Invalid weight ({}) or beta ({}) encountered during average distance calculation.", wt, beta
+                )))
+            } else {
+                Ok(-wt.ln() / beta)
+            }
         })
         .collect::<PyResult<_>>()?;
     Ok(avg_distances)
@@ -337,9 +387,10 @@ pub fn clip_wts_curve(
         .zip(betas.iter())
         .map(|(&dist, &beta)| {
             if spatial_tolerance > dist {
-                return Err(PyValueError::new_err(
-                    "Clipping distance cannot be greater than the given distance threshold.",
-                ));
+                return Err(PyValueError::new_err(format!(
+                    "Clipping distance ({}) cannot be greater than the distance threshold ({}).",
+                    spatial_tolerance, dist
+                )));
             }
             Ok((-beta * spatial_tolerance as f32).exp())
         })
@@ -349,6 +400,7 @@ pub fn clip_wts_curve(
 
 /// Computes a clipped weight based on a beta value and maximum curve weight.
 #[pyfunction]
+#[inline]
 pub fn clipped_beta_wt(beta: f32, max_curve_wt: f32, data_dist: f32) -> PyResult<f32> {
     if !(0.0..=1.0).contains(&max_curve_wt) {
         return Err(PyValueError::new_err(

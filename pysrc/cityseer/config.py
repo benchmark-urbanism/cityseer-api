@@ -10,7 +10,7 @@ from queue import Queue
 import numpy as np
 from tqdm import tqdm
 
-from cityseer import rustalgos
+from . import rustalgos
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -83,18 +83,18 @@ def log_thresholds(
 
 
 RustResults = (
-    rustalgos.CentralityShortestResult
-    | rustalgos.CentralitySimplestResult
-    | rustalgos.CentralitySegmentResult
-    | rustalgos.AccessibilityResult
-    | rustalgos.MixedUsesResult
-    | rustalgos.StatsResult
+    rustalgos.centrality.CentralityShortestResult
+    | rustalgos.centrality.CentralitySimplestResult
+    | rustalgos.centrality.CentralitySegmentResult
+    | rustalgos.data.AccessibilityResult
+    | rustalgos.data.MixedUsesResult
+    | rustalgos.data.StatsResult
 )
 
 
 def wrap_progress(
     total: int,
-    rust_struct: rustalgos.NetworkStructure | rustalgos.DataMap | rustalgos.Viewshed,
+    rust_struct: rustalgos.graph.NetworkStructure | rustalgos.data.DataMap | rustalgos.viewshed.Viewshed,
     partial_func: Callable,  # type: ignore
 ) -> RustResults:
     """Wraps long running parallelised rust functions with a progress counter."""

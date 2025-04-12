@@ -20,7 +20,7 @@ import numpy.typing as npt
 from pyproj import CRS
 from shapely import geometry
 
-from cityseer.tools import util
+from ..tools import util
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -58,7 +58,7 @@ def mock_graph(wgs84_coords: bool = False) -> MultiGraph:
     _Mock graph._
 
     """
-    nx_multigraph: MultiGraph = nx.MultiGraph()
+    nx_multigraph: MultiGraph = nx.MultiGraph()  # type: ignore
 
     nodes = [
         ("0", {"x": 700700, "y": 5719700}),

@@ -271,49 +271,49 @@ def test_mixed_uses(primal_graph):
                 # assertions
                 assert np.isclose(
                     mixed_uses_data.hill[0][dist_cutoff][netw_src_idx],
-                    rustalgos.hill_diversity(cl_counts, 0.0),
+                    rustalgos.diversity.hill_diversity(cl_counts, 0.0),
                     rtol=config.RTOL,
                     atol=config.ATOL,
                 )
                 assert np.isclose(
                     mixed_uses_data.hill[1][dist_cutoff][netw_src_idx],
-                    rustalgos.hill_diversity(cl_counts, 1),
+                    rustalgos.diversity.hill_diversity(cl_counts, 1),
                     rtol=config.RTOL,
                     atol=config.ATOL,
                 )
                 assert np.isclose(
                     mixed_uses_data.hill[2][dist_cutoff][netw_src_idx],
-                    rustalgos.hill_diversity(cl_counts, 2),
+                    rustalgos.diversity.hill_diversity(cl_counts, 2),
                     rtol=config.RTOL,
                     atol=config.ATOL,
                 )
                 assert np.isclose(
                     mixed_uses_data.hill_weighted[0][dist_cutoff][netw_src_idx],
-                    rustalgos.hill_diversity_branch_distance_wt(cl_counts, cl_nearest, 0, beta, 1.0),
+                    rustalgos.diversity.hill_diversity_branch_distance_wt(cl_counts, cl_nearest, 0, beta, 1.0),
                     rtol=config.RTOL,
                     atol=config.ATOL,
                 )
                 assert np.isclose(
                     mixed_uses_data.hill_weighted[1][dist_cutoff][netw_src_idx],
-                    rustalgos.hill_diversity_branch_distance_wt(cl_counts, cl_nearest, 1, beta, 1.0),
+                    rustalgos.diversity.hill_diversity_branch_distance_wt(cl_counts, cl_nearest, 1, beta, 1.0),
                     rtol=config.RTOL,
                     atol=config.ATOL,
                 )
                 assert np.isclose(
                     mixed_uses_data.hill_weighted[2][dist_cutoff][netw_src_idx],
-                    rustalgos.hill_diversity_branch_distance_wt(cl_counts, cl_nearest, 2, beta, 1.0),
+                    rustalgos.diversity.hill_diversity_branch_distance_wt(cl_counts, cl_nearest, 2, beta, 1.0),
                     rtol=config.RTOL,
                     atol=config.ATOL,
                 )
                 assert np.isclose(
                     mixed_uses_data.shannon[dist_cutoff][netw_src_idx],
-                    rustalgos.shannon_diversity(cl_counts),
+                    rustalgos.diversity.shannon_diversity(cl_counts),
                     rtol=config.RTOL,
                     atol=config.ATOL,
                 )
                 assert np.isclose(
                     mixed_uses_data.gini[dist_cutoff][netw_src_idx],
-                    rustalgos.gini_simpson_diversity(cl_counts),
+                    rustalgos.diversity.gini_simpson_diversity(cl_counts),
                     rtol=config.RTOL,
                     atol=config.ATOL,
                 )

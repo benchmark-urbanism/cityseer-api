@@ -25,8 +25,8 @@ from matplotlib.patches import Patch
 from shapely import geometry
 from tqdm import tqdm
 
-from cityseer import config, rustalgos
-from cityseer.tools.graphs import EdgeData, NodeData, NodeKey
+from .. import config, rustalgos
+from ..tools.graphs import EdgeData, NodeData, NodeKey
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -429,7 +429,7 @@ class _SimpleLabelEncoder:
 
 
 def plot_assignment(
-    network_structure: rustalgos.NetworkStructure,
+    network_structure: rustalgos.graph.NetworkStructure,
     nx_multigraph: MultiGraph,
     data_gdf: gpd.GeoDataFrame,
     path: str | None = None,
@@ -447,8 +447,8 @@ def plot_assignment(
 
     Parameters
     ----------
-    network_structure: rustalgos.NetworkStructure
-        A [`rustalgos.NetworkStructure`](/rustalgos/rustalgos#networkstructure) instance.
+    network_structure: rustalgos.graph.NetworkStructure
+        A [`rustalgos.graph.NetworkStructure`](/rustalgos/rustalgos#networkstructure) instance.
     nx_multigraph: MultiGraph
         A `NetworkX` MultiGraph.
     data_gdf: GeoDataFrame
@@ -569,7 +569,7 @@ def plot_assignment(
 
 
 def plot_network_structure(
-    network_structure: rustalgos.NetworkStructure,
+    network_structure: rustalgos.graph.NetworkStructure,
     data_gdf: gpd.GeoDataFrame,
     poly: geometry.Polygon | None = None,
 ):
@@ -583,8 +583,8 @@ def plot_network_structure(
 
     Parameters
     ----------
-    network_structure: rustalgos.NetworkStructure
-        A [`rustalgos.NetworkStructure`](/rustalgos/rustalgos#networkstructure) instance.
+    network_structure: rustalgos.graph.NetworkStructure
+        A [`rustalgos.graph.NetworkStructure`](/rustalgos/rustalgos#networkstructure) instance.
     data_gdf: GeoDataFrame
         A `data_gdf` `GeoDataFrame` with `nearest_assigned` and `next_nearest_assign` columns.
     poly: geometry.Polygon

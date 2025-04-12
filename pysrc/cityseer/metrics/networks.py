@@ -59,7 +59,7 @@ from functools import partial
 
 import geopandas as gpd
 
-from cityseer import config, rustalgos
+from .. import config, rustalgos
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -70,7 +70,7 @@ SPEED_M_S = config.SPEED_M_S
 
 
 def node_centrality_shortest(
-    network_structure: rustalgos.NetworkStructure,
+    network_structure: rustalgos.graph.NetworkStructure,
     nodes_gdf: gpd.GeoDataFrame,
     distances: list[int] | None = None,
     betas: list[float] | None = None,
@@ -92,7 +92,7 @@ def node_centrality_shortest(
     Parameters
     ----------
     network_structure
-        A [`rustalgos.NetworkStructure`](/rustalgos/rustalgos#networkstructure). Best generated with the
+        A [`rustalgos.graph.NetworkStructure`](/rustalgos/rustalgos#networkstructure). Best generated with the
         [`io.network_structure_from_nx`](/tools/io#network-structure-from-nx) method.
     nodes_gdf
         A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe)
@@ -118,8 +118,8 @@ def node_centrality_shortest(
         Compute betweenness centralities. True by default.
     min_threshold_wt: float
         The default `min_threshold_wt` parameter can be overridden to generate custom mappings between the
-        `distance` and `beta` parameters. See [`rustalgos.distances_from_beta`](/rustalgos#distances-from-betas) for
-        more information.
+        `distance` and `beta` parameters. See [`rustalgos.distances_from_beta`](/rustalgos#distances-from-betas)
+        for more information.
     speed_m_s: float
         The default `speed_m_s` parameter can be configured to generate custom mappings between walking times and
         distance thresholds $d_{max}$.
@@ -211,7 +211,7 @@ def node_centrality_shortest(
 
 
 def node_centrality_simplest(
-    network_structure: rustalgos.NetworkStructure,
+    network_structure: rustalgos.graph.NetworkStructure,
     nodes_gdf: gpd.GeoDataFrame,
     distances: list[int] | None = None,
     betas: list[float] | None = None,
@@ -235,7 +235,7 @@ def node_centrality_simplest(
     Parameters
     ----------
     network_structure
-        A [`rustalgos.NetworkStructure`](/rustalgos/rustalgos#networkstructure). Best generated with the
+        A [`rustalgos.graph.NetworkStructure`](/rustalgos/rustalgos#networkstructure). Best generated with the
         [`io.network_structure_from_nx`](/tools/io#network-structure-from-nx) method.
     nodes_gdf
         A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe)
@@ -261,8 +261,8 @@ def node_centrality_simplest(
         Compute betweenness centralities. True by default.
     min_threshold_wt: float
         The default `min_threshold_wt` parameter can be overridden to generate custom mappings between the
-        `distance` and `beta` parameters. See [`rustalgos.distances_from_beta`](/rustalgos#distances-from-betas) for
-        more information.
+        `distance` and `beta` parameters. See [`rustalgos.distances_from_beta`](/rustalgos#distances-from-betas)
+        for more information.
     speed_m_s: float
         The default `speed_m_s` parameter can be configured to generate custom mappings between walking times and
         distance thresholds $d_{max}$.
@@ -352,7 +352,7 @@ def node_centrality_simplest(
 
 
 def segment_centrality(
-    network_structure: rustalgos.NetworkStructure,
+    network_structure: rustalgos.graph.NetworkStructure,
     nodes_gdf: gpd.GeoDataFrame,
     distances: list[int] | None = None,
     betas: list[float] | None = None,
@@ -373,7 +373,7 @@ def segment_centrality(
     Parameters
     ----------
     network_structure
-        A [`rustalgos.NetworkStructure`](/rustalgos/rustalgos#networkstructure). Best generated with the
+        A [`rustalgos.graph.NetworkStructure`](/rustalgos/rustalgos#networkstructure). Best generated with the
         [`io.network_structure_from_nx`](/tools/io#network-structure-from-nx) method.
     nodes_gdf
         A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe)
@@ -399,8 +399,8 @@ def segment_centrality(
         Compute betweenness centralities. True by default.
     min_threshold_wt: float
         The default `min_threshold_wt` parameter can be overridden to generate custom mappings between the
-        `distance` and `beta` parameters. See [`rustalgos.distances_from_beta`](/rustalgos#distances-from-betas) for
-        more information.
+        `distance` and `beta` parameters. See [`rustalgos.distances_from_beta`](/rustalgos#distances-from-betas)
+        for more information.
     speed_m_s: float
         The default `speed_m_s` parameter can be configured to generate custom mappings between walking times and
         distance thresholds $d_{max}$.

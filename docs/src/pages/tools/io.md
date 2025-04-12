@@ -68,7 +68,7 @@ layout: ../../layouts/PageLayout.astro
   </div>
   <div class="desc">
 
- The &quot;from_crs_code&quot; parameter is deprecated and will be removed in a future release. The CRS can be set directly in the graph if not already present at G.graph[&quot;crs&quot;]; for example, G.graph[&quot;crs&quot;] = pyproj.CRS(27700)'</div>
+ The `from_crs_code` parameter is deprecated and will be removed in a future release. If your network is generated via cityseer from OSM or GeoPandas then CRS handling is automatic. Otherwise, the CRS can be set directly in the graph if necessary at G.graph[&quot;crs&quot;]; for example: G.graph[&quot;crs&quot;] = 4326</div>
 </div>
 
 ### Returns
@@ -864,7 +864,7 @@ out qt;
   </div>
   <div class="desc">
 
- The &quot;crs&quot; parameter is deprecated and will be removed in a future release. The CRS can be set directly in the graph if not already present at G.graph[&quot;crs&quot;]; for example, G.graph[&quot;crs&quot;] = pyproj.CRS(27700)'</div>
+ The `crs` parameter is deprecated and will be removed in a future release. If your network is generated via cityseer from OSM or GeoPandas then CRS handling is automatic. Otherwise, the CRS can be set directly in the graph if necessary at G.graph[&quot;crs&quot;]; for example: G.graph[&quot;crs&quot;] = 4326</div>
 </div>
 
 ### Returns
@@ -891,11 +891,11 @@ out qt;
 <div class="param-set">
   <div class="def">
     <div class="name"></div>
-    <div class="type">rustalgos.NetworkStructure</div>
+    <div class="type">rustalgos.graph.NetworkStructure</div>
   </div>
   <div class="desc">
 
- A [`rustalgos.NetworkStructure`](/rustalgos/rustalgos#networkstructure) instance.</div>
+ A [`rustalgos.graph.NetworkStructure`](/rustalgos/rustalgos#networkstructure) instance.</div>
 </div>
 
 
@@ -953,11 +953,11 @@ out qt;
 <div class="param-set">
   <div class="def">
     <div class="name"></div>
-    <div class="type">rustalgos.NetworkStructure</div>
+    <div class="type">rustalgos.graph.NetworkStructure</div>
   </div>
   <div class="desc">
 
- A [`rustalgos.NetworkStructure`](/rustalgos/rustalgos#networkstructure) instance.</div>
+ A [`rustalgos.graph.NetworkStructure`](/rustalgos/rustalgos#networkstructure) instance.</div>
 </div>
 
 
@@ -1013,7 +1013,7 @@ out qt;
 </div>
 
 
- Add GTFS data to network structure.
+ Add GTFS data to network structure. > This function is still in development and may change in future releases. Testing is ongoing.
 
 </div>
 
@@ -1126,7 +1126,7 @@ out qt;
   </div>
   <div class="desc">
 
- The &quot;crs&quot; parameter is deprecated and will be removed in a future release. The CRS can be set directly in the graph if not already present at G.graph[&quot;crs&quot;]; for example, G.graph[&quot;crs&quot;] = pyproj.CRS(27700)'</div>
+ The `crs` parameter is deprecated and will be removed in a future release. If your network is generated via cityseer from OSM or GeoPandas then CRS handling is automatic. Otherwise, the CRS can be set directly in the graph if necessary at G.graph[&quot;crs&quot;]; for example: G.graph[&quot;crs&quot;] = 4326</div>
 </div>
 
 ### Returns

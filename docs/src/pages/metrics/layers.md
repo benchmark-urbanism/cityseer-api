@@ -42,7 +42,7 @@ layout: ../../layouts/PageLayout.astro
 </div>
 
 
- Assign a `GeoDataFrame` to a [`rustalgos.NetworkStructure`](/rustalgos/rustalgos#networkstructure). A `NetworkStructure` provides the backbone for the calculation of land-use and statistical aggregations over the network. Data points will be assigned to the two closest network nodes — one in either direction — based on the closest adjacent street edge. This facilitates a dynamic spatial aggregation strategy which will select the shortest distance to a data point relative to either direction of approach.
+ Assign a `GeoDataFrame` to a [`rustalgos.graph.NetworkStructure`](/rustalgos/rustalgos#networkstructure). A `NetworkStructure` provides the backbone for the calculation of land-use and statistical aggregations over the network. Data points will be assigned to the two closest network nodes — one in either direction — based on the closest adjacent street edge. This facilitates a dynamic spatial aggregation strategy which will select the shortest distance to a data point relative to either direction of approach.
 ### Parameters
 <div class="param-set">
   <div class="def">
@@ -57,11 +57,11 @@ layout: ../../layouts/PageLayout.astro
 <div class="param-set">
   <div class="def">
     <div class="name">network_structure</div>
-    <div class="type">rustalgos.NetworkStructure</div>
+    <div class="type">rustalgos.graph.NetworkStructure</div>
   </div>
   <div class="desc">
 
- A [`rustalgos.NetworkStructure`](/rustalgos/rustalgos#networkstructure).</div>
+ A [`rustalgos.graph.NetworkStructure`](/rustalgos/rustalgos#networkstructure).</div>
 </div>
 
 <div class="param-set">
@@ -88,11 +88,11 @@ layout: ../../layouts/PageLayout.astro
 <div class="param-set">
   <div class="def">
     <div class="name">data_map</div>
-    <div class="type">rustalgos.DataMap</div>
+    <div class="type">rustalgos.data.DataMap</div>
   </div>
   <div class="desc">
 
- A [`rustalgos.DataMap`](/rustalgos#datamap) instance.</div>
+ A [`rustalgos.data.DataMap`](/rustalgos#datamap) instance.</div>
 </div>
 
 <div class="param-set">
@@ -271,7 +271,7 @@ representation of variations of metrics along street-fronts.
   </div>
   <div class="desc">
 
- A [`rustalgos.NetworkStructure`](/rustalgos/rustalgos#networkstructure). Best generated with the [`io.network_structure_from_nx`](/tools/io#network-structure-from-nx) function.</div>
+ A [`rustalgos.graph.NetworkStructure`](/rustalgos/rustalgos#networkstructure). Best generated with the [`io.network_structure_from_nx`](/tools/io#network-structure-from-nx) function.</div>
 </div>
 
 <div class="param-set">
@@ -578,7 +578,7 @@ print(nodes_gdf["cc_c_nearest_max_800"])
   </div>
   <div class="desc">
 
- A [`rustalgos.NetworkStructure`](/rustalgos/rustalgos#networkstructure). Best generated with the [`io.network_structure_from_nx`](/tools/io#network-structure-from-nx) function.</div>
+ A [`rustalgos.graph.NetworkStructure`](/rustalgos/rustalgos#networkstructure). Best generated with the [`io.network_structure_from_nx`](/tools/io#network-structure-from-nx) function.</div>
 </div>
 
 <div class="param-set">
@@ -915,7 +915,7 @@ been applied.
   </div>
   <div class="desc">
 
- A [`rustalgos.NetworkStructure`](/rustalgos/rustalgos#networkstructure). Best generated with the [`io.network_structure_from_nx`](/tools/io#network-structure-from-nx) function.</div>
+ A [`rustalgos.graph.NetworkStructure`](/rustalgos/rustalgos#networkstructure). Best generated with the [`io.network_structure_from_nx`](/tools/io#network-structure-from-nx) function.</div>
 </div>
 
 <div class="param-set">
