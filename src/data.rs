@@ -7,6 +7,7 @@ use core::f32;
 use numpy::PyArray1;
 use pyo3::exceptions;
 use pyo3::prelude::*;
+use pyo3::types::{PyAny, PyAnyMethods, PyDict};
 use rayon::prelude::*;
 use std::collections::{HashMap, HashSet};
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -88,8 +89,9 @@ struct ClassesState {
 
 /// Data entry for spatial analysis.
 #[pyclass]
-#[derive(Clone)]
 pub struct DataEntry {
+    #[pyo3(get)]
+    pub python_key: Py<PyAny>,
     #[pyo3(get)]
     pub data_key: String,
     #[pyo3(get)]
@@ -100,38 +102,53 @@ pub struct DataEntry {
     pub node_matches: Option<NodeMatches>,
 }
 
+impl Clone for DataEntry {
+    fn clone(&self) -> Self {
+        Python::with_gil(|py| DataEntry {
+            python_key: self.python_key.clone_ref(py),
+            data_key: self.data_key.clone(),
+            coord: self.coord,
+            data_id: self.data_id.clone(),
+            node_matches: self.node_matches.clone(),
+        })
+    }
+}
+
+/// Helper to generate a composite key from a Python object.
+fn py_key_to_composite(py_obj: Bound<'_, PyAny>) -> PyResult<String> {
+    let type_name = py_obj.get_type().name()?;
+    let value_pystr = py_obj.str()?;
+    let value_str = value_pystr.to_str()?;
+    Ok(format!("{}:{}", type_name, value_str))
+}
+
 #[pymethods]
 impl DataEntry {
     #[new]
-    #[pyo3(signature = (data_key, x, y, data_id=None, node_matches=None))]
+    #[pyo3(signature = (python_key, x, y, data_id=None, node_matches=None))]
     #[inline]
     fn new(
-        data_key: String,
+        py: Python,
+        python_key: Py<PyAny>,
         x: f32,
         y: f32,
         data_id: Option<String>,
         node_matches: Option<NodeMatches>,
-    ) -> DataEntry {
-        DataEntry {
+    ) -> PyResult<DataEntry> {
+        let py_any = python_key.bind(py);
+        let data_key = py_key_to_composite(py_any.clone())?;
+        Ok(DataEntry {
+            python_key,
             data_key,
             coord: Coord::new(x, y),
             data_id,
             node_matches,
-        }
-    }
-
-    #[inline]
-    fn is_assigned(&self) -> bool {
-        self.node_matches
-            .as_ref()
-            .and_then(|nm| nm.nearest.as_ref().map(|_| true))
-            .unwrap_or(false)
+        })
     }
 }
 
 /// Map of data entries for spatial analysis.
 #[pyclass]
-#[derive(Clone)]
 pub struct DataMap {
     #[pyo3(get)]
     entries: HashMap<String, DataEntry>,
@@ -159,19 +176,19 @@ impl DataMap {
         self.progress.load(Ordering::Relaxed)
     }
 
-    #[pyo3(signature = (data_key, x, y, data_id=None, node_matches=None))]
+    #[pyo3(signature = (python_key, x, y, data_id=None, node_matches=None))]
     fn insert(
         &mut self,
-        data_key: String,
+        py: Python,
+        python_key: Py<PyAny>,
         x: f32,
         y: f32,
         data_id: Option<String>,
         node_matches: Option<NodeMatches>,
-    ) {
-        self.entries.insert(
-            data_key.clone(),
-            DataEntry::new(data_key, x, y, data_id, node_matches),
-        );
+    ) -> PyResult<()> {
+        let entry = DataEntry::new(py, python_key, x, y, data_id, node_matches)?;
+        self.entries.insert(entry.data_key.clone(), entry);
+        Ok(())
     }
 
     fn entry_keys(&self) -> Vec<String> {
@@ -179,7 +196,7 @@ impl DataMap {
     }
 
     fn get_entry(&self, data_key: &str) -> Option<DataEntry> {
-        self.entries.get(data_key).cloned()
+        self.entries.get(data_key).map(|entry| entry.clone())
     }
 
     fn get_data_coord(&self, data_key: &str) -> Option<Coord> {
@@ -214,7 +231,6 @@ impl DataMap {
         let pbar_disabled = pbar_disabled.unwrap_or(false);
         self.progress_init();
 
-        // To safely parallelize, collect keys and process in parallel, then update sequentially.
         let keys: Vec<String> = self.entries.keys().cloned().collect();
         let results: Vec<(String, Option<NodeMatches>)> = keys
             .par_iter()
@@ -289,13 +305,9 @@ impl DataMap {
             })
             .collect();
 
-        // Sequentially update the entries with the computed node_matches
         for (key, node_matches) in results {
             if let Some(entry) = self.entries.get_mut(&key) {
                 entry.node_matches = node_matches;
-                if !pbar_disabled {
-                    self.progress.fetch_add(1, Ordering::Relaxed);
-                }
             }
         }
         self.assigned_to_network = true;
@@ -318,9 +330,11 @@ impl DataMap {
         speed_m_s: f32,
         jitter_scale: Option<f32>,
         angular: Option<bool>,
-    ) -> HashMap<String, f32> {
+    ) -> PyResult<HashMap<String, f32>> {
         if !self.assigned_to_network {
-            panic!("DataMap must be assigned to network before calling aggregate_to_src_idx. Call assign_to_network first.");
+            return Err(exceptions::PyRuntimeError::new_err(
+                "DataMap must be assigned to network before calling aggregate_to_src_idx. Call assign_to_network first."
+            ));
         }
         let jitter_scale = jitter_scale.unwrap_or(0.0);
         let angular = angular.unwrap_or(false);
@@ -398,7 +412,7 @@ impl DataMap {
                 }
             }
         }
-        entries
+        Ok(entries)
     }
 
     #[pyo3(signature = (
@@ -418,7 +432,7 @@ impl DataMap {
     fn accessibility(
         &self,
         network_structure: &NetworkStructure,
-        landuses_map: HashMap<String, Option<String>>,
+        landuses_map: Py<PyAny>,
         accessibility_keys: Vec<String>,
         distances: Option<Vec<u32>>,
         betas: Option<Vec<f32>>,
@@ -439,16 +453,31 @@ impl DataMap {
             .iter()
             .max()
             .expect("Distances should not be empty");
+        let landuses_map = landuses_map.bind(py).downcast::<PyDict>()?;
         if landuses_map.len() != self.count() {
             return Err(exceptions::PyValueError::new_err(
                 "The number of landuse encodings must match the number of data points",
             ));
         }
+        let mut lu_map: HashMap<String, String> = HashMap::with_capacity(self.count());
+        for (py_key, py_val) in landuses_map.iter() {
+            let py_key = py_key.downcast::<PyAny>()?;
+            let comp_key = py_key_to_composite(py_key.clone())?;
+            let lu_val: String = py_val.extract()?;
+            if !self.get_entry(&comp_key).is_some() {
+                return Err(exceptions::PyKeyError::new_err(format!(
+                    "Data entries key missing: {}",
+                    comp_key
+                )));
+            }
+            lu_map.insert(comp_key, lu_val);
+        }
+
         let spatial_tolerance = spatial_tolerance.unwrap_or(0);
         let max_curve_wts = clip_wts_curve(distances.clone(), betas.clone(), spatial_tolerance)?;
         let pbar_disabled = pbar_disabled.unwrap_or(false);
         self.progress_init();
-        let result = py.allow_threads(move || {
+        let result = py.allow_threads(move || -> PyResult<_> {
             let mut metrics: HashMap<String, MetricResult> =
                 HashMap::with_capacity(accessibility_keys.len());
             let mut metrics_wt: HashMap<String, MetricResult> =
@@ -473,15 +502,12 @@ impl DataMap {
             }
 
             let node_indices = network_structure.node_indices();
-            node_indices.par_iter().for_each(|&netw_src_idx| {
+            node_indices.par_iter().try_for_each(|&netw_src_idx| {
                 if !pbar_disabled {
                     self.progress.fetch_add(1, Ordering::Relaxed);
                 }
-                if !network_structure
-                    .is_node_live(netw_src_idx)
-                    .expect("Failed to check node liveness")
-                {
-                    return;
+                if !network_structure.is_node_live(netw_src_idx).unwrap_or(true) {
+                    return Ok::<(), PyErr>(());
                 }
                 let reachable_entries = self.aggregate_to_src_idx(
                     netw_src_idx,
@@ -490,13 +516,9 @@ impl DataMap {
                     speed_m_s,
                     jitter_scale,
                     angular,
-                );
-
+                )?;
                 for (data_key, data_dist) in reachable_entries {
-                    if let Some(lu_class) = landuses_map
-                        .get(&data_key)
-                        .and_then(|opt_str| opt_str.as_ref())
-                    {
+                    if let Some(lu_class) = lu_map.get(&data_key) {
                         if !accessibility_keys.contains(lu_class) {
                             continue;
                         }
@@ -525,7 +547,8 @@ impl DataMap {
                         }
                     }
                 }
-            });
+                Ok(())
+            })?;
             let accessibilities = accessibility_keys
                 .into_iter()
                 .map(|key| {
@@ -537,8 +560,8 @@ impl DataMap {
                     (key, result)
                 })
                 .collect();
-            accessibilities
-        });
+            Ok(accessibilities)
+        })?;
         Ok(result)
     }
 
@@ -562,7 +585,7 @@ impl DataMap {
     fn mixed_uses(
         &self,
         network_structure: &NetworkStructure,
-        landuses_map: HashMap<String, Option<String>>,
+        landuses_map: Py<PyAny>,
         distances: Option<Vec<u32>>,
         betas: Option<Vec<f32>>,
         minutes: Option<Vec<f32>>,
@@ -582,10 +605,24 @@ impl DataMap {
             pair_distances_betas_time(distances, betas, minutes, min_threshold_wt, speed_m_s)?;
         let speed_m_s = speed_m_s.unwrap_or(WALKING_SPEED);
         let max_walk_seconds = *seconds.iter().max().unwrap();
+        let landuses_map = landuses_map.bind(py).downcast::<PyDict>()?;
         if landuses_map.len() != self.count() {
             return Err(exceptions::PyValueError::new_err(
                 "The number of landuse encodings must match the number of data points",
             ));
+        }
+        let mut lu_map: HashMap<String, String> = HashMap::with_capacity(self.count());
+        for (py_key, py_val) in landuses_map.iter() {
+            let py_key = py_key.downcast::<PyAny>()?;
+            let comp_key = py_key_to_composite(py_key.clone())?;
+            let lu_val: String = py_val.extract()?;
+            if !self.get_entry(&comp_key).is_some() {
+                return Err(exceptions::PyKeyError::new_err(format!(
+                    "Data entries key missing: {}",
+                    comp_key
+                )));
+            }
+            lu_map.insert(comp_key, lu_val);
         }
         let compute_hill = compute_hill.unwrap_or(true);
         let compute_hill_weighted = compute_hill_weighted.unwrap_or(true);
@@ -600,7 +637,7 @@ impl DataMap {
         let max_curve_wts = clip_wts_curve(distances.clone(), betas.clone(), spatial_tolerance)?;
         let pbar_disabled = pbar_disabled.unwrap_or(false);
         self.progress_init();
-        let result = py.allow_threads(move || {
+        let result = py.allow_threads(move || -> PyResult<_> {
             let hill_mu: HashMap<u32, MetricResult> = [0, 1, 2]
                 .iter()
                 .map(|&q| {
@@ -623,19 +660,16 @@ impl DataMap {
                 MetricResult::new(distances.clone(), network_structure.node_count(), 0.0);
             let gini_mu = MetricResult::new(distances.clone(), network_structure.node_count(), 0.0);
             let mut classes_uniq: HashSet<String> = HashSet::new();
-            for cl_code in landuses_map.values().flatten() {
+            for cl_code in lu_map.values() {
                 classes_uniq.insert(cl_code.clone());
             }
             let node_indices = network_structure.node_indices();
-            node_indices.par_iter().for_each(|&netw_src_idx| {
+            node_indices.par_iter().try_for_each(|&netw_src_idx| {
                 if !pbar_disabled {
                     self.progress.fetch_add(1, Ordering::Relaxed);
                 }
-                if !network_structure
-                    .is_node_live(netw_src_idx)
-                    .expect("Failed to check node liveness")
-                {
-                    return;
+                if !network_structure.is_node_live(netw_src_idx).unwrap_or(true) {
+                    return Ok::<(), PyErr>(());
                 }
                 let reachable_entries = self.aggregate_to_src_idx(
                     netw_src_idx,
@@ -644,7 +678,7 @@ impl DataMap {
                     speed_m_s,
                     jitter_scale,
                     angular,
-                );
+                )?;
                 let mut classes: HashMap<u32, HashMap<String, ClassesState>> =
                     HashMap::with_capacity(distances.len());
                 for &dist_key in &distances {
@@ -663,10 +697,7 @@ impl DataMap {
                     classes.insert(dist_key, temp);
                 }
                 for (data_key, data_dist) in &reachable_entries {
-                    if let Some(lu_class) = landuses_map
-                        .get(data_key)
-                        .and_then(|opt_str| opt_str.as_ref())
-                    {
+                    if let Some(lu_class) = lu_map.get(data_key) {
                         for &dist_key in &distances {
                             if *data_dist <= dist_key as f32 {
                                 let class_state = classes
@@ -753,7 +784,8 @@ impl DataMap {
                         );
                     }
                 }
-            });
+                Ok(())
+            })?;
             let mut hill_result = None;
             if compute_hill {
                 let hr = [0, 1, 2]
@@ -780,13 +812,13 @@ impl DataMap {
             } else {
                 None
             };
-            MixedUsesResult {
+            Ok(MixedUsesResult {
                 hill: hill_result,
                 hill_weighted: hill_weighted_result,
                 shannon: shannon_result,
                 gini: gini_result,
-            }
-        });
+            })
+        })?;
         Ok(result)
     }
 
@@ -806,7 +838,7 @@ impl DataMap {
     fn stats(
         &self,
         network_structure: &NetworkStructure,
-        numerical_maps: Vec<HashMap<String, f32>>,
+        numerical_maps: Vec<Py<PyAny>>,
         distances: Option<Vec<u32>>,
         betas: Option<Vec<f32>>,
         minutes: Option<Vec<f32>>,
@@ -822,21 +854,35 @@ impl DataMap {
             pair_distances_betas_time(distances, betas, minutes, min_threshold_wt, speed_m_s)?;
         let speed_m_s = speed_m_s.unwrap_or(WALKING_SPEED);
         let max_walk_seconds = *seconds.iter().max().unwrap();
-        for (index, numerical_map) in numerical_maps.iter().enumerate() {
+        let mut num_maps: Vec<HashMap<String, f32>> = Vec::with_capacity(numerical_maps.len());
+        for numerical_map in numerical_maps.iter() {
+            let numerical_map = numerical_map.bind(py).downcast::<PyDict>()?;
             if numerical_map.len() != self.count() {
-                return Err(exceptions::PyValueError::new_err(format!(
-                    "The number of entries in numerical map {} must match the number of data points (expected: {}, found: {})",
-                    index,
-                    self.count(),
-                    numerical_map.len()
-                )));
+                return Err(exceptions::PyValueError::new_err(
+                    "The number of landuse encodings must match the number of data points",
+                ));
             }
+            let mut num_map: HashMap<String, f32> = HashMap::with_capacity(self.count());
+            for (py_key, py_val) in numerical_map.iter() {
+                let py_key = py_key.downcast::<PyAny>()?;
+                let comp_key = py_key_to_composite(py_key.clone())?;
+                let num_val: f32 = py_val.extract()?;
+                if !self.get_entry(&comp_key).is_some() {
+                    return Err(exceptions::PyKeyError::new_err(format!(
+                        "Data entries key missing: {}",
+                        comp_key
+                    )));
+                }
+                num_map.insert(comp_key, num_val);
+            }
+            num_maps.push(num_map);
         }
+
         let spatial_tolerance = spatial_tolerance.unwrap_or(0);
         let max_curve_wts = clip_wts_curve(distances.clone(), betas.clone(), spatial_tolerance)?;
         let pbar_disabled = pbar_disabled.unwrap_or(false);
         self.progress_init();
-        let result = py.allow_threads(move || {
+        let result = py.allow_threads(move || -> PyResult<_> {
             let mut sum = Vec::new();
             let mut sum_wt = Vec::new();
             let mut count = Vec::new();
@@ -846,7 +892,7 @@ impl DataMap {
             let mut sum_sq = Vec::new();
             let mut sum_sq_wt = Vec::new();
             let node_count = network_structure.node_count();
-            for _ in 0..numerical_maps.len() {
+            for _ in 0..num_maps.len() {
                 sum.push(MetricResult::new(distances.clone(), node_count, 0.0));
                 sum_wt.push(MetricResult::new(distances.clone(), node_count, 0.0));
                 count.push(MetricResult::new(distances.clone(), node_count, 0.0));
@@ -856,16 +902,14 @@ impl DataMap {
                 sum_sq.push(MetricResult::new(distances.clone(), node_count, 0.0));
                 sum_sq_wt.push(MetricResult::new(distances.clone(), node_count, 0.0));
             }
+
             let node_indices = network_structure.node_indices();
-            node_indices.par_iter().for_each(|&netw_src_idx| {
+            node_indices.par_iter().try_for_each(|&netw_src_idx| {
                 if !pbar_disabled {
                     self.progress.fetch_add(1, Ordering::Relaxed);
                 }
-                if !network_structure
-                    .is_node_live(netw_src_idx)
-                    .expect("Failed to check node liveness")
-                {
-                    return;
+                if !network_structure.is_node_live(netw_src_idx).unwrap_or(true) {
+                    return Ok::<(), PyErr>(());
                 }
                 let reachable_entries = self.aggregate_to_src_idx(
                     netw_src_idx,
@@ -874,10 +918,10 @@ impl DataMap {
                     speed_m_s,
                     jitter_scale,
                     angular,
-                );
+                )?;
                 for (data_key, data_dist) in &reachable_entries {
-                    for (map_idx, numerical_map) in numerical_maps.iter().enumerate() {
-                        if let Some(&num) = numerical_map.get(data_key) {
+                    for (map_idx, num_map) in num_maps.iter().enumerate() {
+                        if let Some(&num) = num_map.get(data_key) {
                             if num.is_nan() {
                                 continue;
                             }
@@ -918,9 +962,10 @@ impl DataMap {
                         }
                     }
                 }
-            });
-            let mut results = Vec::with_capacity(numerical_maps.len());
-            for map_idx in 0..numerical_maps.len() {
+                Ok(())
+            })?;
+            let mut results = Vec::with_capacity(num_maps.len());
+            for map_idx in 0..num_maps.len() {
                 let mean_res = MetricResult::new(distances.clone(), node_count, f32::NAN);
                 let mean_wt_res = MetricResult::new(distances.clone(), node_count, f32::NAN);
                 let variance_res = MetricResult::new(distances.clone(), node_count, f32::NAN);
@@ -977,8 +1022,15 @@ impl DataMap {
                     min: min[map_idx].load(),
                 });
             }
-            results
-        });
+            Ok(results)
+        })?;
         Ok(result)
     }
 }
+
+// Note: PyResult (and PyErr) are Send and Sync, so they can be used across threads.
+// However, Python objects (e.g., Py<PyAny>, PyDict, etc.) must not be accessed from threads
+// other than the one holding the GIL. In this code, all Python object access is done
+// before entering py.allow_threads, and only Rust types are used inside the parallel region.
+// Returning PyResult from the thread pool is safe as long as no Python objects are accessed
+// or created inside the thread pool. This pattern is correct for pyo3 and rayon.

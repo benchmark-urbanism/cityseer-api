@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Hashable
+
 import numpy.typing as npt
 
 from . import Coord
@@ -12,20 +14,20 @@ class ClassesState:
     nearest: float
 
 class DataEntry:
+    python_key: Hashable
     data_key: str
     coord: Coord
     data_id: str | None
-    node_matches: object | None  # Updated: now holds NodeMatches or None
+    node_matches: NodeMatches | None
 
     def __init__(
         self,
-        data_key: str,
+        python_key: Hashable,
         x: float,
         y: float,
         data_id: str | None = None,
-        node_matches: object | None = None,
+        node_matches: NodeMatches | None = None,
     ) -> None: ...
-    def is_assigned(self) -> bool: ...
 
 class AccessibilityResult:
     weighted: dict[int, npt.ArrayLike]
@@ -62,10 +64,11 @@ class DataMap:
     entries: dict[str, DataEntry]
     assigned_to_network: bool
     def __init__(self) -> None: ...
+    def progress_init(self) -> None: ...
     def progress(self) -> int: ...
     def insert(
         self,
-        data_key: str,
+        python_key: Hashable,
         x: float,
         y: float,
         data_id: str | None = None,
@@ -73,7 +76,7 @@ class DataMap:
     ) -> None: ...
     def entry_keys(self) -> list[str]: ...
     def get_entry(self, data_key: str) -> DataEntry | None: ...
-    def get_data_coord(self, data_key: str) -> Coord: ...
+    def get_data_coord(self, data_key: str) -> Coord | None: ...
     def count(self) -> int: ...
     def is_empty(self) -> bool: ...
     def assign_to_network(
@@ -86,7 +89,7 @@ class DataMap:
         self,
         netw_src_idx: int,
         network_structure: NetworkStructure,
-        max_seconds: float,
+        max_walk_seconds: float,
         speed_m_s: float,
         jitter_scale: float | None = None,
         angular: bool | None = None,
@@ -94,7 +97,7 @@ class DataMap:
     def accessibility(
         self,
         network_structure: NetworkStructure,
-        landuses_map: dict[str, str],
+        landuses_map: dict[Hashable, str],
         accessibility_keys: list[str],
         distances: list[int] | None = None,
         betas: list[float] | None = None,
@@ -109,14 +112,14 @@ class DataMap:
     def mixed_uses(
         self,
         network_structure: NetworkStructure,
-        landuses_map: dict[str, str],
+        landuses_map: dict[Hashable, str],
+        distances: list[int] | None = None,
+        betas: list[float] | None = None,
+        minutes: list[float] | None = None,
         compute_hill: bool | None = True,
         compute_hill_weighted: bool | None = True,
         compute_shannon: bool | None = False,
         compute_gini: bool | None = False,
-        distances: list[int] | None = None,
-        betas: list[float] | None = None,
-        minutes: list[float] | None = None,
         angular: bool | None = None,
         spatial_tolerance: int | None = None,
         min_threshold_wt: float | None = None,
@@ -127,7 +130,7 @@ class DataMap:
     def stats(
         self,
         network_structure: NetworkStructure,
-        numerical_maps: list[dict[str, float]],
+        numerical_maps: list[dict[Hashable, str]],
         distances: list[int] | None = None,
         betas: list[float] | None = None,
         minutes: list[float] | None = None,

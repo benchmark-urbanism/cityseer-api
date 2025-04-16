@@ -102,15 +102,13 @@ def test_mock_data_map(primal_graph):
             data_gdf = mock.mock_data_gdf(primal_graph, length=length, random_seed=random_seed)
             data_map = mock.mock_data_map(data_gdf)
             assert data_map.count() == length
-            keys = set(data_map.entry_keys())
-            expected_keys = set(str(uid) for uid in data_gdf.index)
-            assert keys == expected_keys
             for uid, row in data_gdf.iterrows():
-                entry = data_map.get_entry(str(uid))
+                data_key = f"{uid.__class__.__name__}:{uid}"
+                entry = data_map.get_entry(data_key)
                 assert entry is not None
-                assert hasattr(entry, "data_key") and isinstance(entry.data_key, str)
-                assert entry.data_key == str(uid)
-                assert hasattr(entry, "coord")
-                assert hasattr(entry.coord, "x") and isinstance(entry.coord.x, float)
-                assert hasattr(entry.coord, "y") and isinstance(entry.coord.y, float)
-                assert hasattr(entry, "data_id")
+                assert entry.data_key == data_key
+                assert entry.python_key == uid
+                assert entry.coord.x - row.geometry.x < 1  # f32 rounding errors
+                assert entry.coord.y - row.geometry.y < 1  # f32 rounding errors
+                assert entry.data_id is None
+                assert entry.node_matches is None

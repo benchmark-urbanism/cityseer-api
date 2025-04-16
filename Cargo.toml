@@ -20,7 +20,7 @@ atomic_float = "1.1.0"
 ndarray = "0.16.1"
 numpy = "0.24.0"
 petgraph = "0.7.1"
-pyo3 = { version = "0.24.0", features = ["multiple-pymethods"] }
+pyo3 = { version = "0.24.1", features = ["multiple-pymethods"] }
 rand = "0.9.0"
 rand_distr = "0.5.1"
 rayon = "1.10.0"

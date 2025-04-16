@@ -1,6 +1,8 @@
 # pyright: basic
 from __future__ import annotations
 
+import builtins
+
 import geopandas as gpd
 import networkx as nx
 import numpy as np
@@ -132,13 +134,15 @@ def test_aggregate_to_src_idx(primal_graph):
                     # verify distances vs. the max
                     for data_key, data_entry in data_map.entries.items():
                         # Use node_matches for clarity and consistency with Rust struct
+                        type_name = "int"
+                        py_type = getattr(builtins, type_name)
                         nearest_assign = (
-                            data_entry.node_matches.nearest.idx
+                            py_type(data_entry.node_matches.nearest.idx)
                             if data_entry.node_matches and data_entry.node_matches.nearest is not None
                             else None
                         )
                         next_nearest_assign = (
-                            data_entry.node_matches.next_nearest.idx
+                            py_type(data_entry.node_matches.next_nearest.idx)
                             if data_entry.node_matches and data_entry.node_matches.next_nearest is not None
                             else None
                         )
@@ -198,15 +202,13 @@ def test_accessibility(primal_graph):
     max_seconds = max_dist / config.SPEED_M_S
     # max assign dist is different from max search dist
     data_map.assign_to_network(network_structure, max_dist=400)
-    data_keys: list[str] = data_gdf["datamap_key"]  # type: ignore
-    landuses: list[str] = data_gdf["categorical_landuses"]  # type: ignore
-    landuses_map: dict[str, str] = dict(zip(data_keys, landuses, strict=True))
+    landuses_map = dict(data_gdf["categorical_landuses"])  # type: ignore
     # all datapoints and types are completely unique except for the last five - which all point to the same source
     accessibility_keys = ["a", "b", "c", "z"]  # the duplicate keys are per landuse 'z'
     # generate
     accessibilities = data_map.accessibility(
         network_structure,
-        landuses_map,
+        landuses_map,  # type: ignore
         accessibility_keys,
         distances,
     )
@@ -232,10 +234,13 @@ def test_accessibility(primal_graph):
                 src_idx, network_structure, int(max_seconds), config.SPEED_M_S
             )
             for data_key, data_dist in reachable_entries.items():
+                py_type, py_key = data_key.split(":")
+                py_cast = getattr(builtins, py_type)
+                python_key = py_cast(py_key)
                 # double check distance is within threshold
                 assert data_dist <= max_dist
                 if data_dist <= dist:
-                    data_class = landuses_map[data_key]
+                    data_class = landuses_map[python_key]
                     # aggregate accessibility codes
                     if data_class == "a":
                         a_nw += 1

@@ -212,8 +212,7 @@ impl NetworkStructure {
                     && neighbor_pred.is_some()
                     && current_pred == neighbor_pred
                 {
-                        continue;
-                    }
+                    continue;
                 }
                 let mut turn = 0.0;
                 if node_idx != src_idx
@@ -409,10 +408,7 @@ impl NetworkStructure {
                 if !pbar_disabled {
                     self.progress.fetch_add(1, AtomicOrdering::Relaxed);
                 }
-                if !self
-                    .is_node_live(*src_idx)
-                    .expect("Node index must be valid for liveness check")
-                {
+                if !self.is_node_live(*src_idx).unwrap_or(true) {
                     return;
                 }
                 let (visited_nodes, tree_map) = self.dijkstra_tree_shortest(
@@ -584,10 +580,7 @@ impl NetworkStructure {
                 if !pbar_disabled {
                     self.progress.fetch_add(1, AtomicOrdering::Relaxed);
                 }
-                if !self
-                    .is_node_live(*src_idx)
-                    .expect("Node index must be valid for liveness check")
-                {
+                if !self.is_node_live(*src_idx).unwrap_or(true) {
                     return;
                 }
                 let (visited_nodes, tree_map) = self.dijkstra_tree_simplest(
@@ -729,10 +722,7 @@ impl NetworkStructure {
                 if !pbar_disabled {
                     self.progress.fetch_add(1, AtomicOrdering::Relaxed);
                 }
-                if !self
-                    .is_node_live(*src_idx)
-                    .expect("Node index must be valid for liveness check")
-                {
+                if !self.is_node_live(*src_idx).unwrap_or(true) {
                     return;
                 }
                 let (visited_nodes, visited_edges, tree_map, edge_map) =

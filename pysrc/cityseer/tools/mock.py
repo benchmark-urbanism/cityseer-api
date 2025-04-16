@@ -547,5 +547,5 @@ def mock_data_map(data_gdf: gpd.GeoDataFrame) -> rustalgos.data.DataMap:
     """
     data_map = rustalgos.data.DataMap()
     for uid, row in data_gdf.iterrows():  # type: ignore
-        data_map.insert(str(uid), row.geometry.x, row.geometry.y, None, None)  # type: ignore
+        data_map.insert(uid, row.geometry.x, row.geometry.y, None, None)  # type: ignore
     return data_map
