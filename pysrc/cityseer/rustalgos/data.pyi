@@ -141,3 +141,9 @@ class DataMap:
         jitter_scale: float | None = None,
         pbar_disabled: bool | None = None,
     ) -> list[StatsResult]: ...
+
+def node_matches_for_coord(
+    network_structure: NetworkStructure,
+    coord: Coord,
+    max_dist: float,
+) -> NodeMatches | None: ...

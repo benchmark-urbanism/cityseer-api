@@ -392,9 +392,8 @@ impl NetworkStructure {
         Ok(true)
     }
 
-    pub fn build_edge_rtree(&mut self) -> PyResult<()> {
+    pub fn prep_edge_rtree(&mut self) -> PyResult<()> {
         if self.edge_rtree_built {
-            // Already built, do nothing
             return Ok(());
         }
         let mut segments = Vec::with_capacity(self.graph.edge_count());

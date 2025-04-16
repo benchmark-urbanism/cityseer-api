@@ -1,6 +1,6 @@
 use crate::common::MetricResult;
-use crate::common::WALKING_SPEED;
 use crate::common::{clip_wts_curve, clipped_beta_wt, pair_distances_betas_time, Coord};
+use crate::common::{PROGRESS_UPDATE_INTERVAL, WALKING_SPEED};
 use crate::diversity;
 use crate::graph::NetworkStructure;
 use core::f32;
@@ -229,85 +229,22 @@ impl DataMap {
         max_dist: f32,
         pbar_disabled: Option<bool>,
     ) -> PyResult<()> {
-        network_structure.build_edge_rtree()?;
-        let rtree = network_structure
-            .edge_rtree
-            .as_ref()
-            .expect("Edge RTree has not been built.");
+        network_structure.prep_edge_rtree()?;
         let pbar_disabled = pbar_disabled.unwrap_or(false);
         self.progress_init();
 
         let keys: Vec<String> = self.entries.keys().cloned().collect();
         let results: Vec<(String, Option<NodeMatches>)> = keys
             .par_iter()
-            .map(|key| {
-                if !pbar_disabled {
-                    self.progress.fetch_add(1, Ordering::Relaxed);
+            .enumerate()
+            .map(|(i, key)| {
+                if !pbar_disabled && i % PROGRESS_UPDATE_INTERVAL == 0 {
+                    self.progress
+                        .fetch_add(PROGRESS_UPDATE_INTERVAL, Ordering::Relaxed);
                 }
                 let entry = self.entries.get(key).expect("Key must exist");
-                let query = [entry.coord.x, entry.coord.y];
-                let mut nearest: Option<NodeMatch> = None;
-                let mut next_nearest: Option<NodeMatch> = None;
-                if let Some(seg) = rtree.nearest_neighbor(&query) {
-                    let a_dist = {
-                        let dx = query[0] - seg.a[0];
-                        let dy = query[1] - seg.a[1];
-                        (dx * dx + dy * dy).sqrt()
-                    };
-                    let b_dist = {
-                        let dx = query[0] - seg.b[0];
-                        let dy = query[1] - seg.b[1];
-                        (dx * dx + dy * dy).sqrt()
-                    };
-                    match (a_dist <= max_dist, b_dist <= max_dist) {
-                        (true, true) => {
-                            if a_dist <= b_dist {
-                                nearest = Some(NodeMatch {
-                                    idx: seg.a_idx,
-                                    dist: a_dist,
-                                });
-                                next_nearest = Some(NodeMatch {
-                                    idx: seg.b_idx,
-                                    dist: b_dist,
-                                });
-                            } else {
-                                nearest = Some(NodeMatch {
-                                    idx: seg.b_idx,
-                                    dist: b_dist,
-                                });
-                                next_nearest = Some(NodeMatch {
-                                    idx: seg.a_idx,
-                                    dist: a_dist,
-                                });
-                            }
-                        }
-                        (true, false) => {
-                            nearest = Some(NodeMatch {
-                                idx: seg.a_idx,
-                                dist: a_dist,
-                            });
-                            next_nearest = None;
-                        }
-                        (false, true) => {
-                            nearest = Some(NodeMatch {
-                                idx: seg.b_idx,
-                                dist: b_dist,
-                            });
-                            next_nearest = None;
-                        }
-                        (false, false) => {
-                            nearest = None;
-                            next_nearest = None;
-                        }
-                    }
-                }
-                (
-                    key.clone(),
-                    Some(NodeMatches {
-                        nearest,
-                        next_nearest,
-                    }),
-                )
+                let node_matches = node_matches_for_coord(network_structure, entry.coord, max_dist);
+                (key.clone(), node_matches)
             })
             .collect();
 
@@ -508,53 +445,57 @@ impl DataMap {
             }
 
             let node_indices = network_structure.node_indices();
-            node_indices.par_iter().try_for_each(|&netw_src_idx| {
-                if !pbar_disabled {
-                    self.progress.fetch_add(1, Ordering::Relaxed);
-                }
-                if !network_structure.is_node_live(netw_src_idx).unwrap_or(true) {
-                    return Ok::<(), PyErr>(());
-                }
-                let reachable_entries = self.aggregate_to_src_idx(
-                    netw_src_idx,
-                    network_structure,
-                    max_walk_seconds,
-                    speed_m_s,
-                    jitter_scale,
-                    angular,
-                )?;
-                for (data_key, data_dist) in reachable_entries {
-                    if let Some(lu_class) = lu_map.get(&data_key) {
-                        if !accessibility_keys.contains(lu_class) {
-                            continue;
-                        }
+            node_indices
+                .par_iter()
+                .enumerate()
+                .try_for_each(|(i, &netw_src_idx)| {
+                    if !pbar_disabled && i % PROGRESS_UPDATE_INTERVAL == 0 {
+                        self.progress
+                            .fetch_add(PROGRESS_UPDATE_INTERVAL, Ordering::Relaxed);
+                    }
+                    if !network_structure.is_node_live(netw_src_idx).unwrap_or(true) {
+                        return Ok::<(), PyErr>(());
+                    }
+                    let reachable_entries = self.aggregate_to_src_idx(
+                        netw_src_idx,
+                        network_structure,
+                        max_walk_seconds,
+                        speed_m_s,
+                        jitter_scale,
+                        angular,
+                    )?;
+                    for (data_key, data_dist) in reachable_entries {
+                        if let Some(lu_class) = lu_map.get(&data_key) {
+                            if !accessibility_keys.contains(lu_class) {
+                                continue;
+                            }
 
-                        for (i, (&d, (&b, &mcw))) in distances
-                            .iter()
-                            .zip(betas.iter().zip(max_curve_wts.iter()))
-                            .enumerate()
-                        {
-                            if data_dist <= d as f32 {
-                                metrics[lu_class].metric[i][netw_src_idx]
-                                    .fetch_add(1.0, Ordering::Relaxed);
-                                let val_wt = clipped_beta_wt(b, mcw, data_dist).unwrap_or(0.0);
-                                metrics_wt[lu_class].metric[i][netw_src_idx]
-                                    .fetch_add(val_wt, Ordering::Relaxed);
+                            for (i, (&d, (&b, &mcw))) in distances
+                                .iter()
+                                .zip(betas.iter().zip(max_curve_wts.iter()))
+                                .enumerate()
+                            {
+                                if data_dist <= d as f32 {
+                                    metrics[lu_class].metric[i][netw_src_idx]
+                                        .fetch_add(1.0, Ordering::Relaxed);
+                                    let val_wt = clipped_beta_wt(b, mcw, data_dist).unwrap_or(0.0);
+                                    metrics_wt[lu_class].metric[i][netw_src_idx]
+                                        .fetch_add(val_wt, Ordering::Relaxed);
 
-                                if d == max_dist {
-                                    let current_dist = dists[lu_class].metric[0][netw_src_idx]
-                                        .load(Ordering::Relaxed);
-                                    if current_dist.is_nan() || data_dist < current_dist {
-                                        dists[lu_class].metric[0][netw_src_idx]
-                                            .store(data_dist, Ordering::Relaxed);
+                                    if d == max_dist {
+                                        let current_dist = dists[lu_class].metric[0][netw_src_idx]
+                                            .load(Ordering::Relaxed);
+                                        if current_dist.is_nan() || data_dist < current_dist {
+                                            dists[lu_class].metric[0][netw_src_idx]
+                                                .store(data_dist, Ordering::Relaxed);
+                                        }
                                     }
                                 }
                             }
                         }
                     }
-                }
-                Ok(())
-            })?;
+                    Ok(())
+                })?;
             let accessibilities = accessibility_keys
                 .into_iter()
                 .map(|key| {
@@ -670,128 +611,132 @@ impl DataMap {
                 classes_uniq.insert(cl_code.clone());
             }
             let node_indices = network_structure.node_indices();
-            node_indices.par_iter().try_for_each(|&netw_src_idx| {
-                if !pbar_disabled {
-                    self.progress.fetch_add(1, Ordering::Relaxed);
-                }
-                if !network_structure.is_node_live(netw_src_idx).unwrap_or(true) {
-                    return Ok::<(), PyErr>(());
-                }
-                let reachable_entries = self.aggregate_to_src_idx(
-                    netw_src_idx,
-                    network_structure,
-                    max_walk_seconds,
-                    speed_m_s,
-                    jitter_scale,
-                    angular,
-                )?;
-                let mut classes: HashMap<u32, HashMap<String, ClassesState>> =
-                    HashMap::with_capacity(distances.len());
-                for &dist_key in &distances {
-                    let temp: HashMap<String, ClassesState> = classes_uniq
-                        .iter()
-                        .map(|cl_code| {
-                            (
-                                cl_code.clone(),
-                                ClassesState {
-                                    count: 0,
-                                    nearest: f32::INFINITY,
-                                },
-                            )
-                        })
-                        .collect();
-                    classes.insert(dist_key, temp);
-                }
-                for (data_key, data_dist) in &reachable_entries {
-                    if let Some(lu_class) = lu_map.get(data_key) {
-                        for &dist_key in &distances {
-                            if *data_dist <= dist_key as f32 {
-                                let class_state = classes
-                                    .get_mut(&dist_key)
-                                    .expect("Distance key should exist in classes map")
-                                    .get_mut(lu_class)
-                                    .expect("Land use class should exist in inner map");
-                                class_state.count += 1;
-                                class_state.nearest = class_state.nearest.min(*data_dist);
+            node_indices
+                .par_iter()
+                .enumerate()
+                .try_for_each(|(i, &netw_src_idx)| {
+                    if !pbar_disabled && i % PROGRESS_UPDATE_INTERVAL == 0 {
+                        self.progress
+                            .fetch_add(PROGRESS_UPDATE_INTERVAL, Ordering::Relaxed);
+                    }
+                    if !network_structure.is_node_live(netw_src_idx).unwrap_or(true) {
+                        return Ok::<(), PyErr>(());
+                    }
+                    let reachable_entries = self.aggregate_to_src_idx(
+                        netw_src_idx,
+                        network_structure,
+                        max_walk_seconds,
+                        speed_m_s,
+                        jitter_scale,
+                        angular,
+                    )?;
+                    let mut classes: HashMap<u32, HashMap<String, ClassesState>> =
+                        HashMap::with_capacity(distances.len());
+                    for &dist_key in &distances {
+                        let temp: HashMap<String, ClassesState> = classes_uniq
+                            .iter()
+                            .map(|cl_code| {
+                                (
+                                    cl_code.clone(),
+                                    ClassesState {
+                                        count: 0,
+                                        nearest: f32::INFINITY,
+                                    },
+                                )
+                            })
+                            .collect();
+                        classes.insert(dist_key, temp);
+                    }
+                    for (data_key, data_dist) in &reachable_entries {
+                        if let Some(lu_class) = lu_map.get(data_key) {
+                            for &dist_key in &distances {
+                                if *data_dist <= dist_key as f32 {
+                                    let class_state = classes
+                                        .get_mut(&dist_key)
+                                        .expect("Distance key should exist in classes map")
+                                        .get_mut(lu_class)
+                                        .expect("Land use class should exist in inner map");
+                                    class_state.count += 1;
+                                    class_state.nearest = class_state.nearest.min(*data_dist);
+                                }
                             }
                         }
                     }
-                }
-                for (i, (&d, (&b, &mcw))) in distances
-                    .iter()
-                    .zip(betas.iter().zip(max_curve_wts.iter()))
-                    .enumerate()
-                {
-                    let mut counts = Vec::with_capacity(classes[&d].len());
-                    let mut nearest = Vec::with_capacity(classes[&d].len());
-                    for classes_state in classes[&d].values() {
-                        counts.push(classes_state.count);
-                        nearest.push(classes_state.nearest);
+                    for (i, (&d, (&b, &mcw))) in distances
+                        .iter()
+                        .zip(betas.iter().zip(max_curve_wts.iter()))
+                        .enumerate()
+                    {
+                        let mut counts = Vec::with_capacity(classes[&d].len());
+                        let mut nearest = Vec::with_capacity(classes[&d].len());
+                        for classes_state in classes[&d].values() {
+                            counts.push(classes_state.count);
+                            nearest.push(classes_state.nearest);
+                        }
+                        if compute_hill {
+                            hill_mu[&0].metric[i][netw_src_idx].fetch_add(
+                                diversity::hill_diversity(counts.clone(), 0.0).unwrap_or(0.0),
+                                Ordering::Relaxed,
+                            );
+                            hill_mu[&1].metric[i][netw_src_idx].fetch_add(
+                                diversity::hill_diversity(counts.clone(), 1.0).unwrap_or(0.0),
+                                Ordering::Relaxed,
+                            );
+                            hill_mu[&2].metric[i][netw_src_idx].fetch_add(
+                                diversity::hill_diversity(counts.clone(), 2.0).unwrap_or(0.0),
+                                Ordering::Relaxed,
+                            );
+                        }
+                        if compute_hill_weighted {
+                            hill_wt_mu[&0].metric[i][netw_src_idx].fetch_add(
+                                diversity::hill_diversity_branch_distance_wt(
+                                    counts.clone(),
+                                    nearest.clone(),
+                                    0.0,
+                                    b,
+                                    mcw,
+                                )
+                                .unwrap_or(0.0),
+                                Ordering::Relaxed,
+                            );
+                            hill_wt_mu[&1].metric[i][netw_src_idx].fetch_add(
+                                diversity::hill_diversity_branch_distance_wt(
+                                    counts.clone(),
+                                    nearest.clone(),
+                                    1.0,
+                                    b,
+                                    mcw,
+                                )
+                                .unwrap_or(0.0),
+                                Ordering::Relaxed,
+                            );
+                            hill_wt_mu[&2].metric[i][netw_src_idx].fetch_add(
+                                diversity::hill_diversity_branch_distance_wt(
+                                    counts.clone(),
+                                    nearest.clone(),
+                                    2.0,
+                                    b,
+                                    mcw,
+                                )
+                                .unwrap_or(0.0),
+                                Ordering::Relaxed,
+                            );
+                        }
+                        if compute_shannon {
+                            shannon_mu.metric[i][netw_src_idx].fetch_add(
+                                diversity::shannon_diversity(counts.clone()).unwrap_or(0.0),
+                                Ordering::Relaxed,
+                            );
+                        }
+                        if compute_gini {
+                            gini_mu.metric[i][netw_src_idx].fetch_add(
+                                diversity::gini_simpson_diversity(counts.clone()).unwrap_or(0.0),
+                                Ordering::Relaxed,
+                            );
+                        }
                     }
-                    if compute_hill {
-                        hill_mu[&0].metric[i][netw_src_idx].fetch_add(
-                            diversity::hill_diversity(counts.clone(), 0.0).unwrap_or(0.0),
-                            Ordering::Relaxed,
-                        );
-                        hill_mu[&1].metric[i][netw_src_idx].fetch_add(
-                            diversity::hill_diversity(counts.clone(), 1.0).unwrap_or(0.0),
-                            Ordering::Relaxed,
-                        );
-                        hill_mu[&2].metric[i][netw_src_idx].fetch_add(
-                            diversity::hill_diversity(counts.clone(), 2.0).unwrap_or(0.0),
-                            Ordering::Relaxed,
-                        );
-                    }
-                    if compute_hill_weighted {
-                        hill_wt_mu[&0].metric[i][netw_src_idx].fetch_add(
-                            diversity::hill_diversity_branch_distance_wt(
-                                counts.clone(),
-                                nearest.clone(),
-                                0.0,
-                                b,
-                                mcw,
-                            )
-                            .unwrap_or(0.0),
-                            Ordering::Relaxed,
-                        );
-                        hill_wt_mu[&1].metric[i][netw_src_idx].fetch_add(
-                            diversity::hill_diversity_branch_distance_wt(
-                                counts.clone(),
-                                nearest.clone(),
-                                1.0,
-                                b,
-                                mcw,
-                            )
-                            .unwrap_or(0.0),
-                            Ordering::Relaxed,
-                        );
-                        hill_wt_mu[&2].metric[i][netw_src_idx].fetch_add(
-                            diversity::hill_diversity_branch_distance_wt(
-                                counts.clone(),
-                                nearest.clone(),
-                                2.0,
-                                b,
-                                mcw,
-                            )
-                            .unwrap_or(0.0),
-                            Ordering::Relaxed,
-                        );
-                    }
-                    if compute_shannon {
-                        shannon_mu.metric[i][netw_src_idx].fetch_add(
-                            diversity::shannon_diversity(counts.clone()).unwrap_or(0.0),
-                            Ordering::Relaxed,
-                        );
-                    }
-                    if compute_gini {
-                        gini_mu.metric[i][netw_src_idx].fetch_add(
-                            diversity::gini_simpson_diversity(counts.clone()).unwrap_or(0.0),
-                            Ordering::Relaxed,
-                        );
-                    }
-                }
-                Ok(())
-            })?;
+                    Ok(())
+                })?;
             let mut hill_result = None;
             if compute_hill {
                 let hr = [0, 1, 2]
@@ -910,66 +855,70 @@ impl DataMap {
             }
 
             let node_indices = network_structure.node_indices();
-            node_indices.par_iter().try_for_each(|&netw_src_idx| {
-                if !pbar_disabled {
-                    self.progress.fetch_add(1, Ordering::Relaxed);
-                }
-                if !network_structure.is_node_live(netw_src_idx).unwrap_or(true) {
-                    return Ok::<(), PyErr>(());
-                }
-                let reachable_entries = self.aggregate_to_src_idx(
-                    netw_src_idx,
-                    network_structure,
-                    max_walk_seconds,
-                    speed_m_s,
-                    jitter_scale,
-                    angular,
-                )?;
-                for (data_key, data_dist) in &reachable_entries {
-                    for (map_idx, num_map) in num_maps.iter().enumerate() {
-                        if let Some(&num) = num_map.get(data_key) {
-                            if num.is_nan() {
-                                continue;
-                            }
-                            for (i, (&d, (&b, &mcw))) in distances
-                                .iter()
-                                .zip(betas.iter().zip(max_curve_wts.iter()))
-                                .enumerate()
-                            {
-                                if *data_dist <= d as f32 {
-                                    let wt = clipped_beta_wt(b, mcw, *data_dist).unwrap_or(0.0);
-                                    let num_wt = num * wt;
-                                    sum[map_idx].metric[i][netw_src_idx]
-                                        .fetch_add(num, Ordering::Relaxed);
-                                    sum_wt[map_idx].metric[i][netw_src_idx]
-                                        .fetch_add(num_wt, Ordering::Relaxed);
-                                    count[map_idx].metric[i][netw_src_idx]
-                                        .fetch_add(1.0, Ordering::Relaxed);
-                                    count_wt[map_idx].metric[i][netw_src_idx]
-                                        .fetch_add(wt, Ordering::Relaxed);
-                                    sum_sq[map_idx].metric[i][netw_src_idx]
-                                        .fetch_add(num * num, Ordering::Relaxed);
-                                    sum_sq_wt[map_idx].metric[i][netw_src_idx]
-                                        .fetch_add(wt * num * num, Ordering::Relaxed);
-                                    let current_max = max[map_idx].metric[i][netw_src_idx]
-                                        .load(Ordering::Relaxed);
-                                    if current_max.is_nan() || num > current_max {
-                                        max[map_idx].metric[i][netw_src_idx]
-                                            .store(num, Ordering::Relaxed);
-                                    };
-                                    let current_min = min[map_idx].metric[i][netw_src_idx]
-                                        .load(Ordering::Relaxed);
-                                    if current_min.is_nan() || num < current_min {
-                                        min[map_idx].metric[i][netw_src_idx]
-                                            .store(num, Ordering::Relaxed);
-                                    };
+            node_indices
+                .par_iter()
+                .enumerate()
+                .try_for_each(|(i, &netw_src_idx)| {
+                    if !pbar_disabled && i % PROGRESS_UPDATE_INTERVAL == 0 {
+                        self.progress
+                            .fetch_add(PROGRESS_UPDATE_INTERVAL, Ordering::Relaxed);
+                    }
+                    if !network_structure.is_node_live(netw_src_idx).unwrap_or(true) {
+                        return Ok::<(), PyErr>(());
+                    }
+                    let reachable_entries = self.aggregate_to_src_idx(
+                        netw_src_idx,
+                        network_structure,
+                        max_walk_seconds,
+                        speed_m_s,
+                        jitter_scale,
+                        angular,
+                    )?;
+                    for (data_key, data_dist) in &reachable_entries {
+                        for (map_idx, num_map) in num_maps.iter().enumerate() {
+                            if let Some(&num) = num_map.get(data_key) {
+                                if num.is_nan() {
+                                    continue;
+                                }
+                                for (i, (&d, (&b, &mcw))) in distances
+                                    .iter()
+                                    .zip(betas.iter().zip(max_curve_wts.iter()))
+                                    .enumerate()
+                                {
+                                    if *data_dist <= d as f32 {
+                                        let wt = clipped_beta_wt(b, mcw, *data_dist).unwrap_or(0.0);
+                                        let num_wt = num * wt;
+                                        sum[map_idx].metric[i][netw_src_idx]
+                                            .fetch_add(num, Ordering::Relaxed);
+                                        sum_wt[map_idx].metric[i][netw_src_idx]
+                                            .fetch_add(num_wt, Ordering::Relaxed);
+                                        count[map_idx].metric[i][netw_src_idx]
+                                            .fetch_add(1.0, Ordering::Relaxed);
+                                        count_wt[map_idx].metric[i][netw_src_idx]
+                                            .fetch_add(wt, Ordering::Relaxed);
+                                        sum_sq[map_idx].metric[i][netw_src_idx]
+                                            .fetch_add(num * num, Ordering::Relaxed);
+                                        sum_sq_wt[map_idx].metric[i][netw_src_idx]
+                                            .fetch_add(wt * num * num, Ordering::Relaxed);
+                                        let current_max = max[map_idx].metric[i][netw_src_idx]
+                                            .load(Ordering::Relaxed);
+                                        if current_max.is_nan() || num > current_max {
+                                            max[map_idx].metric[i][netw_src_idx]
+                                                .store(num, Ordering::Relaxed);
+                                        };
+                                        let current_min = min[map_idx].metric[i][netw_src_idx]
+                                            .load(Ordering::Relaxed);
+                                        if current_min.is_nan() || num < current_min {
+                                            min[map_idx].metric[i][netw_src_idx]
+                                                .store(num, Ordering::Relaxed);
+                                        };
+                                    }
                                 }
                             }
                         }
                     }
-                }
-                Ok(())
-            })?;
+                    Ok(())
+                })?;
             let mut results = Vec::with_capacity(num_maps.len());
             for map_idx in 0..num_maps.len() {
                 let mean_res = MetricResult::new(distances.clone(), node_count, f32::NAN);
@@ -1034,9 +983,76 @@ impl DataMap {
     }
 }
 
-// Note: PyResult (and PyErr) are Send and Sync, so they can be used across threads.
-// However, Python objects (e.g., Py<PyAny>, PyDict, etc.) must not be accessed from threads
-// other than the one holding the GIL. In this code, all Python object access is done
-// before entering py.allow_threads, and only Rust types are used inside the parallel region.
-// Returning PyResult from the thread pool is safe as long as no Python objects are accessed
-// or created inside the thread pool. This pattern is correct for pyo3 and rayon.
+/// Standalone function to calculate nearest and next-nearest node matches for a given coordinate.
+#[pyfunction]
+#[pyo3(signature = (network_structure, coord, max_dist))]
+pub fn node_matches_for_coord(
+    network_structure: &NetworkStructure,
+    coord: Coord,
+    max_dist: f32,
+) -> Option<NodeMatches> {
+    let rtree = match network_structure.edge_rtree.as_ref() {
+        Some(r) => r,
+        None => return None,
+    };
+    let query = [coord.x, coord.y];
+    let mut nearest: Option<NodeMatch> = None;
+    let mut next_nearest: Option<NodeMatch> = None;
+    if let Some(seg) = rtree.nearest_neighbor(&query) {
+        let a_dist = {
+            let dx = query[0] - seg.a[0];
+            let dy = query[1] - seg.a[1];
+            (dx * dx + dy * dy).sqrt()
+        };
+        let b_dist = {
+            let dx = query[0] - seg.b[0];
+            let dy = query[1] - seg.b[1];
+            (dx * dx + dy * dy).sqrt()
+        };
+        match (a_dist <= max_dist, b_dist <= max_dist) {
+            (true, true) => {
+                if a_dist <= b_dist {
+                    nearest = Some(NodeMatch {
+                        idx: seg.a_idx,
+                        dist: a_dist,
+                    });
+                    next_nearest = Some(NodeMatch {
+                        idx: seg.b_idx,
+                        dist: b_dist,
+                    });
+                } else {
+                    nearest = Some(NodeMatch {
+                        idx: seg.b_idx,
+                        dist: b_dist,
+                    });
+                    next_nearest = Some(NodeMatch {
+                        idx: seg.a_idx,
+                        dist: a_dist,
+                    });
+                }
+            }
+            (true, false) => {
+                nearest = Some(NodeMatch {
+                    idx: seg.a_idx,
+                    dist: a_dist,
+                });
+                next_nearest = None;
+            }
+            (false, true) => {
+                nearest = Some(NodeMatch {
+                    idx: seg.b_idx,
+                    dist: b_dist,
+                });
+                next_nearest = None;
+            }
+            (false, false) => {
+                nearest = None;
+                next_nearest = None;
+            }
+        }
+    }
+    Some(NodeMatches {
+        nearest,
+        next_nearest,
+    })
+}

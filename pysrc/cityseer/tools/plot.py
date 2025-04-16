@@ -661,7 +661,7 @@ def plot_network_structure(
         alpha=0.9,
         lw=0.5,
     )
-    for data_idx, (data_entry) in enumerate(data_map.entries.values()):
+    for _data_idx, (data_entry) in enumerate(data_map.entries.values()):
         data_x: float = data_entry.coord.x
         data_y: float = data_entry.coord.y
         nearest_netw_idx = None

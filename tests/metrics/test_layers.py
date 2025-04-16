@@ -23,7 +23,7 @@ def test_assign_gdf_to_network(primal_graph):
             #
             data_map, data_gdf = layers.assign_gdf_to_network(data_gdf, network_structure, 400, data_id_col="data_id")
             assert data_map.assigned_to_network is True
-            for data_key, data_entry in data_map.entries.items():
+            for _data_key, data_entry in data_map.entries.items():
                 assert data_gdf.loc[data_entry.data_key_py].geometry.centroid.x - data_entry.coord.x < 1
                 assert data_gdf.loc[data_entry.data_key_py].geometry.centroid.y - data_entry.coord.y < 1
                 assert data_entry.node_matches is not None

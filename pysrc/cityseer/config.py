@@ -112,7 +112,7 @@ def wrap_progress(
     thread.start()
     while thread.is_alive():
         time.sleep(1)
-        pbar.update(rust_struct.progress() - pbar.n)
+        pbar.update(rust_struct.progress() - pbar.n)  # type: ignore
     pbar.update(total - pbar.n)
     pbar.close()
     result = result_queue.get()

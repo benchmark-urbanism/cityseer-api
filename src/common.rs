@@ -10,6 +10,8 @@ use std::sync::atomic::Ordering;
 static MIN_THRESH_WT: f32 = 0.01831563888873418;
 /// Walking speed in meters per second.
 pub static WALKING_SPEED: f32 = 1.33333;
+/// Default interval for progress updates.
+pub static PROGRESS_UPDATE_INTERVAL: usize = 100;
 
 /// Represents a 2D coordinate with `x` and `y` values.
 #[pyclass]

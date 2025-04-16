@@ -1345,11 +1345,11 @@ def add_transport_gtfs(
     new_edges = []
     # add nodes for stops
     logger.info("Adding GTFS stops to network nodes.")
+    network_structure.prep_edge_rtree()
     for _, row in tqdm(stops.iterrows(), total=len(stops), disable=config.QUIET_MODE):
         # wait_time = avg_wait_time.get(row["stop_id"], 0)  # Default to 0 if missing
         e, n = transformer.transform(row["stop_lon"], row["stop_lat"])
         station_coord = rustalgos.Coord(e, n)
-        nearest_idx, next_nearest_idx = network_structure.assign_to_network(station_coord, max_netw_assign_dist)
         new_stop_idx = network_structure.add_node(
             row["stop_id"],
             float(e),
@@ -1370,14 +1370,15 @@ def add_transport_gtfs(
             }
         )
         # add edges between stops and pedestrian network
-        for near_node_idx in [nearest_idx, next_nearest_idx]:
-            if near_node_idx is not None:
-                netw_node = network_structure.get_node_payload(near_node_idx)
+        node_matches = rustalgos.data.node_matches_for_coord(network_structure, station_coord, max_netw_assign_dist)
+        for node_match in [node_matches.nearest, node_matches.next_nearest]:  # type: ignore
+            if node_match is not None:
+                netw_node = network_structure.get_node_payload(node_match.idx)
                 dist = netw_node.coord.hypot(station_coord)
                 seconds = dist / speed_m_s
                 # to direction
                 edge_idx_a = network_structure.add_edge(
-                    near_node_idx,
+                    node_match.idx,
                     new_stop_idx,
                     0,  # edge_idx
                     "na-gtfs",  # nx_start_node_key
@@ -1392,9 +1393,9 @@ def add_transport_gtfs(
                 # add to edges_gdf
                 new_edges.append(
                     [
-                        f"{near_node_idx}-{new_stop_idx}",
+                        f"{node_match.idx}-{new_stop_idx}",
                         edge_idx_a,
-                        near_node_idx,
+                        node_match.idx,
                         new_stop_idx,
                         0,
                         "na-gtfs",
@@ -1411,7 +1412,7 @@ def add_transport_gtfs(
                 # from direction
                 edge_idx_b = network_structure.add_edge(
                     new_stop_idx,
-                    near_node_idx,
+                    node_match.idx,
                     0,  # edge_idx
                     "na-gtfs",  # nx_start_node_key
                     "na-gtfs",  # nx_end_node_key
@@ -1425,10 +1426,10 @@ def add_transport_gtfs(
                 # add to edges_gdf
                 new_edges.append(
                     [
-                        f"{new_stop_idx}-{near_node_idx}",
+                        f"{new_stop_idx}-{node_match.idx}",
                         edge_idx_b,
                         new_stop_idx,
-                        near_node_idx,
+                        node_match.idx,
                         0,
                         "na-gtfs",
                         "na-gtfs",

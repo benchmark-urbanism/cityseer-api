@@ -93,7 +93,7 @@ def test_assign_to_network(primal_graph):
         assert targets[data_entry.data_key_py][1] == data_entry.node_matches.next_nearest.idx  # type: ignore
     # should be None if distance is 0m
     data_map.assign_to_network(network_structure, max_dist=0)
-    for target_idx, data_entry in enumerate(data_map.entries.values()):
+    for data_entry in data_map.entries.values():
         assert data_entry.node_matches.nearest is None  # type: ignore
         assert data_entry.node_matches.next_nearest is None  # type: ignore
 
@@ -431,7 +431,7 @@ def test_stats(primal_graph):
     max_assign_dist = 3200
     # don't deduplicate with data_id column otherwise below tallys won't work
     data_map = mock.mock_data_map(data_gdf)
-    data_map.assign_to_network(network_structure, max_dist=400)
+    data_map.assign_to_network(network_structure, max_dist=max_assign_dist)
     numerical_maps = []
     for stats_col in ["mock_numerical_1", "mock_numerical_2"]:
         numerical_maps.append(dict(data_gdf[stats_col]))  # type: ignore)

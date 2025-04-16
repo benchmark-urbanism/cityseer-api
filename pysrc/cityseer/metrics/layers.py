@@ -245,7 +245,7 @@ def compute_accessibilities(
     partial_func = partial(
         data_map.accessibility,
         network_structure=network_structure,
-        landuses_map=landuses_map,
+        landuses_map=landuses_map,  # type: ignore
         accessibility_keys=accessibility_keys,
         distances=distances,
         betas=betas,
@@ -466,7 +466,7 @@ def compute_mixed_uses(
     partial_func = partial(
         data_map.mixed_uses,
         network_structure=network_structure,
-        landuses_map=landuses_map,
+        landuses_map=landuses_map,  # type: ignore
         distances=distances,
         betas=betas,
         minutes=minutes,
