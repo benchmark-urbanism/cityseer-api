@@ -91,3 +91,25 @@ def test_mock_species_data():
 
 def test_mock_osm_data():
     pass
+
+
+def test_mock_data_map(primal_graph):
+    """
+    Test the mock_data_map function to ensure it creates a DataMap from a GeoDataFrame.
+    """
+    for length in [10, 20]:
+        for random_seed in [0, 42]:
+            data_gdf = mock.mock_data_gdf(primal_graph, length=length, random_seed=random_seed)
+            data_map = mock.mock_data_map(data_gdf)
+            assert data_map.count() == length
+            for uid, row in data_gdf.iterrows():
+                data_key = f"{uid.__class__.__name__}:{uid}"
+                entry = data_map.get_entry(data_key)
+                assert entry is not None
+                assert entry.data_key == data_key
+                assert entry.data_key_py == uid
+                assert entry.coord.x - row.geometry.x < 1  # f32 rounding errors
+                assert entry.coord.y - row.geometry.y < 1  # f32 rounding errors
+                assert entry.dedupe_key_py is None
+                assert entry.dedupe_key is None
+                assert entry.node_matches is None

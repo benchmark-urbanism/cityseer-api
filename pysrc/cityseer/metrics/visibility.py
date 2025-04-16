@@ -17,8 +17,8 @@ from rasterio.features import rasterize
 from rasterio.transform import from_bounds
 from shapely import geometry
 
-from cityseer import config, rustalgos
-from cityseer.tools import util
+from .. import config, rustalgos
+from ..tools import util
 
 
 def _buildings_from_osmnx(bounds: tuple[float, float, float, float]) -> gpd.GeoDataFrame:
@@ -130,7 +130,7 @@ def visibility_graph(
     to_crs_code = _prepare_epsg_code(bounds, to_crs_code)
     bldgs_rast, transform = _prepare_bldgs_rast(bldgs_gdf, bounds, from_crs_code, to_crs_code, resolution)
     # run viewshed
-    viewshed_struct = rustalgos.Viewshed()
+    viewshed_struct = rustalgos.viewshed.Viewshed()
     # convert distance to cells
     resolution_distance = int(view_distance / resolution)
     # wrap with progress monitor
@@ -238,7 +238,7 @@ def viewshed(
     x_idx = int(x_idx)
     y_idx = int(y_idx)
     # run viewshed
-    viewshed_struct = rustalgos.Viewshed()
+    viewshed_struct = rustalgos.viewshed.Viewshed()
     # convert distance to cells
     resolution_distance = int(view_distance / resolution)
     # find the viewshed

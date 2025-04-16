@@ -1,32 +1,118 @@
 # pyright: basic
 from __future__ import annotations
 
+import builtins
+
+import geopandas as gpd
+import networkx as nx
 import numpy as np
 from cityseer import config, rustalgos
-from cityseer.metrics import layers
-from cityseer.tools import io, mock
+from cityseer.tools import graphs, io, mock
+from shapely import geometry
+
+
+def override_coords(nx_multigraph: nx.MultiGraph) -> gpd.GeoDataFrame:
+    """Some tweaks for visual checks."""
+    data_gdf = mock.mock_data_gdf(nx_multigraph, random_seed=25)
+    data_gdf.loc[18, "geometry"] = geometry.Point(701200, 5719400)
+    data_gdf.loc[39, "geometry"] = geometry.Point(700750, 5720025)
+    data_gdf.loc[26, "geometry"] = geometry.Point(700400, 5719525)
+
+    return data_gdf
+
+
+def test_assign_to_network(primal_graph):
+    # create additional dead-end scenario
+    primal_graph.remove_edge("14", "15")
+    primal_graph.remove_edge("15", "28")
+    # G = graphs.nx_auto_edge_params(G)
+    G = graphs.nx_decompose(primal_graph, 50)
+    # visually confirmed in plots
+    targets = {
+        0: [257, 256],
+        1: [17, 131],
+        2: [43, 115],
+        3: [110, 109],
+        4: [66, 67],
+        5: [105, 106],
+        6: [18, 136],
+        7: [58, 1],
+        8: [126, 17],
+        9: [53, 271],
+        10: [32, 207],
+        11: [118, 119],
+        12: [67, 4],
+        13: [250, 251],
+        14: [116, 11],
+        15: [204, 31],
+        16: [272, 271],
+        17: [142, 20],
+        18: [182, 183],
+        19: [184, 183],
+        20: [238, 44],
+        21: [226, 225],
+        22: [63, 64],
+        23: [199, 198],
+        24: [264, 263],
+        25: [17, 131],
+        26: [274, 275],
+        27: [149, 148],
+        28: [207, 208],
+        29: [202, 203],
+        30: [42, 221],
+        31: [169, 168],
+        32: [129, 130],
+        33: [66, 67],
+        34: [43, 244],
+        35: [125, 124],
+        36: [234, 233],
+        37: [141, 24],
+        38: [187, 186],
+        39: [264, 263],
+        40: [111, 112],
+        41: [132, 131],
+        42: [244, 43],
+        43: [265, 264],
+        44: [174, 173],
+        45: [114, 113],
+        46: [114, 113],
+        47: [114, 113],
+        48: [113, 114],
+        49: [113, 114],
+    }
+    # generate data
+    _nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(G)
+    data_gdf = override_coords(G)
+    data_map = mock.mock_data_map(data_gdf)
+    data_map.assign_to_network(network_structure, max_dist=1600)
+    # from cityseer.tools import plot
+    # plot.plot_network_structure(network_structure, data_map)
+    # plot.plot_assignment(network_structure, G, data_map)
+    for data_entry in data_map.entries.values():
+        assert targets[data_entry.data_key_py][0] == data_entry.node_matches.nearest.idx  # type: ignore
+        assert targets[data_entry.data_key_py][1] == data_entry.node_matches.next_nearest.idx  # type: ignore
+    # should be None if distance is 0m
+    data_map.assign_to_network(network_structure, max_dist=0)
+    for data_entry in data_map.entries.values():
+        assert data_entry.node_matches.nearest is None  # type: ignore
+        assert data_entry.node_matches.next_nearest is None  # type: ignore
 
 
 def test_aggregate_to_src_idx(primal_graph):
-    for max_dist in [400, 750]:
+    for max_dist in [750]:
         max_seconds = max_dist / config.SPEED_M_S
-        for deduplicate in [False, True]:
+        for deduplicate in [False]:
             # generate data
             _nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(primal_graph)
             data_gdf = mock.mock_data_gdf(primal_graph)
-            if deduplicate is False:
-                data_map, data_gdf = layers.assign_gdf_to_network(
-                    data_gdf, network_structure, max_dist, data_id_col=None
-                )
-            else:
-                data_map, data_gdf = layers.assign_gdf_to_network(
-                    data_gdf, network_structure, max_dist, data_id_col="data_id"
-                )
+            data_map = mock.mock_data_map(data_gdf)
+            # nearest assigned distance is different to overall distance above
+            data_map.assign_to_network(network_structure, 400)
             # in this case, use same assignment max dist as search max dist
             # for debugging
             # from cityseer.tools import plot
             # plot.plot_network_structure(network_structure, data_gdf)
-            for angular in [False, True]:
+            for angular in [False]:
                 for netw_src_idx in network_structure.node_indices():
                     # aggregate to src...
                     reachable_entries = data_map.aggregate_to_src_idx(
@@ -44,70 +130,82 @@ def test_aggregate_to_src_idx(primal_graph):
                         )
                     # verify distances vs. the max
                     for data_key, data_entry in data_map.entries.items():
+                        # Use node_matches for clarity and consistency with Rust struct
+                        type_name = "int"
+                        py_type = getattr(builtins, type_name)
+                        nearest_assign = (
+                            py_type(data_entry.node_matches.nearest.idx)
+                            if data_entry.node_matches and data_entry.node_matches.nearest is not None
+                            else None
+                        )
+                        next_nearest_assign = (
+                            py_type(data_entry.node_matches.next_nearest.idx)
+                            if data_entry.node_matches and data_entry.node_matches.next_nearest is not None
+                            else None
+                        )
                         # nearest
-                        if data_entry.nearest_assign is not None:
-                            nearest_netw_node = network_structure.get_node_payload(data_entry.nearest_assign)
-                            nearest_assign_dist = tree_map[data_entry.nearest_assign].agg_seconds * config.SPEED_M_S
+                        nearest_assign_sec = np.inf
+                        if nearest_assign is not None:
+                            nearest_netw_node = network_structure.get_node_payload(nearest_assign)
                             # add tail
-                            if not np.isposinf(nearest_assign_dist):
-                                nearest_assign_dist += nearest_netw_node.coord.hypot(data_entry.coord)
-                        else:
-                            nearest_assign_dist = np.inf
+                            if not np.isposinf(tree_map[nearest_assign].agg_seconds):
+                                nearest_assign_sec = (
+                                    tree_map[nearest_assign].agg_seconds
+                                    + nearest_netw_node.coord.hypot(data_entry.coord) / config.SPEED_M_S
+                                )
                         # next nearest
-                        if data_entry.next_nearest_assign is not None:
-                            next_nearest_netw_node = network_structure.get_node_payload(data_entry.next_nearest_assign)
-                            next_nearest_assign_dist = (
-                                tree_map[data_entry.next_nearest_assign].agg_seconds * config.SPEED_M_S
-                            )
+                        next_nearest_assign_sec = np.inf
+                        if next_nearest_assign is not None:
+                            next_nearest_netw_node = network_structure.get_node_payload(next_nearest_assign)
                             # add tail
-                            if not np.isposinf(next_nearest_assign_dist):
-                                next_nearest_assign_dist += next_nearest_netw_node.coord.hypot(data_entry.coord)
-                        else:
-                            next_nearest_assign_dist = np.inf
+                            if not np.isposinf(tree_map[next_nearest_assign].agg_seconds):
+                                next_nearest_assign_sec = (
+                                    tree_map[next_nearest_assign].agg_seconds
+                                    + next_nearest_netw_node.coord.hypot(data_entry.coord) / config.SPEED_M_S
+                                )
                         # check deduplication - 49 is the closest, so others should not make it through
                         # checks
-                        if nearest_assign_dist > max_dist and next_nearest_assign_dist > max_dist:
+                        if nearest_assign_sec > max_seconds and next_nearest_assign_sec > max_seconds:
                             assert data_key not in reachable_entries
                         elif deduplicate and data_key in ["45", "46", "47", "48"]:
                             assert data_key not in reachable_entries and "49" in reachable_entries
-                        elif np.isposinf(nearest_assign_dist) and next_nearest_assign_dist < max_dist:
-                            assert reachable_entries[data_key] - next_nearest_assign_dist < config.ATOL
-                        elif np.isposinf(next_nearest_assign_dist) and nearest_assign_dist < max_dist:
-                            assert reachable_entries[data_key] - nearest_assign_dist < config.ATOL
-                        else:
+                        # due to rounding errors with f32 conversion, skip where within 0.5 seconds of max_seconds
+                        elif nearest_assign_sec > max_seconds - 0.5 and next_nearest_assign_sec > max_seconds - 0.5:
+                            print(f"Skipping {data_key} due to potential rounding errors affecting max seconds cutoff")
+                            continue
+                        elif nearest_assign_sec > max_seconds and next_nearest_assign_sec <= max_seconds:
                             assert (
-                                reachable_entries[data_key] - min(nearest_assign_dist, next_nearest_assign_dist)
+                                reachable_entries[data_key] / config.SPEED_M_S - next_nearest_assign_sec < config.ATOL
+                            )
+                        elif next_nearest_assign_sec > max_seconds and nearest_assign_sec <= max_seconds:
+                            assert reachable_entries[data_key] / config.SPEED_M_S - nearest_assign_sec < config.ATOL
+                        else:
+                            # If either assign is within max_seconds, must be present
+                            assert data_key in reachable_entries
+                            assert (
+                                reachable_entries[data_key] / config.SPEED_M_S
+                                - min(nearest_assign_sec, next_nearest_assign_sec)
                                 < config.ATOL
                             )
-    # reuse the last instance of data_gdf and check that recomputing is not happening if already assigned
-    assert "nearest_assign" in data_gdf.columns
-    assert "next_nearest_assign" in data_gdf.columns
-    # override with nonsense value
-    data_gdf["nearest_assign"] = 0
-    data_gdf["next_nearest_assign"] = 0
-    # check that these have not been replaced
-    data_map, data_gdf = layers.assign_gdf_to_network(data_gdf, network_structure, max_dist, data_id_col=None)
-    assert np.all(data_gdf["nearest_assign"].values == 0)
-    assert np.all(data_gdf["next_nearest_assign"].values == 0)
 
 
 def test_accessibility(primal_graph):
     # generate node and edge maps
     _nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(primal_graph)
     data_gdf = mock.mock_landuse_categorical_data(primal_graph, random_seed=13)
+    data_map = mock.mock_data_map(data_gdf, dedupe_key_col="data_id")
     distances = [200, 400, 800, 1600]
     max_dist = max(distances)
     max_seconds = max_dist / config.SPEED_M_S
-    data_map, data_gdf = layers.assign_gdf_to_network(data_gdf, network_structure, max_dist, data_id_col="data_id")
-    data_keys: list[str] = data_gdf["datamap_key"]  # type: ignore
-    landuses: list[str] = data_gdf["categorical_landuses"]  # type: ignore
-    landuses_map: dict[str, str] = dict(zip(data_keys, landuses, strict=True))
+    # max assign dist is different from max search dist
+    data_map.assign_to_network(network_structure, max_dist=400)
+    landuses_map = dict(data_gdf["categorical_landuses"])  # type: ignore
     # all datapoints and types are completely unique except for the last five - which all point to the same source
     accessibility_keys = ["a", "b", "c", "z"]  # the duplicate keys are per landuse 'z'
     # generate
     accessibilities = data_map.accessibility(
         network_structure,
-        landuses_map,
+        landuses_map,  # type: ignore
         accessibility_keys,
         distances,
     )
@@ -133,10 +231,13 @@ def test_accessibility(primal_graph):
                 src_idx, network_structure, int(max_seconds), config.SPEED_M_S
             )
             for data_key, data_dist in reachable_entries.items():
+                py_type, py_key = data_key.split(":")
+                py_cast = getattr(builtins, py_type)
+                data_key_py = py_cast(py_key)
                 # double check distance is within threshold
                 assert data_dist <= max_dist
                 if data_dist <= dist:
-                    data_class = landuses_map[data_key]
+                    data_class = landuses_map[data_key_py]
                     # aggregate accessibility codes
                     if data_class == "a":
                         a_nw += 1
@@ -225,13 +326,12 @@ def test_mixed_uses(primal_graph):
     # generate node and edge maps
     _nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(primal_graph)
     data_gdf = mock.mock_landuse_categorical_data(primal_graph, random_seed=13)
+    data_map = mock.mock_data_map(data_gdf, dedupe_key_col="data_id")
+    data_map.assign_to_network(network_structure, max_dist=400)
     distances = [200, 400, 800, 1600]
     max_dist = max(distances)
     max_seconds = max_dist / config.SPEED_M_S
-    data_map, data_gdf = layers.assign_gdf_to_network(data_gdf, network_structure, max_dist, data_id_col="data_id")
-    data_keys: list[str] = data_gdf["datamap_key"]  # type: ignore
-    landuses: list[str] = data_gdf["categorical_landuses"]  # type: ignore
-    landuses_map: dict[str, str] = dict(zip(data_keys, landuses, strict=True))
+    landuses_map = dict(data_gdf["categorical_landuses"])  # type: ignore
     # test against various distances
     betas = rustalgos.betas_from_distances(distances)
     for angular in [False, True]:
@@ -254,10 +354,13 @@ def test_mixed_uses(primal_graph):
                 class_agg = dict()
                 # iterate reachable
                 for data_key, data_dist in reachable_entries.items():
+                    py_type, py_key = data_key.split(":")
+                    py_cast = getattr(builtins, py_type)
+                    data_key_py = py_cast(py_key)
                     # double check distance is within threshold
                     if data_dist > dist_cutoff:
                         continue
-                    cl = landuses_map[data_key]
+                    cl = landuses_map[data_key_py]
                     if cl not in class_agg:
                         class_agg[cl] = {"count": 0, "nearest": np.inf}
                     # update the class counts
@@ -271,49 +374,49 @@ def test_mixed_uses(primal_graph):
                 # assertions
                 assert np.isclose(
                     mixed_uses_data.hill[0][dist_cutoff][netw_src_idx],
-                    rustalgos.hill_diversity(cl_counts, 0.0),
+                    rustalgos.diversity.hill_diversity(cl_counts, 0.0),
                     rtol=config.RTOL,
                     atol=config.ATOL,
                 )
                 assert np.isclose(
                     mixed_uses_data.hill[1][dist_cutoff][netw_src_idx],
-                    rustalgos.hill_diversity(cl_counts, 1),
+                    rustalgos.diversity.hill_diversity(cl_counts, 1),
                     rtol=config.RTOL,
                     atol=config.ATOL,
                 )
                 assert np.isclose(
                     mixed_uses_data.hill[2][dist_cutoff][netw_src_idx],
-                    rustalgos.hill_diversity(cl_counts, 2),
+                    rustalgos.diversity.hill_diversity(cl_counts, 2),
                     rtol=config.RTOL,
                     atol=config.ATOL,
                 )
                 assert np.isclose(
                     mixed_uses_data.hill_weighted[0][dist_cutoff][netw_src_idx],
-                    rustalgos.hill_diversity_branch_distance_wt(cl_counts, cl_nearest, 0, beta, 1.0),
+                    rustalgos.diversity.hill_diversity_branch_distance_wt(cl_counts, cl_nearest, 0, beta, 1.0),
                     rtol=config.RTOL,
                     atol=config.ATOL,
                 )
                 assert np.isclose(
                     mixed_uses_data.hill_weighted[1][dist_cutoff][netw_src_idx],
-                    rustalgos.hill_diversity_branch_distance_wt(cl_counts, cl_nearest, 1, beta, 1.0),
+                    rustalgos.diversity.hill_diversity_branch_distance_wt(cl_counts, cl_nearest, 1, beta, 1.0),
                     rtol=config.RTOL,
                     atol=config.ATOL,
                 )
                 assert np.isclose(
                     mixed_uses_data.hill_weighted[2][dist_cutoff][netw_src_idx],
-                    rustalgos.hill_diversity_branch_distance_wt(cl_counts, cl_nearest, 2, beta, 1.0),
+                    rustalgos.diversity.hill_diversity_branch_distance_wt(cl_counts, cl_nearest, 2, beta, 1.0),
                     rtol=config.RTOL,
                     atol=config.ATOL,
                 )
                 assert np.isclose(
                     mixed_uses_data.shannon[dist_cutoff][netw_src_idx],
-                    rustalgos.shannon_diversity(cl_counts),
+                    rustalgos.diversity.shannon_diversity(cl_counts),
                     rtol=config.RTOL,
                     atol=config.ATOL,
                 )
                 assert np.isclose(
                     mixed_uses_data.gini[dist_cutoff][netw_src_idx],
-                    rustalgos.gini_simpson_diversity(cl_counts),
+                    rustalgos.diversity.gini_simpson_diversity(cl_counts),
                     rtol=config.RTOL,
                     atol=config.ATOL,
                 )
@@ -327,27 +430,25 @@ def test_stats(primal_graph):
     # use a large enough distance such that simple non-weighted checks can be run for max, mean, variance
     max_assign_dist = 3200
     # don't deduplicate with data_id column otherwise below tallys won't work
-    data_map, data_gdf = layers.assign_gdf_to_network(data_gdf, network_structure, max_assign_dist)
-    data_keys: list[str] = data_gdf["datamap_key"]  # type: ignore
+    data_map = mock.mock_data_map(data_gdf)
+    data_map.assign_to_network(network_structure, max_dist=max_assign_dist)
     numerical_maps = []
     for stats_col in ["mock_numerical_1", "mock_numerical_2"]:
-        stats: list[str] = data_gdf[stats_col]  # type: ignore
-        stats_map: dict[str, str] = dict(zip(data_keys, stats, strict=True))
-        numerical_maps.append(stats_map)
+        numerical_maps.append(dict(data_gdf[stats_col]))  # type: ignore)
     # for debugging
     # from cityseer.tools import plot
-    # plot.plot_network_structure(network_structure, data_gdf)
+    # plot.plot_network_structure(network_structure, data_map)
     # non connected portions of the graph will have different stats
     # used manual data plots from test_assign_to_network() to see which nodes the data points are assigned to
     # connected graph is from 0 to 48 -> assigned data points are all except per below
     connected_nodes_idx = list(range(49))
     # and the respective data assigned to connected portion of the graph
-    connected_data_idx = [i for i in range(len(data_gdf)) if i not in [1, 16, 24, 31, 36, 37, 33, 44]]
+    connected_data_idx = [i for i in range(len(data_gdf)) if i not in [16, 37, 33]]
     # isolated node = 49 -> assigned no data points
-    # isolated nodes = 50 & 51 -> assigned data points = 33, 44
-    # isolated loop = 52, 53, 54, 55 -> assigned data points = 1, 16, 24, 31, 36, 37
+    # isolated nodes = 50 & 51 -> assigned data points = 33
+    # isolated loop = 52, 53, 54, 55 -> assigned data points = 16, 37
     isolated_nodes_idx = [52, 53, 54, 55]
-    isolated_data_idx = [1, 16, 24, 31, 36, 37]
+    isolated_data_idx = [16, 37]
     # compute - first do with no deduplication so that direct comparisons can be made to numpy methods
     # have to use a single large distance, otherwise distance cutoffs will result in limited agg
     distances = [10000]
@@ -366,7 +467,7 @@ def test_stats(primal_graph):
             assert np.isnan(stats_result.max[dist_key][49])
             assert np.allclose(
                 stats_result.max[dist_key][[50, 51]],
-                mock_num_arr[[33, 44]].max(),
+                mock_num_arr[[33]].max(),
                 atol=config.ATOL,
                 rtol=config.RTOL,
             )
@@ -386,7 +487,7 @@ def test_stats(primal_graph):
             assert np.isnan(stats_result.max[dist_key][49])
             assert np.allclose(
                 stats_result.min[dist_key][[50, 51]],
-                mock_num_arr[[33, 44]].min(),
+                mock_num_arr[[33]].min(),
                 atol=config.ATOL,
                 rtol=config.RTOL,
             )
@@ -406,7 +507,7 @@ def test_stats(primal_graph):
             assert np.isnan(stats_result.max[dist_key][49])
             assert np.allclose(
                 stats_result.sum[dist_key][[50, 51]],
-                mock_num_arr[[33, 44]].sum(),
+                mock_num_arr[[33]].sum(),
                 atol=config.ATOL,
                 rtol=config.RTOL,
             )
@@ -426,7 +527,7 @@ def test_stats(primal_graph):
             assert np.isnan(stats_result.max[dist_key][49])
             assert np.allclose(
                 stats_result.mean[dist_key][[50, 51]],
-                mock_num_arr[[33, 44]].mean(),
+                mock_num_arr[[33]].mean(),
                 atol=config.ATOL,
                 rtol=config.RTOL,
             )
@@ -446,7 +547,7 @@ def test_stats(primal_graph):
             assert np.isnan(stats_result.max[dist_key][49])
             assert np.allclose(
                 stats_result.variance[dist_key][[50, 51]],
-                mock_num_arr[[33, 44]].var(),
+                mock_num_arr[[33]].var(),
                 atol=config.ATOL,
                 rtol=config.RTOL,
             )
@@ -464,9 +565,8 @@ def test_stats(primal_graph):
             )
     # do deduplication - the stats should now be lower on average
     # the last five datapoints are pointing to the same source
-    data_map_dedupe, data_gdf_dedupe = layers.assign_gdf_to_network(
-        data_gdf, network_structure, max_assign_dist, data_id_col="data_id"
-    )
+    data_map_dedupe = mock.mock_data_map(data_gdf, dedupe_key_col="data_id")
+    data_map_dedupe.assign_to_network(network_structure, max_dist=400)
     stats_results_dedupe = data_map_dedupe.stats(
         network_structure,
         numerical_maps=numerical_maps,

@@ -1,11 +1,13 @@
-use crate::common::{calculate_rotation_smallest, Coord};
+use crate::common::Coord;
 use petgraph::graph::{DiGraph, NodeIndex};
 use petgraph::prelude::*;
 use pyo3::exceptions;
 use pyo3::prelude::*;
+use rstar::{PointDistance, RTree, RTreeObject, AABB};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 
+/// Payload for a network node.
 #[pyclass]
 #[derive(Clone)]
 pub struct NodePayload {
@@ -18,12 +20,16 @@ pub struct NodePayload {
     #[pyo3(get)]
     pub weight: f32,
 }
+
 #[pymethods]
 impl NodePayload {
-    fn validate(&self) -> bool {
+    #[inline]
+    pub fn validate(&self) -> bool {
         self.coord.validate()
     }
 }
+
+/// Payload for a network edge.
 #[pyclass]
 #[derive(Clone)]
 pub struct EdgePayload {
@@ -46,26 +52,31 @@ pub struct EdgePayload {
     #[pyo3(get)]
     pub seconds: f32,
 }
+
 #[pymethods]
 impl EdgePayload {
-    fn validate(&self) -> bool {
-        // if seconds is NaN, then all other values must be finite
+    #[inline]
+    pub fn validate(&self) -> bool {
+        // If seconds is NaN, all other values must be finite
         if self.seconds.is_nan() {
-            return (self.length.is_finite())
-                && (self.angle_sum.is_finite())
-                && (self.imp_factor.is_finite())
-                && (self.in_bearing.is_finite())
-                && (self.out_bearing.is_finite());
+            self.length.is_finite()
+                && self.angle_sum.is_finite()
+                && self.imp_factor.is_finite()
+                && self.in_bearing.is_finite()
+                && self.out_bearing.is_finite()
+        } else {
+            // If seconds is finite, other values are optional
+            self.seconds.is_finite()
+                && self.length.is_finite()
+                && self.angle_sum.is_finite()
+                && self.imp_factor.is_finite()
+                && (self.in_bearing.is_finite() || self.in_bearing.is_nan())
+                && (self.out_bearing.is_finite() || self.out_bearing.is_nan())
         }
-        // if seconds is finite, then other values are optional
-        self.seconds.is_finite()
-            && self.length.is_finite()
-            && self.angle_sum.is_finite()
-            && self.imp_factor.is_finite()
-            && (self.in_bearing.is_finite() || self.in_bearing.is_nan())
-            && (self.out_bearing.is_finite() || self.out_bearing.is_nan())
     }
 }
+
+/// Visit state for a node during traversal.
 #[pyclass]
 #[derive(Clone, Copy)]
 pub struct NodeVisit {
@@ -90,6 +101,7 @@ pub struct NodeVisit {
     #[pyo3(get)]
     pub agg_seconds: f32,
 }
+
 #[pymethods]
 impl NodeVisit {
     #[new]
@@ -108,6 +120,8 @@ impl NodeVisit {
         }
     }
 }
+
+/// Visit state for an edge during traversal.
 #[pyclass]
 #[derive(Clone)]
 pub struct EdgeVisit {
@@ -120,6 +134,7 @@ pub struct EdgeVisit {
     #[pyo3(get)]
     pub edge_idx: Option<usize>,
 }
+
 #[pymethods]
 impl EdgeVisit {
     #[new]
@@ -132,95 +147,150 @@ impl EdgeVisit {
         }
     }
 }
+
+/// Edge segment for spatial queries.
+#[derive(Clone)]
+pub struct EdgeSegment {
+    pub a_idx: usize,
+    pub b_idx: usize,
+    pub a: [f32; 2],
+    pub b: [f32; 2],
+}
+
+impl RTreeObject for EdgeSegment {
+    type Envelope = AABB<[f32; 2]>;
+    fn envelope(&self) -> Self::Envelope {
+        AABB::from_corners(self.a, self.b)
+    }
+}
+
+impl PointDistance for EdgeSegment {
+    fn distance_2(&self, point: &[f32; 2]) -> f32 {
+        // Project point onto segment ab
+        let ab = [self.b[0] - self.a[0], self.b[1] - self.a[1]];
+        let ap = [point[0] - self.a[0], point[1] - self.a[1]];
+        let ab_len2 = ab[0] * ab[0] + ab[1] * ab[1];
+        let mut t = 0.0;
+        if ab_len2 > 0.0 {
+            t = (ap[0] * ab[0] + ap[1] * ab[1]) / ab_len2;
+            t = t.clamp(0.0, 1.0);
+        }
+        let proj = [self.a[0] + ab[0] * t, self.a[1] + ab[1] * t];
+        let dx = point[0] - proj[0];
+        let dy = point[1] - proj[1];
+        dx * dx + dy * dy
+    }
+}
+
+/// Main network structure.
 #[pyclass]
 #[derive(Clone)]
 pub struct NetworkStructure {
     pub graph: DiGraph<NodePayload, EdgePayload>,
     pub progress: Arc<AtomicUsize>,
+    pub edge_rtree: Option<RTree<EdgeSegment>>,
+    pub edge_rtree_built: bool,
 }
+
 #[pymethods]
 impl NetworkStructure {
     #[new]
-    fn new() -> Self {
+    pub fn new() -> Self {
         Self {
             graph: DiGraph::<NodePayload, EdgePayload>::default(),
             progress: Arc::new(AtomicUsize::new(0)),
+            edge_rtree: None,
+            edge_rtree_built: false,
         }
     }
+
+    #[inline]
     pub fn progress_init(&self) {
         self.progress.store(0, Ordering::Relaxed);
     }
-    fn progress(&self) -> usize {
-        self.progress.as_ref().load(Ordering::Relaxed)
+
+    #[inline]
+    pub fn progress(&self) -> usize {
+        self.progress.load(Ordering::Relaxed)
     }
-    fn add_node(&mut self, node_key: String, x: f32, y: f32, live: bool, weight: f32) -> usize {
+
+    pub fn add_node(&mut self, node_key: String, x: f32, y: f32, live: bool, weight: f32) -> usize {
         let new_node_idx = self.graph.add_node(NodePayload {
             node_key,
             coord: Coord::new(x, y),
             live,
             weight,
         });
-        new_node_idx.index().try_into().unwrap()
+        new_node_idx.index()
     }
+
     pub fn get_node_payload(&self, node_idx: usize) -> PyResult<NodePayload> {
-        let payload = self.graph.node_weight(NodeIndex::new(node_idx));
-        if !payload.is_some() {
-            return Err(exceptions::PyValueError::new_err(
-                "No payload for requested node idex.",
-            ));
-        }
-        Ok(payload.unwrap().clone())
-    }
-    pub fn get_node_weight(&self, node_idx: usize) -> PyResult<f32> {
-        let node_payload = self.get_node_payload(node_idx)?;
-        Ok(node_payload.weight)
-    }
-    pub fn is_node_live(&self, node_idx: usize) -> PyResult<bool> {
-        let node_payload = self.get_node_payload(node_idx)?;
-        Ok(node_payload.live)
-    }
-    pub fn node_count(&self) -> usize {
-        self.graph.node_count().try_into().unwrap()
-    }
-    pub fn node_indices(&self) -> Vec<usize> {
         self.graph
-            .node_indices()
-            .map(|node| node.index() as usize)
-            .collect()
+            .node_weight(NodeIndex::new(node_idx))
+            .cloned()
+            .ok_or_else(|| {
+                exceptions::PyValueError::new_err(format!(
+                    "No payload for requested node index {}.",
+                    node_idx
+                ))
+            })
     }
+
+    pub fn get_node_weight(&self, node_idx: usize) -> PyResult<f32> {
+        self.get_node_payload(node_idx)
+            .map(|payload| payload.weight)
+    }
+
+    pub fn is_node_live(&self, node_idx: usize) -> PyResult<bool> {
+        self.get_node_payload(node_idx).map(|payload| payload.live)
+    }
+
+    pub fn node_count(&self) -> usize {
+        self.graph.node_count()
+    }
+
+    pub fn node_indices(&self) -> Vec<usize> {
+        self.graph.node_indices().map(|node| node.index()).collect()
+    }
+
     #[getter]
-    fn node_xs(&self) -> Vec<f32> {
+    pub fn node_xs(&self) -> Vec<f32> {
         self.graph
             .node_indices()
             .map(|node| self.graph[node].coord.x)
             .collect()
     }
+
     #[getter]
-    fn node_ys(&self) -> Vec<f32> {
+    pub fn node_ys(&self) -> Vec<f32> {
         self.graph
             .node_indices()
             .map(|node| self.graph[node].coord.y)
             .collect()
     }
+
     #[getter]
-    fn node_xys(&self) -> Vec<(f32, f32)> {
+    pub fn node_xys(&self) -> Vec<(f32, f32)> {
         self.graph
             .node_indices()
             .map(|node| self.graph[node].coord.xy())
             .collect()
     }
+
     #[getter]
-    fn node_lives(&self) -> Vec<bool> {
+    pub fn node_lives(&self) -> Vec<bool> {
         self.graph
             .node_indices()
             .map(|node| self.graph[node].live)
             .collect()
     }
+
     #[getter]
-    fn edge_count(&self) -> usize {
-        self.graph.edge_count().try_into().unwrap()
+    pub fn edge_count(&self) -> usize {
+        self.graph.edge_count()
     }
-    fn add_edge(
+
+    pub fn add_edge(
         &mut self,
         start_nd_idx: usize,
         end_nd_idx: usize,
@@ -234,11 +304,11 @@ impl NetworkStructure {
         out_bearing: Option<f32>,
         seconds: Option<f32>,
     ) -> usize {
-        let _node_idx_a = NodeIndex::new(start_nd_idx.try_into().unwrap());
-        let _node_idx_b = NodeIndex::new(end_nd_idx.try_into().unwrap());
+        let node_idx_a = NodeIndex::new(start_nd_idx);
+        let node_idx_b = NodeIndex::new(end_nd_idx);
         let new_edge_idx = self.graph.add_edge(
-            _node_idx_a,
-            _node_idx_b,
+            node_idx_a,
+            node_idx_b,
             EdgePayload {
                 start_nd_key,
                 end_nd_key,
@@ -251,9 +321,10 @@ impl NetworkStructure {
                 seconds: seconds.unwrap_or(f32::NAN),
             },
         );
-        new_edge_idx.index().try_into().unwrap()
+        new_edge_idx.index()
     }
-    fn edge_references(&self) -> Vec<(usize, usize, usize)> {
+
+    pub fn edge_references(&self) -> Vec<(usize, usize, usize)> {
         self.graph
             .edge_references()
             .map(|edge_ref| {
@@ -265,366 +336,80 @@ impl NetworkStructure {
             })
             .collect()
     }
+
     pub fn get_edge_payload(
         &self,
         start_nd_idx: usize,
         end_nd_idx: usize,
         edge_idx: usize,
     ) -> PyResult<EdgePayload> {
-        let selected_edge = self
-            .graph
-            .edges_connecting(
-                NodeIndex::new(start_nd_idx.try_into().unwrap()),
-                NodeIndex::new(end_nd_idx.try_into().unwrap()),
-            )
-            .find(|edge_ref| edge_ref.weight().edge_idx == edge_idx);
-        if !selected_edge.is_some() {
-            return Err(exceptions::PyValueError::new_err(format!(
-                "Edge not found for nodes {0}, {1}, and idx {2}.",
-                start_nd_idx, end_nd_idx, edge_idx
-            )));
-        };
-        Ok(selected_edge.unwrap().weight().clone())
+        let start_node_index = NodeIndex::new(start_nd_idx);
+        let end_node_index = NodeIndex::new(end_nd_idx);
+        self.graph
+            .edges_connecting(start_node_index, end_node_index)
+            .find(|edge_ref| edge_ref.weight().edge_idx == edge_idx)
+            .map(|edge_ref| edge_ref.weight().clone())
+            .ok_or_else(|| {
+                exceptions::PyValueError::new_err(format!(
+                    "Edge not found for nodes {}, {}, and idx {}.",
+                    start_nd_idx, end_nd_idx, edge_idx
+                ))
+            })
     }
+
     pub fn validate(&self) -> PyResult<bool> {
         if self.node_count() == 0 {
             return Err(exceptions::PyValueError::new_err(
                 "NetworkStructure contains no nodes.",
             ));
-        };
+        }
         if self.edge_count() == 0 {
             return Err(exceptions::PyValueError::new_err(
                 "NetworkStructure contains no edges.",
             ));
-        };
+        }
         for node_idx in self.graph.node_indices() {
-            let node_payload = self.graph.node_weight(node_idx).unwrap();
+            let node_payload = self.get_node_payload(node_idx.index())?;
             if !node_payload.validate() {
                 return Err(exceptions::PyValueError::new_err(format!(
-                    "Invalid node for node idx {:?}.",
+                    "Invalid node payload for node idx {:?}.",
                     node_idx
                 )));
             }
         }
-        for edge_idx in self.graph.edge_indices() {
-            let edge_payload = self.graph.edge_weight(edge_idx).unwrap();
+        for edge_ref in self.graph.edge_references() {
+            let edge_payload = edge_ref.weight();
             if !edge_payload.validate() {
+                let start_node_idx = edge_ref.source().index();
+                let end_node_idx = edge_ref.target().index();
+                let edge_data_idx = edge_payload.edge_idx;
                 return Err(exceptions::PyValueError::new_err(format!(
-                    "Invalid edge for edge idx {:?}.",
-                    edge_idx
+                    "Invalid edge payload for edge between nodes {} and {} (edge_idx {}).",
+                    start_node_idx, end_node_idx, edge_data_idx
                 )));
             }
         }
         Ok(true)
     }
 
-    fn find_nearest(
-        &self,
-        data_coord: Coord,
-        max_dist: f32,
-    ) -> (Option<usize>, f32, Option<usize>) {
-        /*
-        finds the nearest road node, corresponding distance, and next nearest road node
-        relative to a provided data point
-        */
-        let mut min_idx = None;
-        let mut min_dist = std::f32::INFINITY;
-        let mut next_min_idx = None;
-        let mut next_min_dist = std::f32::INFINITY;
-        // Iterate all nodes, find nearest
-        for node_index in self.graph.node_indices() {
-            let node_coord = self.graph.node_weight(node_index).unwrap().coord;
-            let dist = data_coord.hypot(node_coord);
-            if dist <= max_dist && dist < min_dist {
-                next_min_idx = min_idx;
-                next_min_dist = min_dist;
-                min_idx = Some(node_index.index());
-                min_dist = dist;
-            } else if dist <= max_dist && dist < next_min_dist {
-                next_min_idx = Some(node_index.index());
-                next_min_dist = dist;
-            }
+    pub fn prep_edge_rtree(&mut self) -> PyResult<()> {
+        if self.edge_rtree_built {
+            return Ok(());
         }
-        (min_idx, min_dist, next_min_idx)
-    }
-
-    fn road_distance(
-        &self,
-        data_coord: Coord,
-        nd_a_idx: usize,
-        nd_b_idx: usize,
-    ) -> (f32, Option<usize>, Option<usize>) {
-        /*
-        calculates the nearest perpendicular distance to an adjacent road
-        road segment is defined by nodes a and b
-        returns a and b sorted in nearest and next nearest order
-        */
-        let coord_a = self.get_node_payload(nd_a_idx).unwrap().coord;
-        let coord_b = self.get_node_payload(nd_b_idx).unwrap().coord;
-        // Get the angles from either intersection node to the data point
-        // requires the vector of the difference
-        let ang_a = calculate_rotation_smallest(
-            data_coord.difference(coord_a),
-            coord_b.difference(coord_a),
-        );
-        let ang_b = calculate_rotation_smallest(
-            data_coord.difference(coord_b),
-            coord_a.difference(coord_b),
-        );
-        // Assume offset street segment if either is significantly greater than 90
-        // (in which case sideways offset from the road)
-        if ang_a > 110.0 || ang_b > 110.0 {
-            return (f32::INFINITY, None, None);
+        let mut segments = Vec::with_capacity(self.graph.edge_count());
+        for (a_idx, b_idx, _) in self.edge_references() {
+            let a_coord = self.get_node_payload(a_idx)?.coord;
+            let b_coord = self.get_node_payload(b_idx)?.coord;
+            segments.push(EdgeSegment {
+                a_idx,
+                b_idx,
+                a: [a_coord.x, a_coord.y],
+                b: [b_coord.x, b_coord.y],
+            });
         }
-        // Calculate height from two sides and included angle
-        let side_a = data_coord.hypot(coord_a);
-        let side_b = data_coord.hypot(coord_b);
-        let base = coord_a.hypot(coord_b);
-        // Forestall potential division by zero
-        if base == 0.0 {
-            return (f32::INFINITY, None, None);
-        }
-        // Heron's formula
-        let half_perim = (side_a + side_b + base) / 2.0;
-        let area =
-            (half_perim * (half_perim - side_a) * (half_perim - side_b) * (half_perim - base))
-                .sqrt();
-        let height = area / (0.5 * base);
-        // NOTE - the height of the triangle may be less than the distance to the nodes
-        // happens due to offset segments: can cause wrong assignment where adjacent segments have the same triangle height
-        // in this case, set to the length of the closest node so that height (minimum distance) is still meaningful
-        // Return indices in order of nearest then the next nearest
-        if side_a < side_b {
-            if ang_a > 90.0 {
-                return (side_a, Some(nd_a_idx), Some(nd_b_idx));
-            }
-            return (height, Some(nd_a_idx), Some(nd_b_idx));
-        }
-        if ang_b > 90.0 {
-            return (side_b, Some(nd_b_idx), Some(nd_a_idx));
-        }
-        (height, Some(nd_b_idx), Some(nd_a_idx))
-    }
-
-    fn closest_intersections(
-        &self,
-        data_coord: Coord,
-        pred_map: Vec<Option<usize>>,
-        last_nd_idx: usize,
-    ) -> (f32, Option<usize>, Option<usize>) {
-        // finds the closest adjacent roadway segment and corresponding adjacent intersections
-        // relative to an input data point
-        let mut n_preds = 0;
-        for i in 0..pred_map.len() {
-            if !pred_map[i].is_none() {
-                n_preds += 1;
-            }
-        }
-        // if only one, there is no next nearest and no need to retrace
-        if n_preds == 0 {
-            return (f32::INFINITY, Some(last_nd_idx), None);
-        }
-        let mut current_idx = last_nd_idx;
-        let mut pred_idx = pred_map[last_nd_idx].unwrap();
-        // if only two, no need to retrace
-        if n_preds == 1 {
-            return self.road_distance(data_coord, current_idx, pred_idx);
-        }
-        let mut nearest_idx: Option<usize> = None;
-        let mut next_nearest_idx: Option<usize> = None;
-        let mut min_d = f32::INFINITY;
-        let first_pred = pred_idx; // for finding end of loop
-        loop {
-            let (height, n_idx, n_n_idx) = self.road_distance(data_coord, current_idx, pred_idx);
-            if height < min_d {
-                min_d = height;
-                nearest_idx = n_idx;
-                next_nearest_idx = n_n_idx;
-            }
-            // break if the next item in the chain has no predecessor
-            if pred_map[pred_idx].is_none() {
-                break;
-            }
-            current_idx = pred_idx;
-            pred_idx = pred_map[pred_idx].unwrap();
-            if pred_idx == first_pred {
-                break;
-            }
-        }
-        (min_d, nearest_idx, next_nearest_idx)
-    }
-
-    fn assign_to_network(
-        &self,
-        data_coord: Coord,
-        max_dist: f32,
-    ) -> (Option<usize>, Option<usize>) {
-        /*
-        1 - find the closest network node from each data point
-        2A - wind clockwise along the network to preferably find a block cycle surrounding the node
-        2B - in event of topological traps, try anti-clockwise as well
-        3A - select the closest block cycle node
-        3B - if no enclosing cycle - simply use the closest node
-        4 - find the neighbouring node that minimises the distance between the data point on "street-front"
-         */
-        // Find the nearest and next nearest network nodes
-        let (start_min_idx, start_min_dist, start_next_min_idx) =
-            self.find_nearest(data_coord, max_dist);
-        // In some cases no network node will be within max_dist...
-        if start_min_idx.is_none() {
-            return (None, None);
-        }
-        let min_idx = start_min_idx.unwrap();
-        // Check if min and next min are connected
-        if !start_next_min_idx.is_none() {
-            let next_min_idx = start_next_min_idx.unwrap();
-            for nb_nd_idx in self
-                .graph
-                .neighbors_directed(NodeIndex::new(min_idx), Direction::Outgoing)
-            {
-                // If connected, then no need to circle the block
-                if nb_nd_idx.index() == next_min_idx {
-                    return (Some(min_idx), Some(next_min_idx));
-                }
-            }
-        }
-        // If not connected, find the nearest adjacent by edges
-        // Set start node to nearest network node
-        let mut current_idx = min_idx;
-        // Nearest is initially set for this nearest node, but if a nearer street-edge is found, it will be overridden
-        let mut nearest_idx = min_idx;
-        // next nearest is None because already connected next-nearest would have returned per above
-        let mut next_nearest_idx: Option<usize> = None;
-        // Keep track of previous indices
-        let mut prev_idx: Option<usize> = None;
-        // Keep track of visited nodes
-        let mut pred_map: Vec<Option<usize>> = vec![None; self.graph.node_count()];
-        // min distance
-        let mut min_dist = start_min_dist;
-        // State for reversing direction
-        let mut reversing = false;
-        // Iterate neighbors
-        loop {
-            // Reset neighbor rotation and index counters
-            let mut rotation = std::f32::NAN;
-            let mut nb_idx: Option<usize> = None;
-            // Iterate the edges
-            for candidate_nb_idx in self
-                .graph
-                .neighbors_directed(NodeIndex::new(current_idx), Direction::Outgoing)
-            {
-                // Don't follow self-loops
-                if candidate_nb_idx.index() == current_idx {
-                    continue;
-                }
-                // Check that this isn't the previous node (already visited as neighbor from other direction)
-                if !prev_idx.is_none() && candidate_nb_idx.index() == prev_idx.unwrap() {
-                    continue;
-                }
-                // Look for the new neighbor with the smallest rightwards (anti-clockwise arctan2) angle
-                // Measure the angle relative to the data point for the first node
-                let candidate_nb_coord = self
-                    .get_node_payload(candidate_nb_idx.index())
-                    .unwrap()
-                    .coord;
-                let current_nd_coord = self.get_node_payload(current_idx).unwrap().coord;
-                // if there is no previous index, use the data coord
-                let rot = if prev_idx.is_none() {
-                    calculate_rotation_smallest(
-                        candidate_nb_coord.difference(current_nd_coord),
-                        data_coord.difference(current_nd_coord),
-                    )
-                } else {
-                    let prev_nd_coord = self.get_node_payload(prev_idx.unwrap()).unwrap().coord;
-                    calculate_rotation_smallest(
-                        candidate_nb_coord.difference(current_nd_coord),
-                        prev_nd_coord.difference(current_nd_coord),
-                    )
-                };
-                // flip rotation if reversing
-                if reversing {
-                    rotation = 360.0 - rot;
-                }
-                // If least angle, update
-                if rotation.is_nan() || rot < rotation {
-                    rotation = rot;
-                    nb_idx = Some(candidate_nb_idx.index());
-                }
-            }
-            // Allow backtracking if no neighbour is found - i.e., dead-ends
-            if nb_idx.is_none() {
-                // if no predecessor
-                if pred_map[current_idx].is_none() {
-                    // break loop isolated nodes with no neighbours, no predecessors, no previous
-                    if prev_idx.is_none() {
-                        break;
-                    }
-                    // For isolated edges, the algorithm gets turned-around back to the starting node with nowhere to go
-                    // these have no neibours, no predecessors, but will have previous
-                    // In these cases, pass closest_intersections the prev_idx so that it has a predecessor to follow
-                    let (dist, n, n_n) =
-                        self.closest_intersections(data_coord, pred_map, prev_idx.unwrap());
-                    if dist < min_dist {
-                        nearest_idx = n.unwrap();
-                        next_nearest_idx = n_n;
-                    }
-                    break;
-                }
-                // Otherwise, go ahead and backtrack by finding the previous node
-                nb_idx = pred_map[current_idx];
-            }
-            // if the distance is exceeded, reset and attempt in the other direction
-            let nb_nd_coord = self.get_node_payload(nb_idx.unwrap()).unwrap().coord;
-            let dist = nb_nd_coord.hypot(data_coord);
-            if dist > max_dist {
-                pred_map[nb_idx.unwrap()] = Some(current_idx);
-                let (dist, n, n_n) =
-                    self.closest_intersections(data_coord, pred_map, nb_idx.unwrap());
-                // if the distance to the street edge is less than the nearest node, or than the prior closest edge
-                if dist < min_dist {
-                    min_dist = dist;
-                    nearest_idx = n.unwrap();
-                    next_nearest_idx = n_n;
-                }
-                // reverse and try in opposite direction
-                if !reversing {
-                    reversing = true;
-                    pred_map = vec![None; self.graph.node_count()];
-                    current_idx = min_idx;
-                    prev_idx = None;
-                    continue;
-                }
-                // otherwise break
-                break;
-            }
-            // ignore the following conditions while backtracking
-            // (if backtracking, the current node's predecessor will be equal to the new neighbour)
-            if nb_idx != pred_map[current_idx] {
-                // if the new nb node has already been visited then terminate, this prevents infinite loops
-                // or, if the algorithm has circled the block back to the original starting node
-                if !pred_map[nb_idx.unwrap()].is_none() || nb_idx.unwrap() == min_idx {
-                    // set the final predecessor, BUT ONLY if re-encountered the original node
-                    // this would otherwise occlude routes (e.g. backtracks) that have passed the same node twice
-                    // (such routes are still able to recover the closest edge)
-                    if nb_idx.unwrap() == min_idx {
-                        pred_map[nb_idx.unwrap()] = Some(current_idx);
-                    }
-                    let (dist, n, n_n) =
-                        self.closest_intersections(data_coord, pred_map, nb_idx.unwrap());
-                    if dist < min_dist {
-                        nearest_idx = n.unwrap();
-                        next_nearest_idx = n_n;
-                    }
-                    break;
-                }
-                // set predecessor (only if not backtracking)
-                pred_map[nb_idx.unwrap()] = Some(current_idx);
-            }
-            // otherwise, keep going
-            prev_idx = Some(current_idx);
-            current_idx = nb_idx.unwrap();
-        }
-        (Some(nearest_idx), next_nearest_idx)
+        self.edge_rtree = Some(RTree::bulk_load(segments));
+        self.edge_rtree_built = true;
+        Ok(())
     }
 }
 

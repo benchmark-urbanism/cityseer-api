@@ -20,7 +20,8 @@ import numpy.typing as npt
 from pyproj import CRS
 from shapely import geometry
 
-from cityseer.tools import util
+from .. import rustalgos
+from ..tools import util
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -58,7 +59,7 @@ def mock_graph(wgs84_coords: bool = False) -> MultiGraph:
     _Mock graph._
 
     """
-    nx_multigraph: MultiGraph = nx.MultiGraph()
+    nx_multigraph: MultiGraph = nx.MultiGraph()  # type: ignore
 
     nodes = [
         ("0", {"x": 700700, "y": 5719700}),
@@ -528,3 +529,26 @@ def mock_gtfs_stops_txt(path: str):
     }
     stop_times_gdf = gpd.GeoDataFrame(stop_times)
     stop_times_gdf.to_csv(output_path / "stop_times.txt", index=False)
+
+
+def mock_data_map(data_gdf: gpd.GeoDataFrame, dedupe_key_col: str | None = None) -> rustalgos.data.DataMap:
+    """
+    Create a DataMap for testing from a GeoDataFrame created with mock_data_gdf.
+
+    Parameters
+    ----------
+    data_gdf: GeoDataFrame
+        A GeoDataFrame with columns 'geometry', 'data_id', and index as unique keys.
+
+    Returns
+    -------
+    DataMap
+        An instance of DataMap (Rust-backed, from data.rs) populated with the mock data.
+    """
+    data_map = rustalgos.data.DataMap()
+    for uid, row in data_gdf.iterrows():  # type: ignore
+        if dedupe_key_col is not None:
+            data_map.insert(uid, row.geometry.x, row.geometry.y, row[dedupe_key_col])  # type: ignore
+        else:
+            data_map.insert(uid, row.geometry.x, row.geometry.y, None)  # type: ignore
+    return data_map

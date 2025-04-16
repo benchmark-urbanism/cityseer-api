@@ -20,7 +20,7 @@ from pyproj.database import query_utm_crs_info
 from shapely import coords, geometry, ops, strtree
 from tqdm import tqdm
 
-from cityseer import config
+from .. import config
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

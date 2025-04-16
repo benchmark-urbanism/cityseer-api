@@ -13,7 +13,6 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-import geopandas as gpd
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import networkx as nx
@@ -25,8 +24,8 @@ from matplotlib.patches import Patch
 from shapely import geometry
 from tqdm import tqdm
 
-from cityseer import config, rustalgos
-from cityseer.tools.graphs import EdgeData, NodeData, NodeKey
+from .. import config, rustalgos
+from ..tools.graphs import EdgeData, NodeData, NodeKey
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -429,9 +428,9 @@ class _SimpleLabelEncoder:
 
 
 def plot_assignment(
-    network_structure: rustalgos.NetworkStructure,
+    network_structure: rustalgos.graph.NetworkStructure,
     nx_multigraph: MultiGraph,
-    data_gdf: gpd.GeoDataFrame,
+    data_map: rustalgos.data.DataMap,
     path: str | None = None,
     node_colour: ColourType | None = None,
     node_labels: bool = False,
@@ -447,12 +446,12 @@ def plot_assignment(
 
     Parameters
     ----------
-    network_structure: rustalgos.NetworkStructure
-        A [`rustalgos.NetworkStructure`](/rustalgos/rustalgos#networkstructure) instance.
+    network_structure: rustalgos.graph.NetworkStructure
+        A [`rustalgos.graph.NetworkStructure`](/rustalgos/rustalgos#networkstructure) instance.
     nx_multigraph: MultiGraph
         A `NetworkX` MultiGraph.
-    data_gdf: GeoDataFrame
-        A `data_gdf` `GeoDataFrame` with `nearest_assigned` and `next_nearest_assign` columns.
+    data_map: DataMap
+        A `rustalgos.data.DataMap` object with data entries for plotting.
     path: str
         An optional filepath: if provided, the image will be saved to the path instead of being displayed. Defaults to
         None.
@@ -523,9 +522,14 @@ def plot_assignment(
         data_cmap = "Dark2"  # Set1
 
     # overlay data map
+    data_xs = []
+    data_ys = []
+    for data_entry in data_map.entries.values():
+        data_xs.append(data_entry.coord.x)
+        data_ys.append(data_entry.coord.y)
     plt.scatter(
-        x=data_gdf.geometry.x,
-        y=data_gdf.geometry.y,
+        x=data_xs,
+        y=data_ys,
         c=data_colour,  # type: ignore
         cmap=data_cmap,  # type: ignore
         s=30,
@@ -533,19 +537,18 @@ def plot_assignment(
         lw=0.5,
         alpha=0.95,
     )
-    if "nearest_assign" not in data_gdf.columns:
-        raise ValueError(
-            "Cannot plot assignment for GeoDataFrame that has not yet been assigned to a NetworkStructure."
-        )
     # draw assignment
-    for _data_key, data_row in data_gdf.iterrows():
-        # if the data points have been assigned network indices
-        data_x: float = data_row.geometry.x
-        data_y: float = data_row.geometry.y
-        nearest_netw_idx: int = data_row.nearest_assign
-        next_nearest_netw_idx: int = data_row.next_nearest_assign
+    for data_entry in data_map.entries.values():
+        data_x: float = data_entry.coord.x
+        data_y: float = data_entry.coord.y
+        nearest_netw_idx = None
+        next_nearest_netw_idx = None
+        if data_entry.node_matches is not None:
+            if data_entry.node_matches.nearest is not None:  # type: ignore
+                nearest_netw_idx = data_entry.node_matches.nearest.idx  # type: ignore
+            if data_entry.node_matches.next_nearest is not None:  # type: ignore
+                next_nearest_netw_idx = data_entry.node_matches.next_nearest.idx  # type: ignore
         if nearest_netw_idx is not None:
-            # plot lines to parents for easier viz
             p_x = network_structure.node_xs[nearest_netw_idx]
             p_y = network_structure.node_ys[nearest_netw_idx]
             plt.plot(
@@ -569,8 +572,8 @@ def plot_assignment(
 
 
 def plot_network_structure(
-    network_structure: rustalgos.NetworkStructure,
-    data_gdf: gpd.GeoDataFrame,
+    network_structure: rustalgos.graph.NetworkStructure,
+    data_map: rustalgos.data.DataMap,
     poly: geometry.Polygon | None = None,
 ):
     """
@@ -583,10 +586,10 @@ def plot_network_structure(
 
     Parameters
     ----------
-    network_structure: rustalgos.NetworkStructure
-        A [`rustalgos.NetworkStructure`](/rustalgos/rustalgos#networkstructure) instance.
-    data_gdf: GeoDataFrame
-        A `data_gdf` `GeoDataFrame` with `nearest_assigned` and `next_nearest_assign` columns.
+    network_structure: rustalgos.graph.NetworkStructure
+        A [`rustalgos.graph.NetworkStructure`](/rustalgos/rustalgos#networkstructure) instance.
+    data_map: DataMap
+        A `rustalgos.data.DataMap` object with data entries for plotting.
     poly: geometry.Polygon
         An optional polygon. Defaults to None.
 
@@ -635,30 +638,40 @@ def plot_network_structure(
         else:
             ax2.plot([s_x, e_x], [s_y, e_y], c=COLOUR_MAP.accent, linewidth=1)
     for node_idx in range(network_structure.node_count()):
-        ax2.annotate(node_idx, xy=network_structure.node_xys[node_idx], size=5)
+        ax2.annotate(node_idx, xy=network_structure.node_xys[node_idx], size=10)
     # plot parents on ax1
+    data_xs = []
+    data_ys = []
+    for data_entry in data_map.entries.values():
+        data_xs.append(data_entry.coord.x)
+        data_ys.append(data_entry.coord.y)
     ax1.scatter(
-        x=data_gdf.geometry.x,
-        y=data_gdf.geometry.y,
+        x=data_xs,
+        y=data_ys,
         color=COLOUR_MAP.secondary,
         edgecolor=COLOUR_MAP.warning,
         alpha=0.9,
         lw=0.5,
     )
     ax2.scatter(
-        x=data_gdf.geometry.x,
-        y=data_gdf.geometry.y,
+        x=data_xs,
+        y=data_ys,
         color=COLOUR_MAP.secondary,
         edgecolor=COLOUR_MAP.warning,
         alpha=0.9,
         lw=0.5,
     )
-    for data_idx, data_row in data_gdf.iterrows():
-        data_x: float = data_row.geometry.x
-        data_y: float = data_row.geometry.y
-        nearest_netw_idx: int = data_row.nearest_assign
-        next_nearest_netw_idx: int = data_row.next_nearest_assign
-        ax2.annotate(str(data_idx), xy=(data_x, data_y), size=8, color="red")
+    for _data_idx, (data_entry) in enumerate(data_map.entries.values()):
+        data_x: float = data_entry.coord.x
+        data_y: float = data_entry.coord.y
+        nearest_netw_idx = None
+        next_nearest_netw_idx = None
+        if data_entry.node_matches is not None:
+            if data_entry.node_matches.nearest is not None:  # type: ignore
+                nearest_netw_idx = data_entry.node_matches.nearest.idx  # type: ignore
+            if data_entry.node_matches.next_nearest is not None:  # type: ignore
+                next_nearest_netw_idx = data_entry.node_matches.next_nearest.idx  # type: ignore
+        ax2.annotate(str(data_entry.data_key_py), xy=(data_x, data_y), size=10, color="red")
         # if the data points have been assigned network indices
         if nearest_netw_idx is not None:
             # plot lines to parents for easier viz

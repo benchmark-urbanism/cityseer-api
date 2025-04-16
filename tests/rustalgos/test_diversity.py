@@ -13,7 +13,7 @@ def test_hill_diversity():
     for counts, probs in mock.mock_species_data():
         # check hill q=1 - this can be tested against scipy because hill q=1 is exponential of entropy
         assert np.allclose(
-            rustalgos.hill_diversity(counts, q=1),
+            rustalgos.diversity.hill_diversity(counts, q=1),
             np.exp(entropy(probs)),
             atol=config.ATOL,
             rtol=config.RTOL,
@@ -21,20 +21,20 @@ def test_hill_diversity():
         # check that hill q<1 and q>1 is reasonably close to scipy entropy
         # (different internal computation)
         assert np.allclose(
-            rustalgos.hill_diversity(counts, 0.99999999),
+            rustalgos.diversity.hill_diversity(counts, 0.99999999),
             np.exp(entropy(probs)),
             atol=config.ATOL,
             rtol=config.RTOL,
         )
         assert np.allclose(
-            rustalgos.hill_diversity(counts, 1.00000001),
+            rustalgos.diversity.hill_diversity(counts, 1.00000001),
             np.exp(entropy(probs)),
             atol=config.ATOL,
             rtol=config.RTOL,
         )
         # check for malformed q
         with pytest.raises(ValueError):
-            rustalgos.hill_diversity(counts, q=-1)
+            rustalgos.diversity.hill_diversity(counts, q=-1)
 
 
 def test_hill_diversity_branch_distance_wt():
@@ -44,8 +44,8 @@ def test_hill_diversity_branch_distance_wt():
         non_beta = -0
         for q in [0, 1, 2]:
             assert np.allclose(
-                rustalgos.hill_diversity(counts, q),
-                rustalgos.hill_diversity_branch_distance_wt(counts, non_weights, q, non_beta, 1),
+                rustalgos.diversity.hill_diversity(counts, q),
+                rustalgos.diversity.hill_diversity_branch_distance_wt(counts, non_weights, q, non_beta, 1),
                 atol=config.ATOL,
                 rtol=config.RTOL,
             )
@@ -135,7 +135,7 @@ def test_hill_diversity_pairwise_distance_wt():
         non_beta = -0
         for q in [0, 1, 2]:
             assert np.allclose(
-                rustalgos.hill_diversity_pairwise_distance_wt(counts, non_weights, q, non_beta, 1),
+                rustalgos.diversity.hill_diversity_pairwise_distance_wt(counts, non_weights, q, non_beta, 1),
                 hill_diversity_pairwise_distance_wt(np.array(counts), np.array(non_weights), q, non_beta, 1),
                 rtol=config.RTOL,
                 atol=config.ATOL,
@@ -159,7 +159,7 @@ def test_gini_simpson_diversity():
     # just run for now to check against unexpectedly thrown errors
     for counts, _probs in mock.mock_species_data():
         assert np.allclose(
-            rustalgos.gini_simpson_diversity(counts),
+            rustalgos.diversity.gini_simpson_diversity(counts),
             gini_simpson_diversity(np.array(counts)),
             rtol=config.RTOL,
             atol=config.ATOL,
@@ -172,7 +172,7 @@ def test_shannon_diversity():
     """
     # test against scipy entropy
     for counts, probs in mock.mock_species_data():
-        assert abs(entropy(probs) - rustalgos.shannon_diversity(counts)) < config.ATOL
+        assert abs(entropy(probs) - rustalgos.diversity.shannon_diversity(counts)) < config.ATOL
 
 
 def raos_quadratic_diversity(
@@ -215,7 +215,7 @@ def test_raos_quadratic_diversity():
     for counts, _probs in mock.mock_species_data():
         mock_matrix = np.full((len(counts), len(counts)), 1)
         assert np.allclose(
-            rustalgos.raos_quadratic_diversity(counts, mock_matrix.tolist(), 1.0, 1.0),
+            rustalgos.diversity.raos_quadratic_diversity(counts, mock_matrix.tolist(), 1.0, 1.0),
             raos_quadratic_diversity(np.array(counts), mock_matrix),
             rtol=config.RTOL,
             atol=config.ATOL,

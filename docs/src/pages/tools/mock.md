@@ -556,5 +556,57 @@ for counts, probs in mock.mock_species_data():
 </div>
 
 
+<div class="function">
+
+## mock_data_map
+
+
+<div class="content">
+<span class="name">mock_data_map</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">data_gdf</span>
+    <span class="pc">:</span>
+    <span class="pa"> geopandas.geodataframe.GeoDataFrame</span>
+  </div>
+  <div class="param">
+    <span class="pn">dedupe_key_col</span>
+    <span class="pc">:</span>
+    <span class="pa"> str | None = None</span>
+  </div>
+  <span class="pt">)-&gt;[</span>
+  <span class="pr">DataMap</span>
+  <span class="pt">]</span>
+</div>
+</div>
+
+
+ Create a DataMap for testing from a GeoDataFrame created with mock_data_gdf.
+### Parameters
+<div class="param-set">
+  <div class="def">
+    <div class="name">data_gdf</div>
+    <div class="type">GeoDataFrame</div>
+  </div>
+  <div class="desc">
+
+ A GeoDataFrame with columns 'geometry', 'data_id', and index as unique keys.</div>
+</div>
+
+### Returns
+<div class="param-set">
+  <div class="def">
+    <div class="name"></div>
+    <div class="type">DataMap</div>
+  </div>
+  <div class="desc">
+
+ An instance of DataMap (Rust-backed, from data.rs) populated with the mock data.</div>
+</div>
+
+
+</div>
+
+
 
 </section>

@@ -20,8 +20,8 @@ import networkx as nx
 import numpy as np
 from tqdm import tqdm
 
-from cityseer import config
-from cityseer.tools import graphs
+from .. import config
+from ..tools import graphs
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
