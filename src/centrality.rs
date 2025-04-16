@@ -69,23 +69,22 @@ struct NodeDistance {
 
 // Implement PartialOrd and Ord focusing on distance for comparison
 impl PartialOrd for NodeDistance {
-    #[inline] // Hint for potential inlining
+    #[inline]
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         other.metric.partial_cmp(&self.metric)
     }
 }
 
 impl Ord for NodeDistance {
-    #[inline] // Hint for potential inlining
+    #[inline]
     fn cmp(&self, other: &Self) -> Ordering {
         self.partial_cmp(other).unwrap_or(Ordering::Equal)
     }
 }
 
 // PartialEq to satisfy BinaryHeap requirements
-// can't derive PartialEq for f32, so use a custom approach
 impl PartialEq for NodeDistance {
-    #[inline] // Hint for potential inlining
+    #[inline]
     fn eq(&self, other: &Self) -> bool {
         self.node_idx == other.node_idx && (self.metric - other.metric).abs() < f32::EPSILON
     }
@@ -105,12 +104,12 @@ impl NetworkStructure {
         jitter_scale: Option<f32>,
     ) -> (Vec<usize>, Vec<NodeVisit>) {
         let jitter_scale = jitter_scale.unwrap_or(0.0);
-        let mut tree_map: Vec<NodeVisit> = vec![NodeVisit::new(); self.graph.node_count()];
-        let mut visited_nodes: Vec<usize> = Vec::new();
+        let mut tree_map = vec![NodeVisit::new(); self.graph.node_count()];
+        let mut visited_nodes = Vec::new();
         tree_map[src_idx].short_dist = 0.0;
         tree_map[src_idx].agg_seconds = 0.0;
         tree_map[src_idx].discovered = true;
-        let mut active: BinaryHeap<NodeDistance> = BinaryHeap::new();
+        let mut active = BinaryHeap::new();
         active.push(NodeDistance {
             node_idx: src_idx,
             metric: 0.0,
@@ -149,14 +148,15 @@ impl NetworkStructure {
                 let total_seconds = tree_map[node_idx].agg_seconds + edge_seconds;
                 if total_seconds > max_seconds as f32 {
                     continue;
-                } else if !tree_map[nb_nd_idx.index()].discovered {
+                }
+                if !tree_map[nb_nd_idx.index()].discovered {
                     tree_map[nb_nd_idx.index()].discovered = true;
                     active.push(NodeDistance {
                         node_idx: nb_nd_idx.index(),
                         metric: total_seconds,
                     });
                 }
-                let mut jitter: f32 = 0.0;
+                let mut jitter = 0.0;
                 if jitter_scale > 0.0 {
                     jitter = rng.random::<f32>() * jitter_scale;
                 }
@@ -179,12 +179,12 @@ impl NetworkStructure {
         jitter_scale: Option<f32>,
     ) -> (Vec<usize>, Vec<NodeVisit>) {
         let jitter_scale = jitter_scale.unwrap_or(0.0);
-        let mut tree_map: Vec<NodeVisit> = vec![NodeVisit::new(); self.graph.node_count()];
-        let mut visited_nodes: Vec<usize> = Vec::new();
+        let mut tree_map = vec![NodeVisit::new(); self.graph.node_count()];
+        let mut visited_nodes = Vec::new();
         tree_map[src_idx].simpl_dist = 0.0;
         tree_map[src_idx].agg_seconds = 0.0;
         tree_map[src_idx].discovered = true;
-        let mut active: BinaryHeap<NodeDistance> = BinaryHeap::new();
+        let mut active = BinaryHeap::new();
         active.push(NodeDistance {
             node_idx: src_idx,
             metric: 0.0,
@@ -212,9 +212,10 @@ impl NetworkStructure {
                     && neighbor_pred.is_some()
                     && current_pred == neighbor_pred
                 {
-                    continue;
+                        continue;
+                    }
                 }
-                let mut turn: f32 = 0.0;
+                let mut turn = 0.0;
                 if node_idx != src_idx
                     && edge_payload.in_bearing.is_finite()
                     && tree_map[node_idx].out_bearing.is_finite()
@@ -235,14 +236,15 @@ impl NetworkStructure {
                 let total_seconds = tree_map[node_idx].agg_seconds + edge_seconds;
                 if total_seconds > max_seconds as f32 {
                     continue;
-                } else if !tree_map[nb_nd_idx.index()].discovered {
+                }
+                if !tree_map[nb_nd_idx.index()].discovered {
                     tree_map[nb_nd_idx.index()].discovered = true;
                     active.push(NodeDistance {
                         node_idx: nb_nd_idx.index(),
                         metric: simpl_total_dist,
                     });
                 }
-                let mut jitter: f32 = 0.0;
+                let mut jitter = 0.0;
                 if jitter_scale > 0.0 {
                     jitter = rng.random::<f32>() * jitter_scale;
                 }
@@ -266,14 +268,14 @@ impl NetworkStructure {
         jitter_scale: Option<f32>,
     ) -> (Vec<usize>, Vec<usize>, Vec<NodeVisit>, Vec<EdgeVisit>) {
         let jitter_scale = jitter_scale.unwrap_or(0.0);
-        let mut tree_map: Vec<NodeVisit> = vec![NodeVisit::new(); self.graph.node_count()];
-        let mut edge_map: Vec<EdgeVisit> = vec![EdgeVisit::new(); self.graph.edge_count()];
-        let mut visited_nodes: Vec<usize> = Vec::new();
-        let mut visited_edges: Vec<usize> = Vec::new();
+        let mut tree_map = vec![NodeVisit::new(); self.graph.node_count()];
+        let mut edge_map = vec![EdgeVisit::new(); self.graph.edge_count()];
+        let mut visited_nodes = Vec::new();
+        let mut visited_edges = Vec::new();
         tree_map[src_idx].short_dist = 0.0;
         tree_map[src_idx].agg_seconds = 0.0;
         tree_map[src_idx].discovered = true;
-        let mut active: BinaryHeap<NodeDistance> = BinaryHeap::new();
+        let mut active = BinaryHeap::new();
         active.push(NodeDistance {
             node_idx: src_idx,
             metric: 0.0,
@@ -315,14 +317,15 @@ impl NetworkStructure {
                 let total_seconds = tree_map[node_idx].agg_seconds + edge_seconds;
                 if total_seconds > max_seconds as f32 {
                     continue;
-                } else if !tree_map[nb_nd_idx.index()].discovered {
+                }
+                if !tree_map[nb_nd_idx.index()].discovered {
                     tree_map[nb_nd_idx.index()].discovered = true;
                     active.push(NodeDistance {
                         node_idx: nb_nd_idx.index(),
                         metric: total_seconds,
                     });
                 }
-                let mut jitter: f32 = 0.0;
+                let mut jitter = 0.0;
                 if jitter_scale > 0.0 {
                     jitter = rng.random::<f32>() * jitter_scale;
                 }

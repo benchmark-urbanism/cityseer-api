@@ -62,23 +62,6 @@ class Coord:
         """
         ...
 
-def calculate_rotation(point_a: Coord, point_b: Coord) -> float: ...
-def calculate_rotation_smallest(vec_a: Coord, vec_b: Coord) -> float:
-    """
-    Calculates the angle between `vec_a` and `vec_b`.
-
-    Parameters
-    ----------
-    `vec_a`: Coord
-        The vector of `vec_a`.
-    `vec_b`: Coord
-        The vector of `vec_b`.
-
-    Returns
-    -------
-    """
-    ...
-
 def check_numerical_data(data_arr: list[float]) -> None:
     """
     Checks the integrity of a numerical data array.

@@ -39,7 +39,7 @@ def test_assign_gdf_to_network(primal_graph):
                     # data_id_col
                     assert str(data_row["data_id"]) == data_entry.data_id
                 # check all points are assigned
-                assert data_map.all_assigned()
+                assert data_map.assigned_to_network
     # check recompute triggered when columns are dropped
     for col in ["nearest_assign", "next_nearest_assign", "datamap_key", "dedupe_key"]:
         data_map, data_gdf = layers.assign_gdf_to_network(data_gdf, network_structure, 400, data_id_col="data_id")

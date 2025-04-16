@@ -20,28 +20,6 @@ def test_coord():
     assert c2.difference(c1).xy() == (1, 1)
 
 
-def test_calculate_rotation():
-    c1 = rustalgos.Coord(0, 0)
-    c2 = rustalgos.Coord(10, 10)
-    assert rustalgos.calculate_rotation(c1, c2) == -45
-    assert rustalgos.calculate_rotation(c2, c1) == 45
-    c3 = rustalgos.Coord(-10, 0)
-    c4 = rustalgos.Coord(10, 0)
-    assert rustalgos.calculate_rotation(c1, c3) == -180
-    assert rustalgos.calculate_rotation(c1, c4) == 0
-
-
-def test_calculate_rotation_smallest():
-    c1 = rustalgos.Coord(0, 0)
-    c2 = rustalgos.Coord(10, 10)
-    c3 = rustalgos.Coord(-10, 0)
-    c4 = rustalgos.Coord(10, -10)
-    # calculates anticlockwise
-    assert rustalgos.calculate_rotation_smallest(c2.difference(c1), c3.difference(c1)) == 135
-    assert rustalgos.calculate_rotation_smallest(c2.difference(c1), c4.difference(c1)) == 90
-    assert rustalgos.calculate_rotation_smallest(c3.difference(c1), c4.difference(c1)) == 225
-
-
 def test_check_numerical_data(primal_graph):
     # catch single dimensions
     with pytest.raises(TypeError):

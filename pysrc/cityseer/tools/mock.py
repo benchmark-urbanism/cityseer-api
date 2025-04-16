@@ -20,6 +20,7 @@ import numpy.typing as npt
 from pyproj import CRS
 from shapely import geometry
 
+from .. import rustalgos
 from ..tools import util
 
 logging.basicConfig(level=logging.INFO)
@@ -528,3 +529,23 @@ def mock_gtfs_stops_txt(path: str):
     }
     stop_times_gdf = gpd.GeoDataFrame(stop_times)
     stop_times_gdf.to_csv(output_path / "stop_times.txt", index=False)
+
+
+def mock_data_map(data_gdf: gpd.GeoDataFrame) -> rustalgos.data.DataMap:
+    """
+    Create a DataMap for testing from a GeoDataFrame created with mock_data_gdf.
+
+    Parameters
+    ----------
+    data_gdf: GeoDataFrame
+        A GeoDataFrame with columns 'geometry', 'data_id', and index as unique keys.
+
+    Returns
+    -------
+    DataMap
+        An instance of DataMap (Rust-backed, from data.rs) populated with the mock data.
+    """
+    data_map = rustalgos.data.DataMap()
+    for uid, row in data_gdf.iterrows():  # type: ignore
+        data_map.insert(str(uid), row.geometry.x, row.geometry.y, None, None)  # type: ignore
+    return data_map

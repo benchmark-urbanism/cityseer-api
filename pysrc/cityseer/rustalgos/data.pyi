@@ -15,8 +15,7 @@ class DataEntry:
     data_key: str
     coord: Coord
     data_id: str | None
-    nearest_assign: int | None
-    next_nearest_assign: int | None
+    node_matches: object | None  # Updated: now holds NodeMatches or None
 
     def __init__(
         self,
@@ -24,8 +23,7 @@ class DataEntry:
         x: float,
         y: float,
         data_id: str | None = None,
-        nearest_assign: int | None = None,
-        next_nearest_assign: int | None = None,
+        node_matches: object | None = None,
     ) -> None: ...
     def is_assigned(self) -> bool: ...
 
@@ -52,8 +50,17 @@ class StatsResult:
     max: dict[int, npt.ArrayLike]
     min: dict[int, npt.ArrayLike]
 
+class NodeMatch:
+    idx: int
+    dist: float
+
+class NodeMatches:
+    nearest: NodeMatch | None
+    next_nearest: NodeMatch | None
+
 class DataMap:
     entries: dict[str, DataEntry]
+    assigned_to_network: bool
     def __init__(self) -> None: ...
     def progress(self) -> int: ...
     def insert(
@@ -62,30 +69,19 @@ class DataMap:
         x: float,
         y: float,
         data_id: str | None = None,
-        nearest_assign: int | None = None,
-        next_nearest_assign: int | None = None,
-    ) -> None:
-        """
-        data_key: str
-            The key for the added node.
-        data_x: float
-            The x coordinate for the added node.
-        data_y: float
-            The y coordinate for the added node.
-        data_id: str | None
-            An optional key for each datapoint. Used for deduplication.
-        """
-        ...
-
+        node_matches: NodeMatches | None = None,
+    ) -> None: ...
     def entry_keys(self) -> list[str]: ...
     def get_entry(self, data_key: str) -> DataEntry | None: ...
     def get_data_coord(self, data_key: str) -> Coord: ...
     def count(self) -> int: ...
     def is_empty(self) -> bool: ...
-    def all_assigned(self) -> bool: ...
-    def none_assigned(self) -> bool: ...
-    def set_nearest_assign(self, data_key: str, assign_idx: int) -> None: ...
-    def set_next_nearest_assign(self, data_key: str, assign_idx: int) -> None: ...
+    def assign_to_network(
+        self,
+        network_structure: NetworkStructure,
+        max_dist: float,
+        pbar_disabled: bool | None = None,
+    ) -> None: ...
     def aggregate_to_src_idx(
         self,
         netw_src_idx: int,

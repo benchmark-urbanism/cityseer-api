@@ -1,6 +1,8 @@
+//! Cityseer API Rust module: high-performance spatial algorithms for Python via PyO3.
+
 use pyo3::prelude::*;
 
-// Module imports
+// Module imports (alphabetical for clarity)
 mod centrality;
 mod common;
 mod data;
@@ -11,29 +13,33 @@ mod viewshed;
 /// Cityseer API implementation in Rust for performance-critical algorithms.
 /// Exposes network, centrality, and diversity computation functions to Python.
 #[pymodule]
-fn rustalgos(m: &Bound<'_, PyModule>) -> PyResult<()> {
+fn rustalgos(py_module: &Bound<'_, PyModule>) -> PyResult<()> {
     // Register classes and functions
-    m.add_class::<common::Coord>()?;
-    m.add_function(wrap_pyfunction!(common::calculate_rotation, m)?)?;
-    m.add_function(wrap_pyfunction!(common::calculate_rotation_smallest, m)?)?;
-    m.add_function(wrap_pyfunction!(common::check_numerical_data, m)?)?;
-    m.add_function(wrap_pyfunction!(common::distances_from_betas, m)?)?;
-    m.add_function(wrap_pyfunction!(common::betas_from_distances, m)?)?;
-    m.add_function(wrap_pyfunction!(common::distances_from_seconds, m)?)?;
-    m.add_function(wrap_pyfunction!(common::seconds_from_distances, m)?)?;
-    m.add_function(wrap_pyfunction!(common::pair_distances_betas_time, m)?)?;
-    m.add_function(wrap_pyfunction!(common::avg_distances_for_betas, m)?)?;
-    m.add_function(wrap_pyfunction!(common::clip_wts_curve, m)?)?;
-    m.add_function(wrap_pyfunction!(common::clipped_beta_wt, m)?)?;
+    py_module.add_class::<common::Coord>()?;
+    py_module.add_function(wrap_pyfunction!(common::check_numerical_data, py_module)?)?;
+    py_module.add_function(wrap_pyfunction!(common::distances_from_betas, py_module)?)?;
+    py_module.add_function(wrap_pyfunction!(common::betas_from_distances, py_module)?)?;
+    py_module.add_function(wrap_pyfunction!(common::distances_from_seconds, py_module)?)?;
+    py_module.add_function(wrap_pyfunction!(common::seconds_from_distances, py_module)?)?;
+    py_module.add_function(wrap_pyfunction!(
+        common::pair_distances_betas_time,
+        py_module
+    )?)?;
+    py_module.add_function(wrap_pyfunction!(
+        common::avg_distances_for_betas,
+        py_module
+    )?)?;
+    py_module.add_function(wrap_pyfunction!(common::clip_wts_curve, py_module)?)?;
+    py_module.add_function(wrap_pyfunction!(common::clipped_beta_wt, py_module)?)?;
 
-    // Register modules
-    register_data_module(m)?;
-    register_diversity_module(m)?;
-    register_graph_module(m)?;
-    register_centrality_module(m)?;
-    register_viewshed_module(m)?;
+    // Register submodules
+    register_data_module(py_module)?;
+    register_diversity_module(py_module)?;
+    register_graph_module(py_module)?;
+    register_centrality_module(py_module)?;
+    register_viewshed_module(py_module)?;
 
-    m.add(
+    py_module.add(
         "__doc__",
         "Cityseer high-performance algorithms implemented in Rust.",
     )?;
@@ -41,138 +47,87 @@ fn rustalgos(m: &Bound<'_, PyModule>) -> PyResult<()> {
     Ok(())
 }
 
-/// Registers data-related classes.
-///
-/// This module provides data structures for managing and analyzing spatial data.
-fn register_data_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
-    let data_module = PyModule::new(m.py(), "data")?;
-
-    // Add module documentation
-    data_module.add(
+/// Registers data-related classes and structures for spatial data analysis.
+fn register_data_module(py_module: &Bound<'_, PyModule>) -> PyResult<()> {
+    let submodule = PyModule::new(py_module.py(), "data")?;
+    submodule.add(
         "__doc__",
         "Data structures and utilities for spatial data analysis.",
     )?;
-
-    // Register classes
-    data_module.add_class::<data::DataEntry>()?;
-    data_module.add_class::<data::DataMap>()?;
-    data_module.add_class::<data::AccessibilityResult>()?;
-    data_module.add_class::<data::MixedUsesResult>()?;
-    data_module.add_class::<data::StatsResult>()?;
-
-    // Add the submodule to the parent module
-    m.add_submodule(&data_module)?;
-
+    submodule.add_class::<data::DataEntry>()?;
+    submodule.add_class::<data::DataMap>()?;
+    submodule.add_class::<data::AccessibilityResult>()?;
+    submodule.add_class::<data::MixedUsesResult>()?;
+    submodule.add_class::<data::StatsResult>()?;
+    py_module.add_submodule(&submodule)?;
     Ok(())
 }
 
-/// Registers diversity-related functions.
-///
-/// This module provides functions for calculating various diversity metrics.
-fn register_diversity_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
-    let diversity_module = PyModule::new(m.py(), "diversity")?;
-
-    // Add module documentation
-    diversity_module.add(
+/// Registers diversity-related functions for spatial diversity metrics.
+fn register_diversity_module(py_module: &Bound<'_, PyModule>) -> PyResult<()> {
+    let submodule = PyModule::new(py_module.py(), "diversity")?;
+    submodule.add(
         "__doc__",
         "Functions for calculating diversity metrics in spatial analysis.",
     )?;
-
-    // Register functions
-    diversity_module.add_function(wrap_pyfunction!(
-        diversity::hill_diversity,
-        &diversity_module
-    )?)?;
-    diversity_module.add_function(wrap_pyfunction!(
+    submodule.add_function(wrap_pyfunction!(diversity::hill_diversity, &submodule)?)?;
+    submodule.add_function(wrap_pyfunction!(
         diversity::hill_diversity_branch_distance_wt,
-        &diversity_module
+        &submodule
     )?)?;
-    diversity_module.add_function(wrap_pyfunction!(
+    submodule.add_function(wrap_pyfunction!(
         diversity::hill_diversity_pairwise_distance_wt,
-        &diversity_module
+        &submodule
     )?)?;
-    diversity_module.add_function(wrap_pyfunction!(
+    submodule.add_function(wrap_pyfunction!(
         diversity::gini_simpson_diversity,
-        &diversity_module
+        &submodule
     )?)?;
-    diversity_module.add_function(wrap_pyfunction!(
-        diversity::shannon_diversity,
-        &diversity_module
-    )?)?;
-    diversity_module.add_function(wrap_pyfunction!(
+    submodule.add_function(wrap_pyfunction!(diversity::shannon_diversity, &submodule)?)?;
+    submodule.add_function(wrap_pyfunction!(
         diversity::raos_quadratic_diversity,
-        &diversity_module
+        &submodule
     )?)?;
-
-    // Add the submodule to the parent module
-    m.add_submodule(&diversity_module)?;
-
+    py_module.add_submodule(&submodule)?;
     Ok(())
 }
 
-/// Registers graph-related classes.
-///
-/// This module provides data structures for representing and analyzing graphs.
-fn register_graph_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
-    let graph_module = PyModule::new(m.py(), "graph")?;
-
-    // Add module documentation
-    graph_module.add(
+/// Registers graph-related classes for network analysis.
+fn register_graph_module(py_module: &Bound<'_, PyModule>) -> PyResult<()> {
+    let submodule = PyModule::new(py_module.py(), "graph")?;
+    submodule.add(
         "__doc__",
         "Graph data structures and utilities for network analysis.",
     )?;
-
-    // Register classes
-    graph_module.add_class::<graph::NodePayload>()?;
-    graph_module.add_class::<graph::EdgePayload>()?;
-    graph_module.add_class::<graph::NetworkStructure>()?;
-
-    // Add the submodule to the parent module
-    m.add_submodule(&graph_module)?;
-
+    submodule.add_class::<graph::NodePayload>()?;
+    submodule.add_class::<graph::EdgePayload>()?;
+    submodule.add_class::<graph::NetworkStructure>()?;
+    py_module.add_submodule(&submodule)?;
     Ok(())
 }
 
-/// Registers centrality-related classes.
-///
-/// This module provides data structures for centrality analysis in networks.
-fn register_centrality_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
-    let centrality_module = PyModule::new(m.py(), "centrality")?;
-
-    // Add module documentation
-    centrality_module.add(
+/// Registers centrality-related classes for network centrality analysis.
+fn register_centrality_module(py_module: &Bound<'_, PyModule>) -> PyResult<()> {
+    let submodule = PyModule::new(py_module.py(), "centrality")?;
+    submodule.add(
         "__doc__",
         "Centrality analysis utilities for network structures.",
     )?;
-
-    // Register classes
-    centrality_module.add_class::<centrality::CentralityShortestResult>()?;
-    centrality_module.add_class::<centrality::CentralitySimplestResult>()?;
-    centrality_module.add_class::<centrality::CentralitySegmentResult>()?;
-
-    // Add the submodule to the parent module
-    m.add_submodule(&centrality_module)?;
-
+    submodule.add_class::<centrality::CentralityShortestResult>()?;
+    submodule.add_class::<centrality::CentralitySimplestResult>()?;
+    submodule.add_class::<centrality::CentralitySegmentResult>()?;
+    py_module.add_submodule(&submodule)?;
     Ok(())
 }
 
-/// Registers viewshed-related classes.
-///
-/// This module provides data structures for viewshed analysis.
-fn register_viewshed_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
-    let viewshed_module = PyModule::new(m.py(), "viewshed")?;
-
-    // Add module documentation
-    viewshed_module.add(
+/// Registers viewshed-related classes for spatial visibility analysis.
+fn register_viewshed_module(py_module: &Bound<'_, PyModule>) -> PyResult<()> {
+    let submodule = PyModule::new(py_module.py(), "viewshed")?;
+    submodule.add(
         "__doc__",
         "Viewshed analysis utilities for spatial visibility studies.",
     )?;
-
-    // Register classes
-    viewshed_module.add_class::<viewshed::Viewshed>()?;
-
-    // Add the submodule to the parent module
-    m.add_submodule(&viewshed_module)?;
-
+    submodule.add_class::<viewshed::Viewshed>()?;
+    py_module.add_submodule(&submodule)?;
     Ok(())
 }

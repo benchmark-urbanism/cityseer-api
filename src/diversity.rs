@@ -42,7 +42,7 @@ pub fn hill_diversity(class_counts: Vec<u32>, q: f32) -> PyResult<f32> {
             })
             .sum();
         let result = (-entropy).exp();
-        if result.is_nan() || result.is_infinite() {
+        if !result.is_finite() {
             return Err(exceptions::PyValueError::new_err(
                 "Hill diversity calculation resulted in invalid value (q=1 case).",
             ));
@@ -58,7 +58,7 @@ pub fn hill_diversity(class_counts: Vec<u32>, q: f32) -> PyResult<f32> {
             })
             .sum();
 
-        if diversity_sum.is_nan() || diversity_sum.is_infinite() {
+        if !diversity_sum.is_finite() {
             return Err(exceptions::PyValueError::new_err(
                 "Intermediate Hill diversity sum is invalid.",
             ));
@@ -71,7 +71,7 @@ pub fn hill_diversity(class_counts: Vec<u32>, q: f32) -> PyResult<f32> {
         }
 
         let result = diversity_sum.powf(1.0 / (1.0 - q));
-        if result.is_nan() || result.is_infinite() {
+        if !result.is_finite() {
             return Err(exceptions::PyValueError::new_err(
                 "Hill diversity calculation resulted in invalid value.",
             ));
@@ -160,7 +160,7 @@ pub fn hill_diversity_branch_distance_wt(
             .sum();
 
         let result = (-weighted_entropy).exp();
-        if result.is_nan() || result.is_infinite() {
+        if !result.is_finite() {
             return Err(exceptions::PyValueError::new_err(
                 "Weighted Hill diversity calculation resulted in invalid value (q=1 case).",
             ));
@@ -172,7 +172,7 @@ pub fn hill_diversity_branch_distance_wt(
             .map(|&(p, w)| w * (p / agg_t).powf(q))
             .sum();
 
-        if diversity_sum.is_nan() || diversity_sum.is_infinite() {
+        if !diversity_sum.is_finite() {
             return Err(exceptions::PyValueError::new_err(
                 "Intermediate weighted Hill diversity sum is invalid.",
             ));
@@ -185,7 +185,7 @@ pub fn hill_diversity_branch_distance_wt(
         }
 
         let result = diversity_sum.powf(1.0 / (1.0 - q));
-        if result.is_nan() || result.is_infinite() {
+        if !result.is_finite() {
             return Err(exceptions::PyValueError::new_err(
                 "Weighted Hill diversity calculation resulted in invalid value.",
             ));
@@ -242,19 +242,23 @@ pub fn hill_diversity_pairwise_distance_wt(
     }
     let num_f32 = num as f32;
 
+    // Compute probabilities once for all indices
     let probabilities: Vec<f32> = class_counts
         .iter()
         .map(|&count| count as f32 / num_f32)
         .collect();
 
+    // Use iterators for both i and j for clarity and consistency
     let mut agg_q = 0.0;
     for i in 0..class_counts.len() {
-        if class_counts[i] == 0 {
+        let count_i = class_counts[i];
+        if count_i == 0 {
             continue;
         }
         let a_i = probabilities[i];
         for j in 0..=i {
-            if class_counts[j] == 0 {
+            let count_j = class_counts[j];
+            if count_j == 0 {
                 continue;
             }
             let a_j = probabilities[j];
@@ -263,9 +267,6 @@ pub fn hill_diversity_pairwise_distance_wt(
                 max_curve_wt,
                 class_distances[i] + class_distances[j],
             )?;
-            // Summation logic: Adds the term for each unique pair (j <= i).
-            // Assumes the formula intends summation over unique pairs.
-            // If full summation (all i, j) is needed, terms where i != j might need doubling.
             agg_q += wt * a_i * a_j;
         }
     }
@@ -277,12 +278,14 @@ pub fn hill_diversity_pairwise_distance_wt(
     if (q - 1.0).abs() < f32::EPSILON {
         let mut weighted_entropy_sum = 0.0;
         for i in 0..class_counts.len() {
-            if class_counts[i] == 0 {
+            let count_i = class_counts[i];
+            if count_i == 0 {
                 continue;
             }
             let a_i = probabilities[i];
             for j in 0..=i {
-                if class_counts[j] == 0 {
+                let count_j = class_counts[j];
+                if count_j == 0 {
                     continue;
                 }
                 let a_j = probabilities[j];
@@ -293,19 +296,18 @@ pub fn hill_diversity_pairwise_distance_wt(
                 )?;
                 let effective_prop = wt * a_i * a_j / agg_q;
                 if effective_prop > 0.0 {
-                    // Summation logic: Adds the term for each unique pair (j <= i).
                     weighted_entropy_sum += effective_prop * effective_prop.ln();
                 }
             }
         }
         let exp_val = (-weighted_entropy_sum).exp();
-        if exp_val.is_nan() || exp_val.is_infinite() || exp_val < 0.0 {
+        if !exp_val.is_finite() || exp_val < 0.0 {
             return Err(exceptions::PyValueError::new_err(
                 "Pairwise Hill diversity intermediate calculation resulted in invalid value (q=1 case).",
             ));
         }
         let result = exp_val.sqrt();
-        if result.is_nan() || result.is_infinite() {
+        if !result.is_finite() {
             return Err(exceptions::PyValueError::new_err(
                 "Pairwise Hill diversity final calculation resulted in invalid value (q=1 case).",
             ));
@@ -314,12 +316,14 @@ pub fn hill_diversity_pairwise_distance_wt(
     } else {
         let mut diversity_term_sum = 0.0;
         for i in 0..class_counts.len() {
-            if class_counts[i] == 0 {
+            let count_i = class_counts[i];
+            if count_i == 0 {
                 continue;
             }
             let a_i = probabilities[i];
             for j in 0..=i {
-                if class_counts[j] == 0 {
+                let count_j = class_counts[j];
+                if count_j == 0 {
                     continue;
                 }
                 let a_j = probabilities[j];
@@ -328,12 +332,11 @@ pub fn hill_diversity_pairwise_distance_wt(
                     max_curve_wt,
                     class_distances[i] + class_distances[j],
                 )?;
-                // Summation logic: Adds the term for each unique pair (j <= i).
                 diversity_term_sum += wt * (a_i * a_j / agg_q).powf(q);
             }
         }
 
-        if diversity_term_sum.is_nan() || diversity_term_sum.is_infinite() {
+        if !diversity_term_sum.is_finite() {
             return Err(exceptions::PyValueError::new_err(
                 "Intermediate pairwise Hill diversity sum is invalid.",
             ));
@@ -345,13 +348,13 @@ pub fn hill_diversity_pairwise_distance_wt(
             ));
         }
         let pow_val = diversity_term_sum.powf(1.0 / (1.0 - q));
-        if pow_val.is_nan() || pow_val.is_infinite() || pow_val < 0.0 {
+        if !pow_val.is_finite() || pow_val < 0.0 {
             return Err(exceptions::PyValueError::new_err(
                 "Pairwise Hill diversity intermediate calculation resulted in invalid value (q!=1 case).",
             ));
         }
         let result = pow_val.sqrt();
-        if result.is_nan() || result.is_infinite() {
+        if !result.is_finite() {
             return Err(exceptions::PyValueError::new_err(
                 "Pairwise Hill diversity final calculation resulted in invalid value (q!=1 case).",
             ));
@@ -410,7 +413,7 @@ pub fn shannon_diversity(class_counts: Vec<u32>) -> PyResult<f32> {
             prob * prob.ln()
         })
         .sum();
-    if entropy_sum.is_nan() || entropy_sum.is_infinite() {
+    if !entropy_sum.is_finite() {
         return Err(exceptions::PyValueError::new_err(
             "Shannon entropy calculation resulted in invalid value.",
         ));
@@ -494,7 +497,6 @@ pub fn raos_quadratic_diversity(
         let p_i = class_count_i as f32 / num_f32;
 
         for j in 0..=i {
-            // Loop processes unique pairs (i, j) where j <= i
             let class_count_j = class_counts[j];
             if class_count_j == 0 {
                 continue;
@@ -503,7 +505,7 @@ pub fn raos_quadratic_diversity(
             let p_j = class_count_j as f32 / num_minus_1_f32;
             let wt = wt_matrix[i][j];
 
-            if wt.is_nan() || wt.is_infinite() {
+            if !wt.is_finite() {
                 return Err(exceptions::PyValueError::new_err(format!(
                     "Invalid weight encountered in matrix at [{}][{}].",
                     i, j
@@ -511,7 +513,7 @@ pub fn raos_quadratic_diversity(
             }
 
             let prob_term = p_i * p_j;
-            if prob_term.is_nan() || prob_term.is_infinite() {
+            if !prob_term.is_finite() {
                 return Err(exceptions::PyValueError::new_err(format!(
                     "Invalid probability product encountered for pair ({}, {}).",
                     i, j
@@ -541,11 +543,7 @@ pub fn raos_quadratic_diversity(
                 wt.powf(alpha)
             };
 
-            if prob_term_pow_beta.is_nan()
-                || prob_term_pow_beta.is_infinite()
-                || wt_pow_alpha.is_nan()
-                || wt_pow_alpha.is_infinite()
-            {
+            if !prob_term_pow_beta.is_finite() || !wt_pow_alpha.is_finite() {
                 return Err(exceptions::PyValueError::new_err(format!(
                     "Invalid intermediate power calculation for pair ({}, {}).",
                     i, j
@@ -553,136 +551,14 @@ pub fn raos_quadratic_diversity(
             }
 
             let term = wt_pow_alpha * prob_term_pow_beta;
-
-            // Summation logic: Adds the term for each unique pair (j <= i).
-            // Standard Rao's Q often involves summing over all i and j,
-            // which might require doubling terms where i != j if wt_matrix is symmetric
-            // and wt_ii is handled correctly (often 0). This implementation sums unique pairs directly.
             raos += term;
         }
     }
 
-    if raos.is_nan() || raos.is_infinite() {
+    if !raos.is_finite() {
         return Err(exceptions::PyValueError::new_err(
             "Rao's Q calculation resulted in invalid value.",
         ));
     }
     Ok(raos)
 }
-
-/*
-DEPRECATED in v4
-
-def hill_diversity_pairwise_matrix_wt(
-    class_counts: npt.NDArray[np.int_], wt_matrix: npt.NDArray[np.float32], q: np.float32
-) -> np.float32:
-    """
-    Hill diversity weighted by pairwise weights matrix.
-
-    This is the matrix version - requires a precomputed (e.g. disparity) matrix for all classes.
-
-    See above for distance version.
-
-    """
-    if len(class_counts) != len(wt_matrix):
-        raise ValueError("Mismatching number of unique class counts and dimensionality of class weights matrix.")
-    if not wt_matrix.ndim == 2 or wt_matrix.shape[0] != wt_matrix.shape[1]:
-        raise ValueError("Weights matrix must be an NxN pairwise matrix of disparity weights.")
-    if q < 0:
-        raise ValueError("Please select a non-zero value for q.")
-    # catch potential division by zero situations
-    num: int = class_counts.sum()
-    if num == 0:
-        return np.float32(0)
-    # calculate Q
-    agg_q = 0
-    for i, class_count_i in enumerate(class_counts):
-        if not class_count_i:
-            continue
-        a_i = class_count_i / num
-        for j, class_count_j in enumerate(class_counts):
-            # only need to examine the pair if j < i, otherwise double-counting
-            if j > i:
-                break
-            if not class_count_j:
-                continue
-            a_j = class_count_j / num
-            wt = wt_matrix[i][j]
-            # pairwise distances
-            agg_q += wt * a_i * a_j
-    # pairwise disparities weights can sometimes give rise to Q = 0... causing division by zero etc.
-    if agg_q == 0:
-        return np.float32(0)
-    # if in the limit, use exponential
-    if q == 1:
-        div_pw_wt_lim = 0  # using the same variable name as non limit version causes errors for parallel
-        for i, class_count_i in enumerate(class_counts):
-            if not class_count_i:
-                continue
-            a_i = class_count_i / num
-            for j, class_count_j in enumerate(class_counts):
-                # only need to examine the pair if j < i, otherwise double-counting
-                if j > i:
-                    break
-                if not class_count_j:
-                    continue
-                a_j = class_count_j / num
-                # pairwise distances
-                wt = wt_matrix[i][j]
-                div_pw_wt_lim += wt * a_i * a_j / agg_q * np.log(a_i * a_j / agg_q)  # sum
-        # once summed
-        div_pw_wt_lim = np.exp(-div_pw_wt_lim)
-        return np.float32(div_pw_wt_lim ** (1 / 2))  # (FD_lim / Q) ** (1 / 2)
-    # otherwise conventional form
-    div_pw_wt = 0
-    for i, class_count_i in enumerate(class_counts):
-        if not class_count_i:
-            continue
-        a_i = class_count_i / num
-        for j, class_count_j in enumerate(class_counts):
-            # only need to examine the pair if j < i, otherwise double-counting
-            if j > i:
-                break
-            if not class_count_j:
-                continue
-            a_j = class_count_j / num
-            # pairwise distances
-            wt = wt_matrix[i][j]
-            div_pw_wt += wt * (a_i * a_j / agg_q) ** q  # sum
-    div_pw_wt = div_pw_wt ** (1 / (1 - q))
-    return np.float32(div_pw_wt ** (1 / 2))  # (FD / Q) ** (1 / 2)
-*/
-
-/*
-#[cfg(test)]
-mod tests {
-    use super::*;
-    #[test]
-    fn test_network_structure() {
-        let counts = vec![1, 3, 1, 1];
-        let weights = vec![1.0, 1.0, 1.0, 1.0];
-        let probs = vec![
-            0.16666666666666666,
-            0.5,
-            0.16666666666666666,
-            0.16666666666666666,
-        ];
-        let hd0 = hill_diversity(counts.clone(), 0.0);
-        let hd1 = hill_diversity(counts.clone(), 1.0);
-        let hd2 = hill_diversity(counts.clone(), 2.0);
-        let whd0 =
-            hill_diversity_branch_distance_wt(counts.clone(), weights.clone(), 0.0, 0.0, 1.0);
-        let whd1 =
-            hill_diversity_branch_distance_wt(counts.clone(), weights.clone(), 1.0, 0.0, 1.0);
-        let whd2 =
-            hill_diversity_branch_distance_wt(counts.clone(), weights.clone(), 2.0, 0.0, 1.0);
-        let whpd0 =
-            hill_diversity_pairwise_distance_wt(counts.clone(), weights.clone(), 0.0, 0.0, 1.0);
-        let whpd1 =
-            hill_diversity_pairwise_distance_wt(counts.clone(), weights.clone(), 1.0, 0.0, 1.0);
-        let whpd2 =
-            hill_diversity_pairwise_distance_wt(counts.clone(), weights.clone(), 2.0, 0.0, 1.0);
-        let b = 0;
-    }
-}
-*/
