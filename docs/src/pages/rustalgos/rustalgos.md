@@ -6,7 +6,7 @@ layout: ../../layouts/PageLayout.astro
 # rustalgos
 
 
- Common geometry and mathematical utilities.
+ Cityseer high-performance algorithms implemented in Rust.
 
 
 <div class="class">
@@ -212,87 +212,6 @@ layout: ../../layouts/PageLayout.astro
 </div>
 
  
-</div>
-
-
-<div class="function">
-
-## calculate_rotation
-
-
-<div class="content">
-<span class="name">calculate_rotation</span><div class="signature multiline">
-  <span class="pt">(</span>
-  <div class="param">
-    <span class="pn">point_a</span>
-    <span class="pc">:</span>
-    <span class="pa"> cityseer.rustalgos.Coord</span>
-  </div>
-  <div class="param">
-    <span class="pn">point_b</span>
-    <span class="pc">:</span>
-    <span class="pa"> cityseer.rustalgos.Coord</span>
-  </div>
-  <span class="pt">)-&gt;[</span>
-  <span class="pr">float</span>
-  <span class="pt">]</span>
-</div>
-</div>
-
-
- Calculates the rotation angle between two points relative to the origin.
-
-</div>
-
-
-<div class="function">
-
-## calculate_rotation_smallest
-
-
-<div class="content">
-<span class="name">calculate_rotation_smallest</span><div class="signature multiline">
-  <span class="pt">(</span>
-  <div class="param">
-    <span class="pn">vec_a</span>
-    <span class="pc">:</span>
-    <span class="pa"> cityseer.rustalgos.Coord</span>
-  </div>
-  <div class="param">
-    <span class="pn">vec_b</span>
-    <span class="pc">:</span>
-    <span class="pa"> cityseer.rustalgos.Coord</span>
-  </div>
-  <span class="pt">)-&gt;[</span>
-  <span class="pr">float</span>
-  <span class="pt">]</span>
-</div>
-</div>
-
-
- Calculates the angle between `vec_a` and `vec_b`.
-### Parameters
-<div class="param-set">
-  <div class="def">
-    <div class="name">`vec_a`</div>
-    <div class="type">Coord</div>
-  </div>
-  <div class="desc">
-
- The vector of `vec_a`.</div>
-</div>
-
-<div class="param-set">
-  <div class="def">
-    <div class="name">`vec_b`</div>
-    <div class="type">Coord</div>
-  </div>
-  <div class="desc">
-
- The vector of `vec_b`.</div>
-</div>
-
-
 </div>
 
 

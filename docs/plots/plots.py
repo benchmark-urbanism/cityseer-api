@@ -50,10 +50,12 @@ plot.plot_nx(
 # plot hill mixed uses
 mixed_uses_vals = colors.Normalize()(mixed_uses_vals)
 mixed_uses_cols = cmap(mixed_uses_vals)
+data_map = mock.mock_data_map(data_gdf)
+data_map.assign_to_network(network_structure, max_dist=400)
 plot.plot_assignment(
     network_structure,
     G,
-    data_gdf=data_gdf,
+    data_map,
     path=f"{IMAGES_PATH}/intro_mixed_uses.{FORMAT}",
     node_colour=mixed_uses_cols,
     data_labels=data_gdf["categorical_landuses"],
@@ -129,7 +131,7 @@ data_map, data_gdf = layers.assign_gdf_to_network(data_gdf, network_structure, m
 plot.plot_assignment(
     network_structure,
     G,
-    data_gdf,
+    data_map,
     path=f"{IMAGES_PATH}/assignment.{FORMAT}",
     dpi=200,
     figsize=(5, 5),
@@ -141,7 +143,7 @@ data_map, data_gdf = layers.assign_gdf_to_network(data_gdf, network_structure_de
 plot.plot_assignment(
     network_structure_decomp,
     G_decomposed,
-    data_gdf,
+    data_map,
     path=f"{IMAGES_PATH}/assignment_decomposed.{FORMAT}",
     dpi=200,
     figsize=(5, 5),
@@ -187,7 +189,7 @@ data_map, data_gdf = layers.assign_gdf_to_network(data_gdf, network_structure, m
 plot.plot_assignment(
     network_structure,
     G_decomp,
-    data_gdf,
+    data_map,
     data_labels=data_gdf["categorical_landuses"].values,
     path=f"{IMAGES_PATH}/assignment_plot.{FORMAT}",
     dpi=200,

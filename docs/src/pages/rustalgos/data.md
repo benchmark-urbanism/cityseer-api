@@ -16,6 +16,9 @@ layout: ../../layouts/PageLayout.astro
 
 
 
+ Data entry for spatial analysis.
+
+
 
 <div class="function">
 
@@ -32,28 +35,6 @@ layout: ../../layouts/PageLayout.astro
 </div>
 
  
-
-<div class="function">
-
-## is_assigned
-
-
-<div class="content">
-<span class="name">is_assigned</span><div class="signature multiline">
-  <span class="pt">(</span>
-  <div class="param">
-    <span class="pn">self</span>
-  </div>
-  <div class="param">
-    <span class="pn">/</span>
-  </div>
-  <span class="pt">)</span>
-</div>
-</div>
-
-</div>
-
- 
 </div>
 
 
@@ -62,6 +43,9 @@ layout: ../../layouts/PageLayout.astro
 
 ## DataMap
 
+
+
+ Map of data entries for spatial analysis.
 
 
 
@@ -140,7 +124,7 @@ layout: ../../layouts/PageLayout.astro
     <span class="pn">/</span>
   </div>
   <div class="param">
-    <span class="pn">data_key</span>
+    <span class="pn">data_key_py</span>
   </div>
   <div class="param">
     <span class="pn">x</span>
@@ -149,13 +133,7 @@ layout: ../../layouts/PageLayout.astro
     <span class="pn">y</span>
   </div>
   <div class="param">
-    <span class="pn">data_id=None</span>
-  </div>
-  <div class="param">
-    <span class="pn">nearest_assign=None</span>
-  </div>
-  <div class="param">
-    <span class="pn">next_nearest_assign=None</span>
+    <span class="pn">dedupe_key_py=None</span>
   </div>
   <span class="pt">)</span>
 </div>
@@ -283,55 +261,11 @@ layout: ../../layouts/PageLayout.astro
 
 <div class="function">
 
-## all_assigned
+## assign_to_network
 
 
 <div class="content">
-<span class="name">all_assigned</span><div class="signature multiline">
-  <span class="pt">(</span>
-  <div class="param">
-    <span class="pn">self</span>
-  </div>
-  <div class="param">
-    <span class="pn">/</span>
-  </div>
-  <span class="pt">)</span>
-</div>
-</div>
-
-</div>
-
- 
-
-<div class="function">
-
-## none_assigned
-
-
-<div class="content">
-<span class="name">none_assigned</span><div class="signature multiline">
-  <span class="pt">(</span>
-  <div class="param">
-    <span class="pn">self</span>
-  </div>
-  <div class="param">
-    <span class="pn">/</span>
-  </div>
-  <span class="pt">)</span>
-</div>
-</div>
-
-</div>
-
- 
-
-<div class="function">
-
-## set_nearest_assign
-
-
-<div class="content">
-<span class="name">set_nearest_assign</span><div class="signature multiline">
+<span class="name">assign_to_network</span><div class="signature multiline">
   <span class="pt">(</span>
   <div class="param">
     <span class="pn">self</span>
@@ -340,42 +274,20 @@ layout: ../../layouts/PageLayout.astro
     <span class="pn">/</span>
   </div>
   <div class="param">
-    <span class="pn">data_key</span>
+    <span class="pn">network_structure</span>
   </div>
   <div class="param">
-    <span class="pn">assign_idx</span>
+    <span class="pn">max_dist</span>
+  </div>
+  <div class="param">
+    <span class="pn">pbar_disabled=None</span>
   </div>
   <span class="pt">)</span>
 </div>
 </div>
 
-</div>
 
- 
-
-<div class="function">
-
-## set_next_nearest_assign
-
-
-<div class="content">
-<span class="name">set_next_nearest_assign</span><div class="signature multiline">
-  <span class="pt">(</span>
-  <div class="param">
-    <span class="pn">self</span>
-  </div>
-  <div class="param">
-    <span class="pn">/</span>
-  </div>
-  <div class="param">
-    <span class="pn">data_key</span>
-  </div>
-  <div class="param">
-    <span class="pn">assign_idx</span>
-  </div>
-  <span class="pt">)</span>
-</div>
-</div>
+ Assign nearest and next nearest network node (and distances) to each entry in the DataMap.
 
 </div>
 
@@ -610,6 +522,9 @@ layout: ../../layouts/PageLayout.astro
 
 
 
+ Accessibility computation result.
+
+
 
 <div class="function">
 
@@ -634,6 +549,9 @@ layout: ../../layouts/PageLayout.astro
 
 ## MixedUsesResult
 
+
+
+ Mixed uses computation result.
 
 
 
@@ -662,6 +580,9 @@ layout: ../../layouts/PageLayout.astro
 
 
 
+ Statistics computation result.
+
+
 
 <div class="function">
 
@@ -678,6 +599,33 @@ layout: ../../layouts/PageLayout.astro
 </div>
 
  
+</div>
+
+
+<div class="function">
+
+## node_matches_for_coord
+
+
+<div class="content">
+<span class="name">node_matches_for_coord</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">network_structure</span>
+  </div>
+  <div class="param">
+    <span class="pn">coord</span>
+  </div>
+  <div class="param">
+    <span class="pn">max_dist</span>
+  </div>
+  <span class="pt">)</span>
+</div>
+</div>
+
+
+ Standalone function to calculate nearest and next-nearest node matches for a given coordinate.
+
 </div>
 
 

@@ -654,7 +654,7 @@ out qt;
   <div class="param">
     <span class="pn">tolerance</span>
     <span class="pc">:</span>
-    <span class="pa"> float = 0.001</span>
+    <span class="pa"> float = 0.01</span>
   </div>
   <span class="pt">)-&gt;[</span>
   <span class="pr">MultiGraph</span>

@@ -523,9 +523,9 @@ plot.plot_nx(G_after, node_colour=cols)
     <span class="pn">nx_multigraph</span>
   </div>
   <div class="param">
-    <span class="pn">data_gdf</span>
+    <span class="pn">data_map</span>
     <span class="pc">:</span>
-    <span class="pa"> geopandas.geodataframe.GeoDataFrame</span>
+    <span class="pa"> DataMap</span>
   </div>
   <div class="param">
     <span class="pn">path</span>
@@ -578,12 +578,12 @@ This method is primarily intended for package testing and development.
 
 <div class="param-set">
   <div class="def">
-    <div class="name">data_gdf</div>
-    <div class="type">GeoDataFrame</div>
+    <div class="name">data_map</div>
+    <div class="type">DataMap</div>
   </div>
   <div class="desc">
 
- A `data_gdf` `GeoDataFrame` with `nearest_assigned` and `next_nearest_assign` columns.</div>
+ A `rustalgos.data.DataMap` object with data entries for plotting.</div>
 </div>
 
 <div class="param-set">
@@ -657,9 +657,9 @@ This method is primarily intended for package testing and development.
     <span class="pa"> NetworkStructure</span>
   </div>
   <div class="param">
-    <span class="pn">data_gdf</span>
+    <span class="pn">data_map</span>
     <span class="pc">:</span>
-    <span class="pa"> geopandas.geodataframe.GeoDataFrame</span>
+    <span class="pa"> DataMap</span>
   </div>
   <div class="param">
     <span class="pn">poly</span>
@@ -689,12 +689,12 @@ mainly to visually confirm the correct behaviour of particular algorithms during
 
 <div class="param-set">
   <div class="def">
-    <div class="name">data_gdf</div>
-    <div class="type">GeoDataFrame</div>
+    <div class="name">data_map</div>
+    <div class="type">DataMap</div>
   </div>
   <div class="desc">
 
- A `data_gdf` `GeoDataFrame` with `nearest_assigned` and `next_nearest_assign` columns.</div>
+ A `rustalgos.data.DataMap` object with data entries for plotting.</div>
 </div>
 
 <div class="param-set">

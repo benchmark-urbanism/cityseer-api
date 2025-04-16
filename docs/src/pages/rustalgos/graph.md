@@ -16,6 +16,9 @@ layout: ../../layouts/PageLayout.astro
 
 
 
+ Payload for a network node.
+
+
 
 <div class="function">
 
@@ -64,6 +67,9 @@ layout: ../../layouts/PageLayout.astro
 
 
 
+ Payload for a network edge.
+
+
 
 <div class="function">
 
@@ -110,6 +116,9 @@ layout: ../../layouts/PageLayout.astro
 
 ## NetworkStructure
 
+
+
+ Main network structure.
 
 
 
@@ -716,113 +725,17 @@ layout: ../../layouts/PageLayout.astro
 
 <div class="function">
 
-## assign_to_network
+## prep_edge_rtree
 
 
 <div class="content">
-<span class="name">assign_to_network</span><div class="signature multiline">
+<span class="name">prep_edge_rtree</span><div class="signature multiline">
   <span class="pt">(</span>
   <div class="param">
     <span class="pn">self</span>
   </div>
   <div class="param">
     <span class="pn">/</span>
-  </div>
-  <div class="param">
-    <span class="pn">data_coord</span>
-  </div>
-  <div class="param">
-    <span class="pn">max_dist</span>
-  </div>
-  <span class="pt">)</span>
-</div>
-</div>
-
-</div>
-
- 
-
-<div class="function">
-
-## find_nearest
-
-
-<div class="content">
-<span class="name">find_nearest</span><div class="signature multiline">
-  <span class="pt">(</span>
-  <div class="param">
-    <span class="pn">self</span>
-  </div>
-  <div class="param">
-    <span class="pn">/</span>
-  </div>
-  <div class="param">
-    <span class="pn">data_coord</span>
-  </div>
-  <div class="param">
-    <span class="pn">max_dist</span>
-  </div>
-  <span class="pt">)</span>
-</div>
-</div>
-
-</div>
-
- 
-
-<div class="function">
-
-## road_distance
-
-
-<div class="content">
-<span class="name">road_distance</span><div class="signature multiline">
-  <span class="pt">(</span>
-  <div class="param">
-    <span class="pn">self</span>
-  </div>
-  <div class="param">
-    <span class="pn">/</span>
-  </div>
-  <div class="param">
-    <span class="pn">data_coord</span>
-  </div>
-  <div class="param">
-    <span class="pn">nd_a_idx</span>
-  </div>
-  <div class="param">
-    <span class="pn">nd_b_idx</span>
-  </div>
-  <span class="pt">)</span>
-</div>
-</div>
-
-</div>
-
- 
-
-<div class="function">
-
-## closest_intersections
-
-
-<div class="content">
-<span class="name">closest_intersections</span><div class="signature multiline">
-  <span class="pt">(</span>
-  <div class="param">
-    <span class="pn">self</span>
-  </div>
-  <div class="param">
-    <span class="pn">/</span>
-  </div>
-  <div class="param">
-    <span class="pn">data_coord</span>
-  </div>
-  <div class="param">
-    <span class="pn">pred_map</span>
-  </div>
-  <div class="param">
-    <span class="pn">last_nd_idx</span>
   </div>
   <span class="pt">)</span>
 </div>

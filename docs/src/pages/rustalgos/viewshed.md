@@ -51,6 +51,9 @@ layout: ../../layouts/PageLayout.astro
 </div>
 </div>
 
+
+ Reset the progress counter to zero.
+
 </div>
 
  
@@ -72,6 +75,9 @@ layout: ../../layouts/PageLayout.astro
   <span class="pt">)</span>
 </div>
 </div>
+
+
+ Get the current progress value.
 
 </div>
 
@@ -103,6 +109,9 @@ layout: ../../layouts/PageLayout.astro
   <span class="pt">)</span>
 </div>
 </div>
+
+
+ Compute the visibility graph for the given raster and view distance.
 
 </div>
 
@@ -137,6 +146,9 @@ layout: ../../layouts/PageLayout.astro
   <span class="pt">)</span>
 </div>
 </div>
+
+
+ Compute the viewshed for a single origin cell.
 
 </div>
 
