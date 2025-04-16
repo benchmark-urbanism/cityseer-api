@@ -531,7 +531,7 @@ def mock_gtfs_stops_txt(path: str):
     stop_times_gdf.to_csv(output_path / "stop_times.txt", index=False)
 
 
-def mock_data_map(data_gdf: gpd.GeoDataFrame) -> rustalgos.data.DataMap:
+def mock_data_map(data_gdf: gpd.GeoDataFrame, dedupe_key_col: str | None = None) -> rustalgos.data.DataMap:
     """
     Create a DataMap for testing from a GeoDataFrame created with mock_data_gdf.
 
@@ -547,5 +547,8 @@ def mock_data_map(data_gdf: gpd.GeoDataFrame) -> rustalgos.data.DataMap:
     """
     data_map = rustalgos.data.DataMap()
     for uid, row in data_gdf.iterrows():  # type: ignore
-        data_map.insert(uid, row.geometry.x, row.geometry.y, None, None)  # type: ignore
+        if dedupe_key_col is not None:
+            data_map.insert(uid, row.geometry.x, row.geometry.y, row[dedupe_key_col])  # type: ignore
+        else:
+            data_map.insert(uid, row.geometry.x, row.geometry.y, None)  # type: ignore
     return data_map

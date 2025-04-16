@@ -107,8 +107,9 @@ def test_mock_data_map(primal_graph):
                 entry = data_map.get_entry(data_key)
                 assert entry is not None
                 assert entry.data_key == data_key
-                assert entry.python_key == uid
+                assert entry.data_key_py == uid
                 assert entry.coord.x - row.geometry.x < 1  # f32 rounding errors
                 assert entry.coord.y - row.geometry.y < 1  # f32 rounding errors
-                assert entry.data_id is None
+                assert entry.dedupe_key_py is None
+                assert entry.dedupe_key is None
                 assert entry.node_matches is None

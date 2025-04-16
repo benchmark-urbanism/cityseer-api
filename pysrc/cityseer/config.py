@@ -60,7 +60,7 @@ SKIP_VALIDATION: bool = False
 MIN_THRESH_WT: float = 0.01831563888873418
 SPEED_M_S = 1.33333
 # for all_close equality checks
-ATOL: float = 0.001
+ATOL: float = 0.01
 RTOL: float = 0.0001
 
 

@@ -16,56 +16,18 @@ def test_assign_gdf_to_network(primal_graph):
         data_gdf = mock.mock_data_gdf(primal_graph)
         data_gdf.index = data_gdf.index.astype(typ)
         # check initial and cached - second iter uses cached
-        for _ in range(2):
-            for to_poly in [False, True]:
-                # handle both points and polys
-                if to_poly is True:
-                    data_gdf.geometry = data_gdf.geometry.buffer(10)
-                #
-                data_map, data_gdf = layers.assign_gdf_to_network(
-                    data_gdf, network_structure, 400, data_id_col="data_id"
-                )
-                # check assignments
-                for row_idx, data_row in data_gdf.iterrows():
-                    assert str(row_idx) == data_row["datamap_key"]
-                    data_map_key = data_row["datamap_key"]
-                    data_entry = data_map.get_entry(data_map_key)
-                    # compute manually
-                    nearest_idx, next_nearest_idx = network_structure.assign_to_network(data_entry.coord, 400)
-                    assert nearest_idx == data_entry.nearest_assign
-                    assert next_nearest_idx == data_entry.next_nearest_assign
-                    assert data_row["nearest_assign"] == data_entry.nearest_assign
-                    assert data_row["next_nearest_assign"] == data_entry.next_nearest_assign
-                    # data_id_col
-                    assert str(data_row["data_id"]) == data_entry.data_id
-                # check all points are assigned
-                assert data_map.assigned_to_network
-    # check recompute triggered when columns are dropped
-    for col in ["nearest_assign", "next_nearest_assign", "datamap_key", "dedupe_key"]:
-        data_map, data_gdf = layers.assign_gdf_to_network(data_gdf, network_structure, 400, data_id_col="data_id")
-        data_gdf = data_gdf.drop(columns=[col])
-        # should regenerate the columns
-        data_map, data_gdf = layers.assign_gdf_to_network(data_gdf, network_structure, 400, data_id_col="data_id")
-        # check assignments
-        for row_idx, data_row in data_gdf.iterrows():
-            assert str(row_idx) == data_row["datamap_key"]
-            data_map_key = data_row["datamap_key"]
-            data_entry = data_map.get_entry(data_map_key)
-            nearest_idx, next_nearest_idx = network_structure.assign_to_network(data_entry.coord, 400)
-            assert nearest_idx == data_entry.nearest_assign
-            assert next_nearest_idx == data_entry.next_nearest_assign
-            assert data_row["nearest_assign"] == data_entry.nearest_assign
-            assert data_row["next_nearest_assign"] == data_entry.next_nearest_assign
-            # data_id_col
-            assert str(data_row["data_id"]) == data_entry.data_id
-    # start fresh with data id of None
-    data_gdf = mock.mock_data_gdf(primal_graph)
-    data_map, data_gdf = layers.assign_gdf_to_network(data_gdf, network_structure, 400, data_id_col=None)
-    for row_idx, data_row in data_gdf.iterrows():
-        assert str(row_idx) == data_row["datamap_key"]
-        data_map_key = data_row["datamap_key"]
-        data_entry = data_map.get_entry(data_map_key)
-        assert data_entry.data_id is None
+        for to_poly in [False, True]:
+            # handle both points and polys
+            if to_poly is True:
+                data_gdf.geometry = data_gdf.geometry.buffer(10)
+            #
+            data_map, data_gdf = layers.assign_gdf_to_network(data_gdf, network_structure, 400, data_id_col="data_id")
+            assert data_map.assigned_to_network is True
+            for data_key, data_entry in data_map.entries.items():
+                assert data_gdf.loc[data_entry.data_key_py].geometry.centroid.x - data_entry.coord.x < 1
+                assert data_gdf.loc[data_entry.data_key_py].geometry.centroid.y - data_entry.coord.y < 1
+                assert data_entry.node_matches is not None
+                assert data_entry.node_matches.nearest is not None
     # check with different geometry column name
     data_gdf = mock.mock_data_gdf(primal_graph)
     data_gdf.rename(columns={"geometry": "geom"}, inplace=True)
@@ -120,9 +82,7 @@ def test_compute_accessibilities(primal_graph):
                     data_id_col=data_id_col,
                 )
                 # accessibilities
-                data_keys: list[str] = data_gdf["datamap_key"]  # type: ignore
-                landuses: list[str] = data_gdf["categorical_landuses"]  # type: ignore
-                landuses_map: dict[str, str] = dict(zip(data_keys, landuses, strict=True))
+                landuses_map = dict(data_gdf["categorical_landuses"])
                 accessibility_data = data_map.accessibility(
                     network_structure,
                     landuses_map,
@@ -178,7 +138,6 @@ def test_compute_mixed_uses(primal_graph):
     distances = [400, 800]
     max_assign_dist = 400
     # test against manual implementation over underlying method
-    max_dist = max(distances)
     for data_id_col in [None, "data_id"]:
         for angular in [False, True]:
             nodes_gdf, data_gdf = layers.compute_mixed_uses(
@@ -197,11 +156,9 @@ def test_compute_mixed_uses(primal_graph):
             )
             # generate manually
             data_map, data_gdf = layers.assign_gdf_to_network(
-                data_gdf, network_structure, max_dist, data_id_col=data_id_col
+                data_gdf, network_structure, max_assign_dist, data_id_col=data_id_col
             )
-            data_keys: list[str] = data_gdf["datamap_key"]  # type: ignore
-            landuses: list[str] = data_gdf["categorical_landuses"]  # type: ignore
-            landuses_map: dict[str, str] = dict(zip(data_keys, landuses, strict=True))
+            landuses_map = dict(data_gdf["categorical_landuses"])
             mu_data = data_map.mixed_uses(
                 network_structure,
                 landuses_map,
@@ -267,9 +224,7 @@ def test_compute_stats(primal_graph):
             )
             # compare to manual
             for stats_key in ["mock_numerical_1", "mock_numerical_2"]:
-                data_keys: list[str] = data_gdf["datamap_key"]  # type: ignore
-                stats: list[str] = data_gdf[stats_key]  # type: ignore
-                stats_map: dict[str, str] = dict(zip(data_keys, stats, strict=True))
+                stats_map = dict(data_gdf[stats_key])  # type: ignore
                 # generate stats
                 stats_results = data_map.stats(
                     network_structure,

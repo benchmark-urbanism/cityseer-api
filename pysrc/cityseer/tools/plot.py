@@ -638,7 +638,7 @@ def plot_network_structure(
         else:
             ax2.plot([s_x, e_x], [s_y, e_y], c=COLOUR_MAP.accent, linewidth=1)
     for node_idx in range(network_structure.node_count()):
-        ax2.annotate(node_idx, xy=network_structure.node_xys[node_idx], size=5)
+        ax2.annotate(node_idx, xy=network_structure.node_xys[node_idx], size=10)
     # plot parents on ax1
     data_xs = []
     data_ys = []
@@ -671,7 +671,7 @@ def plot_network_structure(
                 nearest_netw_idx = data_entry.node_matches.nearest.idx  # type: ignore
             if data_entry.node_matches.next_nearest is not None:  # type: ignore
                 next_nearest_netw_idx = data_entry.node_matches.next_nearest.idx  # type: ignore
-        ax2.annotate(str(data_entry.data_key), xy=(data_x, data_y), size=8, color="red")
+        ax2.annotate(str(data_entry.data_key_py), xy=(data_x, data_y), size=10, color="red")
         # if the data points have been assigned network indices
         if nearest_netw_idx is not None:
             # plot lines to parents for easier viz

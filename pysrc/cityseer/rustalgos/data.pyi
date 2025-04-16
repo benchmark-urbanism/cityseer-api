@@ -14,18 +14,18 @@ class ClassesState:
     nearest: float
 
 class DataEntry:
-    python_key: Hashable
+    data_key_py: Hashable
     data_key: str
     coord: Coord
-    data_id: str | None
+    dedupe_key: str | None
     node_matches: NodeMatches | None
 
     def __init__(
         self,
-        python_key: Hashable,
+        data_key_py: Hashable,
         x: float,
         y: float,
-        data_id: str | None = None,
+        dedupe_key: str | None = None,
         node_matches: NodeMatches | None = None,
     ) -> None: ...
 
@@ -68,10 +68,10 @@ class DataMap:
     def progress(self) -> int: ...
     def insert(
         self,
-        python_key: Hashable,
+        data_key_py: Hashable,
         x: float,
         y: float,
-        data_id: str | None = None,
+        dedupe_key: str | None = None,
         node_matches: NodeMatches | None = None,
     ) -> None: ...
     def entry_keys(self) -> list[str]: ...

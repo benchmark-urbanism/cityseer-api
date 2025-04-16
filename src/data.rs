@@ -91,13 +91,15 @@ struct ClassesState {
 #[pyclass]
 pub struct DataEntry {
     #[pyo3(get)]
-    pub python_key: Py<PyAny>,
+    pub data_key_py: Py<PyAny>,
     #[pyo3(get)]
     pub data_key: String,
     #[pyo3(get)]
     pub coord: Coord,
     #[pyo3(get)]
-    pub data_id: Option<String>,
+    pub dedupe_key_py: Option<Py<PyAny>>,
+    #[pyo3(get)]
+    pub dedupe_key: Option<String>,
     #[pyo3(get)]
     pub node_matches: Option<NodeMatches>,
 }
@@ -105,10 +107,11 @@ pub struct DataEntry {
 impl Clone for DataEntry {
     fn clone(&self) -> Self {
         Python::with_gil(|py| DataEntry {
-            python_key: self.python_key.clone_ref(py),
+            data_key_py: self.data_key_py.clone_ref(py),
             data_key: self.data_key.clone(),
             coord: self.coord,
-            data_id: self.data_id.clone(),
+            dedupe_key_py: self.dedupe_key_py.as_ref().map(|k| k.clone_ref(py)),
+            dedupe_key: self.dedupe_key.clone(),
             node_matches: self.node_matches.clone(),
         })
     }
@@ -125,24 +128,28 @@ fn py_key_to_composite(py_obj: Bound<'_, PyAny>) -> PyResult<String> {
 #[pymethods]
 impl DataEntry {
     #[new]
-    #[pyo3(signature = (python_key, x, y, data_id=None, node_matches=None))]
+    #[pyo3(signature = (data_key_py, x, y, dedupe_key_py=None))]
     #[inline]
     fn new(
         py: Python,
-        python_key: Py<PyAny>,
+        data_key_py: Py<PyAny>,
         x: f32,
         y: f32,
-        data_id: Option<String>,
-        node_matches: Option<NodeMatches>,
+        dedupe_key_py: Option<Py<PyAny>>,
     ) -> PyResult<DataEntry> {
-        let py_any = python_key.bind(py);
-        let data_key = py_key_to_composite(py_any.clone())?;
+        let data_key = py_key_to_composite(data_key_py.bind(py).clone())?;
+        let dedupe_key = if let Some(ref key_py) = dedupe_key_py {
+            Some(py_key_to_composite(key_py.bind(py).clone())?)
+        } else {
+            None
+        };
         Ok(DataEntry {
-            python_key,
+            data_key_py,
             data_key,
             coord: Coord::new(x, y),
-            data_id,
-            node_matches,
+            dedupe_key_py,
+            dedupe_key,
+            node_matches: None,
         })
     }
 }
@@ -176,17 +183,16 @@ impl DataMap {
         self.progress.load(Ordering::Relaxed)
     }
 
-    #[pyo3(signature = (python_key, x, y, data_id=None, node_matches=None))]
+    #[pyo3(signature = (data_key_py, x, y, dedupe_key_py=None))]
     fn insert(
         &mut self,
         py: Python,
-        python_key: Py<PyAny>,
+        data_key_py: Py<PyAny>,
         x: f32,
         y: f32,
-        data_id: Option<String>,
-        node_matches: Option<NodeMatches>,
+        dedupe_key_py: Option<Py<PyAny>>,
     ) -> PyResult<()> {
-        let entry = DataEntry::new(py, python_key, x, y, data_id, node_matches)?;
+        let entry = DataEntry::new(py, data_key_py, x, y, dedupe_key_py)?;
         self.entries.insert(entry.data_key.clone(), entry);
         Ok(())
     }
@@ -391,8 +397,8 @@ impl DataMap {
             if min_total_time <= max_walk_seconds as f32 {
                 let total_dist = min_total_time * speed_m_s;
 
-                if let Some(data_id) = &data_val.data_id {
-                    match nearest_ids.entry(data_id.clone()) {
+                if let Some(dedupe_key) = &data_val.dedupe_key {
+                    match nearest_ids.entry(dedupe_key.clone()) {
                         std::collections::hash_map::Entry::Occupied(mut entry) => {
                             let (current_key, current_dist) = entry.get_mut();
                             if total_dist < *current_dist {
