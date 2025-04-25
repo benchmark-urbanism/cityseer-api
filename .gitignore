@@ -116,7 +116,7 @@ env.bak/
 venv.bak/
 
 # maturin
-/target
+rust/target
 .venv/
 bin/
 include/
