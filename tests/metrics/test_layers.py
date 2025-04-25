@@ -3,11 +3,117 @@ from __future__ import annotations
 
 import geopandas as gpd
 import numpy as np
+import pandas as pd
 import pytest
 from cityseer import config
 from cityseer.metrics import layers
 from cityseer.tools import io, mock
 from shapely import geometry
+
+
+def test_decompose_gdf(primal_graph):
+    # Create a diverse GeoDataFrame
+    gdf = gpd.GeoDataFrame(
+        {
+            "id": [1, 2, 3, 4, 5, 6, 7, 8, 9],
+            "value": ["a", "b", "c", "d", "e", "f", "g", "h", "i"],
+            "geometry": [
+                geometry.Point(0, 0),  # Point
+                geometry.LineString([(10, 10), (25, 10)]),  # LineString (length 15)
+                geometry.Polygon([(30, 30), (40, 30), (40, 40), (30, 40)]),  # Polygon (perimeter 40)
+                geometry.MultiPoint([(50, 50), (51, 51)]),  # MultiPoint
+                geometry.LineString([(60, 60), (60, 60)]),  # Zero-length LineString
+                geometry.MultiPolygon([geometry.Polygon([(70, 70), (80, 70), (80, 80), (70, 80)])]),  # MultiPolygon
+                geometry.GeometryCollection(
+                    [geometry.Point(90, 90), geometry.LineString([(95, 95), (105, 95)])]
+                ),  # GeometryCollection
+                None,  # None geometry
+                geometry.LineString(),  # Empty geometry
+            ],
+        },
+        crs="EPSG:3857",
+        index=pd.Index([10, 20, 30, 40, 50, 60, 70, 80, 90], name="original_index"),  # Use a named index
+    )
+
+    sampling_distance = 5.0
+    decomposed_gdf = layers.decompose_gdf(gdf, distance=sampling_distance)
+
+    # --- Assertions on the output ---
+    assert isinstance(decomposed_gdf, gpd.GeoDataFrame)
+    assert decomposed_gdf.crs == gdf.crs
+    assert not decomposed_gdf.empty
+
+    # Check columns
+    assert "src_fid" in decomposed_gdf.columns
+    assert "id" in decomposed_gdf.columns
+    assert "value" in decomposed_gdf.columns
+    assert decomposed_gdf.geometry.name in decomposed_gdf.columns
+    assert len(decomposed_gdf.columns) == 4  # id, value, geometry, src_fid
+
+    # Check geometry types
+    assert all(decomposed_gdf.geometry.geom_type == "Point")
+
+    # Check index is reset
+    assert decomposed_gdf.index.is_unique
+    assert list(decomposed_gdf.index) == list(range(len(decomposed_gdf)))
+
+    # Check src_fid and attribute transfer
+    original_indices = gdf.index.tolist()
+    for src_fid in original_indices:
+        if src_fid == 80 or src_fid == 90:  # Skip None/Empty geometry tests here
+            assert src_fid not in decomposed_gdf["src_fid"].values
+            continue
+        original_row = gdf.loc[src_fid]
+        subset_gdf = decomposed_gdf[decomposed_gdf["src_fid"] == src_fid]
+        assert not subset_gdf.empty
+        assert all(subset_gdf["id"] == original_row["id"])
+        assert all(subset_gdf["value"] == original_row["value"])
+
+    # Check number of points (approximate for sampled geoms)
+    # Point (src_fid=10): 1 point
+    assert len(decomposed_gdf[decomposed_gdf["src_fid"] == 10]) == 1
+    # LineString (src_fid=20, length 15, dist 5): ~ 15/5 + 1 = 4 points (linspace includes ends)
+    assert len(decomposed_gdf[decomposed_gdf["src_fid"] == 20]) == int(np.ceil(15 / sampling_distance)) + 1
+    # Polygon (src_fid=30, perimeter 40, dist 5): ~ 40/5 + 1 = 9 points for exterior
+    assert len(decomposed_gdf[decomposed_gdf["src_fid"] == 30]) == int(np.ceil(40 / sampling_distance)) + 1
+    # MultiPoint (src_fid=40): 2 points
+    assert len(decomposed_gdf[decomposed_gdf["src_fid"] == 40]) == 2
+    # Zero-length LineString (src_fid=50): 1 point
+    assert len(decomposed_gdf[decomposed_gdf["src_fid"] == 50]) == 1
+    # MultiPolygon (src_fid=60, 1 poly, perimeter 40, dist 5): ~ 40/5 + 1 = 9 points
+    assert len(decomposed_gdf[decomposed_gdf["src_fid"] == 60]) == int(np.ceil(40 / sampling_distance)) + 1
+    # GeometryCollection (src_fid=70, 1 point + 1 line length 10): 1 + (10/5 + 1) = 4 points
+    assert len(decomposed_gdf[decomposed_gdf["src_fid"] == 70]) == 1 + (int(np.ceil(10 / sampling_distance)) + 1)
+    # None geometry (src_fid=80): 0 points
+    assert len(decomposed_gdf[decomposed_gdf["src_fid"] == 80]) == 0
+    # Empty geometry (src_fid=90): 0 points
+    assert len(decomposed_gdf[decomposed_gdf["src_fid"] == 90]) == 0
+
+    # --- Test Edge Cases ---
+    # Empty GeoDataFrame
+    empty_gdf = gpd.GeoDataFrame([], columns=["id", "geometry"], crs="EPSG:3857")
+    decomposed_empty = layers.decompose_gdf(empty_gdf)
+    assert isinstance(decomposed_empty, gpd.GeoDataFrame)
+    assert decomposed_empty.empty
+    assert "src_fid" in decomposed_empty.columns
+    assert "id" in decomposed_empty.columns
+    assert decomposed_empty.geometry.name in decomposed_empty.columns
+
+    # GeoDataFrame with only Points
+    points_gdf = gdf[gdf.geometry.geom_type == "Point"].copy()
+    decomposed_points = layers.decompose_gdf(points_gdf)
+    assert len(decomposed_points) == len(points_gdf)
+    assert all(decomposed_points.geometry.geom_type == "Point")
+    assert all(decomposed_points["src_fid"] == points_gdf.index)
+
+    # --- Test Error Handling ---
+    # Non-positive distance
+    with pytest.raises(ValueError, match="Sampling distance must be greater than 5."):
+        layers.decompose_gdf(gdf, distance=0)
+    with pytest.raises(ValueError, match="Sampling distance must be greater than 5."):
+        layers.decompose_gdf(gdf, distance=-5)
+    with pytest.raises(ValueError, match="Sampling distance must be greater than 5."):
+        layers.decompose_gdf(gdf, distance=2)
 
 
 def test_assign_gdf_to_network(primal_graph):
@@ -21,7 +127,7 @@ def test_assign_gdf_to_network(primal_graph):
             if to_poly is True:
                 data_gdf.geometry = data_gdf.geometry.buffer(10)
             #
-            data_map, data_gdf = layers.assign_gdf_to_network(data_gdf, network_structure, 400, data_id_col="data_id")
+            data_map = layers.assign_gdf_to_network(data_gdf, network_structure, 400, data_id_col="data_id")
             assert data_map.assigned_to_network is True
             for _data_key, data_entry in data_map.entries.items():
                 assert data_gdf.loc[data_entry.data_key_py].geometry.centroid.x - data_entry.coord.x < 1
@@ -32,7 +138,7 @@ def test_assign_gdf_to_network(primal_graph):
     data_gdf = mock.mock_data_gdf(primal_graph)
     data_gdf.rename(columns={"geometry": "geom"}, inplace=True)
     data_gdf.set_geometry("geom", inplace=True)
-    data_map, data_gdf = layers.assign_gdf_to_network(data_gdf, network_structure, 400, data_id_col="data_id")
+    data_map = layers.assign_gdf_to_network(data_gdf, network_structure, 400, data_id_col="data_id")
     # catch non unique indices
     data_gdf = gpd.GeoDataFrame(
         {
@@ -47,12 +153,12 @@ def test_assign_gdf_to_network(primal_graph):
     )
     data_gdf.set_index("data_id", inplace=True)
     with pytest.raises(ValueError):
-        data_map, data_gdf = layers.assign_gdf_to_network(data_gdf, network_structure, 400)
+        data_map = layers.assign_gdf_to_network(data_gdf, network_structure, 400)
     # catch duplicate geom types
     data_gdf = mock.mock_data_gdf(primal_graph)
     data_gdf.geometry[0] = data_gdf.geometry[0].buffer(10)
     with pytest.raises(ValueError):
-        data_map, data_gdf = layers.assign_gdf_to_network(data_gdf, network_structure, 400)
+        data_map = layers.assign_gdf_to_network(data_gdf, network_structure, 400)
 
 
 def test_compute_accessibilities(primal_graph):
@@ -75,7 +181,7 @@ def test_compute_accessibilities(primal_graph):
                     angular=angular,
                 )
                 # test against manual implementation over underlying method
-                data_map, data_gdf = layers.assign_gdf_to_network(
+                data_map = layers.assign_gdf_to_network(
                     data_gdf,
                     network_structure,
                     max_assign_dist,
@@ -155,7 +261,7 @@ def test_compute_mixed_uses(primal_graph):
                 angular=angular,
             )
             # generate manually
-            data_map, data_gdf = layers.assign_gdf_to_network(
+            data_map = layers.assign_gdf_to_network(
                 data_gdf, network_structure, max_assign_dist, data_id_col=data_id_col
             )
             landuses_map = dict(data_gdf["categorical_landuses"])
@@ -208,7 +314,7 @@ def test_compute_stats(primal_graph):
     nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(primal_graph)
     data_gdf = mock.mock_numerical_data(primal_graph, num_arrs=2)
     max_assign_dist = 400
-    data_map, data_gdf = layers.assign_gdf_to_network(data_gdf, network_structure, max_assign_dist)
+    data_map = layers.assign_gdf_to_network(data_gdf, network_structure, max_assign_dist)
     # test against manual implementation over underlying method
     distances = [400, 800]
     for _data_id_col in [None, "data_id"]:
