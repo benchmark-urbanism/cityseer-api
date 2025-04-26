@@ -121,7 +121,6 @@ def test_assign_gdf_to_network(primal_graph):
     for typ in [int, float, str]:
         data_gdf = mock.mock_data_gdf(primal_graph)
         data_gdf.index = data_gdf.index.astype(typ)
-        # check initial and cached - second iter uses cached
         for to_poly in [False, True]:
             # handle both points and polys
             if to_poly is True:
@@ -134,6 +133,25 @@ def test_assign_gdf_to_network(primal_graph):
                 assert data_gdf.loc[data_entry.data_key_py].geometry.centroid.y - data_entry.coord.y < 1
                 assert data_entry.node_matches is not None
                 assert data_entry.node_matches.nearest is not None
+    # test with barriers against manual - already tested in test_assign_to_network
+    data_gdf = mock.mock_data_gdf(primal_graph)
+    data_map_manual = mock.mock_data_map(data_gdf, with_barriers=True)
+    data_map_manual.assign_to_network(network_structure, max_dist=400)
+    # auto via layers
+    barriers_gdf = mock.mock_barriers_gdf()
+    data_map_auto = layers.assign_gdf_to_network(data_gdf, network_structure, 400, barriers_gdf=barriers_gdf)
+    for data_key, data_entry_auto in data_map_auto.entries.items():
+        data_entry_manual = data_map_manual.entries[data_key]
+        # check if the data entry is the same
+        if data_entry_auto.node_matches.nearest is not None:
+            assert data_entry_auto.node_matches.nearest.idx == data_entry_manual.node_matches.nearest.idx
+        else:
+            assert data_entry_manual.node_matches.nearest is None
+        #
+        if data_entry_auto.node_matches.next_nearest is not None:
+            assert data_entry_auto.node_matches.next_nearest.idx == data_entry_manual.node_matches.next_nearest.idx
+        else:
+            assert data_entry_manual.node_matches.next_nearest is None
     # check with different geometry column name
     data_gdf = mock.mock_data_gdf(primal_graph)
     data_gdf.rename(columns={"geometry": "geom"}, inplace=True)

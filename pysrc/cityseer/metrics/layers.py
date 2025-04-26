@@ -144,6 +144,7 @@ def assign_gdf_to_network(
     network_structure: rustalgos.graph.NetworkStructure,
     max_netw_assign_dist: int | float,
     data_id_col: str | None = None,
+    barriers_gdf: gpd.GeoDataFrame | None = None,
 ) -> rustalgos.data.DataMap:
     """
     Assign a `GeoDataFrame` to a [`rustalgos.graph.NetworkStructure`](/rustalgos/rustalgos#networkstructure).
@@ -169,6 +170,9 @@ def assign_gdf_to_network(
         of information. For example, where a single greenspace is represented by many entrances as datapoints, only the
         nearest entrance (from a respective location) will be considered (during aggregations) when the points share a
         datapoint identifier.
+    barriers_gdf: GeoDataFrame
+        A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe)
+        representing barriers. These barriers will be considered during the assignment of data points to the network.
 
     Returns
     -------
@@ -207,8 +211,14 @@ def assign_gdf_to_network(
     # check single data geom type
     if data_gdf.geometry.geom_type.nunique() != 1:
         raise ValueError("The data GeoDataFrame must contain a single geometry type.")
-    # check data type
-    data_map = rustalgos.data.DataMap()
+    # barrier geoms
+    barriers_wkt: list[str] | None = None
+    if barriers_gdf is not None:
+        barriers_wkt = []
+        for _, row in barriers_gdf.iterrows():  # type: ignore
+            barriers_wkt.append(row.geometry.wkt)  # type: ignore
+    # create data map
+    data_map = rustalgos.data.DataMap(barriers_wkt=barriers_wkt)
     # prepare the data_map
     logger.info("Assigning data to network.")
     for data_key, data_row in data_gdf.iterrows():  # type: ignore
@@ -219,6 +229,8 @@ def assign_gdf_to_network(
             data_row[data_gdf.geometry.name].centroid.y,  # type: ignore
             data_id,  # type: ignore
         )
+
+    # wrap progress bar
     partial_func = partial(
         data_map.assign_to_network,
         network_structure=network_structure,
@@ -241,6 +253,7 @@ def compute_accessibilities(
     minutes: list[float] | None = None,
     data_id_col: str | None = None,
     decompose_dist: int = 25,
+    barriers_gdf: gpd.GeoDataFrame | None = None,
     angular: bool = False,
     spatial_tolerance: int = 0,
     min_threshold_wt: float = MIN_THRESH_WT,
@@ -297,6 +310,9 @@ def compute_accessibilities(
         datapoint identifier.
     decompose_dist: int
         The distance in metres at which to decompose any lines or polygons in `data_gdf` into points.
+    barriers_gdf: GeoDataFrame
+        A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe)
+        representing barriers. These barriers will be considered during the assignment of data points to the network.
     angular: bool
         Whether to use a simplest-path heuristic in-lieu of a shortest-path heuristic when calculating aggregations
         and distances.
@@ -364,7 +380,9 @@ def compute_accessibilities(
     # convert to points
     data_gdf_pnts = decompose_gdf(data_gdf, distance=decompose_dist)
     # assign to network
-    data_map = assign_gdf_to_network(data_gdf_pnts, network_structure, max_netw_assign_dist, data_id_col)
+    data_map = assign_gdf_to_network(
+        data_gdf_pnts, network_structure, max_netw_assign_dist, data_id_col, barriers_gdf=barriers_gdf
+    )
     # extract landuses
     if landuse_column_label not in data_gdf_pnts.columns:
         raise ValueError("The specified landuse column name can't be found in the GeoDataFrame.")
@@ -423,6 +441,7 @@ def compute_mixed_uses(
     minutes: list[float] | None = None,
     data_id_col: str | None = None,
     decompose_dist: int = 25,
+    barriers_gdf: gpd.GeoDataFrame | None = None,
     angular: bool = False,
     spatial_tolerance: int = 0,
     min_threshold_wt: float = MIN_THRESH_WT,
@@ -495,6 +514,9 @@ def compute_mixed_uses(
         datapoint identifier.
     decompose_dist: int
         The distance in metres at which to decompose any lines or polygons in `data_gdf` into points.
+    barriers_gdf: GeoDataFrame
+        A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe)
+        representing barriers. These barriers will be considered during the assignment of data points to the network.
     angular: bool
         Whether to use a simplest-path heuristic in-lieu of a shortest-path heuristic when calculating aggregations
         and distances.
@@ -591,7 +613,9 @@ def compute_mixed_uses(
     # convert to points
     data_gdf_pnts = decompose_gdf(data_gdf, distance=decompose_dist)
     # assign to network
-    data_map = assign_gdf_to_network(data_gdf_pnts, network_structure, max_netw_assign_dist, data_id_col)
+    data_map = assign_gdf_to_network(
+        data_gdf_pnts, network_structure, max_netw_assign_dist, data_id_col, barriers_gdf=barriers_gdf
+    )
     # extract landuses
     if landuse_column_label not in data_gdf_pnts.columns:
         raise ValueError("The specified landuse column name can't be found in the GeoDataFrame.")
@@ -653,6 +677,7 @@ def compute_stats(
     minutes: list[float] | None = None,
     data_id_col: str | None = None,
     decompose_dist: int = 25,
+    barriers_gdf: gpd.GeoDataFrame | None = None,
     angular: bool = False,
     spatial_tolerance: int = 0,
     min_threshold_wt: float = MIN_THRESH_WT,
@@ -706,6 +731,9 @@ def compute_stats(
         datapoint identifier.
     decompose_dist: int
         The distance in metres at which to decompose any lines or polygons in `data_gdf` into points.
+    barriers_gdf: GeoDataFrame
+        A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe)
+        representing barriers. These barriers will be considered during the assignment of data points to the network.
     angular: bool
         Whether to use a simplest-path heuristic in-lieu of a shortest-path heuristic when calculating aggregations
         and distances.
@@ -779,7 +807,9 @@ def compute_stats(
     # convert to points
     data_gdf_pnts = decompose_gdf(data_gdf, distance=decompose_dist)
     # assign to network
-    data_map = assign_gdf_to_network(data_gdf_pnts, network_structure, max_netw_assign_dist, data_id_col)
+    data_map = assign_gdf_to_network(
+        data_gdf_pnts, network_structure, max_netw_assign_dist, data_id_col, barriers_gdf=barriers_gdf
+    )
     # extract stats columns
     stats_maps = []
     for stats_column_label in stats_column_labels:

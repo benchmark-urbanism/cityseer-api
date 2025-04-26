@@ -99,11 +99,14 @@ def wrap_progress(
 ) -> RustResults:
     """Wraps long running parallelised rust functions with a progress counter."""
 
-    def wrapper(queue: Queue[RustResults]):
-        result: RustResults = partial_func()  # type: ignore
-        queue.put(result)  # type: ignore
+    def wrapper(queue: Queue[RustResults | Exception]):
+        try:
+            result: RustResults = partial_func()  # type: ignore
+            queue.put(result)  # type: ignore
+        except Exception as e:
+            queue.put(e)
 
-    result_queue: Queue[RustResults] = Queue()
+    result_queue: Queue[RustResults | Exception] = Queue()
     thread = threading.Thread(target=wrapper, args=(result_queue,))
     pbar = tqdm(
         total=total,
@@ -118,4 +121,6 @@ def wrap_progress(
     result = result_queue.get()
     thread.join()
 
+    if isinstance(result, Exception):
+        raise result
     return result

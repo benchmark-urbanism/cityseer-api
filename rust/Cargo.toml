@@ -17,6 +17,7 @@ crate-type = ["cdylib"]
 
 [dependencies]
 atomic_float = "1.1.0"
+geo = "0.30.0"
 ndarray = "0.16.1"
 numpy = "0.24.0"
 petgraph = "0.7.1"
@@ -25,3 +26,4 @@ rand = "0.9.0"
 rand_distr = "0.5.1"
 rayon = "1.10.0"
 rstar = "0.12.2"
+wkt = "0.13.0"

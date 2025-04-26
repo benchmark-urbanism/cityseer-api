@@ -113,3 +113,16 @@ def test_mock_data_map(primal_graph):
                 assert entry.dedupe_key_py is None
                 assert entry.dedupe_key is None
                 assert entry.node_matches is None
+
+
+def test_mock_barriers_gdf():
+    """
+    Test the mock_barriers_gdf function to ensure it creates a GeoDataFrame of barriers.
+    """
+    barriers_gdf = mock.mock_barriers_gdf()
+    assert len(barriers_gdf) == 4
+    assert "geometry" in barriers_gdf.columns
+    assert barriers_gdf.geometry.iloc[0].geom_type == "Point"
+    assert barriers_gdf.geometry.iloc[1].geom_type == "LineString"
+    assert barriers_gdf.geometry.iloc[2].geom_type == "MultiLineString"
+    assert barriers_gdf.geometry.iloc[3].geom_type == "Polygon"

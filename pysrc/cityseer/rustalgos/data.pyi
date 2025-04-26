@@ -17,6 +17,7 @@ class DataEntry:
     data_key_py: Hashable
     data_key: str
     coord: Coord
+    dedupe_key_py: Hashable | None
     dedupe_key: str | None
     node_matches: NodeMatches | None
 
@@ -25,8 +26,7 @@ class DataEntry:
         data_key_py: Hashable,
         x: float,
         y: float,
-        dedupe_key: str | None = None,
-        node_matches: NodeMatches | None = None,
+        dedupe_key_py: Hashable | None = None,
     ) -> None: ...
 
 class AccessibilityResult:
@@ -63,7 +63,7 @@ class NodeMatches:
 class DataMap:
     entries: dict[str, DataEntry]
     assigned_to_network: bool
-    def __init__(self) -> None: ...
+    def __init__(self, barriers_wkt: list[str] | None = None) -> None: ...
     def progress_init(self) -> None: ...
     def progress(self) -> int: ...
     def insert(
@@ -71,8 +71,7 @@ class DataMap:
         data_key_py: Hashable,
         x: float,
         y: float,
-        dedupe_key: str | None = None,
-        node_matches: NodeMatches | None = None,
+        dedupe_key_py: Hashable | None = None,
     ) -> None: ...
     def entry_keys(self) -> list[str]: ...
     def get_entry(self, data_key: str) -> DataEntry | None: ...
@@ -83,13 +82,14 @@ class DataMap:
         self,
         network_structure: NetworkStructure,
         max_dist: float,
+        max_segment_checks: int | None = None,
         pbar_disabled: bool | None = None,
     ) -> None: ...
     def aggregate_to_src_idx(
         self,
         netw_src_idx: int,
         network_structure: NetworkStructure,
-        max_walk_seconds: float,
+        max_walk_seconds: int,
         speed_m_s: float,
         jitter_scale: float | None = None,
         angular: bool | None = None,
@@ -130,7 +130,7 @@ class DataMap:
     def stats(
         self,
         network_structure: NetworkStructure,
-        numerical_maps: list[dict[Hashable, str]],
+        numerical_maps: list[dict[Hashable, float]],
         distances: list[int] | None = None,
         betas: list[float] | None = None,
         minutes: list[float] | None = None,
@@ -141,9 +141,10 @@ class DataMap:
         jitter_scale: float | None = None,
         pbar_disabled: bool | None = None,
     ) -> list[StatsResult]: ...
-
-def node_matches_for_coord(
-    network_structure: NetworkStructure,
-    coord: Coord,
-    max_dist: float,
-) -> NodeMatches | None: ...
+    def node_matches_for_coord(
+        self,
+        network_structure: NetworkStructure,
+        coord: Coord,
+        max_dist: float,
+        max_segment_checks: int | None = None,
+    ) -> NodeMatches | None: ...

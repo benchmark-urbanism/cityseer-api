@@ -1346,6 +1346,7 @@ def add_transport_gtfs(
     # add nodes for stops
     logger.info("Adding GTFS stops to network nodes.")
     network_structure.prep_edge_rtree()
+    data_map = rustalgos.data.DataMap()
     for _, row in tqdm(stops.iterrows(), total=len(stops), disable=config.QUIET_MODE):
         # wait_time = avg_wait_time.get(row["stop_id"], 0)  # Default to 0 if missing
         e, n = transformer.transform(row["stop_lon"], row["stop_lat"])
@@ -1369,9 +1370,10 @@ def add_transport_gtfs(
                 "geom": geometry.Point(e, n),
             }
         )
+    data_map.assign_to_network(network_structure=network_structure, max_dist=max_netw_assign_dist)
+    for _data_key, data_entry in tqdm(data_map.entries.items(), total=data_map.count(), disable=config.QUIET_MODE):
         # add edges between stops and pedestrian network
-        node_matches = rustalgos.data.node_matches_for_coord(network_structure, station_coord, max_netw_assign_dist)
-        for node_match in [node_matches.nearest, node_matches.next_nearest]:  # type: ignore
+        for node_match in [data_entry.node_matches.nearest, data_entry.node_matches.next_nearest]:  # type: ignore
             if node_match is not None:
                 netw_node = network_structure.get_node_payload(node_match.idx)
                 dist = netw_node.coord.hypot(station_coord)

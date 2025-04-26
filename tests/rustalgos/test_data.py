@@ -26,9 +26,61 @@ def test_assign_to_network(primal_graph):
     primal_graph.remove_edge("14", "15")
     primal_graph.remove_edge("15", "28")
     # G = graphs.nx_auto_edge_params(G)
-    G = graphs.nx_decompose(primal_graph, 50)
-    # visually confirmed in plots
-    targets = {
+    G_decomp = graphs.nx_decompose(primal_graph, 50)
+    # targets visually confirmed in plots
+    primal_targets = {
+        20: [44, 40],
+        2: [43, 10],
+        25: [17, 20],
+        5: [10, 43],
+        17: [20, 28],
+        0: [56, 45],
+        26: [54, 55],
+        8: [17, 16],
+        16: [53, 54],
+        29: [31, 32],
+        34: [43, 44],
+        1: [17, 20],
+        9: [53, 54],
+        37: [24, 20],
+        7: [1, 0],
+        3: [43, 10],
+        40: [43, 10],
+        42: [43, 44],
+        43: [51, 50],
+        24: [50, 51],
+        23: [56, 30],
+        39: [50, 51],
+        44: [30, 29],
+        36: [40, 39],
+        45: [43, 10],
+        18: [30, 45],
+        4: [1, 4],
+        28: [32, 34],
+        21: [39, 37],
+        38: [45, 30],
+        46: [43, 10],
+        47: [43, 10],
+        32: [17, 18],
+        19: [45, 30],
+        49: [43, 10],
+        6: [18, 21],
+        12: [4, 1],
+        10: [32, 34],
+        11: [11, 14],
+        14: [11, 12],
+        31: [29, 28],
+        33: [1, 4],
+        35: [16, 17],
+        22: [1, 2],
+        13: [45, 44],
+        27: [24, 21],
+        30: [42, 35],
+        41: [17, 20],
+        15: [31, 33],
+        48: [43, 10],
+    }
+    decomp_targets = {
         0: [257, 256],
         1: [17, 131],
         2: [43, 115],
@@ -80,22 +132,48 @@ def test_assign_to_network(primal_graph):
         48: [113, 114],
         49: [113, 114],
     }
-    # generate data
-    _nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(G)
-    data_gdf = override_coords(G)
-    data_map = mock.mock_data_map(data_gdf)
-    data_map.assign_to_network(network_structure, max_dist=1600)
+    for G, targets in [(primal_graph, primal_targets), (G_decomp, decomp_targets)]:
+        # generate data
+        _nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(G)
+        data_gdf = override_coords(G)
+        data_map = mock.mock_data_map(data_gdf)
+        # use small enough distance to ensure closest edge used regrardless of whether both nodes within
+        data_map.assign_to_network(network_structure, max_dist=400)
+        # from cityseer.tools import plot
+        # plot.plot_network_structure(network_structure, data_map)
+        # plot.plot_assignment(network_structure, G, data_map)
+        for data_entry in data_map.entries.values():
+            assert targets[data_entry.data_key_py][0] == data_entry.node_matches.nearest.idx  # type: ignore
+            assert targets[data_entry.data_key_py][1] == data_entry.node_matches.next_nearest.idx  # type: ignore
+        # should be None if distance is 0m
+        data_map.assign_to_network(network_structure, max_dist=0)
+        for data_entry in data_map.entries.values():
+            assert data_entry.node_matches.nearest is None  # type: ignore
+            assert data_entry.node_matches.next_nearest is None  # type: ignore
+
+    # test with barriers
     # from cityseer.tools import plot
+    # barriers_gdf = mock.mock_barriers_gdf()
+    # ax = barriers_gdf.plot()
+    # ax = data_gdf.plot(ax=ax, color="red", markersize=5)
+    # ax = _edges_gdf.plot(ax=ax, color="blue", linewidth=0.5)
+    # plt.show()
+    # data_map = mock.mock_data_map(data_gdf, with_barriers=False)
+    # data_map.assign_to_network(network_structure, max_dist=400)
     # plot.plot_network_structure(network_structure, data_map)
-    # plot.plot_assignment(network_structure, G, data_map)
-    for data_entry in data_map.entries.values():
-        assert targets[data_entry.data_key_py][0] == data_entry.node_matches.nearest.idx  # type: ignore
-        assert targets[data_entry.data_key_py][1] == data_entry.node_matches.next_nearest.idx  # type: ignore
-    # should be None if distance is 0m
-    data_map.assign_to_network(network_structure, max_dist=0)
-    for data_entry in data_map.entries.values():
-        assert data_entry.node_matches.nearest is None  # type: ignore
-        assert data_entry.node_matches.next_nearest is None  # type: ignore
+
+    data_map = mock.mock_data_map(data_gdf, with_barriers=True)
+    data_map.assign_to_network(network_structure, max_dist=400)
+    # plot.plot_network_structure(network_structure, data_map)
+    # flipped
+    assert data_map.entries["int:18"].node_matches.nearest.idx == 196
+    assert data_map.entries["int:18"].node_matches.next_nearest.idx == 197
+    # blocked
+    assert data_map.entries["int:40"].node_matches.nearest is None
+    assert data_map.entries["int:40"].node_matches.next_nearest is None
+    # partially blocked
+    assert data_map.entries["int:49"].node_matches.nearest.idx == 43
+    assert data_map.entries["int:49"].node_matches.next_nearest is None
 
 
 def test_aggregate_to_src_idx(primal_graph):
@@ -484,7 +562,7 @@ def test_stats(primal_graph):
                 rtol=config.RTOL,
             )
             # min
-            assert np.isnan(stats_result.max[dist_key][49])
+            assert np.isnan(stats_result.min[dist_key][49])
             assert np.allclose(
                 stats_result.min[dist_key][[50, 51]],
                 mock_num_arr[[33]].min(),
@@ -566,12 +644,19 @@ def test_stats(primal_graph):
     # do deduplication - the stats should now be lower on average
     # the last five datapoints are pointing to the same source
     data_map_dedupe = mock.mock_data_map(data_gdf, dedupe_key_col="data_id")
-    data_map_dedupe.assign_to_network(network_structure, max_dist=400)
+    data_map_dedupe.assign_to_network(network_structure, max_dist=max_assign_dist)
+    # plot.plot_network_structure(network_structure, data_map_dedupe)
     stats_results_dedupe = data_map_dedupe.stats(
         network_structure,
         numerical_maps=numerical_maps,
         distances=distances,
     )
+    for data_entry in data_map.entries.values():
+        for data_dedupe_entry in data_map_dedupe.entries.values():
+            if data_entry.data_key_py == data_dedupe_entry.data_key_py:
+                assert data_entry.data_key == data_dedupe_entry.data_key
+                assert data_entry.node_matches.nearest.idx == data_dedupe_entry.node_matches.nearest.idx
+                assert data_entry.node_matches.next_nearest.idx == data_dedupe_entry.node_matches.next_nearest.idx
     for stats_result, stats_result_dedupe in zip(stats_results, stats_results_dedupe, strict=True):
         for dist_key in distances:
             # min and max are be the same

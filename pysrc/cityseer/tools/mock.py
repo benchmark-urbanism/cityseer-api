@@ -531,7 +531,9 @@ def mock_gtfs_stops_txt(path: str):
     stop_times_gdf.to_csv(output_path / "stop_times.txt", index=False)
 
 
-def mock_data_map(data_gdf: gpd.GeoDataFrame, dedupe_key_col: str | None = None) -> rustalgos.data.DataMap:
+def mock_data_map(
+    data_gdf: gpd.GeoDataFrame, dedupe_key_col: str | None = None, with_barriers: bool = False
+) -> rustalgos.data.DataMap:
     """
     Create a DataMap for testing from a GeoDataFrame created with mock_data_gdf.
 
@@ -545,10 +547,50 @@ def mock_data_map(data_gdf: gpd.GeoDataFrame, dedupe_key_col: str | None = None)
     DataMap
         An instance of DataMap (Rust-backed, from data.rs) populated with the mock data.
     """
-    data_map = rustalgos.data.DataMap()
+    barrier_wkts: list[str] | None = None
+    if with_barriers is True:
+        barrier_wkts = []
+        barriers_gdf = mock_barriers_gdf()
+        for _, row in barriers_gdf.iterrows():  # type: ignore
+            barrier_wkts.append(row.geometry.wkt)  # type: ignore
+    data_map = rustalgos.data.DataMap(barriers_wkt=barrier_wkts)
     for uid, row in data_gdf.iterrows():  # type: ignore
         if dedupe_key_col is not None:
-            data_map.insert(uid, row.geometry.x, row.geometry.y, row[dedupe_key_col])  # type: ignore
+            data_map.insert(uid, row.geometry.centroid.x, row.geometry.centroid.y, row[dedupe_key_col])  # type: ignore
         else:
-            data_map.insert(uid, row.geometry.x, row.geometry.y, None)  # type: ignore
+            data_map.insert(uid, row.geometry.centroid.x, row.geometry.centroid.y, None)  # type: ignore
     return data_map
+
+
+def mock_barriers_gdf():
+    # returns a GeoDataFrame with two lines that intersect at a point
+    point = geometry.Point(700900, 5719350)
+    line = geometry.LineString([(701020, 5719150), (701250, 5719600)])
+    multi_line = geometry.MultiLineString(
+        lines=[
+            geometry.LineString([(700400, 5719150), (700150, 5719600)]),
+        ]
+    )
+    poly = geometry.Polygon(
+        [
+            (700900, 5719140),
+            (700900, 5719160),
+            (700750, 5719160),
+            (700750, 5719140),
+        ]
+    )
+
+    barriers = gpd.GeoDataFrame(
+        {
+            "barrier_id": [1, 2, 3, 4],
+            "geometry": [
+                point,
+                line,
+                multi_line,
+                poly,
+            ],
+        }
+    )
+    barriers = barriers.set_index("barrier_id")
+    barriers = barriers.set_crs(32630)
+    return barriers

@@ -59,7 +59,6 @@ fn register_data_module(py_module: &Bound<'_, PyModule>) -> PyResult<()> {
     submodule.add_class::<data::AccessibilityResult>()?;
     submodule.add_class::<data::MixedUsesResult>()?;
     submodule.add_class::<data::StatsResult>()?;
-    submodule.add_function(wrap_pyfunction!(data::node_matches_for_coord, &submodule)?)?;
     py_module.add_submodule(&submodule)?;
     Ok(())
 }
