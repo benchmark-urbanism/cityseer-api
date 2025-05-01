@@ -372,14 +372,14 @@ impl NetworkStructure {
         py: Python,
     ) -> PyResult<CentralityShortestResult> {
         self.validate()?;
+        let speed_m_s = speed_m_s.unwrap_or(WALKING_SPEED);
         let (distances, betas, seconds) = common::pair_distances_betas_time(
+            speed_m_s,
             distances,
             betas,
             minutes,
             min_threshold_wt,
-            speed_m_s,
         )?;
-        let speed_m_s = speed_m_s.unwrap_or(WALKING_SPEED);
         let max_walk_seconds = *seconds
             .iter()
             .max()
@@ -552,14 +552,14 @@ impl NetworkStructure {
         py: Python,
     ) -> PyResult<CentralitySimplestResult> {
         self.validate()?;
+        let speed_m_s = speed_m_s.unwrap_or(WALKING_SPEED);
         let (distances, _betas, seconds) = common::pair_distances_betas_time(
+            speed_m_s,
             distances,
             betas,
             minutes,
             min_threshold_wt,
-            speed_m_s,
         )?;
-        let speed_m_s = speed_m_s.unwrap_or(WALKING_SPEED);
         let max_walk_seconds = *seconds
             .iter()
             .max()
@@ -699,14 +699,14 @@ impl NetworkStructure {
         py: Python,
     ) -> PyResult<CentralitySegmentResult> {
         self.validate()?;
+        let speed_m_s = speed_m_s.unwrap_or(WALKING_SPEED);
         let (distances, betas, seconds) = common::pair_distances_betas_time(
+            speed_m_s,
             distances,
             betas,
             minutes,
             min_threshold_wt,
-            speed_m_s,
         )?;
-        let speed_m_s = speed_m_s.unwrap_or(WALKING_SPEED);
         let max_walk_seconds = *seconds
             .iter()
             .max()

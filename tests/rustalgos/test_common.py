@@ -172,27 +172,27 @@ def test_pair_distances_betas_time():
     betas = [0.01, 0.00667, 0.005, 0.0025, 0.002, 0.0004, 0.0002]
     # should raise
     with pytest.raises(ValueError):
-        rustalgos.pair_distances_betas_time(None, None, None)
+        rustalgos.pair_distances_betas_time(config.SPEED_M_S, None, None, None)
     with pytest.raises(ValueError):
-        rustalgos.pair_distances_betas_time(distances, betas, None)
+        rustalgos.pair_distances_betas_time(config.SPEED_M_S, distances, betas, None)
     with pytest.raises(ValueError):
-        rustalgos.pair_distances_betas_time(distances, None, minutes)
+        rustalgos.pair_distances_betas_time(config.SPEED_M_S, distances, None, minutes)
     with pytest.raises(ValueError):
-        rustalgos.pair_distances_betas_time(None, betas, minutes)
+        rustalgos.pair_distances_betas_time(config.SPEED_M_S, None, betas, minutes)
     with pytest.raises(ValueError):
-        rustalgos.pair_distances_betas_time(distances, betas, minutes)
+        rustalgos.pair_distances_betas_time(config.SPEED_M_S, distances, betas, minutes)
     # should match
-    ds, bs, ts = rustalgos.pair_distances_betas_time(distances, None, None)
+    ds, bs, ts = rustalgos.pair_distances_betas_time(config.SPEED_M_S, distances, None, None)
     assert np.allclose(ds, distances, atol=config.ATOL, rtol=config.RTOL)
     assert np.allclose(bs, betas, atol=config.ATOL, rtol=config.RTOL)
     assert np.allclose(ts, seconds, atol=config.ATOL, rtol=config.RTOL)
     #
-    ds, bs, ts = rustalgos.pair_distances_betas_time(None, betas, None)
+    ds, bs, ts = rustalgos.pair_distances_betas_time(config.SPEED_M_S, None, betas, None)
     assert np.allclose(ds, distances, atol=config.ATOL, rtol=config.RTOL)
     assert np.allclose(bs, betas, atol=config.ATOL, rtol=config.RTOL)
     assert np.allclose(ts, seconds, atol=config.ATOL, rtol=config.RTOL)
     #
-    ds, bs, ts = rustalgos.pair_distances_betas_time(None, None, minutes)
+    ds, bs, ts = rustalgos.pair_distances_betas_time(config.SPEED_M_S, None, None, minutes)
     assert np.allclose(ds, distances, atol=config.ATOL, rtol=config.RTOL)
     assert np.allclose(bs, betas, atol=config.ATOL, rtol=config.RTOL)
     assert np.allclose(ts, seconds, atol=config.ATOL, rtol=config.RTOL)

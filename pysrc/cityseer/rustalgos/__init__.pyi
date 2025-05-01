@@ -1,6 +1,6 @@
 """Common geometry and mathematical utilities."""
 
-from typing import Self  # Add this import
+from typing import Self
 
 # Declare the existence of submodules for type checkers
 from . import centrality as centrality
@@ -193,7 +193,7 @@ def betas_from_distances(distances: list[int], min_threshold_wt: float | None = 
 
 def distances_from_seconds(
     seconds: list[int],
-    speed_m_s: float | None = None,
+    speed_m_s: float,
 ) -> list[int]:
     r"""
     Map seconds to equivalent distance thresholds $d_{max}$.
@@ -229,8 +229,8 @@ def distances_from_seconds(
 
 def seconds_from_distances(
     distances: list[int],
-    speed_m_s: float | None = None,
-) -> list[float]:
+    speed_m_s: float,
+) -> list[int]:
     r"""
     Map distances into equivalent walking time in seconds.
 
@@ -264,17 +264,20 @@ def seconds_from_distances(
     ...
 
 def pair_distances_betas_time(
+    speed_m_s: float,
     distances: list[int] | None = None,
     betas: list[float] | None = None,
     minutes: list[float] | None = None,
     min_threshold_wt: float | None = None,
-    speed_m_s: float | None = None,
-) -> tuple[list[int], list[float], list[float]]:
+) -> tuple[list[int], list[float], list[int]]:
     r"""
     Pair distances, betas, and time, where only one parameter is provided.
 
     Parameters
     ----------
+    speed_m_s: float
+        The default walking speed in meters per second can optionally be overridden to configure the distances covered
+        by the respective walking times.
     distances: list[int]
         Distances corresponding to the local $d_{max}$ thresholds to be used for calculations. The $\beta$ parameters
         (for distance-weighted metrics) will be determined implicitly. If the `distances` parameter is not provided,
@@ -290,9 +293,6 @@ def pair_distances_betas_time(
     min_threshold_wt: float
         The default `min_threshold_wt` parameter can be overridden to generate custom mappings between the
         `distance` and `beta` parameters. See [`distance_from_beta`](#distance-from-beta) for more information.
-    speed_m_s: float
-        The default walking speed in meters per second can optionally be overridden to configure the distances covered
-        by the respective walking times.
 
     Returns
     -------

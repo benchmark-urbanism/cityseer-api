@@ -9,13 +9,12 @@ class Viewshed:
     def new(cls) -> Viewshed: ...
     def progress(self) -> int: ...
     def visibility_graph(
-        self, bldgs_rast: npt.ArrayLike, view_distance: int, pbar_disabled: bool = False
+        self, bldgs_rast: npt.ArrayLike, view_distance: float, pbar_disabled: bool | None = None
     ) -> tuple[npt.ArrayLike, npt.ArrayLike, npt.ArrayLike]: ...
     def viewshed(
         self,
         bldgs_rast: npt.ArrayLike,
-        view_distance: int,
+        view_distance: float,
         origin_x: int,
         origin_y: int,
-        pbar_disabled: bool = False,
     ) -> npt.ArrayLike: ...

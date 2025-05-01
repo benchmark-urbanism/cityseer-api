@@ -73,7 +73,7 @@ def log_thresholds(
 ):
     # pair distances, betas, and time for logging - DO AFTER PARTIAL FUNC
     distances, betas, seconds = rustalgos.pair_distances_betas_time(
-        distances, betas, minutes, min_threshold_wt=min_threshold_wt, speed_m_s=speed_m_s
+        speed_m_s, distances, betas, minutes, min_threshold_wt=min_threshold_wt
     )
     # log distances, betas, minutes
     logger.info("Metrics computed for:")

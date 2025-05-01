@@ -1,10 +1,11 @@
 use crate::common::MetricResult;
-use crate::common::{clip_wts_curve, clipped_beta_wt, pair_distances_betas_time, Coord};
+use crate::common::{clip_wts_curve, clipped_beta_wt, pair_distances_betas_time};
 use crate::common::{PROGRESS_UPDATE_INTERVAL, WALKING_SPEED};
 use crate::diversity;
 use crate::graph::NetworkStructure;
 use core::f32;
 use geo::algorithm::bounding_rect::BoundingRect;
+use geo::algorithm::closest_point::ClosestPoint;
 use geo::algorithm::intersects::Intersects;
 use geo::algorithm::Euclidean;
 use geo::geometry::Geometry;
@@ -20,26 +21,6 @@ use std::collections::{HashMap, HashSet};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use wkt::TryFromWkt;
-
-/// Node match result for a data entry.
-#[pyclass]
-#[derive(Clone)]
-pub struct NodeMatch {
-    #[pyo3(get)]
-    pub idx: usize,
-    #[pyo3(get)]
-    pub dist: f32,
-}
-
-/// Holds nearest and next-nearest node matches for a data entry.
-#[pyclass]
-#[derive(Clone)]
-pub struct NodeMatches {
-    #[pyo3(get)]
-    pub nearest: Option<NodeMatch>,
-    #[pyo3(get)]
-    pub next_nearest: Option<NodeMatch>,
-}
 
 /// Accessibility computation result.
 #[pyclass]
@@ -103,13 +84,12 @@ pub struct DataEntry {
     #[pyo3(get)]
     pub data_key: String,
     #[pyo3(get)]
-    pub coord: Coord,
+    pub dedupe_key_py: Py<PyAny>,
     #[pyo3(get)]
-    pub dedupe_key_py: Option<Py<PyAny>>,
+    pub dedupe_key: String,
     #[pyo3(get)]
-    pub dedupe_key: Option<String>,
-    #[pyo3(get)]
-    pub node_matches: Option<NodeMatches>,
+    pub geometry_wkt: String,
+    pub geometry: Geometry<f32>,
 }
 
 impl Clone for DataEntry {
@@ -117,10 +97,10 @@ impl Clone for DataEntry {
         Python::with_gil(|py| DataEntry {
             data_key_py: self.data_key_py.clone_ref(py),
             data_key: self.data_key.clone(),
-            coord: self.coord,
-            dedupe_key_py: self.dedupe_key_py.as_ref().map(|k| k.clone_ref(py)),
+            dedupe_key_py: self.dedupe_key_py.clone_ref(py),
             dedupe_key: self.dedupe_key.clone(),
-            node_matches: self.node_matches.clone(),
+            geometry_wkt: self.geometry_wkt.clone(),
+            geometry: self.geometry.clone(),
         })
     }
 }
@@ -136,28 +116,45 @@ fn py_key_to_composite(py_obj: Bound<'_, PyAny>) -> PyResult<String> {
 #[pymethods]
 impl DataEntry {
     #[new]
-    #[pyo3(signature = (data_key_py, x, y, dedupe_key_py=None))]
+    #[pyo3(signature = (data_key_py, geometry_wkt, dedupe_key_py=None))]
     #[inline]
     fn new(
         py: Python,
         data_key_py: Py<PyAny>,
-        x: f32,
-        y: f32,
+        geometry_wkt: String,
         dedupe_key_py: Option<Py<PyAny>>,
     ) -> PyResult<DataEntry> {
         let data_key = py_key_to_composite(data_key_py.bind(py).clone())?;
-        let dedupe_key = if let Some(ref key_py) = dedupe_key_py {
-            Some(py_key_to_composite(key_py.bind(py).clone())?)
+
+        let dedupe_key_fallback: String = if let Some(ref key_py) = dedupe_key_py {
+            py_key_to_composite(key_py.bind(py).clone())?
         } else {
-            None
+            data_key.clone()
         };
+
+        let dedupe_key_py_fallback: Py<PyAny> = if let Some(key_py) = dedupe_key_py {
+            key_py
+        } else {
+            data_key_py.clone_ref(py)
+        };
+
+        let geometry = match Geometry::try_from_wkt_str(&geometry_wkt) {
+            Ok(geom) => geom,
+            Err(e) => {
+                return Err(exceptions::PyValueError::new_err(format!(
+                    "Failed to parse WKT for key '{}': {}",
+                    data_key, e
+                )));
+            }
+        };
+
         Ok(DataEntry {
             data_key_py,
             data_key,
-            coord: Coord::new(x, y),
-            dedupe_key_py,
-            dedupe_key,
-            node_matches: None,
+            dedupe_key_py: dedupe_key_py_fallback,
+            dedupe_key: dedupe_key_fallback,
+            geometry_wkt,
+            geometry,
         })
     }
 }
@@ -168,10 +165,10 @@ pub struct DataMap {
     #[pyo3(get)]
     entries: HashMap<String, DataEntry>,
     pub progress: Arc<AtomicUsize>,
-    #[pyo3(get)]
-    assigned_to_network: bool,
     barrier_geoms: Option<Vec<Geometry<f32>>>,
     barrier_rtree: Option<RTree<GeomWithData<Rectangle<[f32; 2]>, usize>>>,
+    data_rtree_items: Vec<GeomWithData<Rectangle<[f32; 2]>, String>>,
+    data_rtree: Option<RTree<GeomWithData<Rectangle<[f32; 2]>, String>>>,
 }
 
 #[pymethods]
@@ -224,9 +221,10 @@ impl DataMap {
         let map = DataMap {
             entries: HashMap::new(),
             progress: Arc::new(AtomicUsize::new(0)),
-            assigned_to_network: false,
             barrier_geoms: barrier_geoms,
             barrier_rtree: barriers_rtree,
+            data_rtree_items: Vec::new(),
+            data_rtree: None,
         };
         Ok(map)
     }
@@ -239,17 +237,41 @@ impl DataMap {
         self.progress.load(Ordering::Relaxed)
     }
 
-    #[pyo3(signature = (data_key_py, x, y, dedupe_key_py=None))]
+    #[pyo3(signature = (data_key_py, geometry_wkt, dedupe_key_py=None))]
     fn insert(
         &mut self,
         py: Python,
         data_key_py: Py<PyAny>,
-        x: f32,
-        y: f32,
+        geometry_wkt: String,
         dedupe_key_py: Option<Py<PyAny>>,
     ) -> PyResult<()> {
-        let entry = DataEntry::new(py, data_key_py, x, y, dedupe_key_py)?;
-        self.entries.insert(entry.data_key.clone(), entry);
+        // Create DataEntry first (parses WKT and stores geometry internally)
+        let entry = DataEntry::new(py, data_key_py, geometry_wkt, dedupe_key_py)?;
+        let data_key = entry.data_key.clone(); // Clone data_key for use below
+
+        // Get bounding box from the stored geometry
+        if let Some(rect) = entry.geometry.bounding_rect() {
+            let envelope =
+                Rectangle::from_corners([rect.min().x, rect.min().y], [rect.max().x, rect.max().y]);
+            // Store the data_key (String) with the envelope for R-tree build
+            self.data_rtree_items
+                .push(GeomWithData::new(envelope, data_key.clone()));
+
+            // Invalidate the R-tree as new data is pending
+            self.data_rtree = None;
+        } else {
+            // This might happen for Point geometries, which is okay.
+            // We might only want to warn if it's unexpected (e.g., for LineString/Polygon).
+            // For now, just proceed without adding to R-tree items if no bounding box.
+            eprintln!(
+                "Info: Geometry for key '{}' has no bounding box. Not added to R-tree.",
+                data_key
+            );
+        }
+
+        // Insert the DataEntry into the main map
+        self.entries.insert(data_key, entry); // Use the cloned data_key
+
         Ok(())
     }
 
@@ -261,10 +283,6 @@ impl DataMap {
         self.entries.get(data_key).map(|entry| entry.clone())
     }
 
-    fn get_data_coord(&self, data_key: &str) -> Option<Coord> {
-        self.entries.get(data_key).map(|entry| entry.coord)
-    }
-
     fn count(&self) -> usize {
         self.entries.len()
     }
@@ -273,68 +291,20 @@ impl DataMap {
         self.entries.is_empty()
     }
 
-    /// Assign nearest and next nearest network node (and distances) to each entry in the DataMap.
-    #[pyo3(signature = (
-        network_structure,
-        max_dist,
-        max_segment_checks=None,
-        pbar_disabled=None
-    ))]
-    pub fn assign_to_network(
-        &mut self,
-        network_structure: &mut NetworkStructure,
-        max_dist: f32,
-        max_segment_checks: Option<usize>,
-        pbar_disabled: Option<bool>,
-    ) -> PyResult<()> {
-        if !network_structure.edge_rtree_built {
-            network_structure.prep_edge_rtree()?;
+    /// Builds the R-tree for polygon geometries. Should be called after insertions.
+    fn build_data_rtree(&mut self) -> PyResult<()> {
+        if !self.data_rtree_items.is_empty() {
+            let items = std::mem::take(&mut self.data_rtree_items);
+            self.data_rtree = Some(RTree::bulk_load(items));
+            eprintln!(
+                "Data R-tree built with {} items.", // Renamed message slightly
+                self.data_rtree.as_ref().map_or(0, |r| r.size())
+            );
+        } else {
+            eprintln!("Warning: No geometries with bounding boxes found to build R-tree."); // Adjusted message
+            self.data_rtree = None;
         }
-
-        let pbar_disabled = pbar_disabled.unwrap_or(false);
-        let max_segment_checks = max_segment_checks.unwrap_or(10);
-        self.progress_init();
-
-        let inputs: Vec<(String, Coord)> = self
-            .entries
-            .iter()
-            .map(|(key, entry)| (key.clone(), entry.coord))
-            .collect();
-
-        let progress_clone = self.progress.clone();
-        // Create an immutable reference to self for the closure
-        let self_ref = &self;
-
-        let results: PyResult<Vec<(String, Option<NodeMatches>)>> = inputs
-            .par_iter()
-            .enumerate()
-            .map(
-                |(i, (key, coord))| -> PyResult<(String, Option<NodeMatches>)> {
-                    if !pbar_disabled && i % PROGRESS_UPDATE_INTERVAL == 0 {
-                        progress_clone.fetch_add(PROGRESS_UPDATE_INTERVAL, Ordering::Relaxed);
-                    }
-
-                    // Use the immutable reference `self_ref` here
-                    // Use `?` to propagate potential errors from node_matches_for_coord
-                    let node_matches = self_ref.node_matches_for_coord(
-                        network_structure,
-                        *coord,
-                        max_dist,
-                        Some(max_segment_checks),
-                    )?;
-                    Ok((key.clone(), node_matches))
-                },
-            )
-            .collect(); // Collect into a PyResult<Vec<...>>
-
-        let results = results?;
-
-        for (key, node_matches) in results {
-            if let Some(entry) = self.entries.get_mut(&key) {
-                entry.node_matches = node_matches;
-            }
-        }
-        self.assigned_to_network = true;
+        self.data_rtree_items.clear();
         Ok(())
     }
 
@@ -342,6 +312,7 @@ impl DataMap {
         netw_src_idx,
         network_structure,
         max_walk_seconds,
+        max_assignment_dist,
         speed_m_s,
         jitter_scale=None,
         angular=None
@@ -351,20 +322,27 @@ impl DataMap {
         netw_src_idx: usize,
         network_structure: &NetworkStructure,
         max_walk_seconds: u32,
+        max_assignment_dist: f32,
         speed_m_s: f32,
         jitter_scale: Option<f32>,
         angular: Option<bool>,
     ) -> PyResult<HashMap<String, f32>> {
-        if !self.assigned_to_network {
+        // 1. Ensure data R-tree is built
+        if self.data_rtree.is_none() && !self.data_rtree_items.is_empty() {
             return Err(exceptions::PyRuntimeError::new_err(
-                "DataMap must be assigned to network before calling aggregate_to_src_idx. Call assign_to_network first."
+                "Data R-tree has not been built or is outdated. Call build_data_rtree() after inserting all data.",
             ));
         }
+
         let jitter_scale = jitter_scale.unwrap_or(0.0);
         let angular = angular.unwrap_or(false);
-        let mut entries = HashMap::with_capacity(self.entries.len());
+        let mut entries_result: HashMap<String, f32> = HashMap::new();
         let mut nearest_ids: HashMap<String, (String, f32)> = HashMap::new();
 
+        // Calculate max distance based on time and speed
+        let max_walk_dist = max_walk_seconds as f32 * speed_m_s;
+
+        // 2. Perform Dijkstra search
         let (_, tree_map) = if !angular {
             network_structure.dijkstra_tree_shortest(
                 netw_src_idx,
@@ -381,70 +359,112 @@ impl DataMap {
             )
         };
 
-        let calculate_time = |assign_idx: Option<usize>, data_val: &DataEntry| -> Option<f32> {
-            assign_idx.and_then(|idx| {
-                let node_visit = &tree_map[idx];
-                if node_visit.agg_seconds < max_walk_seconds as f32 {
-                    network_structure
-                        .get_node_payload(idx)
-                        .ok()
-                        .map(|node_payload| {
-                            let d_d = data_val.coord.hypot(node_payload.coord);
-                            node_visit.agg_seconds + d_d / speed_m_s
-                        })
-                } else {
-                    None
-                }
-            })
-        };
+        // 3. Iterate through reachable nodes
+        for (node_idx, node_visit) in tree_map.iter().enumerate() {
+            if node_visit.agg_seconds >= max_walk_seconds as f32 {
+                continue;
+            }
+            let node_payload = match network_structure.get_node_payload(node_idx) {
+                Ok(p) => p,
+                Err(_) => continue,
+            };
+            let node_point = Point::new(node_payload.coord.x, node_payload.coord.y);
 
-        for (data_key, data_val) in &self.entries {
-            let nearest_total_time = data_val
-                .node_matches
-                .as_ref()
-                .and_then(|nm| calculate_time(nm.nearest.as_ref().map(|m| m.idx), data_val))
-                .unwrap_or(f32::INFINITY);
-            let next_nearest_total_time = data_val
-                .node_matches
-                .as_ref()
-                .and_then(|nm| calculate_time(nm.next_nearest.as_ref().map(|m| m.idx), data_val))
-                .unwrap_or(f32::INFINITY);
+            // 4. Define local bounding box
+            let local_search_aabb = AABB::from_corners(
+                [
+                    node_payload.coord.x - max_assignment_dist,
+                    node_payload.coord.y - max_assignment_dist,
+                ],
+                [
+                    node_payload.coord.x + max_assignment_dist,
+                    node_payload.coord.y + max_assignment_dist,
+                ],
+            );
 
-            let min_total_time = nearest_total_time.min(next_nearest_total_time);
+            // 5. Query local R-tree
+            if let Some(data_rtree) = self.data_rtree.as_ref() {
+                // R-tree contains data_key (String)
+                let local_candidate_keys =
+                    data_rtree.locate_in_envelope_intersecting(&local_search_aabb);
 
-            if min_total_time <= max_walk_seconds as f32 {
-                let total_dist = min_total_time * speed_m_s;
+                // 6. Iterate through locally relevant data keys
+                for geom_item in local_candidate_keys {
+                    let data_key = &geom_item.data; // This is now String
 
-                // Deduplication: If a dedupe_key is present, ensure only the entry
-                // closest to the netw_src_idx is kept for each unique dedupe_key.
-                if let Some(dedupe_key) = &data_val.dedupe_key {
-                    match nearest_ids.entry(dedupe_key.clone()) {
-                        std::collections::hash_map::Entry::Occupied(mut entry) => {
-                            let (current_key, current_dist) = entry.get_mut();
-                            if total_dist < *current_dist {
-                                entries.remove(current_key);
-                                *current_key = data_key.clone();
-                                *current_dist = total_dist;
-                                entries.insert(data_key.clone(), total_dist);
+                    // Get the DataEntry using the data_key
+                    let data_entry = match self.entries.get(data_key) {
+                        Some(entry) => entry,
+                        None => continue,
+                    };
+
+                    // Access the pre-parsed geometry directly from DataEntry
+                    let polygon_geom = &data_entry.geometry;
+
+                    // 7. Calculate distance/time from current node to polygon
+                    let closest_point_result = polygon_geom.closest_point(&node_point);
+                    let (closest_point_on_poly, dist_sq) = match closest_point_result {
+                        geo::Closest::SinglePoint(p) => {
+                            (p, Euclidean.distance(&node_point, &p).powi(2))
+                        }
+                        geo::Closest::Intersection(p) => (p, 0.0),
+                        geo::Closest::Indeterminate => continue,
+                    };
+
+                    let walk_dist = dist_sq.sqrt(); // Straight-line distance
+
+                    // 8. Check local assignment distance
+                    if walk_dist <= max_assignment_dist {
+                        // Calculate network distance to the current node
+                        let network_dist = node_visit.agg_seconds * speed_m_s;
+                        // Calculate total distance
+                        let current_total_dist = network_dist + walk_dist;
+
+                        // 9. Check total distance limit
+                        if current_total_dist <= max_walk_dist {
+                            // 10. Check barriers
+                            let line_to_poly = Line::new(node_point.0, closest_point_on_poly.0);
+                            if !self.intersects_barrier(&line_to_poly) {
+                                // 11. Apply Deduplication Logic Directly
+                                let dedupe_key = &data_entry.dedupe_key;
+
+                                match nearest_ids.entry(dedupe_key.clone()) {
+                                    std::collections::hash_map::Entry::Occupied(mut entry) => {
+                                        let (current_data_key, current_dist) = entry.get_mut();
+                                        // Check if the new distance is better
+                                        if current_total_dist < *current_dist {
+                                            entries_result.remove(current_data_key);
+                                            *current_data_key = data_key.clone();
+                                            *current_dist = current_total_dist; // Store distance
+                                            entries_result
+                                                .insert(data_key.clone(), current_total_dist);
+                                            // Store distance
+                                        }
+                                    }
+                                    std::collections::hash_map::Entry::Vacant(entry) => {
+                                        entry.insert((data_key.clone(), current_total_dist)); // Store distance
+                                        entries_result.insert(data_key.clone(), current_total_dist);
+                                        // Store distance
+                                    }
+                                }
                             }
                         }
-                        std::collections::hash_map::Entry::Vacant(entry) => {
-                            entry.insert((data_key.clone(), total_dist));
-                            entries.insert(data_key.clone(), total_dist);
-                        }
                     }
-                } else {
-                    entries.insert(data_key.clone(), total_dist);
                 }
+            } else {
+                eprintln!("Warning: Data R-tree is not built. Cannot perform spatial queries.");
             }
         }
-        Ok(entries)
+
+        // 12. Return the final result map (data_key -> min_distance)
+        Ok(entries_result)
     }
 
     #[pyo3(signature = (
         network_structure,
         landuses_map,
         accessibility_keys,
+        max_assignment_dist,
         distances=None,
         betas=None,
         minutes=None,
@@ -453,13 +473,14 @@ impl DataMap {
         min_threshold_wt=None,
         speed_m_s=None,
         jitter_scale=None,
-        pbar_disabled=None
+        pbar_disabled=None,
     ))]
     fn accessibility(
         &self,
         network_structure: &NetworkStructure,
         landuses_map: Py<PyAny>,
         accessibility_keys: Vec<String>,
+        max_assignment_dist: f32,
         distances: Option<Vec<u32>>,
         betas: Option<Vec<f32>>,
         minutes: Option<Vec<f32>>,
@@ -471,11 +492,10 @@ impl DataMap {
         pbar_disabled: Option<bool>,
         py: Python,
     ) -> PyResult<HashMap<String, AccessibilityResult>> {
-        let (distances, betas, seconds) =
-            pair_distances_betas_time(distances, betas, minutes, min_threshold_wt, speed_m_s)?;
         let speed_m_s = speed_m_s.unwrap_or(WALKING_SPEED);
+        let (distances, betas, seconds) =
+            pair_distances_betas_time(speed_m_s, distances, betas, minutes, min_threshold_wt)?;
         let max_walk_seconds = *seconds.iter().max().unwrap();
-        // pair_distances_betas_time ensures distances is not empty, so max() is safe.
         let max_dist = *distances
             .iter()
             .max()
@@ -544,6 +564,7 @@ impl DataMap {
                         netw_src_idx,
                         network_structure,
                         max_walk_seconds,
+                        max_assignment_dist,
                         speed_m_s,
                         jitter_scale,
                         angular,
@@ -599,6 +620,7 @@ impl DataMap {
     #[pyo3(signature = (
         network_structure,
         landuses_map,
+        max_assignment_dist,
         distances=None,
         betas=None,
         minutes=None,
@@ -617,6 +639,7 @@ impl DataMap {
         &self,
         network_structure: &NetworkStructure,
         landuses_map: Py<PyAny>,
+        max_assignment_dist: f32,
         distances: Option<Vec<u32>>,
         betas: Option<Vec<f32>>,
         minutes: Option<Vec<f32>>,
@@ -632,9 +655,10 @@ impl DataMap {
         pbar_disabled: Option<bool>,
         py: Python,
     ) -> PyResult<MixedUsesResult> {
-        let (distances, betas, seconds) =
-            pair_distances_betas_time(distances, betas, minutes, min_threshold_wt, speed_m_s)?;
         let speed_m_s = speed_m_s.unwrap_or(WALKING_SPEED);
+        let (distances, betas, seconds) =
+            pair_distances_betas_time(speed_m_s, distances, betas, minutes, min_threshold_wt)?;
+
         let max_walk_seconds = *seconds.iter().max().unwrap();
         let landuses_map = landuses_map.bind(py).downcast::<PyDict>()?;
         if landuses_map.len() != self.count() {
@@ -710,6 +734,7 @@ impl DataMap {
                         netw_src_idx,
                         network_structure,
                         max_walk_seconds,
+                        max_assignment_dist,
                         speed_m_s,
                         jitter_scale,
                         angular,
@@ -860,6 +885,7 @@ impl DataMap {
     #[pyo3(signature = (
         network_structure,
         numerical_maps,
+        max_assignment_dist,
         distances=None,
         betas=None,
         minutes=None,
@@ -874,6 +900,7 @@ impl DataMap {
         &self,
         network_structure: &NetworkStructure,
         numerical_maps: Vec<Py<PyAny>>,
+        max_assignment_dist: f32,
         distances: Option<Vec<u32>>,
         betas: Option<Vec<f32>>,
         minutes: Option<Vec<f32>>,
@@ -885,9 +912,9 @@ impl DataMap {
         pbar_disabled: Option<bool>,
         py: Python,
     ) -> PyResult<Vec<StatsResult>> {
-        let (distances, betas, seconds) =
-            pair_distances_betas_time(distances, betas, minutes, min_threshold_wt, speed_m_s)?;
         let speed_m_s = speed_m_s.unwrap_or(WALKING_SPEED);
+        let (distances, betas, seconds) =
+            pair_distances_betas_time(speed_m_s, distances, betas, minutes, min_threshold_wt)?;
         let max_walk_seconds = *seconds.iter().max().unwrap();
         let mut num_maps: Vec<HashMap<String, f32>> = Vec::with_capacity(numerical_maps.len());
         for numerical_map in numerical_maps.iter() {
@@ -955,6 +982,7 @@ impl DataMap {
                         netw_src_idx,
                         network_structure,
                         max_walk_seconds,
+                        max_assignment_dist,
                         speed_m_s,
                         jitter_scale,
                         angular,
@@ -1065,93 +1093,6 @@ impl DataMap {
             Ok(results)
         })?;
         Ok(result)
-    }
-
-    /// Calculate nearest and next-nearest node matches for a given coordinate,
-    /// considering potential barriers and searching for backups. Returns the matches.
-    #[pyo3(signature = (network_structure, coord, max_dist, max_segment_checks=None))]
-    pub fn node_matches_for_coord(
-        &self,
-        network_structure: &NetworkStructure,
-        coord: Coord,
-        max_dist: f32,
-        max_segment_checks: Option<usize>,
-    ) -> PyResult<Option<NodeMatches>> {
-        let max_segment_checks = max_segment_checks.unwrap_or(10);
-        let edge_rtree = match network_structure.edge_rtree.as_ref() {
-            Some(r) => r,
-            None => {
-                return Err(exceptions::PyRuntimeError::new_err(
-                    "Network structure edge R-tree has not been built.",
-                ))
-            }
-        };
-
-        let query_point = Point::new(coord.x, coord.y);
-        let query_coords = [coord.x, coord.y];
-
-        let mut nearest: Option<NodeMatch> = None;
-        let mut next_nearest: Option<NodeMatch> = None;
-
-        for (check_count, edge_segment) in
-            edge_rtree.nearest_neighbor_iter(&query_coords).enumerate()
-        {
-            if check_count >= max_segment_checks {
-                break;
-            }
-
-            let node_a_point = match network_structure.get_node_payload(edge_segment.a_idx) {
-                Ok(payload) => Point::new(payload.coord.x, payload.coord.y),
-                Err(_) => continue,
-            };
-            let node_b_point = match network_structure.get_node_payload(edge_segment.b_idx) {
-                Ok(payload) => Point::new(payload.coord.x, payload.coord.y),
-                Err(_) => continue,
-            };
-
-            let a_dist = Euclidean.distance(&query_point, &node_a_point);
-            let b_dist = Euclidean.distance(&query_point, &node_b_point);
-
-            let mut candidates: Vec<NodeMatch> = Vec::new();
-            let line = Line::new(node_a_point.0, node_b_point.0);
-            if Euclidean.distance(&line, &query_point) < max_dist {
-                let line_to_a = Line::new(query_point.0, node_a_point.0);
-                if !self.intersects_barrier(&line_to_a) {
-                    candidates.push(NodeMatch {
-                        idx: edge_segment.a_idx,
-                        dist: a_dist,
-                    });
-                }
-                let line_to_b = Line::new(query_point.0, node_b_point.0);
-                if !self.intersects_barrier(&line_to_b) {
-                    candidates.push(NodeMatch {
-                        idx: edge_segment.b_idx,
-                        dist: b_dist,
-                    });
-                }
-            }
-            candidates.sort_by(|a, b| {
-                a.dist
-                    .partial_cmp(&b.dist)
-                    .unwrap_or(std::cmp::Ordering::Equal)
-            });
-
-            if !candidates.is_empty() {
-                nearest = Some(candidates[0].clone());
-                if candidates.len() > 1 {
-                    // Only assign next_nearest if it is a different node
-                    if candidates[1].idx != candidates[0].idx {
-                        next_nearest = Some(candidates[1].clone());
-                    }
-                }
-                break;
-            }
-        }
-
-        Ok(Some(NodeMatches {
-            nearest,
-            next_nearest,
-        }))
     }
 }
 

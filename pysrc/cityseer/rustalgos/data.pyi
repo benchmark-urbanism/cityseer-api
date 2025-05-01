@@ -9,23 +9,20 @@ import numpy.typing as npt
 from . import Coord
 from .graph import NetworkStructure
 
-class ClassesState:
-    count: int
-    nearest: float
-
 class DataEntry:
     data_key_py: Hashable
     data_key: str
     coord: Coord
     dedupe_key_py: Hashable | None
     dedupe_key: str | None
-    node_matches: NodeMatches | None
+    geometry_wkt: str
 
     def __init__(
         self,
         data_key_py: Hashable,
         x: float,
         y: float,
+        geometry_wkt: str,
         dedupe_key_py: Hashable | None = None,
     ) -> None: ...
 
@@ -52,25 +49,15 @@ class StatsResult:
     max: dict[int, npt.ArrayLike]
     min: dict[int, npt.ArrayLike]
 
-class NodeMatch:
-    idx: int
-    dist: float
-
-class NodeMatches:
-    nearest: NodeMatch | None
-    next_nearest: NodeMatch | None
-
 class DataMap:
     entries: dict[str, DataEntry]
-    assigned_to_network: bool
     def __init__(self, barriers_wkt: list[str] | None = None) -> None: ...
     def progress_init(self) -> None: ...
     def progress(self) -> int: ...
     def insert(
         self,
         data_key_py: Hashable,
-        x: float,
-        y: float,
+        geometry_wkt: str,
         dedupe_key_py: Hashable | None = None,
     ) -> None: ...
     def entry_keys(self) -> list[str]: ...
@@ -78,18 +65,13 @@ class DataMap:
     def get_data_coord(self, data_key: str) -> Coord | None: ...
     def count(self) -> int: ...
     def is_empty(self) -> bool: ...
-    def assign_to_network(
-        self,
-        network_structure: NetworkStructure,
-        max_dist: float,
-        max_segment_checks: int | None = None,
-        pbar_disabled: bool | None = None,
-    ) -> None: ...
+    def build_data_rtree(self) -> None: ...
     def aggregate_to_src_idx(
         self,
         netw_src_idx: int,
         network_structure: NetworkStructure,
         max_walk_seconds: int,
+        max_assignment_dist: float,
         speed_m_s: float,
         jitter_scale: float | None = None,
         angular: bool | None = None,
@@ -99,6 +81,7 @@ class DataMap:
         network_structure: NetworkStructure,
         landuses_map: dict[Hashable, str],
         accessibility_keys: list[str],
+        max_assignment_dist: float,
         distances: list[int] | None = None,
         betas: list[float] | None = None,
         minutes: list[float] | None = None,
@@ -113,6 +96,7 @@ class DataMap:
         self,
         network_structure: NetworkStructure,
         landuses_map: dict[Hashable, str],
+        max_assignment_dist: float,
         distances: list[int] | None = None,
         betas: list[float] | None = None,
         minutes: list[float] | None = None,
@@ -131,6 +115,7 @@ class DataMap:
         self,
         network_structure: NetworkStructure,
         numerical_maps: list[dict[Hashable, float]],
+        max_assignment_dist: float,
         distances: list[int] | None = None,
         betas: list[float] | None = None,
         minutes: list[float] | None = None,
@@ -141,10 +126,3 @@ class DataMap:
         jitter_scale: float | None = None,
         pbar_disabled: bool | None = None,
     ) -> list[StatsResult]: ...
-    def node_matches_for_coord(
-        self,
-        network_structure: NetworkStructure,
-        coord: Coord,
-        max_dist: float,
-        max_segment_checks: int | None = None,
-    ) -> NodeMatches | None: ...

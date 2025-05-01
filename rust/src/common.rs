@@ -194,12 +194,11 @@ pub fn betas_from_distances(
 }
 
 #[pyfunction]
-#[pyo3(signature = (seconds, speed_m_s=None))]
-pub fn distances_from_seconds(seconds: Vec<u32>, speed_m_s: Option<f32>) -> PyResult<Vec<u32>> {
+#[pyo3(signature = (seconds, speed_m_s))]
+pub fn distances_from_seconds(seconds: Vec<u32>, speed_m_s: f32) -> PyResult<Vec<u32>> {
     if seconds.is_empty() {
         return Err(PyValueError::new_err("Input 'seconds' cannot be empty."));
     }
-    let speed_m_s = speed_m_s.unwrap_or(WALKING_SPEED);
     if speed_m_s <= 0.0 {
         return Err(PyValueError::new_err("Speed must be positive."));
     }
@@ -231,12 +230,11 @@ pub fn distances_from_seconds(seconds: Vec<u32>, speed_m_s: Option<f32>) -> PyRe
 }
 
 #[pyfunction]
-#[pyo3(signature = (distances, speed_m_s=None))]
-pub fn seconds_from_distances(distances: Vec<u32>, speed_m_s: Option<f32>) -> PyResult<Vec<u32>> {
+#[pyo3(signature = (distances, speed_m_s))]
+pub fn seconds_from_distances(distances: Vec<u32>, speed_m_s: f32) -> PyResult<Vec<u32>> {
     if distances.is_empty() {
         return Err(PyValueError::new_err("Input 'distances' cannot be empty."));
     }
-    let speed_m_s = speed_m_s.unwrap_or(WALKING_SPEED);
     if speed_m_s <= 0.0 {
         return Err(PyValueError::new_err("Speed must be positive."));
     }
@@ -268,30 +266,29 @@ pub fn seconds_from_distances(distances: Vec<u32>, speed_m_s: Option<f32>) -> Py
 }
 
 #[pyfunction]
-#[pyo3(signature = (distances=None, betas=None, minutes=None, min_threshold_wt=None, speed_m_s=None))]
+#[pyo3(signature = (speed_m_s, distances=None, betas=None, minutes=None, min_threshold_wt=None))]
 pub fn pair_distances_betas_time(
+    speed_m_s: f32,
     distances: Option<Vec<u32>>,
     betas: Option<Vec<f32>>,
     minutes: Option<Vec<f32>>,
     min_threshold_wt: Option<f32>,
-    speed_m_s: Option<f32>,
 ) -> PyResult<(Vec<u32>, Vec<f32>, Vec<u32>)> {
     let min_threshold_wt = min_threshold_wt.unwrap_or(MIN_THRESH_WT);
-    let speed_m_s = speed_m_s.unwrap_or(WALKING_SPEED);
     match (distances, betas, minutes) {
         (Some(distances), None, None) => {
             let betas = betas_from_distances(distances.clone(), Some(min_threshold_wt))?;
-            let seconds = seconds_from_distances(distances.clone(), Some(speed_m_s))?;
+            let seconds = seconds_from_distances(distances.clone(), speed_m_s)?;
             Ok((distances, betas, seconds))
         }
         (None, Some(betas), None) => {
             let distances = distances_from_betas(betas.clone(), Some(min_threshold_wt))?;
-            let seconds = seconds_from_distances(distances.clone(), Some(speed_m_s))?;
+            let seconds = seconds_from_distances(distances.clone(), speed_m_s)?;
             Ok((distances, betas, seconds))
         }
         (None, None, Some(minutes)) => {
             let seconds: Vec<u32> = minutes.iter().map(|&x| (x * 60.0).round() as u32).collect();
-            let distances = distances_from_seconds(seconds.clone(), Some(speed_m_s))?;
+            let distances = distances_from_seconds(seconds.clone(), speed_m_s)?;
             let betas = betas_from_distances(distances.clone(), Some(min_threshold_wt))?;
             Ok((distances, betas, seconds))
         }

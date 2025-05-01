@@ -4,7 +4,7 @@ from __future__ import annotations
 import os
 import timeit
 
-from cityseer import rustalgos
+from cityseer import rustalgos, config
 from cityseer.tools import graphs, io
 
 
@@ -70,7 +70,7 @@ def test_local_centrality_time(primal_graph):
     # load the test graph
     _nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(primal_graph)
     # needs a large enough beta so that distance thresholds aren't encountered
-    distances, _betas, _seconds = rustalgos.pair_distances_betas_time(distances=[5000])
+    distances, _betas, _seconds = rustalgos.pair_distances_betas_time(config.SPEED_M_S, distances=[5000])
 
     speed_m_s = 1.3333
     max_seconds = int(5000 / speed_m_s)

@@ -168,13 +168,13 @@ class NetworkStructure:
 
     def prep_edge_rtree(self) -> None: ...
     def dijkstra_tree_shortest(
-        self, src_idx: int, max_seconds: float, speed_m_s: float, jitter_scale: float | None = None
+        self, src_idx: int, max_seconds: int, speed_m_s: float, jitter_scale: float | None = None
     ) -> tuple[list[int], list[NodeVisit]]: ...
     def dijkstra_tree_simplest(
-        self, src_idx: int, max_seconds: float, speed_m_s: float, jitter_scale: float | None = None
+        self, src_idx: int, max_seconds: int, speed_m_s: float, jitter_scale: float | None = None
     ) -> tuple[list[int], list[NodeVisit]]: ...
     def dijkstra_tree_segment(
-        self, src_idx: int, max_seconds: float, speed_m_s: float, jitter_scale: float | None = None
+        self, src_idx: int, max_seconds: int, speed_m_s: float, jitter_scale: float | None = None
     ) -> tuple[list[int], list[int], list[NodeVisit], list[EdgeVisit]]: ...
     def local_node_centrality_shortest(
         self,
