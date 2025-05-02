@@ -161,7 +161,9 @@ impl EdgeVisit {
 }
 
 // Define the type alias for clarity (optional)
-type EdgeRtreeItem = GeomWithData<Rectangle<[f64; 2]>, (usize, usize, usize)>; // (start_node_idx, end_node_idx, edge_idx)
+// (start_node_idx, end_node_idx, start_node_coord, end_node_coord, edge_geom)
+type EdgeRtreeItem =
+    GeomWithData<Rectangle<[f64; 2]>, (usize, usize, Coord<f64>, Coord<f64>, LineString<f64>)>;
 
 /// Utility function to compute the bearing (in degrees) between two coordinates.
 fn measure_bearing(a: Coord<f64>, b: Coord<f64>) -> f64 {
@@ -449,20 +451,8 @@ impl NetworkStructure {
 
     /// Builds the R-tree for edge geometries using their bounding boxes.
     ///
-    /// This method iterates through all edges in the graph, calculates the
-    /// bounding box for each edge's geometry, and inserts it into an R-tree
-    /// spatial index. The R-tree allows for efficient spatial queries on edges.
-    /// Edges that fail to produce a bounding box (e.g., due to empty geometry)
-    /// are skipped, and warnings are printed to stderr.
-    ///
-    /// The R-tree is stored in the `edge_rtree` field of the `NetworkStructure`,
-    /// replacing any previously existing R-tree.
-    ///
-    /// # Returns
-    ///
-    /// Returns `Ok(())` after attempting to build the R-tree. The `edge_rtree`
-    /// field will be `Some` if at least one valid edge geometry was found,
-    /// and `None` otherwise.
+    /// Stores (start_node_idx, end_node_idx, start_node_coord, end_node_coord, edge_geom)
+    /// in the R-tree data payload.
     pub fn build_edge_rtree(&mut self) -> PyResult<()> {
         let edge_count = self.graph.edge_count();
         if edge_count == 0 {
@@ -480,6 +470,30 @@ impl NetworkStructure {
             let end_node_idx = edge_ref.target().index();
             let edge_data_idx = edge_payload.edge_idx; // Use the unique edge index for logging
 
+            // Fetch node payloads ONCE here to get coordinates
+            let start_node_payload = match self.get_node_payload(start_node_idx) {
+                Ok(p) => p,
+                Err(e) => {
+                    eprintln!(
+                        "Error fetching start node payload for edge {}: {}. Skipping edge.",
+                        edge_data_idx, e
+                    );
+                    skipped_edges += 1;
+                    continue;
+                }
+            };
+            let end_node_payload = match self.get_node_payload(end_node_idx) {
+                Ok(p) => p,
+                Err(e) => {
+                    eprintln!(
+                        "Error fetching end node payload for edge {}: {}. Skipping edge.",
+                        edge_data_idx, e
+                    );
+                    skipped_edges += 1;
+                    continue;
+                }
+            };
+
             if let Some(rect) = edge_payload.geom.bounding_rect() {
                 let min_coord = rect.min();
                 let max_coord = rect.max();
@@ -488,8 +502,14 @@ impl NetworkStructure {
                     Rectangle::from_corners([min_coord.x, min_coord.y], [max_coord.x, max_coord.y]);
                 rtree_items.push(GeomWithData::new(
                     rect_geom,
-                    // Store tuple as (start_node_idx, end_node_idx, edge_idx)
-                    (start_node_idx, end_node_idx, edge_data_idx),
+                    // Store tuple including coordinates
+                    (
+                        start_node_idx,
+                        end_node_idx,
+                        start_node_payload.coord,  // Store start coord
+                        end_node_payload.coord,    // Store end coord
+                        edge_payload.geom.clone(), // Store edge geom
+                    ),
                 ));
             } else {
                 eprintln!(

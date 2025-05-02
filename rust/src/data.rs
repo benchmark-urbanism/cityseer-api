@@ -9,7 +9,7 @@ use geo::algorithm::closest_point::ClosestPoint;
 use geo::algorithm::intersects::Intersects;
 use geo::algorithm::line_intersection::{line_intersection, LineIntersection};
 use geo::algorithm::Euclidean;
-use geo::geometry::Geometry;
+use geo::geometry::{Coord, Geometry};
 use geo::{Centroid, Distance, Line, Point};
 use numpy::PyArray1;
 use pyo3::exceptions;
@@ -169,8 +169,6 @@ pub struct DataMap {
     pub progress: Arc<AtomicUsize>,
     barrier_geoms: Option<Vec<Geometry<f64>>>,
     barrier_rtree: Option<RTree<GeomWithData<Rectangle<[f64; 2]>, usize>>>,
-    data_rtree_items: Vec<GeomWithData<Rectangle<[f64; 2]>, String>>,
-    data_rtree: Option<RTree<GeomWithData<Rectangle<[f64; 2]>, String>>>,
     #[pyo3(get)]
     node_data_map: HashMap<usize, Vec<(String, f64)>>,
 }
@@ -227,8 +225,6 @@ impl DataMap {
             progress: Arc::new(AtomicUsize::new(0)),
             barrier_geoms: barrier_geoms,
             barrier_rtree: barriers_rtree,
-            data_rtree_items: Vec::new(),
-            data_rtree: None,
             node_data_map: HashMap::new(),
         };
         Ok(map)
@@ -254,29 +250,8 @@ impl DataMap {
         let entry = DataEntry::new(py, data_key_py, geom_wkt, dedupe_key_py)?;
         let data_key = entry.data_key.clone(); // Clone data_key for use below
 
-        // Get bounding box from the stored geom
-        if let Some(rect) = entry.geom.bounding_rect() {
-            let envelope =
-                Rectangle::from_corners([rect.min().x, rect.min().y], [rect.max().x, rect.max().y]);
-            // Store the data_key (String) with the envelope for R-tree build
-            self.data_rtree_items
-                .push(GeomWithData::new(envelope, data_key.clone()));
-
-            // Invalidate the R-tree as new data is pending
-            self.data_rtree = None;
-        } else {
-            // This might happen for Point geometries, which is okay.
-            // We might only want to warn if it's unexpected (e.g., for LineString/Polygon).
-            // For now, just proceed without adding to R-tree items if no bounding box.
-            eprintln!(
-                "Info: Geometry for key '{}' has no bounding box. Not added to R-tree.",
-                data_key
-            );
-        }
-
         // Insert the DataEntry into the main map
         self.entries.insert(data_key, entry); // Use the cloned data_key
-        self.data_rtree = None; // Invalidate the R-tree on data change
 
         Ok(())
     }
@@ -297,23 +272,6 @@ impl DataMap {
         self.entries.is_empty()
     }
 
-    /// Builds the R-tree for polygon geometries. Should be called after insertions.
-    fn build_data_rtree(&mut self) -> PyResult<()> {
-        if !self.data_rtree_items.is_empty() {
-            let items = std::mem::take(&mut self.data_rtree_items);
-            self.data_rtree = Some(RTree::bulk_load(items));
-            eprintln!(
-                "Data R-tree built with {} items.", // Renamed message slightly
-                self.data_rtree.as_ref().map_or(0, |r| r.size())
-            );
-        } else {
-            eprintln!("Warning: No geometries with bounding boxes found to build R-tree."); // Adjusted message
-            self.data_rtree = None;
-        }
-        self.data_rtree_items.clear();
-        Ok(())
-    }
-
     /// Assigns data entries to network nodes based on proximity to edges. (Parallelized)
     /// Iterates through data entries in parallel, finds the nearest 6 edges for each,
     /// and assigns the data to the nodes of those edges if within distance
@@ -328,37 +286,22 @@ impl DataMap {
         max_assignment_dist: f64,
         py: Python,
     ) -> PyResult<()> {
-        // Ensure both edge R-tree and data R-tree are built
+        // Ensure edge R-tree is built
         if network_structure.edge_rtree.is_none() {
             return Err(exceptions::PyRuntimeError::new_err(
                 "NetworkStructure's edge R-tree must be built before calling assign_data_to_network.",
             ));
         }
-        if self.data_rtree.is_none() {
-            self.build_data_rtree()?;
-        }
-
+        eprint!("Info: Assigning data to network nodes.");
         let edge_rtree = network_structure
             .edge_rtree
             .as_ref()
             .ok_or_else(|| exceptions::PyRuntimeError::new_err("Edge R-tree not built"))?;
-        let data_rtree = self
-            .data_rtree
-            .as_ref()
-            .ok_or_else(|| exceptions::PyRuntimeError::new_err("Data R-tree not built"))?;
 
         let assignments: Vec<(usize, String, f64)> = py.allow_threads(|| {
-            data_rtree
-                .iter() // Get the sequential iterator first
-                .par_bridge() // Bridge it to a parallel iterator
-                .flat_map(|geom_item| {
-                    let data_key = &geom_item.data;
-                    let data_entry = match self.entries.get(data_key) {
-                        Some(entry) => entry,
-                        None => {
-                            return Vec::new();
-                        }
-                    };
+            self.entries
+                .par_iter()
+                .flat_map(|(data_key, data_entry)| {
                     let data_geom = &data_entry.geom;
 
                     let representative_point_geom = match data_geom.centroid() {
@@ -385,54 +328,49 @@ impl DataMap {
                     )> = Vec::new();
 
                     // Closure to check node validity and calculate distance
-                    let check_node_validity = |node_idx: usize| -> Option<(usize, f64)> {
-                        if let Ok(node_payload) = network_structure.get_node_payload(node_idx) {
-                            let node_point = Point::new(node_payload.coord.x, node_payload.coord.y);
-                            let closest_point_on_data = match data_geom {
-                                Geometry::Point(p) => *p,
-                                _ => match data_geom.closest_point(&node_point) {
-                                    geo::Closest::Intersection(p) => p,
-                                    geo::Closest::SinglePoint(p) => p,
-                                    geo::Closest::Indeterminate => representative_point_geom,
-                                },
-                            };
-                            let assignment_line = Line::new(closest_point_on_data.0, node_point.0);
-                            if !self.intersects_barrier(&assignment_line)
-                                && !self.intersects_edge(&assignment_line, network_structure)
-                            {
-                                let node_dist =
-                                    Euclidean.distance(closest_point_on_data, node_point);
-                                return Some((node_idx, node_dist));
-                            }
+                    // Takes node_idx AND node_coord directly to avoid lookup
+                    let check_node_validity = |node_idx: usize,
+                                               node_coord: Coord<f64>|
+                     -> Option<(usize, f64)> {
+                        let node_point = Point::new(node_coord.x, node_coord.y);
+                        let closest_point_on_data = match data_geom {
+                            Geometry::Point(p) => *p,
+                            _ => match data_geom.closest_point(&node_point) {
+                                geo::Closest::Intersection(p) => p,
+                                geo::Closest::SinglePoint(p) => p,
+                                geo::Closest::Indeterminate => representative_point_geom,
+                            },
+                        };
+                        let assignment_line = Line::new(closest_point_on_data.0, node_point.0);
+                        if !self.intersects_barrier(&assignment_line)
+                            && !self.intersects_edge(&assignment_line, network_structure)
+                        {
+                            let node_dist = Euclidean.distance(closest_point_on_data, node_point);
+                            return Some((node_idx, node_dist));
                         }
-                        None // Return None if payload fetch fails or intersection checks fail
+                        None // Return None if intersection checks fail
                     };
 
                     for edge_geom_entry in &candidate_edges_rtree {
+                        // Data is now (start_idx, end_idx, start_coord, end_coord, edge_geom)
                         let start_node_idx = edge_geom_entry.data.0;
                         let end_node_idx = edge_geom_entry.data.1;
-                        let edge_idx = edge_geom_entry.data.2;
-
-                        let edge_payload = match network_structure.get_edge_payload(
-                            start_node_idx,
-                            end_node_idx,
-                            edge_idx,
-                        ) {
-                            Ok(payload) => payload,
-                            Err(_) => continue,
-                        };
+                        let start_node_coord = edge_geom_entry.data.2; // Get start coord
+                        let end_node_coord = edge_geom_entry.data.3; // Get end coord
+                        let edge_geom = &edge_geom_entry.data.4; // Get geometry (index is now 4)
 
                         // Calculate true distance between data geom and edge geom
-                        let true_edge_dist = Euclidean.distance(data_geom, &edge_payload.geom);
+                        let true_edge_dist = Euclidean.distance(data_geom, edge_geom);
 
                         // Skip candidate if edge itself is too far
                         if true_edge_dist > max_assignment_dist {
                             continue;
                         }
 
-                        // Check validity for start and end nodes using the closure
-                        let valid_start_node = check_node_validity(start_node_idx);
-                        let valid_end_node = check_node_validity(end_node_idx);
+                        // Check validity for start and end nodes using the closure with coords
+                        let valid_start_node =
+                            check_node_validity(start_node_idx, start_node_coord);
+                        let valid_end_node = check_node_validity(end_node_idx, end_node_coord);
 
                         // Store result for this edge if at least one node was valid
                         if valid_start_node.is_some() || valid_end_node.is_some() {
@@ -524,13 +462,6 @@ impl DataMap {
         jitter_scale: Option<f32>,
         angular: Option<bool>,
     ) -> PyResult<HashMap<String, f32>> {
-        // Ensure data R-tree is built
-        if self.data_rtree.is_none() && !self.data_rtree_items.is_empty() {
-            return Err(exceptions::PyRuntimeError::new_err(
-                "Data R-tree has not been built or is outdated. Call build_data_rtree() after inserting all data.",
-            ));
-        }
-
         let jitter_scale = jitter_scale.unwrap_or(0.0);
         let angular = angular.unwrap_or(false);
         let mut entries_result: HashMap<String, f32> = HashMap::new();
@@ -1285,21 +1216,11 @@ impl DataMap {
             let potential_edges = edge_rtree.locate_in_envelope_intersecting(&line_aabb);
 
             for edge_geom_entry in potential_edges {
-                let start_node_idx = edge_geom_entry.data.0;
-                let end_node_idx = edge_geom_entry.data.1;
-                let edge_idx = edge_geom_entry.data.2;
-
-                let edge_payload = match network_structure.get_edge_payload(
-                    start_node_idx,
-                    end_node_idx,
-                    edge_idx,
-                ) {
-                    Ok(payload) => payload,
-                    Err(_) => continue,
-                };
+                // Data is now (start_idx, end_idx, start_coord, end_coord, edge_geom)
+                let edge_geom = &edge_geom_entry.data.4; // Get geometry (index is now 4)
 
                 // Iterate through the segments of the LineString
-                for edge_segment in edge_payload.geom.lines() {
+                for edge_segment in edge_geom.lines() {
                     if let Some(intersection) = line_intersection(*line, edge_segment) {
                         if let LineIntersection::SinglePoint {
                             is_proper: true, ..
