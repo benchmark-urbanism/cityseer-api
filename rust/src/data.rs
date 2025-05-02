@@ -5,8 +5,8 @@ use crate::diversity;
 use crate::graph::NetworkStructure;
 use core::f32;
 use geo::algorithm::bounding_rect::BoundingRect;
-use geo::algorithm::closest_point::ClosestPoint;
 use geo::algorithm::intersects::Intersects;
+use geo::algorithm::line_intersection::{line_intersection, LineIntersection};
 use geo::algorithm::Euclidean;
 use geo::geometry::Geometry;
 use geo::{Distance, Line, Point};
@@ -169,6 +169,7 @@ pub struct DataMap {
     barrier_rtree: Option<RTree<GeomWithData<Rectangle<[f32; 2]>, usize>>>,
     data_rtree_items: Vec<GeomWithData<Rectangle<[f32; 2]>, String>>,
     data_rtree: Option<RTree<GeomWithData<Rectangle<[f32; 2]>, String>>>,
+    node_data_map: HashMap<usize, Vec<(String, f32)>>,
 }
 
 #[pymethods]
@@ -225,6 +226,7 @@ impl DataMap {
             barrier_rtree: barriers_rtree,
             data_rtree_items: Vec::new(),
             data_rtree: None,
+            node_data_map: HashMap::new(),
         };
         Ok(map)
     }
@@ -271,6 +273,7 @@ impl DataMap {
 
         // Insert the DataEntry into the main map
         self.entries.insert(data_key, entry); // Use the cloned data_key
+        self.data_rtree = None; // Invalidate the R-tree on data change
 
         Ok(())
     }
@@ -308,11 +311,96 @@ impl DataMap {
         Ok(())
     }
 
+    /// Edge-centric assignment: for each edge, find all polygons within assignment distance and assign to both end nodes.
+    #[pyo3(signature = (
+        network_structure,
+        max_assignment_dist
+    ))]
+    pub fn assign_data_to_network(
+        &mut self,
+        network_structure: &mut NetworkStructure,
+        max_assignment_dist: f32,
+    ) -> PyResult<()> {
+        // Ensure both edge R-tree and data R-tree are built
+        if network_structure.edge_rtree.is_none() {
+            network_structure.build_edge_rtree()?; // Automatically build if needed
+        }
+        if self.data_rtree.is_none() {
+            self.build_data_rtree()?; // Automatically build if needed
+        }
+        let edge_rtree = network_structure.edge_rtree.as_ref().unwrap();
+        let data_rtree = self.data_rtree.as_ref().unwrap();
+        self.node_data_map.clear();
+        for edge in edge_rtree.iter() {
+            // Build an AABB for the edge, expanded by max_assignment_dist
+            let aabb = rstar::AABB::from_corners(
+                [
+                    edge.a[0].min(edge.b[0]) - max_assignment_dist,
+                    edge.a[1].min(edge.b[1]) - max_assignment_dist,
+                ],
+                [
+                    edge.a[0].max(edge.b[0]) + max_assignment_dist,
+                    edge.a[1].max(edge.b[1]) + max_assignment_dist,
+                ],
+            );
+            // TODO order bt distance
+            for geom_item in data_rtree.locate_in_envelope_intersecting(&aabb) {
+                let data_key = &geom_item.data;
+                if let Some(data_entry) = self.entries.get(data_key) {
+                    let polygon_geom = &data_entry.geometry;
+                    let edge_line = geo::Line::new(
+                        geo::Coord {
+                            x: edge.a[0],
+                            y: edge.a[1],
+                        },
+                        geo::Coord {
+                            x: edge.b[0],
+                            y: edge.b[1],
+                        },
+                    );
+                    // Check edge-to-geometry distance
+                    let edge_dist = Euclidean.distance(polygon_geom, &edge_line);
+                    if edge_dist > max_assignment_dist {
+                        continue;
+                    }
+                    // For each node at edge ends, check node-to-geometry distance
+                    for &node_idx in &[edge.a_idx, edge.b_idx] {
+                        let node_payload = match network_structure.get_node_payload(node_idx) {
+                            Ok(p) => p,
+                            Err(_) => continue,
+                        };
+                        let node_point =
+                            geo::Point::new(node_payload.coord.x, node_payload.coord.y);
+                        let node_dist = Euclidean.distance(polygon_geom, &node_point);
+                        let line = geo::Line::new(
+                            geo::Coord {
+                                x: edge.a[0],
+                                y: edge.a[1],
+                            },
+                            geo::Coord {
+                                x: edge.b[0],
+                                y: edge.b[1],
+                            },
+                        );
+                        if !self.intersects_barrier(&line)
+                            && !self.intersects_edge(&line, &network_structure)
+                        {
+                            self.node_data_map
+                                .entry(node_idx)
+                                .or_default()
+                                .push((data_key.clone(), node_dist));
+                        }
+                    }
+                }
+            }
+        }
+        Ok(())
+    }
+
     #[pyo3(signature = (
         netw_src_idx,
         network_structure,
         max_walk_seconds,
-        max_assignment_dist,
         speed_m_s,
         jitter_scale=None,
         angular=None
@@ -322,12 +410,11 @@ impl DataMap {
         netw_src_idx: usize,
         network_structure: &NetworkStructure,
         max_walk_seconds: u32,
-        max_assignment_dist: f32,
         speed_m_s: f32,
         jitter_scale: Option<f32>,
         angular: Option<bool>,
     ) -> PyResult<HashMap<String, f32>> {
-        // 1. Ensure data R-tree is built
+        // Ensure data R-tree is built
         if self.data_rtree.is_none() && !self.data_rtree_items.is_empty() {
             return Err(exceptions::PyRuntimeError::new_err(
                 "Data R-tree has not been built or is outdated. Call build_data_rtree() after inserting all data.",
@@ -342,7 +429,7 @@ impl DataMap {
         // Calculate max distance based on time and speed
         let max_walk_dist = max_walk_seconds as f32 * speed_m_s;
 
-        // 2. Perform Dijkstra search
+        // Perform Dijkstra search
         let (_, tree_map) = if !angular {
             network_structure.dijkstra_tree_shortest(
                 netw_src_idx,
@@ -359,103 +446,57 @@ impl DataMap {
             )
         };
 
-        // 3. Iterate through reachable nodes
+        // Iterate through reachable nodes
         for (node_idx, node_visit) in tree_map.iter().enumerate() {
             if node_visit.agg_seconds >= max_walk_seconds as f32 {
                 continue;
             }
-            let node_payload = match network_structure.get_node_payload(node_idx) {
-                Ok(p) => p,
-                Err(_) => continue,
-            };
-            let node_point = Point::new(node_payload.coord.x, node_payload.coord.y);
 
-            // 4. Define local bounding box
-            let local_search_aabb = AABB::from_corners(
-                [
-                    node_payload.coord.x - max_assignment_dist,
-                    node_payload.coord.y - max_assignment_dist,
-                ],
-                [
-                    node_payload.coord.x + max_assignment_dist,
-                    node_payload.coord.y + max_assignment_dist,
-                ],
-            );
+            // Use node_data_map for candidate_keys and dists
+            let candidate_pairs = self
+                .node_data_map
+                .get(&node_idx)
+                .cloned()
+                .unwrap_or_default();
 
-            // 5. Query local R-tree
-            if let Some(data_rtree) = self.data_rtree.as_ref() {
-                // R-tree contains data_key (String)
-                let local_candidate_keys =
-                    data_rtree.locate_in_envelope_intersecting(&local_search_aabb);
+            // Iterate through locally relevant data keys
+            for (data_key, data_dist) in candidate_pairs {
+                let data_entry = match self.entries.get(&data_key) {
+                    Some(entry) => entry,
+                    None => continue,
+                };
 
-                // 6. Iterate through locally relevant data keys
-                for geom_item in local_candidate_keys {
-                    let data_key = &geom_item.data; // This is now String
+                // Calculate network distance to the current node
+                let network_dist = node_visit.agg_seconds * speed_m_s;
+                // Calculate total distance
+                let current_total_dist = network_dist + data_dist;
 
-                    // Get the DataEntry using the data_key
-                    let data_entry = match self.entries.get(data_key) {
-                        Some(entry) => entry,
-                        None => continue,
-                    };
+                // Check total distance limit
+                if current_total_dist <= max_walk_dist {
+                    // Apply Deduplication Logic Directly
+                    let dedupe_key = &data_entry.dedupe_key;
 
-                    // Access the pre-parsed geometry directly from DataEntry
-                    let polygon_geom = &data_entry.geometry;
-
-                    // 7. Calculate distance/time from current node to polygon
-                    let closest_point_result = polygon_geom.closest_point(&node_point);
-                    let (closest_point_on_poly, dist_sq) = match closest_point_result {
-                        geo::Closest::SinglePoint(p) => {
-                            (p, Euclidean.distance(&node_point, &p).powi(2))
-                        }
-                        geo::Closest::Intersection(p) => (p, 0.0),
-                        geo::Closest::Indeterminate => continue,
-                    };
-
-                    let walk_dist = dist_sq.sqrt(); // Straight-line distance
-
-                    // 8. Check local assignment distance
-                    if walk_dist <= max_assignment_dist {
-                        // Calculate network distance to the current node
-                        let network_dist = node_visit.agg_seconds * speed_m_s;
-                        // Calculate total distance
-                        let current_total_dist = network_dist + walk_dist;
-
-                        // 9. Check total distance limit
-                        if current_total_dist <= max_walk_dist {
-                            // 10. Check barriers
-                            let line_to_poly = Line::new(node_point.0, closest_point_on_poly.0);
-                            if !self.intersects_barrier(&line_to_poly) {
-                                // 11. Apply Deduplication Logic Directly
-                                let dedupe_key = &data_entry.dedupe_key;
-
-                                match nearest_ids.entry(dedupe_key.clone()) {
-                                    std::collections::hash_map::Entry::Occupied(mut entry) => {
-                                        let (current_data_key, current_dist) = entry.get_mut();
-                                        // Check if the new distance is better
-                                        if current_total_dist < *current_dist {
-                                            entries_result.remove(current_data_key);
-                                            *current_data_key = data_key.clone();
-                                            *current_dist = current_total_dist; // Store distance
-                                            entries_result
-                                                .insert(data_key.clone(), current_total_dist);
-                                            // Store distance
-                                        }
-                                    }
-                                    std::collections::hash_map::Entry::Vacant(entry) => {
-                                        entry.insert((data_key.clone(), current_total_dist)); // Store distance
-                                        entries_result.insert(data_key.clone(), current_total_dist);
-                                        // Store distance
-                                    }
-                                }
+                    match nearest_ids.entry(dedupe_key.clone()) {
+                        std::collections::hash_map::Entry::Occupied(mut entry) => {
+                            let (current_data_key, current_dist) = entry.get_mut();
+                            // Check if the new distance is better
+                            if current_total_dist < *current_dist {
+                                entries_result.remove(current_data_key);
+                                *current_data_key = data_key.clone();
+                                *current_dist = current_total_dist; // Store distance
+                                entries_result.insert(data_key.clone(), current_total_dist);
+                                // Store distance
                             }
+                        }
+                        std::collections::hash_map::Entry::Vacant(entry) => {
+                            entry.insert((data_key.clone(), current_total_dist)); // Store distance
+                            entries_result.insert(data_key.clone(), current_total_dist);
+                            // Store distance
                         }
                     }
                 }
-            } else {
-                eprintln!("Warning: Data R-tree is not built. Cannot perform spatial queries.");
             }
         }
-
         // 12. Return the final result map (data_key -> min_distance)
         Ok(entries_result)
     }
@@ -464,7 +505,6 @@ impl DataMap {
         network_structure,
         landuses_map,
         accessibility_keys,
-        max_assignment_dist,
         distances=None,
         betas=None,
         minutes=None,
@@ -480,7 +520,6 @@ impl DataMap {
         network_structure: &NetworkStructure,
         landuses_map: Py<PyAny>,
         accessibility_keys: Vec<String>,
-        max_assignment_dist: f32,
         distances: Option<Vec<u32>>,
         betas: Option<Vec<f32>>,
         minutes: Option<Vec<f32>>,
@@ -564,7 +603,6 @@ impl DataMap {
                         netw_src_idx,
                         network_structure,
                         max_walk_seconds,
-                        max_assignment_dist,
                         speed_m_s,
                         jitter_scale,
                         angular,
@@ -620,7 +658,6 @@ impl DataMap {
     #[pyo3(signature = (
         network_structure,
         landuses_map,
-        max_assignment_dist,
         distances=None,
         betas=None,
         minutes=None,
@@ -639,7 +676,6 @@ impl DataMap {
         &self,
         network_structure: &NetworkStructure,
         landuses_map: Py<PyAny>,
-        max_assignment_dist: f32,
         distances: Option<Vec<u32>>,
         betas: Option<Vec<f32>>,
         minutes: Option<Vec<f32>>,
@@ -734,7 +770,6 @@ impl DataMap {
                         netw_src_idx,
                         network_structure,
                         max_walk_seconds,
-                        max_assignment_dist,
                         speed_m_s,
                         jitter_scale,
                         angular,
@@ -885,7 +920,6 @@ impl DataMap {
     #[pyo3(signature = (
         network_structure,
         numerical_maps,
-        max_assignment_dist,
         distances=None,
         betas=None,
         minutes=None,
@@ -900,7 +934,6 @@ impl DataMap {
         &self,
         network_structure: &NetworkStructure,
         numerical_maps: Vec<Py<PyAny>>,
-        max_assignment_dist: f32,
         distances: Option<Vec<u32>>,
         betas: Option<Vec<f32>>,
         minutes: Option<Vec<f32>>,
@@ -959,6 +992,7 @@ impl DataMap {
                 sum_wt.push(MetricResult::new(distances.clone(), node_count, 0.0));
                 count.push(MetricResult::new(distances.clone(), node_count, 0.0));
                 count_wt.push(MetricResult::new(distances.clone(), node_count, 0.0));
+                // Initialize max/min with NaN to correctly handle the first value
                 max.push(MetricResult::new(distances.clone(), node_count, f32::NAN));
                 min.push(MetricResult::new(distances.clone(), node_count, f32::NAN));
                 sum_sq.push(MetricResult::new(distances.clone(), node_count, 0.0));
@@ -982,7 +1016,6 @@ impl DataMap {
                         netw_src_idx,
                         network_structure,
                         max_walk_seconds,
-                        max_assignment_dist,
                         speed_m_s,
                         jitter_scale,
                         angular,
@@ -991,7 +1024,7 @@ impl DataMap {
                         for (map_idx, num_map) in num_maps.iter().enumerate() {
                             if let Some(&num) = num_map.get(data_key) {
                                 if num.is_nan() {
-                                    continue;
+                                    continue; // Skip NaN values
                                 }
                                 for (i, (&d, (&b, &mcw))) in distances
                                     .iter()
@@ -1001,6 +1034,7 @@ impl DataMap {
                                     if *data_dist <= d as f32 {
                                         let wt = clipped_beta_wt(b, mcw, *data_dist).unwrap_or(0.0);
                                         let num_wt = num * wt;
+                                        // --- Accumulate sums and counts ---
                                         sum[map_idx].metric[i][netw_src_idx]
                                             .fetch_add(num, Ordering::Relaxed);
                                         sum_wt[map_idx].metric[i][netw_src_idx]
@@ -1013,18 +1047,13 @@ impl DataMap {
                                             .fetch_add(num * num, Ordering::Relaxed);
                                         sum_sq_wt[map_idx].metric[i][netw_src_idx]
                                             .fetch_add(wt * num * num, Ordering::Relaxed);
-                                        let current_max = max[map_idx].metric[i][netw_src_idx]
-                                            .load(Ordering::Relaxed);
-                                        if current_max.is_nan() || num > current_max {
-                                            max[map_idx].metric[i][netw_src_idx]
-                                                .store(num, Ordering::Relaxed);
-                                        };
-                                        let current_min = min[map_idx].metric[i][netw_src_idx]
-                                            .load(Ordering::Relaxed);
-                                        if current_min.is_nan() || num < current_min {
-                                            min[map_idx].metric[i][netw_src_idx]
-                                                .store(num, Ordering::Relaxed);
-                                        };
+                                        // --- Atomically update max and min ---
+                                        // Assumes MetricResult uses atomic_float::AtomicF32 internally
+                                        // which provides fetch_max/fetch_min that handle NaN correctly.
+                                        max[map_idx].metric[i][netw_src_idx]
+                                            .fetch_max(num, Ordering::Relaxed);
+                                        min[map_idx].metric[i][netw_src_idx]
+                                            .fetch_min(num, Ordering::Relaxed);
                                     }
                                 }
                             }
@@ -1032,6 +1061,7 @@ impl DataMap {
                     }
                     Ok(())
                 })?;
+            // --- Post-processing (Mean, Variance) ---
             let mut results = Vec::with_capacity(num_maps.len());
             for map_idx in 0..num_maps.len() {
                 let mean_res = MetricResult::new(distances.clone(), node_count, f32::NAN);
@@ -1050,6 +1080,8 @@ impl DataMap {
                             sum_sq[map_idx].metric[i][node_idx].load(Ordering::Relaxed);
                         let sum_sq_wt_val =
                             sum_sq_wt[map_idx].metric[i][node_idx].load(Ordering::Relaxed);
+
+                        // Calculate Mean
                         let mean_val = if count_val > 0.0 {
                             sum_val / count_val
                         } else {
@@ -1060,16 +1092,23 @@ impl DataMap {
                         } else {
                             f32::NAN
                         };
+
+                        // Calculate Variance (using Welford's online algorithm principle implicitly)
+                        // Variance = E[X^2] - (E[X])^2
                         let variance_val = if count_val > 0.0 {
-                            ((sum_sq_val / count_val) - mean_val.powi(2)).max(0.0)
+                            (sum_sq_val / count_val - mean_val.powi(2)).max(0.0)
+                        // Ensure non-negative due to potential float inaccuracies
                         } else {
                             f32::NAN
                         };
                         let variance_wt_val = if count_wt_val > 0.0 {
-                            ((sum_sq_wt_val / count_wt_val) - mean_wt_val.powi(2)).max(0.0)
+                            (sum_sq_wt_val / count_wt_val - mean_wt_val.powi(2)).max(0.0)
+                        // Ensure non-negative
                         } else {
                             f32::NAN
                         };
+
+                        // Store results (using relaxed ordering as this is post-parallel processing)
                         mean_res.metric[i][node_idx].store(mean_val, Ordering::Relaxed);
                         mean_wt_res.metric[i][node_idx].store(mean_wt_val, Ordering::Relaxed);
                         variance_res.metric[i][node_idx].store(variance_val, Ordering::Relaxed);
@@ -1077,6 +1116,7 @@ impl DataMap {
                             .store(variance_wt_val, Ordering::Relaxed);
                     }
                 }
+                // --- Assemble final result struct ---
                 results.push(StatsResult {
                     sum: sum[map_idx].load(),
                     sum_wt: sum_wt[map_idx].load(),
@@ -1086,7 +1126,7 @@ impl DataMap {
                     count_wt: count_wt[map_idx].load(),
                     variance: variance_res.load(),
                     variance_wt: variance_wt_res.load(),
-                    max: max[map_idx].load(),
+                    max: max[map_idx].load(), // Load final max/min after parallel updates
                     min: min[map_idx].load(),
                 });
             }
@@ -1124,5 +1164,42 @@ impl DataMap {
             }
         }
         false // No intersection found
+    }
+
+    /// Check if a given line intersects any network edge segment using the edge R-tree from NetworkStructure.
+    /// Only returns true if the line properly crosses an edge (not just touching endpoints).
+    #[inline]
+    pub fn intersects_edge(&self, line: &Line<f32>, network_structure: &NetworkStructure) -> bool {
+        if let Some(edge_rtree) = network_structure.edge_rtree.as_ref() {
+            let line_aabb = AABB::from_corners(
+                [line.start.x.min(line.end.x), line.start.y.min(line.end.y)],
+                [line.start.x.max(line.end.x), line.start.y.max(line.end.y)],
+            );
+            let potential_edges = edge_rtree.locate_in_envelope_intersecting(&line_aabb);
+            for edge in potential_edges {
+                let edge_line = Line::new(
+                    geo::Coord {
+                        x: edge.a[0],
+                        y: edge.a[1],
+                    },
+                    geo::Coord {
+                        x: edge.b[0],
+                        y: edge.b[1],
+                    },
+                );
+                // Use line_intersection to check for proper crossings
+                if let Some(intersection) = line_intersection(*line, edge_line) {
+                    if let LineIntersection::SinglePoint {
+                        is_proper: true, ..
+                    } = intersection
+                    {
+                        // Found a proper crossing intersection
+                        return true;
+                    }
+                    // Ignore collinear overlaps and endpoint touches (is_proper: false)
+                }
+            }
+        }
+        false // No proper crossing intersection found
     }
 }

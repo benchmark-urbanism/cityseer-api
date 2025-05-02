@@ -6,25 +6,7 @@ from collections.abc import Hashable
 
 import numpy.typing as npt
 
-from . import Coord
 from .graph import NetworkStructure
-
-class DataEntry:
-    data_key_py: Hashable
-    data_key: str
-    coord: Coord
-    dedupe_key_py: Hashable | None
-    dedupe_key: str | None
-    geometry_wkt: str
-
-    def __init__(
-        self,
-        data_key_py: Hashable,
-        x: float,
-        y: float,
-        geometry_wkt: str,
-        dedupe_key_py: Hashable | None = None,
-    ) -> None: ...
 
 class AccessibilityResult:
     weighted: dict[int, npt.ArrayLike]
@@ -49,6 +31,20 @@ class StatsResult:
     max: dict[int, npt.ArrayLike]
     min: dict[int, npt.ArrayLike]
 
+class DataEntry:
+    data_key_py: Hashable
+    data_key: str
+    dedupe_key_py: Hashable
+    dedupe_key: str
+    geometry_wkt: str
+
+    def __init__(
+        self,
+        data_key_py: Hashable,
+        geometry_wkt: str,
+        dedupe_key_py: Hashable | None = None,
+    ) -> None: ...
+
 class DataMap:
     entries: dict[str, DataEntry]
     def __init__(self, barriers_wkt: list[str] | None = None) -> None: ...
@@ -62,16 +58,19 @@ class DataMap:
     ) -> None: ...
     def entry_keys(self) -> list[str]: ...
     def get_entry(self, data_key: str) -> DataEntry | None: ...
-    def get_data_coord(self, data_key: str) -> Coord | None: ...
     def count(self) -> int: ...
     def is_empty(self) -> bool: ...
     def build_data_rtree(self) -> None: ...
+    def assign_data_to_network(
+        self,
+        network_structure: NetworkStructure,
+        max_assignment_dist: float,
+    ) -> None: ...
     def aggregate_to_src_idx(
         self,
         netw_src_idx: int,
         network_structure: NetworkStructure,
         max_walk_seconds: int,
-        max_assignment_dist: float,
         speed_m_s: float,
         jitter_scale: float | None = None,
         angular: bool | None = None,
@@ -81,7 +80,6 @@ class DataMap:
         network_structure: NetworkStructure,
         landuses_map: dict[Hashable, str],
         accessibility_keys: list[str],
-        max_assignment_dist: float,
         distances: list[int] | None = None,
         betas: list[float] | None = None,
         minutes: list[float] | None = None,
@@ -96,7 +94,6 @@ class DataMap:
         self,
         network_structure: NetworkStructure,
         landuses_map: dict[Hashable, str],
-        max_assignment_dist: float,
         distances: list[int] | None = None,
         betas: list[float] | None = None,
         minutes: list[float] | None = None,
@@ -115,7 +112,6 @@ class DataMap:
         self,
         network_structure: NetworkStructure,
         numerical_maps: list[dict[Hashable, float]],
-        max_assignment_dist: float,
         distances: list[int] | None = None,
         betas: list[float] | None = None,
         minutes: list[float] | None = None,

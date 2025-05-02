@@ -17,6 +17,8 @@ SPEED_M_S = config.SPEED_M_S
 
 def build_data_map(
     data_gdf: gpd.GeoDataFrame,
+    network_structure: rustalgos.graph.NetworkStructure,
+    max_netw_assign_dist: int = 400,
     data_id_col: str | None = None,
     barriers_gdf: gpd.GeoDataFrame | None = None,
 ) -> rustalgos.data.DataMap:
@@ -66,10 +68,10 @@ def build_data_map(
         data_id = None if data_id_col is None else data_row[data_id_col]  # type: ignore
         data_map.insert(
             data_key,
-            data_row[data_gdf.active_geometry_name].wkt,  # type: ignore
+            data_row[data_gdf.active_geometry_name].simplify(20).wkt,  # type: ignore
             data_id,  # type: ignore
         )
-    data_map.build_data_rtree()
+    data_map.assign_data_to_network(network_structure, max_netw_assign_dist)
 
     return data_map
 
@@ -85,14 +87,13 @@ def compute_accessibilities(
     betas: list[float] | None = None,
     minutes: list[float] | None = None,
     data_id_col: str | None = None,
-    decompose_dist: int = 25,
     barriers_gdf: gpd.GeoDataFrame | None = None,
     angular: bool = False,
     spatial_tolerance: int = 0,
     min_threshold_wt: float = MIN_THRESH_WT,
     speed_m_s: float = SPEED_M_S,
     jitter_scale: float = 0.0,
-) -> gpd.GeoDataFrame:
+) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
     r"""
     Compute land-use accessibilities for the specified land-use classification keys over the street network.
 
@@ -141,8 +142,6 @@ def compute_accessibilities(
         of information. For example, where a single greenspace is represented by many entrances as datapoints, only the
         nearest entrance (from a respective location) will be considered (during aggregations) when the points share a
         datapoint identifier.
-    decompose_dist: int
-        The distance in metres at which to decompose any lines or polygons in `data_gdf` into points.
     barriers_gdf: GeoDataFrame
         A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe)
         representing barriers. These barriers will be considered during the assignment of data points to the network.
@@ -211,7 +210,13 @@ def compute_accessibilities(
     """
     logger.info(f"Computing land-use accessibility for: {', '.join(accessibility_keys)}")
     # assign to network
-    data_map = build_data_map(data_gdf, data_id_col, barriers_gdf=barriers_gdf)
+    data_map = build_data_map(
+        data_gdf,
+        network_structure,
+        max_netw_assign_dist,
+        data_id_col,
+        barriers_gdf=barriers_gdf,
+    )
     # extract landuses
     if landuse_column_label not in data_gdf.columns:
         raise ValueError("The specified landuse column name can't be found in the GeoDataFrame.")
@@ -222,7 +227,6 @@ def compute_accessibilities(
         network_structure=network_structure,
         landuses_map=landuses_map,  # type: ignore
         accessibility_keys=accessibility_keys,
-        max_assignment_dist=max_netw_assign_dist,
         distances=distances,
         betas=betas,
         minutes=minutes,
@@ -253,7 +257,7 @@ def compute_accessibilities(
                 ac_dist_data_key = config.prep_gdf_key(f"{acc_key}_nearest_max", dist_key, angular)
                 nodes_gdf[ac_dist_data_key] = result[acc_key].distance[dist_key]  # type: ignore
 
-    return nodes_gdf
+    return nodes_gdf, data_gdf
 
 
 def compute_mixed_uses(
@@ -270,7 +274,6 @@ def compute_mixed_uses(
     betas: list[float] | None = None,
     minutes: list[float] | None = None,
     data_id_col: str | None = None,
-    decompose_dist: int = 25,
     barriers_gdf: gpd.GeoDataFrame | None = None,
     angular: bool = False,
     spatial_tolerance: int = 0,
@@ -342,8 +345,6 @@ def compute_mixed_uses(
         of information. For example, where a single greenspace is represented by many entrances as datapoints, only the
         nearest entrance (from a respective location) will be considered (during aggregations) when the points share a
         datapoint identifier.
-    decompose_dist: int
-        The distance in metres at which to decompose any lines or polygons in `data_gdf` into points.
     barriers_gdf: GeoDataFrame
         A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe)
         representing barriers. These barriers will be considered during the assignment of data points to the network.
@@ -440,16 +441,18 @@ def compute_mixed_uses(
 
     """
     logger.info("Computing mixed-use measures.")
-    # convert to points
-    data_gdf_pnts = decompose_gdf(data_gdf, distance=decompose_dist)
     # assign to network
     data_map = build_data_map(
-        data_gdf_pnts, network_structure, max_netw_assign_dist, data_id_col, barriers_gdf=barriers_gdf
+        data_gdf,
+        network_structure,
+        max_netw_assign_dist,
+        data_id_col,
+        barriers_gdf=barriers_gdf,
     )
     # extract landuses
-    if landuse_column_label not in data_gdf_pnts.columns:
+    if landuse_column_label not in data_gdf.columns:
         raise ValueError("The specified landuse column name can't be found in the GeoDataFrame.")
-    landuses_map = dict(data_gdf_pnts[landuse_column_label])  # type: ignore
+    landuses_map = dict(data_gdf[landuse_column_label])  # type: ignore
     partial_func = partial(
         data_map.mixed_uses,
         network_structure=network_structure,
@@ -493,7 +496,7 @@ def compute_mixed_uses(
             gini_data_key = config.prep_gdf_key("gini", dist_key, angular)
             nodes_gdf[gini_data_key] = result.gini[dist_key]  # type: ignore
 
-    return nodes_gdf, data_gdf_pnts
+    return nodes_gdf, data_gdf
 
 
 def compute_stats(
@@ -506,7 +509,6 @@ def compute_stats(
     betas: list[float] | None = None,
     minutes: list[float] | None = None,
     data_id_col: str | None = None,
-    decompose_dist: int = 25,
     barriers_gdf: gpd.GeoDataFrame | None = None,
     angular: bool = False,
     spatial_tolerance: int = 0,
@@ -559,8 +561,6 @@ def compute_stats(
         of information. For example, where a single greenspace is represented by many entrances as datapoints, only the
         nearest entrance (from a respective location) will be considered (during aggregations) when the points share a
         datapoint identifier.
-    decompose_dist: int
-        The distance in metres at which to decompose any lines or polygons in `data_gdf` into points.
     barriers_gdf: GeoDataFrame
         A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe)
         representing barriers. These barriers will be considered during the assignment of data points to the network.
@@ -634,18 +634,20 @@ def compute_stats(
 
     """
     logger.info("Computing statistics.")
-    # convert to points
-    data_gdf_pnts = decompose_gdf(data_gdf, distance=decompose_dist)
     # assign to network
     data_map = build_data_map(
-        data_gdf_pnts, network_structure, max_netw_assign_dist, data_id_col, barriers_gdf=barriers_gdf
+        data_gdf,
+        network_structure,
+        max_netw_assign_dist,
+        data_id_col,
+        barriers_gdf=barriers_gdf,
     )
     # extract stats columns
     stats_maps = []
     for stats_column_label in stats_column_labels:
-        if stats_column_label not in data_gdf_pnts.columns:
+        if stats_column_label not in data_gdf.columns:
             raise ValueError("The specified numerical stats column name can't be found in the GeoDataFrame.")
-        stats_maps.append(dict(data_gdf_pnts[stats_column_label]))  # type: ignore
+        stats_maps.append(dict(data_gdf[stats_column_label]))  # type: ignore
     # stats
     partial_func = partial(
         data_map.stats,
@@ -694,4 +696,4 @@ def compute_stats(
             k = config.prep_gdf_key(f"{stats_column_label}_min", dist_key, angular=angular)
             nodes_gdf[k] = result[idx].min[dist_key]  # type: ignore
 
-    return nodes_gdf, data_gdf_pnts
+    return nodes_gdf, data_gdf

@@ -189,7 +189,6 @@ pub struct NetworkStructure {
     pub graph: DiGraph<NodePayload, EdgePayload>,
     pub progress: Arc<AtomicUsize>,
     pub edge_rtree: Option<RTree<EdgeSegment>>,
-    pub edge_rtree_built: bool,
 }
 
 #[pymethods]
@@ -200,7 +199,6 @@ impl NetworkStructure {
             graph: DiGraph::<NodePayload, EdgePayload>::default(),
             progress: Arc::new(AtomicUsize::new(0)),
             edge_rtree: None,
-            edge_rtree_built: false,
         }
     }
 
@@ -221,6 +219,7 @@ impl NetworkStructure {
             live,
             weight,
         });
+        self.edge_rtree = None; // Invalidate the edge R-tree
         new_node_idx.index()
     }
 
@@ -321,6 +320,7 @@ impl NetworkStructure {
                 seconds: seconds.unwrap_or(f32::NAN),
             },
         );
+        self.edge_rtree = None; // Invalidate the edge R-tree
         new_edge_idx.index()
     }
 
@@ -392,10 +392,7 @@ impl NetworkStructure {
         Ok(true)
     }
 
-    pub fn prep_edge_rtree(&mut self) -> PyResult<()> {
-        if self.edge_rtree_built {
-            return Ok(());
-        }
+    pub fn build_edge_rtree(&mut self) -> PyResult<()> {
         let mut segments = Vec::with_capacity(self.graph.edge_count());
         for (a_idx, b_idx, _) in self.edge_references() {
             let a_coord = self.get_node_payload(a_idx)?.coord;
@@ -408,7 +405,6 @@ impl NetworkStructure {
             });
         }
         self.edge_rtree = Some(RTree::bulk_load(segments));
-        self.edge_rtree_built = true;
         Ok(())
     }
 }
