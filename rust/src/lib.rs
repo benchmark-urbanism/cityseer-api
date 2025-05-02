@@ -15,7 +15,6 @@ mod viewshed;
 #[pymodule]
 fn rustalgos(py_module: &Bound<'_, PyModule>) -> PyResult<()> {
     // Register classes and functions
-    py_module.add_class::<common::Coord>()?;
     py_module.add_function(wrap_pyfunction!(common::check_numerical_data, py_module)?)?;
     py_module.add_function(wrap_pyfunction!(common::distances_from_betas, py_module)?)?;
     py_module.add_function(wrap_pyfunction!(common::betas_from_distances, py_module)?)?;

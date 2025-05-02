@@ -2,17 +2,17 @@
 
 from __future__ import annotations
 
-from . import Coord
 from .centrality import CentralitySegmentResult, CentralityShortestResult, CentralitySimplestResult
 
 __doc__: str
 
 class NodePayload:
     node_key: str
-    coord: Coord
     live: bool
     weight: float
     def validate(self) -> bool: ...
+    @property
+    def coord(self) -> tuple[float, float]: ...
 
 class EdgePayload:
     start_nd_key: str
@@ -24,6 +24,7 @@ class EdgePayload:
     in_bearing: float
     out_bearing: float
     seconds: float
+    geom_wkt: str
     def validate(self) -> bool: ...
 
 class NodeVisit:
@@ -109,11 +110,8 @@ class NetworkStructure:
         edge_idx: int,
         start_nd_key: str,
         end_nd_key: str,
-        length: float | None = None,
-        angle_sum: float | None = None,
+        geom_wkt: str,
         imp_factor: float | None = None,
-        in_bearing: float | None = None,
-        out_bearing: float | None = None,
         seconds: float | None = None,
     ) -> int:
         """
@@ -134,26 +132,13 @@ class NetworkStructure:
             Node key for the starting node.
         end_node_key: str
             Node key for the ending node.
-        length: float
-            The `length` edge attribute should always correspond to the edge lengths in metres. This is used when
-            calculating the distances traversed by the shortest-path algorithm so that the respective $d_{max}$ maximum
-            distance thresholds can be enforced: these distance thresholds are based on the actual network-paths
-            traversed by the algorithm as opposed to crow-flies distances.
-        angle_sum: float
-            The `angle_sum` edge bearing should correspond to the total angular change along the length of
-            the segment. This is used when calculating angular impedances for simplest-path measures. The
-            `in_bearing` and `out_bearing` attributes respectively represent the starting and
-            ending bearing of the segment. This is also used when calculating simplest-path measures when the algorithm
-            steps from one edge to another.
+        geom_wkt: str
+            The geometry of the edge in WKT format.
         imp_factor: float
             The `imp_factor` edge attribute represents an impedance multiplier for increasing or diminishing
             the impedance of an edge. This is ordinarily set to 1, therefore not impacting calculations. By setting
             this to greater or less than 1, the edge will have a correspondingly higher or lower impedance. This can
             be used to take considerations such as street gradients into account, but should be used with caution.
-        in_bearing: float
-            The edge's inwards angular bearing.
-        out_bearing: float
-            The edge's outwards angular bearing.
         seconds: int
             The edge's traversal time in seconds.
 
@@ -166,7 +151,7 @@ class NetworkStructure:
         """Validate Network Structure."""
         ...
 
-    def prep_edge_rtree(self) -> None: ...
+    def build_edge_rtree(self) -> None: ...
     def dijkstra_tree_shortest(
         self, src_idx: int, max_seconds: int, speed_m_s: float, jitter_scale: float | None = None
     ) -> tuple[list[int], list[NodeVisit]]: ...

@@ -1,11 +1,16 @@
-use crate::common::Coord;
+use geo::algorithm::Euclidean;
+use geo::geometry::{Coord, LineString};
+use geo::BoundingRect;
+use geo::Length;
 use petgraph::graph::{DiGraph, NodeIndex};
 use petgraph::prelude::*;
 use pyo3::exceptions;
 use pyo3::prelude::*;
-use rstar::{PointDistance, RTree, RTreeObject, AABB};
+use rstar::primitives::{GeomWithData, Rectangle};
+use rstar::RTree;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
+use wkt::TryFromWkt;
 
 /// Payload for a network node.
 #[pyclass]
@@ -13,8 +18,7 @@ use std::sync::Arc;
 pub struct NodePayload {
     #[pyo3(get)]
     pub node_key: String,
-    #[pyo3(get)]
-    pub coord: Coord,
+    pub coord: Coord<f64>,
     #[pyo3(get)]
     pub live: bool,
     #[pyo3(get)]
@@ -25,7 +29,12 @@ pub struct NodePayload {
 impl NodePayload {
     #[inline]
     pub fn validate(&self) -> bool {
-        self.coord.validate()
+        true
+    }
+
+    #[getter]
+    pub fn coord(&self) -> (f64, f64) {
+        (self.coord.x, self.coord.y)
     }
 }
 
@@ -51,6 +60,9 @@ pub struct EdgePayload {
     pub out_bearing: f32,
     #[pyo3(get)]
     pub seconds: f32,
+    #[pyo3(get)]
+    pub geom_wkt: String,
+    pub geom: LineString<f64>,
 }
 
 #[pymethods]
@@ -148,38 +160,46 @@ impl EdgeVisit {
     }
 }
 
-/// Edge segment for spatial queries.
-#[derive(Clone)]
-pub struct EdgeSegment {
-    pub a_idx: usize,
-    pub b_idx: usize,
-    pub a: [f32; 2],
-    pub b: [f32; 2],
+// Define the type alias for clarity (optional)
+type EdgeRtreeItem = GeomWithData<Rectangle<[f64; 2]>, (usize, usize, usize)>; // (start_node_idx, end_node_idx, edge_idx)
+
+/// Utility function to compute the bearing (in degrees) between two coordinates.
+fn measure_bearing(a: Coord<f64>, b: Coord<f64>) -> f64 {
+    // Python reverses (y, x) order, so we do the same here.
+    let (y1, x1) = (a.y, a.x);
+    let (y2, x2) = (b.y, b.x);
+    (y2 - y1).atan2(x2 - x1).to_degrees()
 }
 
-impl RTreeObject for EdgeSegment {
-    type Envelope = AABB<[f32; 2]>;
-    fn envelope(&self) -> Self::Envelope {
-        AABB::from_corners(self.a, self.b)
-    }
+/// Measures angle between three coordinate pairs (in degrees).
+/// Equivalent to the Python `measure_coords_angle`.
+fn measure_coords_angle(a: Coord<f64>, b: Coord<f64>, c: Coord<f64>) -> f64 {
+    let a1 = measure_bearing(b, a);
+    let a2 = measure_bearing(c, b);
+    ((a2 - a1 + 180.0).rem_euclid(360.0) - 180.0).abs()
 }
 
-impl PointDistance for EdgeSegment {
-    fn distance_2(&self, point: &[f32; 2]) -> f32 {
-        // Project point onto segment ab
-        let ab = [self.b[0] - self.a[0], self.b[1] - self.a[1]];
-        let ap = [point[0] - self.a[0], point[1] - self.a[1]];
-        let ab_len2 = ab[0] * ab[0] + ab[1] * ab[1];
-        let mut t = 0.0;
-        if ab_len2 > 0.0 {
-            t = (ap[0] * ab[0] + ap[1] * ab[1]) / ab_len2;
-            t = t.clamp(0.0, 1.0);
-        }
-        let proj = [self.a[0] + ab[0] * t, self.a[1] + ab[1] * t];
-        let dx = point[0] - proj[0];
-        let dy = point[1] - proj[1];
-        dx * dx + dy * dy
+/// Measures angle between two segment bearings per indices.
+/// Equivalent to the Python `_measure_linestring_angle`.
+fn measure_linestring_angle(
+    coords: &[Coord<f64>],
+    idx_a: usize,
+    idx_b: usize,
+    idx_c: usize,
+) -> f64 {
+    let coord_1 = coords[idx_a];
+    let coord_2 = coords[idx_b];
+    let coord_3 = coords[idx_c];
+    measure_coords_angle(coord_1, coord_2, coord_3)
+}
+
+// Calculate cumulative angle along the LineString geometry
+fn measure_cumulative_angle(coords: &[Coord<f64>]) -> f64 {
+    let mut angle_sum = 0.0;
+    for c_idx in 0..(coords.len().saturating_sub(2)) {
+        angle_sum += measure_linestring_angle(coords, c_idx, c_idx + 1, c_idx + 2);
     }
+    angle_sum
 }
 
 /// Main network structure.
@@ -188,7 +208,7 @@ impl PointDistance for EdgeSegment {
 pub struct NetworkStructure {
     pub graph: DiGraph<NodePayload, EdgePayload>,
     pub progress: Arc<AtomicUsize>,
-    pub edge_rtree: Option<RTree<EdgeSegment>>,
+    pub edge_rtree: Option<RTree<EdgeRtreeItem>>,
 }
 
 #[pymethods]
@@ -212,14 +232,14 @@ impl NetworkStructure {
         self.progress.load(Ordering::Relaxed)
     }
 
-    pub fn add_node(&mut self, node_key: String, x: f32, y: f32, live: bool, weight: f32) -> usize {
+    pub fn add_node(&mut self, node_key: String, x: f64, y: f64, live: bool, weight: f32) -> usize {
         let new_node_idx = self.graph.add_node(NodePayload {
             node_key,
-            coord: Coord::new(x, y),
+            coord: Coord { x, y },
             live,
             weight,
         });
-        self.edge_rtree = None; // Invalidate the edge R-tree
+        self.edge_rtree = None;
         new_node_idx.index()
     }
 
@@ -253,7 +273,7 @@ impl NetworkStructure {
     }
 
     #[getter]
-    pub fn node_xs(&self) -> Vec<f32> {
+    pub fn node_xs(&self) -> Vec<f64> {
         self.graph
             .node_indices()
             .map(|node| self.graph[node].coord.x)
@@ -261,7 +281,7 @@ impl NetworkStructure {
     }
 
     #[getter]
-    pub fn node_ys(&self) -> Vec<f32> {
+    pub fn node_ys(&self) -> Vec<f64> {
         self.graph
             .node_indices()
             .map(|node| self.graph[node].coord.y)
@@ -269,10 +289,10 @@ impl NetworkStructure {
     }
 
     #[getter]
-    pub fn node_xys(&self) -> Vec<(f32, f32)> {
+    pub fn node_xys(&self) -> Vec<(f64, f64)> {
         self.graph
             .node_indices()
-            .map(|node| self.graph[node].coord.xy())
+            .map(|node| (self.graph[node].coord.x, self.graph[node].coord.y))
             .collect()
     }
 
@@ -296,15 +316,48 @@ impl NetworkStructure {
         edge_idx: usize,
         start_nd_key: String,
         end_nd_key: String,
-        length: Option<f32>,
-        angle_sum: Option<f32>,
+        geom_wkt: String,
         imp_factor: Option<f32>,
-        in_bearing: Option<f32>,
-        out_bearing: Option<f32>,
         seconds: Option<f32>,
-    ) -> usize {
+    ) -> PyResult<usize> {
         let node_idx_a = NodeIndex::new(start_nd_idx);
         let node_idx_b = NodeIndex::new(end_nd_idx);
+
+        let geom = match LineString::try_from_wkt_str(&geom_wkt) {
+            Ok(geom) => geom,
+            Err(e) => {
+                return Err(exceptions::PyValueError::new_err(format!(
+                    "Failed to parse WKT for edge between nodes '{}'-'{}' (edge_idx {}): {}",
+                    start_nd_key, end_nd_key, edge_idx, e
+                )));
+            }
+        };
+
+        // Calculate bearings from geometry
+        let coords_vec: Vec<Coord> = geom.coords().cloned().collect();
+        let coords: &[Coord] = &coords_vec;
+        let num_coords = coords.len();
+
+        let (in_bearing, out_bearing) = if num_coords >= 2 {
+            let coord_1 = coords[0];
+            let coord_2 = coords[1];
+            let calculated_in_bearing = measure_bearing(coord_1, coord_2);
+
+            let coord_n_minus_1 = coords[num_coords - 2];
+            let coord_n = coords[num_coords - 1];
+            let calculated_out_bearing = measure_bearing(coord_n_minus_1, coord_n);
+
+            (calculated_in_bearing, calculated_out_bearing)
+        } else {
+            (f64::NAN, f64::NAN)
+        };
+
+        let angle_sum = if num_coords >= 3 {
+            measure_cumulative_angle(coords)
+        } else {
+            0.0
+        } as f32;
+
         let new_edge_idx = self.graph.add_edge(
             node_idx_a,
             node_idx_b,
@@ -312,16 +365,18 @@ impl NetworkStructure {
                 start_nd_key,
                 end_nd_key,
                 edge_idx,
-                length: length.unwrap_or(1.0),
-                angle_sum: angle_sum.unwrap_or(1.0),
-                imp_factor: imp_factor.unwrap_or(1.0),
-                in_bearing: in_bearing.unwrap_or(f32::NAN),
-                out_bearing: out_bearing.unwrap_or(f32::NAN),
-                seconds: seconds.unwrap_or(f32::NAN),
+                length: Euclidean.length(&geom) as f32, // Calculate length using geo crate
+                angle_sum,                              // Use calculated value
+                imp_factor: imp_factor.unwrap_or(1.0),  // Keep existing default logic
+                in_bearing: in_bearing as f32,          // Use calculated value
+                out_bearing: out_bearing as f32,        // Use calculated value
+                seconds: seconds.unwrap_or(f32::NAN),   // Keep existing default logic
+                geom_wkt,                               // Store original WKT
+                geom,                                   // Store parsed geometry
             },
         );
-        self.edge_rtree = None; // Invalidate the edge R-tree
-        new_edge_idx.index()
+        self.edge_rtree = None; // Invalidate R-tree
+        Ok(new_edge_idx.index())
     }
 
     pub fn edge_references(&self) -> Vec<(usize, usize, usize)> {
@@ -392,128 +447,74 @@ impl NetworkStructure {
         Ok(true)
     }
 
+    /// Builds the R-tree for edge geometries using their bounding boxes.
+    ///
+    /// This method iterates through all edges in the graph, calculates the
+    /// bounding box for each edge's geometry, and inserts it into an R-tree
+    /// spatial index. The R-tree allows for efficient spatial queries on edges.
+    /// Edges that fail to produce a bounding box (e.g., due to empty geometry)
+    /// are skipped, and warnings are printed to stderr.
+    ///
+    /// The R-tree is stored in the `edge_rtree` field of the `NetworkStructure`,
+    /// replacing any previously existing R-tree.
+    ///
+    /// # Returns
+    ///
+    /// Returns `Ok(())` after attempting to build the R-tree. The `edge_rtree`
+    /// field will be `Some` if at least one valid edge geometry was found,
+    /// and `None` otherwise.
     pub fn build_edge_rtree(&mut self) -> PyResult<()> {
-        let mut segments = Vec::with_capacity(self.graph.edge_count());
-        for (a_idx, b_idx, _) in self.edge_references() {
-            let a_coord = self.get_node_payload(a_idx)?.coord;
-            let b_coord = self.get_node_payload(b_idx)?.coord;
-            segments.push(EdgeSegment {
-                a_idx,
-                b_idx,
-                a: [a_coord.x, a_coord.y],
-                b: [b_coord.x, b_coord.y],
-            });
+        let edge_count = self.graph.edge_count();
+        if edge_count == 0 {
+            eprintln!("Warning: Cannot build R-tree, graph has no edges.");
+            self.edge_rtree = None; // Ensure it's None if graph is empty
+            return Ok(());
         }
-        self.edge_rtree = Some(RTree::bulk_load(segments));
+
+        let mut rtree_items: Vec<EdgeRtreeItem> = Vec::with_capacity(edge_count);
+        let mut skipped_edges = 0;
+
+        for edge_ref in self.graph.edge_references() {
+            let edge_payload = edge_ref.weight();
+            let start_node_idx = edge_ref.source().index();
+            let end_node_idx = edge_ref.target().index();
+            let edge_data_idx = edge_payload.edge_idx; // Use the unique edge index for logging
+
+            if let Some(rect) = edge_payload.geom.bounding_rect() {
+                let min_coord = rect.min();
+                let max_coord = rect.max();
+
+                let rect_geom =
+                    Rectangle::from_corners([min_coord.x, min_coord.y], [max_coord.x, max_coord.y]);
+                rtree_items.push(GeomWithData::new(
+                    rect_geom,
+                    // Store tuple as (start_node_idx, end_node_idx, edge_idx)
+                    (start_node_idx, end_node_idx, edge_data_idx),
+                ));
+            } else {
+                eprintln!(
+                    "Warning: Skipping edge with no bounding box between nodes {} and {} (edge_idx {}). Geometry might be empty.",
+                    start_node_idx, end_node_idx, edge_data_idx
+                );
+                skipped_edges += 1;
+            }
+        }
+
+        if rtree_items.is_empty() {
+            eprintln!(
+                "Warning: No valid, non-degenerate edge geometries found to build R-tree. {} edges were skipped.",
+                skipped_edges
+            );
+            self.edge_rtree = None;
+        } else {
+            self.edge_rtree = Some(RTree::bulk_load(rtree_items));
+            let built_count = self.edge_rtree.as_ref().map_or(0, |r| r.size());
+            eprintln!(
+                "Edge R-tree built successfully with {} items. {} edges were skipped.",
+                built_count, skipped_edges
+            );
+        }
+
         Ok(())
     }
 }
-
-/*
-#[cfg(test)]
-mod tests {
-    use super::*;
-    #[test]
-    fn test_network_structure() {
-        pyo3::prepare_freethreaded_python();
-        //     3
-        //    / \
-        //   /   \
-        //  /  a  \
-        // 1-------2
-        //  \  |  /
-        //   \ |b/ c
-        //    \|/
-        //     0
-        // a = 100m = 2 * 50m
-        // b = 86.60254m
-        // c = 100m
-        // all inner angles = 60º
-        let mut ns = NetworkStructure::new();
-        let nd_a = ns.add_node("a".to_string(), 0.0, -86.60254, true, 1.0);
-        let nd_b = ns.add_node("b".to_string(), -50.0, 0.0, true, 1.0);
-        let nd_c = ns.add_node("c".to_string(), 50.0, 0.0, true, 1.0);
-        let nd_d = ns.add_node("d".to_string(), 0.0, 86.60254, true, 1.0);
-        let e_a = ns.add_edge(
-            nd_a,
-            nd_b,
-            0,
-            "a".to_string(),
-            "b".to_string(),
-            100.0,
-            0.0,
-            1.0,
-            120.0,
-            120.0,
-        );
-        let e_b = ns.add_edge(
-            nd_a,
-            nd_c,
-            0,
-            "a".to_string(),
-            "c".to_string(),
-            100.0,
-            0.0,
-            1.0,
-            60.0,
-            60.0,
-        );
-        let e_c = ns.add_edge(
-            nd_b,
-            nd_c,
-            0,
-            "b".to_string(),
-            "c".to_string(),
-            100.0,
-            0.0,
-            1.0,
-            0.0,
-            0.0,
-        );
-        let e_d = ns.add_edge(
-            nd_b,
-            nd_d,
-            0,
-            "b".to_string(),
-            "d".to_string(),
-            100.0,
-            0.0,
-            1.0,
-            60.0,
-            60.0,
-        );
-        let e_e = ns.add_edge(
-            nd_c,
-            nd_d,
-            0,
-            "c".to_string(),
-            "d".to_string(),
-            100.0,
-            0.0,
-            1.0,
-            120.0,
-            120.0,
-        );
-        let (visited_nodes, tree_map) = ns.dijkstra_tree_shortest(0, 5, None);
-        // let close_result = ns.local_node_centrality_shortest(
-        //     Some(vec![50]),
-        //     None,
-        //     Some(true),
-        //     Some(false),
-        //     None,
-        //     None,
-        //     None,
-        // );
-        // let betw_result_seg = ns.local_segment_centrality(
-        //     Some(vec![50]),
-        //     None,
-        //     Some(false),
-        //     Some(true),
-        //     None,
-        //     None,
-        //     None,
-        // );
-        // assert_eq!(add(2, 2), 4);
-    }
-}
-*/

@@ -1021,7 +1021,7 @@ def network_structure_from_nx(
         node `Point` geometry will be saved in `WKT` format to the `dual_node` column.
     gpd.GeoDataFrame
         A `gpd.GeoDataFrame` with `ns_edge_idx`, `start_ns_node_idx`, `end_ns_node_idx`, `edge_idx`, `nx_start_node_key`
-        ,`nx_end_node_key`, `length`, `angle_sum`, `imp_factor`, `in_bearing`, `out_bearing`, `total_bearing`, `geom`
+        ,`nx_end_node_key`, `imp_factor`, `total_bearing`, `geom`
         attributes.
     rustalgos.graph.NetworkStructure
         A [`rustalgos.graph.NetworkStructure`](/rustalgos/rustalgos#networkstructure) instance.
@@ -1079,16 +1079,9 @@ def network_structure_from_nx(
             nx_edge_data: EdgeData
             for edge_idx, nx_edge_data in g_multi_copy[start_node_key][end_node_key].items():
                 line_geom = nx_edge_data["geom"]
-                line_len = line_geom.length
                 # check geom coordinates directionality (for bearings at index 5 / 6)
                 # flip if facing backwards direction
                 line_geom_coords = util.align_linestring_coords(line_geom.coords, (start_node_x, start_node_y))
-                # iterate the coordinates and calculate the angular change
-                angle_sum = util.measure_cumulative_angle(line_geom_coords)
-                if not np.isfinite(angle_sum) or angle_sum < 0:
-                    raise ValueError(
-                        f"Angle sum {angle_sum} for edge {start_node_key}-{end_node_key} must be finite and positive."
-                    )
                 # if imp_factor is set explicitly, then use
                 # fallback imp_factor of 1
                 imp_factor: float = 1
@@ -1102,12 +1095,7 @@ def network_structure_from_nx(
                         )
                 # in bearing
                 xy_1: npt.NDArray[np.float64] = np.array(line_geom_coords[0])
-                xy_2: npt.NDArray[np.float64] = np.array(line_geom_coords[1])
-                in_bearing: float = util.measure_bearing(xy_1, xy_2)
-                # out bearing
-                xy_3: npt.NDArray[np.float64] = np.array(line_geom_coords[-2])
                 xy_4: npt.NDArray[np.float64] = np.array(line_geom_coords[-1])
-                out_bearing: float = util.measure_bearing(xy_3, xy_4)
                 total_bearing = util.measure_bearing(xy_1, xy_4)
                 # set edge
                 ns_edge_idx = network_structure.add_edge(
@@ -1116,11 +1104,8 @@ def network_structure_from_nx(
                     edge_idx,  # type: ignore
                     start_node_key,
                     end_node_key,
-                    line_len,
-                    angle_sum,
+                    line_geom.wkt,
                     imp_factor,
-                    in_bearing,
-                    out_bearing,
                     None,  # seconds
                 )
                 # add to edge data
@@ -1131,11 +1116,7 @@ def network_structure_from_nx(
                     edge_idx,
                     start_node_key,
                     end_node_key,
-                    line_len,
-                    angle_sum,
                     imp_factor,
-                    in_bearing,
-                    out_bearing,
                     total_bearing,
                     line_geom,
                 )
@@ -1161,11 +1142,7 @@ def network_structure_from_nx(
             "edge_idx",
             "nx_start_node_key",
             "nx_end_node_key",
-            "length",
-            "angle_sum",
             "imp_factor",
-            "in_bearing",
-            "out_bearing",
             "total_bearing",
             "geom",
         ],
@@ -1190,6 +1167,9 @@ def network_structure_from_nx(
         nodes_gdf["dual_node"] = nodes_gdf["geom"].to_wkt()  # type: ignore
         nodes_gdf.drop(columns=["geom"], inplace=True)
 
+    network_structure.validate()
+    network_structure.build_edge_rtree()
+
     return nodes_gdf, edges_gdf, network_structure
 
 
@@ -1212,8 +1192,7 @@ def network_structure_from_gpd(
         as the DataFrame index, and where the columns contain `x`, `y`, `live`, and `weight` attributes.
     edges_gdf: gpd.GeoDataFrame
         A cityseer created edges `gpd.GeoDataFrame` with `start_ns_node_idx`, `end_ns_node_idx`, `edge_idx`,
-        `nx_start_node_key`, `nx_end_node_key`, `length`, `angle_sum`, `imp_factor`, `in_bearing`, `out_bearing`
-        attributes.
+        `nx_start_node_key`, `nx_end_node_key`, `imp_factor` attributes.
 
     Returns
     -------
@@ -1239,11 +1218,7 @@ def network_structure_from_gpd(
         "edge_idx",
         "nx_start_node_key",
         "nx_end_node_key",
-        "length",
-        "angle_sum",
         "imp_factor",
-        "in_bearing",
-        "out_bearing",
     ]
     for col in edges_cols:
         if col not in edges_gdf.columns:
@@ -1283,14 +1258,12 @@ def network_structure_from_gpd(
             int(edge_data["edge_idx"]),
             str(edge_data["nx_start_node_key"]),
             str(edge_data["nx_end_node_key"]),
-            float(edge_data["length"]),
-            float(edge_data["angle_sum"]),
+            edge_data[edges_gdf.geometry.name].wkt,  # type: ignore
             float(edge_data["imp_factor"]),
-            float(edge_data["in_bearing"]),
-            float(edge_data["out_bearing"]),
             None,  # seconds
         )
     network_structure.validate()
+    network_structure.build_edge_rtree()
 
     return network_structure
 
@@ -1370,7 +1343,7 @@ def add_transport_gtfs(
                 "geom": geometry.Point(e, n),
             }
         )
-    data_map.assign_to_network(network_structure=network_structure, max_dist=max_netw_assign_dist)
+    data_map.assign_data_to_network(network_structure=network_structure, max_dist=max_netw_assign_dist)
     for _data_key, data_entry in tqdm(data_map.entries.items(), total=data_map.count(), disable=config.QUIET_MODE):
         # add edges between stops and pedestrian network
         for node_match in [data_entry.node_matches.nearest, data_entry.node_matches.next_nearest]:  # type: ignore
@@ -1385,11 +1358,8 @@ def add_transport_gtfs(
                     0,  # edge_idx
                     "na-gtfs",  # nx_start_node_key
                     "na-gtfs",  # nx_end_node_key
-                    dist,  # length - don't use zero otherwise short-cutting will occur
-                    180,  # angle_sum - don't use zero otherwise short-cutting will occur
+                    # TODO: add wkt
                     1,  # imp_factor
-                    None,  # in_bearing
-                    None,  # out_bearing
                     max(1, seconds + float(row["avg_wait_time"])),  # walk and wait time - minimum 1 second
                 )
                 # add to edges_gdf
@@ -1418,11 +1388,8 @@ def add_transport_gtfs(
                     0,  # edge_idx
                     "na-gtfs",  # nx_start_node_key
                     "na-gtfs",  # nx_end_node_key
-                    dist,  # length - don't use zero otherwise short-cutting will occur
-                    180,  # angle_sum - don't use zero otherwise short-cutting will occur
+                    # TODO: add wkt
                     1,  # imp_factor
-                    None,  # in_bearing
-                    None,  # out_bearing
                     max(1, seconds),  # seconds
                 )
                 # add to edges_gdf
@@ -1490,11 +1457,8 @@ def add_transport_gtfs(
             0,  # edge_idx
             "na-gtfs",  # nx_start_node_key
             "na-gtfs",  # nx_end_node_key
-            None,  # length - don't use zero otherwise short-cutting will occur
-            None,  # angle_sum - don't use zero otherwise short-cutting will occur
+            # TODO: add wkt
             None,  # imp_factor
-            None,  # in_bearing
-            None,  # out_bearing
             float(avg_seg_time),  # seconds
         )
         # add to edges_gdf
@@ -1507,11 +1471,7 @@ def add_transport_gtfs(
                 0,  # edge_idx
                 "na-gtfs",  # nx_start_node_key
                 "na-gtfs",  # nx_end_node_key
-                None,  # length
-                None,  # angle_sum
                 None,  # imp_factor
-                None,  # in_bearing
-                None,  # out_bearing
                 None,  # total_bearing
                 geometry.LineString([prev_stop_geom, next_stop_geom]),  # type: ignore
             ]
@@ -1523,11 +1483,8 @@ def add_transport_gtfs(
             0,  # edge_idx
             "na-gtfs",  # nx_start_node_key
             "na-gtfs",  # nx_end_node_key
-            None,  # length - don't use zero otherwise short-cutting will occur
-            None,  # angle_sum - don't use zero otherwise short-cutting will occur
+            # TODO: add wkt
             None,  # imp_factor
-            None,  # in_bearing
-            None,  # out_bearing
             float(avg_seg_time),  # seconds
         )
         # add to edges_gdf
@@ -1540,11 +1497,7 @@ def add_transport_gtfs(
                 0,  # edge_idx
                 "na-gtfs",  # nx_start_node_key
                 "na-gtfs",  # nx_end_node_key
-                None,  # length
-                None,  # angle_sum
                 None,  # imp_factor
-                None,  # in_bearing
-                None,  # out_bearing
                 None,  # total_bearing
                 geometry.LineString([prev_stop_geom, next_stop_geom]),  # type: ignore
             ]
@@ -1561,17 +1514,16 @@ def add_transport_gtfs(
             "edge_idx",
             "nx_start_node_key",
             "nx_end_node_key",
-            "length",
-            "angle_sum",
             "imp_factor",
-            "in_bearing",
-            "out_bearing",
             "total_bearing",
             "geom",
         ],
     )
     new_edges_gdf = gpd.GeoDataFrame(new_edges_df, geometry="geom", crs=nodes_gdf.crs).set_index("edge_key")
     edges_gdf = pd.concat([edges_gdf, new_edges_gdf], axis=0, ignore_index=False)  # type: ignore
+
+    network_structure.validate()
+    network_structure.build_edge_rtree()
 
     return nodes_gdf, edges_gdf, network_structure, stops, avg_stop_pairs
 
@@ -1626,11 +1578,7 @@ def nx_from_cityseer_geopandas(
                 start_nd_key,
                 end_nd_key,
                 row_data.edge_idx,
-                length=row_data.length,
-                angle_sum=row_data.angle_sum,
                 imp_factor=row_data.imp_factor,
-                in_bearing=row_data.in_bearing,
-                out_bearing=row_data.out_bearing,
                 total_bearing=row_data.total_bearing,
                 geom=row_data[geom_key],  # type: ignore
             )

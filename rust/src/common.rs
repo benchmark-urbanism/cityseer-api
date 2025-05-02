@@ -13,50 +13,6 @@ pub static WALKING_SPEED: f32 = 1.33333;
 /// Default interval for progress updates.
 pub static PROGRESS_UPDATE_INTERVAL: usize = 100;
 
-/// Represents a 2D coordinate with `x` and `y` values.
-#[pyclass]
-#[derive(Clone, Copy, Debug)]
-pub struct Coord {
-    #[pyo3(get)]
-    pub x: f32,
-    #[pyo3(get)]
-    pub y: f32,
-}
-
-#[pymethods]
-impl Coord {
-    /// Creates a new `Coord` instance.
-    #[new]
-    #[inline(always)]
-    pub fn new(x: f32, y: f32) -> Self {
-        Self { x, y }
-    }
-
-    /// Returns the coordinates as a tuple `(x, y)`.
-    #[inline(always)]
-    pub fn xy(&self) -> (f32, f32) {
-        (self.x, self.y)
-    }
-
-    /// Validates that the coordinates are finite.
-    #[inline(always)]
-    pub fn validate(&self) -> bool {
-        self.x.is_finite() && self.y.is_finite()
-    }
-
-    /// Calculates the Euclidean distance between this coordinate and another.
-    #[inline(always)]
-    pub fn hypot(&self, other_coord: Coord) -> f32 {
-        (self.x - other_coord.x).hypot(self.y - other_coord.y)
-    }
-
-    /// Computes the difference between this coordinate and another as a vector.
-    #[inline(always)]
-    pub fn difference(&self, other_coord: Coord) -> Coord {
-        Coord::new(self.x - other_coord.x, self.y - other_coord.y)
-    }
-}
-
 /// Holds metric results, including distances and a 2D matrix of atomic floats.
 #[derive(Debug)]
 pub struct MetricResult {

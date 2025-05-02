@@ -5,11 +5,12 @@ use crate::diversity;
 use crate::graph::NetworkStructure;
 use core::f32;
 use geo::algorithm::bounding_rect::BoundingRect;
+use geo::algorithm::closest_point::ClosestPoint;
 use geo::algorithm::intersects::Intersects;
 use geo::algorithm::line_intersection::{line_intersection, LineIntersection};
 use geo::algorithm::Euclidean;
 use geo::geometry::Geometry;
-use geo::{Distance, Line, Point};
+use geo::{Centroid, Distance, Line, Point};
 use numpy::PyArray1;
 use pyo3::exceptions;
 use pyo3::prelude::*;
@@ -88,8 +89,8 @@ pub struct DataEntry {
     #[pyo3(get)]
     pub dedupe_key: String,
     #[pyo3(get)]
-    pub geometry_wkt: String,
-    pub geometry: Geometry<f32>,
+    pub geom_wkt: String,
+    pub geom: Geometry<f64>,
 }
 
 impl Clone for DataEntry {
@@ -99,8 +100,8 @@ impl Clone for DataEntry {
             data_key: self.data_key.clone(),
             dedupe_key_py: self.dedupe_key_py.clone_ref(py),
             dedupe_key: self.dedupe_key.clone(),
-            geometry_wkt: self.geometry_wkt.clone(),
-            geometry: self.geometry.clone(),
+            geom_wkt: self.geom_wkt.clone(),
+            geom: self.geom.clone(),
         })
     }
 }
@@ -116,12 +117,12 @@ fn py_key_to_composite(py_obj: Bound<'_, PyAny>) -> PyResult<String> {
 #[pymethods]
 impl DataEntry {
     #[new]
-    #[pyo3(signature = (data_key_py, geometry_wkt, dedupe_key_py=None))]
+    #[pyo3(signature = (data_key_py, geom_wkt, dedupe_key_py=None))]
     #[inline]
     fn new(
         py: Python,
         data_key_py: Py<PyAny>,
-        geometry_wkt: String,
+        geom_wkt: String,
         dedupe_key_py: Option<Py<PyAny>>,
     ) -> PyResult<DataEntry> {
         let data_key = py_key_to_composite(data_key_py.bind(py).clone())?;
@@ -138,7 +139,7 @@ impl DataEntry {
             data_key_py.clone_ref(py)
         };
 
-        let geometry = match Geometry::try_from_wkt_str(&geometry_wkt) {
+        let geom = match Geometry::try_from_wkt_str(&geom_wkt) {
             Ok(geom) => geom,
             Err(e) => {
                 return Err(exceptions::PyValueError::new_err(format!(
@@ -153,8 +154,8 @@ impl DataEntry {
             data_key,
             dedupe_key_py: dedupe_key_py_fallback,
             dedupe_key: dedupe_key_fallback,
-            geometry_wkt,
-            geometry,
+            geom_wkt,
+            geom,
         })
     }
 }
@@ -165,11 +166,11 @@ pub struct DataMap {
     #[pyo3(get)]
     entries: HashMap<String, DataEntry>,
     pub progress: Arc<AtomicUsize>,
-    barrier_geoms: Option<Vec<Geometry<f32>>>,
-    barrier_rtree: Option<RTree<GeomWithData<Rectangle<[f32; 2]>, usize>>>,
-    data_rtree_items: Vec<GeomWithData<Rectangle<[f32; 2]>, String>>,
-    data_rtree: Option<RTree<GeomWithData<Rectangle<[f32; 2]>, String>>>,
-    node_data_map: HashMap<usize, Vec<(String, f32)>>,
+    barrier_geoms: Option<Vec<Geometry<f64>>>,
+    barrier_rtree: Option<RTree<GeomWithData<Rectangle<[f64; 2]>, usize>>>,
+    data_rtree_items: Vec<GeomWithData<Rectangle<[f64; 2]>, String>>,
+    data_rtree: Option<RTree<GeomWithData<Rectangle<[f64; 2]>, String>>>,
+    node_data_map: HashMap<usize, Vec<(String, f64)>>,
 }
 
 #[pymethods]
@@ -177,12 +178,12 @@ impl DataMap {
     #[new]
     #[pyo3(signature = (barriers_wkt = None))]
     fn new(barriers_wkt: Option<Vec<String>>) -> PyResult<DataMap> {
-        let mut barrier_geoms: Option<Vec<Geometry<f32>>> = None;
-        let mut barriers_rtree: Option<RTree<GeomWithData<Rectangle<[f32; 2]>, usize>>> = None;
+        let mut barrier_geoms: Option<Vec<Geometry<f64>>> = None;
+        let mut barriers_rtree: Option<RTree<GeomWithData<Rectangle<[f64; 2]>, usize>>> = None;
 
         if let Some(wkt_data) = barriers_wkt {
-            let mut loaded_barriers_vec: Vec<Geometry<f32>> = Vec::new();
-            let mut rtree_items: Vec<GeomWithData<Rectangle<[f32; 2]>, usize>> = Vec::new();
+            let mut loaded_barriers_vec: Vec<Geometry<f64>> = Vec::new();
+            let mut rtree_items: Vec<GeomWithData<Rectangle<[f64; 2]>, usize>> = Vec::new();
             let mut current_index = 0;
             for wkt in wkt_data.into_iter() {
                 match Geometry::try_from_wkt_str(&wkt) {
@@ -197,7 +198,7 @@ impl DataMap {
                             current_index += 1;
                         } else {
                             eprintln!(
-                                "Warning: Skipping barrier geometry with no bounding box: {}",
+                                "Warning: Skipping barrier geom with no bounding box: {}",
                                 wkt
                             );
                         }
@@ -239,20 +240,20 @@ impl DataMap {
         self.progress.load(Ordering::Relaxed)
     }
 
-    #[pyo3(signature = (data_key_py, geometry_wkt, dedupe_key_py=None))]
+    #[pyo3(signature = (data_key_py, geom_wkt, dedupe_key_py=None))]
     fn insert(
         &mut self,
         py: Python,
         data_key_py: Py<PyAny>,
-        geometry_wkt: String,
+        geom_wkt: String,
         dedupe_key_py: Option<Py<PyAny>>,
     ) -> PyResult<()> {
-        // Create DataEntry first (parses WKT and stores geometry internally)
-        let entry = DataEntry::new(py, data_key_py, geometry_wkt, dedupe_key_py)?;
+        // Create DataEntry first (parses WKT and stores geom internally)
+        let entry = DataEntry::new(py, data_key_py, geom_wkt, dedupe_key_py)?;
         let data_key = entry.data_key.clone(); // Clone data_key for use below
 
-        // Get bounding box from the stored geometry
-        if let Some(rect) = entry.geometry.bounding_rect() {
+        // Get bounding box from the stored geom
+        if let Some(rect) = entry.geom.bounding_rect() {
             let envelope =
                 Rectangle::from_corners([rect.min().x, rect.min().y], [rect.max().x, rect.max().y]);
             // Store the data_key (String) with the envelope for R-tree build
@@ -311,89 +312,133 @@ impl DataMap {
         Ok(())
     }
 
-    /// Edge-centric assignment: for each edge, find all polygons within assignment distance and assign to both end nodes.
+    /// Assigns data entries to network nodes based on proximity to edges. (Parallelized)
+    /// Iterates through data entries in parallel, finds the nearest 6 edges for each,
+    /// and assigns the data to the nodes of those edges if within distance
+    /// and not blocked by barriers or other edges.
     #[pyo3(signature = (
         network_structure,
         max_assignment_dist
     ))]
     pub fn assign_data_to_network(
         &mut self,
-        network_structure: &mut NetworkStructure,
-        max_assignment_dist: f32,
+        network_structure: &NetworkStructure,
+        max_assignment_dist: f64,
+        py: Python,
     ) -> PyResult<()> {
         // Ensure both edge R-tree and data R-tree are built
         if network_structure.edge_rtree.is_none() {
-            network_structure.build_edge_rtree()?; // Automatically build if needed
+            return Err(exceptions::PyRuntimeError::new_err(
+                "NetworkStructure's edge R-tree must be built before calling assign_data_to_network.",
+            ));
         }
         if self.data_rtree.is_none() {
-            self.build_data_rtree()?; // Automatically build if needed
+            self.build_data_rtree()?;
         }
-        let edge_rtree = network_structure.edge_rtree.as_ref().unwrap();
-        let data_rtree = self.data_rtree.as_ref().unwrap();
-        self.node_data_map.clear();
-        for edge in edge_rtree.iter() {
-            // Build an AABB for the edge, expanded by max_assignment_dist
-            let aabb = rstar::AABB::from_corners(
-                [
-                    edge.a[0].min(edge.b[0]) - max_assignment_dist,
-                    edge.a[1].min(edge.b[1]) - max_assignment_dist,
-                ],
-                [
-                    edge.a[0].max(edge.b[0]) + max_assignment_dist,
-                    edge.a[1].max(edge.b[1]) + max_assignment_dist,
-                ],
-            );
-            // TODO order bt distance
-            for geom_item in data_rtree.locate_in_envelope_intersecting(&aabb) {
-                let data_key = &geom_item.data;
-                if let Some(data_entry) = self.entries.get(data_key) {
-                    let polygon_geom = &data_entry.geometry;
-                    let edge_line = geo::Line::new(
-                        geo::Coord {
-                            x: edge.a[0],
-                            y: edge.a[1],
-                        },
-                        geo::Coord {
-                            x: edge.b[0],
-                            y: edge.b[1],
-                        },
-                    );
-                    // Check edge-to-geometry distance
-                    let edge_dist = Euclidean.distance(polygon_geom, &edge_line);
-                    if edge_dist > max_assignment_dist {
-                        continue;
-                    }
-                    // For each node at edge ends, check node-to-geometry distance
-                    for &node_idx in &[edge.a_idx, edge.b_idx] {
-                        let node_payload = match network_structure.get_node_payload(node_idx) {
-                            Ok(p) => p,
-                            Err(_) => continue,
+
+        let edge_rtree = network_structure
+            .edge_rtree
+            .as_ref()
+            .ok_or_else(|| exceptions::PyRuntimeError::new_err("Edge R-tree not built"))?;
+        let data_rtree = self
+            .data_rtree
+            .as_ref()
+            .ok_or_else(|| exceptions::PyRuntimeError::new_err("Data R-tree not built"))?;
+
+        let assignments: Vec<(usize, String, f64)> = py.allow_threads(|| {
+            data_rtree
+                .iter() // Get the sequential iterator first
+                .par_bridge() // Bridge it to a parallel iterator
+                .flat_map(|geom_item| {
+                    let data_key = &geom_item.data;
+                    let data_entry = match self.entries.get(data_key) {
+                        Some(entry) => entry,
+                        None => {
+                            return Vec::new();
+                        }
+                    };
+                    let polygon_geom = &data_entry.geom;
+
+                    let representative_point_geom = match polygon_geom.centroid() {
+                        Some(centroid) => centroid,
+                        None => {
+                            return Vec::new();
+                        }
+                    };
+                    let representative_point_arr =
+                        [representative_point_geom.x(), representative_point_geom.y()];
+
+                    let nearest_edge_geoms = edge_rtree
+                        .nearest_neighbor_iter(&representative_point_arr)
+                        .take(6);
+
+                    let mut thread_local_assignments: Vec<(usize, String, f64)> = Vec::new();
+
+                    for edge_geom_entry in nearest_edge_geoms {
+                        let start_node_idx = edge_geom_entry.data.0;
+                        let end_node_idx = edge_geom_entry.data.1;
+                        let edge_idx = edge_geom_entry.data.2;
+
+                        let edge_payload = match network_structure.get_edge_payload(
+                            start_node_idx,
+                            end_node_idx,
+                            edge_idx,
+                        ) {
+                            Ok(payload) => payload,
+                            Err(_) => {
+                                continue;
+                            }
                         };
-                        let node_point =
-                            geo::Point::new(node_payload.coord.x, node_payload.coord.y);
-                        let node_dist = Euclidean.distance(polygon_geom, &node_point);
-                        let line = geo::Line::new(
-                            geo::Coord {
-                                x: edge.a[0],
-                                y: edge.a[1],
-                            },
-                            geo::Coord {
-                                x: edge.b[0],
-                                y: edge.b[1],
-                            },
-                        );
-                        if !self.intersects_barrier(&line)
-                            && !self.intersects_edge(&line, &network_structure)
-                        {
-                            self.node_data_map
-                                .entry(node_idx)
-                                .or_default()
-                                .push((data_key.clone(), node_dist));
+
+                        let edge_dist = Euclidean.distance(polygon_geom, &edge_payload.geom);
+
+                        if edge_dist <= max_assignment_dist {
+                            for &node_idx in &[start_node_idx, end_node_idx] {
+                                let node_payload =
+                                    match network_structure.get_node_payload(node_idx) {
+                                        Ok(p) => p,
+                                        Err(_) => continue,
+                                    };
+                                let node_point =
+                                    Point::new(node_payload.coord.x, node_payload.coord.y);
+
+                                let closest_point_on_polygon =
+                                    match polygon_geom.closest_point(&node_point) {
+                                        geo::Closest::Intersection(p) => p,
+                                        geo::Closest::SinglePoint(p) => p,
+                                        geo::Closest::Indeterminate => representative_point_geom,
+                                    };
+
+                                let assignment_line =
+                                    Line::new(closest_point_on_polygon.0, node_point.0);
+
+                                if !self.intersects_barrier(&assignment_line)
+                                    && !self.intersects_edge(&assignment_line, network_structure)
+                                {
+                                    let node_dist =
+                                        Euclidean.distance(closest_point_on_polygon, node_point);
+                                    thread_local_assignments.push((
+                                        node_idx,
+                                        data_key.clone(),
+                                        node_dist,
+                                    ));
+                                }
+                            }
                         }
                     }
-                }
-            }
+                    thread_local_assignments
+                })
+                .collect()
+        });
+
+        self.node_data_map.clear();
+        for (node_idx, data_key, node_dist) in assignments {
+            self.node_data_map
+                .entry(node_idx)
+                .or_default()
+                .push((data_key, node_dist));
         }
+
         Ok(())
     }
 
@@ -469,7 +514,7 @@ impl DataMap {
                 // Calculate network distance to the current node
                 let network_dist = node_visit.agg_seconds * speed_m_s;
                 // Calculate total distance
-                let current_total_dist = network_dist + data_dist;
+                let current_total_dist = network_dist + data_dist as f32;
 
                 // Check total distance limit
                 if current_total_dist <= max_walk_dist {
@@ -1139,7 +1184,7 @@ impl DataMap {
 impl DataMap {
     /// --- Helper function for barrier intersection check ---
     #[inline]
-    fn intersects_barrier(&self, line: &Line<f32>) -> bool {
+    fn intersects_barrier(&self, line: &Line<f64>) -> bool {
         if let (Some(barriers_rtree), Some(orig_barriers)) =
             (self.barrier_rtree.as_ref(), self.barrier_geoms.as_ref())
         {
@@ -1153,53 +1198,53 @@ impl DataMap {
                 let original_geom_index = barrier_item.data;
                 if let Some(barrier_geom) = orig_barriers.get(original_geom_index) {
                     if line.intersects(barrier_geom) {
-                        return true; // Found an intersection
+                        return true;
                     }
-                } else {
-                    eprintln!(
-                        "Error: Invalid barrier index {} found in R-tree.",
-                        original_geom_index
-                    );
                 }
             }
         }
-        false // No intersection found
+        false
     }
 
-    /// Check if a given line intersects any network edge segment using the edge R-tree from NetworkStructure.
-    /// Only returns true if the line properly crosses an edge (not just touching endpoints).
+    /// Check if a given line intersects any network edge geometry.
     #[inline]
-    pub fn intersects_edge(&self, line: &Line<f32>, network_structure: &NetworkStructure) -> bool {
+    pub fn intersects_edge(&self, line: &Line<f64>, network_structure: &NetworkStructure) -> bool {
         if let Some(edge_rtree) = network_structure.edge_rtree.as_ref() {
             let line_aabb = AABB::from_corners(
                 [line.start.x.min(line.end.x), line.start.y.min(line.end.y)],
                 [line.start.x.max(line.end.x), line.start.y.max(line.end.y)],
             );
             let potential_edges = edge_rtree.locate_in_envelope_intersecting(&line_aabb);
-            for edge in potential_edges {
-                let edge_line = Line::new(
-                    geo::Coord {
-                        x: edge.a[0],
-                        y: edge.a[1],
-                    },
-                    geo::Coord {
-                        x: edge.b[0],
-                        y: edge.b[1],
-                    },
-                );
-                // Use line_intersection to check for proper crossings
-                if let Some(intersection) = line_intersection(*line, edge_line) {
-                    if let LineIntersection::SinglePoint {
-                        is_proper: true, ..
-                    } = intersection
-                    {
-                        // Found a proper crossing intersection
-                        return true;
+
+            for edge_geom_entry in potential_edges {
+                let start_node_idx = edge_geom_entry.data.0;
+                let end_node_idx = edge_geom_entry.data.1;
+                let edge_idx = edge_geom_entry.data.2;
+
+                let edge_payload = match network_structure.get_edge_payload(
+                    start_node_idx,
+                    end_node_idx,
+                    edge_idx,
+                ) {
+                    Ok(payload) => payload,
+                    Err(_) => continue,
+                };
+
+                // Iterate through the segments of the LineString
+                for edge_segment in edge_payload.geom.lines() {
+                    if let Some(intersection) = line_intersection(*line, edge_segment) {
+                        if let LineIntersection::SinglePoint {
+                            is_proper: true, ..
+                        } = intersection
+                        {
+                            // Found a proper crossing intersection with a segment
+                            return true;
+                        }
+                        // Ignore collinear overlaps and endpoint touches (is_proper: false)
                     }
-                    // Ignore collinear overlaps and endpoint touches (is_proper: false)
                 }
             }
         }
-        false // No proper crossing intersection found
+        false // No proper intersection found
     }
 }

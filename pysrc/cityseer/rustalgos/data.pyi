@@ -36,12 +36,12 @@ class DataEntry:
     data_key: str
     dedupe_key_py: Hashable
     dedupe_key: str
-    geometry_wkt: str
+    geom_wkt: str
 
     def __init__(
         self,
         data_key_py: Hashable,
-        geometry_wkt: str,
+        geom_wkt: str,
         dedupe_key_py: Hashable | None = None,
     ) -> None: ...
 
@@ -53,7 +53,7 @@ class DataMap:
     def insert(
         self,
         data_key_py: Hashable,
-        geometry_wkt: str,
+        geom_wkt: str,
         dedupe_key_py: Hashable | None = None,
     ) -> None: ...
     def entry_keys(self) -> list[str]: ...
