@@ -18,8 +18,9 @@ use pyo3::types::{PyAny, PyAnyMethods, PyDict};
 use rayon::prelude::*;
 use rstar::primitives::{GeomWithData, Rectangle};
 use rstar::{RTree, AABB};
+use std::cmp::Ordering;
 use std::collections::{HashMap, HashSet};
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicUsize, Ordering as AtomicOrdering};
 use std::sync::Arc;
 use wkt::TryFromWkt;
 
@@ -170,6 +171,7 @@ pub struct DataMap {
     barrier_rtree: Option<RTree<GeomWithData<Rectangle<[f64; 2]>, usize>>>,
     data_rtree_items: Vec<GeomWithData<Rectangle<[f64; 2]>, String>>,
     data_rtree: Option<RTree<GeomWithData<Rectangle<[f64; 2]>, String>>>,
+    #[pyo3(get)]
     node_data_map: HashMap<usize, Vec<(String, f64)>>,
 }
 
@@ -233,11 +235,11 @@ impl DataMap {
     }
 
     pub fn progress_init(&self) {
-        self.progress.store(0, Ordering::Relaxed);
+        self.progress.store(0, AtomicOrdering::Relaxed);
     }
 
     fn progress(&self) -> usize {
-        self.progress.load(Ordering::Relaxed)
+        self.progress.load(AtomicOrdering::Relaxed)
     }
 
     #[pyo3(signature = (data_key_py, geom_wkt, dedupe_key_py=None))]
@@ -357,9 +359,9 @@ impl DataMap {
                             return Vec::new();
                         }
                     };
-                    let polygon_geom = &data_entry.geom;
+                    let data_geom = &data_entry.geom;
 
-                    let representative_point_geom = match polygon_geom.centroid() {
+                    let representative_point_geom = match data_geom.centroid() {
                         Some(centroid) => centroid,
                         None => {
                             return Vec::new();
@@ -368,13 +370,45 @@ impl DataMap {
                     let representative_point_arr =
                         [representative_point_geom.x(), representative_point_geom.y()];
 
-                    let nearest_edge_geoms = edge_rtree
+                    // --- Workflow Storing Node Pairs per Edge ---
+                    // 1. Get 6 nearest neighbors by bounding box
+                    let candidate_edges_rtree = edge_rtree
                         .nearest_neighbor_iter(&representative_point_arr)
-                        .take(6);
+                        .take(6)
+                        .collect::<Vec<_>>();
 
-                    let mut thread_local_assignments: Vec<(usize, String, f64)> = Vec::new();
+                    // 2. Validate candidates and store results per edge
+                    let mut valid_edge_results: Vec<(
+                        f64,                  // true_edge_dist
+                        Option<(usize, f64)>, // Option<(start_node_idx, start_node_dist)>
+                        Option<(usize, f64)>, // Option<(end_node_idx, end_node_dist)>
+                    )> = Vec::new();
 
-                    for edge_geom_entry in nearest_edge_geoms {
+                    // Closure to check node validity and calculate distance
+                    let check_node_validity = |node_idx: usize| -> Option<(usize, f64)> {
+                        if let Ok(node_payload) = network_structure.get_node_payload(node_idx) {
+                            let node_point = Point::new(node_payload.coord.x, node_payload.coord.y);
+                            let closest_point_on_data = match data_geom {
+                                Geometry::Point(p) => *p,
+                                _ => match data_geom.closest_point(&node_point) {
+                                    geo::Closest::Intersection(p) => p,
+                                    geo::Closest::SinglePoint(p) => p,
+                                    geo::Closest::Indeterminate => representative_point_geom,
+                                },
+                            };
+                            let assignment_line = Line::new(closest_point_on_data.0, node_point.0);
+                            if !self.intersects_barrier(&assignment_line)
+                                && !self.intersects_edge(&assignment_line, network_structure)
+                            {
+                                let node_dist =
+                                    Euclidean.distance(closest_point_on_data, node_point);
+                                return Some((node_idx, node_dist));
+                            }
+                        }
+                        None // Return None if payload fetch fails or intersection checks fail
+                    };
+
+                    for edge_geom_entry in &candidate_edges_rtree {
                         let start_node_idx = edge_geom_entry.data.0;
                         let end_node_idx = edge_geom_entry.data.1;
                         let edge_idx = edge_geom_entry.data.2;
@@ -385,48 +419,79 @@ impl DataMap {
                             edge_idx,
                         ) {
                             Ok(payload) => payload,
-                            Err(_) => {
-                                continue;
-                            }
+                            Err(_) => continue,
                         };
 
-                        let edge_dist = Euclidean.distance(polygon_geom, &edge_payload.geom);
+                        // Calculate true distance between data geom and edge geom
+                        let true_edge_dist = Euclidean.distance(data_geom, &edge_payload.geom);
 
-                        if edge_dist <= max_assignment_dist {
-                            for &node_idx in &[start_node_idx, end_node_idx] {
-                                let node_payload =
-                                    match network_structure.get_node_payload(node_idx) {
-                                        Ok(p) => p,
-                                        Err(_) => continue,
-                                    };
-                                let node_point =
-                                    Point::new(node_payload.coord.x, node_payload.coord.y);
+                        // Skip candidate if edge itself is too far
+                        if true_edge_dist > max_assignment_dist {
+                            continue;
+                        }
 
-                                let closest_point_on_polygon =
-                                    match polygon_geom.closest_point(&node_point) {
-                                        geo::Closest::Intersection(p) => p,
-                                        geo::Closest::SinglePoint(p) => p,
-                                        geo::Closest::Indeterminate => representative_point_geom,
-                                    };
+                        // Check validity for start and end nodes using the closure
+                        let valid_start_node = check_node_validity(start_node_idx);
+                        let valid_end_node = check_node_validity(end_node_idx);
 
-                                let assignment_line =
-                                    Line::new(closest_point_on_polygon.0, node_point.0);
-
-                                if !self.intersects_barrier(&assignment_line)
-                                    && !self.intersects_edge(&assignment_line, network_structure)
-                                {
-                                    let node_dist =
-                                        Euclidean.distance(closest_point_on_polygon, node_point);
-                                    thread_local_assignments.push((
-                                        node_idx,
-                                        data_key.clone(),
-                                        node_dist,
-                                    ));
-                                }
-                            }
+                        // Store result for this edge if at least one node was valid
+                        if valid_start_node.is_some() || valid_end_node.is_some() {
+                            valid_edge_results.push((
+                                true_edge_dist,
+                                valid_start_node,
+                                valid_end_node,
+                            ));
                         }
                     }
-                    thread_local_assignments
+
+                    // 3. Select final edge results based on geometry type
+                    let final_edge_results: Vec<&(
+                        f64,
+                        Option<(usize, f64)>,
+                        Option<(usize, f64)>,
+                    )> = match data_geom {
+                        Geometry::Point(_) => {
+                            // Find the minimum true_edge_dist among valid edges
+                            if let Some(min_edge_dist) = valid_edge_results
+                                .iter()
+                                .map(|(edge_dist, _, _)| edge_dist)
+                                .min_by(|a, b| a.partial_cmp(b).unwrap_or(Ordering::Equal))
+                            {
+                                // Keep only edges matching the minimum edge distance
+                                valid_edge_results
+                                    .iter()
+                                    .filter(|(edge_dist, _, _)| edge_dist == min_edge_dist)
+                                    .collect()
+                            } else {
+                                Vec::new() // No valid edges found
+                            }
+                        }
+                        _ => {
+                            // Use all valid edge results for non-point geometries
+                            valid_edge_results.iter().collect()
+                        }
+                    };
+
+                    // 4. Generate final assignments by unpacking the selected edge results
+                    let mut thread_local_assignments: Vec<(usize, String, f64)> = Vec::new();
+                    for (_edge_dist, start_node_opt, end_node_opt) in final_edge_results {
+                        if let Some((node_idx, node_dist)) = start_node_opt {
+                            thread_local_assignments.push((
+                                *node_idx,
+                                data_key.clone(),
+                                *node_dist,
+                            ));
+                        }
+                        if let Some((node_idx, node_dist)) = end_node_opt {
+                            thread_local_assignments.push((
+                                *node_idx,
+                                data_key.clone(),
+                                *node_dist,
+                            ));
+                        }
+                    }
+
+                    thread_local_assignments // Return assignments for this data entry
                 })
                 .collect()
         });
@@ -639,7 +704,7 @@ impl DataMap {
                 .try_for_each(|(i, &netw_src_idx)| {
                     if !pbar_disabled && i % PROGRESS_UPDATE_INTERVAL == 0 {
                         self.progress
-                            .fetch_add(PROGRESS_UPDATE_INTERVAL, Ordering::Relaxed);
+                            .fetch_add(PROGRESS_UPDATE_INTERVAL, AtomicOrdering::Relaxed);
                     }
                     if !network_structure.is_node_live(netw_src_idx)? {
                         return Ok::<(), PyErr>(());
@@ -665,17 +730,17 @@ impl DataMap {
                             {
                                 if data_dist <= d as f32 {
                                     metrics[lu_class].metric[i][netw_src_idx]
-                                        .fetch_add(1.0, Ordering::Relaxed);
+                                        .fetch_add(1.0, AtomicOrdering::Relaxed);
                                     let val_wt = clipped_beta_wt(b, mcw, data_dist).unwrap_or(0.0);
                                     metrics_wt[lu_class].metric[i][netw_src_idx]
-                                        .fetch_add(val_wt, Ordering::Relaxed);
+                                        .fetch_add(val_wt, AtomicOrdering::Relaxed);
 
                                     if d == max_dist {
                                         let current_dist = dists[lu_class].metric[0][netw_src_idx]
-                                            .load(Ordering::Relaxed);
+                                            .load(AtomicOrdering::Relaxed);
                                         if current_dist.is_nan() || data_dist < current_dist {
                                             dists[lu_class].metric[0][netw_src_idx]
-                                                .store(data_dist, Ordering::Relaxed);
+                                                .store(data_dist, AtomicOrdering::Relaxed);
                                         }
                                     }
                                 }
@@ -806,7 +871,7 @@ impl DataMap {
                 .try_for_each(|(i, &netw_src_idx)| {
                     if !pbar_disabled && i % PROGRESS_UPDATE_INTERVAL == 0 {
                         self.progress
-                            .fetch_add(PROGRESS_UPDATE_INTERVAL, Ordering::Relaxed);
+                            .fetch_add(PROGRESS_UPDATE_INTERVAL, AtomicOrdering::Relaxed);
                     }
                     if !network_structure.is_node_live(netw_src_idx)? {
                         return Ok::<(), PyErr>(());
@@ -865,15 +930,15 @@ impl DataMap {
                         if compute_hill {
                             hill_mu[&0].metric[i][netw_src_idx].fetch_add(
                                 diversity::hill_diversity(counts.clone(), 0.0).unwrap_or(0.0),
-                                Ordering::Relaxed,
+                                AtomicOrdering::Relaxed,
                             );
                             hill_mu[&1].metric[i][netw_src_idx].fetch_add(
                                 diversity::hill_diversity(counts.clone(), 1.0).unwrap_or(0.0),
-                                Ordering::Relaxed,
+                                AtomicOrdering::Relaxed,
                             );
                             hill_mu[&2].metric[i][netw_src_idx].fetch_add(
                                 diversity::hill_diversity(counts.clone(), 2.0).unwrap_or(0.0),
-                                Ordering::Relaxed,
+                                AtomicOrdering::Relaxed,
                             );
                         }
                         if compute_hill_weighted {
@@ -886,7 +951,7 @@ impl DataMap {
                                     mcw,
                                 )
                                 .unwrap_or(0.0),
-                                Ordering::Relaxed,
+                                AtomicOrdering::Relaxed,
                             );
                             hill_wt_mu[&1].metric[i][netw_src_idx].fetch_add(
                                 diversity::hill_diversity_branch_distance_wt(
@@ -897,7 +962,7 @@ impl DataMap {
                                     mcw,
                                 )
                                 .unwrap_or(0.0),
-                                Ordering::Relaxed,
+                                AtomicOrdering::Relaxed,
                             );
                             hill_wt_mu[&2].metric[i][netw_src_idx].fetch_add(
                                 diversity::hill_diversity_branch_distance_wt(
@@ -908,19 +973,19 @@ impl DataMap {
                                     mcw,
                                 )
                                 .unwrap_or(0.0),
-                                Ordering::Relaxed,
+                                AtomicOrdering::Relaxed,
                             );
                         }
                         if compute_shannon {
                             shannon_mu.metric[i][netw_src_idx].fetch_add(
                                 diversity::shannon_diversity(counts.clone()).unwrap_or(0.0),
-                                Ordering::Relaxed,
+                                AtomicOrdering::Relaxed,
                             );
                         }
                         if compute_gini {
                             gini_mu.metric[i][netw_src_idx].fetch_add(
                                 diversity::gini_simpson_diversity(counts.clone()).unwrap_or(0.0),
-                                Ordering::Relaxed,
+                                AtomicOrdering::Relaxed,
                             );
                         }
                     }
@@ -1051,7 +1116,7 @@ impl DataMap {
                 .try_for_each(|(i, &netw_src_idx)| {
                     if !pbar_disabled && i % PROGRESS_UPDATE_INTERVAL == 0 {
                         self.progress
-                            .fetch_add(PROGRESS_UPDATE_INTERVAL, Ordering::Relaxed);
+                            .fetch_add(PROGRESS_UPDATE_INTERVAL, AtomicOrdering::Relaxed);
                     }
                     // Propagate error if is_node_live fails, otherwise skip if node is not live.
                     if !network_structure.is_node_live(netw_src_idx)? {
@@ -1081,24 +1146,24 @@ impl DataMap {
                                         let num_wt = num * wt;
                                         // --- Accumulate sums and counts ---
                                         sum[map_idx].metric[i][netw_src_idx]
-                                            .fetch_add(num, Ordering::Relaxed);
+                                            .fetch_add(num, AtomicOrdering::Relaxed);
                                         sum_wt[map_idx].metric[i][netw_src_idx]
-                                            .fetch_add(num_wt, Ordering::Relaxed);
+                                            .fetch_add(num_wt, AtomicOrdering::Relaxed);
                                         count[map_idx].metric[i][netw_src_idx]
-                                            .fetch_add(1.0, Ordering::Relaxed);
+                                            .fetch_add(1.0, AtomicOrdering::Relaxed);
                                         count_wt[map_idx].metric[i][netw_src_idx]
-                                            .fetch_add(wt, Ordering::Relaxed);
+                                            .fetch_add(wt, AtomicOrdering::Relaxed);
                                         sum_sq[map_idx].metric[i][netw_src_idx]
-                                            .fetch_add(num * num, Ordering::Relaxed);
+                                            .fetch_add(num * num, AtomicOrdering::Relaxed);
                                         sum_sq_wt[map_idx].metric[i][netw_src_idx]
-                                            .fetch_add(wt * num * num, Ordering::Relaxed);
+                                            .fetch_add(wt * num * num, AtomicOrdering::Relaxed);
                                         // --- Atomically update max and min ---
                                         // Assumes MetricResult uses atomic_float::AtomicF32 internally
                                         // which provides fetch_max/fetch_min that handle NaN correctly.
                                         max[map_idx].metric[i][netw_src_idx]
-                                            .fetch_max(num, Ordering::Relaxed);
+                                            .fetch_max(num, AtomicOrdering::Relaxed);
                                         min[map_idx].metric[i][netw_src_idx]
-                                            .fetch_min(num, Ordering::Relaxed);
+                                            .fetch_min(num, AtomicOrdering::Relaxed);
                                     }
                                 }
                             }
@@ -1115,16 +1180,18 @@ impl DataMap {
                 let variance_wt_res = MetricResult::new(distances.clone(), node_count, f32::NAN);
                 for node_idx in 0..node_count {
                     for (i, _) in distances.iter().enumerate() {
-                        let sum_val = sum[map_idx].metric[i][node_idx].load(Ordering::Relaxed);
-                        let count_val = count[map_idx].metric[i][node_idx].load(Ordering::Relaxed);
+                        let sum_val =
+                            sum[map_idx].metric[i][node_idx].load(AtomicOrdering::Relaxed);
+                        let count_val =
+                            count[map_idx].metric[i][node_idx].load(AtomicOrdering::Relaxed);
                         let sum_wt_val =
-                            sum_wt[map_idx].metric[i][node_idx].load(Ordering::Relaxed);
+                            sum_wt[map_idx].metric[i][node_idx].load(AtomicOrdering::Relaxed);
                         let count_wt_val =
-                            count_wt[map_idx].metric[i][node_idx].load(Ordering::Relaxed);
+                            count_wt[map_idx].metric[i][node_idx].load(AtomicOrdering::Relaxed);
                         let sum_sq_val =
-                            sum_sq[map_idx].metric[i][node_idx].load(Ordering::Relaxed);
+                            sum_sq[map_idx].metric[i][node_idx].load(AtomicOrdering::Relaxed);
                         let sum_sq_wt_val =
-                            sum_sq_wt[map_idx].metric[i][node_idx].load(Ordering::Relaxed);
+                            sum_sq_wt[map_idx].metric[i][node_idx].load(AtomicOrdering::Relaxed);
 
                         // Calculate Mean
                         let mean_val = if count_val > 0.0 {
@@ -1154,11 +1221,12 @@ impl DataMap {
                         };
 
                         // Store results (using relaxed ordering as this is post-parallel processing)
-                        mean_res.metric[i][node_idx].store(mean_val, Ordering::Relaxed);
-                        mean_wt_res.metric[i][node_idx].store(mean_wt_val, Ordering::Relaxed);
-                        variance_res.metric[i][node_idx].store(variance_val, Ordering::Relaxed);
+                        mean_res.metric[i][node_idx].store(mean_val, AtomicOrdering::Relaxed);
+                        mean_wt_res.metric[i][node_idx].store(mean_wt_val, AtomicOrdering::Relaxed);
+                        variance_res.metric[i][node_idx]
+                            .store(variance_val, AtomicOrdering::Relaxed);
                         variance_wt_res.metric[i][node_idx]
-                            .store(variance_wt_val, Ordering::Relaxed);
+                            .store(variance_wt_val, AtomicOrdering::Relaxed);
                     }
                 }
                 // --- Assemble final result struct ---
