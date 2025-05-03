@@ -556,9 +556,9 @@ def mock_data_map(
     data_map = rustalgos.data.DataMap(barriers_wkt=barrier_wkts)
     for uid, row in data_gdf.iterrows():  # type: ignore
         if dedupe_key_col is not None:
-            data_map.insert(uid, row.geometry.centroid.x, row.geometry.centroid.y, row[dedupe_key_col])  # type: ignore
+            data_map.insert(uid, row.geometry.wkt, row[dedupe_key_col])  # type: ignore
         else:
-            data_map.insert(uid, row.geometry.centroid.x, row.geometry.centroid.y, None)  # type: ignore
+            data_map.insert(uid, row.geometry.wkt, None)  # type: ignore
     return data_map
 
 

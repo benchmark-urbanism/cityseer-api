@@ -254,8 +254,8 @@ def test_network_structure_from_nx(diamond_graph):
         node_idxs = network_structure.node_indices()
         for node_idx in node_idxs:
             node_payload = network_structure.get_node_payload(node_idx)
-            assert node_payload.coord.x - nodes_gdf.loc[node_payload.node_key].x < config.ATOL
-            assert node_payload.coord.y - nodes_gdf.loc[node_payload.node_key].y < config.ATOL
+            assert node_payload.coord[0] - nodes_gdf.loc[node_payload.node_key].x < config.ATOL
+            assert node_payload.coord[1] - nodes_gdf.loc[node_payload.node_key].y < config.ATOL
             assert node_payload.live == nodes_gdf.loc[node_payload.node_key].live
         # check edge maps (idx and label match in this case...)
         for start_ns_node_idx, end_ns_node_idx, edge_idx in network_structure.edge_references():
@@ -276,12 +276,24 @@ def test_network_structure_from_nx(diamond_graph):
             assert edges_gdf.loc[gdf_edge_key, "edge_idx"] == edge_idx
             assert edges_gdf.loc[gdf_edge_key, "nx_start_node_key"] == start_nd_key
             assert edges_gdf.loc[gdf_edge_key, "nx_end_node_key"] == end_nd_key
-            assert edges_gdf.loc[gdf_edge_key, "length"] - length < config.ATOL
-            assert edges_gdf.loc[gdf_edge_key, "angle_sum"] - angle_sum < config.ATOL
-            assert edges_gdf.loc[gdf_edge_key, "imp_factor"] - imp_factor < config.ATOL
-            assert edges_gdf.loc[gdf_edge_key, "in_bearing"] - in_bearing < config.ATOL
-            assert edges_gdf.loc[gdf_edge_key, "out_bearing"] - out_bearing < config.ATOL
+            # align the geometry
+            start_nd_payload = network_structure.get_node_payload(start_ns_node_idx)
+            line_geom = edges_gdf.loc[gdf_edge_key, edges_gdf.geometry.name]  # type: ignore
+            line_geom_coords = util.align_linestring_coords(line_geom.coords, (start_nd_payload.coord))  # type: ignore
+            aligned_line_geom = geometry.LineString(line_geom_coords)
+            assert aligned_line_geom.length - length < config.ATOL
+            assert util.measure_cumulative_angle(aligned_line_geom.coords) - angle_sum < config.ATOL
+            assert imp_factor == 1
+            assert (
+                util.measure_bearing(aligned_line_geom.coords[0], aligned_line_geom.coords[1]) - in_bearing
+                < config.ATOL
+            )
+            assert (
+                util.measure_bearing(aligned_line_geom.coords[-2], aligned_line_geom.coords[-1]) - out_bearing
+                < config.ATOL
+            )
             assert np.isnan(seconds)
+            assert edge_payload.geom_wkt == aligned_line_geom.wkt
             # manual checks
             if not is_dual:
                 if (start_nd_key, end_nd_key) == ("0", "1"):
@@ -683,8 +695,8 @@ def test_network_structure_from_gpd(primal_graph):
     for start_nd_idx in network_structure.node_indices():
         node_data = network_structure.get_node_payload(start_nd_idx)
         node_data_round = network_structure_round.get_node_payload(start_nd_idx)
-        assert node_data.coord.x == node_data_round.coord.x
-        assert node_data.coord.y == node_data_round.coord.y
+        assert node_data.coord == node_data_round.coord
+        assert node_data.coord == node_data_round.coord
         assert node_data.node_key == node_data_round.node_key
         assert node_data.live == node_data_round.live
         assert node_data.weight == node_data_round.weight

@@ -1082,6 +1082,7 @@ def network_structure_from_nx(
                 # check geom coordinates directionality (for bearings at index 5 / 6)
                 # flip if facing backwards direction
                 line_geom_coords = util.align_linestring_coords(line_geom.coords, (start_node_x, start_node_y))
+                aligned_line_geom = geometry.LineString(line_geom_coords)
                 # if imp_factor is set explicitly, then use
                 # fallback imp_factor of 1
                 imp_factor: float = 1
@@ -1104,7 +1105,7 @@ def network_structure_from_nx(
                     edge_idx,  # type: ignore
                     start_node_key,
                     end_node_key,
-                    line_geom.wkt,
+                    aligned_line_geom.wkt,
                     imp_factor,
                     None,  # seconds
                 )
@@ -1251,6 +1252,11 @@ def network_structure_from_gpd(
         # get node indices from mapping dictionary - much faster than DataFrame lookups
         start_ns_nd_key = node_mapping[start_nx_nd_key]
         end_ns_nd_key = node_mapping[end_nx_nd_key]
+        #
+        line_geom = edge_data[edges_gdf.geometry.name]  # type: ignore
+        start_nd_data = nodes_gdf.loc[start_nx_nd_key]
+        line_geom_coords = util.align_linestring_coords(line_geom.coords, (start_nd_data.x, start_nd_data.y))
+        aligned_line_geom = geometry.LineString(line_geom_coords)
         # add edge
         network_structure.add_edge(
             start_ns_nd_key,
@@ -1258,7 +1264,7 @@ def network_structure_from_gpd(
             int(edge_data["edge_idx"]),
             str(edge_data["nx_start_node_key"]),
             str(edge_data["nx_end_node_key"]),
-            edge_data[edges_gdf.geometry.name].wkt,  # type: ignore
+            aligned_line_geom.wkt,  # type: ignore
             float(edge_data["imp_factor"]),
             None,  # seconds
         )

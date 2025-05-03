@@ -10,7 +10,8 @@ use geo::algorithm::intersects::Intersects;
 use geo::algorithm::line_intersection::{line_intersection, LineIntersection};
 use geo::algorithm::Euclidean;
 use geo::geometry::{Coord, Geometry};
-use geo::{Centroid, Distance, Line, Point};
+use geo::{Centroid, Distance, Line, LineString, Point};
+use log;
 use numpy::PyArray1;
 use pyo3::exceptions;
 use pyo3::prelude::*;
@@ -197,17 +198,11 @@ impl DataMap {
                             rtree_items.push(GeomWithData::new(envelope, current_index));
                             current_index += 1;
                         } else {
-                            eprintln!(
-                                "Warning: Skipping barrier geom with no bounding box: {}",
-                                wkt
-                            );
+                            log::warn!("Skipping barrier geom with no bounding box: {}", wkt);
                         }
                     }
                     Err(e) => {
-                        eprintln!(
-                            "Warning: Failed to parse WKT barrier: {}. Error: {}",
-                            wkt, e
-                        );
+                        log::warn!("Failed to parse WKT barrier: {}. Error: {}", wkt, e);
                     }
                 }
             }
@@ -216,7 +211,7 @@ impl DataMap {
                 barriers_rtree = Some(RTree::bulk_load(rtree_items));
                 barrier_geoms = Some(loaded_barriers_vec);
             } else {
-                eprintln!("Warning: No valid barriers were loaded from the provided WKT data.");
+                log::warn!("No valid barriers were loaded from the provided WKT data.");
             }
         }
 
@@ -272,9 +267,9 @@ impl DataMap {
         self.entries.is_empty()
     }
 
-    /// Assigns data entries to network nodes based on proximity to edges. (Parallelized)
-    /// Iterates through data entries in parallel, finds the nearest 6 edges for each,
-    /// and assigns the data to the nodes of those edges if within distance
+    /// Assigns data entries to network nodes based on proximity to edges.
+    /// Iterates through data entries, finds the nearest 6 edges for each,
+    /// and assigns the data to the nodes of those edges if within max_assignment_dist
     /// and not blocked by barriers or other edges.
     #[pyo3(signature = (
         network_structure,
@@ -284,155 +279,146 @@ impl DataMap {
         &mut self,
         network_structure: &NetworkStructure,
         max_assignment_dist: f64,
-        py: Python,
     ) -> PyResult<()> {
         // Ensure edge R-tree is built
         if network_structure.edge_rtree.is_none() {
-            return Err(exceptions::PyRuntimeError::new_err(
-                "NetworkStructure's edge R-tree must be built before calling assign_data_to_network.",
-            ));
+            return Err(exceptions::PyRuntimeError::new_err("NetworkStructure's edge R-tree must be built before calling assign_data_to_network."));
         }
-        eprint!("Info: Assigning data to network nodes.");
+        log::info!("Assigning data to network nodes.");
         let edge_rtree = network_structure
             .edge_rtree
             .as_ref()
             .ok_or_else(|| exceptions::PyRuntimeError::new_err("Edge R-tree not built"))?;
 
-        let assignments: Vec<(usize, String, f64)> = py.allow_threads(|| {
-            self.entries
-                .par_iter()
-                .flat_map(|(data_key, data_entry)| {
-                    let data_geom = &data_entry.geom;
+        let assignments: Vec<(usize, String, f64)> = self
+            .entries
+            .iter()
+            .flat_map(|(data_key, data_entry)| {
+                let data_geom = &data_entry.geom;
+                let is_point_geom = matches!(data_geom, Geometry::Point(_));
 
-                    let representative_point_geom = match data_geom.centroid() {
-                        Some(centroid) => centroid,
-                        None => {
-                            return Vec::new();
-                        }
-                    };
-                    let representative_point_arr =
-                        [representative_point_geom.x(), representative_point_geom.y()];
+                let representative_point_geom = match data_geom.centroid() {
+                    Some(centroid) => centroid,
+                    None => return Vec::new().into_iter(),
+                };
+                let representative_point_arr =
+                    [representative_point_geom.x(), representative_point_geom.y()];
 
-                    // --- Workflow Storing Node Pairs per Edge ---
-                    // 1. Get 6 nearest neighbors by bounding box
-                    let candidate_edges_rtree = edge_rtree
-                        .nearest_neighbor_iter(&representative_point_arr)
-                        .take(6)
-                        .collect::<Vec<_>>();
+                // Get candidates from R-tree
+                let candidate_edges_rtree = edge_rtree
+                    .nearest_neighbor_iter(&representative_point_arr)
+                    .take(6)
+                    .collect::<Vec<_>>();
 
-                    // 2. Validate candidates and store results per edge
-                    let mut valid_edge_results: Vec<(
-                        f64,                  // true_edge_dist
-                        Option<(usize, f64)>, // Option<(start_node_idx, start_node_dist)>
-                        Option<(usize, f64)>, // Option<(end_node_idx, end_node_dist)>
-                    )> = Vec::new();
-
-                    // Closure to check node validity and calculate distance
-                    // Takes node_idx AND node_coord directly to avoid lookup
-                    let check_node_validity = |node_idx: usize,
-                                               node_coord: Coord<f64>|
-                     -> Option<(usize, f64)> {
-                        let node_point = Point::new(node_coord.x, node_coord.y);
-                        let closest_point_on_data = match data_geom {
-                            Geometry::Point(p) => *p,
-                            _ => match data_geom.closest_point(&node_point) {
-                                geo::Closest::Intersection(p) => p,
-                                geo::Closest::SinglePoint(p) => p,
-                                geo::Closest::Indeterminate => representative_point_geom,
-                            },
-                        };
-                        let assignment_line = Line::new(closest_point_on_data.0, node_point.0);
-                        if !self.intersects_barrier(&assignment_line)
-                            && !self.intersects_edge(&assignment_line, network_structure)
-                        {
-                            let node_dist = Euclidean.distance(closest_point_on_data, node_point);
-                            return Some((node_idx, node_dist));
-                        }
-                        None // Return None if intersection checks fail
-                    };
-
-                    for edge_geom_entry in &candidate_edges_rtree {
-                        // Data is now (start_idx, end_idx, start_coord, end_coord, edge_geom)
-                        let start_node_idx = edge_geom_entry.data.0;
-                        let end_node_idx = edge_geom_entry.data.1;
-                        let start_node_coord = edge_geom_entry.data.2; // Get start coord
-                        let end_node_coord = edge_geom_entry.data.3; // Get end coord
-                        let edge_geom = &edge_geom_entry.data.4; // Get geometry (index is now 4)
-
-                        // Calculate true distance between data geom and edge geom
-                        let true_edge_dist = Euclidean.distance(data_geom, edge_geom);
-
-                        // Skip candidate if edge itself is too far
-                        if true_edge_dist > max_assignment_dist {
-                            continue;
-                        }
-
-                        // Check validity for start and end nodes using the closure with coords
-                        let valid_start_node =
-                            check_node_validity(start_node_idx, start_node_coord);
-                        let valid_end_node = check_node_validity(end_node_idx, end_node_coord);
-
-                        // Store result for this edge if at least one node was valid
-                        if valid_start_node.is_some() || valid_end_node.is_some() {
-                            valid_edge_results.push((
-                                true_edge_dist,
-                                valid_start_node,
-                                valid_end_node,
-                            ));
-                        }
+                // Calculate true distances and store with candidates
+                let mut candidates_with_dist: Vec<(
+                    f64,
+                    &GeomWithData<
+                        Rectangle<[f64; 2]>,
+                        (usize, usize, Coord<f64>, Coord<f64>, LineString<f64>),
+                    >,
+                )> = Vec::new();
+                for edge_geom_entry in &candidate_edges_rtree {
+                    let edge_geom = &edge_geom_entry.data.4;
+                    let true_edge_dist = Euclidean.distance(data_geom, edge_geom);
+                    // Pre-filter by max_assignment_dist before sorting
+                    if true_edge_dist <= max_assignment_dist {
+                        candidates_with_dist.push((true_edge_dist, edge_geom_entry));
                     }
+                }
 
-                    // 3. Select final edge results based on geometry type
-                    let final_edge_results: Vec<&(
-                        f64,
-                        Option<(usize, f64)>,
-                        Option<(usize, f64)>,
-                    )> = match data_geom {
-                        Geometry::Point(_) => {
-                            // Find the minimum true_edge_dist among valid edges
-                            if let Some(min_edge_dist) = valid_edge_results
-                                .iter()
-                                .map(|(edge_dist, _, _)| edge_dist)
-                                .min_by(|a, b| a.partial_cmp(b).unwrap_or(Ordering::Equal))
-                            {
-                                // Keep only edges matching the minimum edge distance
-                                valid_edge_results
-                                    .iter()
-                                    .filter(|(edge_dist, _, _)| edge_dist == min_edge_dist)
-                                    .collect()
-                            } else {
-                                Vec::new() // No valid edges found
+                // Sort candidates by true distance
+                candidates_with_dist
+                    .sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(Ordering::Equal));
+
+                // Map to store results of check_node_validity for the current data_entry
+                let mut checked_nodes_for_this_entry: HashMap<usize, Option<(usize, f64)>> =
+                    HashMap::new();
+                // Tracks nodes added *within this data entry's processing*
+                let mut nodes_added_for_this_entry: HashSet<usize> = HashSet::new();
+                let mut local_assignments: Vec<(usize, String, f64)> = Vec::new();
+
+                // Closure remains the same
+                let check_node_validity_logic = |node_idx: usize,
+                                                 node_coord: Coord<f64>,
+                                                 data_geom: &Geometry<f64>,
+                                                 representative_point_geom: Point<f64>|
+                 -> Option<(usize, f64)> {
+                    let node_point = Point::new(node_coord.x, node_coord.y);
+                    let closest_point_on_data = match data_geom {
+                        Geometry::Point(p) => *p,
+                        _ => match data_geom.closest_point(&node_point) {
+                            geo::Closest::Intersection(p) => p,
+                            geo::Closest::SinglePoint(p) => p,
+                            geo::Closest::Indeterminate => representative_point_geom,
+                        },
+                    };
+                    let assignment_line = Line::new(closest_point_on_data.0, node_point.0);
+                    if !self.intersects_barrier(&assignment_line)
+                        && !self.intersects_edge(&assignment_line, network_structure)
+                    {
+                        let node_dist = Euclidean.distance(closest_point_on_data, node_point);
+                        return Some((node_idx, node_dist));
+                    }
+                    None
+                };
+
+                // Iterate through SORTED candidates
+                for (_true_edge_dist, edge_geom_entry) in candidates_with_dist {
+                    let start_node_idx = edge_geom_entry.data.0;
+                    let end_node_idx = edge_geom_entry.data.1;
+                    let start_node_coord = edge_geom_entry.data.2;
+                    let end_node_coord = edge_geom_entry.data.3;
+
+                    // Check validity (use map/compute)
+                    let valid_start_node = *checked_nodes_for_this_entry
+                        .entry(start_node_idx)
+                        .or_insert_with(|| {
+                            check_node_validity_logic(
+                                start_node_idx,
+                                start_node_coord,
+                                data_geom,
+                                representative_point_geom,
+                            )
+                        });
+
+                    let valid_end_node = *checked_nodes_for_this_entry
+                        .entry(end_node_idx)
+                        .or_insert_with(|| {
+                            check_node_validity_logic(
+                                end_node_idx,
+                                end_node_coord,
+                                data_geom,
+                                representative_point_geom,
+                            )
+                        });
+
+                    let mut edge_produced_assignment = false;
+                    // Add valid nodes if the edge is close enough
+                    if valid_start_node.is_some() || valid_end_node.is_some() {
+                        if let Some((node_idx, node_dist)) = valid_start_node {
+                            if nodes_added_for_this_entry.insert(node_idx) {
+                                local_assignments.push((node_idx, data_key.clone(), node_dist));
+                                edge_produced_assignment = true;
                             }
                         }
-                        _ => {
-                            // Use all valid edge results for non-point geometries
-                            valid_edge_results.iter().collect()
-                        }
-                    };
-
-                    // 4. Generate final assignments by unpacking the selected edge results
-                    let mut thread_local_assignments: Vec<(usize, String, f64)> = Vec::new();
-                    for (_edge_dist, start_node_opt, end_node_opt) in final_edge_results {
-                        if let Some((node_idx, node_dist)) = start_node_opt {
-                            thread_local_assignments.push((
-                                *node_idx,
-                                data_key.clone(),
-                                *node_dist,
-                            ));
-                        }
-                        if let Some((node_idx, node_dist)) = end_node_opt {
-                            thread_local_assignments.push((
-                                *node_idx,
-                                data_key.clone(),
-                                *node_dist,
-                            ));
+                        if let Some((node_idx, node_dist)) = valid_end_node {
+                            if nodes_added_for_this_entry.insert(node_idx) {
+                                local_assignments.push((node_idx, data_key.clone(), node_dist));
+                                edge_produced_assignment = true;
+                            }
                         }
                     }
 
-                    thread_local_assignments // Return assignments for this data entry
-                })
-                .collect()
-        });
+                    // If it's a point and we found a valid assignment from this edge, break
+                    if is_point_geom && edge_produced_assignment {
+                        break;
+                    }
+                } // End loop through sorted candidates
+
+                local_assignments.into_iter()
+            })
+            .collect();
 
         self.node_data_map.clear();
         for (node_idx, data_key, node_dist) in assignments {

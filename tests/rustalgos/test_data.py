@@ -8,15 +8,324 @@ import networkx as nx
 import numpy as np
 from cityseer import config, rustalgos
 from cityseer.tools import graphs, io, mock
-from shapely import geometry
+from shapely import geometry, wkt
+
+primal_targets = {
+    1: ["int:33", "int:22", "int:7", "int:12", "int:4"],
+    54: ["int:9", "int:26", "int:16"],
+    29: ["int:44", "int:31"],
+    37: ["int:21"],
+    32: ["int:28", "int:29", "int:10"],
+    4: ["int:33", "int:12", "int:4"],
+    42: ["int:30"],
+    18: ["int:6", "int:32"],
+    17: ["int:1", "int:25", "int:41", "int:35", "int:8", "int:32"],
+    11: ["int:14", "int:11"],
+    16: ["int:35", "int:8"],
+    10: ["int:5", "int:2", "int:40", "int:45", "int:46", "int:47", "int:3", "int:48", "int:49"],
+    35: ["int:30"],
+    33: ["int:15"],
+    21: ["int:6", "int:27"],
+    51: ["int:24", "int:39", "int:43"],
+    31: ["int:15", "int:29"],
+    43: ["int:5", "int:2", "int:42", "int:40", "int:45", "int:46", "int:47", "int:3", "int:48", "int:34", "int:49"],
+    14: ["int:11"],
+    53: ["int:9", "int:16"],
+    45: ["int:0", "int:38", "int:19", "int:18", "int:13"],
+    2: ["int:22"],
+    30: ["int:44", "int:38", "int:19", "int:18", "int:23"],
+    44: ["int:42", "int:13", "int:34", "int:20"],
+    12: ["int:14"],
+    24: ["int:37", "int:27"],
+    28: ["int:17", "int:31"],
+    34: ["int:28", "int:10"],
+    40: ["int:36", "int:20"],
+    20: ["int:1", "int:17", "int:25", "int:41", "int:37"],
+    39: ["int:21", "int:36"],
+    0: ["int:7"],
+    55: ["int:26"],
+    56: ["int:0", "int:23"],
+    50: ["int:24", "int:39", "int:43"],
+}
+decomp_targets = {
+    109: ["int:3"],
+    221: ["int:30"],
+    118: ["int:11"],
+    106: ["int:5"],
+    119: ["int:11"],
+    132: ["int:41"],
+    265: ["int:43"],
+    112: ["int:40"],
+    124: ["int:35"],
+    126: ["int:8"],
+    116: ["int:14"],
+    1: ["int:7"],
+    238: ["int:20"],
+    131: ["int:1", "int:41", "int:25"],
+    115: ["int:2"],
+    43: ["int:42", "int:2", "int:34"],
+    182: ["int:18"],
+    148: ["int:27"],
+    24: ["int:37"],
+    136: ["int:6"],
+    234: ["int:36"],
+    198: ["int:23"],
+    174: ["int:44"],
+    272: ["int:16"],
+    170: ["int:31"],
+    173: ["int:44"],
+    274: ["int:26"],
+    105: ["int:5"],
+    67: ["int:12", "int:4", "int:33"],
+    11: ["int:14"],
+    199: ["int:23"],
+    187: ["int:38"],
+    256: ["int:0"],
+    130: ["int:32"],
+    149: ["int:27"],
+    257: ["int:0"],
+    110: ["int:3"],
+    142: ["int:17"],
+    244: ["int:42", "int:34"],
+    31: ["int:15"],
+    203: ["int:29"],
+    263: ["int:24", "int:39"],
+    129: ["int:32"],
+    58: ["int:7"],
+    114: ["int:47", "int:45", "int:46", "int:48", "int:49"],
+    17: ["int:1", "int:8", "int:25"],
+    202: ["int:29"],
+    66: ["int:4", "int:33"],
+    4: ["int:12"],
+    233: ["int:36"],
+    271: ["int:16", "int:9"],
+    250: ["int:13"],
+    42: ["int:30"],
+    141: ["int:37"],
+    63: ["int:22"],
+    53: ["int:9"],
+    18: ["int:6"],
+    113: ["int:47", "int:45", "int:46", "int:48", "int:49"],
+    169: ["int:31"],
+    111: ["int:40"],
+    225: ["int:21"],
+    207: ["int:28", "int:10"],
+    186: ["int:38"],
+    275: ["int:26"],
+    204: ["int:15"],
+    20: ["int:17"],
+    125: ["int:35"],
+    44: ["int:20"],
+    32: ["int:10"],
+    226: ["int:21"],
+    251: ["int:13"],
+    183: ["int:18", "int:19"],
+    208: ["int:28"],
+    264: ["int:24", "int:39", "int:43"],
+    184: ["int:19"],
+    64: ["int:22"],
+}
+decomp_targets_with_barriers = {
+    18: ["int:6"],
+    169: ["int:31"],
+    129: ["int:32"],
+    141: ["int:37"],
+    257: ["int:0"],
+    202: ["int:29"],
+    149: ["int:27"],
+    208: ["int:28"],
+    126: ["int:8"],
+    174: ["int:44"],
+    44: ["int:20"],
+    53: ["int:9"],
+    225: ["int:21"],
+    199: ["int:23"],
+    42: ["int:30"],
+    204: ["int:15"],
+    274: ["int:26"],
+    118: ["int:11"],
+    244: ["int:34", "int:42"],
+    17: ["int:1", "int:8", "int:25"],
+    170: ["int:31"],
+    130: ["int:32"],
+    196: ["int:18"],
+    1: ["int:7"],
+    255: ["int:38"],
+    132: ["int:41"],
+    58: ["int:7"],
+    116: ["int:14"],
+    110: ["int:3"],
+    233: ["int:13", "int:36"],
+    265: ["int:43"],
+    105: ["int:5"],
+    207: ["int:28", "int:10"],
+    271: ["int:16", "int:9"],
+    31: ["int:15"],
+    119: ["int:11"],
+    198: ["int:23"],
+    32: ["int:10"],
+    234: ["int:13", "int:36"],
+    148: ["int:27"],
+    24: ["int:37"],
+    109: ["int:3"],
+    64: ["int:22"],
+    125: ["int:35"],
+    203: ["int:29"],
+    197: ["int:18"],
+    238: ["int:20"],
+    66: ["int:4", "int:33"],
+    63: ["int:22"],
+    256: ["int:0", "int:38"],
+    272: ["int:16"],
+    124: ["int:35"],
+    275: ["int:26"],
+    4: ["int:12"],
+    106: ["int:5"],
+    136: ["int:6"],
+    221: ["int:30"],
+    183: ["int:19"],
+    67: ["int:4", "int:33", "int:12"],
+    131: ["int:1", "int:25", "int:41"],
+    173: ["int:44"],
+    184: ["int:19"],
+    11: ["int:14"],
+    43: ["int:46", "int:45", "int:47", "int:48", "int:34", "int:2", "int:49", "int:42"],
+    115: ["int:2"],
+    264: ["int:39", "int:43", "int:24"],
+    142: ["int:17"],
+    226: ["int:21"],
+    263: ["int:39", "int:24"],
+    20: ["int:17"],
+}
+targets_poly = {
+    18: ["int:6", "int:32", "int:41", "int:27"],
+    56: ["int:38", "int:18", "int:0", "int:23"],
+    54: ["int:9", "int:16", "int:3", "int:26"],
+    10: [
+        "int:5",
+        "int:48",
+        "int:49",
+        "int:46",
+        "int:45",
+        "int:40",
+        "int:47",
+        "int:11",
+        "int:3",
+        "int:34",
+        "int:2",
+        "int:30",
+    ],
+    2: ["int:5", "int:22", "int:7", "int:4"],
+    5: ["int:5", "int:11"],
+    26: ["int:44"],
+    45: ["int:38", "int:13", "int:18", "int:20", "int:36", "int:19", "int:0", "int:23"],
+    50: ["int:43", "int:39", "int:1", "int:35", "int:25", "int:8", "int:24", "int:12", "int:33"],
+    32: ["int:9", "int:16", "int:15", "int:10", "int:28", "int:29"],
+    19: ["int:6"],
+    42: ["int:16", "int:3", "int:2", "int:30"],
+    39: ["int:13", "int:20", "int:36", "int:21"],
+    51: ["int:43", "int:39", "int:1", "int:35", "int:25", "int:8", "int:24", "int:12", "int:33"],
+    17: ["int:43", "int:39", "int:32", "int:1", "int:35", "int:41", "int:25", "int:27", "int:8", "int:24"],
+    24: ["int:32", "int:37", "int:41", "int:27", "int:17"],
+    9: ["int:12", "int:33"],
+    20: [
+        "int:43",
+        "int:39",
+        "int:32",
+        "int:37",
+        "int:1",
+        "int:41",
+        "int:25",
+        "int:27",
+        "int:8",
+        "int:17",
+        "int:24",
+    ],
+    29: ["int:44", "int:37", "int:17", "int:31"],
+    25: ["int:44", "int:37", "int:17"],
+    40: ["int:13", "int:20", "int:36", "int:21", "int:2"],
+    52: ["int:5", "int:9", "int:16", "int:26", "int:29"],
+    3: ["int:4"],
+    35: ["int:9", "int:16", "int:3", "int:10", "int:28", "int:30"],
+    23: ["int:6"],
+    31: ["int:9", "int:7", "int:15", "int:10", "int:29"],
+    27: ["int:44"],
+    38: ["int:13", "int:36"],
+    12: ["int:14"],
+    21: ["int:6", "int:32", "int:41", "int:27"],
+    11: ["int:14", "int:11"],
+    30: ["int:44", "int:38", "int:18", "int:19", "int:0", "int:23"],
+    16: ["int:43", "int:39", "int:1", "int:35", "int:25", "int:8", "int:24"],
+    0: ["int:22", "int:7", "int:35", "int:15", "int:8", "int:12", "int:29", "int:33"],
+    43: [
+        "int:5",
+        "int:48",
+        "int:49",
+        "int:46",
+        "int:45",
+        "int:40",
+        "int:47",
+        "int:42",
+        "int:3",
+        "int:34",
+        "int:2",
+        "int:30",
+    ],
+    53: ["int:9", "int:16", "int:26", "int:29"],
+    55: ["int:5", "int:3", "int:26"],
+    13: ["int:14"],
+    6: ["int:11"],
+    37: ["int:21", "int:28"],
+    41: ["int:21", "int:2"],
+    1: ["int:22", "int:7", "int:4", "int:35", "int:8", "int:12", "int:29", "int:33"],
+    33: ["int:15"],
+    4: ["int:4", "int:12", "int:33"],
+    14: ["int:14", "int:11"],
+    44: [
+        "int:48",
+        "int:13",
+        "int:49",
+        "int:46",
+        "int:20",
+        "int:45",
+        "int:36",
+        "int:47",
+        "int:42",
+        "int:34",
+        "int:2",
+    ],
+    28: ["int:37", "int:17", "int:31"],
+    36: ["int:21", "int:10", "int:28"],
+    34: ["int:15", "int:10", "int:28"],
+}
+targets_poly_0 = {
+    0: ["int:7"],
+    53: ["int:16", "int:9"],
+    52: ["int:9"],
+    11: ["int:11"],
+    1: ["int:7"],
+    33: ["int:15"],
+    10: ["int:2"],
+    30: ["int:23"],
+    34: ["int:10"],
+    28: ["int:17"],
+    14: ["int:11"],
+    42: ["int:2"],
+    31: ["int:15"],
+    43: ["int:2"],
+    20: ["int:17"],
+    56: ["int:23"],
+    54: ["int:16", "int:9"],
+    32: ["int:10"],
+}
 
 
 def override_coords(nx_multigraph: nx.MultiGraph) -> gpd.GeoDataFrame:
     """Some tweaks for visual checks."""
     data_gdf = mock.mock_data_gdf(nx_multigraph, random_seed=25)
-    data_gdf.loc[18, "geometry"] = geometry.Point(701200, 5719400)
-    data_gdf.loc[39, "geometry"] = geometry.Point(700750, 5720025)
-    data_gdf.loc[26, "geometry"] = geometry.Point(700400, 5719525)
+    data_gdf.loc[18, "geometry"] = geometry.Point(701200, 5719400)  # type: ignore
+    data_gdf.loc[39, "geometry"] = geometry.Point(700750, 5720025)  # type: ignore
+    data_gdf.loc[26, "geometry"] = geometry.Point(700400, 5719525)  # type: ignore
 
     return data_gdf
 
@@ -28,164 +337,128 @@ def test_assign_to_network(primal_graph):
     # G = graphs.nx_auto_edge_params(G)
     G_decomp = graphs.nx_decompose(primal_graph, 50)
     # targets visually confirmed in plots
-    primal_targets = {
-        20: [44, 40],
-        2: [43, 10],
-        25: [17, 20],
-        5: [10, 43],
-        17: [20, 28],
-        0: [56, 45],
-        26: [54, 55],
-        8: [17, 16],
-        16: [53, 54],
-        29: [31, 32],
-        34: [43, 44],
-        1: [17, 20],
-        9: [53, 54],
-        37: [24, 20],
-        7: [1, 0],
-        3: [43, 10],
-        40: [43, 10],
-        42: [43, 44],
-        43: [51, 50],
-        24: [50, 51],
-        23: [56, 30],
-        39: [50, 51],
-        44: [30, 29],
-        36: [40, 39],
-        45: [43, 10],
-        18: [30, 45],
-        4: [1, 4],
-        28: [32, 34],
-        21: [39, 37],
-        38: [45, 30],
-        46: [43, 10],
-        47: [43, 10],
-        32: [17, 18],
-        19: [45, 30],
-        49: [43, 10],
-        6: [18, 21],
-        12: [4, 1],
-        10: [32, 34],
-        11: [11, 14],
-        14: [11, 12],
-        31: [29, 28],
-        33: [1, 4],
-        35: [16, 17],
-        22: [1, 2],
-        13: [45, 44],
-        27: [24, 21],
-        30: [42, 35],
-        41: [17, 20],
-        15: [31, 33],
-        48: [43, 10],
-    }
-    decomp_targets = {
-        0: [257, 256],
-        1: [17, 131],
-        2: [43, 115],
-        3: [110, 109],
-        4: [66, 67],
-        5: [105, 106],
-        6: [18, 136],
-        7: [58, 1],
-        8: [126, 17],
-        9: [53, 271],
-        10: [32, 207],
-        11: [118, 119],
-        12: [67, 4],
-        13: [250, 251],
-        14: [116, 11],
-        15: [204, 31],
-        16: [272, 271],
-        17: [142, 20],
-        18: [182, 183],
-        19: [184, 183],
-        20: [238, 44],
-        21: [226, 225],
-        22: [63, 64],
-        23: [199, 198],
-        24: [264, 263],
-        25: [17, 131],
-        26: [274, 275],
-        27: [149, 148],
-        28: [207, 208],
-        29: [202, 203],
-        30: [42, 221],
-        31: [169, 168],
-        32: [129, 130],
-        33: [66, 67],
-        34: [43, 244],
-        35: [125, 124],
-        36: [234, 233],
-        37: [141, 24],
-        38: [187, 186],
-        39: [264, 263],
-        40: [111, 112],
-        41: [132, 131],
-        42: [244, 43],
-        43: [265, 264],
-        44: [174, 173],
-        45: [114, 113],
-        46: [114, 113],
-        47: [114, 113],
-        48: [113, 114],
-        49: [113, 114],
-    }
     for G, targets in [(primal_graph, primal_targets), (G_decomp, decomp_targets)]:
         # generate data
         _nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(G)
         data_gdf = override_coords(G)
         data_map = mock.mock_data_map(data_gdf)
         # use small enough distance to ensure closest edge used regrardless of whether both nodes within
-        data_map.assign_to_network(network_structure, max_dist=400)
+        data_map.assign_data_to_network(network_structure, max_assignment_dist=400)
         # from cityseer.tools import plot
         # plot.plot_network_structure(network_structure, data_map)
         # plot.plot_assignment(network_structure, G, data_map)
-        for data_entry in data_map.entries.values():
-            assert targets[data_entry.data_key_py][0] == data_entry.node_matches.nearest.idx  # type: ignore
-            assert targets[data_entry.data_key_py][1] == data_entry.node_matches.next_nearest.idx  # type: ignore
+        for node_idx, data_assignments in data_map.node_data_map.items():
+            matches = []
+            for data_idx, data_dist in data_assignments:
+                matches.append(data_idx)
+                # get the data point
+                data_entry = data_map.entries[data_idx]
+                # get the data point geometry
+                data_geom = wkt.loads(data_entry.geom_wkt)
+                # get the node data
+                node_data = network_structure.get_node_payload(node_idx)
+                # get the node geometry
+                node_geom = geometry.Point(node_data.coord)
+                # check the assigned distance
+                assert data_geom.distance(node_geom) - data_dist < config.ATOL
+            # check the assignments
+            assert sorted(matches) == sorted(targets[node_idx])
         # should be None if distance is 0m
-        data_map.assign_to_network(network_structure, max_dist=0)
-        for data_entry in data_map.entries.values():
-            assert data_entry.node_matches.nearest is None  # type: ignore
-            assert data_entry.node_matches.next_nearest is None  # type: ignore
+        data_map.assign_data_to_network(network_structure, max_assignment_dist=0)
+        assert data_map.node_data_map == {}
+
+    # test with polygons
+    _nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(primal_graph)
+    data_gdf = override_coords(primal_graph)
+    data_gdf_buff = data_gdf.copy()
+    data_gdf_buff["geometry"] = data_gdf["geometry"].buffer(10)
+    data_map = mock.mock_data_map(data_gdf_buff)
+    data_map.assign_data_to_network(network_structure, max_assignment_dist=400)
+    # from cityseer.tools import plot
+    # plot.plot_network_structure(network_structure, data_map)
+    # plot.plot_assignment(network_structure, G, data_map)
+    for node_idx, data_assignments in data_map.node_data_map.items():
+        matches = []
+        for data_idx, data_dist in data_assignments:
+            matches.append(data_idx)
+            # get the data point
+            data_entry = data_map.entries[data_idx]
+            # get the data point geometry
+            data_geom = wkt.loads(data_entry.geom_wkt)
+            # get the node data
+            node_data = network_structure.get_node_payload(node_idx)
+            # get the node geometry
+            node_geom = geometry.Point(node_data.coord)
+            # check the assigned distance
+            assert data_geom.distance(node_geom) - data_dist < config.ATOL
+        # check the assignments
+        assert sorted(matches) == sorted(targets_poly[node_idx])
+    # Some polygons will overlap edges if distance is 0m
+    data_map.assign_data_to_network(network_structure, max_assignment_dist=0)
+    for node_idx, data_assignments in data_map.node_data_map.items():
+        matches = []
+        for data_idx, data_dist in data_assignments:
+            matches.append(data_idx)
+            # get the data point
+            data_entry = data_map.entries[data_idx]
+            # get the data point geometry
+            data_geom = wkt.loads(data_entry.geom_wkt)
+            # get the node data
+            node_data = network_structure.get_node_payload(node_idx)
+            # get the node geometry
+            node_geom = geometry.Point(node_data.coord)
+            # check the assigned distance
+            assert data_geom.distance(node_geom) - data_dist < config.ATOL
+        # check the assignments
+        assert sorted(matches) == sorted(targets_poly_0[node_idx])
 
     # test with barriers
-    # from cityseer.tools import plot
+    _nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(G)
+    data_gdf = override_coords(G_decomp)
     # barriers_gdf = mock.mock_barriers_gdf()
     # ax = barriers_gdf.plot()
     # ax = data_gdf.plot(ax=ax, color="red", markersize=5)
     # ax = _edges_gdf.plot(ax=ax, color="blue", linewidth=0.5)
     # plt.show()
     # data_map = mock.mock_data_map(data_gdf, with_barriers=False)
-    # data_map.assign_to_network(network_structure, max_dist=400)
+    # data_map.assign_data_to_network(network_structure, max_assignment_dist=400)
     # plot.plot_network_structure(network_structure, data_map)
-
     data_map = mock.mock_data_map(data_gdf, with_barriers=True)
-    data_map.assign_to_network(network_structure, max_dist=400)
+    data_map.assign_data_to_network(network_structure, max_assignment_dist=400)
     # plot.plot_network_structure(network_structure, data_map)
-    # flipped
-    assert data_map.entries["int:18"].node_matches.nearest.idx == 196
-    assert data_map.entries["int:18"].node_matches.next_nearest.idx == 197
-    # blocked
-    assert data_map.entries["int:40"].node_matches.nearest is None
-    assert data_map.entries["int:40"].node_matches.next_nearest is None
-    # partially blocked
-    assert data_map.entries["int:49"].node_matches.nearest.idx == 43
-    assert data_map.entries["int:49"].node_matches.next_nearest is None
+    # plot.plot_assignment(network_structure, G_decomp, data_map)
+
+    for node_idx, data_assignments in data_map.node_data_map.items():
+        matches = []
+        for data_idx, data_dist in data_assignments:
+            matches.append(data_idx)
+            # get the data point
+            data_entry = data_map.entries[data_idx]
+            # get the data point geometry
+            data_geom = wkt.loads(data_entry.geom_wkt)
+            # get the node data
+            node_data = network_structure.get_node_payload(node_idx)
+            # get the node geometry
+            node_geom = geometry.Point(node_data.coord)
+            # check the assigned distance
+            assert data_geom.distance(node_geom) - data_dist < config.ATOL
+        # check the assignments
+        assert sorted(matches) == sorted(decomp_targets_with_barriers[node_idx])
 
 
 def test_aggregate_to_src_idx(primal_graph):
-    for max_dist in [750]:
-        max_seconds = max_dist / config.SPEED_M_S
-        for deduplicate in [False]:
+    for deduplicate in [False, True]:
+        for max_dist in [250, 750]:
+            max_seconds = max_dist / config.SPEED_M_S
             # generate data
             _nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(primal_graph)
             data_gdf = mock.mock_data_gdf(primal_graph)
-            data_map = mock.mock_data_map(data_gdf)
+            if deduplicate is False:
+                data_map = mock.mock_data_map(data_gdf, dedupe_key_col=None)
+            else:
+                data_map = mock.mock_data_map(data_gdf, dedupe_key_col="data_id")
             # nearest assigned distance is different to overall distance above
-            data_map.assign_to_network(network_structure, 400)
+            data_map.assign_data_to_network(network_structure, 400)
             # in this case, use same assignment max dist as search max dist
             # for debugging
             # from cityseer.tools import plot
@@ -206,171 +479,151 @@ def test_aggregate_to_src_idx(primal_graph):
                         _nodes, tree_map = network_structure.dijkstra_tree_simplest(
                             netw_src_idx, int(max_seconds), config.SPEED_M_S
                         )
-                    # verify distances vs. the max
-                    for data_key, data_entry in data_map.entries.items():
-                        # Use node_matches for clarity and consistency with Rust struct
-                        type_name = "int"
-                        py_type = getattr(builtins, type_name)
-                        nearest_assign = (
-                            py_type(data_entry.node_matches.nearest.idx)
-                            if data_entry.node_matches and data_entry.node_matches.nearest is not None
-                            else None
-                        )
-                        next_nearest_assign = (
-                            py_type(data_entry.node_matches.next_nearest.idx)
-                            if data_entry.node_matches and data_entry.node_matches.next_nearest is not None
-                            else None
-                        )
-                        # nearest
-                        nearest_assign_sec = np.inf
-                        if nearest_assign is not None:
-                            nearest_netw_node = network_structure.get_node_payload(nearest_assign)
-                            # add tail
-                            if not np.isposinf(tree_map[nearest_assign].agg_seconds):
-                                nearest_assign_sec = (
-                                    tree_map[nearest_assign].agg_seconds
-                                    + nearest_netw_node.coord.hypot(data_entry.coord) / config.SPEED_M_S
-                                )
-                        # next nearest
-                        next_nearest_assign_sec = np.inf
-                        if next_nearest_assign is not None:
-                            next_nearest_netw_node = network_structure.get_node_payload(next_nearest_assign)
-                            # add tail
-                            if not np.isposinf(tree_map[next_nearest_assign].agg_seconds):
-                                next_nearest_assign_sec = (
-                                    tree_map[next_nearest_assign].agg_seconds
-                                    + next_nearest_netw_node.coord.hypot(data_entry.coord) / config.SPEED_M_S
-                                )
-                        # check deduplication - 49 is the closest, so others should not make it through
-                        # checks
-                        if nearest_assign_sec > max_seconds and next_nearest_assign_sec > max_seconds:
-                            assert data_key not in reachable_entries
-                        elif deduplicate and data_key in ["45", "46", "47", "48"]:
-                            assert data_key not in reachable_entries and "49" in reachable_entries
-                        # due to rounding errors with f32 conversion, skip where within 0.5 seconds of max_seconds
-                        elif nearest_assign_sec > max_seconds - 0.5 and next_nearest_assign_sec > max_seconds - 0.5:
-                            print(f"Skipping {data_key} due to potential rounding errors affecting max seconds cutoff")
-                            continue
-                        elif nearest_assign_sec > max_seconds and next_nearest_assign_sec <= max_seconds:
-                            assert (
-                                reachable_entries[data_key] / config.SPEED_M_S - next_nearest_assign_sec < config.ATOL
-                            )
-                        elif next_nearest_assign_sec > max_seconds and nearest_assign_sec <= max_seconds:
-                            assert reachable_entries[data_key] / config.SPEED_M_S - nearest_assign_sec < config.ATOL
-                        else:
-                            # If either assign is within max_seconds, must be present
-                            assert data_key in reachable_entries
-                            assert (
-                                reachable_entries[data_key] / config.SPEED_M_S
-                                - min(nearest_assign_sec, next_nearest_assign_sec)
-                                < config.ATOL
-                            )
+                    # check that reachable entries and respective distances are correct
+                    # should match against the network structure plus data_map.node_data_map distances
+                    manual_reachable = {}
+                    manual_not_reachable = {}
+                    for node_idx, node_visit in enumerate(tree_map):  # type: ignore
+                        if np.isfinite(node_visit.agg_seconds):
+                            if node_idx not in data_map.node_data_map:
+                                continue
+                            for assigned_data_idx, assigned_data_dist in data_map.node_data_map[node_idx]:
+                                dist = node_visit.agg_seconds * config.SPEED_M_S + assigned_data_dist
+                                if dist <= max_dist:
+                                    manual_reachable[assigned_data_idx] = dist
+                                else:
+                                    manual_not_reachable[assigned_data_idx] = dist
+                    # all reachable entries should be in manual reachable and distances should be the same
+                    for reachable_key, reachable_dist in reachable_entries.items():
+                        assert reachable_key in manual_reachable
+                        assert reachable_dist - manual_reachable[reachable_key] < config.ATOL
+                    # manual reachable shouldn't contain keys not in reachable entries
+                    # allow 1m tolerance for floating point errors
+                    for reachable_key in manual_reachable:
+                        try:
+                            reachable_key in reachable_entries
+                        except KeyError:
+                            assert manual_reachable[reachable_key] < 1
 
 
 def test_accessibility(primal_graph):
     # generate node and edge maps
     _nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(primal_graph)
     data_gdf = mock.mock_landuse_categorical_data(primal_graph, random_seed=13)
-    data_map = mock.mock_data_map(data_gdf, dedupe_key_col="data_id")
-    distances = [200, 400, 800, 1600]
-    max_dist = max(distances)
-    max_seconds = max_dist / config.SPEED_M_S
-    # max assign dist is different from max search dist
-    data_map.assign_to_network(network_structure, max_dist=400)
-    landuses_map = dict(data_gdf["categorical_landuses"])  # type: ignore
-    # all datapoints and types are completely unique except for the last five - which all point to the same source
-    accessibility_keys = ["a", "b", "c", "z"]  # the duplicate keys are per landuse 'z'
-    # generate
-    accessibilities = data_map.accessibility(
-        network_structure,
-        landuses_map,  # type: ignore
-        accessibility_keys,
-        distances,
-    )
-    # test manual metrics against all nodes
-    betas = rustalgos.betas_from_distances(distances)
-    for dist, beta in zip(distances, betas, strict=True):
-        for src_idx in network_structure.node_indices():  # type: ignore
-            # aggregate
-            a_nw = 0
-            b_nw = 0
-            c_nw = 0
-            z_nw = 0
-            a_wt = 0
-            b_wt = 0
-            c_wt = 0
-            z_wt = 0
-            a_dist = np.nan
-            b_dist = np.nan
-            c_dist = np.nan
-            z_dist = np.nan
-            # iterate reachable
-            reachable_entries = data_map.aggregate_to_src_idx(
-                src_idx, network_structure, int(max_seconds), config.SPEED_M_S
-            )
-            for data_key, data_dist in reachable_entries.items():
-                py_type, py_key = data_key.split(":")
-                py_cast = getattr(builtins, py_type)
-                data_key_py = py_cast(py_key)
-                # double check distance is within threshold
-                assert data_dist <= max_dist
-                if data_dist <= dist:
-                    data_class = landuses_map[data_key_py]
-                    # aggregate accessibility codes
-                    if data_class == "a":
-                        a_nw += 1
-                        a_wt += np.exp(-beta * data_dist)
-                        if np.isnan(a_dist) or data_dist < a_dist:
-                            a_dist = data_dist
-                    elif data_class == "b":
-                        b_nw += 1
-                        b_wt += np.exp(-beta * data_dist)
-                        if np.isnan(b_dist) or data_dist < b_dist:
-                            b_dist = data_dist
-                    elif data_class == "c":
-                        c_nw += 1
-                        c_wt += np.exp(-beta * data_dist)
-                        if np.isnan(c_dist) or data_dist < c_dist:
-                            c_dist = data_dist
-                    elif data_class == "z":
-                        z_nw += 1
-                        z_wt += np.exp(-beta * data_dist)
-                        if np.isnan(z_dist) or data_dist < z_dist:
-                            z_dist = data_dist
-            # assertions
-            assert accessibilities["a"].unweighted[dist][src_idx] - a_nw < config.ATOL
-            assert accessibilities["b"].unweighted[dist][src_idx] - b_nw < config.ATOL
-            assert accessibilities["c"].unweighted[dist][src_idx] - c_nw < config.ATOL
-            assert accessibilities["z"].unweighted[dist][src_idx] - z_nw < config.ATOL
-            assert accessibilities["a"].weighted[dist][src_idx] - a_wt < config.ATOL
-            assert accessibilities["b"].weighted[dist][src_idx] - b_wt < config.ATOL
-            assert accessibilities["c"].weighted[dist][src_idx] - c_wt < config.ATOL
-            assert accessibilities["z"].weighted[dist][src_idx] - z_wt < config.ATOL
-            if dist == max(distances):
-                if np.isfinite(a_dist):
-                    assert accessibilities["a"].distance[dist][src_idx] - a_dist < config.ATOL
+    for deduplicate in [False, True]:
+        if deduplicate is False:
+            data_map = mock.mock_data_map(data_gdf, dedupe_key_col=None)
+        else:
+            data_map = mock.mock_data_map(data_gdf, dedupe_key_col="data_id")
+        distances = [200, 400, 800, 1600]
+        max_dist = max(distances)
+        max_seconds = max_dist / config.SPEED_M_S
+        # max assign dist is different from max search dist
+        data_map.assign_data_to_network(network_structure, max_assignment_dist=400)
+        landuses_map = dict(data_gdf["categorical_landuses"])  # type: ignore
+        # all datapoints and types are completely unique except for the last five - which all point to the same source
+        accessibility_keys = ["a", "b", "c", "z"]  # the duplicate keys are per landuse 'z'
+        # generate
+        accessibilities = data_map.accessibility(
+            network_structure,
+            landuses_map,  # type: ignore
+            accessibility_keys,
+            distances,
+        )
+        # test manual metrics against all nodes
+        betas = rustalgos.betas_from_distances(distances)
+        for dist, beta in zip(distances, betas, strict=True):
+            z_nws = []
+            z_wts = []
+            for src_idx in network_structure.node_indices():  # type: ignore
+                # aggregate
+                a_nw = 0
+                b_nw = 0
+                c_nw = 0
+                z_nw = 0
+                a_wt = 0
+                b_wt = 0
+                c_wt = 0
+                z_wt = 0  # for deduplication checks on data items 45-49 - which are only z items
+                a_dist = np.nan
+                b_dist = np.nan
+                c_dist = np.nan
+                z_dist = np.nan
+                # iterate reachable
+                reachable_entries = data_map.aggregate_to_src_idx(
+                    src_idx, network_structure, int(max_seconds), config.SPEED_M_S
+                )
+                for data_key, data_dist in reachable_entries.items():
+                    py_type, py_key = data_key.split(":")
+                    py_cast = getattr(builtins, py_type)
+                    data_key_py = py_cast(py_key)
+                    # double check distance is within threshold
+                    assert data_dist <= max_dist
+                    if data_dist <= dist:
+                        data_class = landuses_map[data_key_py]
+                        # aggregate accessibility codes
+                        if data_class == "a":
+                            a_nw += 1
+                            a_wt += np.exp(-beta * data_dist)
+                            if np.isnan(a_dist) or data_dist < a_dist:
+                                a_dist = data_dist
+                        elif data_class == "b":
+                            b_nw += 1
+                            b_wt += np.exp(-beta * data_dist)
+                            if np.isnan(b_dist) or data_dist < b_dist:
+                                b_dist = data_dist
+                        elif data_class == "c":
+                            c_nw += 1
+                            c_wt += np.exp(-beta * data_dist)
+                            if np.isnan(c_dist) or data_dist < c_dist:
+                                c_dist = data_dist
+                        elif data_class == "z":
+                            z_nw += 1
+                            z_wt += np.exp(-beta * data_dist)
+                            if np.isnan(z_dist) or data_dist < z_dist:
+                                z_dist = data_dist
+                # assertions
+                assert accessibilities["a"].unweighted[dist][src_idx] - a_nw < config.ATOL
+                assert accessibilities["b"].unweighted[dist][src_idx] - b_nw < config.ATOL
+                assert accessibilities["c"].unweighted[dist][src_idx] - c_nw < config.ATOL
+                assert accessibilities["z"].unweighted[dist][src_idx] - z_nw < config.ATOL
+                assert accessibilities["a"].weighted[dist][src_idx] - a_wt < config.ATOL
+                assert accessibilities["b"].weighted[dist][src_idx] - b_wt < config.ATOL
+                assert accessibilities["c"].weighted[dist][src_idx] - c_wt < config.ATOL
+                assert accessibilities["z"].weighted[dist][src_idx] - z_wt < config.ATOL
+                if dist == max(distances):
+                    if np.isfinite(a_dist):
+                        assert accessibilities["a"].distance[dist][src_idx] - a_dist < config.ATOL
+                    else:
+                        assert np.isnan(a_dist) and np.isnan(accessibilities["a"].distance[dist][src_idx])
+                    if np.isfinite(b_dist):
+                        assert accessibilities["b"].distance[dist][src_idx] - b_dist < config.ATOL
+                    else:
+                        assert np.isnan(b_dist) and np.isnan(accessibilities["b"].distance[dist][src_idx])
+                    if np.isfinite(c_dist):
+                        assert accessibilities["c"].distance[dist][src_idx] - c_dist < config.ATOL
+                    else:
+                        assert np.isnan(c_dist) and np.isnan(accessibilities["c"].distance[dist][src_idx])
+                    if np.isfinite(z_dist):
+                        assert accessibilities["z"].distance[dist][src_idx] - z_dist < config.ATOL
+                    else:
+                        assert np.isnan(z_dist) and np.isnan(accessibilities["z"].distance[dist][src_idx])
                 else:
-                    assert np.isnan(a_dist) and np.isnan(accessibilities["a"].distance[dist][src_idx])
-                if np.isfinite(b_dist):
-                    assert accessibilities["b"].distance[dist][src_idx] - b_dist < config.ATOL
-                else:
-                    assert np.isnan(b_dist) and np.isnan(accessibilities["b"].distance[dist][src_idx])
-                if np.isfinite(c_dist):
-                    assert accessibilities["c"].distance[dist][src_idx] - c_dist < config.ATOL
-                else:
-                    assert np.isnan(c_dist) and np.isnan(accessibilities["c"].distance[dist][src_idx])
-                if np.isfinite(z_dist):
-                    assert accessibilities["z"].distance[dist][src_idx] - z_dist < config.ATOL
-                else:
-                    assert np.isnan(z_dist) and np.isnan(accessibilities["z"].distance[dist][src_idx])
+                    assert dist not in accessibilities["a"].distance
+                    assert dist not in accessibilities["b"].distance
+                    assert dist not in accessibilities["c"].distance
+                    assert dist not in accessibilities["z"].distance
+                # check for deduplication
+                z_nws.append(z_nw)
+                z_wts.append(z_wt)
+            if deduplicate is True:
+                assert np.all(z_nws) <= 1
+                assert np.all(z_wts) <= 1
             else:
-                assert dist not in accessibilities["a"].distance
-                assert dist not in accessibilities["b"].distance
-                assert dist not in accessibilities["c"].distance
-                assert dist not in accessibilities["z"].distance
-            # check for deduplication
-            assert z_nw in [0, 1]
-            assert z_wt <= 1
+                if dist >= 400:
+                    assert max(z_nws) == 5
+                if dist >= 800:
+                    assert max(z_wts) >= 1
     # setup dual data
     accessibilities_ang = data_map.accessibility(
         network_structure,
@@ -405,7 +658,7 @@ def test_mixed_uses(primal_graph):
     _nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(primal_graph)
     data_gdf = mock.mock_landuse_categorical_data(primal_graph, random_seed=13)
     data_map = mock.mock_data_map(data_gdf, dedupe_key_col="data_id")
-    data_map.assign_to_network(network_structure, max_dist=400)
+    data_map.assign_data_to_network(network_structure, max_assignment_dist=400)
     distances = [200, 400, 800, 1600]
     max_dist = max(distances)
     max_seconds = max_dist / config.SPEED_M_S
@@ -509,7 +762,8 @@ def test_stats(primal_graph):
     max_assign_dist = 3200
     # don't deduplicate with data_id column otherwise below tallys won't work
     data_map = mock.mock_data_map(data_gdf)
-    data_map.assign_to_network(network_structure, max_dist=max_assign_dist)
+    data_map.assign_data_to_network(network_structure, max_assignment_dist=max_assign_dist)
+
     numerical_maps = []
     for stats_col in ["mock_numerical_1", "mock_numerical_2"]:
         numerical_maps.append(dict(data_gdf[stats_col]))  # type: ignore)
@@ -644,7 +898,7 @@ def test_stats(primal_graph):
     # do deduplication - the stats should now be lower on average
     # the last five datapoints are pointing to the same source
     data_map_dedupe = mock.mock_data_map(data_gdf, dedupe_key_col="data_id")
-    data_map_dedupe.assign_to_network(network_structure, max_dist=max_assign_dist)
+    data_map_dedupe.assign_data_to_network(network_structure, max_assignment_dist=max_assign_dist)
     # plot.plot_network_structure(network_structure, data_map_dedupe)
     stats_results_dedupe = data_map_dedupe.stats(
         network_structure,
@@ -655,8 +909,6 @@ def test_stats(primal_graph):
         for data_dedupe_entry in data_map_dedupe.entries.values():
             if data_entry.data_key_py == data_dedupe_entry.data_key_py:
                 assert data_entry.data_key == data_dedupe_entry.data_key
-                assert data_entry.node_matches.nearest.idx == data_dedupe_entry.node_matches.nearest.idx
-                assert data_entry.node_matches.next_nearest.idx == data_dedupe_entry.node_matches.next_nearest.idx
     for stats_result, stats_result_dedupe in zip(stats_results, stats_results_dedupe, strict=True):
         for dist_key in distances:
             # min and max are be the same

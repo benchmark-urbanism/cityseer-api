@@ -108,11 +108,10 @@ def test_mock_data_map(primal_graph):
                 assert entry is not None
                 assert entry.data_key == data_key
                 assert entry.data_key_py == uid
-                assert entry.coord.x - row.geometry.x < 1  # f32 rounding errors
-                assert entry.coord.y - row.geometry.y < 1  # f32 rounding errors
-                assert entry.dedupe_key_py is None
-                assert entry.dedupe_key is None
-                assert entry.node_matches is None
+                assert entry.geom_wkt == row.geometry.wkt
+                # should match fallback
+                assert entry.dedupe_key_py == uid
+                assert entry.dedupe_key == data_key
 
 
 def test_mock_barriers_gdf():

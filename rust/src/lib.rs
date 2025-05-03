@@ -1,8 +1,9 @@
 //! Cityseer API Rust module: high-performance spatial algorithms for Python via PyO3.
 
 use pyo3::prelude::*;
+use pyo3_log;
 
-// Module imports (alphabetical for clarity)
+// Module imports
 mod centrality;
 mod common;
 mod data;
@@ -13,7 +14,11 @@ mod viewshed;
 /// Cityseer API implementation in Rust for performance-critical algorithms.
 /// Exposes network, centrality, and diversity computation functions to Python.
 #[pymodule]
+#[pyo3(name = "rustalgos")]
 fn rustalgos(py_module: &Bound<'_, PyModule>) -> PyResult<()> {
+    // Initialize pyo3-log to bridge Rust logs to Python logging
+    pyo3_log::init();
+
     // Register classes and functions
     py_module.add_function(wrap_pyfunction!(common::check_numerical_data, py_module)?)?;
     py_module.add_function(wrap_pyfunction!(common::distances_from_betas, py_module)?)?;
