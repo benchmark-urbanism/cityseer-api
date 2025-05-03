@@ -260,8 +260,8 @@ def test_network_structure_from_nx(diamond_graph):
         # check edge maps (idx and label match in this case...)
         for start_ns_node_idx, end_ns_node_idx, edge_idx in network_structure.edge_references():
             edge_payload = network_structure.get_edge_payload(start_ns_node_idx, end_ns_node_idx, edge_idx)
-            start_nd_key = edge_payload.start_nd_key
-            end_nd_key = edge_payload.end_nd_key
+            start_nd_key = edge_payload.start_nd_key_py
+            end_nd_key = edge_payload.end_nd_key_py
             edge_idx = edge_payload.edge_idx
             length = edge_payload.length
             angle_sum = edge_payload.angle_sum
@@ -707,8 +707,8 @@ def test_network_structure_from_gpd(primal_graph):
         edge_data = network_structure.get_edge_payload(start_nd_idx, end_nd_idx, edge_idx)
         edge_data_round = network_structure_round.get_edge_payload(start_nd_idx, end_nd_idx, edge_idx)
         assert edge_data.edge_idx == edge_data_round.edge_idx
-        assert edge_data.start_nd_key == edge_data_round.start_nd_key
-        assert edge_data.end_nd_key == edge_data_round.end_nd_key
+        assert edge_data.start_nd_key_py == edge_data_round.start_nd_key_py
+        assert edge_data.end_nd_key_py == edge_data_round.end_nd_key_py
         assert edge_data.length == edge_data_round.length
         assert edge_data.angle_sum == edge_data_round.angle_sum
         assert edge_data.imp_factor == edge_data_round.imp_factor

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from .centrality import CentralitySegmentResult, CentralityShortestResult, CentralitySimplestResult
 
 __doc__: str
@@ -15,8 +17,8 @@ class NodePayload:
     def coord(self) -> tuple[float, float]: ...
 
 class EdgePayload:
-    start_nd_key: str
-    end_nd_key: str
+    start_nd_key_py: Any
+    end_nd_key_py: Any
     edge_idx: int
     length: float
     angle_sum: float
@@ -24,7 +26,8 @@ class EdgePayload:
     in_bearing: float
     out_bearing: float
     seconds: float
-    geom_wkt: str
+    geom_wkt: str | None
+    is_transport: bool
     def validate(self) -> bool: ...
 
 class NodeVisit:
@@ -53,14 +56,16 @@ class DiGraph: ...
 
 class NetworkStructure:
     graph: DiGraph
-    progress: int
     edge_rtree: object | None
-    edge_rtree_built: bool
     @classmethod
     def new(cls) -> NetworkStructure: ...
     def progress_init(self) -> None: ...
-    def add_node(self, node_key: str, x: float, y: float, live: bool, weight: float) -> int:
+    @property
+    def progress(self) -> int: ...
+    def add_street_node(self, node_key: str, x: float, y: float, live: bool, weight: float) -> int:
         """
+        Add a street node to the `NetworkStructure`.
+
         Parameters
         ----------
         node_key: str
@@ -70,9 +75,35 @@ class NetworkStructure:
         y: float
             The node's `y` coordinate.
         live: bool
-            The `live` node attribute identifying if this node falls within the areal boundary of interest as opposed to
-            those that fall within the surrounding buffered area. See the [edge-rolloff](/guide#edge-rolloff) section in
-            the guide.
+            The `live` node attribute identifying if this node falls within the areal boundary of interest.
+        weight: float
+            The node's weight.
+
+        Returns
+        -------
+        int
+            The internal index of the newly added node.
+        """
+        ...
+
+    def add_transport_node(self, node_key: str, x: float, y: float) -> int:
+        """
+        Add a transport node (e.g., station, stop) to the `NetworkStructure`. `weight` is implicitly 0 and ignored for
+        computations (`live=False`).
+
+        Parameters
+        ----------
+        node_key: str
+            The node key as `str`.
+        x: float
+            The node's `x` coordinate.
+        y: float
+            The node's `y` coordinate.
+
+        Returns
+        -------
+        int
+            The internal index of the newly added node.
         """
         ...
 
@@ -103,45 +134,88 @@ class NetworkStructure:
 
     @property
     def edge_count(self) -> int: ...
-    def add_edge(
+    def add_street_edge(
         self,
         start_nd_idx: int,
         end_nd_idx: int,
         edge_idx: int,
-        start_nd_key: str,
-        end_nd_key: str,
+        start_nd_key_py: Any,
+        end_nd_key_py: Any,
         geom_wkt: str,
         imp_factor: float | None = None,
-        seconds: float | None = None,
     ) -> int:
         """
-        Add an edge to the `NetworkStructure`.
+        Add a street edge with geometry to the `NetworkStructure`.
 
-        Edges are directed, meaning that each bidirectional street is represented twice: once in each direction;
-        start/end nodes and in/out bearings will differ accordingly.
+        Edges are directed. Calculates length, bearings, and angle sum from the provided WKT geometry.
+        The edge's `seconds` attribute will be NaN, intended to be calculated later based on length and speed.
 
         Parameters
         ----------
-        start_node_idx: str
+        start_node_idx: int
             Node index for the starting node.
-        end_node_idx: str
+        end_node_idx: int
             Node index for the ending node.
         edge_idx: int
             The edge index, such that multiple edges can span between the same node pair.
-        start_node_key: str
+        start_nd_key_py: Any
             Node key for the starting node.
-        end_node_key: str
+        end_nd_key_py: Any
             Node key for the ending node.
         geom_wkt: str
             The geometry of the edge in WKT format.
-        imp_factor: float
-            The `imp_factor` edge attribute represents an impedance multiplier for increasing or diminishing
-            the impedance of an edge. This is ordinarily set to 1, therefore not impacting calculations. By setting
-            this to greater or less than 1, the edge will have a correspondingly higher or lower impedance. This can
-            be used to take considerations such as street gradients into account, but should be used with caution.
-        seconds: int
-            The edge's traversal time in seconds.
+        imp_factor: float | None
+            Impedance multiplier (default 1.0). Applied during pathfinding.
 
+        Raises
+        ------
+        ValueError
+            If `geom_wkt` cannot be parsed or has fewer than 2 coordinates.
+
+        Returns
+        -------
+        int
+            The internal index of the newly added edge.
+        """
+        ...
+
+    def add_transport_edge(
+        self,
+        start_nd_idx: int,
+        end_nd_idx: int,
+        edge_idx: int,
+        start_nd_key_py: Any,
+        end_nd_key_py: Any,
+        seconds: float,
+        imp_factor: float | None = None,
+    ) -> int:
+        """
+        Add an abstract transport edge defined by travel time to the `NetworkStructure`.
+
+        Edges are directed. Calculates length based on the straight-line distance between nodes.
+        Geometry-related attributes (bearings, angle sum, geom_wkt, geom) will be NaN or None.
+
+        Parameters
+        ----------
+        start_node_idx: int
+            Node index for the starting node.
+        end_node_idx: int
+            Node index for the ending node.
+        edge_idx: int
+            The edge index, such that multiple edges can span between the same node pair.
+        start_nd_key_py: Any
+            Node key for the starting node.
+        end_nd_key_py: Any
+            Node key for the ending node.
+        seconds: float
+            The edge's traversal time in seconds.
+        imp_factor: float | None
+            Impedance multiplier (default 1.0). Applied during pathfinding.
+
+        Returns
+        -------
+        int
+            The internal index of the newly added edge.
         """
         ...
 
@@ -152,6 +226,9 @@ class NetworkStructure:
         ...
 
     def build_edge_rtree(self) -> None: ...
+    def set_barriers(self, barriers_wkt: list[str]) -> None: ...
+    def unset_barriers(self) -> None: ...
+    def find_assignments_for_entry(self, data_key: str, geom: Any, max_dist: float) -> list[tuple[int, str, float]]: ...
     def dijkstra_tree_shortest(
         self, src_idx: int, max_seconds: int, speed_m_s: float, jitter_scale: float | None = None
     ) -> tuple[list[int], list[NodeVisit]]: ...

@@ -7,10 +7,11 @@ import pytest
 from cityseer import config
 from cityseer.metrics import layers
 from cityseer.tools import io, mock
-from shapely import geometry, wkt
+from shapely import geometry
 
 
 def test_build_data_map(primal_graph):
+    _nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(primal_graph)
     for typ in [int, float, str]:
         for data_id_col in [None, "data_id"]:
             data_gdf = mock.mock_data_gdf(primal_graph)
@@ -20,10 +21,12 @@ def test_build_data_map(primal_graph):
                 if to_poly is True:
                     data_gdf.geometry = data_gdf.geometry.buffer(10)
                 #
-                data_map = layers.build_data_map(data_gdf, data_id_col)
+                data_map = layers.build_data_map(
+                    data_gdf, network_structure, max_netw_assign_dist=400, data_id_col=data_id_col
+                )
                 for _data_key, data_entry in data_map.entries.items():
                     data_gdf_row = data_gdf.loc[data_entry.data_key_py]  # type: ignore
-                    assert wkt.loads(data_entry.geometry_wkt).equals(data_gdf_row.geometry)
+                    assert data_entry.geom_wkt == data_gdf_row.geometry.wkt
                     if data_id_col is not None:
                         assert data_entry.dedupe_key_py == data_gdf_row[data_id_col]
                     else:
@@ -32,7 +35,7 @@ def test_build_data_map(primal_graph):
     data_gdf = mock.mock_data_gdf(primal_graph)
     data_gdf.rename(columns={"geometry": "geom"}, inplace=True)
     data_gdf.set_geometry("geom", inplace=True)
-    data_map = layers.build_data_map(data_gdf, data_id_col="data_id")
+    data_map = layers.build_data_map(data_gdf, network_structure, max_netw_assign_dist=400, data_id_col="data_id")
     # catch non unique indices
     data_gdf = gpd.GeoDataFrame(
         {
@@ -47,7 +50,11 @@ def test_build_data_map(primal_graph):
     )
     data_gdf.set_index("data_idx", inplace=True)
     with pytest.raises(ValueError):
-        data_map = layers.build_data_map(data_gdf)
+        data_map = layers.build_data_map(
+            data_gdf,
+            network_structure,
+            max_netw_assign_dist=400,
+        )
 
 
 def test_compute_accessibilities(primal_graph):
@@ -58,7 +65,7 @@ def test_compute_accessibilities(primal_graph):
     for angular in [False, True]:
         for data_id_col in [None, "data_id"]:
             for key_set in (["a"], ["b"], ["a", "b"]):
-                nodes_gdf = layers.compute_accessibilities(
+                nodes_gdf, data_gdf = layers.compute_accessibilities(
                     data_gdf,  # type: ignore
                     "categorical_landuses",
                     key_set,
@@ -71,12 +78,16 @@ def test_compute_accessibilities(primal_graph):
                 )
                 # test against manual implementation over underlying method
                 landuses_map = dict(data_gdf["categorical_landuses"])  # type: ignore
-                data_map = layers.build_data_map(data_gdf, data_id_col)  # type: ignore
+                data_map = layers.build_data_map(
+                    data_gdf,
+                    network_structure,
+                    max_netw_assign_dist=max_assign_dist,
+                    data_id_col=data_id_col,
+                )
                 accessibility_data = data_map.accessibility(
                     network_structure,
                     landuses_map,  # type: ignore
                     key_set,
-                    max_assignment_dist=max_assign_dist,
                     distances=distances,
                     angular=angular,
                 )
@@ -135,7 +146,6 @@ def test_compute_mixed_uses(primal_graph):
                 "categorical_landuses",
                 nodes_gdf,
                 network_structure,
-                max_netw_assign_dist=max_assign_dist,
                 distances=distances,
                 compute_hill=True,
                 compute_hill_weighted=True,
@@ -145,8 +155,11 @@ def test_compute_mixed_uses(primal_graph):
                 angular=angular,
             )
             # generate manually
-            data_map = layers.assign_gdf_to_network(
-                data_gdf, network_structure, max_assign_dist, data_id_col=data_id_col
+            data_map = layers.build_data_map(
+                data_gdf,
+                network_structure,
+                max_netw_assign_dist=max_assign_dist,
+                data_id_col=data_id_col,
             )
             landuses_map = dict(data_gdf["categorical_landuses"])
             mu_data = data_map.mixed_uses(
@@ -198,8 +211,12 @@ def test_compute_stats(primal_graph):
     nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(primal_graph)
     data_gdf = mock.mock_numerical_data(primal_graph, num_arrs=2)
     max_assign_dist = 400
-    data_map = layers.assign_gdf_to_network(data_gdf, network_structure, max_assign_dist)
-    # test against manual implementation over underlying method
+    data_map = layers.build_data_map(
+        data_gdf,
+        network_structure,
+        max_netw_assign_dist=max_assign_dist,
+        data_id_col=None,
+    )  # test against manual implementation over underlying method
     distances = [400, 800]
     for _data_id_col in [None, "data_id"]:
         for angular in [False, True]:
@@ -208,7 +225,6 @@ def test_compute_stats(primal_graph):
                 ["mock_numerical_1", "mock_numerical_2"],
                 nodes_gdf,
                 network_structure,
-                max_assign_dist,
                 distances=distances,
                 angular=angular,
             )

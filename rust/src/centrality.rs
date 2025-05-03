@@ -371,7 +371,7 @@ impl NetworkStructure {
         pbar_disabled: Option<bool>,
         py: Python,
     ) -> PyResult<CentralityShortestResult> {
-        self.validate()?;
+        self.validate(py)?;
         let speed_m_s = speed_m_s.unwrap_or(WALKING_SPEED);
         let (distances, betas, seconds) = common::pair_distances_betas_time(
             speed_m_s,
@@ -551,7 +551,7 @@ impl NetworkStructure {
         pbar_disabled: Option<bool>,
         py: Python,
     ) -> PyResult<CentralitySimplestResult> {
-        self.validate()?;
+        self.validate(py)?;
         let speed_m_s = speed_m_s.unwrap_or(WALKING_SPEED);
         let (distances, _betas, seconds) = common::pair_distances_betas_time(
             speed_m_s,
@@ -698,7 +698,7 @@ impl NetworkStructure {
         pbar_disabled: Option<bool>,
         py: Python,
     ) -> PyResult<CentralitySegmentResult> {
-        self.validate()?;
+        self.validate(py)?;
         let speed_m_s = speed_m_s.unwrap_or(WALKING_SPEED);
         let (distances, betas, seconds) = common::pair_distances_betas_time(
             speed_m_s,

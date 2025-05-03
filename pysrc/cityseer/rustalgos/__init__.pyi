@@ -1,66 +1,11 @@
 """Common geometry and mathematical utilities."""
 
-from typing import Self
-
 # Declare the existence of submodules for type checkers
 from . import centrality as centrality
 from . import data as data
 from . import diversity as diversity
 from . import graph as graph
 from . import viewshed as viewshed
-
-class Coord:
-    """Class representing a coordinate."""
-
-    x: float
-    y: float
-
-    def __init__(self, x: float, y: float) -> None:
-        """
-        Creates a `Coord` with `x` and `y` coordinates.
-
-        Parameters
-        ----------
-        `x`: x coordinate.
-        `y`: y coordinate.
-        """
-        ...
-
-    def xy(self) -> tuple[float, float]:
-        """
-        Returns the `Coord` as a `tuple` of `x` and `y`.
-
-        Returns
-        -------
-        `xy`: tuple[float, float]
-        """
-        ...
-
-    def validate(self) -> bool:
-        """Validates the Coord."""
-        ...
-
-    def hypot(self, other_coord: Self) -> float:
-        """
-        Returns the pythagorean distance from this `Coord` to another.
-
-        Parameters
-        ----------
-        `other_coord`: Coord
-            The other coordinate to which to compute the Pythagorean distance.
-        """
-        ...
-
-    def difference(self, other_coord: Self) -> Self:
-        """
-        Returns the vector of the spatial difference between this `Coord` and another.
-
-        Parameters
-        ----------
-        `other_coord`: Coord
-            The other coordinate to which to compute the Pythagorean distance.
-        """
-        ...
 
 def check_numerical_data(data_arr: list[float]) -> None:
     """

@@ -54,24 +54,27 @@ def build_data_map(
     # check for unique index
     if data_gdf.index.duplicated().any():
         raise ValueError("The data GeoDataFrame index must contain unique entries.")
-    # barrier geoms
-    barriers_wkt: list[str] | None = None
-    if barriers_gdf is not None:
-        barriers_wkt = []
-        for _, row in barriers_gdf.iterrows():  # type: ignore
-            barriers_wkt.append(row.geometry.wkt)  # type: ignore
     # create data map
-    data_map = rustalgos.data.DataMap(barriers_wkt=barriers_wkt)
+    data_map = rustalgos.data.DataMap()
     # prepare the data_map
     logger.info("Assigning data to network.")
     for data_key, data_row in data_gdf.iterrows():  # type: ignore
         data_id = None if data_id_col is None else data_row[data_id_col]  # type: ignore
         data_map.insert(
             data_key,
-            data_row[data_gdf.active_geometry_name].simplify(20).wkt,  # type: ignore
+            data_row[data_gdf.active_geometry_name].wkt,  # type: ignore
             data_id,  # type: ignore
         )
+    # barrier geoms
+    barriers_wkt: list[str] | None = None
+    if barriers_gdf is not None:
+        barriers_wkt = []
+        for _, row in barriers_gdf.iterrows():  # type: ignore
+            barriers_wkt.append(row.geometry.wkt)  # type: ignore
+    if barriers_wkt is not None:
+        network_structure.set_barriers(barriers_wkt)  # type: ignore
     data_map.assign_data_to_network(network_structure, max_netw_assign_dist)
+    network_structure.unset_barriers()  # type: ignore
 
     return data_map
 

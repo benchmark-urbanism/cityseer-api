@@ -1,25 +1,18 @@
 use crate::common::MetricResult;
-use crate::common::{clip_wts_curve, clipped_beta_wt, pair_distances_betas_time};
+use crate::common::{
+    clip_wts_curve, clipped_beta_wt, pair_distances_betas_time, py_key_to_composite,
+};
 use crate::common::{PROGRESS_UPDATE_INTERVAL, WALKING_SPEED};
 use crate::diversity;
 use crate::graph::NetworkStructure;
 use core::f32;
-use geo::algorithm::bounding_rect::BoundingRect;
-use geo::algorithm::closest_point::ClosestPoint;
-use geo::algorithm::intersects::Intersects;
-use geo::algorithm::line_intersection::{line_intersection, LineIntersection};
-use geo::algorithm::Euclidean;
-use geo::geometry::{Coord, Geometry};
-use geo::{Centroid, Distance, Line, LineString, Point};
+use geo::geometry::Geometry;
 use log;
 use numpy::PyArray1;
 use pyo3::exceptions;
 use pyo3::prelude::*;
 use pyo3::types::{PyAny, PyAnyMethods, PyDict};
 use rayon::prelude::*;
-use rstar::primitives::{GeomWithData, Rectangle};
-use rstar::{RTree, AABB};
-use std::cmp::Ordering;
 use std::collections::{HashMap, HashSet};
 use std::sync::atomic::{AtomicUsize, Ordering as AtomicOrdering};
 use std::sync::Arc;
@@ -108,14 +101,6 @@ impl Clone for DataEntry {
     }
 }
 
-/// Helper to generate a composite key from a Python object.
-fn py_key_to_composite(py_obj: Bound<'_, PyAny>) -> PyResult<String> {
-    let type_name = py_obj.get_type().name()?;
-    let value_pystr = py_obj.str()?;
-    let value_str = value_pystr.to_str()?;
-    Ok(format!("{}:{}", type_name, value_str))
-}
-
 #[pymethods]
 impl DataEntry {
     #[new]
@@ -129,16 +114,14 @@ impl DataEntry {
     ) -> PyResult<DataEntry> {
         let data_key = py_key_to_composite(data_key_py.bind(py).clone())?;
 
-        let dedupe_key_fallback: String = if let Some(ref key_py) = dedupe_key_py {
-            py_key_to_composite(key_py.bind(py).clone())?
-        } else {
-            data_key.clone()
-        };
-
-        let dedupe_key_py_fallback: Py<PyAny> = if let Some(key_py) = dedupe_key_py {
-            key_py
-        } else {
-            data_key_py.clone_ref(py)
+        // Determine the dedupe key (string and Python object)
+        // If dedupe_key_py is provided, use it. Otherwise, use data_key_py.
+        let (dedupe_key_py_final, dedupe_key_final) = match dedupe_key_py {
+            Some(key_py) => {
+                let key_str = py_key_to_composite(key_py.bind(py).clone())?;
+                (key_py, key_str)
+            }
+            None => (data_key_py.clone_ref(py), data_key.clone()),
         };
 
         let geom = match Geometry::try_from_wkt_str(&geom_wkt) {
@@ -154,8 +137,8 @@ impl DataEntry {
         Ok(DataEntry {
             data_key_py,
             data_key,
-            dedupe_key_py: dedupe_key_py_fallback,
-            dedupe_key: dedupe_key_fallback,
+            dedupe_key_py: dedupe_key_py_final,
+            dedupe_key: dedupe_key_final,
             geom_wkt,
             geom,
         })
@@ -168,58 +151,17 @@ pub struct DataMap {
     #[pyo3(get)]
     entries: HashMap<String, DataEntry>,
     pub progress: Arc<AtomicUsize>,
-    barrier_geoms: Option<Vec<Geometry<f64>>>,
-    barrier_rtree: Option<RTree<GeomWithData<Rectangle<[f64; 2]>, usize>>>,
     #[pyo3(get)]
-    node_data_map: HashMap<usize, Vec<(String, f64)>>,
+    node_data_map: HashMap<usize, Vec<(String, f64)>>, // Stores (data_key, distance_to_node)
 }
 
 #[pymethods]
 impl DataMap {
     #[new]
-    #[pyo3(signature = (barriers_wkt = None))]
-    fn new(barriers_wkt: Option<Vec<String>>) -> PyResult<DataMap> {
-        let mut barrier_geoms: Option<Vec<Geometry<f64>>> = None;
-        let mut barriers_rtree: Option<RTree<GeomWithData<Rectangle<[f64; 2]>, usize>>> = None;
-
-        if let Some(wkt_data) = barriers_wkt {
-            let mut loaded_barriers_vec: Vec<Geometry<f64>> = Vec::new();
-            let mut rtree_items: Vec<GeomWithData<Rectangle<[f64; 2]>, usize>> = Vec::new();
-            let mut current_index = 0;
-            for wkt in wkt_data.into_iter() {
-                match Geometry::try_from_wkt_str(&wkt) {
-                    Ok(wkt_geom) => {
-                        if let Some(rect) = wkt_geom.bounding_rect() {
-                            let envelope = Rectangle::from_corners(
-                                [rect.min().x, rect.min().y],
-                                [rect.max().x, rect.max().y],
-                            );
-                            loaded_barriers_vec.push(wkt_geom);
-                            rtree_items.push(GeomWithData::new(envelope, current_index));
-                            current_index += 1;
-                        } else {
-                            log::warn!("Skipping barrier geom with no bounding box: {}", wkt);
-                        }
-                    }
-                    Err(e) => {
-                        log::warn!("Failed to parse WKT barrier: {}. Error: {}", wkt, e);
-                    }
-                }
-            }
-
-            if !rtree_items.is_empty() {
-                barriers_rtree = Some(RTree::bulk_load(rtree_items));
-                barrier_geoms = Some(loaded_barriers_vec);
-            } else {
-                log::warn!("No valid barriers were loaded from the provided WKT data.");
-            }
-        }
-
+    fn new() -> PyResult<DataMap> {
         let map = DataMap {
             entries: HashMap::new(),
             progress: Arc::new(AtomicUsize::new(0)),
-            barrier_geoms: barrier_geoms,
-            barrier_rtree: barriers_rtree,
             node_data_map: HashMap::new(),
         };
         Ok(map)
@@ -246,7 +188,9 @@ impl DataMap {
         let data_key = entry.data_key.clone(); // Clone data_key for use below
 
         // Insert the DataEntry into the main map
-        self.entries.insert(data_key, entry); // Use the cloned data_key
+        if self.entries.insert(data_key.clone(), entry).is_some() {
+            log::warn!("Overwriting existing data entry for key: {}", data_key);
+        }
 
         Ok(())
     }
@@ -256,7 +200,8 @@ impl DataMap {
     }
 
     fn get_entry(&self, data_key: &str) -> Option<DataEntry> {
-        self.entries.get(data_key).map(|entry| entry.clone())
+        // Use clone() which is implemented for DataEntry
+        self.entries.get(data_key).cloned()
     }
 
     fn count(&self) -> usize {
@@ -267,10 +212,10 @@ impl DataMap {
         self.entries.is_empty()
     }
 
-    /// Assigns data entries to network nodes based on proximity to edges.
-    /// Iterates through data entries, finds the nearest 6 edges for each,
-    /// and assigns the data to the nodes of those edges if within max_assignment_dist
-    /// and not blocked by barriers or other edges.
+    /// Assigns data entries to network nodes based on proximity and accessibility checks.
+    /// This method iterates through all data entries and uses `NetworkStructure::find_assignments_for_entry`
+    /// to determine valid node assignments for each entry. The results are collected and stored
+    /// in the `node_data_map`.
     #[pyo3(signature = (
         network_structure,
         max_assignment_dist
@@ -280,153 +225,56 @@ impl DataMap {
         network_structure: &NetworkStructure,
         max_assignment_dist: f64,
     ) -> PyResult<()> {
-        // Ensure edge R-tree is built
-        if network_structure.edge_rtree.is_none() {
-            return Err(exceptions::PyRuntimeError::new_err("NetworkStructure's edge R-tree must be built before calling assign_data_to_network."));
-        }
-        log::info!("Assigning data to network nodes.");
-        let edge_rtree = network_structure
-            .edge_rtree
-            .as_ref()
-            .ok_or_else(|| exceptions::PyRuntimeError::new_err("Edge R-tree not built"))?;
+        log::info!(
+            "Assigning {} data entries to network nodes (max_dist: {}).",
+            self.entries.len(),
+            max_assignment_dist
+        );
 
+        // Collect assignments in parallel using rayon's flat_map
+        // Each call to find_assignments_for_entry returns Vec<(usize, String, f64)>
+        // flat_map combines these Vecs into a single Vec.
         let assignments: Vec<(usize, String, f64)> = self
             .entries
-            .iter()
+            .par_iter() // Parallel iterator over entries
             .flat_map(|(data_key, data_entry)| {
-                let data_geom = &data_entry.geom;
-                let is_point_geom = matches!(data_geom, Geometry::Point(_));
-
-                let representative_point_geom = match data_geom.centroid() {
-                    Some(centroid) => centroid,
-                    None => return Vec::new().into_iter(),
-                };
-                let representative_point_arr =
-                    [representative_point_geom.x(), representative_point_geom.y()];
-
-                // Get candidates from R-tree
-                let candidate_edges_rtree = edge_rtree
-                    .nearest_neighbor_iter(&representative_point_arr)
-                    .take(6)
-                    .collect::<Vec<_>>();
-
-                // Calculate true distances and store with candidates
-                let mut candidates_with_dist: Vec<(
-                    f64,
-                    &GeomWithData<
-                        Rectangle<[f64; 2]>,
-                        (usize, usize, Coord<f64>, Coord<f64>, LineString<f64>),
-                    >,
-                )> = Vec::new();
-                for edge_geom_entry in &candidate_edges_rtree {
-                    let edge_geom = &edge_geom_entry.data.4;
-                    let true_edge_dist = Euclidean.distance(data_geom, edge_geom);
-                    // Pre-filter by max_assignment_dist before sorting
-                    if true_edge_dist <= max_assignment_dist {
-                        candidates_with_dist.push((true_edge_dist, edge_geom_entry));
-                    }
-                }
-
-                // Sort candidates by true distance
-                candidates_with_dist
-                    .sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(Ordering::Equal));
-
-                // Map to store results of check_node_validity for the current data_entry
-                let mut checked_nodes_for_this_entry: HashMap<usize, Option<(usize, f64)>> =
-                    HashMap::new();
-                // Tracks nodes added *within this data entry's processing*
-                let mut nodes_added_for_this_entry: HashSet<usize> = HashSet::new();
-                let mut local_assignments: Vec<(usize, String, f64)> = Vec::new();
-
-                // Closure remains the same
-                let check_node_validity_logic = |node_idx: usize,
-                                                 node_coord: Coord<f64>,
-                                                 data_geom: &Geometry<f64>,
-                                                 representative_point_geom: Point<f64>|
-                 -> Option<(usize, f64)> {
-                    let node_point = Point::new(node_coord.x, node_coord.y);
-                    let closest_point_on_data = match data_geom {
-                        Geometry::Point(p) => *p,
-                        _ => match data_geom.closest_point(&node_point) {
-                            geo::Closest::Intersection(p) => p,
-                            geo::Closest::SinglePoint(p) => p,
-                            geo::Closest::Indeterminate => representative_point_geom,
-                        },
-                    };
-                    let assignment_line = Line::new(closest_point_on_data.0, node_point.0);
-                    if !self.intersects_barrier(&assignment_line)
-                        && !self.intersects_edge(&assignment_line, network_structure)
-                    {
-                        let node_dist = Euclidean.distance(closest_point_on_data, node_point);
-                        return Some((node_idx, node_dist));
-                    }
-                    None
-                };
-
-                // Iterate through SORTED candidates
-                for (_true_edge_dist, edge_geom_entry) in candidates_with_dist {
-                    let start_node_idx = edge_geom_entry.data.0;
-                    let end_node_idx = edge_geom_entry.data.1;
-                    let start_node_coord = edge_geom_entry.data.2;
-                    let end_node_coord = edge_geom_entry.data.3;
-
-                    // Check validity (use map/compute)
-                    let valid_start_node = *checked_nodes_for_this_entry
-                        .entry(start_node_idx)
-                        .or_insert_with(|| {
-                            check_node_validity_logic(
-                                start_node_idx,
-                                start_node_coord,
-                                data_geom,
-                                representative_point_geom,
-                            )
-                        });
-
-                    let valid_end_node = *checked_nodes_for_this_entry
-                        .entry(end_node_idx)
-                        .or_insert_with(|| {
-                            check_node_validity_logic(
-                                end_node_idx,
-                                end_node_coord,
-                                data_geom,
-                                representative_point_geom,
-                            )
-                        });
-
-                    let mut edge_produced_assignment = false;
-                    // Add valid nodes if the edge is close enough
-                    if valid_start_node.is_some() || valid_end_node.is_some() {
-                        if let Some((node_idx, node_dist)) = valid_start_node {
-                            if nodes_added_for_this_entry.insert(node_idx) {
-                                local_assignments.push((node_idx, data_key.clone(), node_dist));
-                                edge_produced_assignment = true;
-                            }
-                        }
-                        if let Some((node_idx, node_dist)) = valid_end_node {
-                            if nodes_added_for_this_entry.insert(node_idx) {
-                                local_assignments.push((node_idx, data_key.clone(), node_dist));
-                                edge_produced_assignment = true;
-                            }
-                        }
-                    }
-
-                    // If it's a point and we found a valid assignment from this edge, break
-                    if is_point_geom && edge_produced_assignment {
-                        break;
-                    }
-                } // End loop through sorted candidates
-
-                local_assignments.into_iter()
+                // This closure is executed in parallel for each entry
+                network_structure.find_assignments_for_entry(
+                    data_key,
+                    &data_entry.geom,
+                    max_assignment_dist,
+                )
+                // find_assignments_for_entry returns Vec<(node_idx, data_key, node_dist)>
+                // We need to ensure data_key is owned if it needs to be moved across threads,
+                // but find_assignments_for_entry already returns an owned String.
             })
-            .collect();
+            .collect(); // Collect all assignments into a single Vec
 
+        log::info!(
+            "Collected {} potential node assignments from data entries.",
+            assignments.len()
+        );
+
+        // Clear the existing map and rebuild it from the collected assignments.
+        // This part is done sequentially after parallel collection.
         self.node_data_map.clear();
+        let mut assigned_data_count = 0;
+        let mut assigned_node_count = 0;
         for (node_idx, data_key, node_dist) in assignments {
+            // Add the assignment (data_key, distance) to the list for the node_idx
             self.node_data_map
                 .entry(node_idx)
                 .or_default()
                 .push((data_key, node_dist));
+            assigned_data_count += 1; // Count total assignments added
         }
+        assigned_node_count = self.node_data_map.len(); // Count nodes with assignments
+
+        log::info!(
+            "Finished assigning data. {} assignments added to {} nodes.",
+            assigned_data_count,
+            assigned_node_count
+        );
 
         Ok(())
     }
@@ -558,6 +406,7 @@ impl DataMap {
         pbar_disabled: Option<bool>,
         py: Python,
     ) -> PyResult<HashMap<String, AccessibilityResult>> {
+        network_structure.validate(py)?;
         let speed_m_s = speed_m_s.unwrap_or(WALKING_SPEED);
         let (distances, betas, seconds) =
             pair_distances_betas_time(speed_m_s, distances, betas, minutes, min_threshold_wt)?;
@@ -718,6 +567,7 @@ impl DataMap {
         pbar_disabled: Option<bool>,
         py: Python,
     ) -> PyResult<MixedUsesResult> {
+        network_structure.validate(py)?;
         let speed_m_s = speed_m_s.unwrap_or(WALKING_SPEED);
         let (distances, betas, seconds) =
             pair_distances_betas_time(speed_m_s, distances, betas, minutes, min_threshold_wt)?;
@@ -972,6 +822,7 @@ impl DataMap {
         pbar_disabled: Option<bool>,
         py: Python,
     ) -> PyResult<Vec<StatsResult>> {
+        network_structure.validate(py)?;
         let speed_m_s = speed_m_s.unwrap_or(WALKING_SPEED);
         let (distances, betas, seconds) =
             pair_distances_betas_time(speed_m_s, distances, betas, minutes, min_threshold_wt)?;
@@ -1163,63 +1014,5 @@ impl DataMap {
             Ok(results)
         })?;
         Ok(result)
-    }
-}
-
-impl DataMap {
-    /// --- Helper function for barrier intersection check ---
-    #[inline]
-    fn intersects_barrier(&self, line: &Line<f64>) -> bool {
-        if let (Some(barriers_rtree), Some(orig_barriers)) =
-            (self.barrier_rtree.as_ref(), self.barrier_geoms.as_ref())
-        {
-            let line_aabb = AABB::from_corners(
-                [line.start.x.min(line.end.x), line.start.y.min(line.end.y)],
-                [line.start.x.max(line.end.x), line.start.y.max(line.end.y)],
-            );
-            let potential_blockers = barriers_rtree.locate_in_envelope_intersecting(&line_aabb);
-
-            for barrier_item in potential_blockers {
-                let original_geom_index = barrier_item.data;
-                if let Some(barrier_geom) = orig_barriers.get(original_geom_index) {
-                    if line.intersects(barrier_geom) {
-                        return true;
-                    }
-                }
-            }
-        }
-        false
-    }
-
-    /// Check if a given line intersects any network edge geometry.
-    #[inline]
-    pub fn intersects_edge(&self, line: &Line<f64>, network_structure: &NetworkStructure) -> bool {
-        if let Some(edge_rtree) = network_structure.edge_rtree.as_ref() {
-            let line_aabb = AABB::from_corners(
-                [line.start.x.min(line.end.x), line.start.y.min(line.end.y)],
-                [line.start.x.max(line.end.x), line.start.y.max(line.end.y)],
-            );
-            let potential_edges = edge_rtree.locate_in_envelope_intersecting(&line_aabb);
-
-            for edge_geom_entry in potential_edges {
-                // Data is now (start_idx, end_idx, start_coord, end_coord, edge_geom)
-                let edge_geom = &edge_geom_entry.data.4; // Get geometry (index is now 4)
-
-                // Iterate through the segments of the LineString
-                for edge_segment in edge_geom.lines() {
-                    if let Some(intersection) = line_intersection(*line, edge_segment) {
-                        if let LineIntersection::SinglePoint {
-                            is_proper: true, ..
-                        } = intersection
-                        {
-                            // Found a proper crossing intersection with a segment
-                            return true;
-                        }
-                        // Ignore collinear overlaps and endpoint touches (is_proper: false)
-                    }
-                }
-            }
-        }
-        false // No proper intersection found
     }
 }

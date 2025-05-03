@@ -80,6 +80,14 @@ pub fn check_numerical_data(data_arr: PyReadonlyArray2<f32>) -> PyResult<()> {
     Ok(())
 }
 
+/// Helper to generate a composite key from a Python object.
+pub fn py_key_to_composite(py_obj: Bound<'_, PyAny>) -> PyResult<String> {
+    let type_name = py_obj.get_type().name()?;
+    let value_pystr = py_obj.str()?;
+    let value_str = value_pystr.to_str()?;
+    Ok(format!("{}:{}", type_name, value_str))
+}
+
 /// Converts beta values to distances using a logarithmic transformation.
 #[pyfunction]
 #[pyo3(signature = (betas, min_threshold_wt=None))]

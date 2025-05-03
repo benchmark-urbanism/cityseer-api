@@ -15,7 +15,6 @@ import fiona
 import geopandas as gpd
 import networkx as nx
 import numpy as np
-import numpy.typing as npt
 import osmnx as ox
 import pandas as pd
 import requests
@@ -1059,7 +1058,7 @@ def network_structure_from_nx(
         if "weight" in node_data:
             weight = node_data["weight"]
         # set node
-        ns_node_idx = network_structure.add_node(node_key, node_x, node_y, is_live, weight)
+        ns_node_idx = network_structure.add_street_node(node_key, node_x, node_y, is_live, weight)
         agg_node_data[node_key] = (ns_node_idx, node_x, node_y, is_live, weight, geometry.Point(node_x, node_y))
         if "is_dual" in g_multi_copy.graph and g_multi_copy.graph["is_dual"]:  # type: ignore
             agg_node_dual_data[node_key] = (
@@ -1074,40 +1073,20 @@ def network_structure_from_nx(
         start_ns_node_idx, start_node_x, start_node_y, _, _, _ = agg_node_data[start_node_key]
         end_node_key: str
         for end_node_key in g_multi_copy.neighbors(start_node_key):
-            end_ns_node_idx, _, _, _, _, _ = agg_node_data[end_node_key]
-            # add the new edge index to the node's out edges
-            nx_edge_data: EdgeData
-            for edge_idx, nx_edge_data in g_multi_copy[start_node_key][end_node_key].items():
-                line_geom = nx_edge_data["geom"]
-                # check geom coordinates directionality (for bearings at index 5 / 6)
-                # flip if facing backwards direction
-                line_geom_coords = util.align_linestring_coords(line_geom.coords, (start_node_x, start_node_y))
+            end_ns_node_idx, end_node_x, end_node_y, _, _, _ = agg_node_data[end_node_key]
+            for edge_idx, edge_data in g_multi_copy[start_node_key][end_node_key].items():
+                # align coords
+                line_geom_coords = util.align_linestring_coords(edge_data["geom"].coords, (start_node_x, start_node_y))
                 aligned_line_geom = geometry.LineString(line_geom_coords)
-                # if imp_factor is set explicitly, then use
-                # fallback imp_factor of 1
-                imp_factor: float = 1
-                if "imp_factor" in nx_edge_data:
-                    # cannot have imp_factor less than zero (but == 0 is OK)
-                    imp_factor = nx_edge_data["imp_factor"]
-                    if not (np.isfinite(imp_factor) or np.isinf(imp_factor)) or imp_factor < 0:
-                        raise ValueError(
-                            f"Impedance factor: {imp_factor} for edge {start_node_key}-{end_node_key} must be finite "
-                            " and positive or positive infinity."
-                        )
-                # in bearing
-                xy_1: npt.NDArray[np.float64] = np.array(line_geom_coords[0])
-                xy_4: npt.NDArray[np.float64] = np.array(line_geom_coords[-1])
-                total_bearing = util.measure_bearing(xy_1, xy_4)
-                # set edge
-                ns_edge_idx = network_structure.add_edge(
+                # add edge - USE add_street_edge
+                ns_edge_idx = network_structure.add_street_edge(
                     start_ns_node_idx,
                     end_ns_node_idx,
-                    edge_idx,  # type: ignore
+                    int(edge_idx),
                     start_node_key,
                     end_node_key,
-                    aligned_line_geom.wkt,
-                    imp_factor,
-                    None,  # seconds
+                    aligned_line_geom.wkt,  # geom_wkt is required
+                    float(edge_data.get("imp_factor", 1.0)),  # imp_factor
                 )
                 # add to edge data
                 agg_edge_data[f"{start_node_key}-{end_node_key}"] = (
@@ -1117,12 +1096,12 @@ def network_structure_from_nx(
                     edge_idx,
                     start_node_key,
                     end_node_key,
-                    imp_factor,
-                    total_bearing,
-                    line_geom,
+                    edge_data.get("imp_factor", 1.0),
+                    util.measure_bearing(np.array(line_geom_coords[0]), np.array(line_geom_coords[-1])),
+                    aligned_line_geom,
                 )
                 if "is_dual" in g_multi_copy.graph and g_multi_copy.graph["is_dual"]:  # type: ignore
-                    agg_edge_dual_data.append(nx_edge_data["primal_node_id"])
+                    agg_edge_dual_data.append(edge_data["primal_node_id"])
     # create geopandas for node keys and data state
     nodes_gdf = gpd.GeoDataFrame.from_dict(
         agg_node_data,
@@ -1229,7 +1208,7 @@ def network_structure_from_gpd(
     node_mapping = {}
     # process nodes and build mapping
     for nd_key, node_data in tqdm(nodes_gdf.iterrows(), total=len(nodes_gdf), disable=config.QUIET_MODE):
-        ns_node_idx = network_structure.add_node(
+        ns_node_idx = network_structure.add_street_node(
             str(nd_key),
             float(node_data["x"]),
             float(node_data["y"]),
@@ -1257,16 +1236,15 @@ def network_structure_from_gpd(
         start_nd_data = nodes_gdf.loc[start_nx_nd_key]
         line_geom_coords = util.align_linestring_coords(line_geom.coords, (start_nd_data.x, start_nd_data.y))
         aligned_line_geom = geometry.LineString(line_geom_coords)
-        # add edge
-        network_structure.add_edge(
+        # add edge - USE add_street_edge
+        network_structure.add_street_edge(
             start_ns_nd_key,
             end_ns_nd_key,
             int(edge_data["edge_idx"]),
-            str(edge_data["nx_start_node_key"]),
-            str(edge_data["nx_end_node_key"]),
-            aligned_line_geom.wkt,  # type: ignore
-            float(edge_data["imp_factor"]),
-            None,  # seconds
+            edge_data["nx_start_node_key"],
+            edge_data["nx_end_node_key"],
+            aligned_line_geom.wkt,  # geom_wkt is required
+            float(edge_data["imp_factor"]),  # imp_factor
         )
     network_structure.validate()
     network_structure.build_edge_rtree()
@@ -1324,99 +1302,14 @@ def add_transport_gtfs(
     new_edges = []
     # add nodes for stops
     logger.info("Adding GTFS stops to network nodes.")
-    network_structure.prep_edge_rtree()
-    data_map = rustalgos.data.DataMap()
     for _, row in tqdm(stops.iterrows(), total=len(stops), disable=config.QUIET_MODE):
-        # wait_time = avg_wait_time.get(row["stop_id"], 0)  # Default to 0 if missing
         e, n = transformer.transform(row["stop_lon"], row["stop_lat"])
-        station_coord = rustalgos.Coord(e, n)
-        new_stop_idx = network_structure.add_node(
+        _new_stop_idx = network_structure.add_transport_node(
             row["stop_id"],
             float(e),
             float(n),
-            True,  # live
-            float(1),  # weight
         )
-        # add to nodes_gdf
-        new_nodes.append(
-            {
-                "stop_id": row["stop_id"],
-                "ns_node_idx": new_stop_idx,
-                "x": e,
-                "y": n,
-                "live": True,
-                "weight": 1,
-                "geom": geometry.Point(e, n),
-            }
-        )
-    data_map.assign_data_to_network(network_structure=network_structure, max_dist=max_netw_assign_dist)
-    for _data_key, data_entry in tqdm(data_map.entries.items(), total=data_map.count(), disable=config.QUIET_MODE):
-        # add edges between stops and pedestrian network
-        for node_match in [data_entry.node_matches.nearest, data_entry.node_matches.next_nearest]:  # type: ignore
-            if node_match is not None:
-                netw_node = network_structure.get_node_payload(node_match.idx)
-                dist = netw_node.coord.hypot(station_coord)
-                seconds = dist / speed_m_s
-                # to direction
-                edge_idx_a = network_structure.add_edge(
-                    node_match.idx,
-                    new_stop_idx,
-                    0,  # edge_idx
-                    "na-gtfs",  # nx_start_node_key
-                    "na-gtfs",  # nx_end_node_key
-                    # TODO: add wkt
-                    1,  # imp_factor
-                    max(1, seconds + float(row["avg_wait_time"])),  # walk and wait time - minimum 1 second
-                )
-                # add to edges_gdf
-                new_edges.append(
-                    [
-                        f"{node_match.idx}-{new_stop_idx}",
-                        edge_idx_a,
-                        node_match.idx,
-                        new_stop_idx,
-                        0,
-                        "na-gtfs",
-                        "na-gtfs",
-                        dist,
-                        180,
-                        1,
-                        None,
-                        None,
-                        None,
-                        geometry.LineString([netw_node.coord.xy(), station_coord.xy()]),
-                    ]
-                )
-                # from direction
-                edge_idx_b = network_structure.add_edge(
-                    new_stop_idx,
-                    node_match.idx,
-                    0,  # edge_idx
-                    "na-gtfs",  # nx_start_node_key
-                    "na-gtfs",  # nx_end_node_key
-                    # TODO: add wkt
-                    1,  # imp_factor
-                    max(1, seconds),  # seconds
-                )
-                # add to edges_gdf
-                new_edges.append(
-                    [
-                        f"{new_stop_idx}-{node_match.idx}",
-                        edge_idx_b,
-                        new_stop_idx,
-                        node_match.idx,
-                        0,
-                        "na-gtfs",
-                        "na-gtfs",
-                        dist,
-                        180,
-                        1,
-                        None,
-                        None,
-                        None,
-                        geometry.LineString([netw_node.coord.xy(), station_coord.xy()]),
-                    ]
-                )
+
     logger.info("Generating segment durations between stops.")
     # create a column for the previous stop in each trip
     stop_times["prev_stop_id"] = stop_times.groupby("trip_id")["stop_id"].shift()
@@ -1449,23 +1342,20 @@ def add_transport_gtfs(
         next_stop = row["next_stop_id"]
         next_stop_row = nodes_gdf.loc[next_stop]
         next_stop_idx = int(next_stop_row["ns_node_idx"])
-        next_stop_geom = next_stop_row["dual_node" if is_dual else "geom"]
         prev_stop = row["prev_stop_id"]
         prev_stop_row = nodes_gdf.loc[prev_stop]
         prev_stop_idx = int(prev_stop_row["ns_node_idx"])
-        prev_stop_geom = prev_stop_row["dual_node" if is_dual else "geom"]
         # segment time
         avg_seg_time = row["avg_segment_time"]
-        # add edge
-        edge_idx = network_structure.add_edge(
+        # add edge - USE add_transport_edge
+        edge_idx = network_structure.add_transport_edge(
             prev_stop_idx,
             next_stop_idx,
             0,  # edge_idx
             "na-gtfs",  # nx_start_node_key
             "na-gtfs",  # nx_end_node_key
-            # TODO: add wkt
+            float(avg_seg_time),  # seconds is required
             None,  # imp_factor
-            float(avg_seg_time),  # seconds
         )
         # add to edges_gdf
         new_edges.append(
@@ -1479,19 +1369,18 @@ def add_transport_gtfs(
                 "na-gtfs",  # nx_end_node_key
                 None,  # imp_factor
                 None,  # total_bearing
-                geometry.LineString([prev_stop_geom, next_stop_geom]),  # type: ignore
+                None,  # geom
             ]
         )
-        # other direction!
-        edge_idx = network_structure.add_edge(
+        # other direction! - USE add_transport_edge
+        edge_idx = network_structure.add_transport_edge(
             next_stop_idx,
             prev_stop_idx,
             0,  # edge_idx
             "na-gtfs",  # nx_start_node_key
             "na-gtfs",  # nx_end_node_key
-            # TODO: add wkt
+            float(avg_seg_time),  # seconds is required
             None,  # imp_factor
-            float(avg_seg_time),  # seconds
         )
         # add to edges_gdf
         new_edges.append(
@@ -1505,7 +1394,7 @@ def add_transport_gtfs(
                 "na-gtfs",  # nx_end_node_key
                 None,  # imp_factor
                 None,  # total_bearing
-                geometry.LineString([prev_stop_geom, next_stop_geom]),  # type: ignore
+                None,  # geom
             ]
         )
 
@@ -1522,7 +1411,7 @@ def add_transport_gtfs(
             "nx_end_node_key",
             "imp_factor",
             "total_bearing",
-            "geom",
+            "geom",  # Keep geom column, but values might be None
         ],
     )
     new_edges_gdf = gpd.GeoDataFrame(new_edges_df, geometry="geom", crs=nodes_gdf.crs).set_index("edge_key")
