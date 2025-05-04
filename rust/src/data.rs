@@ -259,7 +259,6 @@ impl DataMap {
         // This part is done sequentially after parallel collection.
         self.node_data_map.clear();
         let mut assigned_data_count = 0;
-        let mut assigned_node_count = 0;
         for (node_idx, data_key, node_dist) in assignments {
             // Add the assignment (data_key, distance) to the list for the node_idx
             self.node_data_map
@@ -268,12 +267,11 @@ impl DataMap {
                 .push((data_key, node_dist));
             assigned_data_count += 1; // Count total assignments added
         }
-        assigned_node_count = self.node_data_map.len(); // Count nodes with assignments
 
         log::info!(
             "Finished assigning data. {} assignments added to {} nodes.",
             assigned_data_count,
-            assigned_node_count
+            self.node_data_map.len()
         );
 
         Ok(())
@@ -447,24 +445,23 @@ impl DataMap {
             let mut dists: HashMap<String, MetricResult> =
                 HashMap::with_capacity(accessibility_keys.len());
 
-            let node_count = network_structure.node_count();
             for key in &accessibility_keys {
                 metrics.insert(
                     key.clone(),
-                    MetricResult::new(distances.clone(), node_count, 0.0),
+                    MetricResult::new(distances.clone(), network_structure.node_count(), 0.0),
                 );
                 metrics_wt.insert(
                     key.clone(),
-                    MetricResult::new(distances.clone(), node_count, 0.0),
+                    MetricResult::new(distances.clone(), network_structure.node_count(), 0.0),
                 );
                 dists.insert(
                     key.clone(),
-                    MetricResult::new(vec![max_dist], node_count, f32::NAN),
+                    MetricResult::new(vec![max_dist], network_structure.node_count(), f32::NAN),
                 );
             }
 
-            let node_indices = network_structure.node_indices();
-            node_indices
+            let street_node_indices = network_structure.street_node_indices();
+            street_node_indices
                 .par_iter()
                 .enumerate()
                 .try_for_each(|(i, &netw_src_idx)| {
@@ -519,9 +516,9 @@ impl DataMap {
                 .into_iter()
                 .map(|key| {
                     let result = AccessibilityResult {
-                        weighted: metrics_wt[&key].load(),
-                        unweighted: metrics[&key].load(),
-                        distance: dists[&key].load(),
+                        weighted: metrics_wt[&key].load(&street_node_indices),
+                        unweighted: metrics[&key].load(&street_node_indices),
+                        distance: dists[&key].load(&street_node_indices),
                     };
                     (key, result)
                 })
@@ -631,8 +628,8 @@ impl DataMap {
             for cl_code in lu_map.values() {
                 classes_uniq.insert(cl_code.clone());
             }
-            let node_indices = network_structure.node_indices();
-            node_indices
+            let street_node_indices = network_structure.street_node_indices();
+            street_node_indices
                 .par_iter()
                 .enumerate()
                 .try_for_each(|(i, &netw_src_idx)| {
@@ -762,7 +759,7 @@ impl DataMap {
             if compute_hill {
                 let hr = [0, 1, 2]
                     .iter()
-                    .map(|&q_key| (q_key, hill_mu[&q_key].load()))
+                    .map(|&q_key| (q_key, hill_mu[&q_key].load(&street_node_indices)))
                     .collect();
                 hill_result = Some(hr);
             }
@@ -770,17 +767,17 @@ impl DataMap {
             if compute_hill_weighted {
                 let hr = [0, 1, 2]
                     .iter()
-                    .map(|&q_key| (q_key, hill_wt_mu[&q_key].load()))
+                    .map(|&q_key| (q_key, hill_wt_mu[&q_key].load(&street_node_indices)))
                     .collect();
                 hill_weighted_result = Some(hr);
             }
             let shannon_result = if compute_shannon {
-                Some(shannon_mu.load())
+                Some(shannon_mu.load(&street_node_indices))
             } else {
                 None
             };
             let gini_result = if compute_gini {
-                Some(gini_mu.load())
+                Some(gini_mu.load(&street_node_indices))
             } else {
                 None
             };
@@ -864,21 +861,53 @@ impl DataMap {
             let mut min = Vec::new();
             let mut sum_sq = Vec::new();
             let mut sum_sq_wt = Vec::new();
-            let node_count = network_structure.node_count();
+
             for _ in 0..num_maps.len() {
-                sum.push(MetricResult::new(distances.clone(), node_count, 0.0));
-                sum_wt.push(MetricResult::new(distances.clone(), node_count, 0.0));
-                count.push(MetricResult::new(distances.clone(), node_count, 0.0));
-                count_wt.push(MetricResult::new(distances.clone(), node_count, 0.0));
+                sum.push(MetricResult::new(
+                    distances.clone(),
+                    network_structure.node_count(),
+                    0.0,
+                ));
+                sum_wt.push(MetricResult::new(
+                    distances.clone(),
+                    network_structure.node_count(),
+                    0.0,
+                ));
+                count.push(MetricResult::new(
+                    distances.clone(),
+                    network_structure.node_count(),
+                    0.0,
+                ));
+                count_wt.push(MetricResult::new(
+                    distances.clone(),
+                    network_structure.node_count(),
+                    0.0,
+                ));
                 // Initialize max/min with NaN to correctly handle the first value
-                max.push(MetricResult::new(distances.clone(), node_count, f32::NAN));
-                min.push(MetricResult::new(distances.clone(), node_count, f32::NAN));
-                sum_sq.push(MetricResult::new(distances.clone(), node_count, 0.0));
-                sum_sq_wt.push(MetricResult::new(distances.clone(), node_count, 0.0));
+                max.push(MetricResult::new(
+                    distances.clone(),
+                    network_structure.node_count(),
+                    f32::NAN,
+                ));
+                min.push(MetricResult::new(
+                    distances.clone(),
+                    network_structure.node_count(),
+                    f32::NAN,
+                ));
+                sum_sq.push(MetricResult::new(
+                    distances.clone(),
+                    network_structure.node_count(),
+                    0.0,
+                ));
+                sum_sq_wt.push(MetricResult::new(
+                    distances.clone(),
+                    network_structure.node_count(),
+                    0.0,
+                ));
             }
 
-            let node_indices = network_structure.node_indices();
-            node_indices
+            let street_node_indices = network_structure.street_node_indices();
+            street_node_indices
                 .par_iter()
                 .enumerate()
                 .try_for_each(|(i, &netw_src_idx)| {
@@ -942,24 +971,28 @@ impl DataMap {
             // --- Post-processing (Mean, Variance) ---
             let mut results = Vec::with_capacity(num_maps.len());
             for map_idx in 0..num_maps.len() {
-                let mean_res = MetricResult::new(distances.clone(), node_count, f32::NAN);
-                let mean_wt_res = MetricResult::new(distances.clone(), node_count, f32::NAN);
-                let variance_res = MetricResult::new(distances.clone(), node_count, f32::NAN);
-                let variance_wt_res = MetricResult::new(distances.clone(), node_count, f32::NAN);
-                for node_idx in 0..node_count {
+                let mean_res =
+                    MetricResult::new(distances.clone(), network_structure.node_count(), f32::NAN);
+                let mean_wt_res =
+                    MetricResult::new(distances.clone(), network_structure.node_count(), f32::NAN);
+                let variance_res =
+                    MetricResult::new(distances.clone(), network_structure.node_count(), f32::NAN);
+                let variance_wt_res =
+                    MetricResult::new(distances.clone(), network_structure.node_count(), f32::NAN);
+                for node_idx in street_node_indices.iter() {
                     for (i, _) in distances.iter().enumerate() {
                         let sum_val =
-                            sum[map_idx].metric[i][node_idx].load(AtomicOrdering::Relaxed);
+                            sum[map_idx].metric[i][*node_idx].load(AtomicOrdering::Relaxed);
                         let count_val =
-                            count[map_idx].metric[i][node_idx].load(AtomicOrdering::Relaxed);
+                            count[map_idx].metric[i][*node_idx].load(AtomicOrdering::Relaxed);
                         let sum_wt_val =
-                            sum_wt[map_idx].metric[i][node_idx].load(AtomicOrdering::Relaxed);
+                            sum_wt[map_idx].metric[i][*node_idx].load(AtomicOrdering::Relaxed);
                         let count_wt_val =
-                            count_wt[map_idx].metric[i][node_idx].load(AtomicOrdering::Relaxed);
+                            count_wt[map_idx].metric[i][*node_idx].load(AtomicOrdering::Relaxed);
                         let sum_sq_val =
-                            sum_sq[map_idx].metric[i][node_idx].load(AtomicOrdering::Relaxed);
+                            sum_sq[map_idx].metric[i][*node_idx].load(AtomicOrdering::Relaxed);
                         let sum_sq_wt_val =
-                            sum_sq_wt[map_idx].metric[i][node_idx].load(AtomicOrdering::Relaxed);
+                            sum_sq_wt[map_idx].metric[i][*node_idx].load(AtomicOrdering::Relaxed);
 
                         // Calculate Mean
                         let mean_val = if count_val > 0.0 {
@@ -989,26 +1022,27 @@ impl DataMap {
                         };
 
                         // Store results (using relaxed ordering as this is post-parallel processing)
-                        mean_res.metric[i][node_idx].store(mean_val, AtomicOrdering::Relaxed);
-                        mean_wt_res.metric[i][node_idx].store(mean_wt_val, AtomicOrdering::Relaxed);
-                        variance_res.metric[i][node_idx]
+                        mean_res.metric[i][*node_idx].store(mean_val, AtomicOrdering::Relaxed);
+                        mean_wt_res.metric[i][*node_idx]
+                            .store(mean_wt_val, AtomicOrdering::Relaxed);
+                        variance_res.metric[i][*node_idx]
                             .store(variance_val, AtomicOrdering::Relaxed);
-                        variance_wt_res.metric[i][node_idx]
+                        variance_wt_res.metric[i][*node_idx]
                             .store(variance_wt_val, AtomicOrdering::Relaxed);
                     }
                 }
                 // --- Assemble final result struct ---
                 results.push(StatsResult {
-                    sum: sum[map_idx].load(),
-                    sum_wt: sum_wt[map_idx].load(),
-                    mean: mean_res.load(),
-                    mean_wt: mean_wt_res.load(),
-                    count: count[map_idx].load(),
-                    count_wt: count_wt[map_idx].load(),
-                    variance: variance_res.load(),
-                    variance_wt: variance_wt_res.load(),
-                    max: max[map_idx].load(), // Load final max/min after parallel updates
-                    min: min[map_idx].load(),
+                    sum: sum[map_idx].load(&street_node_indices),
+                    sum_wt: sum_wt[map_idx].load(&street_node_indices),
+                    mean: mean_res.load(&street_node_indices),
+                    mean_wt: mean_wt_res.load(&street_node_indices),
+                    count: count[map_idx].load(&street_node_indices),
+                    count_wt: count_wt[map_idx].load(&street_node_indices),
+                    variance: variance_res.load(&street_node_indices),
+                    variance_wt: variance_wt_res.load(&street_node_indices),
+                    max: max[map_idx].load(&street_node_indices),
+                    min: min[map_idx].load(&street_node_indices),
                 });
             }
             Ok(results)

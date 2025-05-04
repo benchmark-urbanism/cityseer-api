@@ -568,7 +568,7 @@ def plot_assignment(
 
 def plot_network_structure(
     network_structure: rustalgos.graph.NetworkStructure,
-    data_map: rustalgos.data.DataMap,
+    data_map: rustalgos.data.DataMap | None = None,
     poly: geometry.Polygon | None = None,
 ):
     """
@@ -584,7 +584,7 @@ def plot_network_structure(
     network_structure: rustalgos.graph.NetworkStructure
         A [`rustalgos.graph.NetworkStructure`](/rustalgos/rustalgos#networkstructure) instance.
     data_map: DataMap
-        A `rustalgos.data.DataMap` object with data entries for plotting.
+        An optional `rustalgos.data.DataMap` object with data entries for plotting.
     poly: geometry.Polygon
         An optional polygon. Defaults to None.
 
@@ -634,49 +634,50 @@ def plot_network_structure(
             ax2.plot([s_x, e_x], [s_y, e_y], c=COLOUR_MAP.accent, linewidth=1)
     for node_idx in range(network_structure.node_count()):
         ax2.annotate(node_idx, xy=network_structure.node_xys[node_idx], size=10)
-    # plot parents on ax1
-    data_xs = []
-    data_ys = []
-    for data_entry in data_map.entries.values():
-        data_geom = wkt.loads(data_entry.geom_wkt)
-        x, y = data_geom.centroid.x, data_geom.centroid.y
-        data_xs.append(x)
-        data_ys.append(y)
-        ax1.annotate(data_entry.data_key_py, xy=(x, y), size=8)
-    ax1.scatter(
-        x=data_xs,
-        y=data_ys,
-        color=COLOUR_MAP.secondary,
-        edgecolor=COLOUR_MAP.warning,
-        alpha=0.9,
-        lw=0.5,
-    )
-    ax2.scatter(
-        x=data_xs,
-        y=data_ys,
-        color=COLOUR_MAP.secondary,
-        edgecolor=COLOUR_MAP.warning,
-        alpha=0.9,
-        lw=0.5,
-    )
-    for node_idx, data_assignments in data_map.node_data_map.items():
-        for data_idx, _data_dist in data_assignments:
-            # get the data point
-            data_entry = data_map.entries[data_idx]
-            # get the data point geometry
+    if data_map is not None:
+        # plot parents on ax1
+        data_xs = []
+        data_ys = []
+        for data_entry in data_map.entries.values():
             data_geom = wkt.loads(data_entry.geom_wkt)
-            # get the node data
-            node_data = network_structure.get_node_payload(node_idx)
-            # get the node geometry
-            node_geom = geometry.Point(node_data.coord)
-            # plot the line between the two
-            ax1.plot(
-                [data_geom.centroid.x, node_geom.centroid.x],
-                [data_geom.centroid.y, node_geom.centroid.y],
-                c=COLOUR_MAP.warning,
-                lw=0.75,
-                ls="--",
-            )
+            x, y = data_geom.centroid.x, data_geom.centroid.y
+            data_xs.append(x)
+            data_ys.append(y)
+            ax1.annotate(data_entry.data_key_py, xy=(x, y), size=8)
+        ax1.scatter(
+            x=data_xs,
+            y=data_ys,
+            color=COLOUR_MAP.secondary,
+            edgecolor=COLOUR_MAP.warning,
+            alpha=0.9,
+            lw=0.5,
+        )
+        ax2.scatter(
+            x=data_xs,
+            y=data_ys,
+            color=COLOUR_MAP.secondary,
+            edgecolor=COLOUR_MAP.warning,
+            alpha=0.9,
+            lw=0.5,
+        )
+        for node_idx, data_assignments in data_map.node_data_map.items():
+            for data_idx, _data_dist in data_assignments:
+                # get the data point
+                data_entry = data_map.entries[data_idx]
+                # get the data point geometry
+                data_geom = wkt.loads(data_entry.geom_wkt)
+                # get the node data
+                node_data = network_structure.get_node_payload(node_idx)
+                # get the node geometry
+                node_geom = geometry.Point(node_data.coord)
+                # plot the line between the two
+                ax1.plot(
+                    [data_geom.centroid.x, node_geom.centroid.x],
+                    [data_geom.centroid.y, node_geom.centroid.y],
+                    c=COLOUR_MAP.warning,
+                    lw=0.75,
+                    ls="--",
+                )
 
     plt.tight_layout()
     plt.gcf().set_facecolor(COLOUR_MAP.background)

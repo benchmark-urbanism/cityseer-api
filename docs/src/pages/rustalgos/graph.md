@@ -54,6 +54,9 @@ layout: ../../layouts/PageLayout.astro
 </div>
 </div>
 
+
+ Validates the payload. Returns Ok(()) if valid, Err(PyValueError) otherwise.
+
 </div>
 
  
@@ -104,6 +107,9 @@ layout: ../../layouts/PageLayout.astro
   <span class="pt">)</span>
 </div>
 </div>
+
+
+ Validates the payload. Returns Ok(()) if valid, Err(PyValueError) otherwise.
 
 </div>
 
@@ -439,11 +445,11 @@ layout: ../../layouts/PageLayout.astro
 
 <div class="function">
 
-## add_node
+## add_street_node
 
 
 <div class="content">
-<span class="name">add_node</span><div class="signature multiline">
+<span class="name">add_street_node</span><div class="signature multiline">
   <span class="pt">(</span>
   <div class="param">
     <span class="pn">self</span>
@@ -465,6 +471,40 @@ layout: ../../layouts/PageLayout.astro
   </div>
   <div class="param">
     <span class="pn">weight</span>
+  </div>
+  <span class="pt">)</span>
+</div>
+</div>
+
+</div>
+
+ 
+
+<div class="function">
+
+## add_transport_node
+
+
+<div class="content">
+<span class="name">add_transport_node</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">self</span>
+  </div>
+  <div class="param">
+    <span class="pn">/</span>
+  </div>
+  <div class="param">
+    <span class="pn">node_key</span>
+  </div>
+  <div class="param">
+    <span class="pn">x</span>
+  </div>
+  <div class="param">
+    <span class="pn">y</span>
+  </div>
+  <div class="param">
+    <span class="pn">linking_radius=None</span>
   </div>
   <span class="pt">)</span>
 </div>
@@ -567,6 +607,34 @@ layout: ../../layouts/PageLayout.astro
 </div>
 </div>
 
+
+ Returns the total count of all nodes (street and transport).
+
+</div>
+
+ 
+
+<div class="function">
+
+## street_node_count
+
+
+<div class="content">
+<span class="name">street_node_count</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">self</span>
+  </div>
+  <div class="param">
+    <span class="pn">/</span>
+  </div>
+  <span class="pt">)</span>
+</div>
+</div>
+
+
+ Returns the count of non-transport (street) nodes.
+
 </div>
 
  
@@ -589,17 +657,45 @@ layout: ../../layouts/PageLayout.astro
 </div>
 </div>
 
+
+ Returns a list of indices for all nodes (street and transport).
+
 </div>
 
  
 
 <div class="function">
 
-## add_edge
+## street_node_indices
 
 
 <div class="content">
-<span class="name">add_edge</span><div class="signature multiline">
+<span class="name">street_node_indices</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">self</span>
+  </div>
+  <div class="param">
+    <span class="pn">/</span>
+  </div>
+  <span class="pt">)</span>
+</div>
+</div>
+
+
+ Returns a list of indices for non-transport (street) nodes.
+
+</div>
+
+ 
+
+<div class="function">
+
+## add_street_edge
+
+
+<div class="content">
+<span class="name">add_street_edge</span><div class="signature multiline">
   <span class="pt">(</span>
   <div class="param">
     <span class="pn">self</span>
@@ -617,32 +713,69 @@ layout: ../../layouts/PageLayout.astro
     <span class="pn">edge_idx</span>
   </div>
   <div class="param">
-    <span class="pn">start_nd_key</span>
+    <span class="pn">start_nd_key_py</span>
   </div>
   <div class="param">
-    <span class="pn">end_nd_key</span>
+    <span class="pn">end_nd_key_py</span>
   </div>
   <div class="param">
-    <span class="pn">length</span>
+    <span class="pn">geom_wkt</span>
   </div>
   <div class="param">
-    <span class="pn">angle_sum</span>
-  </div>
-  <div class="param">
-    <span class="pn">imp_factor</span>
-  </div>
-  <div class="param">
-    <span class="pn">in_bearing</span>
-  </div>
-  <div class="param">
-    <span class="pn">out_bearing</span>
-  </div>
-  <div class="param">
-    <span class="pn">seconds</span>
+    <span class="pn">imp_factor=None</span>
   </div>
   <span class="pt">)</span>
 </div>
 </div>
+
+
+ Adds a street edge with geometry. Calculates length, bearings, and angle sum from WKT. Sets seconds to NaN.
+
+</div>
+
+ 
+
+<div class="function">
+
+## add_transport_edge
+
+
+<div class="content">
+<span class="name">add_transport_edge</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">self</span>
+  </div>
+  <div class="param">
+    <span class="pn">/</span>
+  </div>
+  <div class="param">
+    <span class="pn">start_nd_idx</span>
+  </div>
+  <div class="param">
+    <span class="pn">end_nd_idx</span>
+  </div>
+  <div class="param">
+    <span class="pn">edge_idx</span>
+  </div>
+  <div class="param">
+    <span class="pn">start_nd_key_py</span>
+  </div>
+  <div class="param">
+    <span class="pn">end_nd_key_py</span>
+  </div>
+  <div class="param">
+    <span class="pn">seconds</span>
+  </div>
+  <div class="param">
+    <span class="pn">imp_factor=None</span>
+  </div>
+  <span class="pt">)</span>
+</div>
+</div>
+
+
+ Adds an abstract transport edge defined by travel time (seconds). Length is set to NaN. Geometry-related fields are NaN/None.
 
 </div>
 
@@ -725,11 +858,11 @@ layout: ../../layouts/PageLayout.astro
 
 <div class="function">
 
-## prep_edge_rtree
+## build_edge_rtree
 
 
 <div class="content">
-<span class="name">prep_edge_rtree</span><div class="signature multiline">
+<span class="name">build_edge_rtree</span><div class="signature multiline">
   <span class="pt">(</span>
   <div class="param">
     <span class="pn">self</span>
@@ -741,7 +874,83 @@ layout: ../../layouts/PageLayout.astro
 </div>
 </div>
 
+
+ Builds the R-tree for street edge geometries using their bounding boxes. Deduplicates edges based on sorted node pairs and geometric equality. Stores (start_node_idx, end_node_idx, start_node_point, end_node_point, edge_geom) in the R-tree data payload.
+
 </div>
+
+ 
+
+<div class="function">
+
+## set_barriers
+
+
+<div class="content">
+<span class="name">set_barriers</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">self</span>
+  </div>
+  <div class="param">
+    <span class="pn">/</span>
+  </div>
+  <div class="param">
+    <span class="pn">barriers_wkt</span>
+  </div>
+  <span class="pt">)</span>
+</div>
+</div>
+
+
+ Sets barrier geometries from WKT strings and builds the R-tree. Replaces any existing barriers.
+
+</div>
+
+ 
+
+<div class="function">
+
+## unset_barriers
+
+
+<div class="content">
+<span class="name">unset_barriers</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">self</span>
+  </div>
+  <div class="param">
+    <span class="pn">/</span>
+  </div>
+  <span class="pt">)</span>
+</div>
+</div>
+
+
+ Removes all barrier geometries and the associated R-tree.
+
+</div>
+
+ 
+
+<span class="name">node_xys</span>
+
+
+ 
+
+<span class="name">street_node_lives</span>
+
+
+ 
+
+<span class="name">node_xs</span>
+
+
+ 
+
+<span class="name">node_ys</span>
+
 
  
 </div>

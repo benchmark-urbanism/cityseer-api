@@ -463,8 +463,8 @@ def test_aggregate_to_src_idx(primal_graph):
             # in this case, use same assignment max dist as search max dist
             # for debugging
             # from cityseer.tools import plot
-            # plot.plot_network_structure(network_structure, data_gdf)
-            for angular in [False]:
+            # plot.plot_network_structure(network_structure, data_map)
+            for angular in [False, True]:
                 for netw_src_idx in network_structure.node_indices():
                     # aggregate to src...
                     reachable_entries = data_map.aggregate_to_src_idx(
@@ -500,11 +500,21 @@ def test_aggregate_to_src_idx(primal_graph):
                         assert reachable_dist - manual_reachable[reachable_key] < config.ATOL
                     # manual reachable shouldn't contain keys not in reachable entries
                     # allow 1m tolerance for floating point errors
+                    # handle shadowed dupe id nodes in deduplication case
+                    shadowed_dupes = ["int:45", "int:46", "int:47", "int:48"]
                     for reachable_key in manual_reachable:
+                        if deduplicate is True and reachable_key in shadowed_dupes:
+                            # if shadowed by closest dedupe node, then it should not be reachable
+                            # but if within max dist, then "int:49" should be reachable
+                            assert "int:49" in manual_reachable
+                            assert "int:49" in reachable_entries
+                            assert reachable_key not in reachable_entries
+                            continue
                         try:
-                            reachable_key in reachable_entries
-                        except KeyError:
-                            assert manual_reachable[reachable_key] < 1
+                            assert reachable_key in reachable_entries
+                        except AssertionError:
+                            # If the key is not found, assert the distance condition
+                            assert max_dist - manual_reachable[reachable_key] < 1
 
 
 def test_accessibility(primal_graph):
@@ -536,7 +546,7 @@ def test_accessibility(primal_graph):
         for dist, beta in zip(distances, betas, strict=True):
             z_nws = []
             z_wts = []
-            for src_idx in network_structure.node_indices():  # type: ignore
+            for src_idx in network_structure.street_node_indices():  # type: ignore
                 # aggregate
                 a_nw = 0
                 b_nw = 0
@@ -678,7 +688,7 @@ def test_mixed_uses(primal_graph):
             compute_gini=True,
             angular=angular,
         )
-        for netw_src_idx in network_structure.node_indices():
+        for netw_src_idx in network_structure.street_node_indices():
             reachable_entries = data_map.aggregate_to_src_idx(
                 netw_src_idx, network_structure, int(max_seconds), config.SPEED_M_S, angular=angular
             )

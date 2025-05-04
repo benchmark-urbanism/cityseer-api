@@ -127,10 +127,7 @@ layout: ../../layouts/PageLayout.astro
     <span class="pn">data_key_py</span>
   </div>
   <div class="param">
-    <span class="pn">x</span>
-  </div>
-  <div class="param">
-    <span class="pn">y</span>
+    <span class="pn">geom_wkt</span>
   </div>
   <div class="param">
     <span class="pn">dedupe_key_py=None</span>
@@ -172,31 +169,6 @@ layout: ../../layouts/PageLayout.astro
 
 <div class="content">
 <span class="name">get_entry</span><div class="signature multiline">
-  <span class="pt">(</span>
-  <div class="param">
-    <span class="pn">self</span>
-  </div>
-  <div class="param">
-    <span class="pn">/</span>
-  </div>
-  <div class="param">
-    <span class="pn">data_key</span>
-  </div>
-  <span class="pt">)</span>
-</div>
-</div>
-
-</div>
-
- 
-
-<div class="function">
-
-## get_data_coord
-
-
-<div class="content">
-<span class="name">get_data_coord</span><div class="signature multiline">
   <span class="pt">(</span>
   <div class="param">
     <span class="pn">self</span>
@@ -261,11 +233,11 @@ layout: ../../layouts/PageLayout.astro
 
 <div class="function">
 
-## assign_to_network
+## assign_data_to_network
 
 
 <div class="content">
-<span class="name">assign_to_network</span><div class="signature multiline">
+<span class="name">assign_data_to_network</span><div class="signature multiline">
   <span class="pt">(</span>
   <div class="param">
     <span class="pn">self</span>
@@ -277,17 +249,14 @@ layout: ../../layouts/PageLayout.astro
     <span class="pn">network_structure</span>
   </div>
   <div class="param">
-    <span class="pn">max_dist</span>
-  </div>
-  <div class="param">
-    <span class="pn">pbar_disabled=None</span>
+    <span class="pn">max_assignment_dist</span>
   </div>
   <span class="pt">)</span>
 </div>
 </div>
 
 
- Assign nearest and next nearest network node (and distances) to each entry in the DataMap.
+ Assigns data entries to network nodes based on proximity and accessibility checks. This method iterates through all data entries and uses `NetworkStructure::find_assignments_for_entry` to determine valid node assignments for each entry. The results are collected and stored in the `node_data_map`.
 
 </div>
 
@@ -599,33 +568,6 @@ layout: ../../layouts/PageLayout.astro
 </div>
 
  
-</div>
-
-
-<div class="function">
-
-## node_matches_for_coord
-
-
-<div class="content">
-<span class="name">node_matches_for_coord</span><div class="signature multiline">
-  <span class="pt">(</span>
-  <div class="param">
-    <span class="pn">network_structure</span>
-  </div>
-  <div class="param">
-    <span class="pn">coord</span>
-  </div>
-  <div class="param">
-    <span class="pn">max_dist</span>
-  </div>
-  <span class="pt">)</span>
-</div>
-</div>
-
-
- Standalone function to calculate nearest and next-nearest node matches for a given coordinate.
-
 </div>
 
 

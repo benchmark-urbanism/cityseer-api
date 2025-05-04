@@ -240,7 +240,9 @@ def compute_accessibilities(
         jitter_scale=jitter_scale,
     )
     # wraps progress bar
-    result = config.wrap_progress(total=network_structure.node_count(), rust_struct=data_map, partial_func=partial_func)
+    result = config.wrap_progress(
+        total=network_structure.street_node_count(), rust_struct=data_map, partial_func=partial_func
+    )
     # unpack
     distances = config.log_thresholds(
         distances=distances,
@@ -474,7 +476,9 @@ def compute_mixed_uses(
         jitter_scale=jitter_scale,
     )
     # wraps progress bar
-    result = config.wrap_progress(total=network_structure.node_count(), rust_struct=data_map, partial_func=partial_func)
+    result = config.wrap_progress(
+        total=network_structure.street_node_count(), rust_struct=data_map, partial_func=partial_func
+    )
     # unpack
     distances = config.log_thresholds(
         distances=distances,
@@ -666,7 +670,9 @@ def compute_stats(
         jitter_scale=jitter_scale,
     )
     # wraps progress bar
-    result = config.wrap_progress(total=network_structure.node_count(), rust_struct=data_map, partial_func=partial_func)
+    result = config.wrap_progress(
+        total=network_structure.street_node_count(), rust_struct=data_map, partial_func=partial_func
+    )
     # unpack
     distances = config.log_thresholds(
         distances=distances,

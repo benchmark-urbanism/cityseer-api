@@ -237,7 +237,7 @@ def test_network_structure_from_nx(diamond_graph):
         # plot.plot_graphs(primal=G)
         # plot.plot_network_structure(nodes_gdf, node_data, edge_data)
         # check lengths
-        assert len(nodes_gdf) == (network_structure.node_count()) == G.number_of_nodes()
+        assert len(nodes_gdf) == (network_structure.street_node_count()) == G.number_of_nodes()
         # edges = x2
         assert network_structure.edge_count == G.number_of_edges() * 2
         # CRS check
@@ -251,7 +251,7 @@ def test_network_structure_from_nx(diamond_graph):
                     == G_test[row["primal_edge_node_a"]][row["primal_edge_node_b"]][row["primal_edge_idx"]]["geom"]
                 )
         # check node maps (idx and label match in this case...)
-        node_idxs = network_structure.node_indices()
+        node_idxs = network_structure.street_node_indices()
         for node_idx in node_idxs:
             node_payload = network_structure.get_node_payload(node_idx)
             assert node_payload.coord[0] - nodes_gdf.loc[node_payload.node_key].x < config.ATOL
@@ -782,8 +782,8 @@ def test_add_transport_gtfs(primal_graph):
     )
     # clean copy for transport
     nodes_gdf_w_trans, edges_gdf_w_trans, network_structure_w_trans = io.network_structure_from_nx(primal_graph)
-    nodes_gdf_w_trans, edges_gdf_w_trans, network_structure_w_trans, stops, avg_stop_pairs = io.add_transport_gtfs(
-        gtfs_data_path, nodes_gdf_w_trans, edges_gdf_w_trans, network_structure_w_trans
+    network_structure_w_trans, stops, avg_stop_pairs = io.add_transport_gtfs(
+        gtfs_data_path, network_structure_w_trans, nodes_gdf.crs
     )
     nodes_gdf_w_trans = networks.node_centrality_shortest(
         network_structure=network_structure_w_trans,
@@ -791,7 +791,7 @@ def test_add_transport_gtfs(primal_graph):
         distances=distances,
     )
     # from cityseer.tools import plot
-    # plot.plot_network_structure(network_structure_w_trans, stops)
+    # plot.plot_network_structure(network_structure_w_trans)
     #
     expected_path = [11, 12, 8, 9, 4, 1, 0, 31, 33, 38, 45, 56]
     expected_path_w_trans = [11, 61, 60, 59, 58, 57, 56]
@@ -834,8 +834,8 @@ def test_add_transport_gtfs(primal_graph):
     )
     # clean copy for transport
     nodes_gdf_w_trans, edges_gdf_w_trans, network_structure_w_trans = io.network_structure_from_nx(dual_graph)
-    nodes_gdf_w_trans, edges_gdf_w_trans, network_structure_w_trans, stops, avg_stop_pairs = io.add_transport_gtfs(
-        gtfs_data_path, nodes_gdf_w_trans, edges_gdf_w_trans, network_structure_w_trans
+    network_structure_w_trans, stops, avg_stop_pairs = io.add_transport_gtfs(
+        gtfs_data_path, network_structure_w_trans, nodes_gdf.crs
     )
     nodes_gdf_w_trans = networks.node_centrality_shortest(
         network_structure=network_structure_w_trans,

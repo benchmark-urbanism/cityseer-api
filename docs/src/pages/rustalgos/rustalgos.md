@@ -9,212 +9,6 @@ layout: ../../layouts/PageLayout.astro
  Cityseer high-performance algorithms implemented in Rust.
 
 
-<div class="class">
-
-
-## Coord
-
-
-
- Class representing a coordinate.
-
-
-
-<div class="function">
-
-## Coord
-
-
-<div class="content">
-<span class="name">Coord</span><div class="signature multiline">
-  <span class="pt">(</span>
-  <div class="param">
-    <span class="pn">x</span>
-    <span class="pc">:</span>
-    <span class="pa"> float</span>
-  </div>
-  <div class="param">
-    <span class="pn">y</span>
-    <span class="pc">:</span>
-    <span class="pa"> float</span>
-  </div>
-  <span class="pt">)</span>
-</div>
-</div>
-
-
- Creates a `Coord` with `x` and `y` coordinates.
-### Parameters
-<div class="param-set">
-  <div class="def">
-    <div class="name">`x`</div>
-    <div class="type">x coordinate.</div>
-  </div>
-  <div class="desc">
-
-
-</div>
-</div>
-
-<div class="param-set">
-  <div class="def">
-    <div class="name">`y`</div>
-    <div class="type">y coordinate.</div>
-  </div>
-  <div class="desc">
-
-
-</div>
-</div>
-
-
-</div>
-
- 
-
-<div class="function">
-
-## xy
-
-
-<div class="content">
-<span class="name">xy</span><div class="signature multiline">
-  <span class="pt">(</span>
-  <div class="param">
-    <span class="pn">self</span>
-  </div>
-  <span class="pt">)-&gt;[</span>
-  <span class="pr">float</span>
-  <span class="pr">float</span>
-  <span class="pt">]</span>
-</div>
-</div>
-
-
- Returns the `Coord` as a `tuple` of `x` and `y`.
-### Returns
-<div class="param-set">
-  <div class="def">
-    <div class="name">`xy`</div>
-    <div class="type">tuple[float, float]</div>
-  </div>
-  <div class="desc">
-
-
-</div>
-</div>
-
-
-</div>
-
- 
-
-<div class="function">
-
-## validate
-
-
-<div class="content">
-<span class="name">validate</span><div class="signature">
-  <span class="pt">(</span>
-  <div class="param">
-    <span class="pn">self</span>
-  </div>
-  <span class="pt">)-&gt;[</span>
-  <span class="pr">bool</span>
-  <span class="pt">]</span>
-</div>
-</div>
-
-
- Validates the Coord.
-
-</div>
-
- 
-
-<div class="function">
-
-## hypot
-
-
-<div class="content">
-<span class="name">hypot</span><div class="signature multiline">
-  <span class="pt">(</span>
-  <div class="param">
-    <span class="pn">self</span>
-  </div>
-  <div class="param">
-    <span class="pn">other_coord</span>
-    <span class="pc">:</span>
-    <span class="pa"> Self</span>
-  </div>
-  <span class="pt">)-&gt;[</span>
-  <span class="pr">float</span>
-  <span class="pt">]</span>
-</div>
-</div>
-
-
- Returns the pythagorean distance from this `Coord` to another.
-### Parameters
-<div class="param-set">
-  <div class="def">
-    <div class="name">`other_coord`</div>
-    <div class="type">Coord</div>
-  </div>
-  <div class="desc">
-
- The other coordinate to which to compute the Pythagorean distance.</div>
-</div>
-
-
-</div>
-
- 
-
-<div class="function">
-
-## difference
-
-
-<div class="content">
-<span class="name">difference</span><div class="signature multiline">
-  <span class="pt">(</span>
-  <div class="param">
-    <span class="pn">self</span>
-  </div>
-  <div class="param">
-    <span class="pn">other_coord</span>
-    <span class="pc">:</span>
-    <span class="pa"> Self</span>
-  </div>
-  <span class="pt">)-&gt;[</span>
-  <span class="pr">Self</span>
-  <span class="pt">]</span>
-</div>
-</div>
-
-
- Returns the vector of the spatial difference between this `Coord` and another.
-### Parameters
-<div class="param-set">
-  <div class="def">
-    <div class="name">`other_coord`</div>
-    <div class="type">Coord</div>
-  </div>
-  <div class="desc">
-
- The other coordinate to which to compute the Pythagorean distance.</div>
-</div>
-
-
-</div>
-
- 
-</div>
-
-
 <div class="function">
 
 ## check_numerical_data
@@ -225,15 +19,24 @@ layout: ../../layouts/PageLayout.astro
   <span class="pt">(</span>
   <div class="param">
     <span class="pn">data_arr</span>
-    <span class="pc">:</span>
-    <span class="pa"> list[float]</span>
   </div>
   <span class="pt">)</span>
 </div>
 </div>
 
 
- Checks the integrity of a numerical data array. data_arr: list[float]
+ Validates that all elements in a 2D numerical array are finite.
+### Raises
+<div class="param-set">
+  <div class="def">
+    <div class="name"></div>
+    <div class="type">ValueError</div>
+  </div>
+  <div class="desc">
+
+ If any element is not finite (NaN or infinity).</div>
+</div>
+
 
 </div>
 
@@ -263,41 +66,48 @@ layout: ../../layouts/PageLayout.astro
 </div>
 
 
- Map distance thresholds $d_{max}$ to equivalent decay parameters $\beta$ at the specified cutoff weight $w_{min}$. See [`distance_from_beta`](#distance-from-beta) for additional discussion.
-
-:::note
-It is generally not necessary to utilise this function directly.
-:::
+ Convert decay parameters (betas) to distance thresholds ($d_{max}$). Requires betas > 0 and sorted in strictly decreasing order. Uses a default minimum weight threshold.
 ### Parameters
 <div class="param-set">
   <div class="def">
-    <div class="name">distance</div>
-    <div class="type">list[int]</div>
+    <div class="name">betas</div>
+    <div class="type">list[float]</div>
   </div>
   <div class="desc">
 
- $d_{max}$ value/s to convert to decay parameters $\beta$.</div>
+ $\beta$ values (&gt; 0, strictly decreasing) to convert.</div>
 </div>
 
 <div class="param-set">
   <div class="def">
     <div class="name">min_threshold_wt</div>
-    <div class="type">float</div>
+    <div class="type">float | None</div>
   </div>
   <div class="desc">
 
- The cutoff weight $w_{min}$ on which to model the decay parameters $\beta$.</div>
+ Optional cutoff weight $w_{min}$ (default: ~0.0183).</div>
 </div>
 
 ### Returns
 <div class="param-set">
   <div class="def">
     <div class="name"></div>
-    <div class="type">list[float]</div>
+    <div class="type">list[int]</div>
   </div>
   <div class="desc">
 
- A numpy array of decay parameters $\beta$.</div>
+ Corresponding distance thresholds $d_{max}$.</div>
+</div>
+
+### Raises
+<div class="param-set">
+  <div class="def">
+    <div class="name"></div>
+    <div class="type">ValueError</div>
+  </div>
+  <div class="desc">
+
+ If inputs are invalid (empty, non-positive, not decreasing).</div>
 </div>
 
 ### Notes
@@ -353,19 +163,16 @@ print(betas)  # prints: array([0.01, 0.02])
 </div>
 
 
- Map decay parameters $\beta$ to equivalent distance thresholds $d_{max}$ at the specified cutoff weight $w_{min}$.
-:::note
-It is generally not necessary to utilise this function directly.
-:::
+ Convert distance thresholds ($d_{max}$) to decay parameters (betas). Requires distances > 0 and sorted in strictly increasing order. Uses a default minimum weight threshold.
 ### Parameters
 <div class="param-set">
   <div class="def">
-    <div class="name">betas</div>
-    <div class="type">list[float]</div>
+    <div class="name">distances</div>
+    <div class="type">list[int]</div>
   </div>
   <div class="desc">
 
- $\beta$ value/s to convert to distance thresholds $d_{max}$.</div>
+ $d_{max}$ values (&gt; 0, strictly increasing) to convert.</div>
 </div>
 
 <div class="param-set">
@@ -375,18 +182,29 @@ It is generally not necessary to utilise this function directly.
   </div>
   <div class="desc">
 
- An optional cutoff weight $w_{min}$ at which to set the distance threshold $d_{max}$.</div>
+ Optional cutoff weight $w_{min}$ (default: ~0.0183).</div>
 </div>
 
 ### Returns
 <div class="param-set">
   <div class="def">
-    <div class="name">distances</div>
-    <div class="type">list[int]</div>
+    <div class="name"></div>
+    <div class="type">list[float]</div>
   </div>
   <div class="desc">
 
- A list of distance thresholds $d_{max}$.</div>
+ Corresponding decay parameters $\beta$.</div>
+</div>
+
+### Raises
+<div class="param-set">
+  <div class="def">
+    <div class="name"></div>
+    <div class="type">ValueError</div>
+  </div>
+  <div class="desc">
+
+ If inputs are invalid (empty, non-positive, not increasing).</div>
 </div>
 
 ### Notes
@@ -444,7 +262,7 @@ Overriding the default $w_{min}$ will adjust the $d_{max}$ accordingly.
   <div class="param">
     <span class="pn">speed_m_s</span>
     <span class="pc">:</span>
-    <span class="pa"> float | None = None</span>
+    <span class="pa"> float</span>
   </div>
   <span class="pt">)-&gt;[</span>
   <span class="pr">list[int]</span>
@@ -453,7 +271,7 @@ Overriding the default $w_{min}$ will adjust the $d_{max}$ accordingly.
 </div>
 
 
- Map seconds to equivalent distance thresholds $d_{max}$.
+ Convert time in seconds to distance thresholds ($d_{max}$) based on speed.
 :::note
 It is generally not necessary to utilise this function directly.
 :::
@@ -466,7 +284,7 @@ It is generally not necessary to utilise this function directly.
 | 600 | 800m |
 | 1200 | 1600m |
 
-Setting the `speed_m_s` to a higher or lower number will affect the $d_{max}$ accordingly.
+Setting the `speed_m_s` to a higher or lower number will affect the $d_{max}$ accordingly.]
 ### Parameters
 <div class="param-set">
   <div class="def">
@@ -475,7 +293,7 @@ Setting the `speed_m_s` to a higher or lower number will affect the $d_{max}$ ac
   </div>
   <div class="desc">
 
- Seconds to convert to distance thresholds $d_{max}$.</div>
+ Time values in seconds.</div>
 </div>
 
 <div class="param-set">
@@ -485,7 +303,7 @@ Setting the `speed_m_s` to a higher or lower number will affect the $d_{max}$ ac
   </div>
   <div class="desc">
 
- The walking speed in metres per second.</div>
+ Speed in meters per second.</div>
 </div>
 
 ### Returns
@@ -496,7 +314,7 @@ Setting the `speed_m_s` to a higher or lower number will affect the $d_{max}$ ac
   </div>
   <div class="desc">
 
- A numpy array of distance thresholds $d_{max}$.</div>
+ Corresponding distance thresholds $d_{max}$.</div>
 </div>
 
 
@@ -519,16 +337,16 @@ Setting the `speed_m_s` to a higher or lower number will affect the $d_{max}$ ac
   <div class="param">
     <span class="pn">speed_m_s</span>
     <span class="pc">:</span>
-    <span class="pa"> float | None = None</span>
+    <span class="pa"> float</span>
   </div>
   <span class="pt">)-&gt;[</span>
-  <span class="pr">list[float]</span>
+  <span class="pr">list[int]</span>
   <span class="pt">]</span>
 </div>
 </div>
 
 
- Map distances into equivalent walking time in seconds.
+ Convert distance thresholds ($d_{max}$) to time in seconds based on speed.
 :::note
 It is generally not necessary to utilise this function directly.
 :::
@@ -550,7 +368,7 @@ Setting the `speed_m_s` to a higher or lower number will affect the walking time
   </div>
   <div class="desc">
 
- Distances to convert to seconds.</div>
+ Distance thresholds $d_{max}$.</div>
 </div>
 
 <div class="param-set">
@@ -560,7 +378,7 @@ Setting the `speed_m_s` to a higher or lower number will affect the walking time
   </div>
   <div class="desc">
 
- The walking speed in metres per second.</div>
+ Speed in meters per second.</div>
 </div>
 
 ### Returns
@@ -571,7 +389,7 @@ Setting the `speed_m_s` to a higher or lower number will affect the walking time
   </div>
   <div class="desc">
 
- A numpy array of walking time in seconds.</div>
+ Corresponding time values in seconds.</div>
 </div>
 
 
@@ -586,6 +404,11 @@ Setting the `speed_m_s` to a higher or lower number will affect the walking time
 <div class="content">
 <span class="name">pair_distances_betas_time</span><div class="signature multiline">
   <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">speed_m_s</span>
+    <span class="pc">:</span>
+    <span class="pa"> float</span>
+  </div>
   <div class="param">
     <span class="pn">distances</span>
     <span class="pc">:</span>
@@ -606,62 +429,17 @@ Setting the `speed_m_s` to a higher or lower number will affect the walking time
     <span class="pc">:</span>
     <span class="pa"> float | None = None</span>
   </div>
-  <div class="param">
-    <span class="pn">speed_m_s</span>
-    <span class="pc">:</span>
-    <span class="pa"> float | None = None</span>
-  </div>
   <span class="pt">)-&gt;[</span>
   <span class="pr">list[int]</span>
   <span class="pr">list[float]</span>
-  <span class="pr">list[float]</span>
+  <span class="pr">list[int]</span>
   <span class="pt">]</span>
 </div>
 </div>
 
 
- Pair distances, betas, and time, where only one parameter is provided.
+ Calculate distances, betas, and seconds, given exactly one of them. Requires exactly one of `distances`, `betas`, or `minutes` to be provided.
 ### Parameters
-<div class="param-set">
-  <div class="def">
-    <div class="name">distances</div>
-    <div class="type">list[int]</div>
-  </div>
-  <div class="desc">
-
- Distances corresponding to the local $d_{max}$ thresholds to be used for calculations. The $\beta$ parameters (for distance-weighted metrics) will be determined implicitly. If the `distances` parameter is not provided, then the `betas` or `minutes` parameter must be provided instead.</div>
-</div>
-
-<div class="param-set">
-  <div class="def">
-    <div class="name">betas</div>
-    <div class="type">tuple[float]</div>
-  </div>
-  <div class="desc">
-
- A $\beta$, or array of $\beta$ to be used for the exponential decay function for weighted metrics. The `distance` parameters for unweighted metrics will be determined implicitly. If the `betas` parameter is not provided, then the `distances` or `minutes` parameter must be provided instead.</div>
-</div>
-
-<div class="param-set">
-  <div class="def">
-    <div class="name">minutes</div>
-    <div class="type">list[float]</div>
-  </div>
-  <div class="desc">
-
- Walking times in minutes to be used for calculations. The `distance` and `beta` parameters will be determined implicitly. If the `minutes` parameter is not provided, then the `distances` or `betas` parameters must be provided instead.</div>
-</div>
-
-<div class="param-set">
-  <div class="def">
-    <div class="name">min_threshold_wt</div>
-    <div class="type">float</div>
-  </div>
-  <div class="desc">
-
- The default `min_threshold_wt` parameter can be overridden to generate custom mappings between the `distance` and `beta` parameters. See [`distance_from_beta`](#distance-from-beta) for more information.</div>
-</div>
-
 <div class="param-set">
   <div class="def">
     <div class="name">speed_m_s</div>
@@ -669,38 +447,69 @@ Setting the `speed_m_s` to a higher or lower number will affect the walking time
   </div>
   <div class="desc">
 
- The default walking speed in meters per second can optionally be overridden to configure the distances covered by the respective walking times.</div>
+ Walking speed in meters per second.</div>
 </div>
 
-### Returns
 <div class="param-set">
   <div class="def">
     <div class="name">distances</div>
-    <div class="type">list[int]</div>
+    <div class="type">list[int] | None</div>
   </div>
   <div class="desc">
 
- Distances corresponding to the local $d_{max}$ thresholds to be used for calculations. The $\beta$ parameters (for distance-weighted metrics) will be determined implicitly. If the `distances` parameter is not provided, then the `beta` parameter must be provided instead.</div>
+ Distance thresholds ($d_{max}$).</div>
 </div>
 
 <div class="param-set">
   <div class="def">
     <div class="name">betas</div>
-    <div class="type">list[float]</div>
+    <div class="type">list[float] | None</div>
   </div>
   <div class="desc">
 
- A $\beta$, or array of $\beta$ to be used for the exponential decay function for weighted metrics. The `distance` parameters for unweighted metrics will be determined implicitly. If the `betas` parameter is not provided, then the `distance` parameter must be provided instead.</div>
+ Decay parameters ($\beta$).</div>
 </div>
 
 <div class="param-set">
   <div class="def">
-    <div class="name">seconds</div>
-    <div class="type">list[int]</div>
+    <div class="name">minutes</div>
+    <div class="type">list[float] | None</div>
   </div>
   <div class="desc">
 
- Walking times in seconds corresponding to the distances used for calculations.</div>
+ Time in minutes.</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">min_threshold_wt</div>
+    <div class="type">float | None</div>
+  </div>
+  <div class="desc">
+
+ Optional cutoff weight $w_{min}$ for conversions.</div>
+</div>
+
+### Returns
+<div class="param-set">
+  <div class="def">
+    <div class="name"></div>
+    <div class="type">tuple[list[int], list[float], list[int]]</div>
+  </div>
+  <div class="desc">
+
+ A tuple containing (distances, betas, seconds).</div>
+</div>
+
+### Raises
+<div class="param-set">
+  <div class="def">
+    <div class="name"></div>
+    <div class="type">ValueError</div>
+  </div>
+  <div class="desc">
+
+ If not exactly one of `distances`, `betas`, `minutes` is provided, or if inputs are invalid.</div>
 </div>
 
 ### Notes
@@ -741,26 +550,26 @@ when calculating shortest paths and landuse accessibilities.
 </div>
 
 
- Calculate the mean distance for a given $\beta$ parameter.
+ Calculate the mean distance corresponding to given beta parameters.
 ### Parameters
 <div class="param-set">
   <div class="def">
-    <div class="name">beta</div>
+    <div class="name">betas</div>
     <div class="type">list[float]</div>
   </div>
   <div class="desc">
 
- $\beta$ representing a spatial impedance / distance decay for which to compute the average walking distance.</div>
+ $\beta$ parameters.</div>
 </div>
 
 <div class="param-set">
   <div class="def">
     <div class="name">min_threshold_wt</div>
-    <div class="type">float</div>
+    <div class="type">float | None</div>
   </div>
   <div class="desc">
 
- The cutoff weight $w_{min}$ on which to model the decay parameters $\beta$.</div>
+ Optional cutoff weight $w_{min}$.</div>
 </div>
 
 ### Returns
@@ -771,7 +580,7 @@ when calculating shortest paths and landuse accessibilities.
   </div>
   <div class="desc">
 
- The average walking distance for a given $\beta$.</div>
+ The average walking distance for each beta.</div>
 </div>
 
 ### Notes
@@ -789,7 +598,6 @@ print("betas", betas)
 # betas [0.04   0.02   0.01   0.005  0.0025]
 
 print("avg", networks.avg_distance_for_beta(betas))
-# avg [ 35.11949  70.23898 140.47797 280.95593 561.91187]
 ```
 
 
@@ -826,7 +634,7 @@ print("avg", networks.avg_distance_for_beta(betas))
 </div>
 
 
- Calculate the upper bounds for clipping weights produced by spatial impedance functions. Determine the upper weights threshold of the distance decay curve for a given $\beta$ based on the `spatial_tolerance` parameter. This is used by downstream functions to determine the upper extent at which weights derived for spatial impedance functions are flattened and normalised. This functionality is only intended for situations where the location of datapoints is uncertain for a given spatial tolerance.
+ Calculate upper weight bounds for clipping distance decay curves based on spatial tolerance. Used when data point location has uncertainty defined by `spatial_tolerance`. Determine the upper weights threshold of the distance decay curve for a given $\beta$ based on the `spatial_tolerance` parameter. This is used by downstream functions to determine the upper extent at which weights derived for spatial impedance functions are flattened and normalised. This functionality is only intended for situations where the location of datapoints is uncertain for a given spatial tolerance.
 
 :::warning
 Use distance based clipping with caution for smaller distance thresholds. For example, if using a 200m distance
@@ -842,7 +650,7 @@ datapoints are not located with high spatial precision.
   </div>
   <div class="desc">
 
- An array of distances corresponding to the local $d_{max}$ thresholds to be used for calculations.</div>
+ Distance thresholds ($d_{max}$).</div>
 </div>
 
 <div class="param-set">
@@ -852,7 +660,7 @@ datapoints are not located with high spatial precision.
   </div>
   <div class="desc">
 
- An array of $\beta$ to be used for the exponential decay function for weighted metrics.</div>
+ Decay parameters ($\beta$).</div>
 </div>
 
 <div class="param-set">
@@ -862,18 +670,18 @@ datapoints are not located with high spatial precision.
   </div>
   <div class="desc">
 
- The spatial buffer distance corresponding to the tolerance for spatial inaccuracy.</div>
+ Spatial buffer distance (uncertainty).</div>
 </div>
 
 ### Returns
 <div class="param-set">
   <div class="def">
-    <div class="name">max_curve_wts</div>
+    <div class="name"></div>
     <div class="type">list[float]</div>
   </div>
   <div class="desc">
 
- An array of maximum weights at which curves for corresponding $\beta$ will be clipped.</div>
+ Maximum weights for clipping the decay curve for each beta.</div>
 </div>
 
 
@@ -910,7 +718,49 @@ datapoints are not located with high spatial precision.
 </div>
 
 
- Computes a clipped weight based on a beta value and maximum curve weight.
+ Calculate a single weight using beta decay, clipped by a maximum weight. Applies $weight = exp(-\beta \cdot distance)$, ensuring the result does not exceed `max_curve_wt`.
+### Parameters
+<div class="param-set">
+  <div class="def">
+    <div class="name">beta</div>
+    <div class="type">float</div>
+  </div>
+  <div class="desc">
+
+ The decay parameter $\beta$.</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">max_curve_wt</div>
+    <div class="type">float</div>
+  </div>
+  <div class="desc">
+
+ The maximum allowed weight (from `clip_wts_curve`).</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">data_dist</div>
+    <div class="type">float</div>
+  </div>
+  <div class="desc">
+
+ The distance to the data point.</div>
+</div>
+
+### Returns
+<div class="param-set">
+  <div class="def">
+    <div class="name"></div>
+    <div class="type">float</div>
+  </div>
+  <div class="desc">
+
+ The calculated (potentially clipped) weight. Returns 0.0 if calculation fails.</div>
+</div>
+
 
 </div>
 

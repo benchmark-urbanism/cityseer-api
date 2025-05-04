@@ -51,7 +51,7 @@ plot.plot_nx(
 mixed_uses_vals = colors.Normalize()(mixed_uses_vals)
 mixed_uses_cols = cmap(mixed_uses_vals)
 data_map = mock.mock_data_map(data_gdf)
-data_map.assign_to_network(network_structure, max_dist=400)
+data_map.assign_data_to_network(network_structure, max_assignment_dist=400)
 plot.plot_assignment(
     network_structure,
     G,
@@ -127,7 +127,7 @@ G = mock.mock_graph()
 G = graphs.nx_simple_geoms(G)
 nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(G)
 data_gdf = mock.mock_data_gdf(G, random_seed=25)
-data_map = layers.assign_gdf_to_network(data_gdf, network_structure, max_netw_assign_dist=400)
+data_map = layers.build_data_map(data_gdf, network_structure, max_netw_assign_dist=400)
 plot.plot_assignment(
     network_structure,
     G,
@@ -139,7 +139,7 @@ plot.plot_assignment(
 G_decomposed = graphs.nx_decompose(G, 50)
 nodes_gdf_decomp, _edges_gdf, network_structure_decomp = io.network_structure_from_nx(G_decomposed)
 data_gdf = mock.mock_data_gdf(G, random_seed=25)
-data_map = layers.assign_gdf_to_network(data_gdf, network_structure_decomp, max_netw_assign_dist=400)
+data_map = layers.build_data_map(data_gdf, network_structure_decomp, max_netw_assign_dist=400)
 plot.plot_assignment(
     network_structure_decomp,
     G_decomposed,
@@ -185,7 +185,7 @@ G = graphs.nx_simple_geoms(G)
 G_decomp = graphs.nx_decompose(G, 50)
 nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(G_decomp)
 data_gdf = mock.mock_landuse_categorical_data(G_decomp, random_seed=25)
-data_map = layers.assign_gdf_to_network(data_gdf, network_structure, max_netw_assign_dist=400)
+data_map = layers.build_data_map(data_gdf, network_structure, max_netw_assign_dist=400)
 plot.plot_assignment(
     network_structure,
     G_decomp,

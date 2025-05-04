@@ -1,5 +1,4 @@
 use crate::common::py_key_to_composite;
-use crate::common::WALKING_SPEED;
 
 use geo::algorithm::centroid::Centroid;
 use geo::algorithm::closest_point::ClosestPoint;
@@ -132,8 +131,7 @@ impl EdgePayload {
         // Common validation: imp_factor must be finite and positive
         if !self.imp_factor.is_finite() || self.imp_factor <= 0.0 {
             return Err(exceptions::PyValueError::new_err(format!(
-                "Invalid edge payload (edge_idx {}): imp_factor must be finite and positive (> 0.0). Found {}. Start key: {:?}, End key: {:?}",
-                self.edge_idx,
+                "Invalid edge payload : imp_factor must be finite and positive (> 0.0). Found {}. Start key: {:?}, End key: {:?}",
                 self.imp_factor,
                 self.start_nd_key_py.as_ref().map(|k| k.bind(py).repr().ok()),
                 self.end_nd_key_py.as_ref().map(|k| k.bind(py).repr().ok())
@@ -142,28 +140,18 @@ impl EdgePayload {
 
         if self.is_transport {
             // Transport edge validation
-            if !self.seconds.is_finite() || self.seconds < 0.0 {
+            if (!self.seconds.is_finite() || self.seconds < 0.0)
+                && (!self.length.is_finite() || self.length < 0.0)
+            {
                 return Err(exceptions::PyValueError::new_err(format!(
-                    "Invalid transport edge payload (edge_idx {}): seconds must be finite and non-negative (>= 0.0). Found {}. Start key: {:?}, End key: {:?}",
-                    self.edge_idx,
-                    self.seconds,
-                    self.start_nd_key_py.as_ref().map(|k| k.bind(py).repr().ok()),
-                    self.end_nd_key_py.as_ref().map(|k| k.bind(py).repr().ok())
-                )));
-            }
-            if !self.length.is_nan() {
-                return Err(exceptions::PyValueError::new_err(format!(
-                    "Invalid transport edge payload (edge_idx {}): length must be NaN. Found {}. Start key: {:?}, End key: {:?}",
-                    self.edge_idx,
-                    self.length,
+                    "Invalid transport edge payload : seconds must be finite and non-negative. Else length must be finite and non-negative. Start key: {:?}, End key: {:?}",
                     self.start_nd_key_py.as_ref().map(|k| k.bind(py).repr().ok()),
                     self.end_nd_key_py.as_ref().map(|k| k.bind(py).repr().ok())
                 )));
             }
             if !self.angle_sum.is_nan() {
                 return Err(exceptions::PyValueError::new_err(format!(
-                    "Invalid transport edge payload (edge_idx {}): angle_sum must be NaN. Found {}. Start key: {:?}, End key: {:?}",
-                    self.edge_idx,
+                    "Invalid transport edge payload : angle_sum must be NaN. Found {}. Start key: {:?}, End key: {:?}",
                     self.angle_sum,
                     self.start_nd_key_py.as_ref().map(|k| k.bind(py).repr().ok()),
                     self.end_nd_key_py.as_ref().map(|k| k.bind(py).repr().ok())
@@ -171,8 +159,7 @@ impl EdgePayload {
             }
             if !self.in_bearing.is_nan() {
                 return Err(exceptions::PyValueError::new_err(format!(
-                    "Invalid transport edge payload (edge_idx {}): in_bearing must be NaN. Found {}. Start key: {:?}, End key: {:?}",
-                    self.edge_idx,
+                    "Invalid transport edge payload : in_bearing must be NaN. Found {}. Start key: {:?}, End key: {:?}",
                     self.in_bearing,
                     self.start_nd_key_py.as_ref().map(|k| k.bind(py).repr().ok()),
                     self.end_nd_key_py.as_ref().map(|k| k.bind(py).repr().ok())
@@ -180,8 +167,7 @@ impl EdgePayload {
             }
             if !self.out_bearing.is_nan() {
                 return Err(exceptions::PyValueError::new_err(format!(
-                    "Invalid transport edge payload (edge_idx {}): out_bearing must be NaN. Found {}. Start key: {:?}, End key: {:?}",
-                    self.edge_idx,
+                    "Invalid transport edge payload : out_bearing must be NaN. Found {}. Start key: {:?}, End key: {:?}",
                     self.out_bearing,
                     self.start_nd_key_py.as_ref().map(|k| k.bind(py).repr().ok()),
                     self.end_nd_key_py.as_ref().map(|k| k.bind(py).repr().ok())
@@ -189,8 +175,7 @@ impl EdgePayload {
             }
             if self.geom_wkt.is_some() || self.geom.is_some() {
                 return Err(exceptions::PyValueError::new_err(format!(
-                    "Invalid transport edge payload (edge_idx {}): geom_wkt and geom must be None. Start key: {:?}, End key: {:?}",
-                    self.edge_idx,
+                    "Invalid transport edge payload : geom_wkt and geom must be None. Start key: {:?}, End key: {:?}",
                     self.start_nd_key_py.as_ref().map(|k| k.bind(py).repr().ok()),
                     self.end_nd_key_py.as_ref().map(|k| k.bind(py).repr().ok())
                 )));
@@ -199,8 +184,7 @@ impl EdgePayload {
             // Street edge validation
             if !self.seconds.is_nan() {
                 return Err(exceptions::PyValueError::new_err(format!(
-                    "Invalid street edge payload (edge_idx {}): seconds must be NaN. Found {}. Start key: {:?}, End key: {:?}",
-                    self.edge_idx,
+                    "Invalid street edge payload : seconds must be NaN. Found {}. Start key: {:?}, End key: {:?}",
                     self.seconds,
                     self.start_nd_key_py.as_ref().map(|k| k.bind(py).repr().ok()),
                     self.end_nd_key_py.as_ref().map(|k| k.bind(py).repr().ok())
@@ -209,8 +193,7 @@ impl EdgePayload {
             if !self.length.is_finite() {
                 // length >= 0 is implied by calculation
                 return Err(exceptions::PyValueError::new_err(format!(
-                    "Invalid street edge payload (edge_idx {}): length must be finite. Found {}. Start key: {:?}, End key: {:?}",
-                    self.edge_idx,
+                    "Invalid street edge payload : length must be finite. Found {}. Start key: {:?}, End key: {:?}",
                     self.length,
                     self.start_nd_key_py.as_ref().map(|k| k.bind(py).repr().ok()),
                     self.end_nd_key_py.as_ref().map(|k| k.bind(py).repr().ok())
@@ -219,8 +202,7 @@ impl EdgePayload {
             if !self.angle_sum.is_finite() {
                 // angle_sum >= 0 is implied by calculation
                 return Err(exceptions::PyValueError::new_err(format!(
-                    "Invalid street edge payload (edge_idx {}): angle_sum must be finite. Found {}. Start key: {:?}, End key: {:?}",
-                    self.edge_idx,
+                    "Invalid street edge payload : angle_sum must be finite. Found {}. Start key: {:?}, End key: {:?}",
                     self.angle_sum,
                     self.start_nd_key_py.as_ref().map(|k| k.bind(py).repr().ok()),
                     self.end_nd_key_py.as_ref().map(|k| k.bind(py).repr().ok())
@@ -229,8 +211,7 @@ impl EdgePayload {
             if !self.in_bearing.is_finite() {
                 // Bearings can be negative
                 return Err(exceptions::PyValueError::new_err(format!(
-                    "Invalid street edge payload (edge_idx {}): in_bearing must be finite. Found {}. Start key: {:?}, End key: {:?}",
-                    self.edge_idx,
+                    "Invalid street edge payload : in_bearing must be finite. Found {}. Start key: {:?}, End key: {:?}",
                     self.in_bearing,
                     self.start_nd_key_py.as_ref().map(|k| k.bind(py).repr().ok()),
                     self.end_nd_key_py.as_ref().map(|k| k.bind(py).repr().ok())
@@ -238,8 +219,7 @@ impl EdgePayload {
             }
             if !self.out_bearing.is_finite() {
                 return Err(exceptions::PyValueError::new_err(format!(
-                    "Invalid street edge payload (edge_idx {}): out_bearing must be finite. Found {}. Start key: {:?}, End key: {:?}",
-                    self.edge_idx,
+                    "Invalid street edge payload : out_bearing must be finite. Found {}. Start key: {:?}, End key: {:?}",
                     self.out_bearing,
                     self.start_nd_key_py.as_ref().map(|k| k.bind(py).repr().ok()),
                     self.end_nd_key_py.as_ref().map(|k| k.bind(py).repr().ok())
@@ -247,8 +227,7 @@ impl EdgePayload {
             }
             if self.geom_wkt.is_none() || self.geom.is_none() {
                 return Err(exceptions::PyValueError::new_err(format!(
-                    "Invalid street edge payload (edge_idx {}): geom_wkt and geom must be Some. Start key: {:?}, End key: {:?}",
-                    self.edge_idx,
+                    "Invalid street edge payload : geom_wkt and geom must be Some. Start key: {:?}, End key: {:?}",
                     self.start_nd_key_py.as_ref().map(|k| k.bind(py).repr().ok()),
                     self.end_nd_key_py.as_ref().map(|k| k.bind(py).repr().ok())
                 )));
@@ -453,14 +432,13 @@ impl NetworkStructure {
         new_node_idx.index()
     }
 
-    #[pyo3(signature = (node_key, x, y, linking_radius=None, speed_m_s=None))]
+    #[pyo3(signature = (node_key, x, y, linking_radius=None))]
     pub fn add_transport_node(
         &mut self,
         node_key: Py<PyAny>,
         x: f64,
         y: f64,
         linking_radius: Option<f64>,
-        speed_m_s: Option<f32>,
         py: Python,
     ) -> PyResult<usize> {
         // Bind and clone node_key *before* moving it
@@ -486,7 +464,6 @@ impl NetworkStructure {
 
         let link_radius = linking_radius.unwrap_or(100.0); // Default linking radius
         let transport_geom: Geometry<f64> = Geometry::Point(transport_point);
-        let speed_m_s = speed_m_s.unwrap_or(WALKING_SPEED);
 
         // Find potential street node assignments using the existing logic
         // Note: find_assignments_for_entry uses edge R-tree, barriers, and street intersection checks.
@@ -498,17 +475,23 @@ impl NetworkStructure {
 
         let mut links_added = 0;
         for (street_node_idx, _data_key, dist) in potential_assignments {
+            log::info!(
+                "Linking transport node {} to street node {} with distance {}.",
+                new_node_idx_usize,
+                street_node_idx,
+                dist
+            );
             // Create a transport edge payload (bi-directional)
             let link_payload = EdgePayload {
                 start_nd_key_py: None, // Linking edges don't have original keys
                 end_nd_key_py: None,
-                edge_idx: usize::MAX, // Use a sentinel value for linking edges? Or manage indices?
-                length: dist as f32,  // Store the geometric distance
-                angle_sum: 0.0,       // No geometry
-                imp_factor: 1.0,      // Default impedance
+                edge_idx: 0,
+                length: dist as f32, // Store the geometric distance
+                angle_sum: f32::NAN, // No geometry
+                imp_factor: 1.0,     // Default impedance
                 in_bearing: f32::NAN,
                 out_bearing: f32::NAN,
-                seconds: dist as f32 / speed_m_s, // Calculate time based on distance
+                seconds: f32::NAN, // Calculate time based on distance
                 geom_wkt: None,
                 geom: None,
                 is_transport: true, // Mark as a transport link edge
@@ -569,22 +552,50 @@ impl NetworkStructure {
         self.get_node_payload(node_idx).map(|payload| payload.live)
     }
 
+    /// Returns the total count of all nodes (street and transport).
     pub fn node_count(&self) -> usize {
         self.graph.node_count()
     }
 
+    /// Returns the count of non-transport (street) nodes.
+    pub fn street_node_count(&self) -> usize {
+        let mut street_node_count = 0;
+        for payload in self.graph.node_weights() {
+            if !payload.is_transport {
+                street_node_count += 1;
+            }
+        }
+        street_node_count
+    }
+
+    /// Returns a list of indices for all nodes (street and transport).
     pub fn node_indices(&self) -> Vec<usize> {
         self.graph.node_indices().map(|node| node.index()).collect()
     }
 
+    /// Returns a list of indices for non-transport (street) nodes.
+    pub fn street_node_indices(&self) -> Vec<usize> {
+        let mut street_node_indices = Vec::new();
+        for node_index in self.graph.node_indices() {
+            if let Some(payload) = self.graph.node_weight(node_index) {
+                if !payload.is_transport {
+                    street_node_indices.push(node_index.index());
+                }
+            }
+        }
+        street_node_indices
+    }
+
+    /// Returns a list of `x` coordinates for all nodes (street and transport).
     #[getter]
     pub fn node_xs(&self) -> Vec<f64> {
         self.graph
-            .node_weights() // More direct way to get weights
+            .node_weights()
             .map(|payload| payload.point.x())
             .collect()
     }
 
+    /// Returns a list of `y` coordinates for all nodes (street and transport).
     #[getter]
     pub fn node_ys(&self) -> Vec<f64> {
         self.graph
@@ -593,6 +604,7 @@ impl NetworkStructure {
             .collect()
     }
 
+    /// Returns a list of `(x, y)` coordinates for all nodes (street and transport).
     #[getter]
     pub fn node_xys(&self) -> Vec<(f64, f64)> {
         self.graph
@@ -607,6 +619,18 @@ impl NetworkStructure {
             .node_weights()
             .map(|payload| payload.live)
             .collect()
+    }
+
+    /// Returns a list of `live` status indicators for non-transport (street) nodes.
+    #[getter]
+    pub fn street_node_lives(&self) -> Vec<bool> {
+        let mut street_node_lives = Vec::new();
+        for payload in self.graph.node_weights() {
+            if !payload.is_transport {
+                street_node_lives.push(payload.live);
+            }
+        }
+        street_node_lives
     }
 
     #[getter]

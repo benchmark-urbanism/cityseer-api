@@ -1254,12 +1254,10 @@ def network_structure_from_gpd(
 
 def add_transport_gtfs(
     gtfs_data_path: str,
-    nodes_gdf: gpd.GeoDataFrame,
-    edges_gdf: gpd.GeoDataFrame,
     network_structure: rustalgos.graph.NetworkStructure,
+    network_crs: int,
     max_netw_assign_dist: int = 400,
-    speed_m_s: float = SPEED_M_S,
-) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame, rustalgos.graph.NetworkStructure, pd.DataFrame, pd.DataFrame]:
+) -> tuple[rustalgos.graph.NetworkStructure, pd.DataFrame, pd.DataFrame]:
     """
     Add GTFS data to network structure.
 
@@ -1293,25 +1291,22 @@ def add_transport_gtfs(
     # merge avg_wait_time into stop times data
     stops = stops.merge(avg_wait_time.rename("avg_wait_time"), on="stop_id", how="left")
     # transformer to convert lat/lon to graph crs
-    transformer = Transformer.from_crs(4326, nodes_gdf.crs, always_xy=True)
-    # dual flag
-    is_dual = "primal_edge" in nodes_gdf.columns
+    transformer = Transformer.from_crs(4326, network_crs, always_xy=True)
 
-    # for performance add gather nodes and edges
-    new_nodes = []
-    new_edges = []
-    # add nodes for stops
-    logger.info("Adding GTFS stops to network nodes.")
+    # Add GTFS stops as transport nodes, using add_transport_node with linking_radius and speed_m_s
+    logger.info("Adding GTFS stops to network nodes (with street linking logic).")
+    stop_idx_map = {}
     for _, row in tqdm(stops.iterrows(), total=len(stops), disable=config.QUIET_MODE):
         e, n = transformer.transform(row["stop_lon"], row["stop_lat"])
-        _new_stop_idx = network_structure.add_transport_node(
+        ns_node_idx = network_structure.add_transport_node(
             row["stop_id"],
             float(e),
             float(n),
+            linking_radius=max_netw_assign_dist,
         )
+        stop_idx_map[row["stop_id"]] = ns_node_idx
 
     logger.info("Generating segment durations between stops.")
-    # create a column for the previous stop in each trip
     stop_times["prev_stop_id"] = stop_times.groupby("trip_id")["stop_id"].shift()
     # sort stop_times for proper sequencing
     stop_times.sort_values(by=["trip_id", "stop_sequence"], inplace=True)
@@ -1327,100 +1322,40 @@ def add_transport_gtfs(
         .reset_index(name="avg_segment_time")
     )
 
-    # Create a new GeoDataFrame from the gathered stop nodes
-    new_nodes_gdf = gpd.GeoDataFrame(new_nodes, geometry="geom", crs=nodes_gdf.crs).set_index("stop_id")
-    # rename geom if dual
-    if is_dual:
-        new_nodes_gdf.rename(columns={"geom": "dual_node"}, inplace=True)
-    # Concatenate with existing nodes
-    nodes_gdf = pd.concat([nodes_gdf, new_nodes_gdf], axis=0, ignore_index=False)  # type: ignore
-
     logger.info("Adding GTFS segments to network edges.")
-    # add edges between stops
     for _, row in tqdm(avg_stop_pairs.iterrows(), total=len(avg_stop_pairs), disable=config.QUIET_MODE):
-        # next stop
-        next_stop = row["next_stop_id"]
-        next_stop_row = nodes_gdf.loc[next_stop]
-        next_stop_idx = int(next_stop_row["ns_node_idx"])
         prev_stop = row["prev_stop_id"]
-        prev_stop_row = nodes_gdf.loc[prev_stop]
-        prev_stop_idx = int(prev_stop_row["ns_node_idx"])
-        # segment time
+        next_stop = row["next_stop_id"]
+        if prev_stop not in stop_idx_map or next_stop not in stop_idx_map:
+            continue
+        prev_stop_idx = stop_idx_map[prev_stop]
+        next_stop_idx = stop_idx_map[next_stop]
         avg_seg_time = row["avg_segment_time"]
-        # add edge - USE add_transport_edge
-        edge_idx = network_structure.add_transport_edge(
+        # Add edge (forward)
+        _edge_idx = network_structure.add_transport_edge(
             prev_stop_idx,
             next_stop_idx,
             0,  # edge_idx
-            "na-gtfs",  # nx_start_node_key
-            "na-gtfs",  # nx_end_node_key
-            float(avg_seg_time),  # seconds is required
-            None,  # imp_factor
+            "na-gtfs",
+            "na-gtfs",
+            float(avg_seg_time),
+            None,
         )
-        # add to edges_gdf
-        new_edges.append(
-            [
-                f"{prev_stop_idx}-{next_stop_idx}",
-                edge_idx,  # ns_edge_idx
-                prev_stop_idx,
-                next_stop_idx,
-                0,  # edge_idx
-                "na-gtfs",  # nx_start_node_key
-                "na-gtfs",  # nx_end_node_key
-                None,  # imp_factor
-                None,  # total_bearing
-                None,  # geom
-            ]
-        )
-        # other direction! - USE add_transport_edge
-        edge_idx = network_structure.add_transport_edge(
+        # Add edge (reverse)
+        _edge_idx = network_structure.add_transport_edge(
             next_stop_idx,
             prev_stop_idx,
-            0,  # edge_idx
-            "na-gtfs",  # nx_start_node_key
-            "na-gtfs",  # nx_end_node_key
-            float(avg_seg_time),  # seconds is required
-            None,  # imp_factor
+            0,
+            "na-gtfs",
+            "na-gtfs",
+            float(avg_seg_time),
+            None,
         )
-        # add to edges_gdf
-        new_edges.append(
-            [
-                f"{next_stop_idx}-{prev_stop_idx}",
-                edge_idx,  # ns_edge_idx
-                next_stop_idx,
-                prev_stop_idx,
-                0,  # edge_idx
-                "na-gtfs",  # nx_start_node_key
-                "na-gtfs",  # nx_end_node_key
-                None,  # imp_factor
-                None,  # total_bearing
-                None,  # geom
-            ]
-        )
-
-    # Create a new DataFrame for edges
-    new_edges_df = pd.DataFrame(
-        new_edges,
-        columns=[
-            "edge_key",
-            "ns_edge_idx",
-            "start_ns_node_idx",
-            "end_ns_node_idx",
-            "edge_idx",
-            "nx_start_node_key",
-            "nx_end_node_key",
-            "imp_factor",
-            "total_bearing",
-            "geom",  # Keep geom column, but values might be None
-        ],
-    )
-    new_edges_gdf = gpd.GeoDataFrame(new_edges_df, geometry="geom", crs=nodes_gdf.crs).set_index("edge_key")
-    edges_gdf = pd.concat([edges_gdf, new_edges_gdf], axis=0, ignore_index=False)  # type: ignore
 
     network_structure.validate()
     network_structure.build_edge_rtree()
 
-    return nodes_gdf, edges_gdf, network_structure, stops, avg_stop_pairs
+    return network_structure, stops, avg_stop_pairs
 
 
 def nx_from_cityseer_geopandas(
