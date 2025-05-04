@@ -108,21 +108,22 @@ def test_mock_data_map(primal_graph):
                 assert entry is not None
                 assert entry.data_key == data_key
                 assert entry.data_key_py == uid
-                assert entry.coord.x - row.geometry.x < 1  # f32 rounding errors
-                assert entry.coord.y - row.geometry.y < 1  # f32 rounding errors
-                assert entry.dedupe_key_py is None
-                assert entry.dedupe_key is None
-                assert entry.node_matches is None
+                assert entry.geom_wkt == row.geometry.wkt
+                # should match fallback
+                assert entry.dedupe_key_py == uid
+                assert entry.dedupe_key == data_key
 
 
-def test_mock_barriers_gdf():
+def test_mock_barriers():
     """
-    Test the mock_barriers_gdf function to ensure it creates a GeoDataFrame of barriers.
+    Test the mock_barriers function to ensure it creates a GeoDataFrame of barriers.
     """
-    barriers_gdf = mock.mock_barriers_gdf()
+    barriers_gdf, barriers_wkt = mock.mock_barriers()
     assert len(barriers_gdf) == 4
     assert "geometry" in barriers_gdf.columns
     assert barriers_gdf.geometry.iloc[0].geom_type == "Point"
     assert barriers_gdf.geometry.iloc[1].geom_type == "LineString"
     assert barriers_gdf.geometry.iloc[2].geom_type == "MultiLineString"
     assert barriers_gdf.geometry.iloc[3].geom_type == "Polygon"
+    for idx, geom in enumerate(barriers_gdf.geometry):
+        assert geom.wkt == barriers_wkt[idx]

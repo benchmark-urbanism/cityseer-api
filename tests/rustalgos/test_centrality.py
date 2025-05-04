@@ -27,6 +27,9 @@ def test_shortest_path_trees(primal_graph, dual_graph):
     nodes_gdf_p, edges_gdf_p, network_structure_p = io.network_structure_from_nx(primal_graph)
     # prepare round-trip graph for checks
     G_round_trip = io.nx_from_cityseer_geopandas(nodes_gdf_p, edges_gdf_p)
+    for start_nd_key, end_nd_key, edge_idx in G_round_trip.edges(keys=True):
+        geom = G_round_trip[start_nd_key][end_nd_key][edge_idx]["geom"]
+        G_round_trip[start_nd_key][end_nd_key][edge_idx]["length"] = geom.length
     # from cityseer.tools import plot
     # plot.plot_nx_primal_or_dual(primal_graph=primal_graph, dual_graph=dual_graph, labels=True, primal_node_size=80)
     # test all shortest path routes against networkX version of dijkstra
@@ -92,6 +95,7 @@ def test_shortest_path_trees(primal_graph, dual_graph):
     # remember, this is angular change not distance travelled
     # can be compared from primal to dual in this instance because edge segments are straight
     # i.e. same amount of angular change whether primal or dual graph
+    # from cityseer.tools import plot
     # plot.plot_nx_primal_or_dual(primal_graph, dual_graph, labels=True, primal_node_size=80, dpi=300)
     p_source_idx = nodes_gdf_p.index.tolist().index("0")
     primal_targets = ("15", "20", "37")
@@ -178,32 +182,6 @@ def test_shortest_path_trees(primal_graph, dual_graph):
     path_transpose = [nodes_gdf_d.index[n] for n in path]
     # print(path_transpose)
     assert path_transpose == ["10_43_k0", "10_5_k0"]
-    # WITH SIDESTEPS - set angular flag to False
-    # manually reduce distance impedances for this test to coerce shortest path via sharp turn
-    # angular has to be false otherwise shortest-path sidestepping should be avoided
-    for idx in ["10_14_k0-10_5_k0", "10_5_k0-10_14_k0", "10_43_k0-10_14_k0", "10_14_k0-10_43_k0"]:
-        network_structure_d.add_edge(
-            edges_gdf_d.loc[idx].start_ns_node_idx,
-            edges_gdf_d.loc[idx].end_ns_node_idx,
-            edges_gdf_d.loc[idx].edge_idx,
-            edges_gdf_d.loc[idx].nx_start_node_key,
-            edges_gdf_d.loc[idx].nx_end_node_key,
-            10,
-            edges_gdf_d.loc[idx].angle_sum,
-            edges_gdf_d.loc[idx].imp_factor,
-            edges_gdf_d.loc[idx].in_bearing,
-            edges_gdf_d.loc[idx].out_bearing,
-            0,  # seconds
-        )
-    _visited_nodes_d5, tree_map_d5 = network_structure_d.dijkstra_tree_shortest(
-        src_idx,
-        int(max_seconds_5000),
-        config.SPEED_M_S,
-    )
-    # find path
-    path = find_path(target, src_idx, tree_map_d5)
-    path_transpose = [nodes_gdf_d.index[n] for n in path]
-    assert path_transpose == ["10_43_k0", "10_14_k0", "10_5_k0"]
 
 
 def test_local_node_centrality_shortest(primal_graph):
@@ -217,6 +195,9 @@ def test_local_node_centrality_shortest(primal_graph):
     # generate node and edge maps
     nodes_gdf, edges_gdf, network_structure = io.network_structure_from_nx(primal_graph)
     G_round_trip = io.nx_from_cityseer_geopandas(nodes_gdf, edges_gdf)
+    for start_nd_key, end_nd_key, edge_idx in G_round_trip.edges(keys=True):
+        geom = G_round_trip[start_nd_key][end_nd_key][edge_idx]["geom"]
+        G_round_trip[start_nd_key][end_nd_key][edge_idx]["length"] = geom.length
     # needs a large enough beta so that distance thresholds aren't encountered
     betas = [0.02, 0.01, 0.005, 0.0008]
     distances = rustalgos.distances_from_betas(betas)

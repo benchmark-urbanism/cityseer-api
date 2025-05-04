@@ -13,50 +13,6 @@ pub static WALKING_SPEED: f32 = 1.33333;
 /// Default interval for progress updates.
 pub static PROGRESS_UPDATE_INTERVAL: usize = 100;
 
-/// Represents a 2D coordinate with `x` and `y` values.
-#[pyclass]
-#[derive(Clone, Copy, Debug)]
-pub struct Coord {
-    #[pyo3(get)]
-    pub x: f32,
-    #[pyo3(get)]
-    pub y: f32,
-}
-
-#[pymethods]
-impl Coord {
-    /// Creates a new `Coord` instance.
-    #[new]
-    #[inline(always)]
-    pub fn new(x: f32, y: f32) -> Self {
-        Self { x, y }
-    }
-
-    /// Returns the coordinates as a tuple `(x, y)`.
-    #[inline(always)]
-    pub fn xy(&self) -> (f32, f32) {
-        (self.x, self.y)
-    }
-
-    /// Validates that the coordinates are finite.
-    #[inline(always)]
-    pub fn validate(&self) -> bool {
-        self.x.is_finite() && self.y.is_finite()
-    }
-
-    /// Calculates the Euclidean distance between this coordinate and another.
-    #[inline(always)]
-    pub fn hypot(&self, other_coord: Coord) -> f32 {
-        (self.x - other_coord.x).hypot(self.y - other_coord.y)
-    }
-
-    /// Computes the difference between this coordinate and another as a vector.
-    #[inline(always)]
-    pub fn difference(&self, other_coord: Coord) -> Coord {
-        Coord::new(self.x - other_coord.x, self.y - other_coord.y)
-    }
-}
-
 /// Holds metric results, including distances and a 2D matrix of atomic floats.
 #[derive(Debug)]
 pub struct MetricResult {
@@ -75,15 +31,25 @@ impl MetricResult {
         Self { distances, metric }
     }
 
-    /// Converts the atomic floats into a Python-compatible format (`PyArray1<f32>`).
+    /// Converts the atomic floats into a Python-compatible format (`PyArray1<f32>`),
+    /// filtering to include only results for specified street node indices.
     #[inline]
-    pub fn load(&self) -> HashMap<u32, Py<PyArray1<f32>>> {
+    pub fn load(&self, street_node_indices: &[usize]) -> HashMap<u32, Py<PyArray1<f32>>> {
         self.distances
             .iter()
             .zip(&self.metric)
             .map(|(&dist, row)| {
-                let vec_f32: Vec<f32> = row.iter().map(|a| a.load(Ordering::Relaxed)).collect();
-                let array = Python::with_gil(|py| vec_f32.into_pyarray(py).to_owned().into());
+                // Load all results first
+                let full_vec_f32: Vec<f32> =
+                    row.iter().map(|a| a.load(Ordering::Relaxed)).collect();
+                // Filter to keep only street node results
+                let filtered_vec_f32: Vec<f32> = street_node_indices
+                    .iter()
+                    .map(|&idx| full_vec_f32[idx]) // Assumes street_node_indices are valid
+                    .collect();
+                // Convert filtered vector to PyArray
+                let array =
+                    Python::with_gil(|py| filtered_vec_f32.into_pyarray(py).to_owned().into());
                 (dist, array)
             })
             .collect()
@@ -122,6 +88,14 @@ pub fn check_numerical_data(data_arr: PyReadonlyArray2<f32>) -> PyResult<()> {
         }
     }
     Ok(())
+}
+
+/// Helper to generate a composite key from a Python object.
+pub fn py_key_to_composite(py_obj: Bound<'_, PyAny>) -> PyResult<String> {
+    let type_name = py_obj.get_type().name()?;
+    let value_pystr = py_obj.str()?;
+    let value_str = value_pystr.to_str()?;
+    Ok(format!("{}:{}", type_name, value_str))
 }
 
 /// Converts beta values to distances using a logarithmic transformation.
@@ -194,12 +168,11 @@ pub fn betas_from_distances(
 }
 
 #[pyfunction]
-#[pyo3(signature = (seconds, speed_m_s=None))]
-pub fn distances_from_seconds(seconds: Vec<u32>, speed_m_s: Option<f32>) -> PyResult<Vec<u32>> {
+#[pyo3(signature = (seconds, speed_m_s))]
+pub fn distances_from_seconds(seconds: Vec<u32>, speed_m_s: f32) -> PyResult<Vec<u32>> {
     if seconds.is_empty() {
         return Err(PyValueError::new_err("Input 'seconds' cannot be empty."));
     }
-    let speed_m_s = speed_m_s.unwrap_or(WALKING_SPEED);
     if speed_m_s <= 0.0 {
         return Err(PyValueError::new_err("Speed must be positive."));
     }
@@ -231,12 +204,11 @@ pub fn distances_from_seconds(seconds: Vec<u32>, speed_m_s: Option<f32>) -> PyRe
 }
 
 #[pyfunction]
-#[pyo3(signature = (distances, speed_m_s=None))]
-pub fn seconds_from_distances(distances: Vec<u32>, speed_m_s: Option<f32>) -> PyResult<Vec<u32>> {
+#[pyo3(signature = (distances, speed_m_s))]
+pub fn seconds_from_distances(distances: Vec<u32>, speed_m_s: f32) -> PyResult<Vec<u32>> {
     if distances.is_empty() {
         return Err(PyValueError::new_err("Input 'distances' cannot be empty."));
     }
-    let speed_m_s = speed_m_s.unwrap_or(WALKING_SPEED);
     if speed_m_s <= 0.0 {
         return Err(PyValueError::new_err("Speed must be positive."));
     }
@@ -268,30 +240,29 @@ pub fn seconds_from_distances(distances: Vec<u32>, speed_m_s: Option<f32>) -> Py
 }
 
 #[pyfunction]
-#[pyo3(signature = (distances=None, betas=None, minutes=None, min_threshold_wt=None, speed_m_s=None))]
+#[pyo3(signature = (speed_m_s, distances=None, betas=None, minutes=None, min_threshold_wt=None))]
 pub fn pair_distances_betas_time(
+    speed_m_s: f32,
     distances: Option<Vec<u32>>,
     betas: Option<Vec<f32>>,
     minutes: Option<Vec<f32>>,
     min_threshold_wt: Option<f32>,
-    speed_m_s: Option<f32>,
 ) -> PyResult<(Vec<u32>, Vec<f32>, Vec<u32>)> {
     let min_threshold_wt = min_threshold_wt.unwrap_or(MIN_THRESH_WT);
-    let speed_m_s = speed_m_s.unwrap_or(WALKING_SPEED);
     match (distances, betas, minutes) {
         (Some(distances), None, None) => {
             let betas = betas_from_distances(distances.clone(), Some(min_threshold_wt))?;
-            let seconds = seconds_from_distances(distances.clone(), Some(speed_m_s))?;
+            let seconds = seconds_from_distances(distances.clone(), speed_m_s)?;
             Ok((distances, betas, seconds))
         }
         (None, Some(betas), None) => {
             let distances = distances_from_betas(betas.clone(), Some(min_threshold_wt))?;
-            let seconds = seconds_from_distances(distances.clone(), Some(speed_m_s))?;
+            let seconds = seconds_from_distances(distances.clone(), speed_m_s)?;
             Ok((distances, betas, seconds))
         }
         (None, None, Some(minutes)) => {
             let seconds: Vec<u32> = minutes.iter().map(|&x| (x * 60.0).round() as u32).collect();
-            let distances = distances_from_seconds(seconds.clone(), Some(speed_m_s))?;
+            let distances = distances_from_seconds(seconds.clone(), speed_m_s)?;
             let betas = betas_from_distances(distances.clone(), Some(min_threshold_wt))?;
             Ok((distances, betas, seconds))
         }

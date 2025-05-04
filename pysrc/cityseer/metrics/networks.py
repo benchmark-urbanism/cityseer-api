@@ -175,7 +175,7 @@ def node_centrality_shortest(
     )
     # wraps progress bar
     result = config.wrap_progress(
-        total=network_structure.node_count(), rust_struct=network_structure, partial_func=partial_func
+        total=network_structure.street_node_count(), rust_struct=network_structure, partial_func=partial_func
     )
     # unpack
     distances = config.log_thresholds(
@@ -321,7 +321,7 @@ def node_centrality_simplest(
     )
     # wraps progress bar
     result = config.wrap_progress(
-        total=network_structure.node_count(), rust_struct=network_structure, partial_func=partial_func
+        total=network_structure.street_node_count(), rust_struct=network_structure, partial_func=partial_func
     )
     # unpack
     distances = config.log_thresholds(
@@ -446,7 +446,7 @@ def segment_centrality(
     )
     # wraps progress bar
     result = config.wrap_progress(
-        total=network_structure.node_count(), rust_struct=network_structure, partial_func=partial_func
+        total=network_structure.street_node_count(), rust_struct=network_structure, partial_func=partial_func
     )
     # unpack
     distances = config.log_thresholds(

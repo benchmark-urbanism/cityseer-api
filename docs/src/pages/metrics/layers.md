@@ -8,11 +8,11 @@ layout: ../../layouts/PageLayout.astro
 
 <div class="function">
 
-## assign_gdf_to_network
+## build_data_map
 
 
 <div class="content">
-<span class="name">assign_gdf_to_network</span><div class="signature multiline">
+<span class="name">build_data_map</span><div class="signature multiline">
   <span class="pt">(</span>
   <div class="param">
     <span class="pn">data_gdf</span>
@@ -27,16 +27,20 @@ layout: ../../layouts/PageLayout.astro
   <div class="param">
     <span class="pn">max_netw_assign_dist</span>
     <span class="pc">:</span>
-    <span class="pa"> int | float</span>
+    <span class="pa"> int = 400</span>
   </div>
   <div class="param">
     <span class="pn">data_id_col</span>
     <span class="pc">:</span>
     <span class="pa"> str | None = None</span>
   </div>
+  <div class="param">
+    <span class="pn">barriers_gdf</span>
+    <span class="pc">:</span>
+    <span class="pa"> geopandas.geodataframe.GeoDataFrame | None = None</span>
+  </div>
   <span class="pt">)-&gt;[</span>
   <span class="pr">DataMap</span>
-  <span class="pr">GeoDataFrame</span>
   <span class="pt">]</span>
 </div>
 </div>
@@ -56,32 +60,22 @@ layout: ../../layouts/PageLayout.astro
 
 <div class="param-set">
   <div class="def">
-    <div class="name">network_structure</div>
-    <div class="type">rustalgos.graph.NetworkStructure</div>
-  </div>
-  <div class="desc">
-
- A [`rustalgos.graph.NetworkStructure`](/rustalgos/rustalgos#networkstructure).</div>
-</div>
-
-<div class="param-set">
-  <div class="def">
-    <div class="name">max_netw_assign_dist</div>
-    <div class="type">int</div>
-  </div>
-  <div class="desc">
-
- The maximum distance to consider when assigning respective data points to the nearest adjacent network nodes.</div>
-</div>
-
-<div class="param-set">
-  <div class="def">
     <div class="name">data_id_col</div>
     <div class="type">str</div>
   </div>
   <div class="desc">
 
  An optional column name for data point keys. This is used for deduplicating points representing a shared source of information. For example, where a single greenspace is represented by many entrances as datapoints, only the nearest entrance (from a respective location) will be considered (during aggregations) when the points share a datapoint identifier.</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">barriers_gdf</div>
+    <div class="type">GeoDataFrame</div>
+  </div>
+  <div class="desc">
+
+ A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe) representing barriers. These barriers will be considered during the assignment of data points to the network.</div>
 </div>
 
 ### Returns
@@ -95,38 +89,6 @@ layout: ../../layouts/PageLayout.astro
  A [`rustalgos.data.DataMap`](/rustalgos#datamap) instance.</div>
 </div>
 
-<div class="param-set">
-  <div class="def">
-    <div class="name">data_gdf</div>
-    <div class="type">GeoDataFrame</div>
-  </div>
-  <div class="desc">
-
- The input `data_gdf` is returned with two additional columns: `nearest_assigned` and `next_nearest_assign`.</div>
-</div>
-
-### Notes
-
-:::note
-The `max_assign_dist` parameter should not be set overly low. The `max_assign_dist` parameter sets a crow-flies
-distance limit on how far the algorithm will search in its attempts to encircle the data point. If the
-`max_assign_dist` is too small, then the algorithm is potentially hampered from finding a starting node; or, if a
-node is found, may have to terminate exploration prematurely because it can't travel sufficiently far from the
-data point to explore the surrounding network. If too many data points are not being successfully assigned to the
-correct street edges, then this distance should be increased. Conversely, if most of the data points are
-satisfactorily assigned, then it may be possible to decrease this threshold. A distance of around 400m may provide
-a good starting point.
-:::
-
-:::note
-The precision of assignment improves on decomposed networks (see
-[graphs.nx_decompose](/tools/graphs#nx-decompose)), which offers the additional benefit of a more granular
-representation of variations of metrics along street-fronts.
-:::
-
-![Example assignment of data to a network](/images/assignment.png) _Example assignment on a non-decomposed graph._
-
-![Example assignment of data to a network](/images/assignment_decomposed.png) _Assignment of data to network nodes becomes more contextually precise on decomposed graphs._
 
 </div>
 
@@ -188,6 +150,11 @@ representation of variations of metrics along street-fronts.
     <span class="pn">data_id_col</span>
     <span class="pc">:</span>
     <span class="pa"> str | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">barriers_gdf</span>
+    <span class="pc">:</span>
+    <span class="pa"> geopandas.geodataframe.GeoDataFrame | None = None</span>
   </div>
   <div class="param">
     <span class="pn">angular</span>
@@ -322,6 +289,16 @@ representation of variations of metrics along street-fronts.
   <div class="desc">
 
  An optional column name for data point keys. This is used for deduplicating points representing a shared source of information. For example, where a single greenspace is represented by many entrances as datapoints, only the nearest entrance (from a respective location) will be considered (during aggregations) when the points share a datapoint identifier.</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">barriers_gdf</div>
+    <div class="type">GeoDataFrame</div>
+  </div>
+  <div class="desc">
+
+ A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe) representing barriers. These barriers will be considered during the assignment of data points to the network.</div>
 </div>
 
 <div class="param-set">
@@ -503,6 +480,11 @@ print(nodes_gdf["cc_c_nearest_max_800"])
     <span class="pa"> str | None = None</span>
   </div>
   <div class="param">
+    <span class="pn">barriers_gdf</span>
+    <span class="pc">:</span>
+    <span class="pa"> geopandas.geodataframe.GeoDataFrame | None = None</span>
+  </div>
+  <div class="param">
     <span class="pn">angular</span>
     <span class="pc">:</span>
     <span class="pa"> bool = False</span>
@@ -669,6 +651,16 @@ print(nodes_gdf["cc_c_nearest_max_800"])
   <div class="desc">
 
  An optional column name for data point keys. This is used for deduplicating points representing a shared source of information. For example, where a single greenspace is represented by many entrances as datapoints, only the nearest entrance (from a respective location) will be considered (during aggregations) when the points share a datapoint identifier.</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">barriers_gdf</div>
+    <div class="type">GeoDataFrame</div>
+  </div>
+  <div class="desc">
+
+ A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe) representing barriers. These barriers will be considered during the assignment of data points to the network.</div>
 </div>
 
 <div class="param-set">
@@ -844,6 +836,11 @@ been applied.
     <span class="pa"> str | None = None</span>
   </div>
   <div class="param">
+    <span class="pn">barriers_gdf</span>
+    <span class="pc">:</span>
+    <span class="pa"> geopandas.geodataframe.GeoDataFrame | None = None</span>
+  </div>
+  <div class="param">
     <span class="pn">angular</span>
     <span class="pc">:</span>
     <span class="pa"> bool = False</span>
@@ -966,6 +963,16 @@ been applied.
   <div class="desc">
 
  An optional column name for data point keys. This is used for deduplicating points representing a shared source of information. For example, where a single greenspace is represented by many entrances as datapoints, only the nearest entrance (from a respective location) will be considered (during aggregations) when the points share a datapoint identifier.</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">barriers_gdf</div>
+    <div class="type">GeoDataFrame</div>
+  </div>
+  <div class="desc">
+
+ A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe) representing barriers. These barriers will be considered during the assignment of data points to the network.</div>
 </div>
 
 <div class="param-set">

@@ -885,7 +885,7 @@ out qt;
   </div>
   <div class="desc">
 
- A `gpd.GeoDataFrame` with `ns_edge_idx`, `start_ns_node_idx`, `end_ns_node_idx`, `edge_idx`, `nx_start_node_key` ,`nx_end_node_key`, `length`, `angle_sum`, `imp_factor`, `in_bearing`, `out_bearing`, `total_bearing`, `geom` attributes.</div>
+ A `gpd.GeoDataFrame` with `ns_edge_idx`, `start_ns_node_idx`, `end_ns_node_idx`, `edge_idx`, `nx_start_node_key` ,`nx_end_node_key`, `imp_factor`, `total_bearing`, `geom` attributes.</div>
 </div>
 
 <div class="param-set">
@@ -946,7 +946,7 @@ out qt;
   </div>
   <div class="desc">
 
- A cityseer created edges `gpd.GeoDataFrame` with `start_ns_node_idx`, `end_ns_node_idx`, `edge_idx`, `nx_start_node_key`, `nx_end_node_key`, `length`, `angle_sum`, `imp_factor`, `in_bearing`, `out_bearing` attributes.</div>
+ A cityseer created edges `gpd.GeoDataFrame` with `start_ns_node_idx`, `end_ns_node_idx`, `edge_idx`, `nx_start_node_key`, `nx_end_node_key`, `imp_factor` attributes.</div>
 </div>
 
 ### Returns
@@ -978,19 +978,14 @@ out qt;
     <span class="pa"> str</span>
   </div>
   <div class="param">
-    <span class="pn">nodes_gdf</span>
-    <span class="pc">:</span>
-    <span class="pa"> geopandas.geodataframe.GeoDataFrame</span>
-  </div>
-  <div class="param">
-    <span class="pn">edges_gdf</span>
-    <span class="pc">:</span>
-    <span class="pa"> geopandas.geodataframe.GeoDataFrame</span>
-  </div>
-  <div class="param">
     <span class="pn">network_structure</span>
     <span class="pc">:</span>
     <span class="pa"> NetworkStructure</span>
+  </div>
+  <div class="param">
+    <span class="pn">network_crs</span>
+    <span class="pc">:</span>
+    <span class="pa"> int</span>
   </div>
   <div class="param">
     <span class="pn">max_netw_assign_dist</span>
@@ -1003,8 +998,6 @@ out qt;
     <span class="pa"> float = 1.33333</span>
   </div>
   <span class="pt">)-&gt;[</span>
-  <span class="pr">GeoDataFrame</span>
-  <span class="pr">GeoDataFrame</span>
   <span class="pr">NetworkStructure</span>
   <span class="pr">DataFrame</span>
   <span class="pr">DataFrame</span>

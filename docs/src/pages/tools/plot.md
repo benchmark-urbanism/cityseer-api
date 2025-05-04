@@ -659,7 +659,7 @@ This method is primarily intended for package testing and development.
   <div class="param">
     <span class="pn">data_map</span>
     <span class="pc">:</span>
-    <span class="pa"> DataMap</span>
+    <span class="pa"> DataMap | None = None</span>
   </div>
   <div class="param">
     <span class="pn">poly</span>
@@ -694,7 +694,7 @@ mainly to visually confirm the correct behaviour of particular algorithms during
   </div>
   <div class="desc">
 
- A `rustalgos.data.DataMap` object with data entries for plotting.</div>
+ An optional `rustalgos.data.DataMap` object with data entries for plotting.</div>
 </div>
 
 <div class="param-set">

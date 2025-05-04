@@ -2,12 +2,8 @@ from __future__ import annotations
 
 import logging
 from functools import partial
-from typing import Any
 
 import geopandas as gpd
-import numpy as np
-from shapely.geometry import Point
-from shapely.geometry.base import BaseGeometry
 
 from .. import config, rustalgos
 
@@ -19,130 +15,10 @@ MIN_THRESH_WT = config.MIN_THRESH_WT
 SPEED_M_S = config.SPEED_M_S
 
 
-def decompose_gdf(gdf: gpd.GeoDataFrame, distance: int = 25) -> gpd.GeoDataFrame:
-    """
-    Decomposes LineString and Polygon geometries in a GeoDataFrame into points
-    sampled at a specified distance along their boundaries. Point geometries
-    are passed through unchanged.
-
-    Parameters
-    ----------
-    gdf : gpd.GeoDataFrame
-        Input GeoDataFrame with any geometry type.
-    distance : int
-        The sampling distance along the geometry boundaries, by default 25 meters.
-        Must be greater than 5.
-
-    Returns
-    -------
-    gpd.GeoDataFrame
-        A new GeoDataFrame containing Point geometries sampled from the input.
-        Includes original columns plus 'src_fid' indicating the source geometry index.
-    """
-    if distance < 5:
-        raise ValueError("Sampling distance must be greater than 5.")
-
-    all_points_data = []
-    original_cols = gdf.columns.tolist()
-    geom_col = gdf.geometry.name
-    other_cols = [col for col in original_cols if col != geom_col]
-    for src_fid, row in gdf.iterrows():  # type: ignore
-        geom = row[geom_col]  # type: ignore
-        # Ensure geom is a BaseGeometry object before proceeding
-        if not isinstance(geom, BaseGeometry):
-            logger.warning(f"Skipping row {src_fid} due to invalid geometry type: {type(geom)}")  # type: ignore
-            continue
-
-        row_data = row[other_cols].to_dict()  # type: ignore
-
-        def sample_geom_recursive(
-            current_geom: BaseGeometry | None,  # Allow None
-            current_fid: Any,
-            current_row_data: dict[str, Any],
-        ) -> list[dict[str, Any]]:
-            points_data = []
-            # Handle None geometries gracefully
-            if current_geom is None:
-                return points_data  # type: ignore
-
-            geom_type = current_geom.geom_type
-
-            if geom_type == "Point":
-                data = current_row_data.copy()
-                data[geom_col] = current_geom  # type: ignore
-                data["src_fid"] = current_fid
-                points_data.append(data)
-
-            elif geom_type == "MultiPoint":
-                for p in current_geom.geoms:  # type: ignore
-                    data = current_row_data.copy()
-                    data[geom_col] = p  # type: ignore
-                    data["src_fid"] = current_fid
-                    points_data.append(data)
-
-            elif geom_type in ("LineString", "LinearRing"):
-                line = current_geom
-                if line.length > 0:
-                    # Ensure at least start and end points, sample approximately every 'distance'
-                    num_points = max(2, int(np.ceil(line.length / distance)) + 1)
-                    sample_distances = np.linspace(0, line.length, num_points)
-
-                    for d in sample_distances:
-                        point = line.interpolate(d)  # type: ignore
-                        data = current_row_data.copy()
-                        data[geom_col] = point  # type: ignore
-                        data["src_fid"] = current_fid
-                        points_data.append(data)
-                # Handle zero-length lines with coords (e.g., single point line)
-                elif line.length == 0 and len(line.coords) > 0:
-                    point = Point(line.coords[0])
-                    data = current_row_data.copy()
-                    data[geom_col] = point  # type: ignore
-                    data["src_fid"] = current_fid
-                    points_data.append(data)
-
-            elif geom_type == "Polygon":
-                # Sample exterior ring
-                points_data.extend(
-                    sample_geom_recursive(current_geom.exterior, current_fid, current_row_data),  # type: ignore
-                )
-                # Sample interior rings
-                for interior in current_geom.interiors:  # type: ignore
-                    points_data.extend(sample_geom_recursive(interior, current_fid, current_row_data))  # type: ignore
-
-            elif geom_type in ("MultiLineString", "MultiPolygon", "GeometryCollection"):
-                # Iterate through parts and recursively call
-                for part_geom in current_geom.geoms:  # type: ignore
-                    points_data.extend(sample_geom_recursive(part_geom, current_fid, current_row_data))  # type: ignore
-
-            # else: Other geometry types will result in empty points_data
-
-            return points_data  # type: ignore
-
-        all_points_data.extend(sample_geom_recursive(geom, src_fid, row_data))  # type: ignore
-
-    if not all_points_data:
-        # Return empty GDF with correct columns if no points generated
-        final_cols = other_cols + [geom_col, "src_fid"]
-        return gpd.GeoDataFrame([], columns=final_cols, crs=gdf.crs)
-
-    # Create GeoDataFrame from the collected data
-    points_gdf = gpd.GeoDataFrame(all_points_data, crs=gdf.crs)
-
-    # Reorder columns to match original + src_fid (optional but good practice)
-    final_cols_order = other_cols + [geom_col, "src_fid"]
-    points_gdf = points_gdf[final_cols_order]
-
-    # Reset index to ensure unique IDs per point
-    points_gdf = points_gdf.reset_index(drop=True)
-
-    return points_gdf
-
-
-def assign_gdf_to_network(
+def build_data_map(
     data_gdf: gpd.GeoDataFrame,
     network_structure: rustalgos.graph.NetworkStructure,
-    max_netw_assign_dist: int | float,
+    max_netw_assign_dist: int = 400,
     data_id_col: str | None = None,
     barriers_gdf: gpd.GeoDataFrame | None = None,
 ) -> rustalgos.data.DataMap:
@@ -161,10 +37,6 @@ def assign_gdf_to_network(
         representing data points. The coordinates of data points should correspond as precisely as possible to the
         location of the feature in space; or, in the case of buildings, should ideally correspond to the location of the
         building entrance.
-    network_structure: rustalgos.graph.NetworkStructure
-        A [`rustalgos.graph.NetworkStructure`](/rustalgos/rustalgos#networkstructure).
-    max_netw_assign_dist: int
-        The maximum distance to consider when assigning respective data points to the nearest adjacent network nodes.
     data_id_col: str
         An optional column name for data point keys. This is used for deduplicating points representing a shared source
         of information. For example, where a single greenspace is represented by many entrances as datapoints, only the
@@ -178,65 +50,31 @@ def assign_gdf_to_network(
     -------
     data_map: rustalgos.data.DataMap
         A [`rustalgos.data.DataMap`](/rustalgos#datamap) instance.
-
-    Examples
-    --------
-    :::note
-    The `max_assign_dist` parameter should not be set overly low. The `max_assign_dist` parameter sets a crow-flies
-    distance limit on how far the algorithm will search in its attempts to encircle the data point. If the
-    `max_assign_dist` is too small, then the algorithm is potentially hampered from finding a starting node; or, if a
-    node is found, may have to terminate exploration prematurely because it can't travel sufficiently far from the
-    data point to explore the surrounding network. If too many data points are not being successfully assigned to the
-    correct street edges, then this distance should be increased. Conversely, if most of the data points are
-    satisfactorily assigned, then it may be possible to decrease this threshold. A distance of around 400m may provide
-    a good starting point.
-    :::
-
-    :::note
-    The precision of assignment improves on decomposed networks (see
-    [graphs.nx_decompose](/tools/graphs#nx-decompose)), which offers the additional benefit of a more granular
-    representation of variations of metrics along street-fronts.
-    :::
-
-    ![Example assignment of data to a network](/images/assignment.png)
-    _Example assignment on a non-decomposed graph._
-
-    ![Example assignment of data to a network](/images/assignment_decomposed.png)
-    _Assignment of data to network nodes becomes more contextually precise on decomposed graphs._
-
     """
     # check for unique index
     if data_gdf.index.duplicated().any():
         raise ValueError("The data GeoDataFrame index must contain unique entries.")
-    # check single data geom type
-    if data_gdf.geometry.geom_type.nunique() != 1:
-        raise ValueError("The data GeoDataFrame must contain a single geometry type.")
-    # barrier geoms
-    barriers_wkt: list[str] | None = None
-    if barriers_gdf is not None:
-        barriers_wkt = []
-        for _, row in barriers_gdf.iterrows():  # type: ignore
-            barriers_wkt.append(row.geometry.wkt)  # type: ignore
     # create data map
-    data_map = rustalgos.data.DataMap(barriers_wkt=barriers_wkt)
+    data_map = rustalgos.data.DataMap()
     # prepare the data_map
     logger.info("Assigning data to network.")
     for data_key, data_row in data_gdf.iterrows():  # type: ignore
         data_id = None if data_id_col is None else data_row[data_id_col]  # type: ignore
         data_map.insert(
             data_key,
-            data_row[data_gdf.geometry.name].centroid.x,  # type: ignore
-            data_row[data_gdf.geometry.name].centroid.y,  # type: ignore
+            data_row[data_gdf.active_geometry_name].wkt,  # type: ignore
             data_id,  # type: ignore
         )
-
-    # wrap progress bar
-    partial_func = partial(
-        data_map.assign_to_network,
-        network_structure=network_structure,
-        max_dist=max_netw_assign_dist,
-    )
-    config.wrap_progress(total=data_map.count(), rust_struct=data_map, partial_func=partial_func)
+    # barrier geoms
+    barriers_wkt: list[str] | None = None
+    if barriers_gdf is not None:
+        barriers_wkt = []
+        for _, row in barriers_gdf.iterrows():  # type: ignore
+            barriers_wkt.append(row.geometry.wkt)  # type: ignore
+    if barriers_wkt is not None:
+        network_structure.set_barriers(barriers_wkt)  # type: ignore
+    data_map.assign_data_to_network(network_structure, max_netw_assign_dist)
+    network_structure.unset_barriers()  # type: ignore
 
     return data_map
 
@@ -252,7 +90,6 @@ def compute_accessibilities(
     betas: list[float] | None = None,
     minutes: list[float] | None = None,
     data_id_col: str | None = None,
-    decompose_dist: int = 25,
     barriers_gdf: gpd.GeoDataFrame | None = None,
     angular: bool = False,
     spatial_tolerance: int = 0,
@@ -308,8 +145,6 @@ def compute_accessibilities(
         of information. For example, where a single greenspace is represented by many entrances as datapoints, only the
         nearest entrance (from a respective location) will be considered (during aggregations) when the points share a
         datapoint identifier.
-    decompose_dist: int
-        The distance in metres at which to decompose any lines or polygons in `data_gdf` into points.
     barriers_gdf: GeoDataFrame
         A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe)
         representing barriers. These barriers will be considered during the assignment of data points to the network.
@@ -377,16 +212,18 @@ def compute_accessibilities(
 
     """
     logger.info(f"Computing land-use accessibility for: {', '.join(accessibility_keys)}")
-    # convert to points
-    data_gdf_pnts = decompose_gdf(data_gdf, distance=decompose_dist)
     # assign to network
-    data_map = assign_gdf_to_network(
-        data_gdf_pnts, network_structure, max_netw_assign_dist, data_id_col, barriers_gdf=barriers_gdf
+    data_map = build_data_map(
+        data_gdf,
+        network_structure,
+        max_netw_assign_dist,
+        data_id_col,
+        barriers_gdf=barriers_gdf,
     )
     # extract landuses
-    if landuse_column_label not in data_gdf_pnts.columns:
+    if landuse_column_label not in data_gdf.columns:
         raise ValueError("The specified landuse column name can't be found in the GeoDataFrame.")
-    landuses_map = dict(data_gdf_pnts[landuse_column_label])  # type: ignore
+    landuses_map = dict(data_gdf[landuse_column_label])  # type: ignore
     # call the underlying function
     partial_func = partial(
         data_map.accessibility,
@@ -403,7 +240,9 @@ def compute_accessibilities(
         jitter_scale=jitter_scale,
     )
     # wraps progress bar
-    result = config.wrap_progress(total=network_structure.node_count(), rust_struct=data_map, partial_func=partial_func)
+    result = config.wrap_progress(
+        total=network_structure.street_node_count(), rust_struct=data_map, partial_func=partial_func
+    )
     # unpack
     distances = config.log_thresholds(
         distances=distances,
@@ -423,7 +262,7 @@ def compute_accessibilities(
                 ac_dist_data_key = config.prep_gdf_key(f"{acc_key}_nearest_max", dist_key, angular)
                 nodes_gdf[ac_dist_data_key] = result[acc_key].distance[dist_key]  # type: ignore
 
-    return nodes_gdf, data_gdf_pnts
+    return nodes_gdf, data_gdf
 
 
 def compute_mixed_uses(
@@ -440,7 +279,6 @@ def compute_mixed_uses(
     betas: list[float] | None = None,
     minutes: list[float] | None = None,
     data_id_col: str | None = None,
-    decompose_dist: int = 25,
     barriers_gdf: gpd.GeoDataFrame | None = None,
     angular: bool = False,
     spatial_tolerance: int = 0,
@@ -512,8 +350,6 @@ def compute_mixed_uses(
         of information. For example, where a single greenspace is represented by many entrances as datapoints, only the
         nearest entrance (from a respective location) will be considered (during aggregations) when the points share a
         datapoint identifier.
-    decompose_dist: int
-        The distance in metres at which to decompose any lines or polygons in `data_gdf` into points.
     barriers_gdf: GeoDataFrame
         A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe)
         representing barriers. These barriers will be considered during the assignment of data points to the network.
@@ -610,16 +446,18 @@ def compute_mixed_uses(
 
     """
     logger.info("Computing mixed-use measures.")
-    # convert to points
-    data_gdf_pnts = decompose_gdf(data_gdf, distance=decompose_dist)
     # assign to network
-    data_map = assign_gdf_to_network(
-        data_gdf_pnts, network_structure, max_netw_assign_dist, data_id_col, barriers_gdf=barriers_gdf
+    data_map = build_data_map(
+        data_gdf,
+        network_structure,
+        max_netw_assign_dist,
+        data_id_col,
+        barriers_gdf=barriers_gdf,
     )
     # extract landuses
-    if landuse_column_label not in data_gdf_pnts.columns:
+    if landuse_column_label not in data_gdf.columns:
         raise ValueError("The specified landuse column name can't be found in the GeoDataFrame.")
-    landuses_map = dict(data_gdf_pnts[landuse_column_label])  # type: ignore
+    landuses_map = dict(data_gdf[landuse_column_label])  # type: ignore
     partial_func = partial(
         data_map.mixed_uses,
         network_structure=network_structure,
@@ -638,7 +476,9 @@ def compute_mixed_uses(
         jitter_scale=jitter_scale,
     )
     # wraps progress bar
-    result = config.wrap_progress(total=network_structure.node_count(), rust_struct=data_map, partial_func=partial_func)
+    result = config.wrap_progress(
+        total=network_structure.street_node_count(), rust_struct=data_map, partial_func=partial_func
+    )
     # unpack
     distances = config.log_thresholds(
         distances=distances,
@@ -663,7 +503,7 @@ def compute_mixed_uses(
             gini_data_key = config.prep_gdf_key("gini", dist_key, angular)
             nodes_gdf[gini_data_key] = result.gini[dist_key]  # type: ignore
 
-    return nodes_gdf, data_gdf_pnts
+    return nodes_gdf, data_gdf
 
 
 def compute_stats(
@@ -676,7 +516,6 @@ def compute_stats(
     betas: list[float] | None = None,
     minutes: list[float] | None = None,
     data_id_col: str | None = None,
-    decompose_dist: int = 25,
     barriers_gdf: gpd.GeoDataFrame | None = None,
     angular: bool = False,
     spatial_tolerance: int = 0,
@@ -729,8 +568,6 @@ def compute_stats(
         of information. For example, where a single greenspace is represented by many entrances as datapoints, only the
         nearest entrance (from a respective location) will be considered (during aggregations) when the points share a
         datapoint identifier.
-    decompose_dist: int
-        The distance in metres at which to decompose any lines or polygons in `data_gdf` into points.
     barriers_gdf: GeoDataFrame
         A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe)
         representing barriers. These barriers will be considered during the assignment of data points to the network.
@@ -804,18 +641,20 @@ def compute_stats(
 
     """
     logger.info("Computing statistics.")
-    # convert to points
-    data_gdf_pnts = decompose_gdf(data_gdf, distance=decompose_dist)
     # assign to network
-    data_map = assign_gdf_to_network(
-        data_gdf_pnts, network_structure, max_netw_assign_dist, data_id_col, barriers_gdf=barriers_gdf
+    data_map = build_data_map(
+        data_gdf,
+        network_structure,
+        max_netw_assign_dist,
+        data_id_col,
+        barriers_gdf=barriers_gdf,
     )
     # extract stats columns
     stats_maps = []
     for stats_column_label in stats_column_labels:
-        if stats_column_label not in data_gdf_pnts.columns:
+        if stats_column_label not in data_gdf.columns:
             raise ValueError("The specified numerical stats column name can't be found in the GeoDataFrame.")
-        stats_maps.append(dict(data_gdf_pnts[stats_column_label]))  # type: ignore
+        stats_maps.append(dict(data_gdf[stats_column_label]))  # type: ignore
     # stats
     partial_func = partial(
         data_map.stats,
@@ -831,7 +670,9 @@ def compute_stats(
         jitter_scale=jitter_scale,
     )
     # wraps progress bar
-    result = config.wrap_progress(total=network_structure.node_count(), rust_struct=data_map, partial_func=partial_func)
+    result = config.wrap_progress(
+        total=network_structure.street_node_count(), rust_struct=data_map, partial_func=partial_func
+    )
     # unpack
     distances = config.log_thresholds(
         distances=distances,
@@ -864,4 +705,4 @@ def compute_stats(
             k = config.prep_gdf_key(f"{stats_column_label}_min", dist_key, angular=angular)
             nodes_gdf[k] = result[idx].min[dist_key]  # type: ignore
 
-    return nodes_gdf, data_gdf_pnts
+    return nodes_gdf, data_gdf

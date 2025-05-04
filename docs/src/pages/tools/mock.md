@@ -608,5 +608,44 @@ for counts, probs in mock.mock_species_data():
 </div>
 
 
+<div class="function">
+
+## mock_barriers
+
+
+<div class="content">
+<span class="name">mock_barriers</span><div class="signature">
+  <span class="pt">(</span>
+  <span class="pt">)</span>
+</div>
+</div>
+
+
+ Generate mock barriers data for testing or experimentation purposes.
+### Returns
+<div class="param-set">
+  <div class="def">
+    <div class="name"></div>
+    <div class="type">GeoDataFrame</div>
+  </div>
+  <div class="desc">
+
+ A `GeoDataFrame` with barriers represented as points, lines, and polygons. The barriers are represented as points, lines, and polygons. The function returns a GeoDataFrame with the barriers and a list of their WKT.</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name"></div>
+    <div class="type">list[str]</div>
+  </div>
+  <div class="desc">
+
+ A list of WKT strings representing the barriers.</div>
+</div>
+
+
+</div>
+
+
 
 </section>

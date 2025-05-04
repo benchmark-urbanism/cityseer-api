@@ -104,7 +104,7 @@ impl NetworkStructure {
         jitter_scale: Option<f32>,
     ) -> (Vec<usize>, Vec<NodeVisit>) {
         let jitter_scale = jitter_scale.unwrap_or(0.0);
-        let mut tree_map = vec![NodeVisit::new(); self.graph.node_count()];
+        let mut tree_map = vec![NodeVisit::new(); self.node_count()];
         let mut visited_nodes = Vec::new();
         tree_map[src_idx].short_dist = 0.0;
         tree_map[src_idx].agg_seconds = 0.0;
@@ -179,7 +179,7 @@ impl NetworkStructure {
         jitter_scale: Option<f32>,
     ) -> (Vec<usize>, Vec<NodeVisit>) {
         let jitter_scale = jitter_scale.unwrap_or(0.0);
-        let mut tree_map = vec![NodeVisit::new(); self.graph.node_count()];
+        let mut tree_map = vec![NodeVisit::new(); self.node_count()];
         let mut visited_nodes = Vec::new();
         tree_map[src_idx].simpl_dist = 0.0;
         tree_map[src_idx].agg_seconds = 0.0;
@@ -267,7 +267,7 @@ impl NetworkStructure {
         jitter_scale: Option<f32>,
     ) -> (Vec<usize>, Vec<usize>, Vec<NodeVisit>, Vec<EdgeVisit>) {
         let jitter_scale = jitter_scale.unwrap_or(0.0);
-        let mut tree_map = vec![NodeVisit::new(); self.graph.node_count()];
+        let mut tree_map = vec![NodeVisit::new(); self.node_count()];
         let mut edge_map = vec![EdgeVisit::new(); self.graph.edge_count()];
         let mut visited_nodes = Vec::new();
         let mut visited_edges = Vec::new();
@@ -371,15 +371,15 @@ impl NetworkStructure {
         pbar_disabled: Option<bool>,
         py: Python,
     ) -> PyResult<CentralityShortestResult> {
-        self.validate()?;
+        // self.validate(py)?;
+        let speed_m_s = speed_m_s.unwrap_or(WALKING_SPEED);
         let (distances, betas, seconds) = common::pair_distances_betas_time(
+            speed_m_s,
             distances,
             betas,
             minutes,
             min_threshold_wt,
-            speed_m_s,
         )?;
-        let speed_m_s = speed_m_s.unwrap_or(WALKING_SPEED);
         let max_walk_seconds = *seconds
             .iter()
             .max()
@@ -391,20 +391,20 @@ impl NetworkStructure {
             "Either or both closeness and betweenness flags is required, but both parameters are False.",
         ));
         }
+
         let pbar_disabled = pbar_disabled.unwrap_or(false);
         self.progress_init();
         let result = py.allow_threads(move || {
-            let node_density = MetricResult::new(distances.clone(), self.graph.node_count(), 0.0);
-            let node_farness = MetricResult::new(distances.clone(), self.graph.node_count(), 0.0);
-            let node_cycles = MetricResult::new(distances.clone(), self.graph.node_count(), 0.0);
-            let node_harmonic = MetricResult::new(distances.clone(), self.graph.node_count(), 0.0);
-            let node_beta = MetricResult::new(distances.clone(), self.graph.node_count(), 0.0);
-            let node_betweenness =
-                MetricResult::new(distances.clone(), self.graph.node_count(), 0.0);
+            let node_density = MetricResult::new(distances.clone(), self.node_count(), 0.0);
+            let node_farness = MetricResult::new(distances.clone(), self.node_count(), 0.0);
+            let node_cycles = MetricResult::new(distances.clone(), self.node_count(), 0.0);
+            let node_harmonic = MetricResult::new(distances.clone(), self.node_count(), 0.0);
+            let node_beta = MetricResult::new(distances.clone(), self.node_count(), 0.0);
+            let node_betweenness = MetricResult::new(distances.clone(), self.node_count(), 0.0);
             let node_betweenness_beta =
-                MetricResult::new(distances.clone(), self.graph.node_count(), 0.0);
-            let node_indices: Vec<usize> = self.node_indices();
-            node_indices
+                MetricResult::new(distances.clone(), self.node_count(), 0.0);
+            let street_node_indices: Vec<usize> = self.street_node_indices();
+            street_node_indices
                 .par_iter()
                 .enumerate()
                 .for_each(|(i, src_idx)| {
@@ -484,37 +484,37 @@ impl NetworkStructure {
                 });
             CentralityShortestResult {
                 node_density: if compute_closeness {
-                    Some(node_density.load())
+                    Some(node_density.load(&street_node_indices)) // Pass indices
                 } else {
                     None
                 },
                 node_farness: if compute_closeness {
-                    Some(node_farness.load())
+                    Some(node_farness.load(&street_node_indices)) // Pass indices
                 } else {
                     None
                 },
                 node_cycles: if compute_closeness {
-                    Some(node_cycles.load())
+                    Some(node_cycles.load(&street_node_indices)) // Pass indices
                 } else {
                     None
                 },
                 node_harmonic: if compute_closeness {
-                    Some(node_harmonic.load())
+                    Some(node_harmonic.load(&street_node_indices)) // Pass indices
                 } else {
                     None
                 },
                 node_beta: if compute_closeness {
-                    Some(node_beta.load())
+                    Some(node_beta.load(&street_node_indices)) // Pass indices
                 } else {
                     None
                 },
                 node_betweenness: if compute_betweenness {
-                    Some(node_betweenness.load())
+                    Some(node_betweenness.load(&street_node_indices)) // Pass indices
                 } else {
                     None
                 },
                 node_betweenness_beta: if compute_betweenness {
-                    Some(node_betweenness_beta.load())
+                    Some(node_betweenness_beta.load(&street_node_indices)) // Pass indices
                 } else {
                     None
                 },
@@ -551,15 +551,15 @@ impl NetworkStructure {
         pbar_disabled: Option<bool>,
         py: Python,
     ) -> PyResult<CentralitySimplestResult> {
-        self.validate()?;
+        // self.validate(py)?;
+        let speed_m_s = speed_m_s.unwrap_or(WALKING_SPEED);
         let (distances, _betas, seconds) = common::pair_distances_betas_time(
+            speed_m_s,
             distances,
             betas,
             minutes,
             min_threshold_wt,
-            speed_m_s,
         )?;
-        let speed_m_s = speed_m_s.unwrap_or(WALKING_SPEED);
         let max_walk_seconds = *seconds
             .iter()
             .max()
@@ -573,16 +573,16 @@ impl NetworkStructure {
         }
         let angular_scaling_unit = angular_scaling_unit.unwrap_or(HALF_CIRCLE_DEGREES);
         let farness_scaling_offset = farness_scaling_offset.unwrap_or(1.0);
+
         let pbar_disabled = pbar_disabled.unwrap_or(false);
         self.progress_init();
         let result = py.allow_threads(move || {
-            let node_density = MetricResult::new(distances.clone(), self.graph.node_count(), 0.0);
-            let node_farness = MetricResult::new(distances.clone(), self.graph.node_count(), 0.0);
-            let node_harmonic = MetricResult::new(distances.clone(), self.graph.node_count(), 0.0);
-            let node_betweenness =
-                MetricResult::new(distances.clone(), self.graph.node_count(), 0.0);
-            let node_indices: Vec<usize> = self.node_indices();
-            node_indices
+            let node_density = MetricResult::new(distances.clone(), self.node_count(), 0.0);
+            let node_farness = MetricResult::new(distances.clone(), self.node_count(), 0.0);
+            let node_harmonic = MetricResult::new(distances.clone(), self.node_count(), 0.0);
+            let node_betweenness = MetricResult::new(distances.clone(), self.node_count(), 0.0);
+            let street_node_indices: Vec<usize> = self.street_node_indices();
+            street_node_indices
                 .par_iter()
                 .enumerate()
                 .for_each(|(i, src_idx)| {
@@ -650,22 +650,22 @@ impl NetworkStructure {
                 });
             CentralitySimplestResult {
                 node_density: if compute_closeness {
-                    Some(node_density.load())
+                    Some(node_density.load(&street_node_indices)) // Pass indices
                 } else {
                     None
                 },
                 node_farness: if compute_closeness {
-                    Some(node_farness.load())
+                    Some(node_farness.load(&street_node_indices)) // Pass indices
                 } else {
                     None
                 },
                 node_harmonic: if compute_closeness {
-                    Some(node_harmonic.load())
+                    Some(node_harmonic.load(&street_node_indices)) // Pass indices
                 } else {
                     None
                 },
                 node_betweenness: if compute_betweenness {
-                    Some(node_betweenness.load())
+                    Some(node_betweenness.load(&street_node_indices)) // Pass indices
                 } else {
                     None
                 },
@@ -698,15 +698,15 @@ impl NetworkStructure {
         pbar_disabled: Option<bool>,
         py: Python,
     ) -> PyResult<CentralitySegmentResult> {
-        self.validate()?;
+        // self.validate(py)?;
+        let speed_m_s = speed_m_s.unwrap_or(WALKING_SPEED);
         let (distances, betas, seconds) = common::pair_distances_betas_time(
+            speed_m_s,
             distances,
             betas,
             minutes,
             min_threshold_wt,
-            speed_m_s,
         )?;
-        let speed_m_s = speed_m_s.unwrap_or(WALKING_SPEED);
         let max_walk_seconds = *seconds
             .iter()
             .max()
@@ -718,18 +718,16 @@ impl NetworkStructure {
             "Either or both closeness and betweenness flags is required, but both parameters are False.",
         ));
         }
+
         let pbar_disabled = pbar_disabled.unwrap_or(false);
         self.progress_init();
         let result = py.allow_threads(move || {
-            let segment_density =
-                MetricResult::new(distances.clone(), self.graph.node_count(), 0.0);
-            let segment_harmonic =
-                MetricResult::new(distances.clone(), self.graph.node_count(), 0.0);
-            let segment_beta = MetricResult::new(distances.clone(), self.graph.node_count(), 0.0);
-            let segment_betweenness =
-                MetricResult::new(distances.clone(), self.graph.node_count(), 0.0);
-            let node_indices: Vec<usize> = self.node_indices();
-            node_indices
+            let segment_density = MetricResult::new(distances.clone(), self.node_count(), 0.0);
+            let segment_harmonic = MetricResult::new(distances.clone(), self.node_count(), 0.0);
+            let segment_beta = MetricResult::new(distances.clone(), self.node_count(), 0.0);
+            let segment_betweenness = MetricResult::new(distances.clone(), self.node_count(), 0.0);
+            let street_node_indices: Vec<usize> = self.street_node_indices();
+            street_node_indices
                 .par_iter()
                 .enumerate()
                 .for_each(|(i, src_idx)| {
@@ -950,22 +948,22 @@ impl NetworkStructure {
                 });
             CentralitySegmentResult {
                 segment_density: if compute_closeness {
-                    Some(segment_density.load())
+                    Some(segment_density.load(&street_node_indices)) // Pass indices
                 } else {
                     None
                 },
                 segment_harmonic: if compute_closeness {
-                    Some(segment_harmonic.load())
+                    Some(segment_harmonic.load(&street_node_indices)) // Pass indices
                 } else {
                     None
                 },
                 segment_beta: if compute_closeness {
-                    Some(segment_beta.load())
+                    Some(segment_beta.load(&street_node_indices)) // Pass indices
                 } else {
                     None
                 },
                 segment_betweenness: if compute_betweenness {
-                    Some(segment_betweenness.load())
+                    Some(segment_betweenness.load(&street_node_indices)) // Pass indices
                 } else {
                     None
                 },
