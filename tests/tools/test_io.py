@@ -253,13 +253,13 @@ def test_network_structure_from_nx(diamond_graph):
         # check node maps (idx and label match in this case...)
         node_idxs = network_structure.street_node_indices()
         for node_idx in node_idxs:
-            node_payload = network_structure.get_node_payload(node_idx)
+            node_payload = network_structure.get_node_payload_py(node_idx)
             assert node_payload.coord[0] - nodes_gdf.loc[node_payload.node_key].x < config.ATOL
             assert node_payload.coord[1] - nodes_gdf.loc[node_payload.node_key].y < config.ATOL
             assert node_payload.live == nodes_gdf.loc[node_payload.node_key].live
         # check edge maps (idx and label match in this case...)
         for start_ns_node_idx, end_ns_node_idx, edge_idx in network_structure.edge_references():
-            edge_payload = network_structure.get_edge_payload(start_ns_node_idx, end_ns_node_idx, edge_idx)
+            edge_payload = network_structure.get_edge_payload_py(start_ns_node_idx, end_ns_node_idx, edge_idx)
             start_nd_key = edge_payload.start_nd_key_py
             end_nd_key = edge_payload.end_nd_key_py
             edge_idx = edge_payload.edge_idx
@@ -277,7 +277,7 @@ def test_network_structure_from_nx(diamond_graph):
             assert edges_gdf.loc[gdf_edge_key, "nx_start_node_key"] == start_nd_key
             assert edges_gdf.loc[gdf_edge_key, "nx_end_node_key"] == end_nd_key
             # align the geometry
-            start_nd_payload = network_structure.get_node_payload(start_ns_node_idx)
+            start_nd_payload = network_structure.get_node_payload_py(start_ns_node_idx)
             line_geom = edges_gdf.loc[gdf_edge_key, edges_gdf.geometry.name]  # type: ignore
             line_geom_coords = util.align_linestring_coords(line_geom.coords, (start_nd_payload.coord))  # type: ignore
             aligned_line_geom = geometry.LineString(line_geom_coords)
@@ -693,8 +693,8 @@ def test_network_structure_from_gpd(primal_graph):
     assert network_structure.node_indices() == network_structure_round.node_indices()
     # check node data consistency
     for start_nd_idx in network_structure.node_indices():
-        node_data = network_structure.get_node_payload(start_nd_idx)
-        node_data_round = network_structure_round.get_node_payload(start_nd_idx)
+        node_data = network_structure.get_node_payload_py(start_nd_idx)
+        node_data_round = network_structure_round.get_node_payload_py(start_nd_idx)
         assert node_data.coord == node_data_round.coord
         assert node_data.coord == node_data_round.coord
         assert node_data.node_key == node_data_round.node_key
@@ -704,8 +704,8 @@ def test_network_structure_from_gpd(primal_graph):
     assert network_structure.edge_references() == network_structure_round.edge_references()
     # check edge data consistency
     for start_nd_idx, end_nd_idx, edge_idx in network_structure.edge_references():
-        edge_data = network_structure.get_edge_payload(start_nd_idx, end_nd_idx, edge_idx)
-        edge_data_round = network_structure_round.get_edge_payload(start_nd_idx, end_nd_idx, edge_idx)
+        edge_data = network_structure.get_edge_payload_py(start_nd_idx, end_nd_idx, edge_idx)
+        edge_data_round = network_structure_round.get_edge_payload_py(start_nd_idx, end_nd_idx, edge_idx)
         assert edge_data.edge_idx == edge_data_round.edge_idx
         assert edge_data.start_nd_key_py == edge_data_round.start_nd_key_py
         assert edge_data.end_nd_key_py == edge_data_round.end_nd_key_py

@@ -531,25 +531,28 @@ impl NetworkStructure {
         Ok(new_node_idx_usize)
     }
 
-    pub fn get_node_payload(&self, node_idx: usize) -> PyResult<NodePayload> {
+    // EXPENSIVE DUE TO PY CLONING OF KEYS - avoid calling in a loop
+    pub fn get_node_payload_py(&self, node_idx: usize) -> NodePayload {
         self.graph
             .node_weight(NodeIndex::new(node_idx))
-            .cloned() // Clone the payload
-            .ok_or_else(|| {
-                exceptions::PyValueError::new_err(format!(
-                    "No payload for requested node index {}.",
-                    node_idx
-                ))
-            })
+            .expect("No payload for requested node index.")
+            .clone() // EXPENSIVE!!
     }
 
-    pub fn get_node_weight(&self, node_idx: usize) -> PyResult<f32> {
-        self.get_node_payload(node_idx)
-            .map(|payload| payload.weight)
+    // Unpack node weight directly from the payload to avoid cloning
+    pub fn get_node_weight(&self, node_idx: usize) -> f32 {
+        self.graph
+            .node_weight(NodeIndex::new(node_idx))
+            .expect("No payload for requested node index.")
+            .weight
     }
 
-    pub fn is_node_live(&self, node_idx: usize) -> PyResult<bool> {
-        self.get_node_payload(node_idx).map(|payload| payload.live)
+    // Unpack live directly from the payload to avoid cloning
+    pub fn is_node_live(&self, node_idx: usize) -> bool {
+        self.graph
+            .node_weight(NodeIndex::new(node_idx))
+            .expect("No payload for requested node index.")
+            .live
     }
 
     /// Returns the total count of all nodes (street and transport).
@@ -803,25 +806,32 @@ impl NetworkStructure {
             .collect()
     }
 
-    pub fn get_edge_payload(
+    // EXPENSIVE DUE TO PY CLONING OF KEYS - avoid calling in a loop
+    pub fn get_edge_payload_py(
         &self,
         start_nd_idx: usize,
         end_nd_idx: usize,
         edge_idx: usize,
     ) -> PyResult<EdgePayload> {
-        let start_node_index = NodeIndex::new(start_nd_idx);
-        let end_node_index = NodeIndex::new(end_nd_idx);
+        let payload = self
+            ._get_edge_payload(start_nd_idx, end_nd_idx, edge_idx)
+            .clone(); // EXPENSIVE!!
+        Ok(payload)
+    }
 
-        self.graph
-            .edges_connecting(start_node_index, end_node_index)
-            .find(|edge_ref| edge_ref.weight().edge_idx == edge_idx)
-            .map(|edge_ref| edge_ref.weight().clone())
-            .ok_or_else(|| {
-                exceptions::PyValueError::new_err(format!(
-                    "Edge not found connecting nodes {} -> {} with edge_idx {}.",
-                    start_nd_idx, end_nd_idx, edge_idx
-                ))
-            })
+    pub fn get_edge_length(&self, start_nd_idx: usize, end_nd_idx: usize, edge_idx: usize) -> f32 {
+        self._get_edge_payload(start_nd_idx, end_nd_idx, edge_idx)
+            .length
+    }
+
+    pub fn get_edge_impedance(
+        &self,
+        start_nd_idx: usize,
+        end_nd_idx: usize,
+        edge_idx: usize,
+    ) -> f32 {
+        self._get_edge_payload(start_nd_idx, end_nd_idx, edge_idx)
+            .imp_factor
     }
 
     pub fn validate(&self, py: Python) -> PyResult<()> {
@@ -1024,6 +1034,22 @@ impl NetworkStructure {
 }
 
 impl NetworkStructure {
+    fn _get_edge_payload(
+        &self,
+        start_nd_idx: usize,
+        end_nd_idx: usize,
+        edge_idx: usize,
+    ) -> &EdgePayload {
+        let start_node_index = NodeIndex::new(start_nd_idx);
+        let end_node_index = NodeIndex::new(end_nd_idx);
+
+        let edge_ref = self
+            .graph
+            .edges_connecting(start_node_index, end_node_index)
+            .find(|edge_ref| edge_ref.weight().edge_idx == edge_idx);
+        edge_ref.expect("Edge not found").weight()
+    }
+
     /// Finds valid network node assignments for a single data entry.
     /// Checks proximity, max distance, barrier intersections, and street intersections.
     /// Returns Vec<(assigned_node_idx, data_key_clone, assignment_distance)>

@@ -13,9 +13,12 @@ from .graph import NetworkStructure
 class LanduseAccess:
     """Holds accessibility calculation results for a specific land use category."""
 
-    weighted: dict[int, npt.NDArray[np.float32]]
-    unweighted: dict[int, npt.NDArray[np.float32]]
-    distance: dict[int, npt.NDArray[np.float32]]
+    @property
+    def weighted(self) -> dict[int, npt.NDArray[np.float32]]: ...
+    @property
+    def unweighted(self) -> dict[int, npt.NDArray[np.float32]]: ...
+    @property
+    def distance(self) -> dict[int, npt.NDArray[np.float32]]: ...
 
 class AccessibilityResult:
     """Holds overall accessibility calculation results."""
@@ -23,7 +26,8 @@ class AccessibilityResult:
     distances: list[int]
     node_keys_py: list[Any]
     node_indices: list[int]
-    result: dict[str, LanduseAccess]
+    @property
+    def result(self) -> dict[str, LanduseAccess]: ...
 
 class MixedUsesResult:
     """Holds mixed-use diversity calculation results (Hill, Shannon, Gini)."""
@@ -31,24 +35,38 @@ class MixedUsesResult:
     distances: list[int]
     node_keys_py: list[Any]
     node_indices: list[int]
-    hill: dict[int, dict[int, npt.NDArray[np.float32]]]
-    hill_weighted: dict[int, dict[int, npt.NDArray[np.float32]]]
-    shannon: dict[int, npt.NDArray[np.float32]]
-    gini: dict[int, npt.NDArray[np.float32]]
+    @property
+    def hill(self) -> dict[int, dict[int, npt.NDArray[np.float32]]]: ...
+    @property
+    def hill_weighted(self) -> dict[int, dict[int, npt.NDArray[np.float32]]]: ...
+    @property
+    def shannon(self) -> dict[int, npt.NDArray[np.float32]]: ...
+    @property
+    def gini(self) -> dict[int, npt.NDArray[np.float32]]: ...
 
 class Stats:
     """Holds statistical aggregation results for a single numerical map."""
 
-    sum: dict[int, npt.NDArray[np.float32]]
-    sum_wt: dict[int, npt.NDArray[np.float32]]
-    mean: dict[int, npt.NDArray[np.float32]]
-    mean_wt: dict[int, npt.NDArray[np.float32]]
-    count: dict[int, npt.NDArray[np.float32]]
-    count_wt: dict[int, npt.NDArray[np.float32]]
-    variance: dict[int, npt.NDArray[np.float32]]
-    variance_wt: dict[int, npt.NDArray[np.float32]]
-    max: dict[int, npt.NDArray[np.float32]]
-    min: dict[int, npt.NDArray[np.float32]]
+    @property
+    def sum(self) -> dict[int, npt.NDArray[np.float32]]: ...
+    @property
+    def sum_wt(self) -> dict[int, npt.NDArray[np.float32]]: ...
+    @property
+    def mean(self) -> dict[int, npt.NDArray[np.float32]]: ...
+    @property
+    def mean_wt(self) -> dict[int, npt.NDArray[np.float32]]: ...
+    @property
+    def count(self) -> dict[int, npt.NDArray[np.float32]]: ...
+    @property
+    def count_wt(self) -> dict[int, npt.NDArray[np.float32]]: ...
+    @property
+    def variance(self) -> dict[int, npt.NDArray[np.float32]]: ...
+    @property
+    def variance_wt(self) -> dict[int, npt.NDArray[np.float32]]: ...
+    @property
+    def max(self) -> dict[int, npt.NDArray[np.float32]]: ...
+    @property
+    def min(self) -> dict[int, npt.NDArray[np.float32]]: ...
 
 class StatsResult:
     """Holds overall statistical aggregation results for multiple numerical maps."""
@@ -56,7 +74,8 @@ class StatsResult:
     distances: list[int]
     node_keys_py: list[Any]
     node_indices: list[int]
-    result: list[Stats]
+    @property
+    def result(self) -> list[Stats]: ...
 
 class DataEntry:
     """Represents a single spatial data point with geometry and keys."""

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any  # For Py<PyAny>
+from typing import Any
 
 import numpy as np  # For np.float32
 import numpy.typing as npt
@@ -14,13 +14,20 @@ class CentralityShortestResult:
     node_keys_py: list[Any]
     node_indices: list[int]
 
-    node_density: dict[int, npt.NDArray[np.float32]]
-    node_farness: dict[int, npt.NDArray[np.float32]]
-    node_cycles: dict[int, npt.NDArray[np.float32]]
-    node_harmonic: dict[int, npt.NDArray[np.float32]]  # Closeness based on harmonic mean
-    node_beta: dict[int, npt.NDArray[np.float32]]  # Beta-weighted closeness
-    node_betweenness: dict[int, npt.NDArray[np.float32]]
-    node_betweenness_beta: dict[int, npt.NDArray[np.float32]]  # Beta-weighted betweenness
+    @property
+    def node_density(self) -> dict[int, npt.NDArray[np.float32]]: ...
+    @property
+    def node_farness(self) -> dict[int, npt.NDArray[np.float32]]: ...
+    @property
+    def node_cycles(self) -> dict[int, npt.NDArray[np.float32]]: ...
+    @property
+    def node_harmonic(self) -> dict[int, npt.NDArray[np.float32]]: ...  # Closeness based on harmonic mean
+    @property
+    def node_beta(self) -> dict[int, npt.NDArray[np.float32]]: ...  # Beta-weighted closeness
+    @property
+    def node_betweenness(self) -> dict[int, npt.NDArray[np.float32]]: ...
+    @property
+    def node_betweenness_beta(self) -> dict[int, npt.NDArray[np.float32]]: ...  # Beta-weighted betweenness
 
 class CentralitySimplestResult:
     """Holds results for simplest path (angular distance) centrality calculations."""
@@ -29,10 +36,14 @@ class CentralitySimplestResult:
     node_keys_py: list[Any]
     node_indices: list[int]
 
-    node_density: dict[int, npt.NDArray[np.float32]]
-    node_farness: dict[int, npt.NDArray[np.float32]]  # Angular farness
-    node_harmonic: dict[int, npt.NDArray[np.float32]]  # Angular closeness (harmonic)
-    node_betweenness: dict[int, npt.NDArray[np.float32]]
+    @property
+    def node_density(self) -> dict[int, npt.NDArray[np.float32]]: ...
+    @property
+    def node_farness(self) -> dict[int, npt.NDArray[np.float32]]: ...  # Angular farness
+    @property
+    def node_harmonic(self) -> dict[int, npt.NDArray[np.float32]]: ...  # Angular closeness (harmonic)
+    @property
+    def node_betweenness(self) -> dict[int, npt.NDArray[np.float32]]: ...
 
 class CentralitySegmentResult:
     """Holds results for segment-based centrality calculations."""
@@ -41,7 +52,11 @@ class CentralitySegmentResult:
     node_keys_py: list[Any]
     node_indices: list[int]  # Note: these are still node indices, results are mapped to segments via nodes
 
-    segment_density: dict[int, npt.NDArray[np.float32]]
-    segment_harmonic: dict[int, npt.NDArray[np.float32]]  # Segment closeness (harmonic mean)
-    segment_beta: dict[int, npt.NDArray[np.float32]]  # Segment beta-weighted closeness
-    segment_betweenness: dict[int, npt.NDArray[np.float32]]
+    @property
+    def segment_density(self) -> dict[int, npt.NDArray[np.float32]]: ...
+    @property
+    def segment_harmonic(self) -> dict[int, npt.NDArray[np.float32]]: ...  # Segment closeness (harmonic mean)
+    @property
+    def segment_beta(self) -> dict[int, npt.NDArray[np.float32]]: ...  # Segment beta-weighted closeness
+    @property
+    def segment_betweenness(self) -> dict[int, npt.NDArray[np.float32]]: ...

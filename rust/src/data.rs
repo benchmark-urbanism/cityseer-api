@@ -367,13 +367,13 @@ pub struct DataMap {
 #[pymethods]
 impl DataMap {
     #[new]
-    fn new() -> PyResult<DataMap> {
+    fn new() -> DataMap {
         let map = DataMap {
             entries: HashMap::new(),
             progress: Arc::new(AtomicUsize::new(0)),
             node_data_map: HashMap::new(),
         };
-        Ok(map)
+        map
     }
 
     pub fn progress_init(&self) {
@@ -502,7 +502,7 @@ impl DataMap {
         speed_m_s: f32,
         jitter_scale: Option<f32>,
         angular: Option<bool>,
-    ) -> PyResult<HashMap<String, f32>> {
+    ) -> HashMap<String, f32> {
         let jitter_scale = jitter_scale.unwrap_or(0.0);
         let angular = angular.unwrap_or(false);
         let mut entries_result: HashMap<String, f32> = HashMap::new();
@@ -580,7 +580,7 @@ impl DataMap {
             }
         }
         // 12. Return the final result map (data_key -> min_distance)
-        Ok(entries_result)
+        entries_result
     }
 
     #[pyo3(signature = (
@@ -613,7 +613,6 @@ impl DataMap {
         pbar_disabled: Option<bool>,
         py: Python,
     ) -> PyResult<AccessibilityResult> {
-        network_structure.validate(py)?;
         let speed_m_s = speed_m_s.unwrap_or(WALKING_SPEED);
         let (distances, betas, seconds) =
             pair_distances_betas_time(speed_m_s, distances, betas, minutes, min_threshold_wt)?;
@@ -658,60 +657,55 @@ impl DataMap {
         let pbar_disabled = pbar_disabled.unwrap_or(false);
         self.progress_init();
 
-        let result = py.allow_threads(move || -> PyResult<_> {
-            node_indices
-                .par_iter()
-                .enumerate()
-                .try_for_each(|(i, &netw_src_idx)| {
-                    if !pbar_disabled {
-                        self.progress.fetch_add(1, AtomicOrdering::Relaxed);
-                    }
-                    if !network_structure.is_node_live(netw_src_idx)? {
-                        return Ok::<(), PyErr>(());
-                    }
-                    let reachable_entries = self.aggregate_to_src_idx(
-                        netw_src_idx,
-                        network_structure,
-                        max_walk_seconds,
-                        speed_m_s,
-                        jitter_scale,
-                        angular,
-                    )?;
-                    for (data_key, data_dist) in reachable_entries {
-                        if let Some(lu_class) = lu_map.get(&data_key) {
-                            if !accessibility_keys.contains(lu_class) {
-                                continue;
-                            }
-                            for (i, (&d, (&b, &mcw))) in distances
-                                .iter()
-                                .zip(betas.iter().zip(max_curve_wts.iter()))
-                                .enumerate()
-                            {
-                                if data_dist <= d as f32 {
-                                    res.lu_map[lu_class].unweighted_vec.metric[i][netw_src_idx]
-                                        .fetch_add(1.0, AtomicOrdering::Relaxed);
-                                    let val_wt = clipped_beta_wt(b, mcw, data_dist).unwrap_or(0.0);
-                                    res.lu_map[lu_class].weighted_vec.metric[i][netw_src_idx]
-                                        .fetch_add(val_wt, AtomicOrdering::Relaxed);
+        let result = py.allow_threads(move || {
+            node_indices.par_iter().for_each(|netw_src_idx| {
+                if !pbar_disabled {
+                    self.progress.fetch_add(1, AtomicOrdering::Relaxed);
+                }
+                if !network_structure.is_node_live(*netw_src_idx) {
+                    return;
+                }
+                let reachable_entries = self.aggregate_to_src_idx(
+                    *netw_src_idx,
+                    network_structure,
+                    max_walk_seconds,
+                    speed_m_s,
+                    jitter_scale,
+                    angular,
+                );
+                for (data_key, data_dist) in reachable_entries {
+                    if let Some(lu_class) = lu_map.get(&data_key) {
+                        if !accessibility_keys.contains(lu_class) {
+                            continue;
+                        }
+                        for (i, (&d, (&b, &mcw))) in distances
+                            .iter()
+                            .zip(betas.iter().zip(max_curve_wts.iter()))
+                            .enumerate()
+                        {
+                            if data_dist <= d as f32 {
+                                res.lu_map[lu_class].unweighted_vec.metric[i][*netw_src_idx]
+                                    .fetch_add(1.0, AtomicOrdering::Relaxed);
+                                let val_wt = clipped_beta_wt(b, mcw, data_dist).unwrap_or(0.0);
+                                res.lu_map[lu_class].weighted_vec.metric[i][*netw_src_idx]
+                                    .fetch_add(val_wt, AtomicOrdering::Relaxed);
 
-                                    if d == max_dist {
-                                        let current_dist = res.lu_map[lu_class].distance_vec.metric
-                                            [0][netw_src_idx]
-                                            .load(AtomicOrdering::Relaxed);
-                                        if current_dist.is_nan() || data_dist < current_dist {
-                                            res.lu_map[lu_class].distance_vec.metric[0]
-                                                [netw_src_idx]
-                                                .store(data_dist, AtomicOrdering::Relaxed);
-                                        }
+                                if d == max_dist {
+                                    let current_dist = res.lu_map[lu_class].distance_vec.metric[0]
+                                        [*netw_src_idx]
+                                        .load(AtomicOrdering::Relaxed);
+                                    if current_dist.is_nan() || data_dist < current_dist {
+                                        res.lu_map[lu_class].distance_vec.metric[0][*netw_src_idx]
+                                            .store(data_dist, AtomicOrdering::Relaxed);
                                     }
                                 }
                             }
                         }
                     }
-                    Ok(())
-                })?;
-            Ok(res)
-        })?;
+                }
+            });
+            res
+        });
         Ok(result)
     }
 
@@ -751,7 +745,6 @@ impl DataMap {
         pbar_disabled: Option<bool>,
         py: Python,
     ) -> PyResult<MixedUsesResult> {
-        network_structure.validate(py)?;
         let speed_m_s = speed_m_s.unwrap_or(WALKING_SPEED);
         let (distances, betas, seconds) =
             pair_distances_betas_time(speed_m_s, distances, betas, minutes, min_threshold_wt)?;
@@ -795,139 +788,135 @@ impl DataMap {
         let pbar_disabled = pbar_disabled.unwrap_or(false);
         self.progress_init();
 
-        let result = py.allow_threads(move || -> PyResult<_> {
+        let result = py.allow_threads(move || {
             let mut classes_uniq: HashSet<String> = HashSet::new();
             for cl_code in lu_map.values() {
                 classes_uniq.insert(cl_code.clone());
             }
 
-            node_indices
-                .par_iter()
-                .enumerate()
-                .try_for_each(|(i, &netw_src_idx)| {
-                    if !pbar_disabled {
-                        self.progress.fetch_add(1, AtomicOrdering::Relaxed);
-                    }
-                    if !network_structure.is_node_live(netw_src_idx)? {
-                        return Ok::<(), PyErr>(());
-                    }
-                    let reachable_entries = self.aggregate_to_src_idx(
-                        netw_src_idx,
-                        network_structure,
-                        max_walk_seconds,
-                        speed_m_s,
-                        jitter_scale,
-                        angular,
-                    )?;
-                    let mut classes: HashMap<u32, HashMap<String, ClassesState>> =
-                        HashMap::with_capacity(distances.len());
-                    for &dist_key in &distances {
-                        let temp: HashMap<String, ClassesState> = classes_uniq
-                            .iter()
-                            .map(|cl_code| {
-                                (
-                                    cl_code.clone(),
-                                    ClassesState {
-                                        count: 0,
-                                        nearest: f32::INFINITY,
-                                    },
-                                )
-                            })
-                            .collect();
-                        classes.insert(dist_key, temp);
-                    }
-                    for (data_key, data_dist) in &reachable_entries {
-                        if let Some(lu_class) = lu_map.get(data_key) {
-                            for &dist_key in &distances {
-                                if *data_dist <= dist_key as f32 {
-                                    let class_state = classes
-                                        .get_mut(&dist_key)
-                                        .expect("Distance key should exist in classes map")
-                                        .get_mut(lu_class)
-                                        .expect("Land use class should exist in inner map");
-                                    class_state.count += 1;
-                                    class_state.nearest = class_state.nearest.min(*data_dist);
-                                }
+            node_indices.par_iter().for_each(|netw_src_idx| {
+                if !pbar_disabled {
+                    self.progress.fetch_add(1, AtomicOrdering::Relaxed);
+                }
+                if !network_structure.is_node_live(*netw_src_idx) {
+                    return;
+                }
+                let reachable_entries = self.aggregate_to_src_idx(
+                    *netw_src_idx,
+                    network_structure,
+                    max_walk_seconds,
+                    speed_m_s,
+                    jitter_scale,
+                    angular,
+                );
+                let mut classes: HashMap<u32, HashMap<String, ClassesState>> =
+                    HashMap::with_capacity(distances.len());
+                for &dist_key in &distances {
+                    let temp: HashMap<String, ClassesState> = classes_uniq
+                        .iter()
+                        .map(|cl_code| {
+                            (
+                                cl_code.clone(),
+                                ClassesState {
+                                    count: 0,
+                                    nearest: f32::INFINITY,
+                                },
+                            )
+                        })
+                        .collect();
+                    classes.insert(dist_key, temp);
+                }
+                for (data_key, data_dist) in &reachable_entries {
+                    if let Some(lu_class) = lu_map.get(data_key) {
+                        for &dist_key in &distances {
+                            if *data_dist <= dist_key as f32 {
+                                let class_state = classes
+                                    .get_mut(&dist_key)
+                                    .expect("Distance key should exist in classes map")
+                                    .get_mut(lu_class)
+                                    .expect("Land use class should exist in inner map");
+                                class_state.count += 1;
+                                class_state.nearest = class_state.nearest.min(*data_dist);
                             }
                         }
                     }
-                    for (i, (&d, (&b, &mcw))) in distances
-                        .iter()
-                        .zip(betas.iter().zip(max_curve_wts.iter()))
-                        .enumerate()
-                    {
-                        let mut counts = Vec::with_capacity(classes[&d].len());
-                        let mut nearest = Vec::with_capacity(classes[&d].len());
-                        for classes_state in classes[&d].values() {
-                            counts.push(classes_state.count);
-                            nearest.push(classes_state.nearest);
-                        }
-                        if compute_hill {
-                            res.hill_vec[&0].metric[i][netw_src_idx].fetch_add(
-                                diversity::hill_diversity(counts.clone(), 0.0).unwrap_or(0.0),
-                                AtomicOrdering::Relaxed,
-                            );
-                            res.hill_vec[&1].metric[i][netw_src_idx].fetch_add(
-                                diversity::hill_diversity(counts.clone(), 1.0).unwrap_or(0.0),
-                                AtomicOrdering::Relaxed,
-                            );
-                            res.hill_vec[&2].metric[i][netw_src_idx].fetch_add(
-                                diversity::hill_diversity(counts.clone(), 2.0).unwrap_or(0.0),
-                                AtomicOrdering::Relaxed,
-                            );
-                        }
-                        if compute_hill_weighted {
-                            res.hill_weighted_vec[&0].metric[i][netw_src_idx].fetch_add(
-                                diversity::hill_diversity_branch_distance_wt(
-                                    counts.clone(),
-                                    nearest.clone(),
-                                    0.0,
-                                    b,
-                                    mcw,
-                                )
-                                .unwrap_or(0.0),
-                                AtomicOrdering::Relaxed,
-                            );
-                            res.hill_weighted_vec[&1].metric[i][netw_src_idx].fetch_add(
-                                diversity::hill_diversity_branch_distance_wt(
-                                    counts.clone(),
-                                    nearest.clone(),
-                                    1.0,
-                                    b,
-                                    mcw,
-                                )
-                                .unwrap_or(0.0),
-                                AtomicOrdering::Relaxed,
-                            );
-                            res.hill_weighted_vec[&2].metric[i][netw_src_idx].fetch_add(
-                                diversity::hill_diversity_branch_distance_wt(
-                                    counts.clone(),
-                                    nearest.clone(),
-                                    2.0,
-                                    b,
-                                    mcw,
-                                )
-                                .unwrap_or(0.0),
-                                AtomicOrdering::Relaxed,
-                            );
-                        }
-                        if compute_shannon {
-                            res.shannon_vec.metric[i][netw_src_idx].fetch_add(
-                                diversity::shannon_diversity(counts.clone()).unwrap_or(0.0),
-                                AtomicOrdering::Relaxed,
-                            );
-                        }
-                        if compute_gini {
-                            res.gini_vec.metric[i][netw_src_idx].fetch_add(
-                                diversity::gini_simpson_diversity(counts.clone()).unwrap_or(0.0),
-                                AtomicOrdering::Relaxed,
-                            );
-                        }
+                }
+                for (i, (&d, (&b, &mcw))) in distances
+                    .iter()
+                    .zip(betas.iter().zip(max_curve_wts.iter()))
+                    .enumerate()
+                {
+                    let mut counts = Vec::with_capacity(classes[&d].len());
+                    let mut nearest = Vec::with_capacity(classes[&d].len());
+                    for classes_state in classes[&d].values() {
+                        counts.push(classes_state.count);
+                        nearest.push(classes_state.nearest);
                     }
-                    Ok(())
-                })?;
-            Ok(res)
-        })?;
+                    if compute_hill {
+                        res.hill_vec[&0].metric[i][*netw_src_idx].fetch_add(
+                            diversity::hill_diversity(counts.clone(), 0.0).unwrap_or(0.0),
+                            AtomicOrdering::Relaxed,
+                        );
+                        res.hill_vec[&1].metric[i][*netw_src_idx].fetch_add(
+                            diversity::hill_diversity(counts.clone(), 1.0).unwrap_or(0.0),
+                            AtomicOrdering::Relaxed,
+                        );
+                        res.hill_vec[&2].metric[i][*netw_src_idx].fetch_add(
+                            diversity::hill_diversity(counts.clone(), 2.0).unwrap_or(0.0),
+                            AtomicOrdering::Relaxed,
+                        );
+                    }
+                    if compute_hill_weighted {
+                        res.hill_weighted_vec[&0].metric[i][*netw_src_idx].fetch_add(
+                            diversity::hill_diversity_branch_distance_wt(
+                                counts.clone(),
+                                nearest.clone(),
+                                0.0,
+                                b,
+                                mcw,
+                            )
+                            .unwrap_or(0.0),
+                            AtomicOrdering::Relaxed,
+                        );
+                        res.hill_weighted_vec[&1].metric[i][*netw_src_idx].fetch_add(
+                            diversity::hill_diversity_branch_distance_wt(
+                                counts.clone(),
+                                nearest.clone(),
+                                1.0,
+                                b,
+                                mcw,
+                            )
+                            .unwrap_or(0.0),
+                            AtomicOrdering::Relaxed,
+                        );
+                        res.hill_weighted_vec[&2].metric[i][*netw_src_idx].fetch_add(
+                            diversity::hill_diversity_branch_distance_wt(
+                                counts.clone(),
+                                nearest.clone(),
+                                2.0,
+                                b,
+                                mcw,
+                            )
+                            .unwrap_or(0.0),
+                            AtomicOrdering::Relaxed,
+                        );
+                    }
+                    if compute_shannon {
+                        res.shannon_vec.metric[i][*netw_src_idx].fetch_add(
+                            diversity::shannon_diversity(counts.clone()).unwrap_or(0.0),
+                            AtomicOrdering::Relaxed,
+                        );
+                    }
+                    if compute_gini {
+                        res.gini_vec.metric[i][*netw_src_idx].fetch_add(
+                            diversity::gini_simpson_diversity(counts.clone()).unwrap_or(0.0),
+                            AtomicOrdering::Relaxed,
+                        );
+                    }
+                }
+            });
+            res
+        });
         Ok(result)
     }
 
@@ -959,7 +948,6 @@ impl DataMap {
         pbar_disabled: Option<bool>,
         py: Python,
     ) -> PyResult<StatsResult> {
-        network_structure.validate(py)?;
         let speed_m_s = speed_m_s.unwrap_or(WALKING_SPEED);
         let (distances, betas, seconds) =
             pair_distances_betas_time(speed_m_s, distances, betas, minutes, min_threshold_wt)?;
@@ -1004,68 +992,62 @@ impl DataMap {
         let pbar_disabled = pbar_disabled.unwrap_or(false);
         self.progress_init();
 
-        let result = py.allow_threads(move || -> PyResult<_> {
-            node_indices
-                .par_iter()
-                .enumerate()
-                .try_for_each(|(i, &netw_src_idx)| {
-                    if !pbar_disabled {
-                        self.progress.fetch_add(1, AtomicOrdering::Relaxed);
-                    }
-                    // Propagate error if is_node_live fails, otherwise skip if node is not live.
-                    if !network_structure.is_node_live(netw_src_idx)? {
-                        return Ok::<(), PyErr>(());
-                    }
-                    let reachable_entries = self.aggregate_to_src_idx(
-                        netw_src_idx,
-                        network_structure,
-                        max_walk_seconds,
-                        speed_m_s,
-                        jitter_scale,
-                        angular,
-                    )?;
-                    for (data_key, data_dist) in &reachable_entries {
-                        for (map_idx, num_map) in num_maps.iter().enumerate() {
-                            if let Some(&num) = num_map.get(data_key) {
-                                if num.is_nan() {
-                                    continue; // Skip NaN values
-                                }
-                                for (i, (&d, (&b, &mcw))) in distances
-                                    .iter()
-                                    .zip(betas.iter().zip(max_curve_wts.iter()))
-                                    .enumerate()
-                                {
-                                    if *data_dist <= d as f32 {
-                                        let wt = clipped_beta_wt(b, mcw, *data_dist).unwrap_or(0.0);
-                                        let num_wt = num * wt;
-                                        // --- Accumulate sums and counts ---
-                                        res.stats_vec[map_idx].sum_vec.metric[i][netw_src_idx]
-                                            .fetch_add(num, AtomicOrdering::Relaxed);
-                                        res.stats_vec[map_idx].sum_wt_vec.metric[i][netw_src_idx]
-                                            .fetch_add(num_wt, AtomicOrdering::Relaxed);
-                                        res.stats_vec[map_idx].count_vec.metric[i][netw_src_idx]
-                                            .fetch_add(1.0, AtomicOrdering::Relaxed);
-                                        res.stats_vec[map_idx].count_wt_vec.metric[i][netw_src_idx]
-                                            .fetch_add(wt, AtomicOrdering::Relaxed);
-                                        res.stats_vec[map_idx].sum_sq_vec.metric[i][netw_src_idx]
-                                            .fetch_add(num * num, AtomicOrdering::Relaxed);
-                                        res.stats_vec[map_idx].sum_sq_wt_vec.metric[i]
-                                            [netw_src_idx]
-                                            .fetch_add(wt * num * num, AtomicOrdering::Relaxed);
-                                        // --- Atomically update max and min ---
-                                        // Assumes MetricResult uses atomic_float::AtomicF32 internally
-                                        // which provides fetch_max/fetch_min that handle NaN correctly.
-                                        res.stats_vec[map_idx].max_vec.metric[i][netw_src_idx]
-                                            .fetch_max(num, AtomicOrdering::Relaxed);
-                                        res.stats_vec[map_idx].min_vec.metric[i][netw_src_idx]
-                                            .fetch_min(num, AtomicOrdering::Relaxed);
-                                    }
+        let result = py.allow_threads(move || {
+            node_indices.par_iter().for_each(|netw_src_idx| {
+                if !pbar_disabled {
+                    self.progress.fetch_add(1, AtomicOrdering::Relaxed);
+                }
+                if !network_structure.is_node_live(*netw_src_idx) {
+                    return;
+                }
+                let reachable_entries = self.aggregate_to_src_idx(
+                    *netw_src_idx,
+                    network_structure,
+                    max_walk_seconds,
+                    speed_m_s,
+                    jitter_scale,
+                    angular,
+                );
+                for (data_key, data_dist) in &reachable_entries {
+                    for (map_idx, num_map) in num_maps.iter().enumerate() {
+                        if let Some(&num) = num_map.get(data_key) {
+                            if num.is_nan() {
+                                continue; // Skip NaN values
+                            }
+                            for (i, (&d, (&b, &mcw))) in distances
+                                .iter()
+                                .zip(betas.iter().zip(max_curve_wts.iter()))
+                                .enumerate()
+                            {
+                                if *data_dist <= d as f32 {
+                                    let wt = clipped_beta_wt(b, mcw, *data_dist).unwrap_or(0.0);
+                                    let num_wt = num * wt;
+                                    // --- Accumulate sums and counts ---
+                                    res.stats_vec[map_idx].sum_vec.metric[i][*netw_src_idx]
+                                        .fetch_add(num, AtomicOrdering::Relaxed);
+                                    res.stats_vec[map_idx].sum_wt_vec.metric[i][*netw_src_idx]
+                                        .fetch_add(num_wt, AtomicOrdering::Relaxed);
+                                    res.stats_vec[map_idx].count_vec.metric[i][*netw_src_idx]
+                                        .fetch_add(1.0, AtomicOrdering::Relaxed);
+                                    res.stats_vec[map_idx].count_wt_vec.metric[i][*netw_src_idx]
+                                        .fetch_add(wt, AtomicOrdering::Relaxed);
+                                    res.stats_vec[map_idx].sum_sq_vec.metric[i][*netw_src_idx]
+                                        .fetch_add(num * num, AtomicOrdering::Relaxed);
+                                    res.stats_vec[map_idx].sum_sq_wt_vec.metric[i][*netw_src_idx]
+                                        .fetch_add(wt * num * num, AtomicOrdering::Relaxed);
+                                    // --- Atomically update max and min ---
+                                    // Assumes MetricResult uses atomic_float::AtomicF32 internally
+                                    // which provides fetch_max/fetch_min that handle NaN correctly.
+                                    res.stats_vec[map_idx].max_vec.metric[i][*netw_src_idx]
+                                        .fetch_max(num, AtomicOrdering::Relaxed);
+                                    res.stats_vec[map_idx].min_vec.metric[i][*netw_src_idx]
+                                        .fetch_min(num, AtomicOrdering::Relaxed);
                                 }
                             }
                         }
                     }
-                    Ok(())
-                })?;
+                }
+            });
             // --- Post-processing (Mean, Variance) ---
             for stats_idx in 0..res.stats_vec.len() {
                 for node_idx in res.node_indices.iter() {
@@ -1124,8 +1106,8 @@ impl DataMap {
                     }
                 }
             }
-            Ok(res)
-        })?;
+            res
+        });
         Ok(result)
     }
 }

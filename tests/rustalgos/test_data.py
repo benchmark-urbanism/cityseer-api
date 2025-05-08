@@ -356,7 +356,7 @@ def test_assign_to_network(primal_graph):
                 # get the data point geometry
                 data_geom = wkt.loads(data_entry.geom_wkt)
                 # get the node data
-                node_data = network_structure.get_node_payload(node_idx)
+                node_data = network_structure.get_node_payload_py(node_idx)
                 # get the node geometry
                 node_geom = geometry.Point(node_data.coord)
                 # check the assigned distance
@@ -386,7 +386,7 @@ def test_assign_to_network(primal_graph):
             # get the data point geometry
             data_geom = wkt.loads(data_entry.geom_wkt)
             # get the node data
-            node_data = network_structure.get_node_payload(node_idx)
+            node_data = network_structure.get_node_payload_py(node_idx)
             # get the node geometry
             node_geom = geometry.Point(node_data.coord)
             # check the assigned distance
@@ -404,7 +404,7 @@ def test_assign_to_network(primal_graph):
             # get the data point geometry
             data_geom = wkt.loads(data_entry.geom_wkt)
             # get the node data
-            node_data = network_structure.get_node_payload(node_idx)
+            node_data = network_structure.get_node_payload_py(node_idx)
             # get the node geometry
             node_geom = geometry.Point(node_data.coord)
             # check the assigned distance
@@ -438,7 +438,7 @@ def test_assign_to_network(primal_graph):
             # get the data point geometry
             data_geom = wkt.loads(data_entry.geom_wkt)
             # get the node data
-            node_data = network_structure.get_node_payload(node_idx)
+            node_data = network_structure.get_node_payload_py(node_idx)
             # get the node geometry
             node_geom = geometry.Point(node_data.coord)
             # check the assigned distance

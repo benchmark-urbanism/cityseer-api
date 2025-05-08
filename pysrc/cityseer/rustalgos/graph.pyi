@@ -151,7 +151,7 @@ class NetworkStructure:
         """
         ...
 
-    def get_node_payload(self, node_idx: int) -> NodePayload:  # Returns PyResult<NodePayload>
+    def get_node_payload_py(self, node_idx: int) -> NodePayload:  # Returns PyResult<NodePayload>
         """Retrieve the payload data for a specific node index."""
         ...
     def get_node_weight(self, node_idx: int) -> float:  # Returns PyResult<f32>
@@ -284,10 +284,16 @@ class NetworkStructure:
     def edge_references(self) -> list[tuple[int, int, int]]:  # Returns Vec<(usize, usize, usize)>
         """Get list of (start_node_idx, end_node_idx, edge_idx) for all edges."""
         ...
-    def get_edge_payload(
+    def get_edge_payload_py(
         self, start_nd_idx: int, end_nd_idx: int, edge_idx: int
     ) -> EdgePayload:  # PyResult<EdgePayload>
         """Retrieve the payload for a specific edge defined by nodes and edge_idx."""
+        ...
+    def get_edge_length(self, start_nd_idx: int, end_nd_idx: int, edge_idx: int) -> float:
+        """Get the length of a specific edge."""
+        ...
+    def get_edge_impedance(self, start_nd_idx: int, end_nd_idx: int, edge_idx: int) -> float:
+        """Get the impedance factor of a specific edge."""
         ...
     def validate(self) -> None:  # PyResult<()>
         """Check internal consistency of all nodes and edges in the graph."""
@@ -301,28 +307,6 @@ class NetworkStructure:
         ...
     def unset_barriers(self) -> None:
         """Remove all barrier geometries and their R-tree."""
-        ...
-    def find_assignments_for_entry(self, data_key: str, geom: Any, max_dist: float) -> list[tuple[int, str, float]]:
-        """
-        Find valid network node assignments for a data entry's geometry.
-
-        Checks proximity, max distance, barrier intersections, and street intersections.
-        Requires `build_edge_rtree()` to have been called.
-
-        Parameters
-        ----------
-        data_key: str
-            Identifier for the data entry (used in return value).
-        geom: Any
-            Geometry object of the data entry (must support `centroid`, `closest_point`, `distance`).
-        max_dist: float
-            Maximum assignment distance (meters).
-
-        Returns
-        -------
-        list[tuple[int, str, float]]
-            List of (assigned_node_idx, data_key, assignment_distance).
-        """
         ...
     def dijkstra_tree_shortest(
         self, src_idx: int, max_seconds: int, speed_m_s: float, jitter_scale: float | None = None

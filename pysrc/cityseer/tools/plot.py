@@ -546,7 +546,7 @@ def plot_assignment(
             # get the data point geometry
             data_geom = wkt.loads(data_entry.geom_wkt)
             # get the node data
-            node_data = network_structure.get_node_payload(node_idx)
+            node_data = network_structure.get_node_payload_py(node_idx)
             # get the node geometry
             node_geom = geometry.Point(node_data.coord)
 
@@ -667,7 +667,7 @@ def plot_network_structure(
                 # get the data point geometry
                 data_geom = wkt.loads(data_entry.geom_wkt)
                 # get the node data
-                node_data = network_structure.get_node_payload(node_idx)
+                node_data = network_structure.get_node_payload_py(node_idx)
                 # get the node geometry
                 node_geom = geometry.Point(node_data.coord)
                 # plot the line between the two

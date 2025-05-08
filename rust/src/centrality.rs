@@ -16,10 +16,6 @@ use std::collections::BinaryHeap;
 use std::collections::HashMap;
 use std::sync::atomic::Ordering as AtomicOrdering;
 
-// Constants for angular calculations
-const HALF_CIRCLE_DEGREES: f32 = 180.0;
-const FULL_CIRCLE_DEGREES: f32 = 360.0;
-
 #[pyclass]
 pub struct CentralityShortestResult {
     #[pyo3(get)]
@@ -361,10 +357,9 @@ impl NetworkStructure {
                     && edge_payload.in_bearing.is_finite()
                     && tree_map[node_idx].out_bearing.is_finite()
                 {
-                    turn = ((edge_payload.in_bearing - tree_map[node_idx].out_bearing
-                        + HALF_CIRCLE_DEGREES)
-                        % FULL_CIRCLE_DEGREES
-                        - HALF_CIRCLE_DEGREES)
+                    turn = ((edge_payload.in_bearing - tree_map[node_idx].out_bearing + 180.0)
+                        % 360.0
+                        - 180.0)
                         .abs();
                 }
                 let simpl_preceding_dist = turn + edge_payload.angle_sum;
@@ -513,7 +508,6 @@ impl NetworkStructure {
         pbar_disabled: Option<bool>,
         py: Python,
     ) -> PyResult<CentralityShortestResult> {
-        // self.validate(py)?;
         let speed_m_s = speed_m_s.unwrap_or(WALKING_SPEED);
         let (distances, betas, seconds) = common::pair_distances_betas_time(
             speed_m_s,
@@ -547,83 +541,76 @@ impl NetworkStructure {
         self.progress_init();
 
         let result = py.allow_threads(move || {
-            node_indices
-                .par_iter()
-                .enumerate()
-                .for_each(|(i, src_idx)| {
-                    if !pbar_disabled {
-                        self.progress.fetch_add(1, AtomicOrdering::Relaxed);
+            node_indices.par_iter().for_each(|src_idx| {
+                if !pbar_disabled {
+                    self.progress.fetch_add(1, AtomicOrdering::Relaxed);
+                }
+                if !self.is_node_live(*src_idx) {
+                    return;
+                }
+                let (visited_nodes, tree_map) = self.dijkstra_tree_shortest(
+                    *src_idx,
+                    max_walk_seconds,
+                    speed_m_s,
+                    jitter_scale,
+                );
+                for to_idx in visited_nodes.iter() {
+                    let node_visit = &tree_map[*to_idx];
+                    if to_idx == src_idx {
+                        continue;
                     }
-                    if !self.is_node_live(*src_idx).unwrap_or(true) {
-                        return;
+                    if !node_visit.agg_seconds.is_finite() {
+                        continue;
                     }
-                    let (visited_nodes, tree_map) = self.dijkstra_tree_shortest(
-                        *src_idx,
-                        max_walk_seconds,
-                        speed_m_s,
-                        jitter_scale,
-                    );
-                    for to_idx in visited_nodes.iter() {
-                        let node_visit = &tree_map[*to_idx];
-                        if to_idx == src_idx {
+                    let wt = self.get_node_weight(*to_idx);
+                    if compute_closeness {
+                        for i in 0..distances.len() {
+                            let distance = distances[i];
+                            let beta = betas[i];
+                            if node_visit.short_dist <= distance as f32 {
+                                res.node_density_vec.metric[i][*src_idx]
+                                    .fetch_add(wt, AtomicOrdering::Relaxed);
+                                res.node_farness_vec.metric[i][*src_idx]
+                                    .fetch_add(node_visit.short_dist * wt, AtomicOrdering::Relaxed);
+                                res.node_cycles_vec.metric[i][*src_idx]
+                                    .fetch_add(node_visit.cycles * wt, AtomicOrdering::Relaxed);
+                                res.node_harmonic_vec.metric[i][*src_idx].fetch_add(
+                                    (1.0 / node_visit.short_dist) * wt,
+                                    AtomicOrdering::Relaxed,
+                                );
+                                res.node_beta_vec.metric[i][*src_idx].fetch_add(
+                                    (-beta * node_visit.short_dist).exp() * wt,
+                                    AtomicOrdering::Relaxed,
+                                );
+                            }
+                        }
+                    }
+                    if compute_betweenness {
+                        if to_idx < src_idx {
                             continue;
                         }
-                        if !node_visit.agg_seconds.is_finite() {
-                            continue;
-                        }
-                        let wt = self
-                            .get_node_weight(*to_idx)
-                            .expect("Visited node index must have weight");
-                        if compute_closeness {
+                        let mut current_pred = node_visit.pred;
+                        while let Some(inter_idx) = current_pred {
+                            if inter_idx == *src_idx {
+                                break;
+                            }
+                            let node_visit_short_dist = node_visit.short_dist;
                             for i in 0..distances.len() {
                                 let distance = distances[i];
                                 let beta = betas[i];
-                                if node_visit.short_dist <= distance as f32 {
-                                    res.node_density_vec.metric[i][*src_idx]
-                                        .fetch_add(wt, AtomicOrdering::Relaxed);
-                                    res.node_farness_vec.metric[i][*src_idx].fetch_add(
-                                        node_visit.short_dist * wt,
-                                        AtomicOrdering::Relaxed,
-                                    );
-                                    res.node_cycles_vec.metric[i][*src_idx]
-                                        .fetch_add(node_visit.cycles * wt, AtomicOrdering::Relaxed);
-                                    res.node_harmonic_vec.metric[i][*src_idx].fetch_add(
-                                        (1.0 / node_visit.short_dist) * wt,
-                                        AtomicOrdering::Relaxed,
-                                    );
-                                    res.node_beta_vec.metric[i][*src_idx].fetch_add(
-                                        (-beta * node_visit.short_dist).exp() * wt,
-                                        AtomicOrdering::Relaxed,
-                                    );
+                                if node_visit_short_dist <= distance as f32 {
+                                    res.node_betweenness_vec.metric[i][inter_idx]
+                                        .fetch_add(wt, AtomicOrdering::Acquire);
+                                    let exp_val = (-beta * node_visit_short_dist).exp();
+                                    res.node_betweenness_beta_vec.metric[i][inter_idx]
+                                        .fetch_add(exp_val * wt, AtomicOrdering::Acquire);
                                 }
                             }
-                        }
-                        if compute_betweenness {
-                            if to_idx < src_idx {
-                                continue;
-                            }
-                            let mut current_pred = node_visit.pred;
-                            while let Some(inter_idx) = current_pred {
-                                if inter_idx == *src_idx {
-                                    break;
-                                }
-                                let node_visit_short_dist = node_visit.short_dist;
-                                for i in 0..distances.len() {
-                                    let distance = distances[i];
-                                    let beta = betas[i];
-                                    if node_visit_short_dist <= distance as f32 {
-                                        res.node_betweenness_vec.metric[i][inter_idx]
-                                            .fetch_add(wt, AtomicOrdering::Acquire);
-                                        let exp_val = (-beta * node_visit_short_dist).exp();
-                                        res.node_betweenness_beta_vec.metric[i][inter_idx]
-                                            .fetch_add(exp_val * wt, AtomicOrdering::Acquire);
-                                    }
-                                }
-                                current_pred = tree_map[inter_idx].pred;
-                            }
+                            current_pred = tree_map[inter_idx].pred;
                         }
                     }
-                });
+                }
+            });
             res
         });
         Ok(result)
@@ -657,7 +644,6 @@ impl NetworkStructure {
         pbar_disabled: Option<bool>,
         py: Python,
     ) -> PyResult<CentralitySimplestResult> {
-        // self.validate(py)?;
         let speed_m_s = speed_m_s.unwrap_or(WALKING_SPEED);
         let (distances, _betas, seconds) = common::pair_distances_betas_time(
             speed_m_s,
@@ -677,7 +663,7 @@ impl NetworkStructure {
             "Either or both closeness and betweenness flags is required, but both parameters are False.",
         ));
         }
-        let angular_scaling_unit = angular_scaling_unit.unwrap_or(HALF_CIRCLE_DEGREES);
+        let angular_scaling_unit = angular_scaling_unit.unwrap_or(180.0);
         let farness_scaling_offset = farness_scaling_offset.unwrap_or(1.0);
 
         let node_keys_py = self.node_keys_py(py);
@@ -693,71 +679,65 @@ impl NetworkStructure {
         self.progress_init();
 
         let result = py.allow_threads(move || {
-            node_indices
-                .par_iter()
-                .enumerate()
-                .for_each(|(i, src_idx)| {
-                    if !pbar_disabled {
-                        self.progress.fetch_add(1, AtomicOrdering::Relaxed);
+            node_indices.par_iter().for_each(|src_idx| {
+                if !pbar_disabled {
+                    self.progress.fetch_add(1, AtomicOrdering::Relaxed);
+                }
+                if !self.is_node_live(*src_idx) {
+                    return;
+                }
+                let (visited_nodes, tree_map) = self.dijkstra_tree_simplest(
+                    *src_idx,
+                    max_walk_seconds,
+                    speed_m_s,
+                    jitter_scale,
+                );
+                for to_idx in visited_nodes.iter() {
+                    let node_visit = &tree_map[*to_idx];
+                    if to_idx == src_idx {
+                        continue;
                     }
-                    if !self.is_node_live(*src_idx).unwrap_or(true) {
-                        return;
+                    if !node_visit.agg_seconds.is_finite() {
+                        continue;
                     }
-                    let (visited_nodes, tree_map) = self.dijkstra_tree_simplest(
-                        *src_idx,
-                        max_walk_seconds,
-                        speed_m_s,
-                        jitter_scale,
-                    );
-                    for to_idx in visited_nodes.iter() {
-                        let node_visit = &tree_map[*to_idx];
-                        if to_idx == src_idx {
+                    let wt = self.get_node_weight(*to_idx);
+                    if compute_closeness {
+                        for i in 0..seconds.len() {
+                            let sec = seconds[i];
+                            if node_visit.agg_seconds <= sec as f32 {
+                                res.node_density_vec.metric[i][*src_idx]
+                                    .fetch_add(wt, AtomicOrdering::Relaxed);
+                                let far_ang = farness_scaling_offset
+                                    + (node_visit.simpl_dist / angular_scaling_unit);
+                                res.node_farness_vec.metric[i][*src_idx]
+                                    .fetch_add(far_ang * wt, AtomicOrdering::Relaxed);
+                                let harm_ang = 1.0 + (node_visit.simpl_dist / angular_scaling_unit);
+                                res.node_harmonic_vec.metric[i][*src_idx]
+                                    .fetch_add((1.0 / harm_ang) * wt, AtomicOrdering::Relaxed);
+                            }
+                        }
+                    }
+                    if compute_betweenness {
+                        if to_idx < src_idx {
                             continue;
                         }
-                        if !node_visit.agg_seconds.is_finite() {
-                            continue;
-                        }
-                        let wt = self
-                            .get_node_weight(*to_idx)
-                            .expect("Visited node index must have weight");
-                        if compute_closeness {
+                        let mut current_pred = node_visit.pred;
+                        while let Some(inter_idx) = current_pred {
+                            if inter_idx == *src_idx {
+                                break;
+                            }
                             for i in 0..seconds.len() {
                                 let sec = seconds[i];
                                 if node_visit.agg_seconds <= sec as f32 {
-                                    res.node_density_vec.metric[i][*src_idx]
-                                        .fetch_add(wt, AtomicOrdering::Relaxed);
-                                    let far_ang = farness_scaling_offset
-                                        + (node_visit.simpl_dist / angular_scaling_unit);
-                                    res.node_farness_vec.metric[i][*src_idx]
-                                        .fetch_add(far_ang * wt, AtomicOrdering::Relaxed);
-                                    let harm_ang =
-                                        1.0 + (node_visit.simpl_dist / angular_scaling_unit);
-                                    res.node_harmonic_vec.metric[i][*src_idx]
-                                        .fetch_add((1.0 / harm_ang) * wt, AtomicOrdering::Relaxed);
+                                    res.node_betweenness_vec.metric[i][inter_idx]
+                                        .fetch_add(wt, AtomicOrdering::Acquire);
                                 }
                             }
-                        }
-                        if compute_betweenness {
-                            if to_idx < src_idx {
-                                continue;
-                            }
-                            let mut current_pred = node_visit.pred;
-                            while let Some(inter_idx) = current_pred {
-                                if inter_idx == *src_idx {
-                                    break;
-                                }
-                                for i in 0..seconds.len() {
-                                    let sec = seconds[i];
-                                    if node_visit.agg_seconds <= sec as f32 {
-                                        res.node_betweenness_vec.metric[i][inter_idx]
-                                            .fetch_add(wt, AtomicOrdering::Acquire);
-                                    }
-                                }
-                                current_pred = tree_map[inter_idx].pred;
-                            }
+                            current_pred = tree_map[inter_idx].pred;
                         }
                     }
-                });
+                }
+            });
             res
         });
         Ok(result)
@@ -787,7 +767,6 @@ impl NetworkStructure {
         pbar_disabled: Option<bool>,
         py: Python,
     ) -> PyResult<CentralitySegmentResult> {
-        // self.validate(py)?;
         let speed_m_s = speed_m_s.unwrap_or(WALKING_SPEED);
         let (distances, betas, seconds) = common::pair_distances_betas_time(
             speed_m_s,
@@ -821,225 +800,211 @@ impl NetworkStructure {
         self.progress_init();
 
         let result = py.allow_threads(move || {
-            node_indices
-                .par_iter()
-                .enumerate()
-                .for_each(|(i, src_idx)| {
-                    if !pbar_disabled {
-                        self.progress.fetch_add(1, AtomicOrdering::Relaxed);
-                    }
-                    if !self.is_node_live(*src_idx).unwrap_or(true) {
-                        return;
-                    }
-                    let (visited_nodes, visited_edges, tree_map, edge_map) = self
-                        .dijkstra_tree_segment(*src_idx, max_walk_seconds, speed_m_s, jitter_scale);
-                    for edge_idx in visited_edges.iter() {
-                        let edge_visit = &edge_map[*edge_idx];
-                        let start_node_idx = edge_visit
-                            .start_nd_idx
-                            .expect("Visited edge must have start node index");
-                        let end_node_idx = edge_visit
-                            .end_nd_idx
-                            .expect("Visited edge must have end node index");
-                        let edge_payload_idx = edge_visit
-                            .edge_idx
-                            .expect("Visited edge must have original edge index");
+            node_indices.par_iter().for_each(|src_idx| {
+                if !pbar_disabled {
+                    self.progress.fetch_add(1, AtomicOrdering::Relaxed);
+                }
+                if !self.is_node_live(*src_idx) {
+                    return;
+                }
+                let (visited_nodes, visited_edges, tree_map, edge_map) =
+                    self.dijkstra_tree_segment(*src_idx, max_walk_seconds, speed_m_s, jitter_scale);
+                for edge_idx in visited_edges.iter() {
+                    let edge_visit = &edge_map[*edge_idx];
+                    let start_node_idx = edge_visit
+                        .start_nd_idx
+                        .expect("Visited edge must have start node index");
+                    let end_node_idx = edge_visit
+                        .end_nd_idx
+                        .expect("Visited edge must have end node index");
+                    let edge_payload_idx = edge_visit
+                        .edge_idx
+                        .expect("Visited edge must have original edge index");
 
-                        let node_visit_n = &tree_map[start_node_idx];
-                        let node_visit_m = &tree_map[end_node_idx];
+                    let node_visit_n = &tree_map[start_node_idx];
+                    let node_visit_m = &tree_map[end_node_idx];
 
-                        if !node_visit_n.short_dist.is_finite()
-                            && !node_visit_m.short_dist.is_finite()
-                        {
+                    if !node_visit_n.short_dist.is_finite() && !node_visit_m.short_dist.is_finite()
+                    {
+                        continue;
+                    }
+                    if compute_closeness {
+                        let n_nearer = node_visit_n.short_dist <= node_visit_m.short_dist;
+                        let (a, a_imp) = if n_nearer {
+                            (node_visit_n.short_dist, node_visit_n.short_dist)
+                        } else {
+                            (node_visit_m.short_dist, node_visit_m.short_dist)
+                        };
+                        let (b, b_imp) = if n_nearer {
+                            (node_visit_m.short_dist, node_visit_m.short_dist)
+                        } else {
+                            (node_visit_n.short_dist, node_visit_n.short_dist)
+                        };
+
+                        let edge_length =
+                            self.get_edge_length(start_node_idx, end_node_idx, edge_payload_idx);
+                        let imp_factor =
+                            self.get_edge_impedance(start_node_idx, end_node_idx, edge_payload_idx);
+
+                        let c = (edge_length + a + b) / 2.0;
+                        let d = c;
+                        let c_imp = a_imp + (c - a) * imp_factor;
+                        let d_imp = c_imp;
+
+                        for i in (0..distances.len()).rev() {
+                            let distance_f32 = distances[i] as f32;
+                            let beta = betas[i];
+                            let neg_beta = -beta;
+                            let inv_neg_beta = if beta != 0.0 { 1.0 / neg_beta } else { 0.0 };
+
+                            if a < distance_f32 {
+                                let mut current_c = c;
+                                let mut current_c_imp = c_imp;
+                                if current_c > distance_f32 {
+                                    current_c = distance_f32;
+                                    current_c_imp = a_imp + (distance_f32 - a) * imp_factor;
+                                }
+                                res.segment_density_vec.metric[i][*src_idx]
+                                    .fetch_add(current_c - a, AtomicOrdering::Relaxed);
+
+                                let seg_harm = if a_imp < 1.0 {
+                                    current_c_imp.ln()
+                                } else {
+                                    (current_c_imp / a_imp).max(f32::EPSILON).ln()
+                                };
+                                res.segment_harmonic_vec.metric[i][*src_idx]
+                                    .fetch_add(seg_harm, AtomicOrdering::Relaxed);
+
+                                let bet = if beta == 0.0 {
+                                    current_c_imp - a_imp
+                                } else {
+                                    ((neg_beta * current_c_imp).exp() - (neg_beta * a_imp).exp())
+                                        * inv_neg_beta
+                                };
+                                res.segment_beta_vec.metric[i][*src_idx]
+                                    .fetch_add(bet, AtomicOrdering::Relaxed);
+                            }
+
+                            if b == d {
+                                continue;
+                            }
+
+                            if b <= distance_f32 {
+                                let mut current_d = d;
+                                let mut current_d_imp = d_imp;
+                                if current_d > distance_f32 {
+                                    current_d = distance_f32;
+                                    current_d_imp = b_imp + (distance_f32 - b) * imp_factor;
+                                }
+                                res.segment_density_vec.metric[i][*src_idx]
+                                    .fetch_add(current_d - b, AtomicOrdering::Relaxed);
+
+                                let seg_harm = if b_imp < 1.0 {
+                                    current_d_imp.ln()
+                                } else {
+                                    (current_d_imp / b_imp).max(f32::EPSILON).ln()
+                                };
+                                res.segment_harmonic_vec.metric[i][*src_idx]
+                                    .fetch_add(seg_harm, AtomicOrdering::Relaxed);
+
+                                let bet = if beta == 0.0 {
+                                    current_d_imp - b_imp
+                                } else {
+                                    ((neg_beta * current_d_imp).exp() - (neg_beta * b_imp).exp())
+                                        * inv_neg_beta
+                                };
+                                res.segment_beta_vec.metric[i][*src_idx]
+                                    .fetch_add(bet, AtomicOrdering::Relaxed);
+                            }
+                        }
+                    }
+                }
+
+                if compute_betweenness {
+                    for to_idx in visited_nodes.iter() {
+                        if to_idx <= src_idx {
                             continue;
                         }
-                        if compute_closeness {
-                            let n_nearer = node_visit_n.short_dist <= node_visit_m.short_dist;
-                            let (a, a_imp) = if n_nearer {
-                                (node_visit_n.short_dist, node_visit_n.short_dist)
-                            } else {
-                                (node_visit_m.short_dist, node_visit_m.short_dist)
-                            };
-                            let (b, b_imp) = if n_nearer {
-                                (node_visit_m.short_dist, node_visit_m.short_dist)
-                            } else {
-                                (node_visit_n.short_dist, node_visit_n.short_dist)
-                            };
 
-                            let edge_payload = self
-                                .get_edge_payload(start_node_idx, end_node_idx, edge_payload_idx)
-                                .expect("Edge payload must exist for visited edge index");
-
-                            let imp_factor = edge_payload.imp_factor;
-
-                            let c = (edge_payload.length + a + b) / 2.0;
-                            let d = c;
-                            let c_imp = a_imp + (c - a) * imp_factor;
-                            let d_imp = c_imp;
-
-                            for i in (0..distances.len()).rev() {
-                                let distance_f32 = distances[i] as f32;
-                                let beta = betas[i];
-                                let neg_beta = -beta;
-                                let inv_neg_beta = if beta != 0.0 { 1.0 / neg_beta } else { 0.0 };
-
-                                if a < distance_f32 {
-                                    let mut current_c = c;
-                                    let mut current_c_imp = c_imp;
-                                    if current_c > distance_f32 {
-                                        current_c = distance_f32;
-                                        current_c_imp = a_imp + (distance_f32 - a) * imp_factor;
-                                    }
-                                    res.segment_density_vec.metric[i][*src_idx]
-                                        .fetch_add(current_c - a, AtomicOrdering::Relaxed);
-
-                                    let seg_harm = if a_imp < 1.0 {
-                                        current_c_imp.ln()
-                                    } else {
-                                        (current_c_imp / a_imp).max(f32::EPSILON).ln()
-                                    };
-                                    res.segment_harmonic_vec.metric[i][*src_idx]
-                                        .fetch_add(seg_harm, AtomicOrdering::Relaxed);
-
-                                    let bet = if beta == 0.0 {
-                                        current_c_imp - a_imp
-                                    } else {
-                                        ((neg_beta * current_c_imp).exp()
-                                            - (neg_beta * a_imp).exp())
-                                            * inv_neg_beta
-                                    };
-                                    res.segment_beta_vec.metric[i][*src_idx]
-                                        .fetch_add(bet, AtomicOrdering::Relaxed);
-                                }
-
-                                if b == d {
-                                    continue;
-                                }
-
-                                if b <= distance_f32 {
-                                    let mut current_d = d;
-                                    let mut current_d_imp = d_imp;
-                                    if current_d > distance_f32 {
-                                        current_d = distance_f32;
-                                        current_d_imp = b_imp + (distance_f32 - b) * imp_factor;
-                                    }
-                                    res.segment_density_vec.metric[i][*src_idx]
-                                        .fetch_add(current_d - b, AtomicOrdering::Relaxed);
-
-                                    let seg_harm = if b_imp < 1.0 {
-                                        current_d_imp.ln()
-                                    } else {
-                                        (current_d_imp / b_imp).max(f32::EPSILON).ln()
-                                    };
-                                    res.segment_harmonic_vec.metric[i][*src_idx]
-                                        .fetch_add(seg_harm, AtomicOrdering::Relaxed);
-
-                                    let bet = if beta == 0.0 {
-                                        current_d_imp - b_imp
-                                    } else {
-                                        ((neg_beta * current_d_imp).exp()
-                                            - (neg_beta * b_imp).exp())
-                                            * inv_neg_beta
-                                    };
-                                    res.segment_beta_vec.metric[i][*src_idx]
-                                        .fetch_add(bet, AtomicOrdering::Relaxed);
-                                }
-                            }
+                        let to_node_visit = &tree_map[*to_idx];
+                        if !to_node_visit.short_dist.is_finite() {
+                            continue;
                         }
-                    }
 
-                    if compute_betweenness {
-                        for to_idx in visited_nodes.iter() {
-                            if to_idx <= src_idx {
-                                continue;
-                            }
-
-                            let to_node_visit = &tree_map[*to_idx];
-                            if !to_node_visit.short_dist.is_finite() {
-                                continue;
-                            }
-
-                            let o_seg_idx = to_node_visit.origin_seg.expect(
+                        let o_seg_idx = to_node_visit.origin_seg.expect(
                             "Reachable 'to' node in segment betweenness must have origin segment",
                         );
-                            let l_seg_idx = to_node_visit.last_seg.expect(
-                                "Reachable 'to' node in segment betweenness must have last segment",
-                            );
+                        let l_seg_idx = to_node_visit.last_seg.expect(
+                            "Reachable 'to' node in segment betweenness must have last segment",
+                        );
 
-                            let o_edge_visit = &edge_map[o_seg_idx];
-                            let l_edge_visit = &edge_map[l_seg_idx];
+                        let o_edge_visit = &edge_map[o_seg_idx];
+                        let l_edge_visit = &edge_map[l_seg_idx];
 
-                            let o_seg_len = self
-                                .get_edge_payload(
-                                    o_edge_visit
-                                        .start_nd_idx
-                                        .expect("Origin edge visit must have start node"),
-                                    o_edge_visit
-                                        .end_nd_idx
-                                        .expect("Origin edge visit must have end node"),
-                                    o_edge_visit
-                                        .edge_idx
-                                        .expect("Origin edge visit must have edge index"),
-                                )
-                                .expect("Origin segment payload must exist")
-                                .length;
-                            let l_seg_len = self
-                                .get_edge_payload(
-                                    l_edge_visit
-                                        .start_nd_idx
-                                        .expect("Last edge visit must have start node"),
-                                    l_edge_visit
-                                        .end_nd_idx
-                                        .expect("Last edge visit must have end node"),
-                                    l_edge_visit
-                                        .edge_idx
-                                        .expect("Last edge visit must have edge index"),
-                                )
-                                .expect("Last segment payload must exist")
-                                .length;
+                        let o_seg_len = self.get_edge_length(
+                            o_edge_visit
+                                .start_nd_idx
+                                .expect("Origin edge visit must have start node"),
+                            o_edge_visit
+                                .end_nd_idx
+                                .expect("Origin edge visit must have end node"),
+                            o_edge_visit
+                                .edge_idx
+                                .expect("Origin edge visit must have edge index"),
+                        );
+                        let l_seg_len = self.get_edge_length(
+                            l_edge_visit
+                                .start_nd_idx
+                                .expect("Last edge visit must have start node"),
+                            l_edge_visit
+                                .end_nd_idx
+                                .expect("Last edge visit must have end node"),
+                            l_edge_visit
+                                .edge_idx
+                                .expect("Last edge visit must have edge index"),
+                        );
 
-                            let min_span = to_node_visit.short_dist - o_seg_len - l_seg_len;
-                            let o_1 = min_span;
-                            let o_2 = min_span + o_seg_len;
-                            let l_1 = min_span;
-                            let l_2 = min_span + l_seg_len;
+                        let min_span = to_node_visit.short_dist - o_seg_len - l_seg_len;
+                        let o_1 = min_span;
+                        let o_2 = min_span + o_seg_len;
+                        let l_1 = min_span;
+                        let l_2 = min_span + l_seg_len;
 
-                            let mut current_pred = to_node_visit.pred;
-                            while let Some(inter_idx) = current_pred {
-                                if inter_idx == *src_idx {
-                                    break;
-                                }
-                                for i in (0..distances.len()).rev() {
-                                    let distance = distances[i];
-                                    let beta = betas[i];
-                                    if min_span <= distance as f32 {
-                                        let mut o_2_snip = o_2;
-                                        let mut l_2_snip = l_2;
-                                        o_2_snip = o_2_snip.min(distance as f32);
-                                        l_2_snip = l_2_snip.min(distance as f32);
-                                        let auc = if beta == 0.0 {
-                                            (o_2_snip - o_1) + (l_2_snip - l_1)
-                                        } else {
-                                            let neg_beta = -beta;
-                                            let inv_neg_beta = 1.0 / neg_beta;
-                                            ((neg_beta * o_2_snip).exp() - (neg_beta * o_1).exp())
+                        let mut current_pred = to_node_visit.pred;
+                        while let Some(inter_idx) = current_pred {
+                            if inter_idx == *src_idx {
+                                break;
+                            }
+                            for i in (0..distances.len()).rev() {
+                                let distance = distances[i];
+                                let beta = betas[i];
+                                if min_span <= distance as f32 {
+                                    let mut o_2_snip = o_2;
+                                    let mut l_2_snip = l_2;
+                                    o_2_snip = o_2_snip.min(distance as f32);
+                                    l_2_snip = l_2_snip.min(distance as f32);
+                                    let auc = if beta == 0.0 {
+                                        (o_2_snip - o_1) + (l_2_snip - l_1)
+                                    } else {
+                                        let neg_beta = -beta;
+                                        let inv_neg_beta = 1.0 / neg_beta;
+                                        ((neg_beta * o_2_snip).exp() - (neg_beta * o_1).exp())
+                                            * inv_neg_beta
+                                            + ((neg_beta * l_2_snip).exp() - (neg_beta * l_1).exp())
                                                 * inv_neg_beta
-                                                + ((neg_beta * l_2_snip).exp()
-                                                    - (neg_beta * l_1).exp())
-                                                    * inv_neg_beta
-                                        };
+                                    };
 
-                                        if auc.is_finite() && auc >= 0.0 {
-                                            res.segment_betweenness_vec.metric[i][inter_idx]
-                                                .fetch_add(auc, AtomicOrdering::Acquire);
-                                        }
+                                    if auc.is_finite() && auc >= 0.0 {
+                                        res.segment_betweenness_vec.metric[i][inter_idx]
+                                            .fetch_add(auc, AtomicOrdering::Acquire);
                                     }
                                 }
-                                current_pred = tree_map[inter_idx].pred;
                             }
+                            current_pred = tree_map[inter_idx].pred;
                         }
                     }
-                });
+                }
+            });
             res
         });
         Ok(result)
