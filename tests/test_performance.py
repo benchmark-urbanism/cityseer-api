@@ -75,7 +75,8 @@ def test_local_centrality_time(primal_graph):
     def dijkstra_tree_shortest_wrapper():
         network_structure.dijkstra_tree_shortest(
             src_idx=0,
-            max_dist=5000,
+            max_seconds=int(5000 / 1.33),
+            speed_m_s=1.33,
         )
 
     # prime the function
@@ -89,7 +90,8 @@ def test_local_centrality_time(primal_graph):
     def dijkstra_tree_simplest_wrapper():
         network_structure.dijkstra_tree_simplest(
             src_idx=0,
-            max_dist=5000,
+            max_seconds=int(5000 / 1.33),
+            speed_m_s=1.33,
         )
 
     # prime the function
@@ -103,7 +105,8 @@ def test_local_centrality_time(primal_graph):
     def dijkstra_tree_segment_wrapper():
         network_structure.dijkstra_tree_segment(
             src_idx=0,
-            max_dist=5000,
+            max_seconds=int(5000 / 1.33),
+            speed_m_s=1.33,
         )
 
     # prime the function
