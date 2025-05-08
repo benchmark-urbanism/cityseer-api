@@ -573,6 +573,14 @@ impl NetworkStructure {
         self.graph.node_indices().map(|node| node.index()).collect()
     }
 
+    /// Returns a list of original keys for all nodes (street and transport).
+    pub fn node_keys_py(&self, py: Python) -> Vec<Py<PyAny>> {
+        self.graph
+            .node_weights()
+            .map(|payload| payload.node_key.clone_ref(py))
+            .collect()
+    }
+
     /// Returns a list of indices for non-transport (street) nodes.
     pub fn street_node_indices(&self) -> Vec<usize> {
         let mut street_node_indices = Vec::new();

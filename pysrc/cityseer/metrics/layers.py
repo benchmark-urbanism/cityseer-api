@@ -4,6 +4,7 @@ import logging
 from functools import partial
 
 import geopandas as gpd
+import pandas as pd
 
 from .. import config, rustalgos
 
@@ -240,7 +241,7 @@ def compute_accessibilities(
         jitter_scale=jitter_scale,
     )
     # wraps progress bar
-    result = config.wrap_progress(
+    acc_result = config.wrap_progress(
         total=network_structure.street_node_count(), rust_struct=data_map, partial_func=partial_func
     )
     # unpack
@@ -251,16 +252,23 @@ def compute_accessibilities(
         min_threshold_wt=min_threshold_wt,
         speed_m_s=speed_m_s,
     )
+    # intersect computed keys with those available in the gdf index (stations vs. streets)
+    gdf_idx = nodes_gdf.index.intersection(acc_result.node_keys_py)  # type: ignore
+    # create a dictionary to hold the data
+    temp_data = {}
     # unpack accessibility data
     for acc_key in accessibility_keys:
         for dist_key in distances:
             ac_nw_data_key = config.prep_gdf_key(acc_key, dist_key, angular, weighted=False)
-            nodes_gdf[ac_nw_data_key] = result[acc_key].unweighted[dist_key]  # type: ignore
+            temp_data[ac_nw_data_key] = acc_result.result[acc_key].unweighted[dist_key]  # type: ignore
             ac_wt_data_key = config.prep_gdf_key(acc_key, dist_key, angular, weighted=True)
-            nodes_gdf[ac_wt_data_key] = result[acc_key].weighted[dist_key]  # type: ignore
+            temp_data[ac_wt_data_key] = acc_result.result[acc_key].weighted[dist_key]  # type: ignore
             if dist_key == max(distances):
                 ac_dist_data_key = config.prep_gdf_key(f"{acc_key}_nearest_max", dist_key, angular)
-                nodes_gdf[ac_dist_data_key] = result[acc_key].distance[dist_key]  # type: ignore
+                temp_data[ac_dist_data_key] = acc_result.result[acc_key].distance[dist_key]  # type: ignore
+
+    temp_df = pd.DataFrame(temp_data, index=acc_result.node_keys_py)
+    nodes_gdf.loc[gdf_idx, temp_df.columns] = temp_df.loc[gdf_idx, temp_df.columns]  # type: ignore
 
     return nodes_gdf, data_gdf
 
@@ -487,21 +495,28 @@ def compute_mixed_uses(
         min_threshold_wt=min_threshold_wt,
         speed_m_s=speed_m_s,
     )
+    # intersect computed keys with those available in the gdf index (stations vs. streets)
+    gdf_idx = nodes_gdf.index.intersection(result.node_keys_py)  # type: ignore
+    # create a dictionary to hold the data
+    temp_data = {}
     # unpack mixed-uses data
     for dist_key in distances:
         for q_key in [0, 1, 2]:
             if compute_hill:
                 hill_nw_data_key = config.prep_gdf_key(f"hill_q{q_key}", dist_key, angular, weighted=False)
-                nodes_gdf[hill_nw_data_key] = result.hill[q_key][dist_key]  # type: ignore
+                temp_data[hill_nw_data_key] = result.hill[q_key][dist_key]  # type: ignore
             if compute_hill_weighted:
                 hill_wt_data_key = config.prep_gdf_key(f"hill_q{q_key}", dist_key, angular, weighted=True)
-                nodes_gdf[hill_wt_data_key] = result.hill_weighted[q_key][dist_key]  # type: ignore
+                temp_data[hill_wt_data_key] = result.hill_weighted[q_key][dist_key]  # type: ignore
         if compute_shannon:
             shannon_data_key = config.prep_gdf_key("shannon", dist_key, angular)
-            nodes_gdf[shannon_data_key] = result.shannon[dist_key]  # type: ignore
+            temp_data[shannon_data_key] = result.shannon[dist_key]  # type: ignore
         if compute_gini:
             gini_data_key = config.prep_gdf_key("gini", dist_key, angular)
-            nodes_gdf[gini_data_key] = result.gini[dist_key]  # type: ignore
+            temp_data[gini_data_key] = result.gini[dist_key]  # type: ignore
+
+    temp_df = pd.DataFrame(temp_data, index=result.node_keys_py)
+    nodes_gdf.loc[gdf_idx, temp_df.columns] = temp_df.loc[gdf_idx, temp_df.columns]  # type: ignore
 
     return nodes_gdf, data_gdf
 
@@ -670,7 +685,7 @@ def compute_stats(
         jitter_scale=jitter_scale,
     )
     # wraps progress bar
-    result = config.wrap_progress(
+    stats_result = config.wrap_progress(
         total=network_structure.street_node_count(), rust_struct=data_map, partial_func=partial_func
     )
     # unpack
@@ -681,28 +696,35 @@ def compute_stats(
         min_threshold_wt=min_threshold_wt,
         speed_m_s=speed_m_s,
     )
+    # intersect computed keys with those available in the gdf index (stations vs. streets)
+    gdf_idx = nodes_gdf.index.intersection(stats_result.node_keys_py)  # type: ignore
+    # create a dictionary to hold the data
+    temp_data = {}
     # unpack the numerical arrays
     for idx, stats_column_label in enumerate(stats_column_labels):
         for dist_key in distances:
             k = config.prep_gdf_key(f"{stats_column_label}_sum", dist_key, angular=angular, weighted=False)
-            nodes_gdf[k] = result[idx].sum[dist_key]  # type: ignore
+            temp_data[k] = stats_result.result[idx].sum[dist_key]  # type: ignore
             k = config.prep_gdf_key(f"{stats_column_label}_sum", dist_key, angular=angular, weighted=True)
-            nodes_gdf[k] = result[idx].sum_wt[dist_key]  # type: ignore
+            temp_data[k] = stats_result.result[idx].sum_wt[dist_key]  # type: ignore
             k = config.prep_gdf_key(f"{stats_column_label}_mean", dist_key, angular=angular, weighted=False)
-            nodes_gdf[k] = result[idx].mean[dist_key]  # type: ignore
+            temp_data[k] = stats_result.result[idx].mean[dist_key]  # type: ignore
             k = config.prep_gdf_key(f"{stats_column_label}_mean", dist_key, angular=angular, weighted=True)
-            nodes_gdf[k] = result[idx].mean_wt[dist_key]  # type: ignore
+            temp_data[k] = stats_result.result[idx].mean_wt[dist_key]  # type: ignore
             k = config.prep_gdf_key(f"{stats_column_label}_count", dist_key, angular=angular, weighted=False)
-            nodes_gdf[k] = result[idx].count[dist_key]  # type: ignore
+            temp_data[k] = stats_result.result[idx].count[dist_key]  # type: ignore
             k = config.prep_gdf_key(f"{stats_column_label}_count", dist_key, angular=angular, weighted=True)
-            nodes_gdf[k] = result[idx].count_wt[dist_key]  # type: ignore
+            temp_data[k] = stats_result.result[idx].count_wt[dist_key]  # type: ignore
             k = config.prep_gdf_key(f"{stats_column_label}_var", dist_key, angular=angular, weighted=False)
-            nodes_gdf[k] = result[idx].variance[dist_key]  # type: ignore
+            temp_data[k] = stats_result.result[idx].variance[dist_key]  # type: ignore
             k = config.prep_gdf_key(f"{stats_column_label}_var", dist_key, angular=angular, weighted=True)
-            nodes_gdf[k] = result[idx].variance_wt[dist_key]  # type: ignore
+            temp_data[k] = stats_result.result[idx].variance_wt[dist_key]  # type: ignore
             k = config.prep_gdf_key(f"{stats_column_label}_max", dist_key, angular=angular)
-            nodes_gdf[k] = result[idx].max[dist_key]  # type: ignore
+            temp_data[k] = stats_result.result[idx].max[dist_key]  # type: ignore
             k = config.prep_gdf_key(f"{stats_column_label}_min", dist_key, angular=angular)
-            nodes_gdf[k] = result[idx].min[dist_key]  # type: ignore
+            temp_data[k] = stats_result.result[idx].min[dist_key]  # type: ignore
+
+    temp_df = pd.DataFrame(temp_data, index=stats_result.node_keys_py)
+    nodes_gdf.loc[gdf_idx, temp_df.columns] = temp_df.loc[gdf_idx, temp_df.columns]  # type: ignore
 
     return nodes_gdf, data_gdf

@@ -18,53 +18,262 @@ use std::sync::atomic::{AtomicUsize, Ordering as AtomicOrdering};
 use std::sync::Arc;
 use wkt::TryFromWkt;
 
+#[pyclass]
+#[derive(Clone)]
+struct LanduseAccess {
+    weighted_vec: MetricResult,
+    unweighted_vec: MetricResult,
+    distance_vec: MetricResult,
+}
+
+#[pymethods]
+impl LanduseAccess {
+    #[getter]
+    pub fn weighted(&self) -> HashMap<u32, Py<PyArray1<f32>>> {
+        self.weighted_vec.load()
+    }
+    #[getter]
+    pub fn unweighted(&self) -> HashMap<u32, Py<PyArray1<f32>>> {
+        self.unweighted_vec.load()
+    }
+    #[getter]
+    pub fn distance(&self) -> HashMap<u32, Py<PyArray1<f32>>> {
+        self.distance_vec.load()
+    }
+}
+
 /// Accessibility computation result.
 #[pyclass]
 pub struct AccessibilityResult {
     #[pyo3(get)]
-    weighted: HashMap<u32, Py<PyArray1<f32>>>,
+    distances: Vec<u32>,
     #[pyo3(get)]
-    unweighted: HashMap<u32, Py<PyArray1<f32>>>,
+    node_keys_py: Vec<Py<PyAny>>,
     #[pyo3(get)]
-    distance: HashMap<u32, Py<PyArray1<f32>>>,
+    node_indices: Vec<usize>,
+
+    lu_map: HashMap<String, LanduseAccess>,
+}
+
+impl AccessibilityResult {
+    pub fn new(
+        distances: Vec<u32>,
+        node_keys_py: Vec<Py<PyAny>>,
+        node_indices: Vec<usize>,
+        lu_keys: Vec<String>,
+        max_dist: u32,
+    ) -> Self {
+        let len = node_indices.len();
+        let mut lu_map = HashMap::with_capacity(lu_keys.len());
+        for lu_key in lu_keys {
+            lu_map.insert(
+                lu_key,
+                LanduseAccess {
+                    weighted_vec: MetricResult::new(&distances, len, 0.0),
+                    unweighted_vec: MetricResult::new(&distances, len, 0.0),
+                    distance_vec: MetricResult::new(&vec![max_dist], len, f32::NAN),
+                },
+            );
+        }
+        AccessibilityResult {
+            distances: distances.clone(),
+            node_keys_py: node_keys_py,
+            node_indices: node_indices.clone(),
+            lu_map,
+        }
+    }
+}
+
+#[pymethods]
+impl AccessibilityResult {
+    #[getter]
+    pub fn result(&self) -> HashMap<String, LanduseAccess> {
+        let mut result = HashMap::new();
+        for (lu_key, lu_access) in self.lu_map.iter() {
+            result.insert(lu_key.clone(), lu_access.clone());
+        }
+        result
+    }
 }
 
 /// Mixed uses computation result.
 #[pyclass]
 pub struct MixedUsesResult {
     #[pyo3(get)]
-    hill: Option<HashMap<u32, HashMap<u32, Py<PyArray1<f32>>>>>,
+    distances: Vec<u32>,
     #[pyo3(get)]
-    hill_weighted: Option<HashMap<u32, HashMap<u32, Py<PyArray1<f32>>>>>,
+    node_keys_py: Vec<Py<PyAny>>,
     #[pyo3(get)]
-    shannon: Option<HashMap<u32, Py<PyArray1<f32>>>>,
-    #[pyo3(get)]
-    gini: Option<HashMap<u32, Py<PyArray1<f32>>>>,
+    node_indices: Vec<usize>,
+
+    hill_vec: HashMap<u32, MetricResult>,
+    hill_weighted_vec: HashMap<u32, MetricResult>,
+    shannon_vec: MetricResult,
+    gini_vec: MetricResult,
+}
+
+impl MixedUsesResult {
+    pub fn new(
+        distances: Vec<u32>,
+        node_keys_py: Vec<Py<PyAny>>,
+        node_indices: Vec<usize>,
+    ) -> Self {
+        let len = node_indices.len();
+        let mut hill_vec = HashMap::new();
+        let mut hill_weighted_vec = HashMap::new();
+        for q in [0, 1, 2] {
+            hill_vec.insert(q, MetricResult::new(&distances, len, 0.0));
+            hill_weighted_vec.insert(q, MetricResult::new(&distances, len, 0.0));
+        }
+        MixedUsesResult {
+            distances: distances.clone(),
+            node_keys_py: node_keys_py,
+            node_indices: node_indices.clone(),
+            hill_vec,
+            hill_weighted_vec,
+            shannon_vec: MetricResult::new(&distances, len, 0.0),
+            gini_vec: MetricResult::new(&distances, len, 0.0),
+        }
+    }
+}
+
+#[pymethods]
+impl MixedUsesResult {
+    #[getter]
+    pub fn hill(&self) -> HashMap<u32, HashMap<u32, Py<PyArray1<f32>>>> {
+        self.hill_vec.iter().map(|(q, m)| (*q, m.load())).collect()
+    }
+    #[getter]
+    pub fn hill_weighted(&self) -> HashMap<u32, HashMap<u32, Py<PyArray1<f32>>>> {
+        self.hill_weighted_vec
+            .iter()
+            .map(|(q, m)| (*q, m.load()))
+            .collect()
+    }
+    #[getter]
+    pub fn shannon(&self) -> HashMap<u32, Py<PyArray1<f32>>> {
+        self.shannon_vec.load()
+    }
+    #[getter]
+    pub fn gini(&self) -> HashMap<u32, Py<PyArray1<f32>>> {
+        self.gini_vec.load()
+    }
+}
+
+#[pyclass]
+#[derive(Clone)]
+pub struct Stats {
+    sum_vec: MetricResult,
+    sum_wt_vec: MetricResult,
+    mean_vec: MetricResult,
+    mean_wt_vec: MetricResult,
+    count_vec: MetricResult,
+    count_wt_vec: MetricResult,
+    variance_vec: MetricResult,
+    variance_wt_vec: MetricResult,
+    max_vec: MetricResult,
+    min_vec: MetricResult,
+    sum_sq_vec: MetricResult,
+    sum_sq_wt_vec: MetricResult,
+}
+
+#[pymethods]
+impl Stats {
+    #[getter]
+    pub fn sum(&self) -> HashMap<u32, Py<PyArray1<f32>>> {
+        self.sum_vec.load()
+    }
+    #[getter]
+    pub fn sum_wt(&self) -> HashMap<u32, Py<PyArray1<f32>>> {
+        self.sum_wt_vec.load()
+    }
+    #[getter]
+    pub fn mean(&self) -> HashMap<u32, Py<PyArray1<f32>>> {
+        self.mean_vec.load()
+    }
+    #[getter]
+    pub fn mean_wt(&self) -> HashMap<u32, Py<PyArray1<f32>>> {
+        self.mean_wt_vec.load()
+    }
+    #[getter]
+    pub fn count(&self) -> HashMap<u32, Py<PyArray1<f32>>> {
+        self.count_vec.load()
+    }
+    #[getter]
+    pub fn count_wt(&self) -> HashMap<u32, Py<PyArray1<f32>>> {
+        self.count_wt_vec.load()
+    }
+    #[getter]
+    pub fn variance(&self) -> HashMap<u32, Py<PyArray1<f32>>> {
+        self.variance_vec.load()
+    }
+    #[getter]
+    pub fn variance_wt(&self) -> HashMap<u32, Py<PyArray1<f32>>> {
+        self.variance_wt_vec.load()
+    }
+    #[getter]
+    pub fn max(&self) -> HashMap<u32, Py<PyArray1<f32>>> {
+        self.max_vec.load()
+    }
+    #[getter]
+    pub fn min(&self) -> HashMap<u32, Py<PyArray1<f32>>> {
+        self.min_vec.load()
+    }
 }
 
 /// Statistics computation result.
 #[pyclass]
 pub struct StatsResult {
     #[pyo3(get)]
-    sum: HashMap<u32, Py<PyArray1<f32>>>,
+    distances: Vec<u32>,
     #[pyo3(get)]
-    sum_wt: HashMap<u32, Py<PyArray1<f32>>>,
+    node_keys_py: Vec<Py<PyAny>>,
     #[pyo3(get)]
-    mean: HashMap<u32, Py<PyArray1<f32>>>,
-    #[pyo3(get)]
-    mean_wt: HashMap<u32, Py<PyArray1<f32>>>,
-    #[pyo3(get)]
-    count: HashMap<u32, Py<PyArray1<f32>>>,
-    #[pyo3(get)]
-    count_wt: HashMap<u32, Py<PyArray1<f32>>>,
-    #[pyo3(get)]
-    variance: HashMap<u32, Py<PyArray1<f32>>>,
-    #[pyo3(get)]
-    variance_wt: HashMap<u32, Py<PyArray1<f32>>>,
-    #[pyo3(get)]
-    max: HashMap<u32, Py<PyArray1<f32>>>,
-    #[pyo3(get)]
-    min: HashMap<u32, Py<PyArray1<f32>>>,
+    node_indices: Vec<usize>,
+
+    stats_vec: Vec<Stats>,
+}
+
+impl StatsResult {
+    pub fn new(
+        distances: Vec<u32>,
+        node_keys_py: Vec<Py<PyAny>>,
+        node_indices: Vec<usize>,
+        stats_n: usize,
+    ) -> Self {
+        let len = node_indices.len();
+        let mut stats_vec = Vec::with_capacity(stats_n);
+        for _ in 0..stats_n {
+            stats_vec.push(Stats {
+                sum_vec: MetricResult::new(&distances, len, 0.0),
+                sum_wt_vec: MetricResult::new(&distances, len, 0.0),
+                mean_vec: MetricResult::new(&distances, len, f32::NAN),
+                mean_wt_vec: MetricResult::new(&distances, len, f32::NAN),
+                count_vec: MetricResult::new(&distances, len, 0.0),
+                count_wt_vec: MetricResult::new(&distances, len, 0.0),
+                variance_vec: MetricResult::new(&distances, len, f32::NAN),
+                variance_wt_vec: MetricResult::new(&distances, len, f32::NAN),
+                max_vec: MetricResult::new(&distances, len, f32::NAN),
+                min_vec: MetricResult::new(&distances, len, f32::NAN),
+                sum_sq_vec: MetricResult::new(&distances, len, 0.0),
+                sum_sq_wt_vec: MetricResult::new(&distances, len, 0.0),
+            });
+        }
+        StatsResult {
+            distances: distances.clone(),
+            node_keys_py: node_keys_py,
+            node_indices: node_indices.clone(),
+            stats_vec,
+        }
+    }
+}
+
+#[pymethods]
+impl StatsResult {
+    #[getter]
+    pub fn result(&self) -> Vec<Stats> {
+        self.stats_vec.clone()
+    }
 }
 
 struct ClassesState {
@@ -403,7 +612,7 @@ impl DataMap {
         jitter_scale: Option<f32>,
         pbar_disabled: Option<bool>,
         py: Python,
-    ) -> PyResult<HashMap<String, AccessibilityResult>> {
+    ) -> PyResult<AccessibilityResult> {
         network_structure.validate(py)?;
         let speed_m_s = speed_m_s.unwrap_or(WALKING_SPEED);
         let (distances, betas, seconds) =
@@ -435,33 +644,22 @@ impl DataMap {
 
         let spatial_tolerance = spatial_tolerance.unwrap_or(0);
         let max_curve_wts = clip_wts_curve(distances.clone(), betas.clone(), spatial_tolerance)?;
+
+        let node_keys_py = network_structure.node_keys_py(py);
+        let node_indices = network_structure.node_indices();
+
         let pbar_disabled = pbar_disabled.unwrap_or(false);
         self.progress_init();
         let result = py.allow_threads(move || -> PyResult<_> {
-            let mut metrics: HashMap<String, MetricResult> =
-                HashMap::with_capacity(accessibility_keys.len());
-            let mut metrics_wt: HashMap<String, MetricResult> =
-                HashMap::with_capacity(accessibility_keys.len());
-            let mut dists: HashMap<String, MetricResult> =
-                HashMap::with_capacity(accessibility_keys.len());
+            let res = AccessibilityResult::new(
+                distances.clone(),
+                node_keys_py,
+                node_indices.clone(),
+                accessibility_keys.clone(),
+                max_dist,
+            );
 
-            for key in &accessibility_keys {
-                metrics.insert(
-                    key.clone(),
-                    MetricResult::new(distances.clone(), network_structure.node_count(), 0.0),
-                );
-                metrics_wt.insert(
-                    key.clone(),
-                    MetricResult::new(distances.clone(), network_structure.node_count(), 0.0),
-                );
-                dists.insert(
-                    key.clone(),
-                    MetricResult::new(vec![max_dist], network_structure.node_count(), f32::NAN),
-                );
-            }
-
-            let street_node_indices = network_structure.street_node_indices();
-            street_node_indices
+            node_indices
                 .par_iter()
                 .enumerate()
                 .try_for_each(|(i, &netw_src_idx)| {
@@ -485,24 +683,25 @@ impl DataMap {
                             if !accessibility_keys.contains(lu_class) {
                                 continue;
                             }
-
                             for (i, (&d, (&b, &mcw))) in distances
                                 .iter()
                                 .zip(betas.iter().zip(max_curve_wts.iter()))
                                 .enumerate()
                             {
                                 if data_dist <= d as f32 {
-                                    metrics[lu_class].metric[i][netw_src_idx]
+                                    res.lu_map[lu_class].unweighted_vec.metric[i][netw_src_idx]
                                         .fetch_add(1.0, AtomicOrdering::Relaxed);
                                     let val_wt = clipped_beta_wt(b, mcw, data_dist).unwrap_or(0.0);
-                                    metrics_wt[lu_class].metric[i][netw_src_idx]
+                                    res.lu_map[lu_class].weighted_vec.metric[i][netw_src_idx]
                                         .fetch_add(val_wt, AtomicOrdering::Relaxed);
 
                                     if d == max_dist {
-                                        let current_dist = dists[lu_class].metric[0][netw_src_idx]
+                                        let current_dist = res.lu_map[lu_class].distance_vec.metric
+                                            [0][netw_src_idx]
                                             .load(AtomicOrdering::Relaxed);
                                         if current_dist.is_nan() || data_dist < current_dist {
-                                            dists[lu_class].metric[0][netw_src_idx]
+                                            res.lu_map[lu_class].distance_vec.metric[0]
+                                                [netw_src_idx]
                                                 .store(data_dist, AtomicOrdering::Relaxed);
                                         }
                                     }
@@ -512,18 +711,7 @@ impl DataMap {
                     }
                     Ok(())
                 })?;
-            let accessibilities = accessibility_keys
-                .into_iter()
-                .map(|key| {
-                    let result = AccessibilityResult {
-                        weighted: metrics_wt[&key].load(&street_node_indices),
-                        unweighted: metrics[&key].load(&street_node_indices),
-                        distance: dists[&key].load(&street_node_indices),
-                    };
-                    (key, result)
-                })
-                .collect();
-            Ok(accessibilities)
+            Ok(res)
         })?;
         Ok(result)
     }
@@ -600,36 +788,21 @@ impl DataMap {
         }
         let spatial_tolerance = spatial_tolerance.unwrap_or(0);
         let max_curve_wts = clip_wts_curve(distances.clone(), betas.clone(), spatial_tolerance)?;
+
+        let node_keys_py = network_structure.node_keys_py(py);
+        let node_indices = network_structure.node_indices();
+
         let pbar_disabled = pbar_disabled.unwrap_or(false);
         self.progress_init();
         let result = py.allow_threads(move || -> PyResult<_> {
-            let hill_mu: HashMap<u32, MetricResult> = [0, 1, 2]
-                .iter()
-                .map(|&q| {
-                    (
-                        q,
-                        MetricResult::new(distances.clone(), network_structure.node_count(), 0.0),
-                    )
-                })
-                .collect();
-            let hill_wt_mu: HashMap<u32, MetricResult> = [0, 1, 2]
-                .iter()
-                .map(|&q| {
-                    (
-                        q,
-                        MetricResult::new(distances.clone(), network_structure.node_count(), 0.0),
-                    )
-                })
-                .collect();
-            let shannon_mu =
-                MetricResult::new(distances.clone(), network_structure.node_count(), 0.0);
-            let gini_mu = MetricResult::new(distances.clone(), network_structure.node_count(), 0.0);
+            let res = MixedUsesResult::new(distances.clone(), node_keys_py, node_indices.clone());
+
             let mut classes_uniq: HashSet<String> = HashSet::new();
             for cl_code in lu_map.values() {
                 classes_uniq.insert(cl_code.clone());
             }
-            let street_node_indices = network_structure.street_node_indices();
-            street_node_indices
+
+            node_indices
                 .par_iter()
                 .enumerate()
                 .try_for_each(|(i, &netw_src_idx)| {
@@ -692,21 +865,21 @@ impl DataMap {
                             nearest.push(classes_state.nearest);
                         }
                         if compute_hill {
-                            hill_mu[&0].metric[i][netw_src_idx].fetch_add(
+                            res.hill_vec[&0].metric[i][netw_src_idx].fetch_add(
                                 diversity::hill_diversity(counts.clone(), 0.0).unwrap_or(0.0),
                                 AtomicOrdering::Relaxed,
                             );
-                            hill_mu[&1].metric[i][netw_src_idx].fetch_add(
+                            res.hill_vec[&1].metric[i][netw_src_idx].fetch_add(
                                 diversity::hill_diversity(counts.clone(), 1.0).unwrap_or(0.0),
                                 AtomicOrdering::Relaxed,
                             );
-                            hill_mu[&2].metric[i][netw_src_idx].fetch_add(
+                            res.hill_vec[&2].metric[i][netw_src_idx].fetch_add(
                                 diversity::hill_diversity(counts.clone(), 2.0).unwrap_or(0.0),
                                 AtomicOrdering::Relaxed,
                             );
                         }
                         if compute_hill_weighted {
-                            hill_wt_mu[&0].metric[i][netw_src_idx].fetch_add(
+                            res.hill_weighted_vec[&0].metric[i][netw_src_idx].fetch_add(
                                 diversity::hill_diversity_branch_distance_wt(
                                     counts.clone(),
                                     nearest.clone(),
@@ -717,7 +890,7 @@ impl DataMap {
                                 .unwrap_or(0.0),
                                 AtomicOrdering::Relaxed,
                             );
-                            hill_wt_mu[&1].metric[i][netw_src_idx].fetch_add(
+                            res.hill_weighted_vec[&1].metric[i][netw_src_idx].fetch_add(
                                 diversity::hill_diversity_branch_distance_wt(
                                     counts.clone(),
                                     nearest.clone(),
@@ -728,7 +901,7 @@ impl DataMap {
                                 .unwrap_or(0.0),
                                 AtomicOrdering::Relaxed,
                             );
-                            hill_wt_mu[&2].metric[i][netw_src_idx].fetch_add(
+                            res.hill_weighted_vec[&2].metric[i][netw_src_idx].fetch_add(
                                 diversity::hill_diversity_branch_distance_wt(
                                     counts.clone(),
                                     nearest.clone(),
@@ -741,13 +914,13 @@ impl DataMap {
                             );
                         }
                         if compute_shannon {
-                            shannon_mu.metric[i][netw_src_idx].fetch_add(
+                            res.shannon_vec.metric[i][netw_src_idx].fetch_add(
                                 diversity::shannon_diversity(counts.clone()).unwrap_or(0.0),
                                 AtomicOrdering::Relaxed,
                             );
                         }
                         if compute_gini {
-                            gini_mu.metric[i][netw_src_idx].fetch_add(
+                            res.gini_vec.metric[i][netw_src_idx].fetch_add(
                                 diversity::gini_simpson_diversity(counts.clone()).unwrap_or(0.0),
                                 AtomicOrdering::Relaxed,
                             );
@@ -755,38 +928,7 @@ impl DataMap {
                     }
                     Ok(())
                 })?;
-            let mut hill_result = None;
-            if compute_hill {
-                let hr = [0, 1, 2]
-                    .iter()
-                    .map(|&q_key| (q_key, hill_mu[&q_key].load(&street_node_indices)))
-                    .collect();
-                hill_result = Some(hr);
-            }
-            let mut hill_weighted_result = None;
-            if compute_hill_weighted {
-                let hr = [0, 1, 2]
-                    .iter()
-                    .map(|&q_key| (q_key, hill_wt_mu[&q_key].load(&street_node_indices)))
-                    .collect();
-                hill_weighted_result = Some(hr);
-            }
-            let shannon_result = if compute_shannon {
-                Some(shannon_mu.load(&street_node_indices))
-            } else {
-                None
-            };
-            let gini_result = if compute_gini {
-                Some(gini_mu.load(&street_node_indices))
-            } else {
-                None
-            };
-            Ok(MixedUsesResult {
-                hill: hill_result,
-                hill_weighted: hill_weighted_result,
-                shannon: shannon_result,
-                gini: gini_result,
-            })
+            Ok(res)
         })?;
         Ok(result)
     }
@@ -818,7 +960,7 @@ impl DataMap {
         jitter_scale: Option<f32>,
         pbar_disabled: Option<bool>,
         py: Python,
-    ) -> PyResult<Vec<StatsResult>> {
+    ) -> PyResult<StatsResult> {
         network_structure.validate(py)?;
         let speed_m_s = speed_m_s.unwrap_or(WALKING_SPEED);
         let (distances, betas, seconds) =
@@ -829,10 +971,11 @@ impl DataMap {
             let numerical_map = numerical_map.bind(py).downcast::<PyDict>()?;
             if numerical_map.len() != self.count() {
                 return Err(exceptions::PyValueError::new_err(
-                    "The number of landuse encodings must match the number of data points",
+                    "The number of numeric data points must match the number of data points",
                 ));
             }
             let mut num_map: HashMap<String, f32> = HashMap::with_capacity(self.count());
+            // ToDo check order?
             for (py_key, py_val) in numerical_map.iter() {
                 let py_key = py_key.downcast::<PyAny>()?;
                 let comp_key = py_key_to_composite(py_key.clone())?;
@@ -850,64 +993,21 @@ impl DataMap {
 
         let spatial_tolerance = spatial_tolerance.unwrap_or(0);
         let max_curve_wts = clip_wts_curve(distances.clone(), betas.clone(), spatial_tolerance)?;
+
+        let node_keys_py = network_structure.node_keys_py(py);
+        let node_indices = network_structure.node_indices();
+
         let pbar_disabled = pbar_disabled.unwrap_or(false);
         self.progress_init();
         let result = py.allow_threads(move || -> PyResult<_> {
-            let mut sum = Vec::new();
-            let mut sum_wt = Vec::new();
-            let mut count = Vec::new();
-            let mut count_wt = Vec::new();
-            let mut max = Vec::new();
-            let mut min = Vec::new();
-            let mut sum_sq = Vec::new();
-            let mut sum_sq_wt = Vec::new();
+            let res = StatsResult::new(
+                distances.clone(),
+                node_keys_py,
+                node_indices.clone(),
+                num_maps.len(),
+            );
 
-            for _ in 0..num_maps.len() {
-                sum.push(MetricResult::new(
-                    distances.clone(),
-                    network_structure.node_count(),
-                    0.0,
-                ));
-                sum_wt.push(MetricResult::new(
-                    distances.clone(),
-                    network_structure.node_count(),
-                    0.0,
-                ));
-                count.push(MetricResult::new(
-                    distances.clone(),
-                    network_structure.node_count(),
-                    0.0,
-                ));
-                count_wt.push(MetricResult::new(
-                    distances.clone(),
-                    network_structure.node_count(),
-                    0.0,
-                ));
-                // Initialize max/min with NaN to correctly handle the first value
-                max.push(MetricResult::new(
-                    distances.clone(),
-                    network_structure.node_count(),
-                    f32::NAN,
-                ));
-                min.push(MetricResult::new(
-                    distances.clone(),
-                    network_structure.node_count(),
-                    f32::NAN,
-                ));
-                sum_sq.push(MetricResult::new(
-                    distances.clone(),
-                    network_structure.node_count(),
-                    0.0,
-                ));
-                sum_sq_wt.push(MetricResult::new(
-                    distances.clone(),
-                    network_structure.node_count(),
-                    0.0,
-                ));
-            }
-
-            let street_node_indices = network_structure.street_node_indices();
-            street_node_indices
+            node_indices
                 .par_iter()
                 .enumerate()
                 .try_for_each(|(i, &netw_src_idx)| {
@@ -942,24 +1042,25 @@ impl DataMap {
                                         let wt = clipped_beta_wt(b, mcw, *data_dist).unwrap_or(0.0);
                                         let num_wt = num * wt;
                                         // --- Accumulate sums and counts ---
-                                        sum[map_idx].metric[i][netw_src_idx]
+                                        res.stats_vec[map_idx].sum_vec.metric[i][netw_src_idx]
                                             .fetch_add(num, AtomicOrdering::Relaxed);
-                                        sum_wt[map_idx].metric[i][netw_src_idx]
+                                        res.stats_vec[map_idx].sum_wt_vec.metric[i][netw_src_idx]
                                             .fetch_add(num_wt, AtomicOrdering::Relaxed);
-                                        count[map_idx].metric[i][netw_src_idx]
+                                        res.stats_vec[map_idx].count_vec.metric[i][netw_src_idx]
                                             .fetch_add(1.0, AtomicOrdering::Relaxed);
-                                        count_wt[map_idx].metric[i][netw_src_idx]
+                                        res.stats_vec[map_idx].count_wt_vec.metric[i][netw_src_idx]
                                             .fetch_add(wt, AtomicOrdering::Relaxed);
-                                        sum_sq[map_idx].metric[i][netw_src_idx]
+                                        res.stats_vec[map_idx].sum_sq_vec.metric[i][netw_src_idx]
                                             .fetch_add(num * num, AtomicOrdering::Relaxed);
-                                        sum_sq_wt[map_idx].metric[i][netw_src_idx]
+                                        res.stats_vec[map_idx].sum_sq_wt_vec.metric[i]
+                                            [netw_src_idx]
                                             .fetch_add(wt * num * num, AtomicOrdering::Relaxed);
                                         // --- Atomically update max and min ---
                                         // Assumes MetricResult uses atomic_float::AtomicF32 internally
                                         // which provides fetch_max/fetch_min that handle NaN correctly.
-                                        max[map_idx].metric[i][netw_src_idx]
+                                        res.stats_vec[map_idx].max_vec.metric[i][netw_src_idx]
                                             .fetch_max(num, AtomicOrdering::Relaxed);
-                                        min[map_idx].metric[i][netw_src_idx]
+                                        res.stats_vec[map_idx].min_vec.metric[i][netw_src_idx]
                                             .fetch_min(num, AtomicOrdering::Relaxed);
                                     }
                                 }
@@ -969,30 +1070,23 @@ impl DataMap {
                     Ok(())
                 })?;
             // --- Post-processing (Mean, Variance) ---
-            let mut results = Vec::with_capacity(num_maps.len());
-            for map_idx in 0..num_maps.len() {
-                let mean_res =
-                    MetricResult::new(distances.clone(), network_structure.node_count(), f32::NAN);
-                let mean_wt_res =
-                    MetricResult::new(distances.clone(), network_structure.node_count(), f32::NAN);
-                let variance_res =
-                    MetricResult::new(distances.clone(), network_structure.node_count(), f32::NAN);
-                let variance_wt_res =
-                    MetricResult::new(distances.clone(), network_structure.node_count(), f32::NAN);
-                for node_idx in street_node_indices.iter() {
+            for stats_idx in 0..res.stats_vec.len() {
+                for node_idx in res.node_indices.iter() {
                     for (i, _) in distances.iter().enumerate() {
-                        let sum_val =
-                            sum[map_idx].metric[i][*node_idx].load(AtomicOrdering::Relaxed);
-                        let count_val =
-                            count[map_idx].metric[i][*node_idx].load(AtomicOrdering::Relaxed);
-                        let sum_wt_val =
-                            sum_wt[map_idx].metric[i][*node_idx].load(AtomicOrdering::Relaxed);
-                        let count_wt_val =
-                            count_wt[map_idx].metric[i][*node_idx].load(AtomicOrdering::Relaxed);
-                        let sum_sq_val =
-                            sum_sq[map_idx].metric[i][*node_idx].load(AtomicOrdering::Relaxed);
-                        let sum_sq_wt_val =
-                            sum_sq_wt[map_idx].metric[i][*node_idx].load(AtomicOrdering::Relaxed);
+                        let sum_val = res.stats_vec[stats_idx].sum_vec.metric[i][*node_idx]
+                            .load(AtomicOrdering::Relaxed);
+                        let sum_wt_val = res.stats_vec[stats_idx].sum_wt_vec.metric[i][*node_idx]
+                            .load(AtomicOrdering::Relaxed);
+                        let count_val = res.stats_vec[stats_idx].count_vec.metric[i][*node_idx]
+                            .load(AtomicOrdering::Relaxed);
+                        let count_wt_val = res.stats_vec[stats_idx].count_wt_vec.metric[i]
+                            [*node_idx]
+                            .load(AtomicOrdering::Relaxed);
+                        let sum_sq_val = res.stats_vec[stats_idx].sum_sq_vec.metric[i][*node_idx]
+                            .load(AtomicOrdering::Relaxed);
+                        let sum_sq_wt_val = res.stats_vec[stats_idx].sum_sq_wt_vec.metric[i]
+                            [*node_idx]
+                            .load(AtomicOrdering::Relaxed);
 
                         // Calculate Mean
                         let mean_val = if count_val > 0.0 {
@@ -1022,30 +1116,18 @@ impl DataMap {
                         };
 
                         // Store results (using relaxed ordering as this is post-parallel processing)
-                        mean_res.metric[i][*node_idx].store(mean_val, AtomicOrdering::Relaxed);
-                        mean_wt_res.metric[i][*node_idx]
+                        res.stats_vec[stats_idx].mean_vec.metric[i][*node_idx]
+                            .store(mean_val, AtomicOrdering::Relaxed);
+                        res.stats_vec[stats_idx].mean_wt_vec.metric[i][*node_idx]
                             .store(mean_wt_val, AtomicOrdering::Relaxed);
-                        variance_res.metric[i][*node_idx]
+                        res.stats_vec[stats_idx].variance_vec.metric[i][*node_idx]
                             .store(variance_val, AtomicOrdering::Relaxed);
-                        variance_wt_res.metric[i][*node_idx]
+                        res.stats_vec[stats_idx].variance_wt_vec.metric[i][*node_idx]
                             .store(variance_wt_val, AtomicOrdering::Relaxed);
                     }
                 }
-                // --- Assemble final result struct ---
-                results.push(StatsResult {
-                    sum: sum[map_idx].load(&street_node_indices),
-                    sum_wt: sum_wt[map_idx].load(&street_node_indices),
-                    mean: mean_res.load(&street_node_indices),
-                    mean_wt: mean_wt_res.load(&street_node_indices),
-                    count: count[map_idx].load(&street_node_indices),
-                    count_wt: count_wt[map_idx].load(&street_node_indices),
-                    variance: variance_res.load(&street_node_indices),
-                    variance_wt: variance_wt_res.load(&street_node_indices),
-                    max: max[map_idx].load(&street_node_indices),
-                    min: min[map_idx].load(&street_node_indices),
-                });
             }
-            Ok(results)
+            Ok(res)
         })?;
         Ok(result)
     }

@@ -1,4 +1,6 @@
 use crate::common;
+use atomic_float::AtomicF32;
+
 use crate::common::MetricResult;
 use crate::common::{PROGRESS_UPDATE_INTERVAL, WALKING_SPEED};
 use crate::graph::{EdgeVisit, NetworkStructure, NodeVisit};
@@ -22,43 +24,184 @@ const FULL_CIRCLE_DEGREES: f32 = 360.0;
 #[pyclass]
 pub struct CentralityShortestResult {
     #[pyo3(get)]
-    node_density: Option<HashMap<u32, Py<PyArray1<f32>>>>,
+    distances: Vec<u32>,
     #[pyo3(get)]
-    node_farness: Option<HashMap<u32, Py<PyArray1<f32>>>>,
+    node_keys_py: Vec<Py<PyAny>>,
     #[pyo3(get)]
-    node_cycles: Option<HashMap<u32, Py<PyArray1<f32>>>>,
-    #[pyo3(get)]
-    node_harmonic: Option<HashMap<u32, Py<PyArray1<f32>>>>,
-    #[pyo3(get)]
-    node_beta: Option<HashMap<u32, Py<PyArray1<f32>>>>,
-    #[pyo3(get)]
-    node_betweenness: Option<HashMap<u32, Py<PyArray1<f32>>>>,
-    #[pyo3(get)]
-    node_betweenness_beta: Option<HashMap<u32, Py<PyArray1<f32>>>>,
+    node_indices: Vec<usize>,
+
+    node_density_vec: MetricResult,
+    node_farness_vec: MetricResult,
+    node_cycles_vec: MetricResult,
+    node_harmonic_vec: MetricResult,
+    node_beta_vec: MetricResult,
+    node_betweenness_vec: MetricResult,
+    node_betweenness_beta_vec: MetricResult,
+}
+
+impl CentralityShortestResult {
+    pub fn new(
+        distances: Vec<u32>,
+        node_keys_py: Vec<Py<PyAny>>,
+        node_indices: Vec<usize>,
+        init_val: f32,
+    ) -> Self {
+        let len = node_indices.len();
+        CentralityShortestResult {
+            distances: distances.clone(),
+            node_keys_py: node_keys_py,
+            node_indices: node_indices.clone(),
+            node_density_vec: MetricResult::new(&distances, len, init_val),
+            node_farness_vec: MetricResult::new(&distances, len, init_val),
+            node_cycles_vec: MetricResult::new(&distances, len, init_val),
+            node_harmonic_vec: MetricResult::new(&distances, len, init_val),
+            node_beta_vec: MetricResult::new(&distances, len, init_val),
+            node_betweenness_vec: MetricResult::new(&distances, len, init_val),
+            node_betweenness_beta_vec: MetricResult::new(&distances, len, init_val),
+        }
+    }
+}
+
+#[pymethods]
+impl CentralityShortestResult {
+    #[getter]
+    pub fn node_density(&self) -> HashMap<u32, Py<PyArray1<f32>>> {
+        self.node_density_vec.load()
+    }
+    #[getter]
+    pub fn node_farness(&self) -> HashMap<u32, Py<PyArray1<f32>>> {
+        self.node_farness_vec.load()
+    }
+    #[getter]
+    pub fn node_cycles(&self) -> HashMap<u32, Py<PyArray1<f32>>> {
+        self.node_cycles_vec.load()
+    }
+    #[getter]
+    pub fn node_harmonic(&self) -> HashMap<u32, Py<PyArray1<f32>>> {
+        self.node_harmonic_vec.load()
+    }
+    #[getter]
+    pub fn node_beta(&self) -> HashMap<u32, Py<PyArray1<f32>>> {
+        self.node_beta_vec.load()
+    }
+    #[getter]
+    pub fn node_betweenness(&self) -> HashMap<u32, Py<PyArray1<f32>>> {
+        self.node_betweenness_vec.load()
+    }
+    #[getter]
+    pub fn node_betweenness_beta(&self) -> HashMap<u32, Py<PyArray1<f32>>> {
+        self.node_betweenness_beta_vec.load()
+    }
 }
 
 #[pyclass]
 pub struct CentralitySimplestResult {
     #[pyo3(get)]
-    node_density: Option<HashMap<u32, Py<PyArray1<f32>>>>,
+    distances: Vec<u32>,
     #[pyo3(get)]
-    node_farness: Option<HashMap<u32, Py<PyArray1<f32>>>>,
+    node_keys_py: Vec<Py<PyAny>>,
     #[pyo3(get)]
-    node_harmonic: Option<HashMap<u32, Py<PyArray1<f32>>>>,
-    #[pyo3(get)]
-    node_betweenness: Option<HashMap<u32, Py<PyArray1<f32>>>>,
+    node_indices: Vec<usize>,
+
+    node_density_vec: MetricResult,
+    node_farness_vec: MetricResult,
+    node_harmonic_vec: MetricResult,
+    node_betweenness_vec: MetricResult,
+}
+
+impl CentralitySimplestResult {
+    pub fn new(
+        distances: Vec<u32>,
+        node_keys_py: Vec<Py<PyAny>>,
+        node_indices: Vec<usize>,
+        init_val: f32,
+    ) -> Self {
+        let len = node_indices.len();
+        CentralitySimplestResult {
+            distances: distances.clone(),
+            node_keys_py: node_keys_py,
+            node_indices: node_indices.clone(),
+            node_density_vec: MetricResult::new(&distances, len, init_val),
+            node_farness_vec: MetricResult::new(&distances, len, init_val),
+            node_harmonic_vec: MetricResult::new(&distances, len, init_val),
+            node_betweenness_vec: MetricResult::new(&distances, len, init_val),
+        }
+    }
+}
+
+#[pymethods]
+impl CentralitySimplestResult {
+    #[getter]
+    pub fn node_density(&self) -> HashMap<u32, Py<PyArray1<f32>>> {
+        self.node_density_vec.load()
+    }
+    #[getter]
+    pub fn node_farness(&self) -> HashMap<u32, Py<PyArray1<f32>>> {
+        self.node_farness_vec.load()
+    }
+    #[getter]
+    pub fn node_harmonic(&self) -> HashMap<u32, Py<PyArray1<f32>>> {
+        self.node_harmonic_vec.load()
+    }
+    #[getter]
+    pub fn node_betweenness(&self) -> HashMap<u32, Py<PyArray1<f32>>> {
+        self.node_betweenness_vec.load()
+    }
 }
 
 #[pyclass]
 pub struct CentralitySegmentResult {
     #[pyo3(get)]
-    segment_density: Option<HashMap<u32, Py<PyArray1<f32>>>>,
+    distances: Vec<u32>,
     #[pyo3(get)]
-    segment_harmonic: Option<HashMap<u32, Py<PyArray1<f32>>>>,
+    node_keys_py: Vec<Py<PyAny>>,
     #[pyo3(get)]
-    segment_beta: Option<HashMap<u32, Py<PyArray1<f32>>>>,
-    #[pyo3(get)]
-    segment_betweenness: Option<HashMap<u32, Py<PyArray1<f32>>>>,
+    node_indices: Vec<usize>,
+
+    segment_density_vec: MetricResult,
+    segment_harmonic_vec: MetricResult,
+    segment_beta_vec: MetricResult,
+    segment_betweenness_vec: MetricResult,
+}
+
+impl CentralitySegmentResult {
+    pub fn new(
+        distances: Vec<u32>,
+        node_keys_py: Vec<Py<PyAny>>,
+        node_indices: Vec<usize>,
+        init_val: f32,
+    ) -> Self {
+        let len = node_indices.len();
+        CentralitySegmentResult {
+            distances: distances.clone(),
+            node_keys_py: node_keys_py,
+            node_indices: node_indices.clone(),
+            segment_density_vec: MetricResult::new(&distances, len, init_val),
+            segment_harmonic_vec: MetricResult::new(&distances, len, init_val),
+            segment_beta_vec: MetricResult::new(&distances, len, init_val),
+            segment_betweenness_vec: MetricResult::new(&distances, len, init_val),
+        }
+    }
+}
+
+#[pymethods]
+impl CentralitySegmentResult {
+    #[getter]
+    pub fn segment_density(&self) -> HashMap<u32, Py<PyArray1<f32>>> {
+        self.segment_density_vec.load()
+    }
+    #[getter]
+    pub fn segment_harmonic(&self) -> HashMap<u32, Py<PyArray1<f32>>> {
+        self.segment_harmonic_vec.load()
+    }
+    #[getter]
+    pub fn segment_beta(&self) -> HashMap<u32, Py<PyArray1<f32>>> {
+        self.segment_beta_vec.load()
+    }
+    #[getter]
+    pub fn segment_betweenness(&self) -> HashMap<u32, Py<PyArray1<f32>>> {
+        self.segment_betweenness_vec.load()
+    }
 }
 
 // NodeDistance for heap
@@ -392,19 +535,15 @@ impl NetworkStructure {
         ));
         }
 
+        let node_keys_py = self.node_keys_py(py);
+        let node_indices = self.node_indices();
+
         let pbar_disabled = pbar_disabled.unwrap_or(false);
         self.progress_init();
         let result = py.allow_threads(move || {
-            let node_density = MetricResult::new(distances.clone(), self.node_count(), 0.0);
-            let node_farness = MetricResult::new(distances.clone(), self.node_count(), 0.0);
-            let node_cycles = MetricResult::new(distances.clone(), self.node_count(), 0.0);
-            let node_harmonic = MetricResult::new(distances.clone(), self.node_count(), 0.0);
-            let node_beta = MetricResult::new(distances.clone(), self.node_count(), 0.0);
-            let node_betweenness = MetricResult::new(distances.clone(), self.node_count(), 0.0);
-            let node_betweenness_beta =
-                MetricResult::new(distances.clone(), self.node_count(), 0.0);
-            let street_node_indices: Vec<usize> = self.street_node_indices();
-            street_node_indices
+            let res =
+                CentralityShortestResult::new(distances.clone(), node_keys_py, node_indices, 0.0);
+            res.node_indices
                 .par_iter()
                 .enumerate()
                 .for_each(|(i, src_idx)| {
@@ -437,19 +576,19 @@ impl NetworkStructure {
                                 let distance = distances[i];
                                 let beta = betas[i];
                                 if node_visit.short_dist <= distance as f32 {
-                                    node_density.metric[i][*src_idx]
+                                    res.node_density_vec.metric[i][*src_idx]
                                         .fetch_add(wt, AtomicOrdering::Relaxed);
-                                    node_farness.metric[i][*src_idx].fetch_add(
+                                    res.node_farness_vec.metric[i][*src_idx].fetch_add(
                                         node_visit.short_dist * wt,
                                         AtomicOrdering::Relaxed,
                                     );
-                                    node_cycles.metric[i][*src_idx]
+                                    res.node_cycles_vec.metric[i][*src_idx]
                                         .fetch_add(node_visit.cycles * wt, AtomicOrdering::Relaxed);
-                                    node_harmonic.metric[i][*src_idx].fetch_add(
+                                    res.node_harmonic_vec.metric[i][*src_idx].fetch_add(
                                         (1.0 / node_visit.short_dist) * wt,
                                         AtomicOrdering::Relaxed,
                                     );
-                                    node_beta.metric[i][*src_idx].fetch_add(
+                                    res.node_beta_vec.metric[i][*src_idx].fetch_add(
                                         (-beta * node_visit.short_dist).exp() * wt,
                                         AtomicOrdering::Relaxed,
                                     );
@@ -470,10 +609,10 @@ impl NetworkStructure {
                                     let distance = distances[i];
                                     let beta = betas[i];
                                     if node_visit_short_dist <= distance as f32 {
-                                        node_betweenness.metric[i][inter_idx]
+                                        res.node_betweenness_vec.metric[i][inter_idx]
                                             .fetch_add(wt, AtomicOrdering::Acquire);
                                         let exp_val = (-beta * node_visit_short_dist).exp();
-                                        node_betweenness_beta.metric[i][inter_idx]
+                                        res.node_betweenness_beta_vec.metric[i][inter_idx]
                                             .fetch_add(exp_val * wt, AtomicOrdering::Acquire);
                                     }
                                 }
@@ -482,43 +621,7 @@ impl NetworkStructure {
                         }
                     }
                 });
-            CentralityShortestResult {
-                node_density: if compute_closeness {
-                    Some(node_density.load(&street_node_indices)) // Pass indices
-                } else {
-                    None
-                },
-                node_farness: if compute_closeness {
-                    Some(node_farness.load(&street_node_indices)) // Pass indices
-                } else {
-                    None
-                },
-                node_cycles: if compute_closeness {
-                    Some(node_cycles.load(&street_node_indices)) // Pass indices
-                } else {
-                    None
-                },
-                node_harmonic: if compute_closeness {
-                    Some(node_harmonic.load(&street_node_indices)) // Pass indices
-                } else {
-                    None
-                },
-                node_beta: if compute_closeness {
-                    Some(node_beta.load(&street_node_indices)) // Pass indices
-                } else {
-                    None
-                },
-                node_betweenness: if compute_betweenness {
-                    Some(node_betweenness.load(&street_node_indices)) // Pass indices
-                } else {
-                    None
-                },
-                node_betweenness_beta: if compute_betweenness {
-                    Some(node_betweenness_beta.load(&street_node_indices)) // Pass indices
-                } else {
-                    None
-                },
-            }
+            res
         });
         Ok(result)
     }
@@ -574,15 +677,15 @@ impl NetworkStructure {
         let angular_scaling_unit = angular_scaling_unit.unwrap_or(HALF_CIRCLE_DEGREES);
         let farness_scaling_offset = farness_scaling_offset.unwrap_or(1.0);
 
+        let node_keys_py = self.node_keys_py(py);
+        let node_indices = self.node_indices();
+
         let pbar_disabled = pbar_disabled.unwrap_or(false);
         self.progress_init();
         let result = py.allow_threads(move || {
-            let node_density = MetricResult::new(distances.clone(), self.node_count(), 0.0);
-            let node_farness = MetricResult::new(distances.clone(), self.node_count(), 0.0);
-            let node_harmonic = MetricResult::new(distances.clone(), self.node_count(), 0.0);
-            let node_betweenness = MetricResult::new(distances.clone(), self.node_count(), 0.0);
-            let street_node_indices: Vec<usize> = self.street_node_indices();
-            street_node_indices
+            let res =
+                CentralitySimplestResult::new(distances.clone(), node_keys_py, node_indices, 0.0);
+            res.node_indices
                 .par_iter()
                 .enumerate()
                 .for_each(|(i, src_idx)| {
@@ -614,15 +717,15 @@ impl NetworkStructure {
                             for i in 0..seconds.len() {
                                 let sec = seconds[i];
                                 if node_visit.agg_seconds <= sec as f32 {
-                                    node_density.metric[i][*src_idx]
+                                    res.node_density_vec.metric[i][*src_idx]
                                         .fetch_add(wt, AtomicOrdering::Relaxed);
                                     let far_ang = farness_scaling_offset
                                         + (node_visit.simpl_dist / angular_scaling_unit);
-                                    node_farness.metric[i][*src_idx]
+                                    res.node_farness_vec.metric[i][*src_idx]
                                         .fetch_add(far_ang * wt, AtomicOrdering::Relaxed);
                                     let harm_ang =
                                         1.0 + (node_visit.simpl_dist / angular_scaling_unit);
-                                    node_harmonic.metric[i][*src_idx]
+                                    res.node_harmonic_vec.metric[i][*src_idx]
                                         .fetch_add((1.0 / harm_ang) * wt, AtomicOrdering::Relaxed);
                                 }
                             }
@@ -639,7 +742,7 @@ impl NetworkStructure {
                                 for i in 0..seconds.len() {
                                     let sec = seconds[i];
                                     if node_visit.agg_seconds <= sec as f32 {
-                                        node_betweenness.metric[i][inter_idx]
+                                        res.node_betweenness_vec.metric[i][inter_idx]
                                             .fetch_add(wt, AtomicOrdering::Acquire);
                                     }
                                 }
@@ -648,28 +751,7 @@ impl NetworkStructure {
                         }
                     }
                 });
-            CentralitySimplestResult {
-                node_density: if compute_closeness {
-                    Some(node_density.load(&street_node_indices)) // Pass indices
-                } else {
-                    None
-                },
-                node_farness: if compute_closeness {
-                    Some(node_farness.load(&street_node_indices)) // Pass indices
-                } else {
-                    None
-                },
-                node_harmonic: if compute_closeness {
-                    Some(node_harmonic.load(&street_node_indices)) // Pass indices
-                } else {
-                    None
-                },
-                node_betweenness: if compute_betweenness {
-                    Some(node_betweenness.load(&street_node_indices)) // Pass indices
-                } else {
-                    None
-                },
-            }
+            res
         });
         Ok(result)
     }
@@ -719,15 +801,16 @@ impl NetworkStructure {
         ));
         }
 
+        let node_keys_py = self.node_keys_py(py);
+        let node_indices = self.node_indices();
+
         let pbar_disabled = pbar_disabled.unwrap_or(false);
         self.progress_init();
         let result = py.allow_threads(move || {
-            let segment_density = MetricResult::new(distances.clone(), self.node_count(), 0.0);
-            let segment_harmonic = MetricResult::new(distances.clone(), self.node_count(), 0.0);
-            let segment_beta = MetricResult::new(distances.clone(), self.node_count(), 0.0);
-            let segment_betweenness = MetricResult::new(distances.clone(), self.node_count(), 0.0);
-            let street_node_indices: Vec<usize> = self.street_node_indices();
-            street_node_indices
+            let res =
+                CentralitySegmentResult::new(distances.clone(), node_keys_py, node_indices, 0.0);
+
+            res.node_indices
                 .par_iter()
                 .enumerate()
                 .for_each(|(i, src_idx)| {
@@ -797,7 +880,7 @@ impl NetworkStructure {
                                         current_c = distance_f32;
                                         current_c_imp = a_imp + (distance_f32 - a) * imp_factor;
                                     }
-                                    segment_density.metric[i][*src_idx]
+                                    res.segment_density_vec.metric[i][*src_idx]
                                         .fetch_add(current_c - a, AtomicOrdering::Relaxed);
 
                                     let seg_harm = if a_imp < 1.0 {
@@ -805,7 +888,7 @@ impl NetworkStructure {
                                     } else {
                                         (current_c_imp / a_imp).max(f32::EPSILON).ln()
                                     };
-                                    segment_harmonic.metric[i][*src_idx]
+                                    res.segment_harmonic_vec.metric[i][*src_idx]
                                         .fetch_add(seg_harm, AtomicOrdering::Relaxed);
 
                                     let bet = if beta == 0.0 {
@@ -815,7 +898,7 @@ impl NetworkStructure {
                                             - (neg_beta * a_imp).exp())
                                             * inv_neg_beta
                                     };
-                                    segment_beta.metric[i][*src_idx]
+                                    res.segment_beta_vec.metric[i][*src_idx]
                                         .fetch_add(bet, AtomicOrdering::Relaxed);
                                 }
 
@@ -830,7 +913,7 @@ impl NetworkStructure {
                                         current_d = distance_f32;
                                         current_d_imp = b_imp + (distance_f32 - b) * imp_factor;
                                     }
-                                    segment_density.metric[i][*src_idx]
+                                    res.segment_density_vec.metric[i][*src_idx]
                                         .fetch_add(current_d - b, AtomicOrdering::Relaxed);
 
                                     let seg_harm = if b_imp < 1.0 {
@@ -838,7 +921,7 @@ impl NetworkStructure {
                                     } else {
                                         (current_d_imp / b_imp).max(f32::EPSILON).ln()
                                     };
-                                    segment_harmonic.metric[i][*src_idx]
+                                    res.segment_harmonic_vec.metric[i][*src_idx]
                                         .fetch_add(seg_harm, AtomicOrdering::Relaxed);
 
                                     let bet = if beta == 0.0 {
@@ -848,12 +931,13 @@ impl NetworkStructure {
                                             - (neg_beta * b_imp).exp())
                                             * inv_neg_beta
                                     };
-                                    segment_beta.metric[i][*src_idx]
+                                    res.segment_beta_vec.metric[i][*src_idx]
                                         .fetch_add(bet, AtomicOrdering::Relaxed);
                                 }
                             }
                         }
                     }
+
                     if compute_betweenness {
                         for to_idx in visited_nodes.iter() {
                             if to_idx <= src_idx {
@@ -936,7 +1020,7 @@ impl NetworkStructure {
                                         };
 
                                         if auc.is_finite() && auc >= 0.0 {
-                                            segment_betweenness.metric[i][inter_idx]
+                                            res.segment_betweenness_vec.metric[i][inter_idx]
                                                 .fetch_add(auc, AtomicOrdering::Acquire);
                                         }
                                     }
@@ -946,28 +1030,7 @@ impl NetworkStructure {
                         }
                     }
                 });
-            CentralitySegmentResult {
-                segment_density: if compute_closeness {
-                    Some(segment_density.load(&street_node_indices)) // Pass indices
-                } else {
-                    None
-                },
-                segment_harmonic: if compute_closeness {
-                    Some(segment_harmonic.load(&street_node_indices)) // Pass indices
-                } else {
-                    None
-                },
-                segment_beta: if compute_closeness {
-                    Some(segment_beta.load(&street_node_indices)) // Pass indices
-                } else {
-                    None
-                },
-                segment_betweenness: if compute_betweenness {
-                    Some(segment_betweenness.load(&street_node_indices)) // Pass indices
-                } else {
-                    None
-                },
-            }
+            res
         });
         Ok(result)
     }

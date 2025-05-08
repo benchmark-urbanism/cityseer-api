@@ -96,7 +96,7 @@ def test_compute_accessibilities(primal_graph):
                         acc_data_key_nw = config.prep_gdf_key(acc_key, dist_key, angular, weighted=False)
                         assert np.allclose(
                             nodes_gdf[acc_data_key_nw].values,  # type: ignore
-                            accessibility_data[acc_key].unweighted[dist_key],
+                            accessibility_data.result[acc_key].unweighted[dist_key],
                             atol=config.ATOL,
                             rtol=config.RTOL,
                             equal_nan=True,
@@ -104,7 +104,7 @@ def test_compute_accessibilities(primal_graph):
                         acc_data_key_wt = config.prep_gdf_key(acc_key, dist_key, angular, weighted=True)
                         assert np.allclose(
                             nodes_gdf[acc_data_key_wt].values,  # type: ignore
-                            accessibility_data[acc_key].weighted[dist_key],
+                            accessibility_data.result[acc_key].weighted[dist_key],
                             atol=config.ATOL,
                             rtol=config.RTOL,
                             equal_nan=True,
@@ -113,7 +113,7 @@ def test_compute_accessibilities(primal_graph):
                         if dist_key == max(distances):
                             assert np.allclose(
                                 nodes_gdf[acc_data_key_dist].values,  # type: ignore
-                                accessibility_data[acc_key].distance[dist_key],
+                                accessibility_data.result[acc_key].distance[dist_key],
                                 atol=config.ATOL,
                                 rtol=config.RTOL,
                                 equal_nan=True,
@@ -238,7 +238,7 @@ def test_compute_stats(primal_graph):
                     distances=distances,
                     angular=angular,
                 )
-                stats_result = stats_results[0]
+                stats_result = stats_results.result[0]
                 for dist_key in distances:
                     assert np.allclose(
                         nodes_gdf[config.prep_gdf_key(f"{stats_key}_sum", dist_key, angular=angular, weighted=False)],

@@ -123,4 +123,5 @@ def wrap_progress(
 
     if isinstance(result, Exception):
         raise result
+
     return result

@@ -23,33 +23,28 @@ pub struct MetricResult {
 impl MetricResult {
     /// Initializes a new `MetricResult` with given distances, size, and initial value.
     #[inline]
-    pub fn new(distances: Vec<u32>, size: usize, init_val: f32) -> Self {
-        let metric = distances
+    pub fn new(distances: &Vec<u32>, len: usize, init_val: f32) -> Self {
+        let metric: Vec<Vec<AtomicF32>> = distances
             .iter()
-            .map(|_| (0..size).map(|_| AtomicF32::new(init_val)).collect())
+            .map(|_| (0..len).map(|_| AtomicF32::new(init_val)).collect())
             .collect();
-        Self { distances, metric }
+        Self {
+            distances: distances.clone(),
+            metric,
+        }
     }
 
     /// Converts the atomic floats into a Python-compatible format (`PyArray1<f32>`),
     /// filtering to include only results for specified street node indices.
     #[inline]
-    pub fn load(&self, street_node_indices: &[usize]) -> HashMap<u32, Py<PyArray1<f32>>> {
+    pub fn load(&self) -> HashMap<u32, Py<PyArray1<f32>>> {
         self.distances
             .iter()
             .zip(&self.metric)
             .map(|(&dist, row)| {
-                // Load all results first
-                let full_vec_f32: Vec<f32> =
-                    row.iter().map(|a| a.load(Ordering::Relaxed)).collect();
-                // Filter to keep only street node results
-                let filtered_vec_f32: Vec<f32> = street_node_indices
-                    .iter()
-                    .map(|&idx| full_vec_f32[idx]) // Assumes street_node_indices are valid
-                    .collect();
+                let vec_f32: Vec<f32> = row.iter().map(|a| a.load(Ordering::Relaxed)).collect();
                 // Convert filtered vector to PyArray
-                let array =
-                    Python::with_gil(|py| filtered_vec_f32.into_pyarray(py).to_owned().into());
+                let array = Python::with_gil(|py| vec_f32.into_pyarray(py).to_owned().into());
                 (dist, array)
             })
             .collect()

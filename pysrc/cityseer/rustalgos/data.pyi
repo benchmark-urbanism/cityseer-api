@@ -3,39 +3,60 @@
 from __future__ import annotations
 
 from collections.abc import Hashable
+from typing import Any
 
+import numpy as np
 import numpy.typing as npt
 
 from .graph import NetworkStructure
 
-class AccessibilityResult:
-    """Holds accessibility calculation results (weighted, unweighted counts, nearest distance)."""
+class LanduseAccess:
+    """Holds accessibility calculation results for a specific land use category."""
 
-    weighted: dict[int, npt.ArrayLike]
-    unweighted: dict[int, npt.ArrayLike]
-    distance: dict[int, npt.ArrayLike]
+    weighted: dict[int, npt.NDArray[np.float32]]
+    unweighted: dict[int, npt.NDArray[np.float32]]
+    distance: dict[int, npt.NDArray[np.float32]]
+
+class AccessibilityResult:
+    """Holds overall accessibility calculation results."""
+
+    distances: list[int]
+    node_keys_py: list[Any]
+    node_indices: list[int]
+    result: dict[str, LanduseAccess]
 
 class MixedUsesResult:
     """Holds mixed-use diversity calculation results (Hill, Shannon, Gini)."""
 
-    hill: dict[int, dict[int, npt.ArrayLike]] | None
-    hill_weighted: dict[int, dict[int, npt.ArrayLike]] | None
-    shannon: dict[int, npt.ArrayLike] | None
-    gini: dict[int, npt.ArrayLike] | None
+    distances: list[int]
+    node_keys_py: list[Any]
+    node_indices: list[int]
+    hill: dict[int, dict[int, npt.NDArray[np.float32]]]
+    hill_weighted: dict[int, dict[int, npt.NDArray[np.float32]]]
+    shannon: dict[int, npt.NDArray[np.float32]]
+    gini: dict[int, npt.NDArray[np.float32]]
+
+class Stats:
+    """Holds statistical aggregation results for a single numerical map."""
+
+    sum: dict[int, npt.NDArray[np.float32]]
+    sum_wt: dict[int, npt.NDArray[np.float32]]
+    mean: dict[int, npt.NDArray[np.float32]]
+    mean_wt: dict[int, npt.NDArray[np.float32]]
+    count: dict[int, npt.NDArray[np.float32]]
+    count_wt: dict[int, npt.NDArray[np.float32]]
+    variance: dict[int, npt.NDArray[np.float32]]
+    variance_wt: dict[int, npt.NDArray[np.float32]]
+    max: dict[int, npt.NDArray[np.float32]]
+    min: dict[int, npt.NDArray[np.float32]]
 
 class StatsResult:
-    """Holds statistical aggregation results for numerical data within catchments."""
+    """Holds overall statistical aggregation results for multiple numerical maps."""
 
-    sum: dict[int, npt.ArrayLike]
-    sum_wt: dict[int, npt.ArrayLike]
-    mean: dict[int, npt.ArrayLike]
-    mean_wt: dict[int, npt.ArrayLike]
-    count: dict[int, npt.ArrayLike]
-    count_wt: dict[int, npt.ArrayLike]
-    variance: dict[int, npt.ArrayLike]
-    variance_wt: dict[int, npt.ArrayLike]
-    max: dict[int, npt.ArrayLike]
-    min: dict[int, npt.ArrayLike]
+    distances: list[int]
+    node_keys_py: list[Any]
+    node_indices: list[int]
+    result: list[Stats]
 
 class DataEntry:
     """Represents a single spatial data point with geometry and keys."""
@@ -76,6 +97,7 @@ class DataMap:
     def progress_init(self) -> None:
         """Reset the internal progress counter."""
         ...
+    @property
     def progress(self) -> int:
         """Get the current value of the internal progress counter."""
         ...
@@ -179,7 +201,7 @@ class DataMap:
         speed_m_s: float | None = None,
         jitter_scale: float | None = None,
         pbar_disabled: bool | None = None,
-    ) -> dict[str, AccessibilityResult]:
+    ) -> AccessibilityResult:
         """
         Calculate accessibility metrics (counts, weighted counts, nearest distance) for specified land uses.
 
@@ -215,8 +237,8 @@ class DataMap:
 
         Returns
         -------
-        dict[str, AccessibilityResult]
-            Dictionary mapping land use keys to their accessibility results.
+        AccessibilityResult
+            Object containing the accessibility metrics. Access detailed results via its `result` attribute.
         """
         ...
     def mixed_uses(
@@ -256,13 +278,13 @@ class DataMap:
         minutes: list[float] | None
             Time thresholds (minutes).
         compute_hill: bool | None
-            Compute Hill diversity (q=0, 1, 2) if True.
+            Compute Hill diversity (q=0, 1, 2) if True. Default True.
         compute_hill_weighted: bool | None
-            Compute distance-weighted Hill diversity if True.
+            Compute distance-weighted Hill diversity if True. Default True.
         compute_shannon: bool | None
-            Compute Shannon diversity if True.
+            Compute Shannon diversity if True. Default False.
         compute_gini: bool | None
-            Compute Gini-Simpson diversity if True.
+            Compute Gini-Simpson diversity if True. Default False.
         angular: bool | None
             Use simplest path if True.
         spatial_tolerance: int | None
@@ -295,7 +317,7 @@ class DataMap:
         speed_m_s: float | None = None,
         jitter_scale: float | None = None,
         pbar_disabled: bool | None = None,
-    ) -> list[StatsResult]:
+    ) -> StatsResult:
         """
         Calculate statistics (sum, mean, count, variance, min, max) for numerical data within catchments.
 
@@ -329,7 +351,8 @@ class DataMap:
 
         Returns
         -------
-        list[StatsResult]
-            List containing a StatsResult object for each input numerical map.
+        StatsResult
+            Object containing the statistical results. Access detailed results for each input map via its `result`
+            attribute.
         """
         ...

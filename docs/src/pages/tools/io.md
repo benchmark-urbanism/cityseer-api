@@ -992,11 +992,6 @@ out qt;
     <span class="pc">:</span>
     <span class="pa"> int = 400</span>
   </div>
-  <div class="param">
-    <span class="pn">speed_m_s</span>
-    <span class="pc">:</span>
-    <span class="pa"> float = 1.33333</span>
-  </div>
   <span class="pt">)-&gt;[</span>
   <span class="pr">NetworkStructure</span>
   <span class="pr">DataFrame</span>

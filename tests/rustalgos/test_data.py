@@ -594,36 +594,36 @@ def test_accessibility(primal_graph):
                             if np.isnan(z_dist) or data_dist < z_dist:
                                 z_dist = data_dist
                 # assertions
-                assert accessibilities["a"].unweighted[dist][src_idx] - a_nw < config.ATOL
-                assert accessibilities["b"].unweighted[dist][src_idx] - b_nw < config.ATOL
-                assert accessibilities["c"].unweighted[dist][src_idx] - c_nw < config.ATOL
-                assert accessibilities["z"].unweighted[dist][src_idx] - z_nw < config.ATOL
-                assert accessibilities["a"].weighted[dist][src_idx] - a_wt < config.ATOL
-                assert accessibilities["b"].weighted[dist][src_idx] - b_wt < config.ATOL
-                assert accessibilities["c"].weighted[dist][src_idx] - c_wt < config.ATOL
-                assert accessibilities["z"].weighted[dist][src_idx] - z_wt < config.ATOL
+                assert accessibilities.result["a"].unweighted[dist][src_idx] - a_nw < config.ATOL
+                assert accessibilities.result["b"].unweighted[dist][src_idx] - b_nw < config.ATOL
+                assert accessibilities.result["c"].unweighted[dist][src_idx] - c_nw < config.ATOL
+                assert accessibilities.result["z"].unweighted[dist][src_idx] - z_nw < config.ATOL
+                assert accessibilities.result["a"].weighted[dist][src_idx] - a_wt < config.ATOL
+                assert accessibilities.result["b"].weighted[dist][src_idx] - b_wt < config.ATOL
+                assert accessibilities.result["c"].weighted[dist][src_idx] - c_wt < config.ATOL
+                assert accessibilities.result["z"].weighted[dist][src_idx] - z_wt < config.ATOL
                 if dist == max(distances):
                     if np.isfinite(a_dist):
-                        assert accessibilities["a"].distance[dist][src_idx] - a_dist < config.ATOL
+                        assert accessibilities.result["a"].distance[dist][src_idx] - a_dist < config.ATOL
                     else:
-                        assert np.isnan(a_dist) and np.isnan(accessibilities["a"].distance[dist][src_idx])
+                        assert np.isnan(a_dist) and np.isnan(accessibilities.result["a"].distance[dist][src_idx])
                     if np.isfinite(b_dist):
-                        assert accessibilities["b"].distance[dist][src_idx] - b_dist < config.ATOL
+                        assert accessibilities.result["b"].distance[dist][src_idx] - b_dist < config.ATOL
                     else:
-                        assert np.isnan(b_dist) and np.isnan(accessibilities["b"].distance[dist][src_idx])
+                        assert np.isnan(b_dist) and np.isnan(accessibilities.result["b"].distance[dist][src_idx])
                     if np.isfinite(c_dist):
-                        assert accessibilities["c"].distance[dist][src_idx] - c_dist < config.ATOL
+                        assert accessibilities.result["c"].distance[dist][src_idx] - c_dist < config.ATOL
                     else:
-                        assert np.isnan(c_dist) and np.isnan(accessibilities["c"].distance[dist][src_idx])
+                        assert np.isnan(c_dist) and np.isnan(accessibilities.result["c"].distance[dist][src_idx])
                     if np.isfinite(z_dist):
-                        assert accessibilities["z"].distance[dist][src_idx] - z_dist < config.ATOL
+                        assert accessibilities.result["z"].distance[dist][src_idx] - z_dist < config.ATOL
                     else:
-                        assert np.isnan(z_dist) and np.isnan(accessibilities["z"].distance[dist][src_idx])
+                        assert np.isnan(z_dist) and np.isnan(accessibilities.result["z"].distance[dist][src_idx])
                 else:
-                    assert dist not in accessibilities["a"].distance
-                    assert dist not in accessibilities["b"].distance
-                    assert dist not in accessibilities["c"].distance
-                    assert dist not in accessibilities["z"].distance
+                    assert dist not in accessibilities.result["a"].distance
+                    assert dist not in accessibilities.result["b"].distance
+                    assert dist not in accessibilities.result["c"].distance
+                    assert dist not in accessibilities.result["z"].distance
                 # check for deduplication
                 z_nws.append(z_nw)
                 z_wts.append(z_wt)
@@ -648,15 +648,15 @@ def test_accessibility(primal_graph):
     for acc_key in accessibility_keys:
         for dist_key in distances:
             if not np.allclose(
-                accessibilities[acc_key].weighted[dist_key],
-                accessibilities_ang[acc_key].weighted[dist_key],
+                accessibilities.result[acc_key].weighted[dist_key],
+                accessibilities_ang.result[acc_key].weighted[dist_key],
                 rtol=config.RTOL,
                 atol=config.ATOL,
             ):
                 some_false = True
             if not np.allclose(
-                accessibilities[acc_key].unweighted[dist_key],
-                accessibilities_ang[acc_key].unweighted[dist_key],
+                accessibilities.result[acc_key].unweighted[dist_key],
+                accessibilities_ang.result[acc_key].unweighted[dist_key],
                 rtol=config.RTOL,
                 atol=config.ATOL,
             ):
@@ -800,9 +800,8 @@ def test_stats(primal_graph):
         numerical_maps=numerical_maps,
         distances=distances,
     )
-    stats_result = stats_results[0]
     for stats_result, mock_num_arr in zip(
-        stats_results, [data_gdf["mock_numerical_1"].values, data_gdf["mock_numerical_2"].values], strict=True
+        stats_results.result, [data_gdf["mock_numerical_1"].values, data_gdf["mock_numerical_2"].values], strict=True
     ):
         for dist_key in distances:
             # i.e. this scenarios considers all datapoints as unique (no two datapoints point to the same source)
@@ -920,7 +919,7 @@ def test_stats(primal_graph):
         for data_dedupe_entry in data_map_dedupe.entries.values():
             if data_entry.data_key_py == data_dedupe_entry.data_key_py:
                 assert data_entry.data_key == data_dedupe_entry.data_key
-    for stats_result, stats_result_dedupe in zip(stats_results, stats_results_dedupe, strict=True):
+    for stats_result, stats_result_dedupe in zip(stats_results.result, stats_results_dedupe.result, strict=True):
         for dist_key in distances:
             # min and max are be the same
             assert np.allclose(

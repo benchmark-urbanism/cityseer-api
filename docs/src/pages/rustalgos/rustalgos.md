@@ -19,6 +19,8 @@ layout: ../../layouts/PageLayout.astro
   <span class="pt">(</span>
   <div class="param">
     <span class="pn">data_arr</span>
+    <span class="pc">:</span>
+    <span class="pa"> numpy.ndarray[tuple[int, ...], numpy.dtype[numpy.float32]]</span>
   </div>
   <span class="pt">)</span>
 </div>

@@ -1,5 +1,6 @@
 """Common utilities for converting between distance, time, and decay parameters, and data validation."""
 
+import numpy as np  # Add import for np.float32
 import numpy.typing as npt
 
 # Declare the existence of submodules for type checkers
@@ -9,7 +10,7 @@ from . import diversity as diversity
 from . import graph as graph
 from . import viewshed as viewshed
 
-def check_numerical_data(data_arr: npt.ArrayLike) -> None:
+def check_numerical_data(data_arr: npt.NDArray[np.float32]) -> None:
     """
     Validates that all elements in a 2D numerical array are finite.
 

@@ -11,33 +11,33 @@ __doc__: str
 class NodePayload:
     """Payload data associated with a network node."""
 
-    node_key: Any
+    node_key: Any  # In Rust: Py<PyAny>
     live: bool
-    weight: float
+    weight: float  # In Rust: f32
     is_transport: bool
-    def validate(self) -> None:
+    def validate(self) -> None:  # In Rust: validate(self, py: Python) -> PyResult<()>
         """Validate node payload attributes (e.g., weight non-negative)."""
         ...
     @property
-    def coord(self) -> tuple[float, float]:
+    def coord(self) -> tuple[float, float]:  # In Rust: getter returns (f64, f64)
         """Get the (x, y) coordinates of the node."""
         ...
 
 class EdgePayload:
     """Payload data associated with a network edge."""
 
-    start_nd_key_py: Any | None
-    end_nd_key_py: Any | None
-    edge_idx: int
-    length: float
-    angle_sum: float
-    imp_factor: float
-    in_bearing: float
-    out_bearing: float
-    seconds: float
-    geom_wkt: str | None
+    start_nd_key_py: Any | None  # In Rust: Option<Py<PyAny>>
+    end_nd_key_py: Any | None  # In Rust: Option<Py<PyAny>>
+    edge_idx: int  # In Rust: usize
+    length: float  # In Rust: f32
+    angle_sum: float  # In Rust: f32
+    imp_factor: float  # In Rust: f32
+    in_bearing: float  # In Rust: f32
+    out_bearing: float  # In Rust: f32
+    seconds: float  # In Rust: f32
+    geom_wkt: str | None  # In Rust: Option<String>
     is_transport: bool
-    def validate(self) -> None:
+    def validate(self) -> None:  # In Rust: validate(self, py: Python) -> PyResult<()>
         """Validate edge payload attributes (e.g., impedance positive, consistency)."""
         ...
 
@@ -46,16 +46,16 @@ class NodeVisit:
 
     visited: bool
     discovered: bool
-    pred: int | None
-    short_dist: float
-    simpl_dist: float
-    cycles: float
-    origin_seg: int | None
-    last_seg: int | None
-    out_bearing: float
-    agg_seconds: float
+    pred: int | None  # In Rust: Option<usize>
+    short_dist: float  # In Rust: f32
+    simpl_dist: float  # In Rust: f32
+    cycles: float  # In Rust: f32
+    origin_seg: int | None  # In Rust: Option<usize>
+    last_seg: int | None  # In Rust: Option<usize>
+    out_bearing: float  # In Rust: f32
+    agg_seconds: float  # In Rust: f32
     @classmethod
-    def new(cls) -> NodeVisit:
+    def new(cls) -> NodeVisit:  # In Rust: #[new] pub fn new() -> Self
         """Initialize a new NodeVisit state."""
         ...
 
@@ -63,33 +63,38 @@ class EdgeVisit:
     """State information for an edge during a graph traversal."""
 
     visited: bool
-    start_nd_idx: int | None
-    end_nd_idx: int | None
-    edge_idx: int | None
+    start_nd_idx: int | None  # In Rust: Option<usize>
+    end_nd_idx: int | None  # In Rust: Option<usize>
+    edge_idx: int | None  # In Rust: Option<usize>
     @classmethod
-    def new(cls) -> EdgeVisit:
+    def new(cls) -> EdgeVisit:  # In Rust: #[new] pub fn new() -> Self
         """Initialize a new EdgeVisit state."""
         ...
 
-class DiGraph: ...  # Placeholder for the internal graph representation
+class DiGraph: ...  # Placeholder for the internal graph representation (petgraph::graph::DiGraph)
 
 class NetworkStructure:
     """Manages the network graph, including nodes, edges, barriers, and spatial indexing."""
 
-    graph: DiGraph
-    edge_rtree: object | None  # R-tree for efficient spatial queries on edges
+    graph: DiGraph  # Actual type is petgraph::graph::DiGraph<NodePayload, EdgePayload>
+    edge_rtree: (
+        object | None
+    )  # R-tree for efficient spatial queries on edges. Type in Rust: Option<RTree<EdgeRtreeItem>>
+    # barrier_geoms and barrier_rtree are internal and managed via set/unset methods.
     @classmethod
-    def new(cls) -> NetworkStructure:
+    def new(cls) -> NetworkStructure:  # In Rust: #[new] pub fn new() -> Self
         """Create a new, empty NetworkStructure."""
         ...
-    def progress_init(self) -> None:
+    def progress_init(self) -> None:  # In Rust: pub fn progress_init(&self)
         """Reset the internal progress counter (used for long operations)."""
         ...
     @property
-    def progress(self) -> int:
+    def progress(self) -> int:  # In Rust: pub fn progress(&self) -> usize
         """Get the current value of the internal progress counter."""
         ...
-    def add_street_node(self, node_key: Any, x: float, y: float, live: bool, weight: float) -> int:
+    def add_street_node(
+        self, node_key: Any, x: float, y: float, live: bool, weight: float
+    ) -> int:  # Returns usize in Rust
         """
         Add a standard street network node.
 
@@ -119,8 +124,7 @@ class NetworkStructure:
         x: float,
         y: float,
         linking_radius: float | None = None,
-        speed_m_s: float | None = None,
-    ) -> int:
+    ) -> int:  # Returns PyResult<usize> in Rust
         """
         Add a transport node (e.g., station, stop) and optionally link it to nearby street nodes.
 
@@ -138,9 +142,7 @@ class NetworkStructure:
         y: float
             Node's y-coordinate.
         linking_radius: float | None
-            Max distance (meters) to search for street nodes to link to (default: 100.0).
-        speed_m_s: float | None
-            Speed used to calculate travel time for linking edges (default: standard walking speed).
+            Max distance (meters) to search for street nodes to link to (default: 100.0 from Rust).
 
         Returns
         -------
@@ -149,73 +151,67 @@ class NetworkStructure:
         """
         ...
 
-    def get_node_payload(self, node_idx: int) -> NodePayload:
+    def get_node_payload(self, node_idx: int) -> NodePayload:  # Returns PyResult<NodePayload>
         """Retrieve the payload data for a specific node index."""
         ...
-    def get_node_weight(self, node_idx: int) -> float:
+    def get_node_weight(self, node_idx: int) -> float:  # Returns PyResult<f32>
         """Get the weight of a specific node index."""
         ...
-    def is_node_live(self, node_idx: int) -> bool:
+    def is_node_live(self, node_idx: int) -> bool:  # Returns PyResult<bool>
         """Check if a specific node index is marked as 'live'."""
         ...
-    def node_count(self) -> int:
+    def node_count(self) -> int:  # Returns usize
         """Get the total number of nodes in the graph."""
         ...
-    def street_node_count(self) -> int:
+    def street_node_count(self) -> int:  # Returns usize
         """Get the number of street nodes in the graph."""
         ...
-    def node_indices(self) -> list[int]:
+    def node_indices(self) -> list[int]:  # Returns Vec<usize>
         """Get indices for all nodes."""
         ...
-    def street_node_indices(self) -> list[int]:
-        """Get indices for street nodes only."""
+    def node_keys_py(self) -> list[Any]:  # In Rust: pub fn node_keys_py(&self, py: Python) -> Vec<Py<PyAny>>
+        """Get a list of original keys for all nodes (street and transport)."""
+        ...
+    def street_node_indices(self) -> list[int]:  # In Rust: pub fn street_node_indices(&self) -> Vec<usize>
+        """Get indices for non-transport (street) nodes."""
         ...
     @property
-    def node_xs(self) -> list[float]:
+    def node_xs(self) -> list[float]:  # Getter returns Vec<f64>
         """Get x-coordinates for all nodes."""
         ...
+    # street_node_xs removed as no direct public getter in Rust
     @property
-    def street_node_xs(self) -> list[float]:
-        """Get x-coordinates for street nodes only."""
-        ...
-    @property
-    def node_ys(self) -> list[float]:
+    def node_ys(self) -> list[float]:  # Getter returns Vec<f64>
         """Get y-coordinates for all nodes."""
         ...
+    # street_node_ys removed as no direct public getter in Rust
     @property
-    def street_node_ys(self) -> list[float]:
-        """Get y-coordinates for street nodes only."""
-        ...
-    @property
-    def node_xys(self) -> list[tuple[float, float]]:
+    def node_xys(self) -> list[tuple[float, float]]:  # Getter returns Vec<(f64, f64)>
         """Get (x, y) coordinates for all nodes."""
         ...
+    # street_node_xys removed as no direct public getter in Rust
     @property
-    def street_node_xys(self) -> list[tuple[float, float]]:
-        """Get (x, y) coordinates for street nodes only."""
-        ...
-    @property
-    def node_lives(self) -> list[bool]:
+    def node_lives(self) -> list[bool]:  # Getter returns Vec<bool>
         """Get 'live' status for all nodes."""
         ...
     @property
-    def street_node_lives(self) -> list[bool]:
+    def street_node_lives(self) -> list[bool]:  # Getter returns Vec<bool>
         """Get 'live' status for street nodes only."""
         ...
     @property
-    def edge_count(self) -> int:
+    def edge_count(self) -> int:  # Getter returns usize
         """Get the total number of edges in the graph."""
         ...
     def add_street_edge(
         self,
-        start_nd_idx: int,
-        end_nd_idx: int,
-        edge_idx: int,
+        start_nd_idx: int,  # usize
+        end_nd_idx: int,  # usize
+        edge_idx: int,  # usize
         start_nd_key_py: Any,
         end_nd_key_py: Any,
         geom_wkt: str,
         imp_factor: float | None = None,
-    ) -> int:
+    ) -> int:  # Returns PyResult<usize>
         """
         Add a directed street edge with geometry.
 
@@ -248,14 +244,14 @@ class NetworkStructure:
 
     def add_transport_edge(
         self,
-        start_nd_idx: int,
-        end_nd_idx: int,
-        edge_idx: int,
+        start_nd_idx: int,  # usize
+        end_nd_idx: int,  # usize
+        edge_idx: int,  # usize
         start_nd_key_py: Any,
         end_nd_key_py: Any,
         seconds: float,
         imp_factor: float | None = None,
-    ) -> int:
+    ) -> int:  # Returns PyResult<usize>
         """
         Add a directed abstract transport edge defined by travel time.
 
@@ -285,20 +281,22 @@ class NetworkStructure:
         """
         ...
 
-    def edge_references(self) -> list[tuple[int, int, int]]:
+    def edge_references(self) -> list[tuple[int, int, int]]:  # Returns Vec<(usize, usize, usize)>
         """Get list of (start_node_idx, end_node_idx, edge_idx) for all edges."""
         ...
-    def get_edge_payload(self, start_nd_idx: int, end_nd_idx: int, edge_idx: int) -> EdgePayload:
+    def get_edge_payload(
+        self, start_nd_idx: int, end_nd_idx: int, edge_idx: int
+    ) -> EdgePayload:  # PyResult<EdgePayload>
         """Retrieve the payload for a specific edge defined by nodes and edge_idx."""
         ...
-    def validate(self) -> None:
+    def validate(self) -> None:  # PyResult<()>
         """Check internal consistency of all nodes and edges in the graph."""
         ...
 
-    def build_edge_rtree(self) -> None:
+    def build_edge_rtree(self) -> None:  # PyResult<()>
         """Build or rebuild the R-tree spatial index for street edges. Deduplicates based on geometry."""
         ...
-    def set_barriers(self, barriers_wkt: list[str]) -> None:
+    def set_barriers(self, barriers_wkt: list[str]) -> None:  # PyResult<()>
         """Set impassable barrier geometries (from WKT) and build their R-tree."""
         ...
     def unset_barriers(self) -> None:

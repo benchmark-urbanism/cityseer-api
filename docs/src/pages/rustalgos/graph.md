@@ -666,6 +666,31 @@ layout: ../../layouts/PageLayout.astro
 
 <div class="function">
 
+## node_keys_py
+
+
+<div class="content">
+<span class="name">node_keys_py</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">self</span>
+  </div>
+  <div class="param">
+    <span class="pn">/</span>
+  </div>
+  <span class="pt">)</span>
+</div>
+</div>
+
+
+ Returns a list of original keys for all nodes (street and transport).
+
+</div>
+
+ 
+
+<div class="function">
+
 ## street_node_indices
 
 
@@ -934,7 +959,7 @@ layout: ../../layouts/PageLayout.astro
 
  
 
-<span class="name">node_xys</span>
+<span class="name">node_xs</span>
 
 
  
@@ -944,12 +969,12 @@ layout: ../../layouts/PageLayout.astro
 
  
 
-<span class="name">node_xs</span>
+<span class="name">node_ys</span>
 
 
  
 
-<span class="name">node_ys</span>
+<span class="name">node_xys</span>
 
 
  
