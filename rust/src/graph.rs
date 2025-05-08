@@ -1062,12 +1062,21 @@ impl NetworkStructure {
         n_nearest_candidates: usize,
     ) -> Vec<(usize, String, f64)> {
         let edge_rtree = self.edge_rtree.as_ref().expect("Edge R-tree should exist.");
-        let cent_geom = data_geom
-            .centroid()
-            .expect("Data geometry should have a centroid for assignment search.");
+        let data_rect = data_geom
+            .bounding_rect()
+            .expect("Data geometry should have a bounding rect.");
+        let query_aabb = AABB::from_corners(
+            [
+                data_rect.min().x - max_assignment_dist,
+                data_rect.min().y - max_assignment_dist,
+            ],
+            [
+                data_rect.max().x + max_assignment_dist,
+                data_rect.max().y + max_assignment_dist,
+            ],
+        );
         let candidate_edges_rtree = edge_rtree
-            .nearest_neighbor_iter(&[cent_geom.x(), cent_geom.y()])
-            .take(n_nearest_candidates)
+            .locate_in_envelope_intersecting(&query_aabb)
             .collect::<Vec<_>>();
 
         let mut candidates_with_dist: Vec<(f64, &EdgeRtreeItem)> = Vec::new();
@@ -1095,7 +1104,9 @@ impl NetworkStructure {
                             node_idx,
                             data_key
                         );
-                        cent_geom
+                        data_geom
+                            .centroid()
+                            .expect("Data geometry should have a centroid for assignment search.")
                     }
                 };
                 let assignment_line = Line::new(closest_point_on_data.0, node_point.0);
@@ -1108,6 +1119,7 @@ impl NetworkStructure {
                 Some((node_idx, node_dist))
             };
 
+        let mut assignments_found = 0;
         for (_true_edge_dist, edge_rtree_item) in candidates_with_dist {
             // Destructure the tuple from the R-tree item.
             // Primitive types (usize, Point<f64>) are Copy and will be copied.
@@ -1148,6 +1160,11 @@ impl NetworkStructure {
             // we can stop processing further edges for this point.
             let is_point_geom = matches!(data_geom, Geometry::Point(_));
             if is_point_geom && edge_produced_assignment {
+                break;
+            }
+
+            assignments_found += 1;
+            if assignments_found >= n_nearest_candidates {
                 break;
             }
         }
