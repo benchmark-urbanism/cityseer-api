@@ -27,7 +27,7 @@ layout: ../../layouts/PageLayout.astro
   <div class="param">
     <span class="pn">max_netw_assign_dist</span>
     <span class="pc">:</span>
-    <span class="pa"> int = 400</span>
+    <span class="pa"> int = 200</span>
   </div>
   <div class="param">
     <span class="pn">data_id_col</span>
@@ -39,6 +39,11 @@ layout: ../../layouts/PageLayout.astro
     <span class="pc">:</span>
     <span class="pa"> geopandas.geodataframe.GeoDataFrame | None = None</span>
   </div>
+  <div class="param">
+    <span class="pn">n_nearest_candidates</span>
+    <span class="pc">:</span>
+    <span class="pa"> int = 20</span>
+  </div>
   <span class="pt">)-&gt;[</span>
   <span class="pr">DataMap</span>
   <span class="pt">]</span>
@@ -46,7 +51,7 @@ layout: ../../layouts/PageLayout.astro
 </div>
 
 
- Assign a `GeoDataFrame` to a [`rustalgos.graph.NetworkStructure`](/rustalgos/rustalgos#networkstructure). A `NetworkStructure` provides the backbone for the calculation of land-use and statistical aggregations over the network. Data points will be assigned to the two closest network nodes — one in either direction — based on the closest adjacent street edge. This facilitates a dynamic spatial aggregation strategy which will select the shortest distance to a data point relative to either direction of approach.
+ Assign a `GeoDataFrame` to a [`rustalgos.graph.NetworkStructure`](/rustalgos/rustalgos#networkstructure). A `NetworkStructure` provides the backbone for the calculation of land-use and statistical aggregations over the network. Points will be assigned to the closest street edge. Polygons will be assigned to the closest `n_nearest_candidates` adjacent street edges. up to
 ### Parameters
 <div class="param-set">
   <div class="def">
@@ -56,6 +61,26 @@ layout: ../../layouts/PageLayout.astro
   <div class="desc">
 
  A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe) representing data points. The coordinates of data points should correspond as precisely as possible to the location of the feature in space; or, in the case of buildings, should ideally correspond to the location of the building entrance.</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">network_structure</div>
+    <div class="type">None</div>
+  </div>
+  <div class="desc">
+
+ A [`rustalgos.graph.NetworkStructure`](/rustalgos/rustalgos#networkstructure). Best generated with the [`io.network_structure_from_nx`](/tools/io#network-structure-from-nx) function.</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">max_netw_assign_dist</div>
+    <div class="type">int</div>
+  </div>
+  <div class="desc">
+
+ The maximum distance to consider when assigning respective data points to the nearest adjacent network nodes.</div>
 </div>
 
 <div class="param-set">
@@ -76,6 +101,16 @@ layout: ../../layouts/PageLayout.astro
   <div class="desc">
 
  A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe) representing barriers. These barriers will be considered during the assignment of data points to the network.</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">n_nearest_candidates</div>
+    <div class="type">int</div>
+  </div>
+  <div class="desc">
+
+ The number of nearest street edge candidates to consider when assigning data points to the network. This is used to determine the best assignments based on proximity. Edges are sorted by distance and the closest `n_nearest_candidates` are considered.</div>
 </div>
 
 ### Returns
@@ -129,7 +164,7 @@ layout: ../../layouts/PageLayout.astro
   <div class="param">
     <span class="pn">max_netw_assign_dist</span>
     <span class="pc">:</span>
-    <span class="pa"> int = 400</span>
+    <span class="pa"> int = 200</span>
   </div>
   <div class="param">
     <span class="pn">distances</span>
@@ -160,6 +195,11 @@ layout: ../../layouts/PageLayout.astro
     <span class="pn">angular</span>
     <span class="pc">:</span>
     <span class="pa"> bool = False</span>
+  </div>
+  <div class="param">
+    <span class="pn">n_nearest_candidates</span>
+    <span class="pc">:</span>
+    <span class="pa"> int = 20</span>
   </div>
   <div class="param">
     <span class="pn">spatial_tolerance</span>
@@ -323,6 +363,16 @@ layout: ../../layouts/PageLayout.astro
 
 <div class="param-set">
   <div class="def">
+    <div class="name">n_nearest_candidates</div>
+    <div class="type">int</div>
+  </div>
+  <div class="desc">
+
+ The number of nearest candidates to consider when assigning respective data points to the nearest adjacent streets.</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
     <div class="name">min_threshold_wt</div>
     <div class="type">float</div>
   </div>
@@ -437,7 +487,7 @@ print(nodes_gdf["cc_c_nearest_max_800"])
   <div class="param">
     <span class="pn">max_netw_assign_dist</span>
     <span class="pc">:</span>
-    <span class="pa"> int = 400</span>
+    <span class="pa"> int = 200</span>
   </div>
   <div class="param">
     <span class="pn">compute_hill</span>
@@ -488,6 +538,11 @@ print(nodes_gdf["cc_c_nearest_max_800"])
     <span class="pn">angular</span>
     <span class="pc">:</span>
     <span class="pa"> bool = False</span>
+  </div>
+  <div class="param">
+    <span class="pn">n_nearest_candidates</span>
+    <span class="pc">:</span>
+    <span class="pa"> int = 20</span>
   </div>
   <div class="param">
     <span class="pn">spatial_tolerance</span>
@@ -685,6 +740,16 @@ print(nodes_gdf["cc_c_nearest_max_800"])
 
 <div class="param-set">
   <div class="def">
+    <div class="name">n_nearest_candidates</div>
+    <div class="type">int</div>
+  </div>
+  <div class="desc">
+
+ The number of nearest candidates to consider when assigning respective data points to the nearest adjacent streets.</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
     <div class="name">min_threshold_wt</div>
     <div class="type">float</div>
   </div>
@@ -813,7 +878,7 @@ been applied.
   <div class="param">
     <span class="pn">max_netw_assign_dist</span>
     <span class="pc">:</span>
-    <span class="pa"> int = 400</span>
+    <span class="pa"> int = 200</span>
   </div>
   <div class="param">
     <span class="pn">distances</span>
@@ -849,6 +914,11 @@ been applied.
     <span class="pn">spatial_tolerance</span>
     <span class="pc">:</span>
     <span class="pa"> int = 0</span>
+  </div>
+  <div class="param">
+    <span class="pn">n_nearest_candidates</span>
+    <span class="pc">:</span>
+    <span class="pa"> int = 20</span>
   </div>
   <div class="param">
     <span class="pn">min_threshold_wt</span>
@@ -993,6 +1063,16 @@ been applied.
   <div class="desc">
 
  Tolerance in metres indicating a spatial buffer for datapoint accuracy. Intended for situations where datapoint locations are not precise. If greater than zero, weighted functions will clip the spatial impedance curve above weights corresponding to the given spatial tolerance and normalises to the new range. For background, see [`rustalgos.clip_weights_curve`](/rustalgos#clip-weights-curve).</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">n_nearest_candidates</div>
+    <div class="type">int</div>
+  </div>
+  <div class="desc">
+
+ The number of nearest candidates to consider when assigning respective data points to the nearest adjacent streets.</div>
 </div>
 
 <div class="param-set">

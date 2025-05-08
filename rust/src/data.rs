@@ -427,12 +427,14 @@ impl DataMap {
     /// in the `node_data_map`.
     #[pyo3(signature = (
         network_structure,
-        max_assignment_dist
+        max_assignment_dist,
+        n_nearest_candidates,
     ))]
     pub fn assign_data_to_network(
         &mut self,
         network_structure: &NetworkStructure,
         max_assignment_dist: f64,
+        n_nearest_candidates: usize,
     ) -> PyResult<()> {
         log::info!(
             "Assigning {} data entries to network nodes (max_dist: {}).",
@@ -452,6 +454,7 @@ impl DataMap {
                     data_key,
                     &data_entry.geom,
                     max_assignment_dist,
+                    n_nearest_candidates,
                 )
                 // find_assignments_for_entry returns Vec<(node_idx, data_key, node_dist)>
                 // We need to ensure data_key is owned if it needs to be moved across threads,

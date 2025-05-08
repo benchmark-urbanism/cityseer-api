@@ -51,7 +51,7 @@ plot.plot_nx(
 mixed_uses_vals = colors.Normalize()(mixed_uses_vals)
 mixed_uses_cols = cmap(mixed_uses_vals)
 data_map = mock.mock_data_map(data_gdf)
-data_map.assign_data_to_network(network_structure, max_assignment_dist=400)
+data_map.assign_data_to_network(network_structure, max_assignment_dist=400, n_nearest_candidates=6)
 plot.plot_assignment(
     network_structure,
     G,

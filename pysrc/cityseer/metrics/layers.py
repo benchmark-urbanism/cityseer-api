@@ -19,17 +19,18 @@ SPEED_M_S = config.SPEED_M_S
 def build_data_map(
     data_gdf: gpd.GeoDataFrame,
     network_structure: rustalgos.graph.NetworkStructure,
-    max_netw_assign_dist: int = 400,
+    max_netw_assign_dist: int = 200,
     data_id_col: str | None = None,
     barriers_gdf: gpd.GeoDataFrame | None = None,
+    n_nearest_candidates: int = 20,
 ) -> rustalgos.data.DataMap:
     """
     Assign a `GeoDataFrame` to a [`rustalgos.graph.NetworkStructure`](/rustalgos/rustalgos#networkstructure).
 
     A `NetworkStructure` provides the backbone for the calculation of land-use and statistical aggregations over the
-    network. Data points will be assigned to the two closest network nodes — one in either direction — based on the
-    closest adjacent street edge. This facilitates a dynamic spatial aggregation strategy which will select the shortest
-    distance to a data point relative to either direction of approach.
+    network. Points will be assigned to the closest street edge. Polygons will be assigned to the closest
+    `n_nearest_candidates` adjacent street edges.
+    up to
 
     Parameters
     ----------
@@ -38,6 +39,11 @@ def build_data_map(
         representing data points. The coordinates of data points should correspond as precisely as possible to the
         location of the feature in space; or, in the case of buildings, should ideally correspond to the location of the
         building entrance.
+    network_structure
+        A [`rustalgos.graph.NetworkStructure`](/rustalgos/rustalgos#networkstructure). Best generated with the
+        [`io.network_structure_from_nx`](/tools/io#network-structure-from-nx) function.
+    max_netw_assign_dist: int
+        The maximum distance to consider when assigning respective data points to the nearest adjacent network nodes.
     data_id_col: str
         An optional column name for data point keys. This is used for deduplicating points representing a shared source
         of information. For example, where a single greenspace is represented by many entrances as datapoints, only the
@@ -46,6 +52,10 @@ def build_data_map(
     barriers_gdf: GeoDataFrame
         A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe)
         representing barriers. These barriers will be considered during the assignment of data points to the network.
+    n_nearest_candidates: int
+        The number of nearest street edge candidates to consider when assigning data points to the network. This is used
+        to determine the best assignments based on proximity. Edges are sorted by distance and the closest
+        `n_nearest_candidates` are considered.
 
     Returns
     -------
@@ -74,7 +84,7 @@ def build_data_map(
             barriers_wkt.append(row.geometry.wkt)  # type: ignore
     if barriers_wkt is not None:
         network_structure.set_barriers(barriers_wkt)  # type: ignore
-    data_map.assign_data_to_network(network_structure, max_netw_assign_dist)
+    data_map.assign_data_to_network(network_structure, max_netw_assign_dist, n_nearest_candidates)
     network_structure.unset_barriers()  # type: ignore
 
     return data_map
@@ -86,13 +96,14 @@ def compute_accessibilities(
     accessibility_keys: list[str],
     nodes_gdf: gpd.GeoDataFrame,
     network_structure: rustalgos.graph.NetworkStructure,
-    max_netw_assign_dist: int = 400,
+    max_netw_assign_dist: int = 200,
     distances: list[int] | None = None,
     betas: list[float] | None = None,
     minutes: list[float] | None = None,
     data_id_col: str | None = None,
     barriers_gdf: gpd.GeoDataFrame | None = None,
     angular: bool = False,
+    n_nearest_candidates: int = 20,
     spatial_tolerance: int = 0,
     min_threshold_wt: float = MIN_THRESH_WT,
     speed_m_s: float = SPEED_M_S,
@@ -157,6 +168,9 @@ def compute_accessibilities(
         locations are not precise. If greater than zero, weighted functions will clip the spatial impedance curve above
          weights corresponding to the given spatial tolerance and normalises to the new range. For background, see
         [`rustalgos.clip_weights_curve`](/rustalgos#clip-weights-curve).
+    n_nearest_candidates: int
+        The number of nearest candidates to consider when assigning respective data points to the nearest adjacent
+        streets.
     min_threshold_wt: float
         The default `min_threshold_wt` parameter can be overridden to generate custom mappings between the
         `distance` and `beta` parameters. See [`rustalgos.distances_from_beta`](/rustalgos#distances-from-betas)
@@ -220,6 +234,7 @@ def compute_accessibilities(
         max_netw_assign_dist,
         data_id_col,
         barriers_gdf=barriers_gdf,
+        n_nearest_candidates=n_nearest_candidates,
     )
     # extract landuses
     if landuse_column_label not in data_gdf.columns:
@@ -278,7 +293,7 @@ def compute_mixed_uses(
     landuse_column_label: str,
     nodes_gdf: gpd.GeoDataFrame,
     network_structure: rustalgos.graph.NetworkStructure,
-    max_netw_assign_dist: int = 400,
+    max_netw_assign_dist: int = 200,
     compute_hill: bool | None = True,
     compute_hill_weighted: bool | None = True,
     compute_shannon: bool | None = False,
@@ -289,6 +304,7 @@ def compute_mixed_uses(
     data_id_col: str | None = None,
     barriers_gdf: gpd.GeoDataFrame | None = None,
     angular: bool = False,
+    n_nearest_candidates: int = 20,
     spatial_tolerance: int = 0,
     min_threshold_wt: float = MIN_THRESH_WT,
     speed_m_s: float = SPEED_M_S,
@@ -369,6 +385,9 @@ def compute_mixed_uses(
         locations are not precise. If greater than zero, weighted functions will clip the spatial impedance curve above
          weights corresponding to the given spatial tolerance and normalises to the new range. For background, see
         [`rustalgos.clip_weights_curve`](/rustalgos#clip-weights-curve).
+    n_nearest_candidates: int
+        The number of nearest candidates to consider when assigning respective data points to the nearest adjacent
+        streets.
     min_threshold_wt: float
         The default `min_threshold_wt` parameter can be overridden to generate custom mappings between the
         `distance` and `beta` parameters. See [`rustalgos.distances_from_beta`](/rustalgos#distances-from-betas)
@@ -461,6 +480,7 @@ def compute_mixed_uses(
         max_netw_assign_dist,
         data_id_col,
         barriers_gdf=barriers_gdf,
+        n_nearest_candidates=n_nearest_candidates,
     )
     # extract landuses
     if landuse_column_label not in data_gdf.columns:
@@ -526,7 +546,7 @@ def compute_stats(
     stats_column_labels: list[str],
     nodes_gdf: gpd.GeoDataFrame,
     network_structure: rustalgos.graph.NetworkStructure,
-    max_netw_assign_dist: int = 400,
+    max_netw_assign_dist: int = 200,
     distances: list[int] | None = None,
     betas: list[float] | None = None,
     minutes: list[float] | None = None,
@@ -534,6 +554,7 @@ def compute_stats(
     barriers_gdf: gpd.GeoDataFrame | None = None,
     angular: bool = False,
     spatial_tolerance: int = 0,
+    n_nearest_candidates: int = 20,
     min_threshold_wt: float = MIN_THRESH_WT,
     speed_m_s: float = SPEED_M_S,
     jitter_scale: float = 0.0,
@@ -594,6 +615,9 @@ def compute_stats(
         locations are not precise. If greater than zero, weighted functions will clip the spatial impedance curve above
          weights corresponding to the given spatial tolerance and normalises to the new range. For background, see
         [`rustalgos.clip_weights_curve`](/rustalgos#clip-weights-curve).
+    n_nearest_candidates: int
+        The number of nearest candidates to consider when assigning respective data points to the nearest adjacent
+        streets.
     min_threshold_wt: float
         The default `min_threshold_wt` parameter can be overridden to generate custom mappings between the
         `distance` and `beta` parameters. See [`rustalgos.distances_from_beta`](/rustalgos#distances-from-betas)
@@ -663,6 +687,7 @@ def compute_stats(
         max_netw_assign_dist,
         data_id_col,
         barriers_gdf=barriers_gdf,
+        n_nearest_candidates=n_nearest_candidates,
     )
     # extract stats columns
     stats_maps = []

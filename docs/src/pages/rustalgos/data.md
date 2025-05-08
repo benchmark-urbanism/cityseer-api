@@ -251,6 +251,9 @@ layout: ../../layouts/PageLayout.astro
   <div class="param">
     <span class="pn">max_assignment_dist</span>
   </div>
+  <div class="param">
+    <span class="pn">n_nearest_candidates</span>
+  </div>
   <span class="pt">)</span>
 </div>
 </div>

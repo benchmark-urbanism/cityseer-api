@@ -155,6 +155,7 @@ class DataMap:
         self,
         network_structure: NetworkStructure,
         max_assignment_dist: float,
+        n_nearest_candidates: int,
     ) -> None:
         """
         Assign data entries to the nearest valid network nodes.
@@ -168,6 +169,8 @@ class DataMap:
             The network to assign data to.
         max_assignment_dist: float
             Maximum distance allowed for assignment.
+        n_nearest_candidates: int
+            Number of nearest street edge candidates to consider for assignment.
         """
         ...
     def aggregate_to_src_idx(

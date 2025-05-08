@@ -343,7 +343,7 @@ def test_assign_to_network(primal_graph):
         data_gdf = override_coords(G)
         data_map = mock.mock_data_map(data_gdf)
         # use small enough distance to ensure closest edge used regrardless of whether both nodes within
-        data_map.assign_data_to_network(network_structure, max_assignment_dist=400)
+        data_map.assign_data_to_network(network_structure, max_assignment_dist=400, n_nearest_candidates=6)
         # from cityseer.tools import plot
         # plot.plot_network_structure(network_structure, data_map)
         # plot.plot_assignment(network_structure, G, data_map)
@@ -364,7 +364,7 @@ def test_assign_to_network(primal_graph):
             # check the assignments
             assert sorted(matches) == sorted(targets[node_idx])
         # should be None if distance is 0m
-        data_map.assign_data_to_network(network_structure, max_assignment_dist=0)
+        data_map.assign_data_to_network(network_structure, max_assignment_dist=0, n_nearest_candidates=6)
         assert data_map.node_data_map == {}
 
     # test with polygons
@@ -373,7 +373,7 @@ def test_assign_to_network(primal_graph):
     data_gdf_buff = data_gdf.copy()
     data_gdf_buff["geometry"] = data_gdf["geometry"].buffer(10)
     data_map = mock.mock_data_map(data_gdf_buff)
-    data_map.assign_data_to_network(network_structure, max_assignment_dist=400)
+    data_map.assign_data_to_network(network_structure, max_assignment_dist=400, n_nearest_candidates=6)
     # from cityseer.tools import plot
     # plot.plot_network_structure(network_structure, data_map)
     # plot.plot_assignment(network_structure, G, data_map)
@@ -394,7 +394,7 @@ def test_assign_to_network(primal_graph):
         # check the assignments
         assert sorted(matches) == sorted(targets_poly[node_idx])
     # Some polygons will overlap edges if distance is 0m
-    data_map.assign_data_to_network(network_structure, max_assignment_dist=0)
+    data_map.assign_data_to_network(network_structure, max_assignment_dist=0, n_nearest_candidates=6)
     for node_idx, data_assignments in data_map.node_data_map.items():
         matches = []
         for data_idx, data_dist in data_assignments:
@@ -421,11 +421,11 @@ def test_assign_to_network(primal_graph):
     # ax = _edges_gdf.plot(ax=ax, color="blue", linewidth=0.5)
     # plt.show()
     # data_map = mock.mock_data_map(data_gdf)
-    # data_map.assign_data_to_network(network_structure, max_assignment_dist=400)
+    # data_map.assign_data_to_network(network_structure, max_assignment_dist=400, n_nearest_candidates=6)
     # plot.plot_network_structure(network_structure, data_map)
     data_map = mock.mock_data_map(data_gdf)
     network_structure.set_barriers(barriers_wkt)
-    data_map.assign_data_to_network(network_structure, max_assignment_dist=400)
+    data_map.assign_data_to_network(network_structure, max_assignment_dist=400, n_nearest_candidates=6)
     # plot.plot_network_structure(network_structure, data_map)
     # plot.plot_assignment(network_structure, G_decomp, data_map)
 
@@ -459,7 +459,7 @@ def test_aggregate_to_src_idx(primal_graph):
             else:
                 data_map = mock.mock_data_map(data_gdf, dedupe_key_col="data_id")
             # nearest assigned distance is different to overall distance above
-            data_map.assign_data_to_network(network_structure, 400)
+            data_map.assign_data_to_network(network_structure, 400, n_nearest_candidates=6)
             # in this case, use same assignment max dist as search max dist
             # for debugging
             # from cityseer.tools import plot
@@ -530,7 +530,7 @@ def test_accessibility(primal_graph):
         max_dist = max(distances)
         max_seconds = max_dist / config.SPEED_M_S
         # max assign dist is different from max search dist
-        data_map.assign_data_to_network(network_structure, max_assignment_dist=400)
+        data_map.assign_data_to_network(network_structure, max_assignment_dist=400, n_nearest_candidates=6)
         landuses_map = dict(data_gdf["categorical_landuses"])  # type: ignore
         # all datapoints and types are completely unique except for the last five - which all point to the same source
         accessibility_keys = ["a", "b", "c", "z"]  # the duplicate keys are per landuse 'z'
@@ -669,7 +669,7 @@ def test_mixed_uses(primal_graph):
     _nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(primal_graph)
     data_gdf = mock.mock_landuse_categorical_data(primal_graph, random_seed=13)
     data_map = mock.mock_data_map(data_gdf, dedupe_key_col="data_id")
-    data_map.assign_data_to_network(network_structure, max_assignment_dist=400)
+    data_map.assign_data_to_network(network_structure, max_assignment_dist=400, n_nearest_candidates=6)
     distances = [200, 400, 800, 1600]
     max_dist = max(distances)
     max_seconds = max_dist / config.SPEED_M_S
@@ -773,7 +773,7 @@ def test_stats(primal_graph):
     max_assign_dist = 3200
     # don't deduplicate with data_id column otherwise below tallys won't work
     data_map = mock.mock_data_map(data_gdf)
-    data_map.assign_data_to_network(network_structure, max_assignment_dist=max_assign_dist)
+    data_map.assign_data_to_network(network_structure, max_assignment_dist=max_assign_dist, n_nearest_candidates=6)
 
     numerical_maps = []
     for stats_col in ["mock_numerical_1", "mock_numerical_2"]:
@@ -908,7 +908,9 @@ def test_stats(primal_graph):
     # do deduplication - the stats should now be lower on average
     # the last five datapoints are pointing to the same source
     data_map_dedupe = mock.mock_data_map(data_gdf, dedupe_key_col="data_id")
-    data_map_dedupe.assign_data_to_network(network_structure, max_assignment_dist=max_assign_dist)
+    data_map_dedupe.assign_data_to_network(
+        network_structure, max_assignment_dist=max_assign_dist, n_nearest_candidates=6
+    )
     # plot.plot_network_structure(network_structure, data_map_dedupe)
     stats_results_dedupe = data_map_dedupe.stats(
         network_structure,

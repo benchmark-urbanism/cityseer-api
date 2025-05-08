@@ -471,6 +471,7 @@ impl NetworkStructure {
             &transport_key,  // Use temporary key for logging/context if needed inside
             &transport_geom, // Use transport node's geometry
             link_radius,     // Use linking radius as max distance
+            6,               // No specific street node index
         );
 
         let mut links_added = 0;
@@ -1058,6 +1059,7 @@ impl NetworkStructure {
         data_key: &str,
         data_geom: &Geometry<f64>,
         max_assignment_dist: f64,
+        n_nearest_candidates: usize,
     ) -> Vec<(usize, String, f64)> {
         let edge_rtree = self.edge_rtree.as_ref().expect("Edge R-tree should exist.");
         let cent_geom = data_geom
@@ -1065,7 +1067,7 @@ impl NetworkStructure {
             .expect("Data geometry should have a centroid for assignment search.");
         let candidate_edges_rtree = edge_rtree
             .nearest_neighbor_iter(&[cent_geom.x(), cent_geom.y()])
-            .take(20)
+            .take(n_nearest_candidates)
             .collect::<Vec<_>>();
 
         let mut candidates_with_dist: Vec<(f64, &EdgeRtreeItem)> = Vec::new();

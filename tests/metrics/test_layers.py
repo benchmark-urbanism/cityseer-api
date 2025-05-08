@@ -153,6 +153,7 @@ def test_compute_mixed_uses(primal_graph):
                 compute_gini=True,
                 data_id_col=data_id_col,
                 angular=angular,
+                max_netw_assign_dist=max_assign_dist,
             )
             # generate manually
             data_map = layers.build_data_map(
@@ -227,6 +228,7 @@ def test_compute_stats(primal_graph):
                 network_structure,
                 distances=distances,
                 angular=angular,
+                max_netw_assign_dist=max_assign_dist,
             )
             # compare to manual
             for stats_key in ["mock_numerical_1", "mock_numerical_2"]:

@@ -516,11 +516,11 @@ layout: ../../layouts/PageLayout.astro
 
 <div class="function">
 
-## get_node_payload
+## get_node_payload_py
 
 
 <div class="content">
-<span class="name">get_node_payload</span><div class="signature multiline">
+<span class="name">get_node_payload_py</span><div class="signature multiline">
   <span class="pt">(</span>
   <div class="param">
     <span class="pn">self</span>
@@ -830,11 +830,73 @@ layout: ../../layouts/PageLayout.astro
 
 <div class="function">
 
-## get_edge_payload
+## get_edge_payload_py
 
 
 <div class="content">
-<span class="name">get_edge_payload</span><div class="signature multiline">
+<span class="name">get_edge_payload_py</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">self</span>
+  </div>
+  <div class="param">
+    <span class="pn">/</span>
+  </div>
+  <div class="param">
+    <span class="pn">start_nd_idx</span>
+  </div>
+  <div class="param">
+    <span class="pn">end_nd_idx</span>
+  </div>
+  <div class="param">
+    <span class="pn">edge_idx</span>
+  </div>
+  <span class="pt">)</span>
+</div>
+</div>
+
+</div>
+
+ 
+
+<div class="function">
+
+## get_edge_length
+
+
+<div class="content">
+<span class="name">get_edge_length</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">self</span>
+  </div>
+  <div class="param">
+    <span class="pn">/</span>
+  </div>
+  <div class="param">
+    <span class="pn">start_nd_idx</span>
+  </div>
+  <div class="param">
+    <span class="pn">end_nd_idx</span>
+  </div>
+  <div class="param">
+    <span class="pn">edge_idx</span>
+  </div>
+  <span class="pt">)</span>
+</div>
+</div>
+
+</div>
+
+ 
+
+<div class="function">
+
+## get_edge_impedance
+
+
+<div class="content">
+<span class="name">get_edge_impedance</span><div class="signature multiline">
   <span class="pt">(</span>
   <div class="param">
     <span class="pn">self</span>
@@ -959,12 +1021,7 @@ layout: ../../layouts/PageLayout.astro
 
  
 
-<span class="name">node_xs</span>
-
-
- 
-
-<span class="name">street_node_lives</span>
+<span class="name">node_xys</span>
 
 
  
@@ -974,7 +1031,12 @@ layout: ../../layouts/PageLayout.astro
 
  
 
-<span class="name">node_xys</span>
+<span class="name">street_node_lives</span>
+
+
+ 
+
+<span class="name">node_xs</span>
 
 
  
