@@ -1065,7 +1065,7 @@ impl NetworkStructure {
             .expect("Data geometry should have a centroid for assignment search.");
         let candidate_edges_rtree = edge_rtree
             .nearest_neighbor_iter(&[cent_geom.x(), cent_geom.y()])
-            .take(6)
+            .take(20)
             .collect::<Vec<_>>();
 
         let mut candidates_with_dist: Vec<(f64, &EdgeRtreeItem)> = Vec::new();
