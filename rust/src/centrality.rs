@@ -1,8 +1,7 @@
 use crate::common;
-use atomic_float::AtomicF32;
 
 use crate::common::MetricResult;
-use crate::common::{PROGRESS_UPDATE_INTERVAL, WALKING_SPEED};
+use crate::common::WALKING_SPEED;
 use crate::graph::{EdgeVisit, NetworkStructure, NodeVisit};
 use numpy::PyArray1;
 use petgraph::graph::NodeIndex;
@@ -537,19 +536,23 @@ impl NetworkStructure {
 
         let node_keys_py = self.node_keys_py(py);
         let node_indices = self.node_indices();
+        let res = CentralityShortestResult::new(
+            distances.clone(),
+            node_keys_py,
+            node_indices.clone(),
+            0.0,
+        );
 
         let pbar_disabled = pbar_disabled.unwrap_or(false);
         self.progress_init();
+
         let result = py.allow_threads(move || {
-            let res =
-                CentralityShortestResult::new(distances.clone(), node_keys_py, node_indices, 0.0);
-            res.node_indices
+            node_indices
                 .par_iter()
                 .enumerate()
                 .for_each(|(i, src_idx)| {
-                    if !pbar_disabled && i % PROGRESS_UPDATE_INTERVAL == 0 {
-                        self.progress
-                            .fetch_add(PROGRESS_UPDATE_INTERVAL, AtomicOrdering::Relaxed);
+                    if !pbar_disabled {
+                        self.progress.fetch_add(1, AtomicOrdering::Relaxed);
                     }
                     if !self.is_node_live(*src_idx).unwrap_or(true) {
                         return;
@@ -679,19 +682,23 @@ impl NetworkStructure {
 
         let node_keys_py = self.node_keys_py(py);
         let node_indices = self.node_indices();
+        let res = CentralitySimplestResult::new(
+            distances.clone(),
+            node_keys_py,
+            node_indices.clone(),
+            0.0,
+        );
 
         let pbar_disabled = pbar_disabled.unwrap_or(false);
         self.progress_init();
+
         let result = py.allow_threads(move || {
-            let res =
-                CentralitySimplestResult::new(distances.clone(), node_keys_py, node_indices, 0.0);
-            res.node_indices
+            node_indices
                 .par_iter()
                 .enumerate()
                 .for_each(|(i, src_idx)| {
-                    if !pbar_disabled && i % PROGRESS_UPDATE_INTERVAL == 0 {
-                        self.progress
-                            .fetch_add(PROGRESS_UPDATE_INTERVAL, AtomicOrdering::Relaxed);
+                    if !pbar_disabled {
+                        self.progress.fetch_add(1, AtomicOrdering::Relaxed);
                     }
                     if !self.is_node_live(*src_idx).unwrap_or(true) {
                         return;
@@ -803,20 +810,23 @@ impl NetworkStructure {
 
         let node_keys_py = self.node_keys_py(py);
         let node_indices = self.node_indices();
+        let res = CentralitySegmentResult::new(
+            distances.clone(),
+            node_keys_py,
+            node_indices.clone(),
+            0.0,
+        );
 
         let pbar_disabled = pbar_disabled.unwrap_or(false);
         self.progress_init();
-        let result = py.allow_threads(move || {
-            let res =
-                CentralitySegmentResult::new(distances.clone(), node_keys_py, node_indices, 0.0);
 
-            res.node_indices
+        let result = py.allow_threads(move || {
+            node_indices
                 .par_iter()
                 .enumerate()
                 .for_each(|(i, src_idx)| {
-                    if !pbar_disabled && i % PROGRESS_UPDATE_INTERVAL == 0 {
-                        self.progress
-                            .fetch_add(PROGRESS_UPDATE_INTERVAL, AtomicOrdering::Relaxed);
+                    if !pbar_disabled {
+                        self.progress.fetch_add(1, AtomicOrdering::Relaxed);
                     }
                     if !self.is_node_live(*src_idx).unwrap_or(true) {
                         return;

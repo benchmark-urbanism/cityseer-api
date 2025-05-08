@@ -15,6 +15,7 @@ cityseer/_version.py
 
 # temporary working directories
 **/temp/**
+**/deprecated/**
 
 # geopackages
 *.gpkg

@@ -1,8 +1,8 @@
 use crate::common::MetricResult;
+use crate::common::WALKING_SPEED;
 use crate::common::{
     clip_wts_curve, clipped_beta_wt, pair_distances_betas_time, py_key_to_composite,
 };
-use crate::common::{PROGRESS_UPDATE_INTERVAL, WALKING_SPEED};
 use crate::diversity;
 use crate::graph::NetworkStructure;
 use core::f32;
@@ -20,7 +20,7 @@ use wkt::TryFromWkt;
 
 #[pyclass]
 #[derive(Clone)]
-struct LanduseAccess {
+pub struct LanduseAccess {
     weighted_vec: MetricResult,
     unweighted_vec: MetricResult,
     distance_vec: MetricResult,
@@ -647,25 +647,24 @@ impl DataMap {
 
         let node_keys_py = network_structure.node_keys_py(py);
         let node_indices = network_structure.node_indices();
+        let res = AccessibilityResult::new(
+            distances.clone(),
+            node_keys_py,
+            node_indices.clone(),
+            accessibility_keys.clone(),
+            max_dist,
+        );
 
         let pbar_disabled = pbar_disabled.unwrap_or(false);
         self.progress_init();
-        let result = py.allow_threads(move || -> PyResult<_> {
-            let res = AccessibilityResult::new(
-                distances.clone(),
-                node_keys_py,
-                node_indices.clone(),
-                accessibility_keys.clone(),
-                max_dist,
-            );
 
+        let result = py.allow_threads(move || -> PyResult<_> {
             node_indices
                 .par_iter()
                 .enumerate()
                 .try_for_each(|(i, &netw_src_idx)| {
-                    if !pbar_disabled && i % PROGRESS_UPDATE_INTERVAL == 0 {
-                        self.progress
-                            .fetch_add(PROGRESS_UPDATE_INTERVAL, AtomicOrdering::Relaxed);
+                    if !pbar_disabled {
+                        self.progress.fetch_add(1, AtomicOrdering::Relaxed);
                     }
                     if !network_structure.is_node_live(netw_src_idx)? {
                         return Ok::<(), PyErr>(());
@@ -791,12 +790,12 @@ impl DataMap {
 
         let node_keys_py = network_structure.node_keys_py(py);
         let node_indices = network_structure.node_indices();
+        let res = MixedUsesResult::new(distances.clone(), node_keys_py, node_indices.clone());
 
         let pbar_disabled = pbar_disabled.unwrap_or(false);
         self.progress_init();
-        let result = py.allow_threads(move || -> PyResult<_> {
-            let res = MixedUsesResult::new(distances.clone(), node_keys_py, node_indices.clone());
 
+        let result = py.allow_threads(move || -> PyResult<_> {
             let mut classes_uniq: HashSet<String> = HashSet::new();
             for cl_code in lu_map.values() {
                 classes_uniq.insert(cl_code.clone());
@@ -806,9 +805,8 @@ impl DataMap {
                 .par_iter()
                 .enumerate()
                 .try_for_each(|(i, &netw_src_idx)| {
-                    if !pbar_disabled && i % PROGRESS_UPDATE_INTERVAL == 0 {
-                        self.progress
-                            .fetch_add(PROGRESS_UPDATE_INTERVAL, AtomicOrdering::Relaxed);
+                    if !pbar_disabled {
+                        self.progress.fetch_add(1, AtomicOrdering::Relaxed);
                     }
                     if !network_structure.is_node_live(netw_src_idx)? {
                         return Ok::<(), PyErr>(());
@@ -996,24 +994,23 @@ impl DataMap {
 
         let node_keys_py = network_structure.node_keys_py(py);
         let node_indices = network_structure.node_indices();
+        let res = StatsResult::new(
+            distances.clone(),
+            node_keys_py,
+            node_indices.clone(),
+            num_maps.len(),
+        );
 
         let pbar_disabled = pbar_disabled.unwrap_or(false);
         self.progress_init();
-        let result = py.allow_threads(move || -> PyResult<_> {
-            let res = StatsResult::new(
-                distances.clone(),
-                node_keys_py,
-                node_indices.clone(),
-                num_maps.len(),
-            );
 
+        let result = py.allow_threads(move || -> PyResult<_> {
             node_indices
                 .par_iter()
                 .enumerate()
                 .try_for_each(|(i, &netw_src_idx)| {
-                    if !pbar_disabled && i % PROGRESS_UPDATE_INTERVAL == 0 {
-                        self.progress
-                            .fetch_add(PROGRESS_UPDATE_INTERVAL, AtomicOrdering::Relaxed);
+                    if !pbar_disabled {
+                        self.progress.fetch_add(1, AtomicOrdering::Relaxed);
                     }
                     // Propagate error if is_node_live fails, otherwise skip if node is not live.
                     if !network_structure.is_node_live(netw_src_idx)? {
