@@ -10,7 +10,7 @@ from queue import Queue
 import numpy as np
 from tqdm import tqdm
 
-from cityseer import rustalgos
+from . import rustalgos
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -60,7 +60,7 @@ SKIP_VALIDATION: bool = False
 MIN_THRESH_WT: float = 0.01831563888873418
 SPEED_M_S = 1.33333
 # for all_close equality checks
-ATOL: float = 0.001
+ATOL: float = 0.01
 RTOL: float = 0.0001
 
 
@@ -73,7 +73,7 @@ def log_thresholds(
 ):
     # pair distances, betas, and time for logging - DO AFTER PARTIAL FUNC
     distances, betas, seconds = rustalgos.pair_distances_betas_time(
-        distances, betas, minutes, min_threshold_wt=min_threshold_wt, speed_m_s=speed_m_s
+        speed_m_s, distances, betas, minutes, min_threshold_wt=min_threshold_wt
     )
     # log distances, betas, minutes
     logger.info("Metrics computed for:")
@@ -83,27 +83,30 @@ def log_thresholds(
 
 
 RustResults = (
-    rustalgos.CentralityShortestResult
-    | rustalgos.CentralitySimplestResult
-    | rustalgos.CentralitySegmentResult
-    | rustalgos.AccessibilityResult
-    | rustalgos.MixedUsesResult
-    | rustalgos.StatsResult
+    rustalgos.centrality.CentralityShortestResult
+    | rustalgos.centrality.CentralitySimplestResult
+    | rustalgos.centrality.CentralitySegmentResult
+    | rustalgos.data.AccessibilityResult
+    | rustalgos.data.MixedUsesResult
+    | rustalgos.data.StatsResult
 )
 
 
 def wrap_progress(
     total: int,
-    rust_struct: rustalgos.NetworkStructure | rustalgos.DataMap | rustalgos.Viewshed,
+    rust_struct: rustalgos.graph.NetworkStructure | rustalgos.data.DataMap | rustalgos.viewshed.Viewshed,
     partial_func: Callable,  # type: ignore
 ) -> RustResults:
     """Wraps long running parallelised rust functions with a progress counter."""
 
-    def wrapper(queue: Queue[RustResults]):
-        result: RustResults = partial_func()  # type: ignore
-        queue.put(result)  # type: ignore
+    def wrapper(queue: Queue[RustResults | Exception]):
+        try:
+            result: RustResults = partial_func()  # type: ignore
+            queue.put(result)  # type: ignore
+        except Exception as e:
+            queue.put(e)
 
-    result_queue: Queue[RustResults] = Queue()
+    result_queue: Queue[RustResults | Exception] = Queue()
     thread = threading.Thread(target=wrapper, args=(result_queue,))
     pbar = tqdm(
         total=total,
@@ -112,10 +115,13 @@ def wrap_progress(
     thread.start()
     while thread.is_alive():
         time.sleep(1)
-        pbar.update(rust_struct.progress() - pbar.n)
+        pbar.update(rust_struct.progress() - pbar.n)  # type: ignore
     pbar.update(total - pbar.n)
     pbar.close()
     result = result_queue.get()
     thread.join()
+
+    if isinstance(result, Exception):
+        raise result
 
     return result

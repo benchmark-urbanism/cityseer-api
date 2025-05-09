@@ -1,6 +1,6 @@
 [project]
 name = "cityseer"
-version = '4.20.0'
+version = '4.21.0b49'
 description = "Computational tools for network-based pedestrian-scale urban analysis"
 readme = "README.md"
 requires-python = ">=3.11, <3.14"
@@ -87,6 +87,7 @@ requires = ["maturin>=1.0,<2.0"]
 build-backend = "maturin"
 
 [tool.maturin]
+manifest-path = "rust/Cargo.toml"
 python-source = "pysrc"
 module-name = 'cityseer.rustalgos'
 features = ["pyo3/extension-module"]

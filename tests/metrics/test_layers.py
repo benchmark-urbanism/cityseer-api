@@ -10,71 +10,36 @@ from cityseer.tools import io, mock
 from shapely import geometry
 
 
-def test_assign_gdf_to_network(primal_graph):
+def test_build_data_map(primal_graph):
     _nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(primal_graph)
     for typ in [int, float, str]:
-        data_gdf = mock.mock_data_gdf(primal_graph)
-        data_gdf.index = data_gdf.index.astype(typ)
-        # check initial and cached - second iter uses cached
-        for _ in range(2):
+        for data_id_col in [None, "data_id"]:
+            data_gdf = mock.mock_data_gdf(primal_graph)
+            data_gdf.index = data_gdf.index.astype(typ)
             for to_poly in [False, True]:
                 # handle both points and polys
                 if to_poly is True:
                     data_gdf.geometry = data_gdf.geometry.buffer(10)
                 #
-                data_map, data_gdf = layers.assign_gdf_to_network(
-                    data_gdf, network_structure, 400, data_id_col="data_id"
+                data_map = layers.build_data_map(
+                    data_gdf, network_structure, max_netw_assign_dist=400, data_id_col=data_id_col
                 )
-                # check assignments
-                for row_idx, data_row in data_gdf.iterrows():
-                    assert str(row_idx) == data_row["datamap_key"]
-                    data_map_key = data_row["datamap_key"]
-                    data_entry = data_map.get_entry(data_map_key)
-                    # compute manually
-                    nearest_idx, next_nearest_idx = network_structure.assign_to_network(data_entry.coord, 400)
-                    assert nearest_idx == data_entry.nearest_assign
-                    assert next_nearest_idx == data_entry.next_nearest_assign
-                    assert data_row["nearest_assign"] == data_entry.nearest_assign
-                    assert data_row["next_nearest_assign"] == data_entry.next_nearest_assign
-                    # data_id_col
-                    assert str(data_row["data_id"]) == data_entry.data_id
-                # check all points are assigned
-                assert data_map.all_assigned()
-    # check recompute triggered when columns are dropped
-    for col in ["nearest_assign", "next_nearest_assign", "datamap_key", "dedupe_key"]:
-        data_map, data_gdf = layers.assign_gdf_to_network(data_gdf, network_structure, 400, data_id_col="data_id")
-        data_gdf = data_gdf.drop(columns=[col])
-        # should regenerate the columns
-        data_map, data_gdf = layers.assign_gdf_to_network(data_gdf, network_structure, 400, data_id_col="data_id")
-        # check assignments
-        for row_idx, data_row in data_gdf.iterrows():
-            assert str(row_idx) == data_row["datamap_key"]
-            data_map_key = data_row["datamap_key"]
-            data_entry = data_map.get_entry(data_map_key)
-            nearest_idx, next_nearest_idx = network_structure.assign_to_network(data_entry.coord, 400)
-            assert nearest_idx == data_entry.nearest_assign
-            assert next_nearest_idx == data_entry.next_nearest_assign
-            assert data_row["nearest_assign"] == data_entry.nearest_assign
-            assert data_row["next_nearest_assign"] == data_entry.next_nearest_assign
-            # data_id_col
-            assert str(data_row["data_id"]) == data_entry.data_id
-    # start fresh with data id of None
-    data_gdf = mock.mock_data_gdf(primal_graph)
-    data_map, data_gdf = layers.assign_gdf_to_network(data_gdf, network_structure, 400, data_id_col=None)
-    for row_idx, data_row in data_gdf.iterrows():
-        assert str(row_idx) == data_row["datamap_key"]
-        data_map_key = data_row["datamap_key"]
-        data_entry = data_map.get_entry(data_map_key)
-        assert data_entry.data_id is None
+                for _data_key, data_entry in data_map.entries.items():
+                    data_gdf_row = data_gdf.loc[data_entry.data_key_py]  # type: ignore
+                    assert data_entry.geom_wkt == data_gdf_row.geometry.wkt
+                    if data_id_col is not None:
+                        assert data_entry.dedupe_key_py == data_gdf_row[data_id_col]
+                    else:
+                        assert data_entry.dedupe_key_py == data_entry.data_key_py
     # check with different geometry column name
     data_gdf = mock.mock_data_gdf(primal_graph)
     data_gdf.rename(columns={"geometry": "geom"}, inplace=True)
     data_gdf.set_geometry("geom", inplace=True)
-    data_map, data_gdf = layers.assign_gdf_to_network(data_gdf, network_structure, 400, data_id_col="data_id")
+    data_map = layers.build_data_map(data_gdf, network_structure, max_netw_assign_dist=400, data_id_col="data_id")
     # catch non unique indices
     data_gdf = gpd.GeoDataFrame(
         {
-            "data_id": [1, 2, 2],
+            "data_idx": [1, 2, 2],
             "geometry": [
                 geometry.Point(0, 0),
                 geometry.Point(1, 1),
@@ -83,14 +48,13 @@ def test_assign_gdf_to_network(primal_graph):
         },
         crs="EPSG:3857",
     )
-    data_gdf.set_index("data_id", inplace=True)
+    data_gdf.set_index("data_idx", inplace=True)
     with pytest.raises(ValueError):
-        data_map, data_gdf = layers.assign_gdf_to_network(data_gdf, network_structure, 400)
-    # catch duplicate geom types
-    data_gdf = mock.mock_data_gdf(primal_graph)
-    data_gdf.geometry[0] = data_gdf.geometry[0].buffer(10)
-    with pytest.raises(ValueError):
-        data_map, data_gdf = layers.assign_gdf_to_network(data_gdf, network_structure, 400)
+        data_map = layers.build_data_map(
+            data_gdf,
+            network_structure,
+            max_netw_assign_dist=400,
+        )
 
 
 def test_compute_accessibilities(primal_graph):
@@ -102,10 +66,10 @@ def test_compute_accessibilities(primal_graph):
         for data_id_col in [None, "data_id"]:
             for key_set in (["a"], ["b"], ["a", "b"]):
                 nodes_gdf, data_gdf = layers.compute_accessibilities(
-                    data_gdf,
+                    data_gdf,  # type: ignore
                     "categorical_landuses",
                     key_set,
-                    nodes_gdf,
+                    nodes_gdf,  # type: ignore
                     network_structure,
                     max_netw_assign_dist=max_assign_dist,
                     distances=distances,
@@ -113,37 +77,34 @@ def test_compute_accessibilities(primal_graph):
                     angular=angular,
                 )
                 # test against manual implementation over underlying method
-                data_map, data_gdf = layers.assign_gdf_to_network(
+                landuses_map = dict(data_gdf["categorical_landuses"])  # type: ignore
+                data_map = layers.build_data_map(
                     data_gdf,
                     network_structure,
-                    max_assign_dist,
+                    max_netw_assign_dist=max_assign_dist,
                     data_id_col=data_id_col,
                 )
-                # accessibilities
-                data_keys: list[str] = data_gdf["datamap_key"]  # type: ignore
-                landuses: list[str] = data_gdf["categorical_landuses"]  # type: ignore
-                landuses_map: dict[str, str] = dict(zip(data_keys, landuses, strict=True))
                 accessibility_data = data_map.accessibility(
                     network_structure,
-                    landuses_map,
+                    landuses_map,  # type: ignore
                     key_set,
-                    distances,
+                    distances=distances,
                     angular=angular,
                 )
                 for acc_key in key_set:
                     for dist_key in distances:
                         acc_data_key_nw = config.prep_gdf_key(acc_key, dist_key, angular, weighted=False)
                         assert np.allclose(
-                            nodes_gdf[acc_data_key_nw].values,
-                            accessibility_data[acc_key].unweighted[dist_key],
+                            nodes_gdf[acc_data_key_nw].values,  # type: ignore
+                            accessibility_data.result[acc_key].unweighted[dist_key],
                             atol=config.ATOL,
                             rtol=config.RTOL,
                             equal_nan=True,
                         )
                         acc_data_key_wt = config.prep_gdf_key(acc_key, dist_key, angular, weighted=True)
                         assert np.allclose(
-                            nodes_gdf[acc_data_key_wt].values,
-                            accessibility_data[acc_key].weighted[dist_key],
+                            nodes_gdf[acc_data_key_wt].values,  # type: ignore
+                            accessibility_data.result[acc_key].weighted[dist_key],
                             atol=config.ATOL,
                             rtol=config.RTOL,
                             equal_nan=True,
@@ -151,21 +112,21 @@ def test_compute_accessibilities(primal_graph):
                         acc_data_key_dist = config.prep_gdf_key(f"{acc_key}_nearest_max", dist_key, angular)
                         if dist_key == max(distances):
                             assert np.allclose(
-                                nodes_gdf[acc_data_key_dist].values,
-                                accessibility_data[acc_key].distance[dist_key],
+                                nodes_gdf[acc_data_key_dist].values,  # type: ignore
+                                accessibility_data.result[acc_key].distance[dist_key],
                                 atol=config.ATOL,
                                 rtol=config.RTOL,
                                 equal_nan=True,
                             )
                         else:
-                            assert acc_data_key_dist not in nodes_gdf.columns
+                            assert acc_data_key_dist not in nodes_gdf.columns  # type: ignore
                 # most integrity checks happen in underlying method
                 with pytest.raises(ValueError):
-                    nodes_gdf, data_gdf = layers.compute_accessibilities(
-                        data_gdf,
+                    nodes_gdf = layers.compute_accessibilities(
+                        data_gdf,  # type: ignore
                         "categorical_landuses-TYPO",
                         ["c"],
-                        nodes_gdf,
+                        nodes_gdf,  # type: ignore
                         network_structure,
                         max_netw_assign_dist=max_assign_dist,
                         distances=distances,
@@ -178,7 +139,6 @@ def test_compute_mixed_uses(primal_graph):
     distances = [400, 800]
     max_assign_dist = 400
     # test against manual implementation over underlying method
-    max_dist = max(distances)
     for data_id_col in [None, "data_id"]:
         for angular in [False, True]:
             nodes_gdf, data_gdf = layers.compute_mixed_uses(
@@ -186,7 +146,6 @@ def test_compute_mixed_uses(primal_graph):
                 "categorical_landuses",
                 nodes_gdf,
                 network_structure,
-                max_netw_assign_dist=max_assign_dist,
                 distances=distances,
                 compute_hill=True,
                 compute_hill_weighted=True,
@@ -194,14 +153,16 @@ def test_compute_mixed_uses(primal_graph):
                 compute_gini=True,
                 data_id_col=data_id_col,
                 angular=angular,
+                max_netw_assign_dist=max_assign_dist,
             )
             # generate manually
-            data_map, data_gdf = layers.assign_gdf_to_network(
-                data_gdf, network_structure, max_dist, data_id_col=data_id_col
+            data_map = layers.build_data_map(
+                data_gdf,
+                network_structure,
+                max_netw_assign_dist=max_assign_dist,
+                data_id_col=data_id_col,
             )
-            data_keys: list[str] = data_gdf["datamap_key"]  # type: ignore
-            landuses: list[str] = data_gdf["categorical_landuses"]  # type: ignore
-            landuses_map: dict[str, str] = dict(zip(data_keys, landuses, strict=True))
+            landuses_map = dict(data_gdf["categorical_landuses"])
             mu_data = data_map.mixed_uses(
                 network_structure,
                 landuses_map,
@@ -251,8 +212,12 @@ def test_compute_stats(primal_graph):
     nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(primal_graph)
     data_gdf = mock.mock_numerical_data(primal_graph, num_arrs=2)
     max_assign_dist = 400
-    data_map, data_gdf = layers.assign_gdf_to_network(data_gdf, network_structure, max_assign_dist)
-    # test against manual implementation over underlying method
+    data_map = layers.build_data_map(
+        data_gdf,
+        network_structure,
+        max_netw_assign_dist=max_assign_dist,
+        data_id_col=None,
+    )  # test against manual implementation over underlying method
     distances = [400, 800]
     for _data_id_col in [None, "data_id"]:
         for angular in [False, True]:
@@ -261,15 +226,13 @@ def test_compute_stats(primal_graph):
                 ["mock_numerical_1", "mock_numerical_2"],
                 nodes_gdf,
                 network_structure,
-                max_assign_dist,
                 distances=distances,
                 angular=angular,
+                max_netw_assign_dist=max_assign_dist,
             )
             # compare to manual
             for stats_key in ["mock_numerical_1", "mock_numerical_2"]:
-                data_keys: list[str] = data_gdf["datamap_key"]  # type: ignore
-                stats: list[str] = data_gdf[stats_key]  # type: ignore
-                stats_map: dict[str, str] = dict(zip(data_keys, stats, strict=True))
+                stats_map = dict(data_gdf[stats_key])  # type: ignore
                 # generate stats
                 stats_results = data_map.stats(
                     network_structure,
@@ -277,7 +240,7 @@ def test_compute_stats(primal_graph):
                     distances=distances,
                     angular=angular,
                 )
-                stats_result = stats_results[0]
+                stats_result = stats_results.result[0]
                 for dist_key in distances:
                     assert np.allclose(
                         nodes_gdf[config.prep_gdf_key(f"{stats_key}_sum", dist_key, angular=angular, weighted=False)],

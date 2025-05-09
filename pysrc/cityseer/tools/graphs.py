@@ -19,9 +19,9 @@ from pyproj import CRS
 from shapely import BufferCapStyle, geometry, ops
 from tqdm import tqdm
 
-from cityseer import config
-from cityseer.tools import util
-from cityseer.tools.util import EdgeData, ListCoordsType, NodeData, NodeKey
+from .. import config
+from ..tools import util
+from ..tools.util import EdgeData, ListCoordsType, NodeData, NodeKey
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

@@ -237,7 +237,7 @@ def test_network_structure_from_nx(diamond_graph):
         # plot.plot_graphs(primal=G)
         # plot.plot_network_structure(nodes_gdf, node_data, edge_data)
         # check lengths
-        assert len(nodes_gdf) == (network_structure.node_count()) == G.number_of_nodes()
+        assert len(nodes_gdf) == (network_structure.street_node_count()) == G.number_of_nodes()
         # edges = x2
         assert network_structure.edge_count == G.number_of_edges() * 2
         # CRS check
@@ -251,17 +251,17 @@ def test_network_structure_from_nx(diamond_graph):
                     == G_test[row["primal_edge_node_a"]][row["primal_edge_node_b"]][row["primal_edge_idx"]]["geom"]
                 )
         # check node maps (idx and label match in this case...)
-        node_idxs = network_structure.node_indices()
+        node_idxs = network_structure.street_node_indices()
         for node_idx in node_idxs:
-            node_payload = network_structure.get_node_payload(node_idx)
-            assert node_payload.coord.x - nodes_gdf.loc[node_payload.node_key].x < config.ATOL
-            assert node_payload.coord.y - nodes_gdf.loc[node_payload.node_key].y < config.ATOL
+            node_payload = network_structure.get_node_payload_py(node_idx)
+            assert node_payload.coord[0] - nodes_gdf.loc[node_payload.node_key].x < config.ATOL
+            assert node_payload.coord[1] - nodes_gdf.loc[node_payload.node_key].y < config.ATOL
             assert node_payload.live == nodes_gdf.loc[node_payload.node_key].live
         # check edge maps (idx and label match in this case...)
         for start_ns_node_idx, end_ns_node_idx, edge_idx in network_structure.edge_references():
-            edge_payload = network_structure.get_edge_payload(start_ns_node_idx, end_ns_node_idx, edge_idx)
-            start_nd_key = edge_payload.start_nd_key
-            end_nd_key = edge_payload.end_nd_key
+            edge_payload = network_structure.get_edge_payload_py(start_ns_node_idx, end_ns_node_idx, edge_idx)
+            start_nd_key = edge_payload.start_nd_key_py
+            end_nd_key = edge_payload.end_nd_key_py
             edge_idx = edge_payload.edge_idx
             length = edge_payload.length
             angle_sum = edge_payload.angle_sum
@@ -276,12 +276,24 @@ def test_network_structure_from_nx(diamond_graph):
             assert edges_gdf.loc[gdf_edge_key, "edge_idx"] == edge_idx
             assert edges_gdf.loc[gdf_edge_key, "nx_start_node_key"] == start_nd_key
             assert edges_gdf.loc[gdf_edge_key, "nx_end_node_key"] == end_nd_key
-            assert edges_gdf.loc[gdf_edge_key, "length"] - length < config.ATOL
-            assert edges_gdf.loc[gdf_edge_key, "angle_sum"] - angle_sum < config.ATOL
-            assert edges_gdf.loc[gdf_edge_key, "imp_factor"] - imp_factor < config.ATOL
-            assert edges_gdf.loc[gdf_edge_key, "in_bearing"] - in_bearing < config.ATOL
-            assert edges_gdf.loc[gdf_edge_key, "out_bearing"] - out_bearing < config.ATOL
+            # align the geometry
+            start_nd_payload = network_structure.get_node_payload_py(start_ns_node_idx)
+            line_geom = edges_gdf.loc[gdf_edge_key, edges_gdf.geometry.name]  # type: ignore
+            line_geom_coords = util.align_linestring_coords(line_geom.coords, (start_nd_payload.coord))  # type: ignore
+            aligned_line_geom = geometry.LineString(line_geom_coords)
+            assert aligned_line_geom.length - length < config.ATOL
+            assert util.measure_cumulative_angle(aligned_line_geom.coords) - angle_sum < config.ATOL
+            assert imp_factor == 1
+            assert (
+                util.measure_bearing(aligned_line_geom.coords[0], aligned_line_geom.coords[1]) - in_bearing
+                < config.ATOL
+            )
+            assert (
+                util.measure_bearing(aligned_line_geom.coords[-2], aligned_line_geom.coords[-1]) - out_bearing
+                < config.ATOL
+            )
             assert np.isnan(seconds)
+            assert edge_payload.geom_wkt == aligned_line_geom.wkt
             # manual checks
             if not is_dual:
                 if (start_nd_key, end_nd_key) == ("0", "1"):
@@ -681,10 +693,10 @@ def test_network_structure_from_gpd(primal_graph):
     assert network_structure.node_indices() == network_structure_round.node_indices()
     # check node data consistency
     for start_nd_idx in network_structure.node_indices():
-        node_data = network_structure.get_node_payload(start_nd_idx)
-        node_data_round = network_structure_round.get_node_payload(start_nd_idx)
-        assert node_data.coord.x == node_data_round.coord.x
-        assert node_data.coord.y == node_data_round.coord.y
+        node_data = network_structure.get_node_payload_py(start_nd_idx)
+        node_data_round = network_structure_round.get_node_payload_py(start_nd_idx)
+        assert node_data.coord == node_data_round.coord
+        assert node_data.coord == node_data_round.coord
         assert node_data.node_key == node_data_round.node_key
         assert node_data.live == node_data_round.live
         assert node_data.weight == node_data_round.weight
@@ -692,11 +704,11 @@ def test_network_structure_from_gpd(primal_graph):
     assert network_structure.edge_references() == network_structure_round.edge_references()
     # check edge data consistency
     for start_nd_idx, end_nd_idx, edge_idx in network_structure.edge_references():
-        edge_data = network_structure.get_edge_payload(start_nd_idx, end_nd_idx, edge_idx)
-        edge_data_round = network_structure_round.get_edge_payload(start_nd_idx, end_nd_idx, edge_idx)
+        edge_data = network_structure.get_edge_payload_py(start_nd_idx, end_nd_idx, edge_idx)
+        edge_data_round = network_structure_round.get_edge_payload_py(start_nd_idx, end_nd_idx, edge_idx)
         assert edge_data.edge_idx == edge_data_round.edge_idx
-        assert edge_data.start_nd_key == edge_data_round.start_nd_key
-        assert edge_data.end_nd_key == edge_data_round.end_nd_key
+        assert edge_data.start_nd_key_py == edge_data_round.start_nd_key_py
+        assert edge_data.end_nd_key_py == edge_data_round.end_nd_key_py
         assert edge_data.length == edge_data_round.length
         assert edge_data.angle_sum == edge_data_round.angle_sum
         assert edge_data.imp_factor == edge_data_round.imp_factor
@@ -770,8 +782,8 @@ def test_add_transport_gtfs(primal_graph):
     )
     # clean copy for transport
     nodes_gdf_w_trans, edges_gdf_w_trans, network_structure_w_trans = io.network_structure_from_nx(primal_graph)
-    nodes_gdf_w_trans, edges_gdf_w_trans, network_structure_w_trans, stops, avg_stop_pairs = io.add_transport_gtfs(
-        gtfs_data_path, nodes_gdf_w_trans, edges_gdf_w_trans, network_structure_w_trans
+    network_structure_w_trans, stops, avg_stop_pairs = io.add_transport_gtfs(
+        gtfs_data_path, network_structure_w_trans, nodes_gdf.crs
     )
     nodes_gdf_w_trans = networks.node_centrality_shortest(
         network_structure=network_structure_w_trans,
@@ -779,7 +791,7 @@ def test_add_transport_gtfs(primal_graph):
         distances=distances,
     )
     # from cityseer.tools import plot
-    # plot.plot_network_structure(network_structure_w_trans, stops)
+    # plot.plot_network_structure(network_structure_w_trans)
     #
     expected_path = [11, 12, 8, 9, 4, 1, 0, 31, 33, 38, 45, 56]
     expected_path_w_trans = [11, 61, 60, 59, 58, 57, 56]
@@ -822,8 +834,8 @@ def test_add_transport_gtfs(primal_graph):
     )
     # clean copy for transport
     nodes_gdf_w_trans, edges_gdf_w_trans, network_structure_w_trans = io.network_structure_from_nx(dual_graph)
-    nodes_gdf_w_trans, edges_gdf_w_trans, network_structure_w_trans, stops, avg_stop_pairs = io.add_transport_gtfs(
-        gtfs_data_path, nodes_gdf_w_trans, edges_gdf_w_trans, network_structure_w_trans
+    network_structure_w_trans, stops, avg_stop_pairs = io.add_transport_gtfs(
+        gtfs_data_path, network_structure_w_trans, nodes_gdf.crs
     )
     nodes_gdf_w_trans = networks.node_centrality_shortest(
         network_structure=network_structure_w_trans,

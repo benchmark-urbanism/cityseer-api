@@ -68,7 +68,7 @@ layout: ../../layouts/PageLayout.astro
   </div>
   <div class="desc">
 
- The &quot;from_crs_code&quot; parameter is deprecated and will be removed in a future release. The CRS can be set directly in the graph if not already present at G.graph[&quot;crs&quot;]; for example, G.graph[&quot;crs&quot;] = pyproj.CRS(27700)'</div>
+ The `from_crs_code` parameter is deprecated and will be removed in a future release. If your network is generated via cityseer from OSM or GeoPandas then CRS handling is automatic. Otherwise, the CRS can be set directly in the graph if necessary at G.graph[&quot;crs&quot;]; for example: G.graph[&quot;crs&quot;] = 4326</div>
 </div>
 
 ### Returns
@@ -654,7 +654,7 @@ out qt;
   <div class="param">
     <span class="pn">tolerance</span>
     <span class="pc">:</span>
-    <span class="pa"> float = 0.001</span>
+    <span class="pa"> float = 0.01</span>
   </div>
   <span class="pt">)-&gt;[</span>
   <span class="pr">MultiGraph</span>
@@ -864,7 +864,7 @@ out qt;
   </div>
   <div class="desc">
 
- The &quot;crs&quot; parameter is deprecated and will be removed in a future release. The CRS can be set directly in the graph if not already present at G.graph[&quot;crs&quot;]; for example, G.graph[&quot;crs&quot;] = pyproj.CRS(27700)'</div>
+ The `crs` parameter is deprecated and will be removed in a future release. If your network is generated via cityseer from OSM or GeoPandas then CRS handling is automatic. Otherwise, the CRS can be set directly in the graph if necessary at G.graph[&quot;crs&quot;]; for example: G.graph[&quot;crs&quot;] = 4326</div>
 </div>
 
 ### Returns
@@ -885,17 +885,17 @@ out qt;
   </div>
   <div class="desc">
 
- A `gpd.GeoDataFrame` with `ns_edge_idx`, `start_ns_node_idx`, `end_ns_node_idx`, `edge_idx`, `nx_start_node_key` ,`nx_end_node_key`, `length`, `angle_sum`, `imp_factor`, `in_bearing`, `out_bearing`, `total_bearing`, `geom` attributes.</div>
+ A `gpd.GeoDataFrame` with `ns_edge_idx`, `start_ns_node_idx`, `end_ns_node_idx`, `edge_idx`, `nx_start_node_key` ,`nx_end_node_key`, `imp_factor`, `total_bearing`, `geom` attributes.</div>
 </div>
 
 <div class="param-set">
   <div class="def">
     <div class="name"></div>
-    <div class="type">rustalgos.NetworkStructure</div>
+    <div class="type">rustalgos.graph.NetworkStructure</div>
   </div>
   <div class="desc">
 
- A [`rustalgos.NetworkStructure`](/rustalgos/rustalgos#networkstructure) instance.</div>
+ A [`rustalgos.graph.NetworkStructure`](/rustalgos/rustalgos#networkstructure) instance.</div>
 </div>
 
 
@@ -946,18 +946,18 @@ out qt;
   </div>
   <div class="desc">
 
- A cityseer created edges `gpd.GeoDataFrame` with `start_ns_node_idx`, `end_ns_node_idx`, `edge_idx`, `nx_start_node_key`, `nx_end_node_key`, `length`, `angle_sum`, `imp_factor`, `in_bearing`, `out_bearing` attributes.</div>
+ A cityseer created edges `gpd.GeoDataFrame` with `start_ns_node_idx`, `end_ns_node_idx`, `edge_idx`, `nx_start_node_key`, `nx_end_node_key`, `imp_factor` attributes.</div>
 </div>
 
 ### Returns
 <div class="param-set">
   <div class="def">
     <div class="name"></div>
-    <div class="type">rustalgos.NetworkStructure</div>
+    <div class="type">rustalgos.graph.NetworkStructure</div>
   </div>
   <div class="desc">
 
- A [`rustalgos.NetworkStructure`](/rustalgos/rustalgos#networkstructure) instance.</div>
+ A [`rustalgos.graph.NetworkStructure`](/rustalgos/rustalgos#networkstructure) instance.</div>
 </div>
 
 
@@ -978,33 +978,21 @@ out qt;
     <span class="pa"> str</span>
   </div>
   <div class="param">
-    <span class="pn">nodes_gdf</span>
-    <span class="pc">:</span>
-    <span class="pa"> geopandas.geodataframe.GeoDataFrame</span>
-  </div>
-  <div class="param">
-    <span class="pn">edges_gdf</span>
-    <span class="pc">:</span>
-    <span class="pa"> geopandas.geodataframe.GeoDataFrame</span>
-  </div>
-  <div class="param">
     <span class="pn">network_structure</span>
     <span class="pc">:</span>
     <span class="pa"> NetworkStructure</span>
+  </div>
+  <div class="param">
+    <span class="pn">network_crs</span>
+    <span class="pc">:</span>
+    <span class="pa"> int</span>
   </div>
   <div class="param">
     <span class="pn">max_netw_assign_dist</span>
     <span class="pc">:</span>
     <span class="pa"> int = 400</span>
   </div>
-  <div class="param">
-    <span class="pn">speed_m_s</span>
-    <span class="pc">:</span>
-    <span class="pa"> float = 1.33333</span>
-  </div>
   <span class="pt">)-&gt;[</span>
-  <span class="pr">GeoDataFrame</span>
-  <span class="pr">GeoDataFrame</span>
   <span class="pr">NetworkStructure</span>
   <span class="pr">DataFrame</span>
   <span class="pr">DataFrame</span>
@@ -1013,7 +1001,7 @@ out qt;
 </div>
 
 
- Add GTFS data to network structure.
+ Add GTFS data to network structure. > This function is still in development and may change in future releases. Testing is ongoing.
 
 </div>
 
@@ -1126,7 +1114,7 @@ out qt;
   </div>
   <div class="desc">
 
- The &quot;crs&quot; parameter is deprecated and will be removed in a future release. The CRS can be set directly in the graph if not already present at G.graph[&quot;crs&quot;]; for example, G.graph[&quot;crs&quot;] = pyproj.CRS(27700)'</div>
+ The `crs` parameter is deprecated and will be removed in a future release. If your network is generated via cityseer from OSM or GeoPandas then CRS handling is automatic. Otherwise, the CRS can be set directly in the graph if necessary at G.graph[&quot;crs&quot;]; for example: G.graph[&quot;crs&quot;] = 4326</div>
 </div>
 
 ### Returns

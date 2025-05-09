@@ -9,35 +9,6 @@ layout: ../../layouts/PageLayout.astro
  Convenience methods for plotting graphs within the cityseer API context. Custom behaviour can be achieved by directly manipulating the underlying [`NetworkX`](https://networkx.github.io) and [`matplotlib`](https://matplotlib.org) figures. This module is predominately used for basic plots or visual verification of behaviour in code tests. Users are encouraged to use matplotlib or other plotting packages directly where possible.
 
 
-<div class="class">
-
-
-## ColourMap
-
-
-
- Specifies global colour presets.
-
-
-
-<div class="function">
-
-## ColourMap
-
-
-<div class="content">
-<span class="name">ColourMap</span><div class="signature">
-  <span class="pt">(</span>
-  <span class="pt">)</span>
-</div>
-</div>
-
-</div>
-
- 
-</div>
-
-
 <div class="function">
 
 ## plot_nx_primal_or_dual
@@ -535,107 +506,6 @@ plot.plot_nx(G_after, node_colour=cols)
 </div>
 
 
-<div class="class">
-
-
-## SimpleLabelEncoder
-
-
-
-
-<div class="function">
-
-## SimpleLabelEncoder
-
-
-<div class="content">
-<span class="name">SimpleLabelEncoder</span><div class="signature">
-  <span class="pt">(</span>
-  <span class="pt">)</span>
-</div>
-</div>
-
-</div>
-
- 
-
-<div class="function">
-
-## fit
-
-
-<div class="content">
-<span class="name">fit</span><div class="signature multiline">
-  <span class="pt">(</span>
-  <div class="param">
-    <span class="pn">self</span>
-  </div>
-  <div class="param">
-    <span class="pn">labels</span>
-  </div>
-  <span class="pt">)</span>
-</div>
-</div>
-
-
- Assigns an integer to each unique label.
-
-</div>
-
- 
-
-<div class="function">
-
-## transform
-
-
-<div class="content">
-<span class="name">transform</span><div class="signature multiline">
-  <span class="pt">(</span>
-  <div class="param">
-    <span class="pn">self</span>
-  </div>
-  <div class="param">
-    <span class="pn">labels</span>
-  </div>
-  <span class="pt">)</span>
-</div>
-</div>
-
-
- Converts labels to their corresponding integer values.
-
-</div>
-
- 
-
-<div class="function">
-
-## fit_transform
-
-
-<div class="content">
-<span class="name">fit_transform</span><div class="signature multiline">
-  <span class="pt">(</span>
-  <div class="param">
-    <span class="pn">self</span>
-  </div>
-  <div class="param">
-    <span class="pn">labels</span>
-  </div>
-  <span class="pt">)</span>
-</div>
-</div>
-
-
- Fits and transforms in one step.
-
-</div>
-
- 
-</div>
-
-
 <div class="function">
 
 ## plot_assignment
@@ -653,9 +523,9 @@ plot.plot_nx(G_after, node_colour=cols)
     <span class="pn">nx_multigraph</span>
   </div>
   <div class="param">
-    <span class="pn">data_gdf</span>
+    <span class="pn">data_map</span>
     <span class="pc">:</span>
-    <span class="pa"> geopandas.geodataframe.GeoDataFrame</span>
+    <span class="pa"> DataMap</span>
   </div>
   <div class="param">
     <span class="pn">path</span>
@@ -689,11 +559,11 @@ This method is primarily intended for package testing and development.
 <div class="param-set">
   <div class="def">
     <div class="name">network_structure</div>
-    <div class="type">rustalgos.NetworkStructure</div>
+    <div class="type">rustalgos.graph.NetworkStructure</div>
   </div>
   <div class="desc">
 
- A [`rustalgos.NetworkStructure`](/rustalgos/rustalgos#networkstructure) instance.</div>
+ A [`rustalgos.graph.NetworkStructure`](/rustalgos/rustalgos#networkstructure) instance.</div>
 </div>
 
 <div class="param-set">
@@ -708,12 +578,12 @@ This method is primarily intended for package testing and development.
 
 <div class="param-set">
   <div class="def">
-    <div class="name">data_gdf</div>
-    <div class="type">GeoDataFrame</div>
+    <div class="name">data_map</div>
+    <div class="type">DataMap</div>
   </div>
   <div class="desc">
 
- A `data_gdf` `GeoDataFrame` with `nearest_assigned` and `next_nearest_assign` columns.</div>
+ A `rustalgos.data.DataMap` object with data entries for plotting.</div>
 </div>
 
 <div class="param-set">
@@ -787,9 +657,9 @@ This method is primarily intended for package testing and development.
     <span class="pa"> NetworkStructure</span>
   </div>
   <div class="param">
-    <span class="pn">data_gdf</span>
+    <span class="pn">data_map</span>
     <span class="pc">:</span>
-    <span class="pa"> geopandas.geodataframe.GeoDataFrame</span>
+    <span class="pa"> DataMap | None = None</span>
   </div>
   <div class="param">
     <span class="pn">poly</span>
@@ -810,21 +680,21 @@ mainly to visually confirm the correct behaviour of particular algorithms during
 <div class="param-set">
   <div class="def">
     <div class="name">network_structure</div>
-    <div class="type">rustalgos.NetworkStructure</div>
+    <div class="type">rustalgos.graph.NetworkStructure</div>
   </div>
   <div class="desc">
 
- A [`rustalgos.NetworkStructure`](/rustalgos/rustalgos#networkstructure) instance.</div>
+ A [`rustalgos.graph.NetworkStructure`](/rustalgos/rustalgos#networkstructure) instance.</div>
 </div>
 
 <div class="param-set">
   <div class="def">
-    <div class="name">data_gdf</div>
-    <div class="type">GeoDataFrame</div>
+    <div class="name">data_map</div>
+    <div class="type">DataMap</div>
   </div>
   <div class="desc">
 
- A `data_gdf` `GeoDataFrame` with `nearest_assigned` and `next_nearest_assign` columns.</div>
+ An optional `rustalgos.data.DataMap` object with data entries for plotting.</div>
 </div>
 
 <div class="param-set">
@@ -837,30 +707,6 @@ mainly to visually confirm the correct behaviour of particular algorithms during
  An optional polygon. Defaults to None.</div>
 </div>
 
-
-</div>
-
-
-<div class="function">
-
-## minmax_scale_manual
-
-
-<div class="content">
-<span class="name">minmax_scale_manual</span><div class="signature multiline">
-  <span class="pt">(</span>
-  <div class="param">
-    <span class="pn">data</span>
-  </div>
-  <div class="param">
-    <span class="pn">feature_range=(0, 1)</span>
-  </div>
-  <span class="pt">)</span>
-</div>
-</div>
-
-
- Manually scales data to a given range (default 0 to 1).
 
 </div>
 

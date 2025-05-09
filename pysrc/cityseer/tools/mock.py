@@ -20,7 +20,8 @@ import numpy.typing as npt
 from pyproj import CRS
 from shapely import geometry
 
-from cityseer.tools import util
+from .. import rustalgos
+from ..tools import util
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -58,7 +59,7 @@ def mock_graph(wgs84_coords: bool = False) -> MultiGraph:
     _Mock graph._
 
     """
-    nx_multigraph: MultiGraph = nx.MultiGraph()
+    nx_multigraph: MultiGraph = nx.MultiGraph()  # type: ignore
 
     nodes = [
         ("0", {"x": 700700, "y": 5719700}),
@@ -528,3 +529,77 @@ def mock_gtfs_stops_txt(path: str):
     }
     stop_times_gdf = gpd.GeoDataFrame(stop_times)
     stop_times_gdf.to_csv(output_path / "stop_times.txt", index=False)
+
+
+def mock_data_map(data_gdf: gpd.GeoDataFrame, dedupe_key_col: str | None = None) -> rustalgos.data.DataMap:
+    """
+    Create a DataMap for testing from a GeoDataFrame created with mock_data_gdf.
+
+    Parameters
+    ----------
+    data_gdf: GeoDataFrame
+        A GeoDataFrame with columns 'geometry', 'data_id', and index as unique keys.
+
+    Returns
+    -------
+    DataMap
+        An instance of DataMap (Rust-backed, from data.rs) populated with the mock data.
+    """
+    data_map = rustalgos.data.DataMap()
+    for uid, row in data_gdf.iterrows():  # type: ignore
+        if dedupe_key_col is not None:
+            data_map.insert(uid, row.geometry.wkt, row[dedupe_key_col])  # type: ignore
+        else:
+            data_map.insert(uid, row.geometry.wkt, None)  # type: ignore
+    return data_map
+
+
+def mock_barriers():
+    """
+    Generate mock barriers data for testing or experimentation purposes.
+
+    Returns
+    -------
+    GeoDataFrame
+        A `GeoDataFrame` with barriers represented as points, lines, and polygons. The barriers are represented as
+        points, lines, and polygons. The function returns a GeoDataFrame with the barriers and a list of their WKT.
+    list[str]
+        A list of WKT strings representing the barriers.
+    """
+    # returns a GeoDataFrame with two lines that intersect at a point
+    point = geometry.Point(700900, 5719350)
+    line = geometry.LineString([(701020, 5719150), (701250, 5719600)])
+    multi_line = geometry.MultiLineString(
+        lines=[
+            geometry.LineString([(700400, 5719150), (700150, 5719600)]),
+        ]
+    )
+    poly = geometry.Polygon(
+        [
+            (700900, 5719140),
+            (700900, 5719160),
+            (700750, 5719160),
+            (700750, 5719140),
+        ]
+    )
+
+    barriers_gdf = gpd.GeoDataFrame(
+        {
+            "barrier_id": [1, 2, 3, 4],
+            "geometry": [
+                point,
+                line,
+                multi_line,
+                poly,
+            ],
+        }
+    )
+    barriers_gdf = barriers_gdf.set_index("barrier_id")
+    barriers_gdf = barriers_gdf.set_crs(32630)
+    # gather the WKT strings
+    barrier_wkts: list[str] | None = None
+    barrier_wkts = []
+    for _, row in barriers_gdf.iterrows():  # type: ignore
+        barrier_wkts.append(row.geometry.wkt)  # type: ignore
+
+    return barriers_gdf, barrier_wkts

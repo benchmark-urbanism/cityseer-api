@@ -91,3 +91,39 @@ def test_mock_species_data():
 
 def test_mock_osm_data():
     pass
+
+
+def test_mock_data_map(primal_graph):
+    """
+    Test the mock_data_map function to ensure it creates a DataMap from a GeoDataFrame.
+    """
+    for length in [10, 20]:
+        for random_seed in [0, 42]:
+            data_gdf = mock.mock_data_gdf(primal_graph, length=length, random_seed=random_seed)
+            data_map = mock.mock_data_map(data_gdf)
+            assert data_map.count() == length
+            for uid, row in data_gdf.iterrows():
+                data_key = f"{uid.__class__.__name__}:{uid}"
+                entry = data_map.get_entry(data_key)
+                assert entry is not None
+                assert entry.data_key == data_key
+                assert entry.data_key_py == uid
+                assert entry.geom_wkt == row.geometry.wkt
+                # should match fallback
+                assert entry.dedupe_key_py == uid
+                assert entry.dedupe_key == data_key
+
+
+def test_mock_barriers():
+    """
+    Test the mock_barriers function to ensure it creates a GeoDataFrame of barriers.
+    """
+    barriers_gdf, barriers_wkt = mock.mock_barriers()
+    assert len(barriers_gdf) == 4
+    assert "geometry" in barriers_gdf.columns
+    assert barriers_gdf.geometry.iloc[0].geom_type == "Point"
+    assert barriers_gdf.geometry.iloc[1].geom_type == "LineString"
+    assert barriers_gdf.geometry.iloc[2].geom_type == "MultiLineString"
+    assert barriers_gdf.geometry.iloc[3].geom_type == "Polygon"
+    for idx, geom in enumerate(barriers_gdf.geometry):
+        assert geom.wkt == barriers_wkt[idx]

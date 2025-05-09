@@ -58,8 +58,9 @@ import logging
 from functools import partial
 
 import geopandas as gpd
+import pandas as pd
 
-from cityseer import config, rustalgos
+from .. import config, rustalgos
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -70,7 +71,7 @@ SPEED_M_S = config.SPEED_M_S
 
 
 def node_centrality_shortest(
-    network_structure: rustalgos.NetworkStructure,
+    network_structure: rustalgos.graph.NetworkStructure,
     nodes_gdf: gpd.GeoDataFrame,
     distances: list[int] | None = None,
     betas: list[float] | None = None,
@@ -92,7 +93,7 @@ def node_centrality_shortest(
     Parameters
     ----------
     network_structure
-        A [`rustalgos.NetworkStructure`](/rustalgos/rustalgos#networkstructure). Best generated with the
+        A [`rustalgos.graph.NetworkStructure`](/rustalgos/rustalgos#networkstructure). Best generated with the
         [`io.network_structure_from_nx`](/tools/io#network-structure-from-nx) method.
     nodes_gdf
         A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe)
@@ -118,8 +119,8 @@ def node_centrality_shortest(
         Compute betweenness centralities. True by default.
     min_threshold_wt: float
         The default `min_threshold_wt` parameter can be overridden to generate custom mappings between the
-        `distance` and `beta` parameters. See [`rustalgos.distances_from_beta`](/rustalgos#distances-from-betas) for
-        more information.
+        `distance` and `beta` parameters. See [`rustalgos.distances_from_beta`](/rustalgos#distances-from-betas)
+        for more information.
     speed_m_s: float
         The default `speed_m_s` parameter can be configured to generate custom mappings between walking times and
         distance thresholds $d_{max}$.
@@ -175,7 +176,7 @@ def node_centrality_shortest(
     )
     # wraps progress bar
     result = config.wrap_progress(
-        total=network_structure.node_count(), rust_struct=network_structure, partial_func=partial_func
+        total=network_structure.street_node_count(), rust_struct=network_structure, partial_func=partial_func
     )
     # unpack
     distances = config.log_thresholds(
@@ -185,6 +186,11 @@ def node_centrality_shortest(
         min_threshold_wt=min_threshold_wt,
         speed_m_s=speed_m_s,
     )
+    # intersect computed keys with those available in the gdf index (stations vs. streets)
+    gdf_idx = nodes_gdf.index.intersection(result.node_keys_py)  # type: ignore
+    # create a dictionary to hold the data
+    temp_data = {}
+    # set the index to the gdf index
     if compute_closeness is True:
         for measure_key, attr_key in [
             ("beta", "node_beta"),
@@ -195,10 +201,11 @@ def node_centrality_shortest(
         ]:
             for distance in distances:  # type: ignore
                 data_key = config.prep_gdf_key(measure_key, distance)
-                nodes_gdf[data_key] = getattr(result, attr_key)[distance]
+                temp_data[data_key] = getattr(result, attr_key)[distance]
         for distance in distances:  # type: ignore
             data_key = config.prep_gdf_key("hillier", distance)
-            nodes_gdf[data_key] = result.node_density[distance] ** 2 / result.node_farness[distance]  # type: ignore
+            # existing columns
+            temp_data[data_key] = result.node_density[distance] ** 2 / result.node_farness[distance]  # type: ignore
     if compute_betweenness is True:
         for measure_key, attr_key in [
             ("betweenness", "node_betweenness"),
@@ -206,12 +213,16 @@ def node_centrality_shortest(
         ]:
             for distance in distances:  # type: ignore
                 data_key = config.prep_gdf_key(measure_key, distance)
-                nodes_gdf[data_key] = getattr(result, attr_key)[distance]
+                temp_data[data_key] = getattr(result, attr_key)[distance]  # type: ignore
+
+    temp_df = pd.DataFrame(temp_data, index=result.node_keys_py)
+    nodes_gdf.loc[gdf_idx, temp_df.columns] = temp_df.loc[gdf_idx, temp_df.columns]  # type: ignore
+
     return nodes_gdf
 
 
 def node_centrality_simplest(
-    network_structure: rustalgos.NetworkStructure,
+    network_structure: rustalgos.graph.NetworkStructure,
     nodes_gdf: gpd.GeoDataFrame,
     distances: list[int] | None = None,
     betas: list[float] | None = None,
@@ -235,7 +246,7 @@ def node_centrality_simplest(
     Parameters
     ----------
     network_structure
-        A [`rustalgos.NetworkStructure`](/rustalgos/rustalgos#networkstructure). Best generated with the
+        A [`rustalgos.graph.NetworkStructure`](/rustalgos/rustalgos#networkstructure). Best generated with the
         [`io.network_structure_from_nx`](/tools/io#network-structure-from-nx) method.
     nodes_gdf
         A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe)
@@ -261,8 +272,8 @@ def node_centrality_simplest(
         Compute betweenness centralities. True by default.
     min_threshold_wt: float
         The default `min_threshold_wt` parameter can be overridden to generate custom mappings between the
-        `distance` and `beta` parameters. See [`rustalgos.distances_from_beta`](/rustalgos#distances-from-betas) for
-        more information.
+        `distance` and `beta` parameters. See [`rustalgos.distances_from_beta`](/rustalgos#distances-from-betas)
+        for more information.
     speed_m_s: float
         The default `speed_m_s` parameter can be configured to generate custom mappings between walking times and
         distance thresholds $d_{max}$.
@@ -321,7 +332,7 @@ def node_centrality_simplest(
     )
     # wraps progress bar
     result = config.wrap_progress(
-        total=network_structure.node_count(), rust_struct=network_structure, partial_func=partial_func
+        total=network_structure.street_node_count(), rust_struct=network_structure, partial_func=partial_func
     )
     # unpack
     distances = config.log_thresholds(
@@ -331,28 +342,38 @@ def node_centrality_simplest(
         min_threshold_wt=min_threshold_wt,
         speed_m_s=speed_m_s,
     )
+    # intersect computed keys with those available in the gdf index (stations vs. streets)
+    gdf_idx = nodes_gdf.index.intersection(result.node_keys_py)  # type: ignore
+    # create a dictionary to hold the data
+    temp_data = {}
     if compute_closeness is True:
         for distance in distances:  # type: ignore
             data_key = config.prep_gdf_key("density", distance, angular=True)
-            nodes_gdf[data_key] = result.node_density[distance]  # type: ignore
+            temp_data[data_key] = result.node_density[distance]  # type: ignore
         for distance in distances:  # type: ignore
             data_key = config.prep_gdf_key("harmonic", distance, angular=True)
-            nodes_gdf[data_key] = result.node_harmonic[distance]  # type: ignore
+            temp_data[data_key] = result.node_harmonic[distance]  # type: ignore
         for distance in distances:  # type: ignore
             data_key = config.prep_gdf_key("hillier", distance, angular=True)
-            nodes_gdf[data_key] = result.node_density[distance] ** 2 / result.node_farness[distance]  # type: ignore
+            temp_data[data_key] = (
+                result.node_density[distance] ** 2 / result.node_farness[distance]  # type: ignore
+            )  # type: ignore
         for distance in distances:  # type: ignore
             data_key = config.prep_gdf_key("farness", distance, angular=True)
-            nodes_gdf[data_key] = result.node_farness[distance]  # type: ignore
+            temp_data[data_key] = result.node_farness[distance]  # type: ignore
     if compute_betweenness is True:
         for distance in distances:  # type: ignore
             data_key = config.prep_gdf_key("betweenness", distance, angular=True)
-            nodes_gdf[data_key] = result.node_betweenness[distance]  # type: ignore
+            temp_data[data_key] = result.node_betweenness[distance]  # type: ignore
+
+    temp_df = pd.DataFrame(temp_data, index=result.node_keys_py)
+    nodes_gdf.loc[gdf_idx, temp_df.columns] = temp_df.loc[gdf_idx, temp_df.columns]  # type: ignore
+
     return nodes_gdf
 
 
 def segment_centrality(
-    network_structure: rustalgos.NetworkStructure,
+    network_structure: rustalgos.graph.NetworkStructure,
     nodes_gdf: gpd.GeoDataFrame,
     distances: list[int] | None = None,
     betas: list[float] | None = None,
@@ -373,7 +394,7 @@ def segment_centrality(
     Parameters
     ----------
     network_structure
-        A [`rustalgos.NetworkStructure`](/rustalgos/rustalgos#networkstructure). Best generated with the
+        A [`rustalgos.graph.NetworkStructure`](/rustalgos/rustalgos#networkstructure). Best generated with the
         [`io.network_structure_from_nx`](/tools/io#network-structure-from-nx) method.
     nodes_gdf
         A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe)
@@ -399,8 +420,8 @@ def segment_centrality(
         Compute betweenness centralities. True by default.
     min_threshold_wt: float
         The default `min_threshold_wt` parameter can be overridden to generate custom mappings between the
-        `distance` and `beta` parameters. See [`rustalgos.distances_from_beta`](/rustalgos#distances-from-betas) for
-        more information.
+        `distance` and `beta` parameters. See [`rustalgos.distances_from_beta`](/rustalgos#distances-from-betas)
+        for more information.
     speed_m_s: float
         The default `speed_m_s` parameter can be configured to generate custom mappings between walking times and
         distance thresholds $d_{max}$.
@@ -446,7 +467,7 @@ def segment_centrality(
     )
     # wraps progress bar
     result = config.wrap_progress(
-        total=network_structure.node_count(), rust_struct=network_structure, partial_func=partial_func
+        total=network_structure.street_node_count(), rust_struct=network_structure, partial_func=partial_func
     )
     # unpack
     distances = config.log_thresholds(
@@ -456,6 +477,10 @@ def segment_centrality(
         min_threshold_wt=min_threshold_wt,
         speed_m_s=speed_m_s,
     )
+    # intersect computed keys with those available in the gdf index (stations vs. streets)
+    gdf_idx = nodes_gdf.index.intersection(result.node_keys_py)  # type: ignore
+    # create a dictionary to hold the data
+    temp_data = {}
     if compute_closeness is True:
         for measure_key, attr_key in [
             ("seg_density", "segment_density"),
@@ -464,9 +489,13 @@ def segment_centrality(
         ]:
             for distance in distances:  # type: ignore
                 data_key = config.prep_gdf_key(measure_key, distance)
-                nodes_gdf[data_key] = getattr(result, attr_key)[distance]
+                temp_data[data_key] = getattr(result, attr_key)[distance]
     if compute_betweenness is True:
         for distance in distances:  # type: ignore
             data_key = config.prep_gdf_key("seg_betweenness", distance)
-            nodes_gdf[data_key] = result.segment_betweenness[distance]  # type: ignore
+            temp_data[data_key] = result.segment_betweenness[distance]  # type: ignore
+
+    temp_df = pd.DataFrame(temp_data, index=result.node_keys_py)
+    nodes_gdf.loc[gdf_idx, temp_df.columns] = temp_df.loc[gdf_idx, temp_df.columns]  # type: ignore
+
     return nodes_gdf

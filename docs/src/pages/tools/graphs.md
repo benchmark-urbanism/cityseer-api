@@ -467,7 +467,7 @@ side-effects as a function of varied node intensities when computing network cen
 </div>
 
 
- Deduplicates non-motorised edges where parallel to nearby motorised edges. Remove non-motorised edges where adjacent to motorised edges. This helps to simplify complex network representations for the purpose of network centralities or visualisation. Short dead-end non-motorised edges falling within the specified dissolve distance will also be removed.
+ Deduplicates non-motorised edges where parallel to nearby motorised edges. This helps to simplify complex network representations for the purpose of network centralities or visualisation. Short dead-end non-motorised edges falling within the specified dissolve distance will also be removed.
 ### Parameters
 <div class="param-set">
   <div class="def">
@@ -1206,53 +1206,6 @@ plot.plot_nx_primal_or_dual(G_simple, G_dual, plot_geoms=False)
   <div class="desc">
 
  A `networkX` graph. The nodes will have a new `weight` parameter indicating the node's contribution given the locally 'dissolved' context.</div>
-</div>
-
-
-</div>
-
-
-<div class="function">
-
-## nx_generate_vis_lines
-
-
-<div class="content">
-<span class="name">nx_generate_vis_lines</span><div class="signature">
-  <span class="pt">(</span>
-  <div class="param">
-    <span class="pn">nx_multigraph</span>
-    <span class="pc">:</span>
-    <span class="pa"> networkx.classes.multigraph.MultiGraph</span>
-  </div>
-  <span class="pt">)-&gt;[</span>
-  <span class="pr">MultiGraph</span>
-  <span class="pt">]</span>
-</div>
-</div>
-
-
- Generates a `line_geom` property for nodes consisting `MultiLineString` geoms for visualisation purposes. This method can be used if preferring to visualise the outputs as lines instead of points. The lines are assembled from the adjacent half segments.
-### Parameters
-<div class="param-set">
-  <div class="def">
-    <div class="name">nx_multigraph</div>
-    <div class="type">MultiGraph</div>
-  </div>
-  <div class="desc">
-
- A `networkX` `MultiGraph` with a `crs` attribute denoting a projected coordinate system, containing `x` and `y` node attributes, and `geom` edge attributes containing `LineString` geoms.</div>
-</div>
-
-### Returns
-<div class="param-set">
-  <div class="def">
-    <div class="name"></div>
-    <div class="type">MultiGraph</div>
-  </div>
-  <div class="desc">
-
- A `networkX` graph. The nodes will have a new `line_geom` parameter containing `shapely` `MultiLineString` geoms.</div>
 </div>
 
 

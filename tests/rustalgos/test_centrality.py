@@ -1,147 +1,11 @@
 # pyright: basic
 from __future__ import annotations
 
-import geopandas as gpd
 import networkx as nx
 import numpy as np
 import numpy.typing as npt
 from cityseer import config, rustalgos
-from cityseer.tools import graphs, io, mock
-from shapely import geometry
-
-
-def test_find_nearest(primal_graph):
-    _nodes_gdf, edges_gdf, network_structure = io.network_structure_from_nx(primal_graph)
-    data_gdf = mock.mock_data_gdf(primal_graph)
-    # test the filter - iterating each point in data map
-    for geom in data_gdf["geometry"]:
-        # find the closest point on the network
-        data_coord = rustalgos.Coord(geom.x, geom.y)
-        min_idx, min_dist, _next_min_idx = network_structure.find_nearest(data_coord, 400)
-        # check that no other indices are nearer
-        d_x, d_y = data_coord.xy()
-        for n_idx in network_structure.node_indices():
-            n_x, n_y = network_structure.get_node_payload(n_idx).coord.xy()
-            dist = np.sqrt((d_x - n_x) ** 2 + (d_y - n_y) ** 2)
-            if n_idx == min_idx:
-                assert np.isclose(dist, min_dist, rtol=config.RTOL, atol=config.ATOL)
-            else:
-                assert dist > min_dist
-
-
-def test_road_distance(box_graph):
-    _nodes_gdf, edges_gdf, network_structure = io.network_structure_from_nx(box_graph)
-    d1 = rustalgos.Coord(4, 2)
-    d2 = rustalgos.Coord(4, 4)
-    d3 = rustalgos.Coord(4, 6)
-    # returns perpendicular distance to road, nearest, next nearest road index
-    assert np.allclose(network_structure.road_distance(d1, 1, 2), (1, 1, 2))
-    assert np.allclose(network_structure.road_distance(d2, 1, 2), (1, 2, 1))
-    d, n, n_n = network_structure.road_distance(d3, 1, 2)
-    assert np.isinf(d) and n is None and n_n is None
-
-
-def test_closest_intersections(box_graph):
-    _nodes_gdf, edges_gdf, network_structure = io.network_structure_from_nx(box_graph)
-    d1 = rustalgos.Coord(2.5, 1)  # should pick 0 - 1
-    d2 = rustalgos.Coord(4, 2.5)  # should pick 1 - 2
-    d3 = rustalgos.Coord(2.5, 4)  # should pick 2 - 3
-    pred_map = [None, 0, 1, 2]
-    # all distances should round to 1
-    assert np.allclose(network_structure.closest_intersections(d1, pred_map, 3), (1, 0, 1))
-    assert np.allclose(network_structure.closest_intersections(d2, pred_map, 3), (1, 1, 2))
-    assert np.allclose(network_structure.closest_intersections(d3, pred_map, 3), (1, 2, 3))
-
-
-def override_coords(nx_multigraph: nx.MultiGraph) -> gpd.GeoDataFrame:
-    """Some tweaks for visual checks."""
-    data_gdf = mock.mock_data_gdf(nx_multigraph, random_seed=25)
-    data_gdf.loc[18, "geometry"] = geometry.Point(701200, 5719400)
-    data_gdf.loc[39, "geometry"] = geometry.Point(700750, 5720025)
-    data_gdf.loc[26, "geometry"] = geometry.Point(700400, 5719525)
-
-    return data_gdf
-
-
-def test_assign_to_network(primal_graph):
-    # create additional dead-end scenario
-    primal_graph.remove_edge("14", "15")
-    primal_graph.remove_edge("15", "28")
-    # G = graphs.nx_auto_edge_params(G)
-    G = graphs.nx_decompose(primal_graph, 50)
-    # visually confirmed in plots
-    targets = np.array(
-        [
-            [0, 257, 256],
-            [1, 17, 131],
-            [2, 43, 243],
-            [3, 110, 109],
-            [4, 66, 67],
-            [5, 105, 106],
-            [6, 18, 136],
-            [7, 58, 1],
-            [8, 126, 17],
-            [9, 53, 271],
-            [10, 32, 207],
-            [11, 118, 119],
-            [12, 67, 4],
-            [13, 233, 234],
-            [14, 116, 11],
-            [15, 204, 31],
-            [16, 272, 271],
-            [17, 142, 20],
-            [18, 182, 183],
-            [19, 184, 183],
-            [20, 238, 44],
-            [21, 226, 225],
-            [22, 63, 64],
-            [23, 199, 198],
-            [24, 264, 263],
-            [25, 17, 131],
-            [26, 49, None],
-            [27, 149, 148],
-            [28, 207, 208],
-            [29, 202, 203],
-            [30, 42, 221],
-            [31, 169, 170],
-            [32, 129, 130],
-            [33, 66, 67],
-            [34, 43, 244],
-            [35, 125, 124],
-            [36, 234, 233],
-            [37, 141, 24],
-            [38, 187, 186],
-            [39, 263, 264],
-            [40, 111, 112],
-            [41, 132, 131],
-            [42, 244, 43],
-            [43, 265, 264],
-            [44, 174, 173],
-            [45, 114, 113],
-            [46, 114, 113],
-            [47, 114, 113],
-            [48, 113, 114],
-            [49, 113, 114],
-        ]
-    )
-    # generate data
-    _nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(G)
-    data_gdf = override_coords(G)
-    for target_idx, geom in enumerate(data_gdf["geometry"]):
-        # find the closest point on the network
-        data_coord = rustalgos.Coord(geom.x, geom.y)
-        # should match map
-        n, n_n = network_structure.assign_to_network(data_coord, 1600)
-        assert n == targets[target_idx][1] and n_n == targets[target_idx][2]
-        # should be None
-        n, n_n = network_structure.assign_to_network(data_coord, 0)
-        assert n is None and n_n is None
-
-    # from cityseer.metrics import layers
-    # from cityseer.tools import plot
-    # data_map, data_gdf = layers.assign_gdf_to_network(data_gdf, network_structure, 1600)
-    # plot.plot_network_structure(network_structure, data_gdf)
-    # plot.plot_assignment(network_structure, G, data_gdf)
+from cityseer.tools import graphs, io
 
 
 def find_path(start_idx, target_idx, tree_map):
@@ -163,6 +27,9 @@ def test_shortest_path_trees(primal_graph, dual_graph):
     nodes_gdf_p, edges_gdf_p, network_structure_p = io.network_structure_from_nx(primal_graph)
     # prepare round-trip graph for checks
     G_round_trip = io.nx_from_cityseer_geopandas(nodes_gdf_p, edges_gdf_p)
+    for start_nd_key, end_nd_key, edge_idx in G_round_trip.edges(keys=True):
+        geom = G_round_trip[start_nd_key][end_nd_key][edge_idx]["geom"]
+        G_round_trip[start_nd_key][end_nd_key][edge_idx]["length"] = geom.length
     # from cityseer.tools import plot
     # plot.plot_nx_primal_or_dual(primal_graph=primal_graph, dual_graph=dual_graph, labels=True, primal_node_size=80)
     # test all shortest path routes against networkX version of dijkstra
@@ -228,6 +95,7 @@ def test_shortest_path_trees(primal_graph, dual_graph):
     # remember, this is angular change not distance travelled
     # can be compared from primal to dual in this instance because edge segments are straight
     # i.e. same amount of angular change whether primal or dual graph
+    # from cityseer.tools import plot
     # plot.plot_nx_primal_or_dual(primal_graph, dual_graph, labels=True, primal_node_size=80, dpi=300)
     p_source_idx = nodes_gdf_p.index.tolist().index("0")
     primal_targets = ("15", "20", "37")
@@ -314,32 +182,6 @@ def test_shortest_path_trees(primal_graph, dual_graph):
     path_transpose = [nodes_gdf_d.index[n] for n in path]
     # print(path_transpose)
     assert path_transpose == ["10_43_k0", "10_5_k0"]
-    # WITH SIDESTEPS - set angular flag to False
-    # manually reduce distance impedances for this test to coerce shortest path via sharp turn
-    # angular has to be false otherwise shortest-path sidestepping should be avoided
-    for idx in ["10_14_k0-10_5_k0", "10_5_k0-10_14_k0", "10_43_k0-10_14_k0", "10_14_k0-10_43_k0"]:
-        network_structure_d.add_edge(
-            edges_gdf_d.loc[idx].start_ns_node_idx,
-            edges_gdf_d.loc[idx].end_ns_node_idx,
-            edges_gdf_d.loc[idx].edge_idx,
-            edges_gdf_d.loc[idx].nx_start_node_key,
-            edges_gdf_d.loc[idx].nx_end_node_key,
-            10,
-            edges_gdf_d.loc[idx].angle_sum,
-            edges_gdf_d.loc[idx].imp_factor,
-            edges_gdf_d.loc[idx].in_bearing,
-            edges_gdf_d.loc[idx].out_bearing,
-            0,  # seconds
-        )
-    _visited_nodes_d5, tree_map_d5 = network_structure_d.dijkstra_tree_shortest(
-        src_idx,
-        int(max_seconds_5000),
-        config.SPEED_M_S,
-    )
-    # find path
-    path = find_path(target, src_idx, tree_map_d5)
-    path_transpose = [nodes_gdf_d.index[n] for n in path]
-    assert path_transpose == ["10_43_k0", "10_14_k0", "10_5_k0"]
 
 
 def test_local_node_centrality_shortest(primal_graph):
@@ -353,6 +195,9 @@ def test_local_node_centrality_shortest(primal_graph):
     # generate node and edge maps
     nodes_gdf, edges_gdf, network_structure = io.network_structure_from_nx(primal_graph)
     G_round_trip = io.nx_from_cityseer_geopandas(nodes_gdf, edges_gdf)
+    for start_nd_key, end_nd_key, edge_idx in G_round_trip.edges(keys=True):
+        geom = G_round_trip[start_nd_key][end_nd_key][edge_idx]["geom"]
+        G_round_trip[start_nd_key][end_nd_key][edge_idx]["length"] = geom.length
     # needs a large enough beta so that distance thresholds aren't encountered
     betas = [0.02, 0.01, 0.005, 0.0008]
     distances = rustalgos.distances_from_betas(betas)

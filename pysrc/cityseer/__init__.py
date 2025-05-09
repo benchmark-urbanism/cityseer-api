@@ -1,6 +1,8 @@
+from __future__ import annotations
+
 import os
 
-from cityseer import config, metrics, rustalgos, tools
+from . import config, metrics, rustalgos, tools
 
 __all__ = ["metrics", "tools", "config", "rustalgos"]
 

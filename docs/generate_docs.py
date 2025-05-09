@@ -219,22 +219,29 @@ if __name__ == "__main__":
     render.env.filters["custom_format_signature"] = custom_format_signature  # type: ignore
     here = Path(__file__).parent
 
-    module_file_maps = [
-        ("cityseer.rustalgos", here / "src/pages/rustalgos/rustalgos.md"),
-        ("cityseer.metrics.observe", here / "src/pages/metrics/observe.md"),
-        ("cityseer.metrics.networks", here / "src/pages/metrics/networks.md"),
-        ("cityseer.metrics.layers", here / "src/pages/metrics/layers.md"),
-        ("cityseer.metrics.visibility", here / "src/pages/metrics/visibility.md"),
-        ("cityseer.tools.graphs", here / "src/pages/tools/graphs.md"),
-        ("cityseer.tools.io", here / "src/pages/tools/io.md"),
-        ("cityseer.tools.plot", here / "src/pages/tools/plot.md"),
-        ("cityseer.tools.mock", here / "src/pages/tools/mock.md"),
-        ("cityseer.tools.util", here / "src/pages/tools/util.md"),
-    ]
-    for module_name, output_path in module_file_maps:
-        render.configure(template_directory=here / "pdoc_templates", docformat="numpy", math=True)
+    from cityseer.rustalgos import centrality, data, diversity, graph, viewshed
 
-        module = importlib.import_module(module_name)
+    module_file_maps = [
+        ("cityseer.rustalgos", None, here / "src/pages/rustalgos/rustalgos.md"),
+        ("cityseer.rustalgos.graph", graph, here / "src/pages/rustalgos/graph.md"),
+        ("cityseer.rustalgos.centrality", centrality, here / "src/pages/rustalgos/centrality.md"),
+        ("cityseer.rustalgos.diversity", diversity, here / "src/pages/rustalgos/diversity.md"),
+        ("cityseer.rustalgos.data", data, here / "src/pages/rustalgos/data.md"),
+        ("cityseer.rustalgos.viewshed", viewshed, here / "src/pages/rustalgos/viewshed.md"),
+        ("cityseer.metrics.observe", None, here / "src/pages/metrics/observe.md"),
+        ("cityseer.metrics.networks", None, here / "src/pages/metrics/networks.md"),
+        ("cityseer.metrics.layers", None, here / "src/pages/metrics/layers.md"),
+        ("cityseer.metrics.visibility", None, here / "src/pages/metrics/visibility.md"),
+        ("cityseer.tools.graphs", None, here / "src/pages/tools/graphs.md"),
+        ("cityseer.tools.io", None, here / "src/pages/tools/io.md"),
+        ("cityseer.tools.plot", None, here / "src/pages/tools/plot.md"),
+        ("cityseer.tools.mock", None, here / "src/pages/tools/mock.md"),
+        ("cityseer.tools.util", None, here / "src/pages/tools/util.md"),
+    ]
+    for module_name, module, output_path in module_file_maps:
+        render.configure(template_directory=here / "pdoc_templates", docformat="numpy", math=True)
+        if module is None:
+            module = importlib.import_module(module_name)
         d = doc.Module(module)
         out = render.html_module(module=d, all_modules={module_name: d})
         with open(output_path, "w") as f:

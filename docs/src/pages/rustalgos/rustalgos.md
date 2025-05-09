@@ -6,291 +6,7 @@ layout: ../../layouts/PageLayout.astro
 # rustalgos
 
 
-<div class="class">
-
-
-## Coord
-
-
-
- Class representing a coordinate.
-
-
-
-<div class="function">
-
-## Coord
-
-
-<div class="content">
-<span class="name">Coord</span><div class="signature multiline">
-  <span class="pt">(</span>
-  <div class="param">
-    <span class="pn">x</span>
-    <span class="pc">:</span>
-    <span class="pa"> float</span>
-  </div>
-  <div class="param">
-    <span class="pn">y</span>
-    <span class="pc">:</span>
-    <span class="pa"> float</span>
-  </div>
-  <span class="pt">)</span>
-</div>
-</div>
-
-
- Creates a `Coord` with `x` and `y` coordinates.
-### Parameters
-<div class="param-set">
-  <div class="def">
-    <div class="name">`x`</div>
-    <div class="type">x coordinate.</div>
-  </div>
-  <div class="desc">
-
-
-</div>
-</div>
-
-<div class="param-set">
-  <div class="def">
-    <div class="name">`y`</div>
-    <div class="type">y coordinate.</div>
-  </div>
-  <div class="desc">
-
-
-</div>
-</div>
-
-
-</div>
-
- 
-
-<div class="function">
-
-## xy
-
-
-<div class="content">
-<span class="name">xy</span><div class="signature multiline">
-  <span class="pt">(</span>
-  <div class="param">
-    <span class="pn">self</span>
-  </div>
-  <span class="pt">)-&gt;[</span>
-  <span class="pr">float</span>
-  <span class="pr">float</span>
-  <span class="pt">]</span>
-</div>
-</div>
-
-
- Returns the `Coord` as a `tuple` of `x` and `y`.
-### Returns
-<div class="param-set">
-  <div class="def">
-    <div class="name">`xy`</div>
-    <div class="type">tuple[float, float]</div>
-  </div>
-  <div class="desc">
-
-
-</div>
-</div>
-
-
-</div>
-
- 
-
-<div class="function">
-
-## validate
-
-
-<div class="content">
-<span class="name">validate</span><div class="signature">
-  <span class="pt">(</span>
-  <div class="param">
-    <span class="pn">self</span>
-  </div>
-  <span class="pt">)-&gt;[</span>
-  <span class="pr">bool</span>
-  <span class="pt">]</span>
-</div>
-</div>
-
-
- Validates the Coord.
-
-</div>
-
- 
-
-<div class="function">
-
-## hypot
-
-
-<div class="content">
-<span class="name">hypot</span><div class="signature multiline">
-  <span class="pt">(</span>
-  <div class="param">
-    <span class="pn">self</span>
-  </div>
-  <div class="param">
-    <span class="pn">other_coord</span>
-    <span class="pc">:</span>
-    <span class="pa"> cityseer.rustalgos.Coord</span>
-  </div>
-  <span class="pt">)-&gt;[</span>
-  <span class="pr">float</span>
-  <span class="pt">]</span>
-</div>
-</div>
-
-
- Returns the pythagorean distance from this `Coord` to another.
-### Parameters
-<div class="param-set">
-  <div class="def">
-    <div class="name">`other_coord`</div>
-    <div class="type">Coord</div>
-  </div>
-  <div class="desc">
-
- The other coordinate to which to compute the Pythagorean distance.</div>
-</div>
-
-
-</div>
-
- 
-
-<div class="function">
-
-## difference
-
-
-<div class="content">
-<span class="name">difference</span><div class="signature multiline">
-  <span class="pt">(</span>
-  <div class="param">
-    <span class="pn">self</span>
-  </div>
-  <div class="param">
-    <span class="pn">other_coord</span>
-    <span class="pc">:</span>
-    <span class="pa"> cityseer.rustalgos.Coord</span>
-  </div>
-  <span class="pt">)-&gt;[</span>
-  <span class="pr">Coord</span>
-  <span class="pt">]</span>
-</div>
-</div>
-
-
- Returns the vector of the spatial difference between this `Coord` and another.
-### Parameters
-<div class="param-set">
-  <div class="def">
-    <div class="name">`other_coord`</div>
-    <div class="type">Coord</div>
-  </div>
-  <div class="desc">
-
- The other coordinate to which to compute the Pythagorean distance.</div>
-</div>
-
-
-</div>
-
- 
-</div>
-
-
-<div class="function">
-
-## calculate_rotation
-
-
-<div class="content">
-<span class="name">calculate_rotation</span><div class="signature multiline">
-  <span class="pt">(</span>
-  <div class="param">
-    <span class="pn">point_a</span>
-    <span class="pc">:</span>
-    <span class="pa"> cityseer.rustalgos.Coord</span>
-  </div>
-  <div class="param">
-    <span class="pn">point_b</span>
-    <span class="pc">:</span>
-    <span class="pa"> cityseer.rustalgos.Coord</span>
-  </div>
-  <span class="pt">)-&gt;[</span>
-  <span class="pr">float</span>
-  <span class="pt">]</span>
-</div>
-</div>
-
-
- Calculates the rotation angle between two points relative to the origin.
-
-</div>
-
-
-<div class="function">
-
-## calculate_rotation_smallest
-
-
-<div class="content">
-<span class="name">calculate_rotation_smallest</span><div class="signature multiline">
-  <span class="pt">(</span>
-  <div class="param">
-    <span class="pn">vec_a</span>
-    <span class="pc">:</span>
-    <span class="pa"> cityseer.rustalgos.Coord</span>
-  </div>
-  <div class="param">
-    <span class="pn">vec_b</span>
-    <span class="pc">:</span>
-    <span class="pa"> cityseer.rustalgos.Coord</span>
-  </div>
-  <span class="pt">)-&gt;[</span>
-  <span class="pr">float</span>
-  <span class="pt">]</span>
-</div>
-</div>
-
-
- Calculates the angle between `vec_a` and `vec_b`.
-### Parameters
-<div class="param-set">
-  <div class="def">
-    <div class="name">`vec_a`</div>
-    <div class="type">Coord</div>
-  </div>
-  <div class="desc">
-
- The vector of `vec_a`.</div>
-</div>
-
-<div class="param-set">
-  <div class="def">
-    <div class="name">`vec_b`</div>
-    <div class="type">Coord</div>
-  </div>
-  <div class="desc">
-
- The vector of `vec_b`.</div>
-</div>
-
-
-</div>
+ Cityseer high-performance algorithms implemented in Rust.
 
 
 <div class="function">
@@ -304,14 +20,25 @@ layout: ../../layouts/PageLayout.astro
   <div class="param">
     <span class="pn">data_arr</span>
     <span class="pc">:</span>
-    <span class="pa"> list[float]</span>
+    <span class="pa"> numpy.ndarray[tuple[int, ...], numpy.dtype[numpy.float32]]</span>
   </div>
   <span class="pt">)</span>
 </div>
 </div>
 
 
- Checks the integrity of a numerical data array. data_arr: list[float]
+ Validates that all elements in a 2D numerical array are finite.
+### Raises
+<div class="param-set">
+  <div class="def">
+    <div class="name"></div>
+    <div class="type">ValueError</div>
+  </div>
+  <div class="desc">
+
+ If any element is not finite (NaN or infinity).</div>
+</div>
+
 
 </div>
 
@@ -341,41 +68,48 @@ layout: ../../layouts/PageLayout.astro
 </div>
 
 
- Map distance thresholds $d_{max}$ to equivalent decay parameters $\beta$ at the specified cutoff weight $w_{min}$. See [`distance_from_beta`](#distance-from-beta) for additional discussion.
-
-:::note
-It is generally not necessary to utilise this function directly.
-:::
+ Convert decay parameters (betas) to distance thresholds ($d_{max}$). Requires betas > 0 and sorted in strictly decreasing order. Uses a default minimum weight threshold.
 ### Parameters
 <div class="param-set">
   <div class="def">
-    <div class="name">distance</div>
-    <div class="type">list[int]</div>
+    <div class="name">betas</div>
+    <div class="type">list[float]</div>
   </div>
   <div class="desc">
 
- $d_{max}$ value/s to convert to decay parameters $\beta$.</div>
+ $\beta$ values (&gt; 0, strictly decreasing) to convert.</div>
 </div>
 
 <div class="param-set">
   <div class="def">
     <div class="name">min_threshold_wt</div>
-    <div class="type">float</div>
+    <div class="type">float | None</div>
   </div>
   <div class="desc">
 
- The cutoff weight $w_{min}$ on which to model the decay parameters $\beta$.</div>
+ Optional cutoff weight $w_{min}$ (default: ~0.0183).</div>
 </div>
 
 ### Returns
 <div class="param-set">
   <div class="def">
     <div class="name"></div>
-    <div class="type">list[float]</div>
+    <div class="type">list[int]</div>
   </div>
   <div class="desc">
 
- A numpy array of decay parameters $\beta$.</div>
+ Corresponding distance thresholds $d_{max}$.</div>
+</div>
+
+### Raises
+<div class="param-set">
+  <div class="def">
+    <div class="name"></div>
+    <div class="type">ValueError</div>
+  </div>
+  <div class="desc">
+
+ If inputs are invalid (empty, non-positive, not decreasing).</div>
 </div>
 
 ### Notes
@@ -431,19 +165,16 @@ print(betas)  # prints: array([0.01, 0.02])
 </div>
 
 
- Map decay parameters $\beta$ to equivalent distance thresholds $d_{max}$ at the specified cutoff weight $w_{min}$.
-:::note
-It is generally not necessary to utilise this function directly.
-:::
+ Convert distance thresholds ($d_{max}$) to decay parameters (betas). Requires distances > 0 and sorted in strictly increasing order. Uses a default minimum weight threshold.
 ### Parameters
 <div class="param-set">
   <div class="def">
-    <div class="name">betas</div>
-    <div class="type">list[float]</div>
+    <div class="name">distances</div>
+    <div class="type">list[int]</div>
   </div>
   <div class="desc">
 
- $\beta$ value/s to convert to distance thresholds $d_{max}$.</div>
+ $d_{max}$ values (&gt; 0, strictly increasing) to convert.</div>
 </div>
 
 <div class="param-set">
@@ -453,18 +184,29 @@ It is generally not necessary to utilise this function directly.
   </div>
   <div class="desc">
 
- An optional cutoff weight $w_{min}$ at which to set the distance threshold $d_{max}$.</div>
+ Optional cutoff weight $w_{min}$ (default: ~0.0183).</div>
 </div>
 
 ### Returns
 <div class="param-set">
   <div class="def">
-    <div class="name">distances</div>
-    <div class="type">list[int]</div>
+    <div class="name"></div>
+    <div class="type">list[float]</div>
   </div>
   <div class="desc">
 
- A list of distance thresholds $d_{max}$.</div>
+ Corresponding decay parameters $\beta$.</div>
+</div>
+
+### Raises
+<div class="param-set">
+  <div class="def">
+    <div class="name"></div>
+    <div class="type">ValueError</div>
+  </div>
+  <div class="desc">
+
+ If inputs are invalid (empty, non-positive, not increasing).</div>
 </div>
 
 ### Notes
@@ -522,7 +264,7 @@ Overriding the default $w_{min}$ will adjust the $d_{max}$ accordingly.
   <div class="param">
     <span class="pn">speed_m_s</span>
     <span class="pc">:</span>
-    <span class="pa"> float | None = None</span>
+    <span class="pa"> float</span>
   </div>
   <span class="pt">)-&gt;[</span>
   <span class="pr">list[int]</span>
@@ -531,7 +273,7 @@ Overriding the default $w_{min}$ will adjust the $d_{max}$ accordingly.
 </div>
 
 
- Map seconds to equivalent distance thresholds $d_{max}$.
+ Convert time in seconds to distance thresholds ($d_{max}$) based on speed.
 :::note
 It is generally not necessary to utilise this function directly.
 :::
@@ -544,7 +286,7 @@ It is generally not necessary to utilise this function directly.
 | 600 | 800m |
 | 1200 | 1600m |
 
-Setting the `speed_m_s` to a higher or lower number will affect the $d_{max}$ accordingly.
+Setting the `speed_m_s` to a higher or lower number will affect the $d_{max}$ accordingly.]
 ### Parameters
 <div class="param-set">
   <div class="def">
@@ -553,7 +295,7 @@ Setting the `speed_m_s` to a higher or lower number will affect the $d_{max}$ ac
   </div>
   <div class="desc">
 
- Seconds to convert to distance thresholds $d_{max}$.</div>
+ Time values in seconds.</div>
 </div>
 
 <div class="param-set">
@@ -563,7 +305,7 @@ Setting the `speed_m_s` to a higher or lower number will affect the $d_{max}$ ac
   </div>
   <div class="desc">
 
- The walking speed in metres per second.</div>
+ Speed in meters per second.</div>
 </div>
 
 ### Returns
@@ -574,7 +316,7 @@ Setting the `speed_m_s` to a higher or lower number will affect the $d_{max}$ ac
   </div>
   <div class="desc">
 
- A numpy array of distance thresholds $d_{max}$.</div>
+ Corresponding distance thresholds $d_{max}$.</div>
 </div>
 
 
@@ -597,16 +339,16 @@ Setting the `speed_m_s` to a higher or lower number will affect the $d_{max}$ ac
   <div class="param">
     <span class="pn">speed_m_s</span>
     <span class="pc">:</span>
-    <span class="pa"> float | None = None</span>
+    <span class="pa"> float</span>
   </div>
   <span class="pt">)-&gt;[</span>
-  <span class="pr">list[float]</span>
+  <span class="pr">list[int]</span>
   <span class="pt">]</span>
 </div>
 </div>
 
 
- Map distances into equivalent walking time in seconds.
+ Convert distance thresholds ($d_{max}$) to time in seconds based on speed.
 :::note
 It is generally not necessary to utilise this function directly.
 :::
@@ -628,7 +370,7 @@ Setting the `speed_m_s` to a higher or lower number will affect the walking time
   </div>
   <div class="desc">
 
- Distances to convert to seconds.</div>
+ Distance thresholds $d_{max}$.</div>
 </div>
 
 <div class="param-set">
@@ -638,7 +380,7 @@ Setting the `speed_m_s` to a higher or lower number will affect the walking time
   </div>
   <div class="desc">
 
- The walking speed in metres per second.</div>
+ Speed in meters per second.</div>
 </div>
 
 ### Returns
@@ -649,7 +391,7 @@ Setting the `speed_m_s` to a higher or lower number will affect the walking time
   </div>
   <div class="desc">
 
- A numpy array of walking time in seconds.</div>
+ Corresponding time values in seconds.</div>
 </div>
 
 
@@ -664,6 +406,11 @@ Setting the `speed_m_s` to a higher or lower number will affect the walking time
 <div class="content">
 <span class="name">pair_distances_betas_time</span><div class="signature multiline">
   <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">speed_m_s</span>
+    <span class="pc">:</span>
+    <span class="pa"> float</span>
+  </div>
   <div class="param">
     <span class="pn">distances</span>
     <span class="pc">:</span>
@@ -684,62 +431,17 @@ Setting the `speed_m_s` to a higher or lower number will affect the walking time
     <span class="pc">:</span>
     <span class="pa"> float | None = None</span>
   </div>
-  <div class="param">
-    <span class="pn">speed_m_s</span>
-    <span class="pc">:</span>
-    <span class="pa"> float | None = None</span>
-  </div>
   <span class="pt">)-&gt;[</span>
   <span class="pr">list[int]</span>
   <span class="pr">list[float]</span>
-  <span class="pr">list[float]</span>
+  <span class="pr">list[int]</span>
   <span class="pt">]</span>
 </div>
 </div>
 
 
- Pair distances, betas, and time, where only one parameter is provided.
+ Calculate distances, betas, and seconds, given exactly one of them. Requires exactly one of `distances`, `betas`, or `minutes` to be provided.
 ### Parameters
-<div class="param-set">
-  <div class="def">
-    <div class="name">distances</div>
-    <div class="type">list[int]</div>
-  </div>
-  <div class="desc">
-
- Distances corresponding to the local $d_{max}$ thresholds to be used for calculations. The $\beta$ parameters (for distance-weighted metrics) will be determined implicitly. If the `distances` parameter is not provided, then the `betas` or `minutes` parameter must be provided instead.</div>
-</div>
-
-<div class="param-set">
-  <div class="def">
-    <div class="name">betas</div>
-    <div class="type">tuple[float]</div>
-  </div>
-  <div class="desc">
-
- A $\beta$, or array of $\beta$ to be used for the exponential decay function for weighted metrics. The `distance` parameters for unweighted metrics will be determined implicitly. If the `betas` parameter is not provided, then the `distances` or `minutes` parameter must be provided instead.</div>
-</div>
-
-<div class="param-set">
-  <div class="def">
-    <div class="name">minutes</div>
-    <div class="type">list[float]</div>
-  </div>
-  <div class="desc">
-
- Walking times in minutes to be used for calculations. The `distance` and `beta` parameters will be determined implicitly. If the `minutes` parameter is not provided, then the `distances` or `betas` parameters must be provided instead.</div>
-</div>
-
-<div class="param-set">
-  <div class="def">
-    <div class="name">min_threshold_wt</div>
-    <div class="type">float</div>
-  </div>
-  <div class="desc">
-
- The default `min_threshold_wt` parameter can be overridden to generate custom mappings between the `distance` and `beta` parameters. See [`distance_from_beta`](#distance-from-beta) for more information.</div>
-</div>
-
 <div class="param-set">
   <div class="def">
     <div class="name">speed_m_s</div>
@@ -747,38 +449,69 @@ Setting the `speed_m_s` to a higher or lower number will affect the walking time
   </div>
   <div class="desc">
 
- The default walking speed in meters per second can optionally be overridden to configure the distances covered by the respective walking times.</div>
+ Walking speed in meters per second.</div>
 </div>
 
-### Returns
 <div class="param-set">
   <div class="def">
     <div class="name">distances</div>
-    <div class="type">list[int]</div>
+    <div class="type">list[int] | None</div>
   </div>
   <div class="desc">
 
- Distances corresponding to the local $d_{max}$ thresholds to be used for calculations. The $\beta$ parameters (for distance-weighted metrics) will be determined implicitly. If the `distances` parameter is not provided, then the `beta` parameter must be provided instead.</div>
+ Distance thresholds ($d_{max}$).</div>
 </div>
 
 <div class="param-set">
   <div class="def">
     <div class="name">betas</div>
-    <div class="type">list[float]</div>
+    <div class="type">list[float] | None</div>
   </div>
   <div class="desc">
 
- A $\beta$, or array of $\beta$ to be used for the exponential decay function for weighted metrics. The `distance` parameters for unweighted metrics will be determined implicitly. If the `betas` parameter is not provided, then the `distance` parameter must be provided instead.</div>
+ Decay parameters ($\beta$).</div>
 </div>
 
 <div class="param-set">
   <div class="def">
-    <div class="name">seconds</div>
-    <div class="type">list[int]</div>
+    <div class="name">minutes</div>
+    <div class="type">list[float] | None</div>
   </div>
   <div class="desc">
 
- Walking times in seconds corresponding to the distances used for calculations.</div>
+ Time in minutes.</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">min_threshold_wt</div>
+    <div class="type">float | None</div>
+  </div>
+  <div class="desc">
+
+ Optional cutoff weight $w_{min}$ for conversions.</div>
+</div>
+
+### Returns
+<div class="param-set">
+  <div class="def">
+    <div class="name"></div>
+    <div class="type">tuple[list[int], list[float], list[int]]</div>
+  </div>
+  <div class="desc">
+
+ A tuple containing (distances, betas, seconds).</div>
+</div>
+
+### Raises
+<div class="param-set">
+  <div class="def">
+    <div class="name"></div>
+    <div class="type">ValueError</div>
+  </div>
+  <div class="desc">
+
+ If not exactly one of `distances`, `betas`, `minutes` is provided, or if inputs are invalid.</div>
 </div>
 
 ### Notes
@@ -819,26 +552,26 @@ when calculating shortest paths and landuse accessibilities.
 </div>
 
 
- Calculate the mean distance for a given $\beta$ parameter.
+ Calculate the mean distance corresponding to given beta parameters.
 ### Parameters
 <div class="param-set">
   <div class="def">
-    <div class="name">beta</div>
+    <div class="name">betas</div>
     <div class="type">list[float]</div>
   </div>
   <div class="desc">
 
- $\beta$ representing a spatial impedance / distance decay for which to compute the average walking distance.</div>
+ $\beta$ parameters.</div>
 </div>
 
 <div class="param-set">
   <div class="def">
     <div class="name">min_threshold_wt</div>
-    <div class="type">float</div>
+    <div class="type">float | None</div>
   </div>
   <div class="desc">
 
- The cutoff weight $w_{min}$ on which to model the decay parameters $\beta$.</div>
+ Optional cutoff weight $w_{min}$.</div>
 </div>
 
 ### Returns
@@ -849,7 +582,7 @@ when calculating shortest paths and landuse accessibilities.
   </div>
   <div class="desc">
 
- The average walking distance for a given $\beta$.</div>
+ The average walking distance for each beta.</div>
 </div>
 
 ### Notes
@@ -867,7 +600,6 @@ print("betas", betas)
 # betas [0.04   0.02   0.01   0.005  0.0025]
 
 print("avg", networks.avg_distance_for_beta(betas))
-# avg [ 35.11949  70.23898 140.47797 280.95593 561.91187]
 ```
 
 
@@ -904,7 +636,7 @@ print("avg", networks.avg_distance_for_beta(betas))
 </div>
 
 
- Calculate the upper bounds for clipping weights produced by spatial impedance functions. Determine the upper weights threshold of the distance decay curve for a given $\beta$ based on the `spatial_tolerance` parameter. This is used by downstream functions to determine the upper extent at which weights derived for spatial impedance functions are flattened and normalised. This functionality is only intended for situations where the location of datapoints is uncertain for a given spatial tolerance.
+ Calculate upper weight bounds for clipping distance decay curves based on spatial tolerance. Used when data point location has uncertainty defined by `spatial_tolerance`. Determine the upper weights threshold of the distance decay curve for a given $\beta$ based on the `spatial_tolerance` parameter. This is used by downstream functions to determine the upper extent at which weights derived for spatial impedance functions are flattened and normalised. This functionality is only intended for situations where the location of datapoints is uncertain for a given spatial tolerance.
 
 :::warning
 Use distance based clipping with caution for smaller distance thresholds. For example, if using a 200m distance
@@ -920,7 +652,7 @@ datapoints are not located with high spatial precision.
   </div>
   <div class="desc">
 
- An array of distances corresponding to the local $d_{max}$ thresholds to be used for calculations.</div>
+ Distance thresholds ($d_{max}$).</div>
 </div>
 
 <div class="param-set">
@@ -930,7 +662,7 @@ datapoints are not located with high spatial precision.
   </div>
   <div class="desc">
 
- An array of $\beta$ to be used for the exponential decay function for weighted metrics.</div>
+ Decay parameters ($\beta$).</div>
 </div>
 
 <div class="param-set">
@@ -940,18 +672,18 @@ datapoints are not located with high spatial precision.
   </div>
   <div class="desc">
 
- The spatial buffer distance corresponding to the tolerance for spatial inaccuracy.</div>
+ Spatial buffer distance (uncertainty).</div>
 </div>
 
 ### Returns
 <div class="param-set">
   <div class="def">
-    <div class="name">max_curve_wts</div>
+    <div class="name"></div>
     <div class="type">list[float]</div>
   </div>
   <div class="desc">
 
- An array of maximum weights at which curves for corresponding $\beta$ will be clipped.</div>
+ Maximum weights for clipping the decay curve for each beta.</div>
 </div>
 
 
@@ -988,2412 +720,50 @@ datapoints are not located with high spatial precision.
 </div>
 
 
- Computes a clipped weight based on a beta value and maximum curve weight.
-
-</div>
-
-
-<div class="class">
-
-
-## DataEntry
-
-
-
-
-<div class="function">
-
-## DataEntry
-
-
-<div class="content">
-<span class="name">DataEntry</span><div class="signature multiline">
-  <span class="pt">(</span>
-  <div class="param">
-    <span class="pn">data_key</span>
-    <span class="pc">:</span>
-    <span class="pa"> str</span>
-  </div>
-  <div class="param">
-    <span class="pn">x</span>
-    <span class="pc">:</span>
-    <span class="pa"> float</span>
-  </div>
-  <div class="param">
-    <span class="pn">y</span>
-    <span class="pc">:</span>
-    <span class="pa"> float</span>
-  </div>
-  <div class="param">
-    <span class="pn">data_id</span>
-    <span class="pc">:</span>
-    <span class="pa"> str | None = None</span>
-  </div>
-  <div class="param">
-    <span class="pn">nearest_assign</span>
-    <span class="pc">:</span>
-    <span class="pa"> int | None = None</span>
-  </div>
-  <div class="param">
-    <span class="pn">next_nearest_assign</span>
-    <span class="pc">:</span>
-    <span class="pa"> int | None = None</span>
-  </div>
-  <span class="pt">)</span>
-</div>
-</div>
-
-</div>
-
- 
-
-<div class="function">
-
-## is_assigned
-
-
-<div class="content">
-<span class="name">is_assigned</span><div class="signature">
-  <span class="pt">(</span>
-  <div class="param">
-    <span class="pn">self</span>
-  </div>
-  <span class="pt">)-&gt;[</span>
-  <span class="pr">bool</span>
-  <span class="pt">]</span>
-</div>
-</div>
-
-</div>
-
- 
-</div>
-
-
-<div class="class">
-
-
-## DataMap
-
-
-
-
-<div class="function">
-
-## DataMap
-
-
-<div class="content">
-<span class="name">DataMap</span><div class="signature">
-  <span class="pt">(</span>
-  <span class="pt">)</span>
-</div>
-</div>
-
-</div>
-
- 
-
-<div class="function">
-
-## progress_init
-
-
-<div class="content">
-<span class="name">progress_init</span><div class="signature multiline">
-  <span class="pt">(</span>
-  <div class="param">
-    <span class="pn">self</span>
-  </div>
-  <div class="param">
-    <span class="pn">/</span>
-  </div>
-  <span class="pt">)</span>
-</div>
-</div>
-
-</div>
-
- 
-
-<div class="function">
-
-## progress
-
-
-<div class="content">
-<span class="name">progress</span><div class="signature">
-  <span class="pt">(</span>
-  <div class="param">
-    <span class="pn">self</span>
-  </div>
-  <span class="pt">)-&gt;[</span>
-  <span class="pr">int</span>
-  <span class="pt">]</span>
-</div>
-</div>
-
-</div>
-
- 
-
-<div class="function">
-
-## insert
-
-
-<div class="content">
-<span class="name">insert</span><div class="signature multiline">
-  <span class="pt">(</span>
-  <div class="param">
-    <span class="pn">self</span>
-  </div>
-  <div class="param">
-    <span class="pn">data_key</span>
-    <span class="pc">:</span>
-    <span class="pa"> str</span>
-  </div>
-  <div class="param">
-    <span class="pn">x</span>
-    <span class="pc">:</span>
-    <span class="pa"> float</span>
-  </div>
-  <div class="param">
-    <span class="pn">y</span>
-    <span class="pc">:</span>
-    <span class="pa"> float</span>
-  </div>
-  <div class="param">
-    <span class="pn">data_id</span>
-    <span class="pc">:</span>
-    <span class="pa"> str | None = None</span>
-  </div>
-  <div class="param">
-    <span class="pn">nearest_assign</span>
-    <span class="pc">:</span>
-    <span class="pa"> int | None = None</span>
-  </div>
-  <div class="param">
-    <span class="pn">next_nearest_assign</span>
-    <span class="pc">:</span>
-    <span class="pa"> int | None = None</span>
-  </div>
-  <span class="pt">)</span>
-</div>
-</div>
-
-
- data_key: str The key for the added node. data_x: float The x coordinate for the added node. data_y: float The y coordinate for the added node. data_id: str | None An optional key for each datapoint. Used for deduplication.
-
-</div>
-
- 
-
-<div class="function">
-
-## entry_keys
-
-
-<div class="content">
-<span class="name">entry_keys</span><div class="signature">
-  <span class="pt">(</span>
-  <div class="param">
-    <span class="pn">self</span>
-  </div>
-  <span class="pt">)-&gt;[</span>
-  <span class="pr">list[str]</span>
-  <span class="pt">]</span>
-</div>
-</div>
-
-</div>
-
- 
-
-<div class="function">
-
-## get_entry
-
-
-<div class="content">
-<span class="name">get_entry</span><div class="signature multiline">
-  <span class="pt">(</span>
-  <div class="param">
-    <span class="pn">self</span>
-  </div>
-  <div class="param">
-    <span class="pn">data_key</span>
-    <span class="pc">:</span>
-    <span class="pa"> str</span>
-  </div>
-  <span class="pt">)-&gt;[</span>
-  <span class="pr">DataEntry | None</span>
-  <span class="pt">]</span>
-</div>
-</div>
-
-</div>
-
- 
-
-<div class="function">
-
-## get_data_coord
-
-
-<div class="content">
-<span class="name">get_data_coord</span><div class="signature multiline">
-  <span class="pt">(</span>
-  <div class="param">
-    <span class="pn">self</span>
-  </div>
-  <div class="param">
-    <span class="pn">data_key</span>
-    <span class="pc">:</span>
-    <span class="pa"> str</span>
-  </div>
-  <span class="pt">)-&gt;[</span>
-  <span class="pr">Coord | None</span>
-  <span class="pt">]</span>
-</div>
-</div>
-
-</div>
-
- 
-
-<div class="function">
-
-## count
-
-
-<div class="content">
-<span class="name">count</span><div class="signature">
-  <span class="pt">(</span>
-  <div class="param">
-    <span class="pn">self</span>
-  </div>
-  <span class="pt">)-&gt;[</span>
-  <span class="pr">int</span>
-  <span class="pt">]</span>
-</div>
-</div>
-
-</div>
-
- 
-
-<div class="function">
-
-## is_empty
-
-
-<div class="content">
-<span class="name">is_empty</span><div class="signature">
-  <span class="pt">(</span>
-  <div class="param">
-    <span class="pn">self</span>
-  </div>
-  <span class="pt">)-&gt;[</span>
-  <span class="pr">bool</span>
-  <span class="pt">]</span>
-</div>
-</div>
-
-</div>
-
- 
-
-<div class="function">
-
-## all_assigned
-
-
-<div class="content">
-<span class="name">all_assigned</span><div class="signature">
-  <span class="pt">(</span>
-  <div class="param">
-    <span class="pn">self</span>
-  </div>
-  <span class="pt">)-&gt;[</span>
-  <span class="pr">bool</span>
-  <span class="pt">]</span>
-</div>
-</div>
-
-</div>
-
- 
-
-<div class="function">
-
-## none_assigned
-
-
-<div class="content">
-<span class="name">none_assigned</span><div class="signature">
-  <span class="pt">(</span>
-  <div class="param">
-    <span class="pn">self</span>
-  </div>
-  <span class="pt">)-&gt;[</span>
-  <span class="pr">bool</span>
-  <span class="pt">]</span>
-</div>
-</div>
-
-</div>
-
- 
-
-<div class="function">
-
-## set_nearest_assign
-
-
-<div class="content">
-<span class="name">set_nearest_assign</span><div class="signature multiline">
-  <span class="pt">(</span>
-  <div class="param">
-    <span class="pn">self</span>
-  </div>
-  <div class="param">
-    <span class="pn">data_key</span>
-    <span class="pc">:</span>
-    <span class="pa"> str</span>
-  </div>
-  <div class="param">
-    <span class="pn">assign_idx</span>
-    <span class="pc">:</span>
-    <span class="pa"> int</span>
-  </div>
-  <span class="pt">)</span>
-</div>
-</div>
-
-</div>
-
- 
-
-<div class="function">
-
-## set_next_nearest_assign
-
-
-<div class="content">
-<span class="name">set_next_nearest_assign</span><div class="signature multiline">
-  <span class="pt">(</span>
-  <div class="param">
-    <span class="pn">self</span>
-  </div>
-  <div class="param">
-    <span class="pn">data_key</span>
-    <span class="pc">:</span>
-    <span class="pa"> str</span>
-  </div>
-  <div class="param">
-    <span class="pn">assign_idx</span>
-    <span class="pc">:</span>
-    <span class="pa"> int</span>
-  </div>
-  <span class="pt">)</span>
-</div>
-</div>
-
-</div>
-
- 
-
-<div class="function">
-
-## aggregate_to_src_idx
-
-
-<div class="content">
-<span class="name">aggregate_to_src_idx</span><div class="signature multiline">
-  <span class="pt">(</span>
-  <div class="param">
-    <span class="pn">self</span>
-  </div>
-  <div class="param">
-    <span class="pn">netw_src_idx</span>
-    <span class="pc">:</span>
-    <span class="pa"> int</span>
-  </div>
-  <div class="param">
-    <span class="pn">network_structure</span>
-    <span class="pc">:</span>
-    <span class="pa"> cityseer.rustalgos.NetworkStructure</span>
-  </div>
-  <div class="param">
-    <span class="pn">max_seconds</span>
-    <span class="pc">:</span>
-    <span class="pa"> float</span>
-  </div>
-  <div class="param">
-    <span class="pn">speed_m_s</span>
-    <span class="pc">:</span>
-    <span class="pa"> float</span>
-  </div>
-  <div class="param">
-    <span class="pn">jitter_scale</span>
-    <span class="pc">:</span>
-    <span class="pa"> float | None = None</span>
-  </div>
-  <div class="param">
-    <span class="pn">angular</span>
-    <span class="pc">:</span>
-    <span class="pa"> bool | None = None</span>
-  </div>
-  <span class="pt">)-&gt;[</span>
-  <span class="pr">dict[str</span>
-  <span class="pr">float]</span>
-  <span class="pt">]</span>
-</div>
-</div>
-
-</div>
-
- 
-
-<div class="function">
-
-## accessibility
-
-
-<div class="content">
-<span class="name">accessibility</span><div class="signature multiline">
-  <span class="pt">(</span>
-  <div class="param">
-    <span class="pn">self</span>
-  </div>
-  <div class="param">
-    <span class="pn">network_structure</span>
-    <span class="pc">:</span>
-    <span class="pa"> cityseer.rustalgos.NetworkStructure</span>
-  </div>
-  <div class="param">
-    <span class="pn">landuses_map</span>
-    <span class="pc">:</span>
-    <span class="pa"> dict[str, str]</span>
-  </div>
-  <div class="param">
-    <span class="pn">accessibility_keys</span>
-    <span class="pc">:</span>
-    <span class="pa"> list[str]</span>
-  </div>
-  <div class="param">
-    <span class="pn">distances</span>
-    <span class="pc">:</span>
-    <span class="pa"> list[int] | None = None</span>
-  </div>
-  <div class="param">
-    <span class="pn">betas</span>
-    <span class="pc">:</span>
-    <span class="pa"> list[float] | None = None</span>
-  </div>
-  <div class="param">
-    <span class="pn">minutes</span>
-    <span class="pc">:</span>
-    <span class="pa"> list[float] | None = None</span>
-  </div>
-  <div class="param">
-    <span class="pn">angular</span>
-    <span class="pc">:</span>
-    <span class="pa"> bool | None = None</span>
-  </div>
-  <div class="param">
-    <span class="pn">spatial_tolerance</span>
-    <span class="pc">:</span>
-    <span class="pa"> int | None = None</span>
-  </div>
-  <div class="param">
-    <span class="pn">min_threshold_wt</span>
-    <span class="pc">:</span>
-    <span class="pa"> float | None = None</span>
-  </div>
-  <div class="param">
-    <span class="pn">speed_m_s</span>
-    <span class="pc">:</span>
-    <span class="pa"> float | None = None</span>
-  </div>
-  <div class="param">
-    <span class="pn">jitter_scale</span>
-    <span class="pc">:</span>
-    <span class="pa"> float | None = None</span>
-  </div>
-  <div class="param">
-    <span class="pn">pbar_disabled</span>
-    <span class="pc">:</span>
-    <span class="pa"> bool | None = None</span>
-  </div>
-  <span class="pt">)-&gt;[</span>
-  <span class="pr">dict[str</span>
-  <span class="pr">AccessibilityResult]</span>
-  <span class="pt">]</span>
-</div>
-</div>
-
-</div>
-
- 
-
-<div class="function">
-
-## mixed_uses
-
-
-<div class="content">
-<span class="name">mixed_uses</span><div class="signature multiline">
-  <span class="pt">(</span>
-  <div class="param">
-    <span class="pn">self</span>
-  </div>
-  <div class="param">
-    <span class="pn">network_structure</span>
-    <span class="pc">:</span>
-    <span class="pa"> cityseer.rustalgos.NetworkStructure</span>
-  </div>
-  <div class="param">
-    <span class="pn">landuses_map</span>
-    <span class="pc">:</span>
-    <span class="pa"> dict[str, str]</span>
-  </div>
-  <div class="param">
-    <span class="pn">compute_hill</span>
-    <span class="pc">:</span>
-    <span class="pa"> bool | None = True</span>
-  </div>
-  <div class="param">
-    <span class="pn">compute_hill_weighted</span>
-    <span class="pc">:</span>
-    <span class="pa"> bool | None = True</span>
-  </div>
-  <div class="param">
-    <span class="pn">compute_shannon</span>
-    <span class="pc">:</span>
-    <span class="pa"> bool | None = False</span>
-  </div>
-  <div class="param">
-    <span class="pn">compute_gini</span>
-    <span class="pc">:</span>
-    <span class="pa"> bool | None = False</span>
-  </div>
-  <div class="param">
-    <span class="pn">distances</span>
-    <span class="pc">:</span>
-    <span class="pa"> list[int] | None = None</span>
-  </div>
-  <div class="param">
-    <span class="pn">betas</span>
-    <span class="pc">:</span>
-    <span class="pa"> list[float] | None = None</span>
-  </div>
-  <div class="param">
-    <span class="pn">minutes</span>
-    <span class="pc">:</span>
-    <span class="pa"> list[float] | None = None</span>
-  </div>
-  <div class="param">
-    <span class="pn">angular</span>
-    <span class="pc">:</span>
-    <span class="pa"> bool | None = None</span>
-  </div>
-  <div class="param">
-    <span class="pn">spatial_tolerance</span>
-    <span class="pc">:</span>
-    <span class="pa"> int | None = None</span>
-  </div>
-  <div class="param">
-    <span class="pn">min_threshold_wt</span>
-    <span class="pc">:</span>
-    <span class="pa"> float | None = None</span>
-  </div>
-  <div class="param">
-    <span class="pn">speed_m_s</span>
-    <span class="pc">:</span>
-    <span class="pa"> float | None = None</span>
-  </div>
-  <div class="param">
-    <span class="pn">jitter_scale</span>
-    <span class="pc">:</span>
-    <span class="pa"> float | None = None</span>
-  </div>
-  <div class="param">
-    <span class="pn">pbar_disabled</span>
-    <span class="pc">:</span>
-    <span class="pa"> bool | None = None</span>
-  </div>
-  <span class="pt">)-&gt;[</span>
-  <span class="pr">MixedUsesResult</span>
-  <span class="pt">]</span>
-</div>
-</div>
-
-</div>
-
- 
-
-<div class="function">
-
-## stats
-
-
-<div class="content">
-<span class="name">stats</span><div class="signature multiline">
-  <span class="pt">(</span>
-  <div class="param">
-    <span class="pn">self</span>
-  </div>
-  <div class="param">
-    <span class="pn">network_structure</span>
-    <span class="pc">:</span>
-    <span class="pa"> cityseer.rustalgos.NetworkStructure</span>
-  </div>
-  <div class="param">
-    <span class="pn">numerical_maps</span>
-    <span class="pc">:</span>
-    <span class="pa"> list[dict[str, float]]</span>
-  </div>
-  <div class="param">
-    <span class="pn">distances</span>
-    <span class="pc">:</span>
-    <span class="pa"> list[int] | None = None</span>
-  </div>
-  <div class="param">
-    <span class="pn">betas</span>
-    <span class="pc">:</span>
-    <span class="pa"> list[float] | None = None</span>
-  </div>
-  <div class="param">
-    <span class="pn">minutes</span>
-    <span class="pc">:</span>
-    <span class="pa"> list[float] | None = None</span>
-  </div>
-  <div class="param">
-    <span class="pn">angular</span>
-    <span class="pc">:</span>
-    <span class="pa"> bool | None = None</span>
-  </div>
-  <div class="param">
-    <span class="pn">spatial_tolerance</span>
-    <span class="pc">:</span>
-    <span class="pa"> int | None = None</span>
-  </div>
-  <div class="param">
-    <span class="pn">min_threshold_wt</span>
-    <span class="pc">:</span>
-    <span class="pa"> float | None = None</span>
-  </div>
-  <div class="param">
-    <span class="pn">speed_m_s</span>
-    <span class="pc">:</span>
-    <span class="pa"> float | None = None</span>
-  </div>
-  <div class="param">
-    <span class="pn">jitter_scale</span>
-    <span class="pc">:</span>
-    <span class="pa"> float | None = None</span>
-  </div>
-  <div class="param">
-    <span class="pn">pbar_disabled</span>
-    <span class="pc">:</span>
-    <span class="pa"> bool | None = None</span>
-  </div>
-  <span class="pt">)-&gt;[</span>
-  <span class="pr">StatsResult]</span>
-  <span class="pt">]</span>
-</div>
-</div>
-
-</div>
-
- 
-</div>
-
-
-<div class="class">
-
-
-## AccessibilityResult
-
-
-
-
-<div class="function">
-
-## AccessibilityResult
-
-
-<div class="content">
-<span class="name">AccessibilityResult</span><div class="signature">
-  <span class="pt">(</span>
-  <span class="pt">)</span>
-</div>
-</div>
-
-</div>
-
- 
-</div>
-
-
-<div class="class">
-
-
-## MixedUsesResult
-
-
-
-
-<div class="function">
-
-## MixedUsesResult
-
-
-<div class="content">
-<span class="name">MixedUsesResult</span><div class="signature">
-  <span class="pt">(</span>
-  <span class="pt">)</span>
-</div>
-</div>
-
-</div>
-
- 
-</div>
-
-
-<div class="class">
-
-
-## StatsResult
-
-
-
-
-<div class="function">
-
-## StatsResult
-
-
-<div class="content">
-<span class="name">StatsResult</span><div class="signature">
-  <span class="pt">(</span>
-  <span class="pt">)</span>
-</div>
-</div>
-
-</div>
-
- 
-</div>
-
-
-<div class="function">
-
-## hill_diversity
-
-
-<div class="content">
-<span class="name">hill_diversity</span><div class="signature multiline">
-  <span class="pt">(</span>
-  <div class="param">
-    <span class="pn">class_counts</span>
-    <span class="pc">:</span>
-    <span class="pa"> list[int]</span>
-  </div>
-  <div class="param">
-    <span class="pn">q</span>
-    <span class="pc">:</span>
-    <span class="pa"> float</span>
-  </div>
-  <span class="pt">)-&gt;[</span>
-  <span class="pr">float</span>
-  <span class="pt">]</span>
-</div>
-</div>
-
-</div>
-
-
-<div class="function">
-
-## hill_diversity_branch_distance_wt
-
-
-<div class="content">
-<span class="name">hill_diversity_branch_distance_wt</span><div class="signature multiline">
-  <span class="pt">(</span>
-  <div class="param">
-    <span class="pn">class_counts</span>
-    <span class="pc">:</span>
-    <span class="pa"> list[int]</span>
-  </div>
-  <div class="param">
-    <span class="pn">class_distances</span>
-    <span class="pc">:</span>
-    <span class="pa"> list[float]</span>
-  </div>
-  <div class="param">
-    <span class="pn">q</span>
-    <span class="pc">:</span>
-    <span class="pa"> float</span>
-  </div>
-  <div class="param">
-    <span class="pn">beta</span>
-    <span class="pc">:</span>
-    <span class="pa"> float</span>
-  </div>
-  <div class="param">
-    <span class="pn">max_curve_wt</span>
-    <span class="pc">:</span>
-    <span class="pa"> float</span>
-  </div>
-  <span class="pt">)-&gt;[</span>
-  <span class="pr">float</span>
-  <span class="pt">]</span>
-</div>
-</div>
-
-</div>
-
-
-<div class="function">
-
-## hill_diversity_pairwise_distance_wt
-
-
-<div class="content">
-<span class="name">hill_diversity_pairwise_distance_wt</span><div class="signature multiline">
-  <span class="pt">(</span>
-  <div class="param">
-    <span class="pn">class_counts</span>
-    <span class="pc">:</span>
-    <span class="pa"> list[int]</span>
-  </div>
-  <div class="param">
-    <span class="pn">class_distances</span>
-    <span class="pc">:</span>
-    <span class="pa"> list[float]</span>
-  </div>
-  <div class="param">
-    <span class="pn">q</span>
-    <span class="pc">:</span>
-    <span class="pa"> float</span>
-  </div>
-  <div class="param">
-    <span class="pn">beta</span>
-    <span class="pc">:</span>
-    <span class="pa"> float</span>
-  </div>
-  <div class="param">
-    <span class="pn">max_curve_wt</span>
-    <span class="pc">:</span>
-    <span class="pa"> float</span>
-  </div>
-  <span class="pt">)-&gt;[</span>
-  <span class="pr">float</span>
-  <span class="pt">]</span>
-</div>
-</div>
-
-</div>
-
-
-<div class="function">
-
-## gini_simpson_diversity
-
-
-<div class="content">
-<span class="name">gini_simpson_diversity</span><div class="signature">
-  <span class="pt">(</span>
-  <div class="param">
-    <span class="pn">class_counts</span>
-    <span class="pc">:</span>
-    <span class="pa"> list[int]</span>
-  </div>
-  <span class="pt">)-&gt;[</span>
-  <span class="pr">float</span>
-  <span class="pt">]</span>
-</div>
-</div>
-
-</div>
-
-
-<div class="function">
-
-## shannon_diversity
-
-
-<div class="content">
-<span class="name">shannon_diversity</span><div class="signature">
-  <span class="pt">(</span>
-  <div class="param">
-    <span class="pn">class_counts</span>
-    <span class="pc">:</span>
-    <span class="pa"> list[int]</span>
-  </div>
-  <span class="pt">)-&gt;[</span>
-  <span class="pr">float</span>
-  <span class="pt">]</span>
-</div>
-</div>
-
-</div>
-
-
-<div class="function">
-
-## raos_quadratic_diversity
-
-
-<div class="content">
-<span class="name">raos_quadratic_diversity</span><div class="signature multiline">
-  <span class="pt">(</span>
-  <div class="param">
-    <span class="pn">class_counts</span>
-    <span class="pc">:</span>
-    <span class="pa"> list[int]</span>
-  </div>
-  <div class="param">
-    <span class="pn">wt_matrix</span>
-    <span class="pc">:</span>
-    <span class="pa"> list[list[float]]</span>
-  </div>
-  <div class="param">
-    <span class="pn">alpha</span>
-    <span class="pc">:</span>
-    <span class="pa"> float</span>
-  </div>
-  <div class="param">
-    <span class="pn">beta</span>
-    <span class="pc">:</span>
-    <span class="pa"> float</span>
-  </div>
-  <span class="pt">)-&gt;[</span>
-  <span class="pr">float</span>
-  <span class="pt">]</span>
-</div>
-</div>
-
-</div>
-
-
-<div class="class">
-
-
-## NodePayload
-
-
-
-
-<div class="function">
-
-## NodePayload
-
-
-<div class="content">
-<span class="name">NodePayload</span><div class="signature">
-  <span class="pt">(</span>
-  <span class="pt">)</span>
-</div>
-</div>
-
-</div>
-
- 
-
-<div class="function">
-
-## validate
-
-
-<div class="content">
-<span class="name">validate</span><div class="signature">
-  <span class="pt">(</span>
-  <div class="param">
-    <span class="pn">self</span>
-  </div>
-  <span class="pt">)-&gt;[</span>
-  <span class="pr">bool</span>
-  <span class="pt">]</span>
-</div>
-</div>
-
-</div>
-
- 
-</div>
-
-
-<div class="class">
-
-
-## EdgePayload
-
-
-
-
-<div class="function">
-
-## EdgePayload
-
-
-<div class="content">
-<span class="name">EdgePayload</span><div class="signature">
-  <span class="pt">(</span>
-  <span class="pt">)</span>
-</div>
-</div>
-
-</div>
-
- 
-
-<div class="function">
-
-## validate
-
-
-<div class="content">
-<span class="name">validate</span><div class="signature">
-  <span class="pt">(</span>
-  <div class="param">
-    <span class="pn">self</span>
-  </div>
-  <span class="pt">)-&gt;[</span>
-  <span class="pr">bool</span>
-  <span class="pt">]</span>
-</div>
-</div>
-
-</div>
-
- 
-</div>
-
-
-<div class="class">
-
-
-## NetworkStructure
-
-
-
-
-<div class="function">
-
-## NetworkStructure
-
-
-<div class="content">
-<span class="name">NetworkStructure</span><div class="signature">
-  <span class="pt">(</span>
-  <span class="pt">)</span>
-</div>
-</div>
-
-</div>
-
- 
-
-<div class="function">
-
-## dijkstra_tree_shortest
-
-
-<div class="content">
-<span class="name">dijkstra_tree_shortest</span><div class="signature multiline">
-  <span class="pt">(</span>
-  <div class="param">
-    <span class="pn">self</span>
-  </div>
-  <div class="param">
-    <span class="pn">src_idx</span>
-    <span class="pc">:</span>
-    <span class="pa"> int</span>
-  </div>
-  <div class="param">
-    <span class="pn">max_seconds</span>
-    <span class="pc">:</span>
-    <span class="pa"> float</span>
-  </div>
-  <div class="param">
-    <span class="pn">speed_m_s</span>
-    <span class="pc">:</span>
-    <span class="pa"> float</span>
-  </div>
-  <div class="param">
-    <span class="pn">jitter_scale</span>
-    <span class="pc">:</span>
-    <span class="pa"> float | None = None</span>
-  </div>
-  <span class="pt">)-&gt;[</span>
-  <span class="pr">list[int]</span>
-  <span class="pr">NodeVisit]</span>
-  <span class="pt">]</span>
-</div>
-</div>
-
-</div>
-
- 
-
-<div class="function">
-
-## dijkstra_tree_simplest
-
-
-<div class="content">
-<span class="name">dijkstra_tree_simplest</span><div class="signature multiline">
-  <span class="pt">(</span>
-  <div class="param">
-    <span class="pn">self</span>
-  </div>
-  <div class="param">
-    <span class="pn">src_idx</span>
-    <span class="pc">:</span>
-    <span class="pa"> int</span>
-  </div>
-  <div class="param">
-    <span class="pn">max_seconds</span>
-    <span class="pc">:</span>
-    <span class="pa"> float</span>
-  </div>
-  <div class="param">
-    <span class="pn">speed_m_s</span>
-    <span class="pc">:</span>
-    <span class="pa"> float</span>
-  </div>
-  <div class="param">
-    <span class="pn">jitter_scale</span>
-    <span class="pc">:</span>
-    <span class="pa"> float | None = None</span>
-  </div>
-  <span class="pt">)-&gt;[</span>
-  <span class="pr">list[int]</span>
-  <span class="pr">NodeVisit]</span>
-  <span class="pt">]</span>
-</div>
-</div>
-
-</div>
-
- 
-
-<div class="function">
-
-## dijkstra_tree_segment
-
-
-<div class="content">
-<span class="name">dijkstra_tree_segment</span><div class="signature multiline">
-  <span class="pt">(</span>
-  <div class="param">
-    <span class="pn">self</span>
-  </div>
-  <div class="param">
-    <span class="pn">src_idx</span>
-    <span class="pc">:</span>
-    <span class="pa"> int</span>
-  </div>
-  <div class="param">
-    <span class="pn">max_seconds</span>
-    <span class="pc">:</span>
-    <span class="pa"> float</span>
-  </div>
-  <div class="param">
-    <span class="pn">speed_m_s</span>
-    <span class="pc">:</span>
-    <span class="pa"> float</span>
-  </div>
-  <div class="param">
-    <span class="pn">jitter_scale</span>
-    <span class="pc">:</span>
-    <span class="pa"> float | None = None</span>
-  </div>
-  <span class="pt">)-&gt;[</span>
-  <span class="pr">list[int]</span>
-  <span class="pr">list[int]</span>
-  <span class="pr">NodeVisit]</span>
-  <span class="pr">EdgeVisit]</span>
-  <span class="pt">]</span>
-</div>
-</div>
-
-</div>
-
- 
-
-<div class="function">
-
-## local_node_centrality_shortest
-
-
-<div class="content">
-<span class="name">local_node_centrality_shortest</span><div class="signature multiline">
-  <span class="pt">(</span>
-  <div class="param">
-    <span class="pn">self</span>
-  </div>
-  <div class="param">
-    <span class="pn">distances</span>
-    <span class="pc">:</span>
-    <span class="pa"> list[int] | None = None</span>
-  </div>
-  <div class="param">
-    <span class="pn">betas</span>
-    <span class="pc">:</span>
-    <span class="pa"> list[float] | None = None</span>
-  </div>
-  <div class="param">
-    <span class="pn">minutes</span>
-    <span class="pc">:</span>
-    <span class="pa"> list[float] | None = None</span>
-  </div>
-  <div class="param">
-    <span class="pn">compute_closeness</span>
-    <span class="pc">:</span>
-    <span class="pa"> bool | None = True</span>
-  </div>
-  <div class="param">
-    <span class="pn">compute_betweenness</span>
-    <span class="pc">:</span>
-    <span class="pa"> bool | None = True</span>
-  </div>
-  <div class="param">
-    <span class="pn">min_threshold_wt</span>
-    <span class="pc">:</span>
-    <span class="pa"> float | None = None</span>
-  </div>
-  <div class="param">
-    <span class="pn">speed_m_s</span>
-    <span class="pc">:</span>
-    <span class="pa"> float | None = None</span>
-  </div>
-  <div class="param">
-    <span class="pn">jitter_scale</span>
-    <span class="pc">:</span>
-    <span class="pa"> float | None = None</span>
-  </div>
-  <div class="param">
-    <span class="pn">pbar_disabled</span>
-    <span class="pc">:</span>
-    <span class="pa"> bool | None = None</span>
-  </div>
-  <span class="pt">)-&gt;[</span>
-  <span class="pr">CentralityShortestResult</span>
-  <span class="pt">]</span>
-</div>
-</div>
-
-</div>
-
- 
-
-<div class="function">
-
-## local_node_centrality_simplest
-
-
-<div class="content">
-<span class="name">local_node_centrality_simplest</span><div class="signature multiline">
-  <span class="pt">(</span>
-  <div class="param">
-    <span class="pn">self</span>
-  </div>
-  <div class="param">
-    <span class="pn">distances</span>
-    <span class="pc">:</span>
-    <span class="pa"> list[int] | None = None</span>
-  </div>
-  <div class="param">
-    <span class="pn">betas</span>
-    <span class="pc">:</span>
-    <span class="pa"> list[float] | None = None</span>
-  </div>
-  <div class="param">
-    <span class="pn">minutes</span>
-    <span class="pc">:</span>
-    <span class="pa"> list[float] | None = None</span>
-  </div>
-  <div class="param">
-    <span class="pn">compute_closeness</span>
-    <span class="pc">:</span>
-    <span class="pa"> bool | None = True</span>
-  </div>
-  <div class="param">
-    <span class="pn">compute_betweenness</span>
-    <span class="pc">:</span>
-    <span class="pa"> bool | None = True</span>
-  </div>
-  <div class="param">
-    <span class="pn">min_threshold_wt</span>
-    <span class="pc">:</span>
-    <span class="pa"> float | None = None</span>
-  </div>
-  <div class="param">
-    <span class="pn">speed_m_s</span>
-    <span class="pc">:</span>
-    <span class="pa"> float | None = None</span>
-  </div>
-  <div class="param">
-    <span class="pn">angular_scaling_unit</span>
-    <span class="pc">:</span>
-    <span class="pa"> float | None = None</span>
-  </div>
-  <div class="param">
-    <span class="pn">farness_scaling_offset</span>
-    <span class="pc">:</span>
-    <span class="pa"> float | None = None</span>
-  </div>
-  <div class="param">
-    <span class="pn">jitter_scale</span>
-    <span class="pc">:</span>
-    <span class="pa"> float | None = None</span>
-  </div>
-  <div class="param">
-    <span class="pn">pbar_disabled</span>
-    <span class="pc">:</span>
-    <span class="pa"> bool | None = None</span>
-  </div>
-  <span class="pt">)-&gt;[</span>
-  <span class="pr">CentralitySimplestResult</span>
-  <span class="pt">]</span>
-</div>
-</div>
-
-</div>
-
- 
-
-<div class="function">
-
-## local_segment_centrality
-
-
-<div class="content">
-<span class="name">local_segment_centrality</span><div class="signature multiline">
-  <span class="pt">(</span>
-  <div class="param">
-    <span class="pn">self</span>
-  </div>
-  <div class="param">
-    <span class="pn">distances</span>
-    <span class="pc">:</span>
-    <span class="pa"> list[int] | None = None</span>
-  </div>
-  <div class="param">
-    <span class="pn">betas</span>
-    <span class="pc">:</span>
-    <span class="pa"> list[float] | None = None</span>
-  </div>
-  <div class="param">
-    <span class="pn">minutes</span>
-    <span class="pc">:</span>
-    <span class="pa"> list[float] | None = None</span>
-  </div>
-  <div class="param">
-    <span class="pn">compute_closeness</span>
-    <span class="pc">:</span>
-    <span class="pa"> bool | None = True</span>
-  </div>
-  <div class="param">
-    <span class="pn">compute_betweenness</span>
-    <span class="pc">:</span>
-    <span class="pa"> bool | None = True</span>
-  </div>
-  <div class="param">
-    <span class="pn">min_threshold_wt</span>
-    <span class="pc">:</span>
-    <span class="pa"> float | None = None</span>
-  </div>
-  <div class="param">
-    <span class="pn">speed_m_s</span>
-    <span class="pc">:</span>
-    <span class="pa"> float | None = None</span>
-  </div>
-  <div class="param">
-    <span class="pn">jitter_scale</span>
-    <span class="pc">:</span>
-    <span class="pa"> float | None = None</span>
-  </div>
-  <div class="param">
-    <span class="pn">pbar_disabled</span>
-    <span class="pc">:</span>
-    <span class="pa"> bool | None = None</span>
-  </div>
-  <span class="pt">)-&gt;[</span>
-  <span class="pr">CentralitySegmentResult</span>
-  <span class="pt">]</span>
-</div>
-</div>
-
-</div>
-
- 
-
-<div class="function">
-
-## progress_init
-
-
-<div class="content">
-<span class="name">progress_init</span><div class="signature multiline">
-  <span class="pt">(</span>
-  <div class="param">
-    <span class="pn">self</span>
-  </div>
-  <div class="param">
-    <span class="pn">/</span>
-  </div>
-  <span class="pt">)</span>
-</div>
-</div>
-
-</div>
-
- 
-
-<div class="function">
-
-## progress
-
-
-<div class="content">
-<span class="name">progress</span><div class="signature">
-  <span class="pt">(</span>
-  <div class="param">
-    <span class="pn">self</span>
-  </div>
-  <span class="pt">)-&gt;[</span>
-  <span class="pr">int</span>
-  <span class="pt">]</span>
-</div>
-</div>
-
-</div>
-
- 
-
-<div class="function">
-
-## add_node
-
-
-<div class="content">
-<span class="name">add_node</span><div class="signature multiline">
-  <span class="pt">(</span>
-  <div class="param">
-    <span class="pn">self</span>
-  </div>
-  <div class="param">
-    <span class="pn">node_key</span>
-    <span class="pc">:</span>
-    <span class="pa"> str</span>
-  </div>
-  <div class="param">
-    <span class="pn">x</span>
-    <span class="pc">:</span>
-    <span class="pa"> float</span>
-  </div>
-  <div class="param">
-    <span class="pn">y</span>
-    <span class="pc">:</span>
-    <span class="pa"> float</span>
-  </div>
-  <div class="param">
-    <span class="pn">live</span>
-    <span class="pc">:</span>
-    <span class="pa"> bool</span>
-  </div>
-  <div class="param">
-    <span class="pn">weight</span>
-    <span class="pc">:</span>
-    <span class="pa"> float</span>
-  </div>
-  <span class="pt">)-&gt;[</span>
-  <span class="pr">int</span>
-  <span class="pt">]</span>
-</div>
-</div>
-
+ Calculate a single weight using beta decay, clipped by a maximum weight. Applies $weight = exp(-\beta \cdot distance)$, ensuring the result does not exceed `max_curve_wt`.
 ### Parameters
 <div class="param-set">
   <div class="def">
-    <div class="name">node_key</div>
-    <div class="type">str</div>
-  </div>
-  <div class="desc">
-
- The node key as `str`.</div>
-</div>
-
-<div class="param-set">
-  <div class="def">
-    <div class="name">x</div>
+    <div class="name">beta</div>
     <div class="type">float</div>
   </div>
   <div class="desc">
 
- The node's `x` coordinate.</div>
+ The decay parameter $\beta$.</div>
 </div>
 
 <div class="param-set">
   <div class="def">
-    <div class="name">y</div>
+    <div class="name">max_curve_wt</div>
     <div class="type">float</div>
   </div>
   <div class="desc">
 
- The node's `y` coordinate.</div>
+ The maximum allowed weight (from `clip_wts_curve`).</div>
 </div>
 
 <div class="param-set">
   <div class="def">
-    <div class="name">live</div>
-    <div class="type">bool</div>
-  </div>
-  <div class="desc">
-
- The `live` node attribute identifying if this node falls within the areal boundary of interest as opposed to those that fall within the surrounding buffered area. See the [edge-rolloff](/guide#edge-rolloff) section in the guide.</div>
-</div>
-
-
-</div>
-
- 
-
-<div class="function">
-
-## get_node_payload
-
-
-<div class="content">
-<span class="name">get_node_payload</span><div class="signature multiline">
-  <span class="pt">(</span>
-  <div class="param">
-    <span class="pn">self</span>
-  </div>
-  <div class="param">
-    <span class="pn">node_idx</span>
-    <span class="pc">:</span>
-    <span class="pa"> int</span>
-  </div>
-  <span class="pt">)-&gt;[</span>
-  <span class="pr">NodePayload</span>
-  <span class="pt">]</span>
-</div>
-</div>
-
-</div>
-
- 
-
-<div class="function">
-
-## get_node_weight
-
-
-<div class="content">
-<span class="name">get_node_weight</span><div class="signature multiline">
-  <span class="pt">(</span>
-  <div class="param">
-    <span class="pn">self</span>
-  </div>
-  <div class="param">
-    <span class="pn">/</span>
-  </div>
-  <div class="param">
-    <span class="pn">node_idx</span>
-  </div>
-  <span class="pt">)</span>
-</div>
-</div>
-
-</div>
-
- 
-
-<div class="function">
-
-## is_node_live
-
-
-<div class="content">
-<span class="name">is_node_live</span><div class="signature multiline">
-  <span class="pt">(</span>
-  <div class="param">
-    <span class="pn">self</span>
-  </div>
-  <div class="param">
-    <span class="pn">node_idx</span>
-    <span class="pc">:</span>
-    <span class="pa"> int</span>
-  </div>
-  <span class="pt">)-&gt;[</span>
-  <span class="pr">bool</span>
-  <span class="pt">]</span>
-</div>
-</div>
-
-</div>
-
- 
-
-<div class="function">
-
-## node_count
-
-
-<div class="content">
-<span class="name">node_count</span><div class="signature">
-  <span class="pt">(</span>
-  <div class="param">
-    <span class="pn">self</span>
-  </div>
-  <span class="pt">)-&gt;[</span>
-  <span class="pr">int</span>
-  <span class="pt">]</span>
-</div>
-</div>
-
-</div>
-
- 
-
-<div class="function">
-
-## node_indices
-
-
-<div class="content">
-<span class="name">node_indices</span><div class="signature">
-  <span class="pt">(</span>
-  <div class="param">
-    <span class="pn">self</span>
-  </div>
-  <span class="pt">)-&gt;[</span>
-  <span class="pr">list[int]</span>
-  <span class="pt">]</span>
-</div>
-</div>
-
-</div>
-
- 
-
-<div class="function">
-
-## add_edge
-
-
-<div class="content">
-<span class="name">add_edge</span><div class="signature multiline">
-  <span class="pt">(</span>
-  <div class="param">
-    <span class="pn">self</span>
-  </div>
-  <div class="param">
-    <span class="pn">start_nd_idx</span>
-    <span class="pc">:</span>
-    <span class="pa"> int</span>
-  </div>
-  <div class="param">
-    <span class="pn">end_nd_idx</span>
-    <span class="pc">:</span>
-    <span class="pa"> int</span>
-  </div>
-  <div class="param">
-    <span class="pn">edge_idx</span>
-    <span class="pc">:</span>
-    <span class="pa"> int</span>
-  </div>
-  <div class="param">
-    <span class="pn">start_nd_key</span>
-    <span class="pc">:</span>
-    <span class="pa"> str</span>
-  </div>
-  <div class="param">
-    <span class="pn">end_nd_key</span>
-    <span class="pc">:</span>
-    <span class="pa"> str</span>
-  </div>
-  <div class="param">
-    <span class="pn">length</span>
-    <span class="pc">:</span>
-    <span class="pa"> float | None = None</span>
-  </div>
-  <div class="param">
-    <span class="pn">angle_sum</span>
-    <span class="pc">:</span>
-    <span class="pa"> float | None = None</span>
-  </div>
-  <div class="param">
-    <span class="pn">imp_factor</span>
-    <span class="pc">:</span>
-    <span class="pa"> float | None = None</span>
-  </div>
-  <div class="param">
-    <span class="pn">in_bearing</span>
-    <span class="pc">:</span>
-    <span class="pa"> float | None = None</span>
-  </div>
-  <div class="param">
-    <span class="pn">out_bearing</span>
-    <span class="pc">:</span>
-    <span class="pa"> float | None = None</span>
-  </div>
-  <div class="param">
-    <span class="pn">seconds</span>
-    <span class="pc">:</span>
-    <span class="pa"> float | None = None</span>
-  </div>
-  <span class="pt">)-&gt;[</span>
-  <span class="pr">int</span>
-  <span class="pt">]</span>
-</div>
-</div>
-
-
- Add an edge to the `NetworkStructure`. Edges are directed, meaning that each bidirectional street is represented twice: once in each direction; start/end nodes and in/out bearings will differ accordingly.
-### Parameters
-<div class="param-set">
-  <div class="def">
-    <div class="name">start_node_idx</div>
-    <div class="type">str</div>
-  </div>
-  <div class="desc">
-
- Node index for the starting node.</div>
-</div>
-
-<div class="param-set">
-  <div class="def">
-    <div class="name">end_node_idx</div>
-    <div class="type">str</div>
-  </div>
-  <div class="desc">
-
- Node index for the ending node.</div>
-</div>
-
-<div class="param-set">
-  <div class="def">
-    <div class="name">edge_idx</div>
-    <div class="type">int</div>
-  </div>
-  <div class="desc">
-
- The edge index, such that multiple edges can span between the same node pair.</div>
-</div>
-
-<div class="param-set">
-  <div class="def">
-    <div class="name">start_node_key</div>
-    <div class="type">str</div>
-  </div>
-  <div class="desc">
-
- Node key for the starting node.</div>
-</div>
-
-<div class="param-set">
-  <div class="def">
-    <div class="name">end_node_key</div>
-    <div class="type">str</div>
-  </div>
-  <div class="desc">
-
- Node key for the ending node.</div>
-</div>
-
-<div class="param-set">
-  <div class="def">
-    <div class="name">length</div>
+    <div class="name">data_dist</div>
     <div class="type">float</div>
   </div>
   <div class="desc">
 
- The `length` edge attribute should always correspond to the edge lengths in metres. This is used when calculating the distances traversed by the shortest-path algorithm so that the respective $d_{max}$ maximum distance thresholds can be enforced: these distance thresholds are based on the actual network-paths traversed by the algorithm as opposed to crow-flies distances.</div>
+ The distance to the data point.</div>
 </div>
 
+### Returns
 <div class="param-set">
   <div class="def">
-    <div class="name">angle_sum</div>
+    <div class="name"></div>
     <div class="type">float</div>
   </div>
   <div class="desc">
 
- The `angle_sum` edge bearing should correspond to the total angular change along the length of the segment. This is used when calculating angular impedances for simplest-path measures. The `in_bearing` and `out_bearing` attributes respectively represent the starting and ending bearing of the segment. This is also used when calculating simplest-path measures when the algorithm steps from one edge to another.</div>
-</div>
-
-<div class="param-set">
-  <div class="def">
-    <div class="name">imp_factor</div>
-    <div class="type">float</div>
-  </div>
-  <div class="desc">
-
- The `imp_factor` edge attribute represents an impedance multiplier for increasing or diminishing the impedance of an edge. This is ordinarily set to 1, therefore not impacting calculations. By setting this to greater or less than 1, the edge will have a correspondingly higher or lower impedance. This can be used to take considerations such as street gradients into account, but should be used with caution.</div>
-</div>
-
-<div class="param-set">
-  <div class="def">
-    <div class="name">in_bearing</div>
-    <div class="type">float</div>
-  </div>
-  <div class="desc">
-
- The edge's inwards angular bearing.</div>
-</div>
-
-<div class="param-set">
-  <div class="def">
-    <div class="name">out_bearing</div>
-    <div class="type">float</div>
-  </div>
-  <div class="desc">
-
- The edge's outwards angular bearing.</div>
-</div>
-
-<div class="param-set">
-  <div class="def">
-    <div class="name">seconds</div>
-    <div class="type">int</div>
-  </div>
-  <div class="desc">
-
- The edge's traversal time in seconds.</div>
+ The calculated (potentially clipped) weight. Returns 0.0 if calculation fails.</div>
 </div>
 
 
-</div>
-
- 
-
-<div class="function">
-
-## edge_references
-
-
-<div class="content">
-<span class="name">edge_references</span><div class="signature multiline">
-  <span class="pt">(</span>
-  <div class="param">
-    <span class="pn">self</span>
-  </div>
-  <span class="pt">)-&gt;[</span>
-  <span class="pr">list[tuple[int</span>
-  <span class="pr">int</span>
-  <span class="pr">int]]</span>
-  <span class="pt">]</span>
-</div>
-</div>
-
-</div>
-
- 
-
-<div class="function">
-
-## get_edge_payload
-
-
-<div class="content">
-<span class="name">get_edge_payload</span><div class="signature multiline">
-  <span class="pt">(</span>
-  <div class="param">
-    <span class="pn">self</span>
-  </div>
-  <div class="param">
-    <span class="pn">start_nd_idx</span>
-    <span class="pc">:</span>
-    <span class="pa"> int</span>
-  </div>
-  <div class="param">
-    <span class="pn">end_nd_idx</span>
-    <span class="pc">:</span>
-    <span class="pa"> int</span>
-  </div>
-  <div class="param">
-    <span class="pn">edge_idx</span>
-    <span class="pc">:</span>
-    <span class="pa"> int</span>
-  </div>
-  <span class="pt">)-&gt;[</span>
-  <span class="pr">EdgePayload</span>
-  <span class="pt">]</span>
-</div>
-</div>
-
-</div>
-
- 
-
-<div class="function">
-
-## validate
-
-
-<div class="content">
-<span class="name">validate</span><div class="signature">
-  <span class="pt">(</span>
-  <div class="param">
-    <span class="pn">self</span>
-  </div>
-  <span class="pt">)-&gt;[</span>
-  <span class="pr">bool</span>
-  <span class="pt">]</span>
-</div>
-</div>
-
-
- Validate Network Structure.
-
-</div>
-
- 
-
-<div class="function">
-
-## find_nearest
-
-
-<div class="content">
-<span class="name">find_nearest</span><div class="signature multiline">
-  <span class="pt">(</span>
-  <div class="param">
-    <span class="pn">self</span>
-  </div>
-  <div class="param">
-    <span class="pn">data_coord</span>
-  </div>
-  <div class="param">
-    <span class="pn">max_dist</span>
-    <span class="pc">:</span>
-    <span class="pa"> float</span>
-  </div>
-  <span class="pt">)-&gt;[</span>
-  <span class="pr">int | None</span>
-  <span class="pr">float</span>
-  <span class="pr">int | None</span>
-  <span class="pt">]</span>
-</div>
-</div>
-
-</div>
-
- 
-
-<div class="function">
-
-## road_distance
-
-
-<div class="content">
-<span class="name">road_distance</span><div class="signature multiline">
-  <span class="pt">(</span>
-  <div class="param">
-    <span class="pn">self</span>
-  </div>
-  <div class="param">
-    <span class="pn">data_coord</span>
-  </div>
-  <div class="param">
-    <span class="pn">nd_a_idx</span>
-    <span class="pc">:</span>
-    <span class="pa"> int</span>
-  </div>
-  <div class="param">
-    <span class="pn">nd_b_idx</span>
-    <span class="pc">:</span>
-    <span class="pa"> int</span>
-  </div>
-  <span class="pt">)-&gt;[</span>
-  <span class="pr">float</span>
-  <span class="pr">int | None</span>
-  <span class="pr">int | None</span>
-  <span class="pt">]</span>
-</div>
-</div>
-
-</div>
-
- 
-
-<div class="function">
-
-## closest_intersections
-
-
-<div class="content">
-<span class="name">closest_intersections</span><div class="signature multiline">
-  <span class="pt">(</span>
-  <div class="param">
-    <span class="pn">self</span>
-  </div>
-  <div class="param">
-    <span class="pn">data_coord</span>
-  </div>
-  <div class="param">
-    <span class="pn">pred_map</span>
-    <span class="pc">:</span>
-    <span class="pa"> list[int | None]</span>
-  </div>
-  <div class="param">
-    <span class="pn">last_nd_idx</span>
-    <span class="pc">:</span>
-    <span class="pa"> int</span>
-  </div>
-  <span class="pt">)-&gt;[</span>
-  <span class="pr">float</span>
-  <span class="pr">int | None</span>
-  <span class="pr">int | None</span>
-  <span class="pt">]</span>
-</div>
-</div>
-
-</div>
-
- 
-
-<div class="function">
-
-## assign_to_network
-
-
-<div class="content">
-<span class="name">assign_to_network</span><div class="signature multiline">
-  <span class="pt">(</span>
-  <div class="param">
-    <span class="pn">self</span>
-  </div>
-  <div class="param">
-    <span class="pn">data_coord</span>
-  </div>
-  <div class="param">
-    <span class="pn">max_dist</span>
-    <span class="pc">:</span>
-    <span class="pa"> float</span>
-  </div>
-  <span class="pt">)-&gt;[</span>
-  <span class="pr">int | None</span>
-  <span class="pr">int | None</span>
-  <span class="pt">]</span>
-</div>
-</div>
-
-</div>
-
- 
-
-<span class="name">node_ys</span><span class="annotation">: list[float]</span>
-
-
- 
-
-<span class="name">node_xys</span><span class="annotation">: list[tuple[float, float]]</span>
-
-
- 
-
-<span class="name">node_lives</span><span class="annotation">: list[bool]</span>
-
-
- 
-
-<span class="name">node_xs</span><span class="annotation">: list[float]</span>
-
-
- 
-</div>
-
-
-<div class="class">
-
-
-## CentralityShortestResult
-
-
-
-
-<div class="function">
-
-## CentralityShortestResult
-
-
-<div class="content">
-<span class="name">CentralityShortestResult</span><div class="signature">
-  <span class="pt">(</span>
-  <span class="pt">)</span>
-</div>
-</div>
-
-</div>
-
- 
-</div>
-
-
-<div class="class">
-
-
-## CentralitySimplestResult
-
-
-
-
-<div class="function">
-
-## CentralitySimplestResult
-
-
-<div class="content">
-<span class="name">CentralitySimplestResult</span><div class="signature">
-  <span class="pt">(</span>
-  <span class="pt">)</span>
-</div>
-</div>
-
-</div>
-
- 
-</div>
-
-
-<div class="class">
-
-
-## CentralitySegmentResult
-
-
-
-
-<div class="function">
-
-## CentralitySegmentResult
-
-
-<div class="content">
-<span class="name">CentralitySegmentResult</span><div class="signature">
-  <span class="pt">(</span>
-  <span class="pt">)</span>
-</div>
-</div>
-
-</div>
-
- 
-</div>
-
-
-<div class="class">
-
-
-## Viewshed
-
-
-
-
-<div class="function">
-
-## Viewshed
-
-
-<div class="content">
-<span class="name">Viewshed</span><div class="signature">
-  <span class="pt">(</span>
-  <span class="pt">)</span>
-</div>
-</div>
-
-</div>
-
- 
-
-<div class="function">
-
-## progress_init
-
-
-<div class="content">
-<span class="name">progress_init</span><div class="signature multiline">
-  <span class="pt">(</span>
-  <div class="param">
-    <span class="pn">self</span>
-  </div>
-  <div class="param">
-    <span class="pn">/</span>
-  </div>
-  <span class="pt">)</span>
-</div>
-</div>
-
-</div>
-
- 
-
-<div class="function">
-
-## progress
-
-
-<div class="content">
-<span class="name">progress</span><div class="signature">
-  <span class="pt">(</span>
-  <div class="param">
-    <span class="pn">self</span>
-  </div>
-  <span class="pt">)-&gt;[</span>
-  <span class="pr">int</span>
-  <span class="pt">]</span>
-</div>
-</div>
-
-</div>
-
- 
-
-<div class="function">
-
-## visibility_graph
-
-
-<div class="content">
-<span class="name">visibility_graph</span><div class="signature multiline">
-  <span class="pt">(</span>
-  <div class="param">
-    <span class="pn">self</span>
-  </div>
-  <div class="param">
-    <span class="pn">bldgs_rast</span>
-  </div>
-  <div class="param">
-    <span class="pn">view_distance</span>
-    <span class="pc">:</span>
-    <span class="pa"> int</span>
-  </div>
-  <div class="param">
-    <span class="pn">pbar_disabled</span>
-    <span class="pc">:</span>
-    <span class="pa"> bool = False</span>
-  </div>
-  <span class="pt">)-&gt;[</span>
-  <span class="pr">Union[Buffer</span>
-  <span class="pr">Any]]</span>
-  <span class="pr">Any]]]</span>
-  <span class="pr">bool</span>
-  <span class="pr">int</span>
-  <span class="pr">float</span>
-  <span class="pr">complex</span>
-  <span class="pr">str</span>
-  <span class="pr">bytes</span>
-  <span class="pr">Union[bool</span>
-  <span class="pr">int</span>
-  <span class="pr">float</span>
-  <span class="pr">complex</span>
-  <span class="pr">str</span>
-  <span class="pr">bytes]]]</span>
-  <span class="pr">Union[Buffer</span>
-  <span class="pr">Any]]</span>
-  <span class="pr">Any]]]</span>
-  <span class="pr">bool</span>
-  <span class="pr">int</span>
-  <span class="pr">float</span>
-  <span class="pr">complex</span>
-  <span class="pr">str</span>
-  <span class="pr">bytes</span>
-  <span class="pr">Union[bool</span>
-  <span class="pr">int</span>
-  <span class="pr">float</span>
-  <span class="pr">complex</span>
-  <span class="pr">str</span>
-  <span class="pr">bytes]]]</span>
-  <span class="pr">Union[Buffer</span>
-  <span class="pr">Any]]</span>
-  <span class="pr">Any]]]</span>
-  <span class="pr">bool</span>
-  <span class="pr">int</span>
-  <span class="pr">float</span>
-  <span class="pr">complex</span>
-  <span class="pr">str</span>
-  <span class="pr">bytes</span>
-  <span class="pr">Union[bool</span>
-  <span class="pr">int</span>
-  <span class="pr">float</span>
-  <span class="pr">complex</span>
-  <span class="pr">str</span>
-  <span class="pr">bytes]]]</span>
-  <span class="pt">]</span>
-</div>
-</div>
-
-</div>
-
- 
-
-<div class="function">
-
-## viewshed
-
-
-<div class="content">
-<span class="name">viewshed</span><div class="signature multiline">
-  <span class="pt">(</span>
-  <div class="param">
-    <span class="pn">self</span>
-  </div>
-  <div class="param">
-    <span class="pn">bldgs_rast</span>
-  </div>
-  <div class="param">
-    <span class="pn">view_distance</span>
-    <span class="pc">:</span>
-    <span class="pa"> int</span>
-  </div>
-  <div class="param">
-    <span class="pn">origin_x</span>
-    <span class="pc">:</span>
-    <span class="pa"> int</span>
-  </div>
-  <div class="param">
-    <span class="pn">origin_y</span>
-    <span class="pc">:</span>
-    <span class="pa"> int</span>
-  </div>
-  <div class="param">
-    <span class="pn">pbar_disabled</span>
-    <span class="pc">:</span>
-    <span class="pa"> bool = False</span>
-  </div>
-  <span class="pt">)-&gt;[</span>
-  <span class="pr">Union[Buffer</span>
-  <span class="pr">dtype[Any]]</span>
-  <span class="pr">dtype[Any]]]</span>
-  <span class="pr">bool</span>
-  <span class="pr">int</span>
-  <span class="pr">float</span>
-  <span class="pr">complex</span>
-  <span class="pr">str</span>
-  <span class="pr">bytes</span>
-  <span class="pr">_NestedSequence[Union[bool</span>
-  <span class="pr">int</span>
-  <span class="pr">float</span>
-  <span class="pr">complex</span>
-  <span class="pr">str</span>
-  <span class="pr">bytes]]]</span>
-  <span class="pt">]</span>
-</div>
-</div>
-
-</div>
-
- 
 </div>
 
 

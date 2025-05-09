@@ -4,9 +4,9 @@ import logging
 from functools import partial
 
 import geopandas as gpd
-from tqdm import tqdm
+import pandas as pd
 
-from cityseer import config, rustalgos
+from .. import config, rustalgos
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -16,19 +16,21 @@ MIN_THRESH_WT = config.MIN_THRESH_WT
 SPEED_M_S = config.SPEED_M_S
 
 
-def assign_gdf_to_network(
+def build_data_map(
     data_gdf: gpd.GeoDataFrame,
-    network_structure: rustalgos.NetworkStructure,
-    max_netw_assign_dist: int | float,
+    network_structure: rustalgos.graph.NetworkStructure,
+    max_netw_assign_dist: int = 100,
     data_id_col: str | None = None,
-) -> tuple[rustalgos.DataMap, gpd.GeoDataFrame]:
+    barriers_gdf: gpd.GeoDataFrame | None = None,
+    n_nearest_candidates: int = 50,
+) -> rustalgos.data.DataMap:
     """
-    Assign a `GeoDataFrame` to a [`rustalgos.NetworkStructure`](/rustalgos/rustalgos#networkstructure).
+    Assign a `GeoDataFrame` to a [`rustalgos.graph.NetworkStructure`](/rustalgos/rustalgos#networkstructure).
 
     A `NetworkStructure` provides the backbone for the calculation of land-use and statistical aggregations over the
-    network. Data points will be assigned to the two closest network nodes — one in either direction — based on the
-    closest adjacent street edge. This facilitates a dynamic spatial aggregation strategy which will select the shortest
-    distance to a data point relative to either direction of approach.
+    network. Points will be assigned to the closest street edge. Polygons will be assigned to the closest
+    `n_nearest_candidates` adjacent street edges.
+    up to
 
     Parameters
     ----------
@@ -37,8 +39,9 @@ def assign_gdf_to_network(
         representing data points. The coordinates of data points should correspond as precisely as possible to the
         location of the feature in space; or, in the case of buildings, should ideally correspond to the location of the
         building entrance.
-    network_structure: rustalgos.NetworkStructure
-        A [`rustalgos.NetworkStructure`](/rustalgos/rustalgos#networkstructure).
+    network_structure
+        A [`rustalgos.graph.NetworkStructure`](/rustalgos/rustalgos#networkstructure). Best generated with the
+        [`io.network_structure_from_nx`](/tools/io#network-structure-from-nx) function.
     max_netw_assign_dist: int
         The maximum distance to consider when assigning respective data points to the nearest adjacent network nodes.
     data_id_col: str
@@ -46,91 +49,45 @@ def assign_gdf_to_network(
         of information. For example, where a single greenspace is represented by many entrances as datapoints, only the
         nearest entrance (from a respective location) will be considered (during aggregations) when the points share a
         datapoint identifier.
+    barriers_gdf: GeoDataFrame
+        A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe)
+        representing barriers. These barriers will be considered during the assignment of data points to the network.
+    n_nearest_candidates: int
+        The number of nearest street edge candidates to consider when assigning data points to the network. This is used
+        to determine the best assignments based on proximity. Edges are sorted by distance and the closest
+        `n_nearest_candidates` are considered.
 
     Returns
     -------
-    data_map: rustalgos.DataMap
-        A [`rustalgos.DataMap`](/rustalgos#datamap) instance.
-    data_gdf: GeoDataFrame
-        The input `data_gdf` is returned with two additional columns: `nearest_assigned` and `next_nearest_assign`.
-
-    Examples
-    --------
-    :::note
-    The `max_assign_dist` parameter should not be set overly low. The `max_assign_dist` parameter sets a crow-flies
-    distance limit on how far the algorithm will search in its attempts to encircle the data point. If the
-    `max_assign_dist` is too small, then the algorithm is potentially hampered from finding a starting node; or, if a
-    node is found, may have to terminate exploration prematurely because it can't travel sufficiently far from the
-    data point to explore the surrounding network. If too many data points are not being successfully assigned to the
-    correct street edges, then this distance should be increased. Conversely, if most of the data points are
-    satisfactorily assigned, then it may be possible to decrease this threshold. A distance of around 400m may provide
-    a good starting point.
-    :::
-
-    :::note
-    The precision of assignment improves on decomposed networks (see
-    [graphs.nx_decompose](/tools/graphs#nx-decompose)), which offers the additional benefit of a more granular
-    representation of variations of metrics along street-fronts.
-    :::
-
-    ![Example assignment of data to a network](/images/assignment.png)
-    _Example assignment on a non-decomposed graph._
-
-    ![Example assignment of data to a network](/images/assignment_decomposed.png)
-    _Assignment of data to network nodes becomes more contextually precise on decomposed graphs._
-
+    data_map: rustalgos.data.DataMap
+        A [`rustalgos.data.DataMap`](/rustalgos#datamap) instance.
     """
     # check for unique index
     if data_gdf.index.duplicated().any():
         raise ValueError("The data GeoDataFrame index must contain unique entries.")
-    # check single data geom type
-    if data_gdf.geometry.geom_type.nunique() != 1:
-        raise ValueError("The data GeoDataFrame must contain a single geometry type.")
-    # check data type
-    data_map = rustalgos.DataMap()
-    calculate_assigned = False
-    # add column to data_gdf
-    if (
-        "datamap_key" not in data_gdf.columns
-        or "nearest_assign" not in data_gdf.columns
-        or "next_nearest_assign" not in data_gdf.columns
-        or (data_id_col is not None and "dedupe_key" not in data_gdf.columns)
-    ):
-        calculate_assigned = True
-        data_gdf["datamap_key"] = data_gdf.index.astype(str)
-        if data_id_col is not None:
-            data_gdf["dedupe_key"] = data_gdf[data_id_col].astype(str)
-        data_gdf["nearest_assign"] = None
-        data_gdf["next_nearest_assign"] = None
+    # create data map
+    data_map = rustalgos.data.DataMap()
     # prepare the data_map
-    for _data_key, data_row in data_gdf.iterrows():  # type: ignore
-        data_id: str | None = None if data_id_col is None else data_row["dedupe_key"]  # type: ignore
+    logger.info("Assigning data to network.")
+    for data_key, data_row in data_gdf.iterrows():  # type: ignore
+        data_id = None if data_id_col is None else data_row[data_id_col]  # type: ignore
         data_map.insert(
-            data_row["datamap_key"],  # type: ignore
-            data_row[data_gdf.geometry.name].centroid.x,  # type: ignore
-            data_row[data_gdf.geometry.name].centroid.y,  # type: ignore
+            data_key,
+            data_row[data_gdf.active_geometry_name].wkt,  # type: ignore
             data_id,  # type: ignore
-            data_row["nearest_assign"],  # type: ignore
-            data_row["next_nearest_assign"],  # type: ignore
         )
-    # only compute if not already computed
-    if calculate_assigned is True:
-        logger.info("Assigning data to network.")
-        gdf_idx_mapping = {v: i for i, v in data_gdf["datamap_key"].to_dict().items()}  # type: ignore
-        for data_key in tqdm(data_map.entry_keys(), total=data_map.count(), disable=config.QUIET_MODE):
-            data_coord = data_map.get_data_coord(data_key)
-            nearest_idx, next_nearest_idx = network_structure.assign_to_network(data_coord, max_netw_assign_dist)
-            gdf_idx = gdf_idx_mapping[data_key]
-            if nearest_idx is not None:
-                data_map.set_nearest_assign(data_key, nearest_idx)
-                data_gdf.at[gdf_idx, "nearest_assign"] = nearest_idx
-            if next_nearest_idx is not None:
-                data_map.set_next_nearest_assign(data_key, next_nearest_idx)
-                data_gdf.at[gdf_idx, "next_nearest_assign"] = next_nearest_idx
-    if data_map.none_assigned():
-        logger.warning("No assignments for nearest assigned direction.")
+    # barrier geoms
+    barriers_wkt: list[str] | None = None
+    if barriers_gdf is not None:
+        barriers_wkt = []
+        for _, row in barriers_gdf.iterrows():  # type: ignore
+            barriers_wkt.append(row.geometry.wkt)  # type: ignore
+    if barriers_wkt is not None:
+        network_structure.set_barriers(barriers_wkt)  # type: ignore
+    data_map.assign_data_to_network(network_structure, max_netw_assign_dist, n_nearest_candidates)
+    network_structure.unset_barriers()  # type: ignore
 
-    return data_map, data_gdf
+    return data_map
 
 
 def compute_accessibilities(
@@ -138,13 +95,15 @@ def compute_accessibilities(
     landuse_column_label: str,
     accessibility_keys: list[str],
     nodes_gdf: gpd.GeoDataFrame,
-    network_structure: rustalgos.NetworkStructure,
-    max_netw_assign_dist: int = 400,
+    network_structure: rustalgos.graph.NetworkStructure,
+    max_netw_assign_dist: int = 100,
     distances: list[int] | None = None,
     betas: list[float] | None = None,
     minutes: list[float] | None = None,
     data_id_col: str | None = None,
+    barriers_gdf: gpd.GeoDataFrame | None = None,
     angular: bool = False,
+    n_nearest_candidates: int = 50,
     spatial_tolerance: int = 0,
     min_threshold_wt: float = MIN_THRESH_WT,
     speed_m_s: float = SPEED_M_S,
@@ -176,7 +135,7 @@ def compute_accessibilities(
         [`io.network_structure_from_nx`](/tools/io#network-structure-from-nx) function. The outputs of
         calculations will be written to this `GeoDataFrame`, which is then returned from the function.
     network_structure
-        A [`rustalgos.NetworkStructure`](/rustalgos/rustalgos#networkstructure). Best generated with the
+        A [`rustalgos.graph.NetworkStructure`](/rustalgos/rustalgos#networkstructure). Best generated with the
         [`io.network_structure_from_nx`](/tools/io#network-structure-from-nx) function.
     max_netw_assign_dist: int
         The maximum distance to consider when assigning respective data points to the nearest adjacent network nodes.
@@ -198,6 +157,9 @@ def compute_accessibilities(
         of information. For example, where a single greenspace is represented by many entrances as datapoints, only the
         nearest entrance (from a respective location) will be considered (during aggregations) when the points share a
         datapoint identifier.
+    barriers_gdf: GeoDataFrame
+        A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe)
+        representing barriers. These barriers will be considered during the assignment of data points to the network.
     angular: bool
         Whether to use a simplest-path heuristic in-lieu of a shortest-path heuristic when calculating aggregations
         and distances.
@@ -206,10 +168,13 @@ def compute_accessibilities(
         locations are not precise. If greater than zero, weighted functions will clip the spatial impedance curve above
          weights corresponding to the given spatial tolerance and normalises to the new range. For background, see
         [`rustalgos.clip_weights_curve`](/rustalgos#clip-weights-curve).
+    n_nearest_candidates: int
+        The number of nearest candidates to consider when assigning respective data points to the nearest adjacent
+        streets.
     min_threshold_wt: float
         The default `min_threshold_wt` parameter can be overridden to generate custom mappings between the
-        `distance` and `beta` parameters. See [`rustalgos.distances_from_beta`](/rustalgos#distances-from-betas) for
-        more information.
+        `distance` and `beta` parameters. See [`rustalgos.distances_from_beta`](/rustalgos#distances-from-betas)
+        for more information.
     speed_m_s: float
         The default `speed_m_s` parameter can be configured to generate custom mappings between walking times and
         distance thresholds $d_{max}$.
@@ -262,18 +227,24 @@ def compute_accessibilities(
 
     """
     logger.info(f"Computing land-use accessibility for: {', '.join(accessibility_keys)}")
+    # assign to network
+    data_map = build_data_map(
+        data_gdf,
+        network_structure,
+        max_netw_assign_dist,
+        data_id_col,
+        barriers_gdf=barriers_gdf,
+        n_nearest_candidates=n_nearest_candidates,
+    )
+    # extract landuses
     if landuse_column_label not in data_gdf.columns:
         raise ValueError("The specified landuse column name can't be found in the GeoDataFrame.")
-    data_map, data_gdf = assign_gdf_to_network(data_gdf, network_structure, max_netw_assign_dist, data_id_col)
-    # extract landuses
-    data_keys: list[str] = data_gdf["datamap_key"]  # type: ignore
-    landuses: list[str] = data_gdf[landuse_column_label]  # type: ignore
-    landuses_map: dict[str, str] = dict(zip(data_keys, landuses, strict=True))
+    landuses_map = dict(data_gdf[landuse_column_label])  # type: ignore
     # call the underlying function
     partial_func = partial(
         data_map.accessibility,
         network_structure=network_structure,
-        landuses_map=landuses_map,
+        landuses_map=landuses_map,  # type: ignore
         accessibility_keys=accessibility_keys,
         distances=distances,
         betas=betas,
@@ -285,7 +256,9 @@ def compute_accessibilities(
         jitter_scale=jitter_scale,
     )
     # wraps progress bar
-    result = config.wrap_progress(total=network_structure.node_count(), rust_struct=data_map, partial_func=partial_func)
+    acc_result = config.wrap_progress(
+        total=network_structure.street_node_count(), rust_struct=data_map, partial_func=partial_func
+    )
     # unpack
     distances = config.log_thresholds(
         distances=distances,
@@ -294,16 +267,23 @@ def compute_accessibilities(
         min_threshold_wt=min_threshold_wt,
         speed_m_s=speed_m_s,
     )
+    # intersect computed keys with those available in the gdf index (stations vs. streets)
+    gdf_idx = nodes_gdf.index.intersection(acc_result.node_keys_py)  # type: ignore
+    # create a dictionary to hold the data
+    temp_data = {}
     # unpack accessibility data
     for acc_key in accessibility_keys:
         for dist_key in distances:
             ac_nw_data_key = config.prep_gdf_key(acc_key, dist_key, angular, weighted=False)
-            nodes_gdf[ac_nw_data_key] = result[acc_key].unweighted[dist_key]  # type: ignore
+            temp_data[ac_nw_data_key] = acc_result.result[acc_key].unweighted[dist_key]  # type: ignore
             ac_wt_data_key = config.prep_gdf_key(acc_key, dist_key, angular, weighted=True)
-            nodes_gdf[ac_wt_data_key] = result[acc_key].weighted[dist_key]  # type: ignore
+            temp_data[ac_wt_data_key] = acc_result.result[acc_key].weighted[dist_key]  # type: ignore
             if dist_key == max(distances):
                 ac_dist_data_key = config.prep_gdf_key(f"{acc_key}_nearest_max", dist_key, angular)
-                nodes_gdf[ac_dist_data_key] = result[acc_key].distance[dist_key]  # type: ignore
+                temp_data[ac_dist_data_key] = acc_result.result[acc_key].distance[dist_key]  # type: ignore
+
+    temp_df = pd.DataFrame(temp_data, index=acc_result.node_keys_py)
+    nodes_gdf.loc[gdf_idx, temp_df.columns] = temp_df.loc[gdf_idx, temp_df.columns]  # type: ignore
 
     return nodes_gdf, data_gdf
 
@@ -312,8 +292,8 @@ def compute_mixed_uses(
     data_gdf: gpd.GeoDataFrame,
     landuse_column_label: str,
     nodes_gdf: gpd.GeoDataFrame,
-    network_structure: rustalgos.NetworkStructure,
-    max_netw_assign_dist: int = 400,
+    network_structure: rustalgos.graph.NetworkStructure,
+    max_netw_assign_dist: int = 100,
     compute_hill: bool | None = True,
     compute_hill_weighted: bool | None = True,
     compute_shannon: bool | None = False,
@@ -322,7 +302,9 @@ def compute_mixed_uses(
     betas: list[float] | None = None,
     minutes: list[float] | None = None,
     data_id_col: str | None = None,
+    barriers_gdf: gpd.GeoDataFrame | None = None,
     angular: bool = False,
+    n_nearest_candidates: int = 50,
     spatial_tolerance: int = 0,
     min_threshold_wt: float = MIN_THRESH_WT,
     speed_m_s: float = SPEED_M_S,
@@ -361,7 +343,7 @@ def compute_mixed_uses(
         [`io.network_structure_from_nx`](/tools/io#network-structure-from-nx) function. The outputs of
         calculations will be written to this `GeoDataFrame`, which is then returned from the function.
     network_structure
-        A [`rustalgos.NetworkStructure`](/rustalgos/rustalgos#networkstructure). Best generated with the
+        A [`rustalgos.graph.NetworkStructure`](/rustalgos/rustalgos#networkstructure). Best generated with the
         [`io.network_structure_from_nx`](/tools/io#network-structure-from-nx) function.
     max_netw_assign_dist: int
         The maximum distance to consider when assigning respective data points to the nearest adjacent network nodes.
@@ -392,6 +374,9 @@ def compute_mixed_uses(
         of information. For example, where a single greenspace is represented by many entrances as datapoints, only the
         nearest entrance (from a respective location) will be considered (during aggregations) when the points share a
         datapoint identifier.
+    barriers_gdf: GeoDataFrame
+        A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe)
+        representing barriers. These barriers will be considered during the assignment of data points to the network.
     angular: bool
         Whether to use a simplest-path heuristic in-lieu of a shortest-path heuristic when calculating aggregations
         and distances.
@@ -400,10 +385,13 @@ def compute_mixed_uses(
         locations are not precise. If greater than zero, weighted functions will clip the spatial impedance curve above
          weights corresponding to the given spatial tolerance and normalises to the new range. For background, see
         [`rustalgos.clip_weights_curve`](/rustalgos#clip-weights-curve).
+    n_nearest_candidates: int
+        The number of nearest candidates to consider when assigning respective data points to the nearest adjacent
+        streets.
     min_threshold_wt: float
         The default `min_threshold_wt` parameter can be overridden to generate custom mappings between the
-        `distance` and `beta` parameters. See [`rustalgos.distances_from_beta`](/rustalgos#distances-from-betas) for
-        more information.
+        `distance` and `beta` parameters. See [`rustalgos.distances_from_beta`](/rustalgos#distances-from-betas)
+        for more information.
     speed_m_s: float
         The default `speed_m_s` parameter can be configured to generate custom mappings between walking times and
         distance thresholds $d_{max}$.
@@ -414,7 +402,6 @@ def compute_mixed_uses(
         shortest path calculations to provide random variation to the paths traced through the network. When working
         with shortest paths in metres, the random value represents distance in metres. When using a simplest path
         heuristic, the jitter will represent angular change in degrees.
-
 
     Returns
     -------
@@ -486,17 +473,23 @@ def compute_mixed_uses(
 
     """
     logger.info("Computing mixed-use measures.")
+    # assign to network
+    data_map = build_data_map(
+        data_gdf,
+        network_structure,
+        max_netw_assign_dist,
+        data_id_col,
+        barriers_gdf=barriers_gdf,
+        n_nearest_candidates=n_nearest_candidates,
+    )
+    # extract landuses
     if landuse_column_label not in data_gdf.columns:
         raise ValueError("The specified landuse column name can't be found in the GeoDataFrame.")
-    data_map, data_gdf = assign_gdf_to_network(data_gdf, network_structure, max_netw_assign_dist, data_id_col)
-    # extract landuses
-    data_keys: list[str] = data_gdf["datamap_key"]  # type: ignore
-    landuses: list[str] = data_gdf[landuse_column_label]  # type: ignore
-    landuses_map: dict[str, str] = dict(zip(data_keys, landuses, strict=True))
+    landuses_map = dict(data_gdf[landuse_column_label])  # type: ignore
     partial_func = partial(
         data_map.mixed_uses,
         network_structure=network_structure,
-        landuses_map=landuses_map,
+        landuses_map=landuses_map,  # type: ignore
         distances=distances,
         betas=betas,
         minutes=minutes,
@@ -511,7 +504,9 @@ def compute_mixed_uses(
         jitter_scale=jitter_scale,
     )
     # wraps progress bar
-    result = config.wrap_progress(total=network_structure.node_count(), rust_struct=data_map, partial_func=partial_func)
+    result = config.wrap_progress(
+        total=network_structure.street_node_count(), rust_struct=data_map, partial_func=partial_func
+    )
     # unpack
     distances = config.log_thresholds(
         distances=distances,
@@ -520,21 +515,28 @@ def compute_mixed_uses(
         min_threshold_wt=min_threshold_wt,
         speed_m_s=speed_m_s,
     )
+    # intersect computed keys with those available in the gdf index (stations vs. streets)
+    gdf_idx = nodes_gdf.index.intersection(result.node_keys_py)  # type: ignore
+    # create a dictionary to hold the data
+    temp_data = {}
     # unpack mixed-uses data
     for dist_key in distances:
         for q_key in [0, 1, 2]:
             if compute_hill:
                 hill_nw_data_key = config.prep_gdf_key(f"hill_q{q_key}", dist_key, angular, weighted=False)
-                nodes_gdf[hill_nw_data_key] = result.hill[q_key][dist_key]  # type: ignore
+                temp_data[hill_nw_data_key] = result.hill[q_key][dist_key]  # type: ignore
             if compute_hill_weighted:
                 hill_wt_data_key = config.prep_gdf_key(f"hill_q{q_key}", dist_key, angular, weighted=True)
-                nodes_gdf[hill_wt_data_key] = result.hill_weighted[q_key][dist_key]  # type: ignore
+                temp_data[hill_wt_data_key] = result.hill_weighted[q_key][dist_key]  # type: ignore
         if compute_shannon:
             shannon_data_key = config.prep_gdf_key("shannon", dist_key, angular)
-            nodes_gdf[shannon_data_key] = result.shannon[dist_key]  # type: ignore
+            temp_data[shannon_data_key] = result.shannon[dist_key]  # type: ignore
         if compute_gini:
             gini_data_key = config.prep_gdf_key("gini", dist_key, angular)
-            nodes_gdf[gini_data_key] = result.gini[dist_key]  # type: ignore
+            temp_data[gini_data_key] = result.gini[dist_key]  # type: ignore
+
+    temp_df = pd.DataFrame(temp_data, index=result.node_keys_py)
+    nodes_gdf.loc[gdf_idx, temp_df.columns] = temp_df.loc[gdf_idx, temp_df.columns]  # type: ignore
 
     return nodes_gdf, data_gdf
 
@@ -543,14 +545,16 @@ def compute_stats(
     data_gdf: gpd.GeoDataFrame,
     stats_column_labels: list[str],
     nodes_gdf: gpd.GeoDataFrame,
-    network_structure: rustalgos.NetworkStructure,
-    max_netw_assign_dist: int = 400,
+    network_structure: rustalgos.graph.NetworkStructure,
+    max_netw_assign_dist: int = 100,
     distances: list[int] | None = None,
     betas: list[float] | None = None,
     minutes: list[float] | None = None,
     data_id_col: str | None = None,
+    barriers_gdf: gpd.GeoDataFrame | None = None,
     angular: bool = False,
     spatial_tolerance: int = 0,
+    n_nearest_candidates: int = 50,
     min_threshold_wt: float = MIN_THRESH_WT,
     speed_m_s: float = SPEED_M_S,
     jitter_scale: float = 0.0,
@@ -578,7 +582,7 @@ def compute_stats(
         [`io.network_structure_from_nx`](/tools/io#network-structure-from-nx) function. The outputs of
         calculations will be written to this `GeoDataFrame`, which is then returned from the function.
     network_structure
-        A [`rustalgos.NetworkStructure`](/rustalgos/rustalgos#networkstructure). Best generated with the
+        A [`rustalgos.graph.NetworkStructure`](/rustalgos/rustalgos#networkstructure). Best generated with the
         [`io.network_structure_from_nx`](/tools/io#network-structure-from-nx) function.
     max_netw_assign_dist: int
         The maximum distance to consider when assigning respective data points to the nearest adjacent network nodes.
@@ -600,6 +604,9 @@ def compute_stats(
         of information. For example, where a single greenspace is represented by many entrances as datapoints, only the
         nearest entrance (from a respective location) will be considered (during aggregations) when the points share a
         datapoint identifier.
+    barriers_gdf: GeoDataFrame
+        A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe)
+        representing barriers. These barriers will be considered during the assignment of data points to the network.
     angular: bool
         Whether to use a simplest-path heuristic in-lieu of a shortest-path heuristic when calculating aggregations
         and distances.
@@ -608,10 +615,13 @@ def compute_stats(
         locations are not precise. If greater than zero, weighted functions will clip the spatial impedance curve above
          weights corresponding to the given spatial tolerance and normalises to the new range. For background, see
         [`rustalgos.clip_weights_curve`](/rustalgos#clip-weights-curve).
+    n_nearest_candidates: int
+        The number of nearest candidates to consider when assigning respective data points to the nearest adjacent
+        streets.
     min_threshold_wt: float
         The default `min_threshold_wt` parameter can be overridden to generate custom mappings between the
-        `distance` and `beta` parameters. See [`rustalgos.distances_from_beta`](/rustalgos#distances-from-betas) for
-        more information.
+        `distance` and `beta` parameters. See [`rustalgos.distances_from_beta`](/rustalgos#distances-from-betas)
+        for more information.
     speed_m_s: float
         The default `speed_m_s` parameter can be configured to generate custom mappings between walking times and
         distance thresholds $d_{max}$.
@@ -670,15 +680,21 @@ def compute_stats(
 
     """
     logger.info("Computing statistics.")
-    data_map, data_gdf = assign_gdf_to_network(data_gdf, network_structure, max_netw_assign_dist, data_id_col)
+    # assign to network
+    data_map = build_data_map(
+        data_gdf,
+        network_structure,
+        max_netw_assign_dist,
+        data_id_col,
+        barriers_gdf=barriers_gdf,
+        n_nearest_candidates=n_nearest_candidates,
+    )
     # extract stats columns
-    data_keys: list[str] = data_gdf["datamap_key"]  # type: ignore
     stats_maps = []
     for stats_column_label in stats_column_labels:
         if stats_column_label not in data_gdf.columns:
             raise ValueError("The specified numerical stats column name can't be found in the GeoDataFrame.")
-        stats: list[str] = data_gdf[stats_column_label]  # type: ignore
-        stats_maps.append(dict(zip(data_keys, stats, strict=True)))
+        stats_maps.append(dict(data_gdf[stats_column_label]))  # type: ignore
     # stats
     partial_func = partial(
         data_map.stats,
@@ -694,7 +710,9 @@ def compute_stats(
         jitter_scale=jitter_scale,
     )
     # wraps progress bar
-    result = config.wrap_progress(total=network_structure.node_count(), rust_struct=data_map, partial_func=partial_func)
+    stats_result = config.wrap_progress(
+        total=network_structure.street_node_count(), rust_struct=data_map, partial_func=partial_func
+    )
     # unpack
     distances = config.log_thresholds(
         distances=distances,
@@ -703,28 +721,35 @@ def compute_stats(
         min_threshold_wt=min_threshold_wt,
         speed_m_s=speed_m_s,
     )
+    # intersect computed keys with those available in the gdf index (stations vs. streets)
+    gdf_idx = nodes_gdf.index.intersection(stats_result.node_keys_py)  # type: ignore
+    # create a dictionary to hold the data
+    temp_data = {}
     # unpack the numerical arrays
     for idx, stats_column_label in enumerate(stats_column_labels):
         for dist_key in distances:
             k = config.prep_gdf_key(f"{stats_column_label}_sum", dist_key, angular=angular, weighted=False)
-            nodes_gdf[k] = result[idx].sum[dist_key]  # type: ignore
+            temp_data[k] = stats_result.result[idx].sum[dist_key]  # type: ignore
             k = config.prep_gdf_key(f"{stats_column_label}_sum", dist_key, angular=angular, weighted=True)
-            nodes_gdf[k] = result[idx].sum_wt[dist_key]  # type: ignore
+            temp_data[k] = stats_result.result[idx].sum_wt[dist_key]  # type: ignore
             k = config.prep_gdf_key(f"{stats_column_label}_mean", dist_key, angular=angular, weighted=False)
-            nodes_gdf[k] = result[idx].mean[dist_key]  # type: ignore
+            temp_data[k] = stats_result.result[idx].mean[dist_key]  # type: ignore
             k = config.prep_gdf_key(f"{stats_column_label}_mean", dist_key, angular=angular, weighted=True)
-            nodes_gdf[k] = result[idx].mean_wt[dist_key]  # type: ignore
+            temp_data[k] = stats_result.result[idx].mean_wt[dist_key]  # type: ignore
             k = config.prep_gdf_key(f"{stats_column_label}_count", dist_key, angular=angular, weighted=False)
-            nodes_gdf[k] = result[idx].count[dist_key]  # type: ignore
+            temp_data[k] = stats_result.result[idx].count[dist_key]  # type: ignore
             k = config.prep_gdf_key(f"{stats_column_label}_count", dist_key, angular=angular, weighted=True)
-            nodes_gdf[k] = result[idx].count_wt[dist_key]  # type: ignore
+            temp_data[k] = stats_result.result[idx].count_wt[dist_key]  # type: ignore
             k = config.prep_gdf_key(f"{stats_column_label}_var", dist_key, angular=angular, weighted=False)
-            nodes_gdf[k] = result[idx].variance[dist_key]  # type: ignore
+            temp_data[k] = stats_result.result[idx].variance[dist_key]  # type: ignore
             k = config.prep_gdf_key(f"{stats_column_label}_var", dist_key, angular=angular, weighted=True)
-            nodes_gdf[k] = result[idx].variance_wt[dist_key]  # type: ignore
+            temp_data[k] = stats_result.result[idx].variance_wt[dist_key]  # type: ignore
             k = config.prep_gdf_key(f"{stats_column_label}_max", dist_key, angular=angular)
-            nodes_gdf[k] = result[idx].max[dist_key]  # type: ignore
+            temp_data[k] = stats_result.result[idx].max[dist_key]  # type: ignore
             k = config.prep_gdf_key(f"{stats_column_label}_min", dist_key, angular=angular)
-            nodes_gdf[k] = result[idx].min[dist_key]  # type: ignore
+            temp_data[k] = stats_result.result[idx].min[dist_key]  # type: ignore
+
+    temp_df = pd.DataFrame(temp_data, index=stats_result.node_keys_py)
+    nodes_gdf.loc[gdf_idx, temp_df.columns] = temp_df.loc[gdf_idx, temp_df.columns]  # type: ignore
 
     return nodes_gdf, data_gdf

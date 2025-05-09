@@ -50,10 +50,12 @@ plot.plot_nx(
 # plot hill mixed uses
 mixed_uses_vals = colors.Normalize()(mixed_uses_vals)
 mixed_uses_cols = cmap(mixed_uses_vals)
+data_map = mock.mock_data_map(data_gdf)
+data_map.assign_data_to_network(network_structure, max_assignment_dist=400, n_nearest_candidates=6)
 plot.plot_assignment(
     network_structure,
     G,
-    data_gdf=data_gdf,
+    data_map,
     path=f"{IMAGES_PATH}/intro_mixed_uses.{FORMAT}",
     node_colour=mixed_uses_cols,
     data_labels=data_gdf["categorical_landuses"],
@@ -125,11 +127,11 @@ G = mock.mock_graph()
 G = graphs.nx_simple_geoms(G)
 nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(G)
 data_gdf = mock.mock_data_gdf(G, random_seed=25)
-data_map, data_gdf = layers.assign_gdf_to_network(data_gdf, network_structure, max_netw_assign_dist=400)
+data_map = layers.build_data_map(data_gdf, network_structure, max_netw_assign_dist=400)
 plot.plot_assignment(
     network_structure,
     G,
-    data_gdf,
+    data_map,
     path=f"{IMAGES_PATH}/assignment.{FORMAT}",
     dpi=200,
     figsize=(5, 5),
@@ -137,11 +139,11 @@ plot.plot_assignment(
 G_decomposed = graphs.nx_decompose(G, 50)
 nodes_gdf_decomp, _edges_gdf, network_structure_decomp = io.network_structure_from_nx(G_decomposed)
 data_gdf = mock.mock_data_gdf(G, random_seed=25)
-data_map, data_gdf = layers.assign_gdf_to_network(data_gdf, network_structure_decomp, max_netw_assign_dist=400)
+data_map = layers.build_data_map(data_gdf, network_structure_decomp, max_netw_assign_dist=400)
 plot.plot_assignment(
     network_structure_decomp,
     G_decomposed,
-    data_gdf,
+    data_map,
     path=f"{IMAGES_PATH}/assignment_decomposed.{FORMAT}",
     dpi=200,
     figsize=(5, 5),
@@ -183,11 +185,11 @@ G = graphs.nx_simple_geoms(G)
 G_decomp = graphs.nx_decompose(G, 50)
 nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(G_decomp)
 data_gdf = mock.mock_landuse_categorical_data(G_decomp, random_seed=25)
-data_map, data_gdf = layers.assign_gdf_to_network(data_gdf, network_structure, max_netw_assign_dist=400)
+data_map = layers.build_data_map(data_gdf, network_structure, max_netw_assign_dist=400)
 plot.plot_assignment(
     network_structure,
     G_decomp,
-    data_gdf,
+    data_map,
     data_labels=data_gdf["categorical_landuses"].values,
     path=f"{IMAGES_PATH}/assignment_plot.{FORMAT}",
     dpi=200,
