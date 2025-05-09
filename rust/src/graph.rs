@@ -1062,22 +1062,37 @@ impl NetworkStructure {
         n_nearest_candidates: usize,
     ) -> Vec<(usize, String, f64)> {
         let edge_rtree = self.edge_rtree.as_ref().expect("Edge R-tree should exist.");
-        let data_rect = data_geom
-            .bounding_rect()
-            .expect("Data geometry should have a bounding rect.");
-        let query_aabb = AABB::from_corners(
-            [
-                data_rect.min().x - max_assignment_dist,
-                data_rect.min().y - max_assignment_dist,
-            ],
-            [
-                data_rect.max().x + max_assignment_dist,
-                data_rect.max().y + max_assignment_dist,
-            ],
-        );
-        let candidate_edges_rtree = edge_rtree
-            .locate_in_envelope_intersecting(&query_aabb)
-            .collect::<Vec<_>>();
+
+        let is_point_geom = matches!(data_geom, Geometry::Point(_));
+        let data_cent = data_geom
+            .centroid()
+            .expect("Data geometry should have a centroid for assignment search.");
+        // Get candidates from the R-tree
+        let candidate_edges_rtree = if is_point_geom {
+            // if the data geometry is a point, use nearest neighbor search
+            edge_rtree
+                .nearest_neighbor_iter(&[data_cent.x(), data_cent.y()])
+                .take(n_nearest_candidates)
+                .collect::<Vec<_>>()
+        } else {
+            // otherwise, use envelope intersection
+            let data_rect = data_geom
+                .bounding_rect()
+                .expect("Data geometry should have a bounding rect.");
+            let query_aabb = AABB::from_corners(
+                [
+                    data_rect.min().x - max_assignment_dist,
+                    data_rect.min().y - max_assignment_dist,
+                ],
+                [
+                    data_rect.max().x + max_assignment_dist,
+                    data_rect.max().y + max_assignment_dist,
+                ],
+            );
+            edge_rtree
+                .locate_in_envelope_intersecting(&query_aabb)
+                .collect()
+        };
 
         let mut candidates_with_dist: Vec<(f64, &EdgeRtreeItem)> = Vec::new();
         for edge_rtree_item in &candidate_edges_rtree {
@@ -1104,9 +1119,7 @@ impl NetworkStructure {
                             node_idx,
                             data_key
                         );
-                        data_geom
-                            .centroid()
-                            .expect("Data geometry should have a centroid for assignment search.")
+                        data_cent
                     }
                 };
                 let assignment_line = Line::new(closest_point_on_data.0, node_point.0);
@@ -1158,7 +1171,6 @@ impl NetworkStructure {
 
             // Optimization: If the data geometry is a point and we found an assignment from this edge,
             // we can stop processing further edges for this point.
-            let is_point_geom = matches!(data_geom, Geometry::Point(_));
             if is_point_geom && edge_produced_assignment {
                 break;
             }
