@@ -462,7 +462,7 @@ impl DataMap {
             })
             .collect(); // Collect all assignments into a single Vec
 
-        log::info!(
+        log::debug!(
             "Collected {} potential node assignments from data entries.",
             assignments.len()
         );
