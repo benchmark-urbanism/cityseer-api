@@ -476,7 +476,7 @@ impl NetworkStructure {
 
         let mut links_added = 0;
         for (street_node_idx, _data_key, dist) in potential_assignments {
-            log::info!(
+            log::debug!(
                 "Linking transport node {} to street node {} with distance {}.",
                 new_node_idx_usize,
                 street_node_idx,
@@ -523,7 +523,7 @@ impl NetworkStructure {
                 ),
             }
         }
-        log::info!(
+        log::debug!(
             "Added transport node {} and created {} link edges.",
             new_node_idx_usize,
             links_added
@@ -1013,7 +1013,7 @@ impl NetworkStructure {
                 .as_ref()
                 .expect("Barrier R-tree should exist after successful build")
                 .size();
-            log::info!(
+            log::debug!(
                 "Barriers set and R-tree built successfully with {} items.",
                 built_count
             );
@@ -1030,7 +1030,7 @@ impl NetworkStructure {
     pub fn unset_barriers(&mut self) {
         self.barrier_geoms = None;
         self.barrier_rtree = None;
-        log::info!("Barriers unset and R-tree cleared.");
+        log::debug!("Barriers unset and R-tree cleared.");
     }
 }
 
