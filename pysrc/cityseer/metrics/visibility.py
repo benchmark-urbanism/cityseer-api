@@ -89,11 +89,7 @@ def _prepare_bldgs_rast(
     # prepare transform
     transform = from_bounds(w, s, e, n, width, height)
     # rasterize building polygons
-    logger.info("Unioning buildings.")
-    unioned_gdf = gpd.GeoDataFrame(geometry=[bldgs_gdf.union_all()])  # type: ignore
-    unioned_gdf.set_crs(bldgs_gdf.crs)  # type: ignore
-    logger.info("Rasterising buildings.")
-    bldgs_rast = rasterize([(geom, 1) for geom in unioned_gdf.geometry], out_shape=(height, width), transform=transform)
+    bldgs_rast = rasterize([(geom, 1) for geom in bldgs_gdf.geometry], out_shape=(height, width), transform=transform)
     bldgs_rast = np.ascontiguousarray(bldgs_rast, dtype=np.uint8)
 
     return bldgs_rast, transform
