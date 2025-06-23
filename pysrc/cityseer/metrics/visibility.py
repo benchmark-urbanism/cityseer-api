@@ -5,6 +5,7 @@ Visibility and viewshed analysis.
 
 from __future__ import annotations
 
+import logging
 from functools import partial
 from pathlib import Path
 
@@ -19,6 +20,9 @@ from shapely import geometry
 
 from .. import config, rustalgos
 from ..tools import util
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 def _buildings_from_osmnx(bounds: tuple[float, float, float, float]) -> gpd.GeoDataFrame:
@@ -71,6 +75,7 @@ def _prepare_bldgs_rast(
     """
     Convert a buildings GeoDataFrame into a raster with accompanying Transform object.
     """
+    logger.info("Preparing buildings raster.")
     bldgs_gdf = bldgs_gdf.to_crs(to_crs_code)  # type: ignore
     if not bldgs_gdf.crs.is_projected:  # type: ignore
         raise ValueError("Buildings GeoDataFrame must be in a projected coordinate reference system.")
@@ -84,9 +89,12 @@ def _prepare_bldgs_rast(
     # prepare transform
     transform = from_bounds(w, s, e, n, width, height)
     # rasterize building polygons
-    unioned_gdf = gpd.GeoDataFrame(geometry=[bldgs_gdf.unary_union])  # type: ignore
+    logger.info("Unioning buildings.")
+    unioned_gdf = gpd.GeoDataFrame(geometry=[bldgs_gdf.union_all()])  # type: ignore
     unioned_gdf.set_crs(bldgs_gdf.crs)  # type: ignore
+    logger.info("Rasterising buildings.")
     bldgs_rast = rasterize([(geom, 1) for geom in unioned_gdf.geometry], out_shape=(height, width), transform=transform)
+    bldgs_rast = np.ascontiguousarray(bldgs_rast, dtype=np.uint8)
 
     return bldgs_rast, transform
 
@@ -129,6 +137,7 @@ def visibility_graph(
     write_path = _prepare_path(out_path)
     to_crs_code = _prepare_epsg_code(bounds, to_crs_code)
     bldgs_rast, transform = _prepare_bldgs_rast(bldgs_gdf, bounds, from_crs_code, to_crs_code, resolution)
+    logger.info("Running visibility.")
     # run viewshed
     viewshed_struct = rustalgos.viewshed.Viewshed()
     # convert distance to cells
@@ -141,7 +150,7 @@ def visibility_graph(
         partial_func=partial_func,
     )
     for band_idx, key in enumerate(["density", "farness", "harmonic"]):
-        path = Path(f"{write_path}_{key}").with_suffix(".tif")
+        path = Path(f"{write_path}_{key}_dist_{view_distance}_res_{resolution}").with_suffix(".tif")
         with rasterio.open(
             str(path.resolve()),
             "w",
