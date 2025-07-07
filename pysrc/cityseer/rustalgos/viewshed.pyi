@@ -13,22 +13,31 @@ class Viewshed:
     def progress(self) -> int:
         """Get the current value of the internal progress counter."""
         ...
-    def visibility_graph(
-        self, bldgs_rast: npt.ArrayLike, view_distance: float, pbar_disabled: bool | None = None
+    def visibility(
+        self,
+        bldgs_rast: npt.ArrayLike,
+        view_distance: float,
+        resolution: float,
+        observer_height: float,
+        pbar_disabled: bool | None = None,
     ) -> tuple[npt.ArrayLike, npt.ArrayLike, npt.ArrayLike]:
         """
         Compute visibility metrics for all cells in a raster grid.
 
         Calculates line-of-sight from each cell to all others within `view_distance`,
-        considering obstructions defined by non-zero values in `bldgs_rast`.
+        considering obstructions and elevation in `bldgs_rast` (float32 elevation values).
         Uses parallel processing.
 
         Parameters
         ----------
         bldgs_rast: npt.ArrayLike
-            2D NumPy array where 1 indicates an obstruction, 0 is open space.
+            2D NumPy array of float32 elevations (meters above datum).
         view_distance: float
-            Maximum distance (in cell units) to check visibility.
+            Maximum view distance (in meters).
+        resolution: float
+            Raster cell size (meters per pixel).
+        observer_height: float
+            Height of observer above ground (meters).
         pbar_disabled: bool | None
             Disable progress bar if True.
 
@@ -45,6 +54,8 @@ class Viewshed:
         self,
         bldgs_rast: npt.ArrayLike,
         view_distance: float,
+        resolution: float,
+        observer_height: float,
         origin_x: int,
         origin_y: int,
     ) -> npt.ArrayLike:
@@ -54,9 +65,13 @@ class Viewshed:
         Parameters
         ----------
         bldgs_rast: npt.ArrayLike
-            2D NumPy array where 1 indicates an obstruction, 0 is open space.
+            2D NumPy array of float32 elevations (meters above datum).
         view_distance: float
-            Maximum distance (in cell units) to check visibility.
+            Maximum view distance (in meters).
+        resolution: float
+            Raster cell size (meters per pixel).
+        observer_height: float
+            Height of observer above ground (meters).
         origin_x: int
             X-coordinate (column index) of the origin cell.
         origin_y: int
