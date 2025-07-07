@@ -171,7 +171,7 @@ def buffered_point_poly(lng: float, lat: float, buffer: int, projected: bool = F
     poly_utm: geometry.Polygon = point_utm.buffer(buffer)
     if projected:
         return poly_utm, utm_epsg_code
-    return util.project_geom(poly_utm, utm_epsg_code, 4326), 4326
+    return util.project_geom(poly_utm, utm_epsg_code, 4326), 4326  # type: ignore
 
 
 def fetch_osm_network(osm_request: str, timeout: int = 300, max_tries: int = 3) -> requests.Response | None:
