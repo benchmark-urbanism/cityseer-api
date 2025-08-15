@@ -167,14 +167,14 @@ pub struct Stats {
     sum_wt_vec: MetricResult,
     mean_vec: MetricResult,
     mean_wt_vec: MetricResult,
+    median_vec: MetricResult,
+    median_wt_vec: MetricResult,
     count_vec: MetricResult,
     count_wt_vec: MetricResult,
     variance_vec: MetricResult,
     variance_wt_vec: MetricResult,
     max_vec: MetricResult,
     min_vec: MetricResult,
-    sum_sq_vec: MetricResult,
-    sum_sq_wt_vec: MetricResult,
 }
 
 #[pymethods]
@@ -194,6 +194,14 @@ impl Stats {
     #[getter]
     pub fn mean_wt(&self) -> HashMap<u32, Py<PyArray1<f32>>> {
         self.mean_wt_vec.load()
+    }
+    #[getter]
+    pub fn median(&self) -> HashMap<u32, Py<PyArray1<f32>>> {
+        self.median_vec.load()
+    }
+    #[getter]
+    pub fn median_wt(&self) -> HashMap<u32, Py<PyArray1<f32>>> {
+        self.median_wt_vec.load()
     }
     #[getter]
     pub fn count(&self) -> HashMap<u32, Py<PyArray1<f32>>> {
@@ -249,14 +257,14 @@ impl StatsResult {
                 sum_wt_vec: MetricResult::new(&distances, len, 0.0),
                 mean_vec: MetricResult::new(&distances, len, f32::NAN),
                 mean_wt_vec: MetricResult::new(&distances, len, f32::NAN),
+                median_vec: MetricResult::new(&distances, len, f32::NAN),
+                median_wt_vec: MetricResult::new(&distances, len, f32::NAN),
                 count_vec: MetricResult::new(&distances, len, 0.0),
                 count_wt_vec: MetricResult::new(&distances, len, 0.0),
                 variance_vec: MetricResult::new(&distances, len, f32::NAN),
                 variance_wt_vec: MetricResult::new(&distances, len, f32::NAN),
                 max_vec: MetricResult::new(&distances, len, f32::NAN),
                 min_vec: MetricResult::new(&distances, len, f32::NAN),
-                sum_sq_vec: MetricResult::new(&distances, len, 0.0),
-                sum_sq_wt_vec: MetricResult::new(&distances, len, 0.0),
             });
         }
         StatsResult {
@@ -922,7 +930,63 @@ impl DataMap {
         });
         Ok(result)
     }
+}
 
+/// Returns the median of a sorted vector of f32 values.
+fn median(vals: &Vec<f32>) -> f32 {
+    let n = vals.len();
+    if n == 0 {
+        return f32::NAN;
+    }
+    // sort
+    let mut sorted = vals.clone();
+    sorted.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    if n % 2 == 1 {
+        sorted[n / 2]
+    } else {
+        (sorted[n / 2 - 1] + sorted[n / 2]) / 2.0
+    }
+}
+
+/// Returns the weighted median from a vector of (value, weight) pairs.
+fn weighted_median(pairs: &Vec<(f32, f32)>, total_wt: f32) -> f32 {
+    if pairs.is_empty() {
+        return f32::NAN;
+    }
+    let mut sorted = pairs.clone();
+    sorted.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
+    if total_wt == 0.0 {
+        return f32::NAN;
+    }
+    let midpoint = total_wt / 2.0;
+    // If any single weight is more than half the total weight, it's the median
+    for (val, wt) in &sorted {
+        if *wt > midpoint {
+            return *val;
+        }
+    }
+    let mut agg_wt = 0.0;
+    for (i, (val, wt)) in sorted.iter().enumerate() {
+        agg_wt += *wt;
+        if agg_wt == midpoint {
+            // If the cumulative weight is exactly the midpoint, average with the next value,
+            // unless it's the last element.
+            return if i + 1 < sorted.len() {
+                (*val + sorted[i + 1].0) / 2.0
+            } else {
+                *val
+            };
+        }
+        if agg_wt > midpoint {
+            return *val;
+        }
+    }
+    // Fallback for floating point inaccuracies, should ideally not be reached with robust logic.
+    sorted.last().unwrap().0
+}
+
+#[pymethods]
+impl DataMap {
     #[pyo3(signature = (
         network_structure,
         numerical_maps,
@@ -1011,104 +1075,118 @@ impl DataMap {
                     jitter_scale,
                     angular,
                 );
-                for (data_key, data_dist) in &reachable_entries {
-                    for (map_idx, num_map) in num_maps.iter().enumerate() {
-                        if let Some(&num) = num_map.get(data_key) {
-                            if num.is_nan() {
-                                continue; // Skip NaN values
-                            }
-                            for (i, (&d, (&b, &mcw))) in distances
-                                .iter()
-                                .zip(betas.iter().zip(max_curve_wts.iter()))
-                                .enumerate()
-                            {
-                                if *data_dist <= d as f32 {
+                for (map_idx, num_map) in num_maps.iter().enumerate() {
+                    for (i, (&d, (&b, &mcw))) in distances
+                        .iter()
+                        .zip(betas.iter().zip(max_curve_wts.iter()))
+                        .enumerate()
+                    {
+                        let mut vals = Vec::new();
+                        let mut vals_wts = Vec::new();
+                        let mut sum_val = 0.0;
+                        let mut sum_wt_val = 0.0;
+                        let mut count_val = 0.0;
+                        let mut count_wt_val = 0.0;
+                        let mut sum_sq_val = 0.0;
+                        let mut sum_sq_wt_val = 0.0;
+                        let mut min_val = f32::NAN;
+                        let mut max_val = f32::NAN;
+                        for (data_key, data_dist) in &reachable_entries {
+                            if *data_dist <= d as f32 {
+                                if let Some(&num) = num_map.get(data_key) {
+                                    if num.is_nan() {
+                                        continue; // Skip NaN values
+                                    }
+                                    // gather data
                                     let wt = clipped_beta_wt(b, mcw, *data_dist).unwrap_or(0.0);
                                     let num_wt = num * wt;
-                                    // --- Accumulate sums and counts ---
-                                    res.stats_vec[map_idx].sum_vec.metric[i][*netw_src_idx]
-                                        .fetch_add(num, AtomicOrdering::Relaxed);
-                                    res.stats_vec[map_idx].sum_wt_vec.metric[i][*netw_src_idx]
-                                        .fetch_add(num_wt, AtomicOrdering::Relaxed);
-                                    res.stats_vec[map_idx].count_vec.metric[i][*netw_src_idx]
-                                        .fetch_add(1.0, AtomicOrdering::Relaxed);
-                                    res.stats_vec[map_idx].count_wt_vec.metric[i][*netw_src_idx]
-                                        .fetch_add(wt, AtomicOrdering::Relaxed);
-                                    res.stats_vec[map_idx].sum_sq_vec.metric[i][*netw_src_idx]
-                                        .fetch_add(num * num, AtomicOrdering::Relaxed);
-                                    res.stats_vec[map_idx].sum_sq_wt_vec.metric[i][*netw_src_idx]
-                                        .fetch_add(wt * num * num, AtomicOrdering::Relaxed);
-                                    // --- Atomically update max and min ---
-                                    // Assumes MetricResult uses atomic_float::AtomicF32 internally
-                                    // which provides fetch_max/fetch_min that handle NaN correctly.
-                                    res.stats_vec[map_idx].max_vec.metric[i][*netw_src_idx]
-                                        .fetch_max(num, AtomicOrdering::Relaxed);
-                                    res.stats_vec[map_idx].min_vec.metric[i][*netw_src_idx]
-                                        .fetch_min(num, AtomicOrdering::Relaxed);
+                                    // Accumulate sums and counts
+                                    sum_val += num;
+                                    sum_wt_val += num_wt;
+                                    count_val += 1.0;
+                                    count_wt_val += wt;
+                                    sum_sq_val += num * num;
+                                    sum_sq_wt_val += wt * num * num;
+                                    // Max
+                                    max_val = if max_val.is_nan() {
+                                        num
+                                    } else {
+                                        max_val.max(num)
+                                    };
+                                    // Min
+                                    min_val = if min_val.is_nan() {
+                                        num
+                                    } else {
+                                        min_val.min(num)
+                                    };
+                                    // Median calcs (unweighted & weighted)
+                                    vals.push(num);
+                                    vals_wts.push((num, wt));
                                 }
                             }
                         }
-                    }
-                }
-            });
-            // --- Post-processing (Mean, Variance) ---
-            for stats_idx in 0..res.stats_vec.len() {
-                for node_idx in res.node_indices.iter() {
-                    for (i, _) in distances.iter().enumerate() {
-                        let sum_val = res.stats_vec[stats_idx].sum_vec.metric[i][*node_idx]
-                            .load(AtomicOrdering::Relaxed);
-                        let sum_wt_val = res.stats_vec[stats_idx].sum_wt_vec.metric[i][*node_idx]
-                            .load(AtomicOrdering::Relaxed);
-                        let count_val = res.stats_vec[stats_idx].count_vec.metric[i][*node_idx]
-                            .load(AtomicOrdering::Relaxed);
-                        let count_wt_val = res.stats_vec[stats_idx].count_wt_vec.metric[i]
-                            [*node_idx]
-                            .load(AtomicOrdering::Relaxed);
-                        let sum_sq_val = res.stats_vec[stats_idx].sum_sq_vec.metric[i][*node_idx]
-                            .load(AtomicOrdering::Relaxed);
-                        let sum_sq_wt_val = res.stats_vec[stats_idx].sum_sq_wt_vec.metric[i]
-                            [*node_idx]
-                            .load(AtomicOrdering::Relaxed);
-
-                        // Calculate Mean
+                        // Sums
+                        res.stats_vec[map_idx].sum_vec.metric[i][*netw_src_idx]
+                            .store(sum_val, AtomicOrdering::Relaxed);
+                        res.stats_vec[map_idx].sum_wt_vec.metric[i][*netw_src_idx]
+                            .store(sum_wt_val, AtomicOrdering::Relaxed);
+                        // Counts
+                        res.stats_vec[map_idx].count_vec.metric[i][*netw_src_idx]
+                            .store(count_val, AtomicOrdering::Relaxed);
+                        res.stats_vec[map_idx].count_wt_vec.metric[i][*netw_src_idx]
+                            .store(count_wt_val, AtomicOrdering::Relaxed);
+                        // Max
+                        res.stats_vec[map_idx].max_vec.metric[i][*netw_src_idx]
+                            .store(max_val, AtomicOrdering::Relaxed);
+                        // Min
+                        res.stats_vec[map_idx].min_vec.metric[i][*netw_src_idx]
+                            .fetch_min(min_val, AtomicOrdering::Relaxed);
+                        // Mean
                         let mean_val = if count_val > 0.0 {
                             sum_val / count_val
                         } else {
                             f32::NAN
                         };
+                        res.stats_vec[map_idx].mean_vec.metric[i][*netw_src_idx]
+                            .store(mean_val, AtomicOrdering::Relaxed);
+                        // Weighted Mean
                         let mean_wt_val = if count_wt_val > 0.0 {
                             sum_wt_val / count_wt_val
                         } else {
                             f32::NAN
                         };
-
+                        res.stats_vec[map_idx].mean_wt_vec.metric[i][*netw_src_idx]
+                            .store(mean_wt_val, AtomicOrdering::Relaxed);
                         // Calculate Variance (using Welford's online algorithm principle implicitly)
                         // Variance = E[X^2] - (E[X])^2
+                        // Ensure non-negative due to potential float inaccuracies
                         let variance_val = if count_val > 0.0 {
                             (sum_sq_val / count_val - mean_val.powi(2)).max(0.0)
-                        // Ensure non-negative due to potential float inaccuracies
                         } else {
                             f32::NAN
                         };
+                        res.stats_vec[map_idx].variance_vec.metric[i][*netw_src_idx]
+                            .store(variance_val, AtomicOrdering::Relaxed);
+                        // Weighted Variance
+                        // Ensure non-negative due to potential float inaccuracies
                         let variance_wt_val = if count_wt_val > 0.0 {
                             (sum_sq_wt_val / count_wt_val - mean_wt_val.powi(2)).max(0.0)
-                        // Ensure non-negative
                         } else {
                             f32::NAN
                         };
-
-                        // Store results (using relaxed ordering as this is post-parallel processing)
-                        res.stats_vec[stats_idx].mean_vec.metric[i][*node_idx]
-                            .store(mean_val, AtomicOrdering::Relaxed);
-                        res.stats_vec[stats_idx].mean_wt_vec.metric[i][*node_idx]
-                            .store(mean_wt_val, AtomicOrdering::Relaxed);
-                        res.stats_vec[stats_idx].variance_vec.metric[i][*node_idx]
-                            .store(variance_val, AtomicOrdering::Relaxed);
-                        res.stats_vec[stats_idx].variance_wt_vec.metric[i][*node_idx]
+                        res.stats_vec[map_idx].variance_wt_vec.metric[i][*netw_src_idx]
                             .store(variance_wt_val, AtomicOrdering::Relaxed);
+                        // Calculate Median
+                        let median_val = median(&vals);
+                        res.stats_vec[map_idx].median_vec.metric[i][*netw_src_idx]
+                            .store(median_val, AtomicOrdering::Relaxed);
+                        // Weighted Median
+                        let median_wt_val = weighted_median(&vals_wts, count_wt_val);
+                        res.stats_vec[map_idx].median_wt_vec.metric[i][*netw_src_idx]
+                            .store(median_wt_val, AtomicOrdering::Relaxed);
                     }
                 }
-            }
+            });
             res
         });
         Ok(result)

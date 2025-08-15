@@ -1560,7 +1560,7 @@ def nx_from_generic_geopandas(
                 if not isinstance(prop, tuple | list):
                     raise TypeError(f"Expected key {k} to be a list type to retain compatibility with OSM workflows.")
                 props[k] = prop  # type: ignore
-        g_multi.add_edge(node_key_a, node_key_b, src_edge_idx=edge_idx, geom=edge_geom, **props)
+        g_multi.add_edge(node_key_a, node_key_b, src_edge_idx=edge_idx, geom=edge_geom, **props)  # type: ignore
 
     # deduplicate
     g_multi = graphs.nx_merge_parallel_edges(g_multi, merge_edges_by_midline=True, contains_buffer_dist=1)

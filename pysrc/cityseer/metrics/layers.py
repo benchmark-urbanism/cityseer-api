@@ -675,6 +675,7 @@ def compute_stats(
     - `max` and `min`
     - `sum` and `sum_wt`
     - `mean` and `mean_wt`
+    - `median` and `median_wt`
     - `variance` and `variance_wt`
     :::
 
