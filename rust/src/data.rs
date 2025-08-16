@@ -173,6 +173,8 @@ pub struct Stats {
     count_wt_vec: MetricResult,
     variance_vec: MetricResult,
     variance_wt_vec: MetricResult,
+    mad_vec: MetricResult,    // Median Absolute Deviation (unweighted)
+    mad_wt_vec: MetricResult, // Median Absolute Deviation (weighted)
     max_vec: MetricResult,
     min_vec: MetricResult,
 }
@@ -220,6 +222,14 @@ impl Stats {
         self.variance_wt_vec.load()
     }
     #[getter]
+    pub fn mad(&self) -> HashMap<u32, Py<PyArray1<f32>>> {
+        self.mad_vec.load()
+    }
+    #[getter]
+    pub fn mad_wt(&self) -> HashMap<u32, Py<PyArray1<f32>>> {
+        self.mad_wt_vec.load()
+    }
+    #[getter]
     pub fn max(&self) -> HashMap<u32, Py<PyArray1<f32>>> {
         self.max_vec.load()
     }
@@ -263,6 +273,8 @@ impl StatsResult {
                 count_wt_vec: MetricResult::new(&distances, len, 0.0),
                 variance_vec: MetricResult::new(&distances, len, f32::NAN),
                 variance_wt_vec: MetricResult::new(&distances, len, f32::NAN),
+                mad_vec: MetricResult::new(&distances, len, f32::NAN),
+                mad_wt_vec: MetricResult::new(&distances, len, f32::NAN),
                 max_vec: MetricResult::new(&distances, len, f32::NAN),
                 min_vec: MetricResult::new(&distances, len, f32::NAN),
             });
@@ -1184,6 +1196,31 @@ impl DataMap {
                         let median_wt_val = weighted_median(&vals_wts, count_wt_val);
                         res.stats_vec[map_idx].median_wt_vec.metric[i][*netw_src_idx]
                             .store(median_wt_val, AtomicOrdering::Relaxed);
+                        // Median Absolute Deviation (MAD)
+                        let mad_val = if !vals.is_empty() && !median_val.is_nan() {
+                            let abs_devs: Vec<f32> =
+                                vals.iter().map(|v| (v - median_val).abs()).collect();
+                            median(&abs_devs)
+                        } else {
+                            f32::NAN
+                        };
+                        res.stats_vec[map_idx].mad_vec.metric[i][*netw_src_idx]
+                            .store(mad_val, AtomicOrdering::Relaxed);
+                        // Weighted MAD: build abs deviations with same weights; use weighted median
+                        let mad_wt_val = if !vals_wts.is_empty()
+                            && !median_wt_val.is_nan()
+                            && count_wt_val > 0.0
+                        {
+                            let abs_wt: Vec<(f32, f32)> = vals_wts
+                                .iter()
+                                .map(|(v, wt)| ((v - median_wt_val).abs(), *wt))
+                                .collect();
+                            weighted_median(&abs_wt, count_wt_val)
+                        } else {
+                            f32::NAN
+                        };
+                        res.stats_vec[map_idx].mad_wt_vec.metric[i][*netw_src_idx]
+                            .store(mad_wt_val, AtomicOrdering::Relaxed);
                     }
                 }
             });

@@ -876,6 +876,33 @@ def test_stats(primal_graph):
                 atol=config.ATOL,
                 rtol=config.RTOL,
             )
+
+            # MAD (Median Absolute Deviation) - unweighted
+            def np_mad(arr):
+                if arr.size == 0:
+                    return np.nan
+                med = np.median(arr)
+                return np.median(np.abs(arr - med))
+
+            assert np.isnan(stats_result.mad[dist][49])
+            assert np.allclose(
+                stats_result.mad[dist][[50, 51]],
+                np_mad(mock_num_arr[[33]]),
+                atol=config.ATOL,
+                rtol=config.RTOL,
+            )
+            assert np.allclose(
+                stats_result.mad[dist][isolated_nodes_idx],
+                np_mad(mock_num_arr[isolated_data_idx]),
+                atol=config.ATOL,
+                rtol=config.RTOL,
+            )
+            assert np.allclose(
+                stats_result.mad[dist][connected_nodes_idx],
+                np_mad(mock_num_arr[connected_data_idx]),
+                atol=config.ATOL,
+                rtol=config.RTOL,
+            )
     # do deduplication - the stats should now be lower on average
     # the last five datapoints are pointing to the same source
     data_map_dedupe = mock.mock_data_map(data_gdf, dedupe_key_col="data_id")
@@ -1024,5 +1051,20 @@ def test_stats_weighted(primal_graph):
 
             # weighted median
             median_wt_py = weighted_median(vals, wts)
-            median_wt_rust = stats_result.median_wt[dist_key][netw_src_idx]
-            print(f"Rust median: {median_wt_rust}, Python median: {median_wt_py}")
+            assert np.isclose(
+                median_wt_py,
+                stats_result.median_wt[dist_key][netw_src_idx],
+                rtol=config.RTOL,
+                atol=config.ATOL,
+            )
+
+            # weighted MAD (median absolute deviation)
+            abs_devs = [abs(v - median_wt_py) for v in vals]
+            mad_wt_py = weighted_median(abs_devs, wts)
+            assert np.isclose(
+                stats_result.mad_wt[dist_key][netw_src_idx],
+                mad_wt_py,
+                rtol=config.RTOL,
+                atol=config.ATOL,
+            )
+            #
