@@ -754,105 +754,152 @@ def test_stats(primal_graph):
     for stats_result, mock_num_arr in zip(
         stats_results.result, [data_gdf["mock_numerical_1"].values, data_gdf["mock_numerical_2"].values], strict=True
     ):
-        for dist_key in distances:
+        for dist in distances:
             # i.e. this scenarios considers all datapoints as unique (no two datapoints point to the same source)
             # max
-            assert np.isnan(stats_result.max[dist_key][49])
+            assert np.isnan(stats_result.max[dist][49])
             assert np.allclose(
-                stats_result.max[dist_key][[50, 51]],
+                stats_result.max[dist][[50, 51]],
                 mock_num_arr[[33]].max(),
                 atol=config.ATOL,
                 rtol=config.RTOL,
             )
             assert np.allclose(
-                stats_result.max[dist_key][isolated_nodes_idx],
+                stats_result.max[dist][isolated_nodes_idx],
                 mock_num_arr[isolated_data_idx].max(),
                 atol=config.ATOL,
                 rtol=config.RTOL,
             )
             assert np.allclose(
-                stats_result.max[dist_key][connected_nodes_idx],
+                stats_result.max[dist][connected_nodes_idx],
                 mock_num_arr[connected_data_idx].max(),
                 atol=config.ATOL,
                 rtol=config.RTOL,
             )
             # min
-            assert np.isnan(stats_result.min[dist_key][49])
+            assert np.isnan(stats_result.min[dist][49])
             assert np.allclose(
-                stats_result.min[dist_key][[50, 51]],
+                stats_result.min[dist][[50, 51]],
                 mock_num_arr[[33]].min(),
                 atol=config.ATOL,
                 rtol=config.RTOL,
             )
             assert np.allclose(
-                stats_result.min[dist_key][isolated_nodes_idx],
+                stats_result.min[dist][isolated_nodes_idx],
                 mock_num_arr[isolated_data_idx].min(),
                 atol=config.ATOL,
                 rtol=config.RTOL,
             )
             assert np.allclose(
-                stats_result.min[dist_key][connected_nodes_idx],
+                stats_result.min[dist][connected_nodes_idx],
                 mock_num_arr[connected_data_idx].min(),
                 atol=config.ATOL,
                 rtol=config.RTOL,
             )
             # sum
-            assert np.isnan(stats_result.max[dist_key][49])
+            assert np.isnan(stats_result.max[dist][49])
             assert np.allclose(
-                stats_result.sum[dist_key][[50, 51]],
+                stats_result.sum[dist][[50, 51]],
                 mock_num_arr[[33]].sum(),
                 atol=config.ATOL,
                 rtol=config.RTOL,
             )
             assert np.allclose(
-                stats_result.sum[dist_key][isolated_nodes_idx],
+                stats_result.sum[dist][isolated_nodes_idx],
                 mock_num_arr[isolated_data_idx].sum(),
                 atol=config.ATOL,
                 rtol=config.RTOL,
             )
             assert np.allclose(
-                stats_result.sum[dist_key][connected_nodes_idx],
+                stats_result.sum[dist][connected_nodes_idx],
                 mock_num_arr[connected_data_idx].sum(),
                 atol=config.ATOL,
                 rtol=config.RTOL,
             )
             # mean
-            assert np.isnan(stats_result.max[dist_key][49])
+            assert np.isnan(stats_result.max[dist][49])
             assert np.allclose(
-                stats_result.mean[dist_key][[50, 51]],
+                stats_result.mean[dist][[50, 51]],
                 mock_num_arr[[33]].mean(),
                 atol=config.ATOL,
                 rtol=config.RTOL,
             )
             assert np.allclose(
-                stats_result.mean[dist_key][isolated_nodes_idx],
+                stats_result.mean[dist][isolated_nodes_idx],
                 mock_num_arr[isolated_data_idx].mean(),
                 atol=config.ATOL,
                 rtol=config.RTOL,
             )
             assert np.allclose(
-                stats_result.mean[dist_key][connected_nodes_idx],
+                stats_result.mean[dist][connected_nodes_idx],
                 mock_num_arr[connected_data_idx].mean(),
                 atol=config.ATOL,
                 rtol=config.RTOL,
             )
             # variance
-            assert np.isnan(stats_result.max[dist_key][49])
+            assert np.isnan(stats_result.max[dist][49])
             assert np.allclose(
-                stats_result.variance[dist_key][[50, 51]],
+                stats_result.variance[dist][[50, 51]],
                 mock_num_arr[[33]].var(),
                 atol=config.ATOL,
                 rtol=config.RTOL,
             )
             assert np.allclose(
-                stats_result.variance[dist_key][isolated_nodes_idx],
+                stats_result.variance[dist][isolated_nodes_idx],
                 mock_num_arr[isolated_data_idx].var(),
                 atol=config.ATOL,
                 rtol=config.RTOL,
             )
             assert np.allclose(
-                stats_result.variance[dist_key][connected_nodes_idx],
+                stats_result.variance[dist][connected_nodes_idx],
                 mock_num_arr[connected_data_idx].var(),
+                atol=config.ATOL,
+                rtol=config.RTOL,
+            )
+            # median
+            assert np.isnan(stats_result.max[dist][49])
+            assert np.allclose(
+                stats_result.median[dist][[50, 51]],
+                np.median(mock_num_arr[[33]]),
+                atol=config.ATOL,
+                rtol=config.RTOL,
+            )
+            assert np.allclose(
+                stats_result.median[dist][isolated_nodes_idx],
+                np.median(mock_num_arr[isolated_data_idx]),
+                atol=config.ATOL,
+                rtol=config.RTOL,
+            )
+            assert np.allclose(
+                stats_result.median[dist][connected_nodes_idx],
+                np.median(mock_num_arr[connected_data_idx]),
+                atol=config.ATOL,
+                rtol=config.RTOL,
+            )
+
+            # MAD (Median Absolute Deviation) - unweighted
+            def np_mad(arr):
+                if arr.size == 0:
+                    return np.nan
+                med = np.median(arr)
+                return np.median(np.abs(arr - med))
+
+            assert np.isnan(stats_result.mad[dist][49])
+            assert np.allclose(
+                stats_result.mad[dist][[50, 51]],
+                np_mad(mock_num_arr[[33]]),
+                atol=config.ATOL,
+                rtol=config.RTOL,
+            )
+            assert np.allclose(
+                stats_result.mad[dist][isolated_nodes_idx],
+                np_mad(mock_num_arr[isolated_data_idx]),
+                atol=config.ATOL,
+                rtol=config.RTOL,
+            )
+            assert np.allclose(
+                stats_result.mad[dist][connected_nodes_idx],
+                np_mad(mock_num_arr[connected_data_idx]),
                 atol=config.ATOL,
                 rtol=config.RTOL,
             )
@@ -873,45 +920,151 @@ def test_stats(primal_graph):
             if data_entry.data_key_py == data_dedupe_entry.data_key_py:
                 assert data_entry.data_key == data_dedupe_entry.data_key
     for stats_result, stats_result_dedupe in zip(stats_results.result, stats_results_dedupe.result, strict=True):
-        for dist_key in distances:
+        for dist in distances:
             # min and max are be the same
             assert np.allclose(
-                stats_result.min[dist_key],
-                stats_result_dedupe.min[dist_key],
+                stats_result.min[dist],
+                stats_result_dedupe.min[dist],
                 rtol=config.RTOL,
                 atol=config.ATOL,
                 equal_nan=True,
             )
             assert np.allclose(
-                stats_result.max[dist_key],
-                stats_result_dedupe.max[dist_key],
+                stats_result.max[dist],
+                stats_result_dedupe.max[dist],
                 rtol=config.RTOL,
                 atol=config.ATOL,
                 equal_nan=True,
             )
             # sum should be lower when deduplicated
             assert np.all(
-                stats_result.sum[dist_key][connected_nodes_idx]
-                >= stats_result_dedupe.sum[dist_key][connected_nodes_idx]
+                stats_result.sum[dist][connected_nodes_idx] >= stats_result_dedupe.sum[dist][connected_nodes_idx]
             )
             assert np.all(
-                stats_result.sum_wt[dist_key][connected_nodes_idx]
-                >= stats_result_dedupe.sum_wt[dist_key][connected_nodes_idx]
+                stats_result.sum_wt[dist][connected_nodes_idx] >= stats_result_dedupe.sum_wt[dist][connected_nodes_idx]
             )
             # mean and variance should also be diminished
             assert np.all(
-                stats_result.mean[dist_key][connected_nodes_idx]
-                >= stats_result_dedupe.mean[dist_key][connected_nodes_idx]
+                stats_result.mean[dist][connected_nodes_idx] >= stats_result_dedupe.mean[dist][connected_nodes_idx]
             )
             assert np.all(
-                stats_result.mean_wt[dist_key][connected_nodes_idx]
-                >= stats_result_dedupe.mean_wt[dist_key][connected_nodes_idx]
+                stats_result.mean_wt[dist][connected_nodes_idx]
+                >= stats_result_dedupe.mean_wt[dist][connected_nodes_idx]
             )
             assert np.all(
-                stats_result.variance[dist_key][connected_nodes_idx]
-                >= stats_result_dedupe.variance[dist_key][connected_nodes_idx]
+                stats_result.variance[dist][connected_nodes_idx]
+                >= stats_result_dedupe.variance[dist][connected_nodes_idx]
             )
             assert np.all(
-                stats_result.variance_wt[dist_key][connected_nodes_idx]
-                >= stats_result_dedupe.variance_wt[dist_key][connected_nodes_idx]
+                stats_result.variance_wt[dist][connected_nodes_idx]
+                >= stats_result_dedupe.variance_wt[dist][connected_nodes_idx]
             )
+
+
+def weighted_median(data, weights):
+    """
+    Compute the weighted median.
+    """
+    if not data or not weights:
+        return np.nan
+    s_data, s_weights = map(np.array, zip(*sorted(zip(data, weights, strict=True)), strict=True))
+    midpoint = 0.5 * sum(s_weights)
+    if any(s_weights > midpoint):
+        return (s_data[s_weights > midpoint])[0]
+    cs_weights = np.cumsum(s_weights)
+    idx = np.where(cs_weights <= midpoint)[0][-1]
+    if cs_weights[idx] == midpoint:
+        return np.mean(s_data[idx : idx + 2])
+    return s_data[idx + 1]
+
+
+def test_stats_weighted(primal_graph):
+    # generate node and edge maps
+    _nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(primal_graph)
+    data_gdf = mock.mock_numerical_data(primal_graph, num_arrs=1, random_seed=13)
+    data_map = mock.mock_data_map(data_gdf)
+    max_assign_dist = 3200
+    data_map.assign_data_to_network(network_structure, max_assignment_dist=max_assign_dist, n_nearest_candidates=6)
+
+    numerical_maps = [dict(data_gdf["mock_numerical_1"])]
+    distances = [400, 800]
+    betas = rustalgos.betas_from_distances(distances)
+    max_seconds = max(distances) / config.SPEED_M_S
+
+    stats_results = data_map.stats(
+        network_structure,
+        numerical_maps=numerical_maps,
+        distances=distances,
+    )
+
+    stats_result = stats_results.result[0]
+    num_map = numerical_maps[0]
+
+    max_curve_wts = rustalgos.clip_wts_curve(distances, betas, 0)
+
+    for netw_src_idx in network_structure.street_node_indices():
+        if not network_structure.is_node_live(netw_src_idx):
+            continue
+
+        reachable_entries = data_map.aggregate_to_src_idx(
+            netw_src_idx, network_structure, int(max_seconds), config.SPEED_M_S, angular=False
+        )
+
+        for i, dist_key in enumerate(distances):
+            beta = betas[i]
+            max_curve_wt = max_curve_wts[i]
+
+            vals = []
+            wts = []
+            for data_key, data_dist in reachable_entries.items():
+                if data_dist <= dist_key:
+                    py_key = int(data_key.split(":")[1])
+                    num = num_map[py_key]
+                    if not np.isnan(num):
+                        vals.append(num)
+                        wt = rustalgos.clipped_beta_wt(beta, max_curve_wt, data_dist)
+                        wts.append(wt)
+
+            if not vals:
+                assert np.isnan(stats_result.mean_wt[dist_key][netw_src_idx])
+                assert np.isnan(stats_result.variance_wt[dist_key][netw_src_idx])
+                assert np.isnan(stats_result.median_wt[dist_key][netw_src_idx])
+                continue
+
+            # weighted mean
+            mean_wt_py = np.average(vals, weights=wts)
+            assert np.isclose(
+                stats_result.mean_wt[dist_key][netw_src_idx],
+                mean_wt_py,
+                rtol=config.RTOL,
+                atol=config.ATOL,
+            )
+
+            # weighted variance
+            variance_wt_py = np.average((np.array(vals) - mean_wt_py) ** 2, weights=wts)
+            assert np.isclose(
+                stats_result.variance_wt[dist_key][netw_src_idx],
+                variance_wt_py,
+                rtol=config.RTOL,
+                atol=config.ATOL,
+            )
+
+            # weighted median
+            median_wt_py = weighted_median(vals, wts)
+            assert np.isclose(
+                median_wt_py,
+                stats_result.median_wt[dist_key][netw_src_idx],
+                rtol=config.RTOL,
+                atol=config.ATOL,
+            )
+
+            # weighted MAD (median absolute deviation)
+            abs_devs = [abs(v - median_wt_py) for v in vals]
+            mad_wt_py = weighted_median(abs_devs, wts)
+            assert np.isclose(
+                stats_result.mad_wt[dist_key][netw_src_idx],
+                mad_wt_py,
+                rtol=config.RTOL,
+                atol=config.ATOL,
+            )
+            #

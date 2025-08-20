@@ -675,7 +675,10 @@ def compute_stats(
     - `max` and `min`
     - `sum` and `sum_wt`
     - `mean` and `mean_wt`
+    - `count` and `count_wt`
+    - `median` and `median_wt`
     - `variance` and `variance_wt`
+    - `mad` and `mad_wt` (deviation from the median)
     :::
 
     """
@@ -740,10 +743,18 @@ def compute_stats(
             temp_data[k] = stats_result.result[idx].count[dist_key]  # type: ignore
             k = config.prep_gdf_key(f"{stats_column_label}_count", dist_key, angular=angular, weighted=True)
             temp_data[k] = stats_result.result[idx].count_wt[dist_key]  # type: ignore
+            k = config.prep_gdf_key(f"{stats_column_label}_median", dist_key, angular=angular, weighted=False)
+            temp_data[k] = stats_result.result[idx].median[dist_key]  # type: ignore
+            k = config.prep_gdf_key(f"{stats_column_label}_median", dist_key, angular=angular, weighted=True)
+            temp_data[k] = stats_result.result[idx].median_wt[dist_key]  # type: ignore
             k = config.prep_gdf_key(f"{stats_column_label}_var", dist_key, angular=angular, weighted=False)
             temp_data[k] = stats_result.result[idx].variance[dist_key]  # type: ignore
             k = config.prep_gdf_key(f"{stats_column_label}_var", dist_key, angular=angular, weighted=True)
             temp_data[k] = stats_result.result[idx].variance_wt[dist_key]  # type: ignore
+            k = config.prep_gdf_key(f"{stats_column_label}_mad", dist_key, angular=angular, weighted=False)
+            temp_data[k] = stats_result.result[idx].mad[dist_key]  # type: ignore
+            k = config.prep_gdf_key(f"{stats_column_label}_mad", dist_key, angular=angular, weighted=True)
+            temp_data[k] = stats_result.result[idx].mad_wt[dist_key]  # type: ignore
             k = config.prep_gdf_key(f"{stats_column_label}_max", dist_key, angular=angular)
             temp_data[k] = stats_result.result[idx].max[dist_key]  # type: ignore
             k = config.prep_gdf_key(f"{stats_column_label}_min", dist_key, angular=angular)
