@@ -342,6 +342,8 @@ def _auto_clean_network(
     G.remove_edges_from(remove_edges)
     # remove disconnected components
     G = graphs.nx_remove_dangling_nodes(G, despine=0, remove_disconnected=remove_disconnected)
+    # initialize tag cache for performance
+    tag_cache: dict = {}
     # clean by highway types - leave motorways alone
     # split only for a given type at a time
     for dist, tags, max_angle in (
@@ -359,6 +361,7 @@ def _auto_clean_network(
             osm_matched_tags_only=True,
             prioritise_by_hwy_tag=True,
             simplify_by_max_angle=max_angle,
+            tag_cache=tag_cache,
         )
     # consolidate
     for dist, tags, max_angle in (
@@ -376,6 +379,7 @@ def _auto_clean_network(
             osm_matched_tags_only=True,
             prioritise_by_hwy_tag=True,
             simplify_by_max_angle=max_angle,
+            tag_cache=tag_cache,
         )
         G = graphs.nx_remove_filler_nodes(G)
     # snap gapped endings - don't clean danglers before this
@@ -395,6 +399,7 @@ def _auto_clean_network(
             "path",
         ],
         buffer_dist=20,
+        tag_cache=tag_cache,
     )
     # snap gapped endings to roads - don't clean danglers before this
     # look for degree 1 dead-ends and link to nearby edges
@@ -424,6 +429,7 @@ def _auto_clean_network(
         min_node_degree=1,
         max_node_degree=1,
         squash_nodes=False,
+        tag_cache=tag_cache,
     )
     # remove danglers
     G = graphs.nx_remove_dangling_nodes(G, despine=40)
@@ -457,6 +463,7 @@ def _auto_clean_network(
             ],
             prioritise_by_hwy_tag=True,
             simplify_by_max_angle=max_angle,
+            tag_cache=tag_cache,
         )
         G = graphs.nx_consolidate_nodes(
             G,
@@ -486,6 +493,7 @@ def _auto_clean_network(
             ],
             prioritise_by_hwy_tag=True,
             simplify_by_max_angle=max_angle,
+            tag_cache=tag_cache,
         )
     G = graphs.nx_remove_filler_nodes(G)
     G = graphs.nx_merge_parallel_edges(G, merge_edges_by_midline=True, contains_buffer_dist=50)

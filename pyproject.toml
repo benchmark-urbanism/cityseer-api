@@ -1,6 +1,6 @@
 [project]
 name = "cityseer"
-version = '4.22.1'
+version = '4.22.2b1'
 description = "Computational tools for network-based pedestrian-scale urban analysis"
 readme = "README.md"
 requires-python = ">=3.11, <3.14"
@@ -63,8 +63,8 @@ docs_build = { shell = "uv run poe generate_docs && npm run build --prefix docs"
 docs_preview = { shell = "uv run poe generate_docs && npm run preview --prefix docs" }
 verify_project = { shell = "ruff format && ruff check && pyright . && pytest ./tests" }
 
-[tool.uv]
-dev-dependencies = [
+[dependency-groups]
+dev = [
   "pytest>=7.2.0",
   "momepy>=0.5.4",
   "pandas-stubs>=1.5.2.221213",
@@ -80,6 +80,7 @@ dev-dependencies = [
   "types-networkx>=3.4.2.20250319",
   "pyright>=1.1.398",
   "docstring-parser>=0.16",
+  "utm>=0.8.1",
 ]
 
 [build-system]

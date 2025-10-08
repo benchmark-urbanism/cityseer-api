@@ -306,20 +306,22 @@ def nx_remove_dangling_nodes(
 def _extract_tags_to_set(
     tags_list: list[str] | None = None,
 ) -> set[str | int]:
-    """Converts a `list` of `str` tags to a `set` of small caps `str`."""
-    tags = set()
-    if tags_list is not None:
-        if not isinstance(tags_list, list | set | tuple):
-            raise ValueError(f"Tags should be provided as a `list` of `str` instead of {type(tags_list)}.")
-        cleaned_tags_list = []
-        for t in tags_list:
-            if isinstance(t, str):
-                if t not in ["", " ", None]:
-                    cleaned_tags_list.append(t.strip().lower())
-            else:
-                cleaned_tags_list.append(t)
-        tags.update(tags_list)
-    return tags
+    """
+    Converts a `list` of tags to a `set`.
+
+    Assumes tags are already normalized (lowercased, stripped) as done during graph loading.
+    This avoids redundant normalization on every read.
+    """
+    if tags_list is None:
+        return set()
+    if not isinstance(tags_list, list | set | tuple):
+        raise ValueError(f"Tags should be provided as a `list` of `str` instead of {type(tags_list)}.")
+    # Fast path: if already a set, return directly
+    if isinstance(tags_list, set):
+        return tags_list
+    # For lists/tuples: use set comprehension (faster than loop with .add())
+    # Filter out empty/falsy values
+    return {t for t in tags_list if t}
 
 
 def _tags_from_edge_key(edge_data: EdgeData, edge_key: str) -> set[str | int]:
@@ -338,6 +340,16 @@ def _gather_nb_tags(nx_multigraph: nx.MultiGraph, nd_key: NodeKey, edge_key: str
     return nb_tags
 
 
+def _gather_nb_tags_cached(
+    nx_multigraph: nx.MultiGraph, nd_key: NodeKey, edge_key: str, cache: dict[tuple[NodeKey, str], set[str | int]]
+) -> set[str | int]:
+    """Cached version of _gather_nb_tags."""
+    cache_key = (nd_key, edge_key)
+    if cache_key not in cache:
+        cache[cache_key] = _gather_nb_tags(nx_multigraph, nd_key, edge_key)
+    return cache[cache_key]
+
+
 def _gather_name_tags(edge_data: EdgeData) -> set[str | int]:
     """Fetches `names` and `routes` tags from the provided edge and returns as a `set` of `str`."""
     names_tags = _tags_from_edge_key(edge_data, "names")
@@ -345,10 +357,12 @@ def _gather_name_tags(edge_data: EdgeData) -> set[str | int]:
     return names_tags.union(routes_tags)
 
 
-def _gather_nb_name_tags(nx_multigraph: nx.MultiGraph, nd_key: NodeKey) -> set[str | int]:
+def _gather_nb_name_tags_cached(
+    nx_multigraph: nx.MultiGraph, nd_key: NodeKey, cache: dict[tuple[NodeKey, str], set[str | int]]
+) -> set[str | int]:
     """Fetches `names` and `routes` tags from edges neighbouring a node and returns as a `set` of `str`."""
-    names_tags = _gather_nb_tags(nx_multigraph, nd_key, "names")
-    routes_tags = _gather_nb_tags(nx_multigraph, nd_key, "routes")
+    names_tags = _gather_nb_tags_cached(nx_multigraph, nd_key, "names", cache)
+    routes_tags = _gather_nb_tags_cached(nx_multigraph, nd_key, "routes", cache)
     return names_tags.union(routes_tags)
 
 
@@ -757,6 +771,7 @@ def _squash_adjacent(
     centroid_by_itx: bool,
     prioritise_by_hwy_tag: bool,
     simplify_by_max_angle: int | None = None,
+    tag_cache: dict[tuple[NodeKey, str], set[str | int]] | None = None,
 ) -> nx.MultiGraph:
     """
     Squash nodes from a specified node group down to a new node.
@@ -776,6 +791,8 @@ def _squash_adjacent(
     centroid_nodes_filter = [nd_key for nd_key in node_group if nd_key in nx_multigraph]
     # find highest priority OSM highway tag
     if prioritise_by_hwy_tag:
+        if tag_cache is None:
+            tag_cache = {}
         prioritise_tag = None
         for osm_hwy_tag in [
             "motorway",
@@ -791,7 +808,7 @@ def _squash_adjacent(
             "residential",
         ]:
             for nd_key in node_group:
-                nb_hwy_tags = _gather_nb_tags(nx_multigraph, nd_key, "highways")
+                nb_hwy_tags = _gather_nb_tags_cached(nx_multigraph, nd_key, "highways", tag_cache)
                 if osm_hwy_tag in nb_hwy_tags:
                     prioritise_tag = osm_hwy_tag
                     break
@@ -802,7 +819,7 @@ def _squash_adjacent(
             # extract nodes intersecting prioritised tag
             hwy_tags_filtered = []
             for nd_key in node_group:
-                nb_hwy_tags = _gather_nb_tags(nx_multigraph, nd_key, "highways")
+                nb_hwy_tags = _gather_nb_tags_cached(nx_multigraph, nd_key, "highways", tag_cache)
                 if prioritise_tag in nb_hwy_tags:
                     # count edges which explicitly have tag
                     nb_tag_count = 0
@@ -967,6 +984,7 @@ def nx_consolidate_nodes(
     osm_hwy_target_tags: list[str] | None = None,
     osm_matched_tags_only: bool = False,
     simplify_by_max_angle: int | None = None,
+    tag_cache: dict[tuple[NodeKey, str], set[str | int]] | None = None,
 ) -> nx.MultiGraph:
     """
     Consolidates nodes if they are within a buffer distance of each other.
@@ -1044,6 +1062,9 @@ def nx_consolidate_nodes(
     _multi_graph = util.validate_cityseer_networkx_graph(nx_multigraph)
     # create a nodes STRtree
     nodes_tree, node_lookups = util.create_nodes_strtree(_multi_graph)
+    # cache for tag gathering
+    if tag_cache is None:
+        tag_cache = {}
     # iter
     logger.info("Consolidating nodes.")
     # keep track of removed nodes
@@ -1081,17 +1102,17 @@ def nx_consolidate_nodes(
                     continue
             # levels
             if _levels_tags:
-                _nb_level_tags = _gather_nb_tags(nx_multigraph, j_nd_key, "levels")
+                _nb_level_tags = _gather_nb_tags_cached(nx_multigraph, j_nd_key, "levels", tag_cache)
                 if not _levels_tags.intersection(_nb_level_tags):
                     continue
             # hwy tags
             if osm_hwy_target_tags:
-                _nb_hwy_tags = _gather_nb_tags(nx_multigraph, j_nd_key, "highways")
+                _nb_hwy_tags = _gather_nb_tags_cached(nx_multigraph, j_nd_key, "highways", tag_cache)
                 if not _hwy_tags.intersection(_nb_hwy_tags):
                     continue
             # names tags
             if osm_matched_tags_only is True:
-                _nb_name_tags = _gather_nb_name_tags(nx_multigraph, j_nd_key)
+                _nb_name_tags = _gather_nb_name_tags_cached(nx_multigraph, j_nd_key, tag_cache)
                 if not _name_tags.intersection(_nb_name_tags):
                     continue
             # otherwise add the node
@@ -1122,13 +1143,13 @@ def nx_consolidate_nodes(
         if nd_key in removed_nodes:
             continue
         # get this nodes neighbouring edge hwy tags
-        nb_hwy_tags = _gather_nb_tags(nx_multigraph, nd_key, "highways")
+        nb_hwy_tags = _gather_nb_tags_cached(nx_multigraph, nd_key, "highways", tag_cache)
         if osm_hwy_target_tags and not hwy_tags.intersection(nb_hwy_tags):
             continue
         # get levels info for matching against potential nodes
-        nb_levels_tags = _gather_nb_tags(nx_multigraph, nd_key, "levels")
+        nb_levels_tags = _gather_nb_tags_cached(nx_multigraph, nd_key, "levels", tag_cache)
         # get name tags for matching against potential matches
-        nb_name_tags = _gather_nb_name_tags(nx_multigraph, nd_key)
+        nb_name_tags = _gather_nb_name_tags_cached(nx_multigraph, nd_key, tag_cache)
         # recurse
         node_group = recursive_squash(
             nd_key,  # node nd_key
@@ -1151,6 +1172,7 @@ def nx_consolidate_nodes(
                 centroid_by_itx=centroid_by_itx,
                 prioritise_by_hwy_tag=prioritise_by_hwy_tag,
                 simplify_by_max_angle=simplify_by_max_angle,
+                tag_cache=tag_cache,
             )
     # remove parallel edges resulting from squashing nodes
     _multi_graph = nx_merge_parallel_edges(
@@ -1167,11 +1189,14 @@ def nx_snap_gapped_endings(
     buffer_dist: float = 12,
     osm_hwy_target_tags: list[str] | None = None,
     osm_matched_tags_only: bool = False,
+    tag_cache: dict[tuple[NodeKey, str], set[str | int]] | None = None,
 ) -> nx.MultiGraph:
     """ """
     _multi_graph = util.validate_cityseer_networkx_graph(nx_multigraph)
     # if using OSM tags heuristic
     hwy_tags = _extract_tags_to_set(osm_hwy_target_tags)
+    if tag_cache is None:
+        tag_cache = {}
     # create an edges STRtree (nodes and edges)
     nodes_tree, node_lookups = util.create_nodes_strtree(_multi_graph)
     # create an edges STRtree (nodes and edges)
@@ -1186,12 +1211,12 @@ def nx_snap_gapped_endings(
             continue
         # check tags
         if osm_hwy_target_tags:
-            nb_hwy_tags = _gather_nb_tags(nx_multigraph, nd_key, "highways")
+            nb_hwy_tags = _gather_nb_tags_cached(nx_multigraph, nd_key, "highways", tag_cache)
             if not hwy_tags.intersection(nb_hwy_tags):
                 continue
-        nb_levels_tags = _gather_nb_tags(nx_multigraph, nd_key, "levels")
+        nb_levels_tags = _gather_nb_tags_cached(nx_multigraph, nd_key, "levels", tag_cache)
         # get name tags for matching against potential gapped edges
-        nb_name_tags = _gather_nb_name_tags(nx_multigraph, nd_key)
+        nb_name_tags = _gather_nb_name_tags_cached(nx_multigraph, nd_key, tag_cache)
         # get all other nodes within the buffer distance
         # the spatial index using bounding boxes, so further filtering is required (see further down)
         n_point = geometry.Point(nd_data["x"], nd_data["y"])
@@ -1220,17 +1245,17 @@ def nx_snap_gapped_endings(
                 continue
             # hwy tags
             if osm_hwy_target_tags:
-                edge_hwy_tags = _gather_nb_tags(nx_multigraph, j_nd_key, "highways")
+                edge_hwy_tags = _gather_nb_tags_cached(nx_multigraph, j_nd_key, "highways", tag_cache)
                 if not hwy_tags.intersection(edge_hwy_tags):
                     continue
             # levels
             if nb_levels_tags:
-                edge_level_tags = _gather_nb_tags(nx_multigraph, j_nd_key, "levels")
+                edge_level_tags = _gather_nb_tags_cached(nx_multigraph, j_nd_key, "levels", tag_cache)
                 if not nb_levels_tags.intersection(edge_level_tags):
                     continue
             # names tags
             if osm_matched_tags_only is True:
-                edge_name_tags = _gather_nb_name_tags(nx_multigraph, j_nd_key)
+                edge_name_tags = _gather_nb_name_tags_cached(nx_multigraph, j_nd_key, tag_cache)
                 if not nb_name_tags.intersection(edge_name_tags):
                     continue
             # create new geom
@@ -1282,6 +1307,7 @@ def nx_split_opposing_geoms(
     squash_nodes: bool = True,
     centroid_by_itx: bool = False,
     simplify_by_max_angle: int | None = None,
+    tag_cache: dict[tuple[NodeKey, str], set[str | int]] | None = None,
 ) -> nx.MultiGraph:
     """
     Split edges in near proximity to nodes, then weld the resultant node group together, updating edges in the process.
@@ -1378,6 +1404,9 @@ def nx_split_opposing_geoms(
     node_groups: list[set] = []
     # iter
     logger.info("Splitting opposing edges.")
+    # tag cache for performance
+    if tag_cache is None:
+        tag_cache = {}
     # iterate origin graph (else node structure changes in place)
     nd_key: NodeKey
     for nd_key, nd_data in tqdm(nx_multigraph.nodes(data=True), disable=config.QUIET_MODE):
@@ -1388,13 +1417,13 @@ def nx_split_opposing_geoms(
             continue
         # check tags
         if osm_hwy_target_tags:
-            nb_hwy_tags = _gather_nb_tags(nx_multigraph, nd_key, "highways")
+            nb_hwy_tags = _gather_nb_tags_cached(nx_multigraph, nd_key, "highways", tag_cache)
             if not hwy_tags.intersection(nb_hwy_tags):
                 continue
         # get name tags for matching against potential gapped edges
-        nb_name_tags = _gather_nb_name_tags(nx_multigraph, nd_key)
+        nb_name_tags = _gather_nb_name_tags_cached(nx_multigraph, nd_key, tag_cache)
         # get levels info for matching against potential gapped edges
-        nb_levels_tags = _gather_nb_tags(nx_multigraph, nd_key, "levels")
+        nb_levels_tags = _gather_nb_tags_cached(nx_multigraph, nd_key, "levels", tag_cache)
         # only split from ground level nodes
         if nb_levels_tags and 0 not in nb_levels_tags:
             continue
@@ -1585,6 +1614,7 @@ def nx_split_opposing_geoms(
                 centroid_by_itx=centroid_by_itx,
                 prioritise_by_hwy_tag=prioritise_by_hwy_tag,
                 simplify_by_max_angle=simplify_by_max_angle,
+                tag_cache=tag_cache,
             )
     else:
         for node_group in node_groups:
