@@ -366,6 +366,19 @@ def _gather_nb_name_tags_cached(
     return names_tags.union(routes_tags)
 
 
+def _invalidate_tag_cache(
+    cache: dict[tuple[NodeKey, str], set[str | int]] | None,
+    node_keys: set[NodeKey] | None,
+) -> None:
+    """Drop cached tag lookups for nodes whose adjacency has changed."""
+    if not cache or not node_keys:
+        return
+    tag_types = {"highways", "names", "routes", "levels"}
+    for nd_key in node_keys:
+        for tag_type in tag_types:
+            cache.pop((nd_key, tag_type), None)
+
+
 def nx_merge_parallel_edges(
     nx_multigraph: nx.MultiGraph,
     merge_edges_by_midline: bool,
@@ -789,6 +802,7 @@ def _squash_adjacent(
         return nx_multigraph
     # remove any node keys no longer in the graph
     centroid_nodes_filter = [nd_key for nd_key in node_group if nd_key in nx_multigraph]
+    affected_nodes: set[NodeKey] = set(node_group)
     # find highest priority OSM highway tag
     if prioritise_by_hwy_tag:
         if tag_cache is None:
@@ -935,6 +949,7 @@ def _squash_adjacent(
                 # bail if short self loop
                 if new_nd_name == target_nd_key and new_edge_geom.length < 100:
                     continue
+                affected_nodes.add(target_nd_key)
                 # check that a duplicate is not being added
                 dupe = False
                 if nx_multigraph.has_edge(new_nd_name, target_nd_key):
@@ -968,6 +983,11 @@ def _squash_adjacent(
                     edge_info.set_edge_info(nx_multigraph, new_nd_name, target_nd_key, edge_idx)
         # drop the node, this will also implicitly drop the old edges
         nx_multigraph.remove_node(nd_key)
+
+    affected_nodes.add(new_nd_name)
+    if new_nd_name in nx_multigraph:
+        affected_nodes.update(nx_multigraph.neighbors(new_nd_name))
+    _invalidate_tag_cache(tag_cache, affected_nodes)
 
     return util.validate_cityseer_networkx_graph(nx_multigraph)
 
@@ -1120,7 +1140,7 @@ def nx_consolidate_nodes(
             # if recursive, follow the chain
             if recursive:
                 j_nd_data: NodeData = nx_multigraph.nodes[j_nd_key]
-                return recursive_squash(
+                recursive_squash(
                     j_nd_key,
                     j_nd_data["x"],
                     j_nd_data["y"],
@@ -1621,6 +1641,7 @@ def nx_split_opposing_geoms(
             origin_nd_key = node_group.pop(0)  # type: ignore
             template = None
             origin_nd_data = _multi_graph.nodes[origin_nd_key]
+            affected_nodes: set[NodeKey] = {origin_nd_key}
             for new_nd_key in node_group:
                 new_nd_data = _multi_graph.nodes[new_nd_key]
                 new_geom = geometry.LineString(
@@ -1663,6 +1684,8 @@ def nx_split_opposing_geoms(
                         levels=[],
                         geom=new_geom,
                     )
+                    affected_nodes.update({new_nd_key})
+            _invalidate_tag_cache(tag_cache, affected_nodes)
     # squashing nodes can result in edge duplicates
     deduped_graph = nx_merge_parallel_edges(
         _multi_graph,
