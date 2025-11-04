@@ -908,81 +908,89 @@ def _squash_adjacent(
             node_group.remove(new_nd_name)
         else:
             raise ValueError(f"Attempted to add a duplicate node for node_group {node_group}.")
-    # iterate the nodes to be removed and connect their existing edge geometries to the new centroid
-    for nd_key in node_group:
-        nd_data: NodeData = nx_multigraph.nodes[nd_key]
-        nd_xy = (nd_data["x"], nd_data["y"])
-        # iterate the node's existing neighbours
-        for nb_nd_key in nx.neighbors(nx_multigraph, nd_key):
-            # no need to rewire the edge if the neighbour is the same as the new node
-            # this would otherwise result in a zero length edge
-            # the edge will be dropped once the nd_key is removed
-            if nb_nd_key == new_nd_name:
-                continue
-            # if a neighbour is also going to be dropped, then no need to create new between edges
-            # an exception exists when a geom is looped, in which case the neighbour is also the current node
-            if nb_nd_key in node_group and nb_nd_key != nd_key:
-                continue
-            # MultiGraph - so iter edges
-            edge_data: EdgeData
-            for edge_data in nx_multigraph[nd_key][nb_nd_key].values():
-                if "geom" not in edge_data:
-                    raise KeyError(f'Missing "geom" attribute for edge {nd_key}-{nb_nd_key}')
-                line_geom: geometry.LineString = edge_data["geom"]
-                # orient the LineString so that the geom starts from the node's x_y
-                line_coords = util.align_linestring_coords(line_geom.coords, nd_xy)
-                # update geom starting point to new parent node's coordinates
-                line_coords = util.snap_linestring_startpoint(line_coords, (new_cent.x, new_cent.y))
-                # if self-loop, then the end also needs updating to the new centroid
-                if nd_key == nb_nd_key:
-                    line_coords = util.snap_linestring_endpoint(line_coords, (new_cent.x, new_cent.y))
-                    target_nd_key = new_nd_name
-                else:
-                    target_nd_key = nb_nd_key
-                # simplify to handle new kinks
-                if simplify_by_max_angle is not None:
-                    line_coords = _simplify_line_by_max_angle(line_coords, simplify_by_max_angle)
-                # build the new geom
-                new_edge_geom = geometry.LineString(line_coords)
-                if new_edge_geom.length == 0:
+    new_edges = []
+    try:
+        # iterate the nodes to be removed and connect their existing edge geometries to the new centroid
+        for nd_key in node_group:
+            nd_data: NodeData = nx_multigraph.nodes[nd_key]
+            nd_xy = (nd_data["x"], nd_data["y"])
+            # iterate the node's existing neighbours
+            for nb_nd_key in nx.neighbors(nx_multigraph, nd_key):
+                # no need to rewire the edge if the neighbour is the same as the new node
+                # this would otherwise result in a zero length edge
+                # the edge will be dropped once the nd_key is removed
+                if nb_nd_key == new_nd_name:
                     continue
-                # bail if short self loop
-                if new_nd_name == target_nd_key and new_edge_geom.length < 100:
+                # if a neighbour is also going to be dropped, then no need to create new between edges
+                # an exception exists when a geom is looped, in which case the neighbour is also the current node
+                if nb_nd_key in node_group and nb_nd_key != nd_key:
                     continue
-                affected_nodes.add(target_nd_key)
-                # check that a duplicate is not being added
-                dupe = False
-                if nx_multigraph.has_edge(new_nd_name, target_nd_key):
-                    # only add parallel edges if substantially different from any existing edges
-                    n_edges: int = nx_multigraph.number_of_edges(new_nd_name, target_nd_key)
-                    for edge_idx in range(n_edges):
-                        exist_geom: geometry.LineString = nx_multigraph[new_nd_name][target_nd_key][edge_idx]["geom"]  # type: ignore
-                        # don't add if the edges have the same number of coords and the coords are similar
-                        # 5m x and y tolerance across all coordinates
-                        if len(new_edge_geom.coords) == len(exist_geom.coords) and np.allclose(
-                            new_edge_geom.coords,
-                            exist_geom.coords,
-                            atol=5,
-                            rtol=0,
-                        ):
-                            dupe = True
-                            logger.debug(
-                                f"Not adding edge {new_nd_name} to {target_nd_key}: a similar edge already exists. "
-                                f"Length: {new_edge_geom.length} vs. {exist_geom.length}. "
-                                f"Num coords: {len(new_edge_geom.coords)} vs. {len(exist_geom.coords)}."
-                            )
-                if not dupe:
-                    # add the new edge
-                    edge_idx = nx_multigraph.add_edge(
-                        new_nd_name,
-                        target_nd_key,
-                        geom=new_edge_geom,
-                    )
-                    edge_info = util.EdgeInfo()
-                    edge_info.gather_edge_info(edge_data)
-                    edge_info.set_edge_info(nx_multigraph, new_nd_name, target_nd_key, edge_idx)
-        # drop the node, this will also implicitly drop the old edges
-        nx_multigraph.remove_node(nd_key)
+                # MultiGraph - so iter edges
+                edge_data: EdgeData
+                for edge_data in nx_multigraph[nd_key][nb_nd_key].values():
+                    if "geom" not in edge_data:
+                        raise KeyError(f'Missing "geom" attribute for edge {nd_key}-{nb_nd_key}')
+                    line_geom: geometry.LineString | None = edge_data["geom"]
+                    # orient the LineString so that the geom starts from the node's x_y
+                    line_coords = util.align_linestring_coords(line_geom.coords, nd_xy)  # type: ignore
+                    # update geom starting point to new parent node's coordinates
+                    line_coords = util.snap_linestring_startpoint(line_coords, (new_cent.x, new_cent.y))
+                    # if self-loop, then the end also needs updating to the new centroid
+                    if nd_key == nb_nd_key:
+                        line_coords = util.snap_linestring_endpoint(line_coords, (new_cent.x, new_cent.y))
+                        target_nd_key = new_nd_name
+                    else:
+                        target_nd_key = nb_nd_key
+                    # simplify to handle new kinks
+                    if simplify_by_max_angle is not None:
+                        line_coords = _simplify_line_by_max_angle(line_coords, simplify_by_max_angle)
+                    # build the new geom
+                    new_edge_geom = geometry.LineString(line_coords)
+                    if new_edge_geom.length == 0:
+                        continue
+                    # bail if short self loop
+                    if new_nd_name == target_nd_key and new_edge_geom.length < 100:
+                        continue
+                    affected_nodes.add(target_nd_key)
+                    # check that a duplicate is not being added
+                    dupe = False
+                    if nx_multigraph.has_edge(new_nd_name, target_nd_key):
+                        # only add parallel edges if substantially different from any existing edges
+                        for existing_data in nx_multigraph[new_nd_name][target_nd_key].values():
+                            exist_geom: geometry.LineString = existing_data["geom"]
+                            # don't add if the edges have the same number of coords and the coords are similar
+                            # 5m x and y tolerance across all coordinates
+                            if len(new_edge_geom.coords) == len(exist_geom.coords) and np.allclose(
+                                new_edge_geom.coords,
+                                exist_geom.coords,
+                                atol=5,
+                                rtol=0,
+                            ):
+                                dupe = True
+                                logger.debug(
+                                    f"Not adding edge {new_nd_name} to {target_nd_key}: a similar edge already exists. "
+                                    f"Length: {new_edge_geom.length} vs. {exist_geom.length}. "
+                                    f"Num coords: {len(new_edge_geom.coords)} vs. {len(exist_geom.coords)}."
+                                )
+                    if not dupe:
+                        new_edges.append((new_nd_name, target_nd_key, new_edge_geom, edge_data))
+    # rare situation where edge rewiring fails
+    except Exception:
+        logger.error(f"Aborting consolidation of nodes {node_group} into {new_nd_name}.")
+        return nx_multigraph
+    # add the new edges
+    for new_nd_name, target_nd_key, new_edge_geom, edge_data in new_edges:
+        # add the new edge
+        edge_idx = nx_multigraph.add_edge(
+            new_nd_name,
+            target_nd_key,
+            geom=new_edge_geom,
+        )
+        edge_info = util.EdgeInfo()
+        edge_info.gather_edge_info(edge_data)
+        edge_info.set_edge_info(nx_multigraph, new_nd_name, target_nd_key, edge_idx)
+    # drop the nodes, this will also implicitly drop the old edges
+    nx_multigraph.remove_nodes_from(node_group)
 
     affected_nodes.add(new_nd_name)
     if new_nd_name in nx_multigraph:
@@ -1541,6 +1549,9 @@ def nx_split_opposing_geoms(
             new_edge_geom_a: geometry.LineString
             new_edge_geom_b: geometry.LineString
             new_edge_geom_a, new_edge_geom_b = split_geoms.geoms  # type: ignore
+            # don't make overly short edges
+            if new_edge_geom_a.length < buffer_dist / 2 or new_edge_geom_b.length < buffer_dist / 2:
+                continue
             # add the new node and edges to _multi_graph (don't modify nx_multigraph because of iter in place)
             new_nd_name, is_dupe = util.add_node(
                 _multi_graph,
