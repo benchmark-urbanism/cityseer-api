@@ -1,6 +1,6 @@
 [project]
 name = "cityseer"
-version = '4.22.2b3'
+version = '4.22.2b4'
 description = "Computational tools for network-based pedestrian-scale urban analysis"
 readme = "README.md"
 requires-python = ">=3.11, <3.14"
@@ -100,7 +100,7 @@ packages = ["cityseer"]
 [tool.ruff]
 line-length = 120
 indent-width = 4
-exclude = ["draft/**"]
+exclude = ["draft/**", "temp/**", "scratch/**"]
 
 [tool.ruff.lint]
 select = [
@@ -137,7 +137,8 @@ exclude = [
   "build",
   "demos",
   "docs",
-  "**/temp/",
+  "temp/**",
+  "scratch/**",
   "tests/",
   "dist",
   ".venv",
@@ -157,4 +158,4 @@ console_output_style = "count"
 log_cli = true
 log_cli_level = "INFO"
 testpaths = ["tests"]
-addopts = "--ignore=tests/test_performance.py --ignore=temp/"
+addopts = "--ignore=tests/test_performance.py"
