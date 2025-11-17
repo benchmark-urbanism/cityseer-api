@@ -1130,17 +1130,17 @@ def nx_consolidate_nodes(
                     continue
             # levels
             if _levels_tags:
-                _nb_level_tags = _gather_nb_tags_cached(nx_multigraph, j_nd_key, "levels", tag_cache)
+                _nb_level_tags = _gather_nb_tags_cached(_multi_graph, j_nd_key, "levels", tag_cache)
                 if not _levels_tags.intersection(_nb_level_tags):
                     continue
             # hwy tags
             if osm_hwy_target_tags:
-                _nb_hwy_tags = _gather_nb_tags_cached(nx_multigraph, j_nd_key, "highways", tag_cache)
+                _nb_hwy_tags = _gather_nb_tags_cached(_multi_graph, j_nd_key, "highways", tag_cache)
                 if not _hwy_tags.intersection(_nb_hwy_tags):
                     continue
             # names tags
             if osm_matched_tags_only is True:
-                _nb_name_tags = _gather_nb_name_tags_cached(nx_multigraph, j_nd_key, tag_cache)
+                _nb_name_tags = _gather_nb_name_tags_cached(_multi_graph, j_nd_key, tag_cache)
                 if not _name_tags.intersection(_nb_name_tags):
                     continue
             # otherwise add the node
@@ -1171,13 +1171,13 @@ def nx_consolidate_nodes(
         if nd_key in removed_nodes:
             continue
         # get this nodes neighbouring edge hwy tags
-        nb_hwy_tags = _gather_nb_tags_cached(nx_multigraph, nd_key, "highways", tag_cache)
+        nb_hwy_tags = _gather_nb_tags_cached(_multi_graph, nd_key, "highways", tag_cache)
         if osm_hwy_target_tags and not hwy_tags.intersection(nb_hwy_tags):
             continue
         # get levels info for matching against potential nodes
-        nb_levels_tags = _gather_nb_tags_cached(nx_multigraph, nd_key, "levels", tag_cache)
+        nb_levels_tags = _gather_nb_tags_cached(_multi_graph, nd_key, "levels", tag_cache)
         # get name tags for matching against potential matches
-        nb_name_tags = _gather_nb_name_tags_cached(nx_multigraph, nd_key, tag_cache)
+        nb_name_tags = _gather_nb_name_tags_cached(_multi_graph, nd_key, tag_cache)
         # recurse
         node_group = recursive_squash(
             nd_key,  # node nd_key
