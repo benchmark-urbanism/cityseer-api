@@ -1,9 +1,9 @@
 [project]
 name = "cityseer"
-version = '4.22.2b5'
+version = '4.22.2b6'
 description = "Computational tools for network-based pedestrian-scale urban analysis"
 readme = "README.md"
-requires-python = ">=3.11, <3.14"
+requires-python = ">=3.11, <3.15"
 license = { text = "AGPL-3.0" }
 keywords = [
   "network-topology",
@@ -33,6 +33,7 @@ classifiers = [
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
   "Programming Language :: Rust",
 ]
 dependencies = [
@@ -71,7 +72,7 @@ dev = [
   "types-requests>=2.28.11.7",
   "jupyterlab>=3.5.2",
   "jupyter>=1.0.0",
-  "maturin>=1.8.3",
+  "maturin>=1.10.1",
   "pip>=23.2",
   "pdoc>=14.1.0",
   "dominate>=2.8.0",

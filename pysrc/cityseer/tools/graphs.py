@@ -1239,12 +1239,12 @@ def nx_snap_gapped_endings(
             continue
         # check tags
         if osm_hwy_target_tags:
-            nb_hwy_tags = _gather_nb_tags_cached(nx_multigraph, nd_key, "highways", tag_cache)
+            nb_hwy_tags = _gather_nb_tags_cached(_multi_graph, nd_key, "highways", tag_cache)
             if not hwy_tags.intersection(nb_hwy_tags):
                 continue
-        nb_levels_tags = _gather_nb_tags_cached(nx_multigraph, nd_key, "levels", tag_cache)
+        nb_levels_tags = _gather_nb_tags_cached(_multi_graph, nd_key, "levels", tag_cache)
         # get name tags for matching against potential gapped edges
-        nb_name_tags = _gather_nb_name_tags_cached(nx_multigraph, nd_key, tag_cache)
+        nb_name_tags = _gather_nb_name_tags_cached(_multi_graph, nd_key, tag_cache)
         # get all other nodes within the buffer distance
         # the spatial index using bounding boxes, so further filtering is required (see further down)
         n_point = geometry.Point(nd_data["x"], nd_data["y"])
@@ -1273,17 +1273,17 @@ def nx_snap_gapped_endings(
                 continue
             # hwy tags
             if osm_hwy_target_tags:
-                edge_hwy_tags = _gather_nb_tags_cached(nx_multigraph, j_nd_key, "highways", tag_cache)
+                edge_hwy_tags = _gather_nb_tags_cached(_multi_graph, j_nd_key, "highways", tag_cache)
                 if not hwy_tags.intersection(edge_hwy_tags):
                     continue
             # levels
             if nb_levels_tags:
-                edge_level_tags = _gather_nb_tags_cached(nx_multigraph, j_nd_key, "levels", tag_cache)
+                edge_level_tags = _gather_nb_tags_cached(_multi_graph, j_nd_key, "levels", tag_cache)
                 if not nb_levels_tags.intersection(edge_level_tags):
                     continue
             # names tags
             if osm_matched_tags_only is True:
-                edge_name_tags = _gather_nb_name_tags_cached(nx_multigraph, j_nd_key, tag_cache)
+                edge_name_tags = _gather_nb_name_tags_cached(_multi_graph, j_nd_key, tag_cache)
                 if not nb_name_tags.intersection(edge_name_tags):
                     continue
             # create new geom
@@ -1445,13 +1445,13 @@ def nx_split_opposing_geoms(
             continue
         # check tags
         if osm_hwy_target_tags:
-            nb_hwy_tags = _gather_nb_tags_cached(nx_multigraph, nd_key, "highways", tag_cache)
+            nb_hwy_tags = _gather_nb_tags_cached(_multi_graph, nd_key, "highways", tag_cache)
             if not hwy_tags.intersection(nb_hwy_tags):
                 continue
         # get name tags for matching against potential gapped edges
-        nb_name_tags = _gather_nb_name_tags_cached(nx_multigraph, nd_key, tag_cache)
+        nb_name_tags = _gather_nb_name_tags_cached(_multi_graph, nd_key, tag_cache)
         # get levels info for matching against potential gapped edges
-        nb_levels_tags = _gather_nb_tags_cached(nx_multigraph, nd_key, "levels", tag_cache)
+        nb_levels_tags = _gather_nb_tags_cached(_multi_graph, nd_key, "levels", tag_cache)
         # only split from ground level nodes
         if nb_levels_tags and 0 not in nb_levels_tags:
             continue

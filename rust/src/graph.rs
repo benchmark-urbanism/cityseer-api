@@ -36,7 +36,7 @@ pub struct NodePayload {
 
 impl Clone for NodePayload {
     fn clone(&self) -> Self {
-        Python::with_gil(|py| NodePayload {
+        Python::attach(|py| NodePayload {
             node_key: self.node_key.clone_ref(py),
             point: self.point.clone(),
             live: self.live,                 // bool is Copy
@@ -106,7 +106,7 @@ pub struct EdgePayload {
 
 impl Clone for EdgePayload {
     fn clone(&self) -> Self {
-        Python::with_gil(|py| EdgePayload {
+        Python::attach(|py| EdgePayload {
             start_nd_key_py: self.start_nd_key_py.as_ref().map(|k| k.clone_ref(py)),
             end_nd_key_py: self.end_nd_key_py.as_ref().map(|k| k.clone_ref(py)),
             edge_idx: self.edge_idx,       // usize is Copy
@@ -422,7 +422,7 @@ impl NetworkStructure {
             weight,
             is_transport: false, // Explicitly false for street nodes
         };
-        Python::with_gil(|py| {
+        Python::attach(|py| {
             payload
                 .validate(py)
                 .expect("Invalid node payload for street node");
