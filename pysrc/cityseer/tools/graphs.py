@@ -16,7 +16,7 @@ from typing import Any
 import networkx as nx
 import numpy as np
 from pyproj import CRS
-from shapely import BufferCapStyle, geometry, ops
+from shapely import BufferCapStyle, affinity, geometry, ops
 from tqdm import tqdm
 
 from .. import config
@@ -107,14 +107,16 @@ def nx_remove_filler_nodes(nx_multigraph: nx.MultiGraph) -> nx.MultiGraph:
     logger.info("Removing filler nodes.")
     g_multi_copy = util.validate_cityseer_networkx_graph(nx_multigraph)
     removed_nodes: set[NodeKey] = set()
+    # Pre-compute degrees once to avoid repeated nx.degree() calls
+    node_degrees: dict[NodeKey, int] = dict(nx_multigraph.degree())
     # iterates the original graph, but changes are written to the copied version (to avoid in-place snafus)
     nd_key: NodeKey
-    for nd_key in tqdm(sorted(nx_multigraph.nodes()), disable=config.QUIET_MODE):
+    for nd_key in tqdm(nx_multigraph.nodes(), disable=config.QUIET_MODE):
         # some nodes will already have been removed
         if nd_key in removed_nodes:
             continue
         # proceed if a "simple" node is discovered, i.e. degree = 2
-        if nx.degree(nx_multigraph, nd_key) == 2:
+        if node_degrees.get(nd_key, 0) == 2:
             # pick the first neighbour and follow the chain until a non-simple node is encountered
             # this will become the starting point of the chain of simple nodes to be consolidated
             nbs: list[NodeKey] = sorted(list(nx.neighbors(nx_multigraph, nd_key)))
@@ -131,7 +133,7 @@ def nx_remove_filler_nodes(nx_multigraph: nx.MultiGraph) -> nx.MultiGraph:
             while anchor_nd is None:
                 # follow the chain of neighbours and break once a non-simple node is found
                 # catch disconnected looping components by checking for re-encountering start-node
-                if nx.degree(nx_multigraph, nb_nd_key) != 2 or nb_nd_key == nd_key:
+                if node_degrees.get(nb_nd_key, 0) != 2 or nb_nd_key == nd_key:
                     anchor_nd = nb_nd_key
                     break
                 # probe neighbours in one-direction only - i.e. don't backtrack
@@ -175,7 +177,7 @@ def nx_remove_filler_nodes(nx_multigraph: nx.MultiGraph) -> nx.MultiGraph:
                 agg_geom = util.weld_linestring_coords(agg_geom, geom.coords, force_xy=override_xy)
                 # if the next node has a degree other than 2, then break
                 # for circular components, break if the next node matches the start node
-                if nx.degree(nx_multigraph, next_link_nd) != 2 or next_link_nd == anchor_nd:
+                if node_degrees.get(next_link_nd, 0) != 2 or next_link_nd == anchor_nd:
                     end_nd = next_link_nd
                     break
                 # otherwise, follow the chain
@@ -260,7 +262,7 @@ def nx_remove_dangling_nodes(
         raise ValueError(f"despine parameter should be an integer, not {type(despine)}.")
     # remove danglers
     if despine > 0:
-        remove_nodes = []
+        remove_nodes = set()
         nd_key: NodeKey
         for nd_key in tqdm(g_multi_copy.nodes(data=False), disable=config.QUIET_MODE):
             if nx.degree(g_multi_copy, nd_key) == 1:
@@ -273,7 +275,7 @@ def nx_remove_dangling_nodes(
                     or ("is_tunnel" in edge_data and edge_data["is_tunnel"] is True)
                     or ("is_bridge" in edge_data and edge_data["is_bridge"] is True)
                 ):
-                    remove_nodes.append(nd_key)
+                    remove_nodes.add(nd_key)
         g_multi_copy.remove_nodes_from(remove_nodes)
 
     # clean up nodes at ex-dangler intersections
@@ -801,8 +803,13 @@ def _squash_adjacent(
     if len(node_group) < 2:
         return nx_multigraph
     # remove any node keys no longer in the graph
-    centroid_nodes_filter = [nd_key for nd_key in node_group if nd_key in nx_multigraph]
-    affected_nodes: set[NodeKey] = set(node_group)
+    # create a set copy to avoid modifying the input parameter
+    node_group_set = set(node_group)  # Always create a copy to avoid mutating input
+    centroid_nodes_filter = [nd_key for nd_key in node_group_set if nd_key in nx_multigraph]
+    # safety check: if fewer than 2 nodes remain in graph, nothing to consolidate
+    if len(centroid_nodes_filter) < 2:
+        return nx_multigraph
+    affected_nodes: set[NodeKey] = set(node_group_set)
     # find highest priority OSM highway tag
     if prioritise_by_hwy_tag:
         if tag_cache is None:
@@ -821,7 +828,7 @@ def _squash_adjacent(
             "tertiary_link",
             "residential",
         ]:
-            for nd_key in node_group:
+            for nd_key in node_group_set:
                 nb_hwy_tags = _gather_nb_tags_cached(nx_multigraph, nd_key, "highways", tag_cache)
                 if osm_hwy_tag in nb_hwy_tags:
                     prioritise_tag = osm_hwy_tag
@@ -832,7 +839,7 @@ def _squash_adjacent(
         if prioritise_tag is not None:
             # extract nodes intersecting prioritised tag
             hwy_tags_filtered = []
-            for nd_key in node_group:
+            for nd_key in node_group_set:
                 nb_hwy_tags = _gather_nb_tags_cached(nx_multigraph, nd_key, "highways", tag_cache)
                 if prioritise_tag in nb_hwy_tags:
                     # count edges which explicitly have tag
@@ -897,21 +904,25 @@ def _squash_adjacent(
             continue
         coords_set.add(xy_key)
         node_geoms.append(geometry.Point(x, y))
+    # safety check: if no valid node geometries, return early
+    if not node_geoms:
+        logger.warning(f"No valid node geometries found for node_group {node_group_set}, skipping consolidation.")
+        return nx_multigraph
     # set the new centroid from the centroid of the node group's Multipoint:
     new_cent: geometry.Point = geometry.MultiPoint(node_geoms).centroid
     # now that the centroid is known, add the new node
-    new_nd_name, is_dupe = util.add_node(nx_multigraph, node_group, x=new_cent.x, y=new_cent.y)  # type: ignore
+    new_nd_name, is_dupe = util.add_node(nx_multigraph, node_group_set, x=new_cent.x, y=new_cent.y)  # type: ignore
     if is_dupe:
         # an edge case: if the potential duplicate was one of the node group then it doesn't need adding
-        if new_nd_name in node_group:
+        if new_nd_name in node_group_set:
             # but remove from the node group since it doesn't need to be removed and replumbed
-            node_group.remove(new_nd_name)
+            node_group_set.discard(new_nd_name)
         else:
-            raise ValueError(f"Attempted to add a duplicate node for node_group {node_group}.")
+            raise ValueError(f"Attempted to add a duplicate node for node_group {node_group_set}.")
     new_edges = []
     try:
         # iterate the nodes to be removed and connect their existing edge geometries to the new centroid
-        for nd_key in node_group:
+        for nd_key in node_group_set:
             nd_data: NodeData = nx_multigraph.nodes[nd_key]
             nd_xy = (nd_data["x"], nd_data["y"])
             # iterate the node's existing neighbours
@@ -923,7 +934,7 @@ def _squash_adjacent(
                     continue
                 # if a neighbour is also going to be dropped, then no need to create new between edges
                 # an exception exists when a geom is looped, in which case the neighbour is also the current node
-                if nb_nd_key in node_group and nb_nd_key != nd_key:
+                if nb_nd_key in node_group_set and nb_nd_key != nd_key:
                     continue
                 # MultiGraph - so iter edges
                 edge_data: EdgeData
@@ -976,7 +987,7 @@ def _squash_adjacent(
                         new_edges.append((new_nd_name, target_nd_key, new_edge_geom, edge_data))
     # rare situation where edge rewiring fails
     except Exception:
-        logger.error(f"Aborting consolidation of nodes {node_group} into {new_nd_name}.")
+        logger.error(f"Aborting consolidation of nodes {node_group_set} into {new_nd_name}.")
         return nx_multigraph
     # add the new edges
     for new_nd_name, target_nd_key, new_edge_geom, edge_data in new_edges:
@@ -990,14 +1001,16 @@ def _squash_adjacent(
         edge_info.gather_edge_info(edge_data)
         edge_info.set_edge_info(nx_multigraph, new_nd_name, target_nd_key, edge_idx)
     # drop the nodes, this will also implicitly drop the old edges
-    nx_multigraph.remove_nodes_from(node_group)
+    nx_multigraph.remove_nodes_from(node_group_set)
 
     affected_nodes.add(new_nd_name)
     if new_nd_name in nx_multigraph:
         affected_nodes.update(nx_multigraph.neighbors(new_nd_name))
     _invalidate_tag_cache(tag_cache, affected_nodes)
 
-    return util.validate_cityseer_networkx_graph(nx_multigraph)
+    # Skip validation here - caller is responsible for final validation
+    # This avoids expensive graph copying on every squash operation
+    return nx_multigraph
 
 
 def nx_consolidate_nodes(
@@ -1098,6 +1111,9 @@ def nx_consolidate_nodes(
     # keep track of removed nodes
     removed_nodes: set[NodeKey] = set()
 
+    # Pre-compute buffer for spatial queries (avoid repeated Point.buffer calls)
+    _query_buffer = geometry.Point(0, 0).buffer(buffer_dist)
+
     def recursive_squash(
         _nd_key: NodeKey,
         x: float,
@@ -1112,7 +1128,9 @@ def nx_consolidate_nodes(
         # keep track of which nodes have been processed as part of recursion
         processed_nodes.add(_nd_key)
         # get all other nodes within buffer distance - the self-node and previously processed nodes are also returned
-        j_hits: list[int] = nodes_tree.query(geometry.Point(x, y).buffer(buffer_dist))  # type: ignore
+        # Translate pre-computed buffer to query point (faster than creating new buffer each time)
+        query_geom = affinity.translate(_query_buffer, xoff=x, yoff=y)
+        j_hits: list[int] = nodes_tree.query(query_geom)  # type: ignore
         # review each node within the buffer
         j_nd_key: NodeKey
         for j_hit_idx in j_hits:
@@ -1123,7 +1141,12 @@ def nx_consolidate_nodes(
             # check neighbour policy
             if neighbour_policy is not None:
                 # use the original graph prior to in-place modifications
-                neighbours: list[NodeKey] = nx.neighbors(nx_multigraph, _nd_key)
+                # Cache neighbours lookup in processed_nodes check above would be ideal,
+                # but we need original graph neighbours which don't change
+                if _nd_key in nx_multigraph:
+                    neighbours: set[NodeKey] = set(nx_multigraph.neighbors(_nd_key))
+                else:
+                    neighbours = set()
                 if neighbour_policy == "indirect" and j_nd_key in neighbours:
                     continue
                 if neighbour_policy == "direct" and j_nd_key not in neighbours:
@@ -1429,7 +1452,7 @@ def nx_split_opposing_geoms(
     # create an edges STRtree (nodes and edges)
     edges_tree, edge_lookups = util.create_edges_strtree(_multi_graph)
     # node groups
-    node_groups: list[set] = []
+    node_groups: list[list] = []
     # iter
     logger.info("Splitting opposing edges.")
     # tag cache for performance
@@ -1641,7 +1664,7 @@ def nx_split_opposing_geoms(
         for node_group in node_groups:
             _multi_graph = _squash_adjacent(
                 _multi_graph,
-                node_group,
+                set(node_group),  # Convert list to set as expected by _squash_adjacent
                 centroid_by_itx=centroid_by_itx,
                 prioritise_by_hwy_tag=prioritise_by_hwy_tag,
                 simplify_by_max_angle=simplify_by_max_angle,

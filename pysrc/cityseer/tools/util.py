@@ -358,8 +358,11 @@ def weld_linestring_coords(
     for line_coords in [linestring_coords_a, linestring_coords_b]:
         if not isinstance(line_coords, list | np.ndarray | coords.CoordinateSequence):
             raise ValueError("Expecting a list, tuple, numpy array, or shapely LineString coordinate sequence.")
-    linestring_coords_a = list(linestring_coords_a)  # type: ignore
-    linestring_coords_b = list(linestring_coords_b)  # type: ignore
+    # Convert to list only if needed
+    if not isinstance(linestring_coords_a, list):
+        linestring_coords_a = list(linestring_coords_a)  # type: ignore
+    if not isinstance(linestring_coords_b, list):
+        linestring_coords_b = list(linestring_coords_b)  # type: ignore
     # if both lists are empty, raise
     if len(linestring_coords_a) == 0 and len(linestring_coords_b) == 0:
         raise ValueError("Neither of the provided linestring coordinate lists contain any coordinates.")
@@ -368,32 +371,38 @@ def weld_linestring_coords(
         return linestring_coords_a
     if not linestring_coords_a:
         return linestring_coords_b
+
+    # Helper for fast coordinate comparison (avoid np.allclose overhead)
+    def coords_close(c1: Any, c2: Any) -> bool:
+        return abs(c1[0] - c2[0]) <= tolerance and abs(c1[1] - c2[1]) <= tolerance
+
+    # Pre-extract endpoint coordinates
+    a_start = linestring_coords_a[0][:2]
+    a_end = linestring_coords_a[-1][:2]
+    b_start = linestring_coords_b[0][:2]
+    b_end = linestring_coords_b[-1][:2]
+
     # match the directionality of the linestrings
     # if override_xy is provided, then make sure that the sides with the specified x_y are merged
-    # this is useful for looping components or overlapping components
-    # i.e. where both the start and end points match an endpoint on the opposite line
-    # in this case it is necessary to know which is the inner side of the weld and which is the outer endpoint
     if force_xy:
-        if not np.allclose(linestring_coords_a[-1][:2], force_xy, atol=tolerance, rtol=0):
+        if not coords_close(a_end, force_xy):
             coords_a = align_linestring_coords(linestring_coords_a, force_xy, reverse=True)
         else:
             coords_a = linestring_coords_a
-        if not np.allclose(linestring_coords_b[0][:2], force_xy, atol=tolerance, rtol=0):
+        if not coords_close(b_start, force_xy):
             coords_b = align_linestring_coords(linestring_coords_b, force_xy, reverse=False)
         else:
             coords_b = linestring_coords_b
     # case A: the linestring_b has to be flipped to start from x, y
-    elif np.allclose(linestring_coords_a[-1][:2], linestring_coords_b[-1][:2], atol=tolerance, rtol=0):
-        anchor_xy = linestring_coords_a[-1][:2]
+    elif coords_close(a_end, b_end):
         coords_a = linestring_coords_a
-        coords_b = align_linestring_coords(linestring_coords_b, anchor_xy)  # type: ignore
+        coords_b = align_linestring_coords(linestring_coords_b, a_end)  # type: ignore
     # case B: linestring_a has to be flipped to end at x, y
-    elif np.allclose(linestring_coords_a[0][:2], linestring_coords_b[0][:2], atol=tolerance, rtol=0):
-        anchor_xy = linestring_coords_a[0][:2]
-        coords_a = align_linestring_coords(linestring_coords_a, anchor_xy)  # type: ignore
+    elif coords_close(a_start, b_start):
+        coords_a = align_linestring_coords(linestring_coords_a, a_start)  # type: ignore
         coords_b = linestring_coords_b
     # case C: merge in the b -> a order (saves flipping both)
-    elif np.allclose(linestring_coords_a[0][:2], linestring_coords_b[-1][:2], atol=tolerance, rtol=0):
+    elif coords_close(a_start, b_end):
         coords_a = linestring_coords_b
         coords_b = linestring_coords_a
     # case D: no further alignment is necessary
@@ -401,7 +410,7 @@ def weld_linestring_coords(
         coords_a = linestring_coords_a
         coords_b = linestring_coords_b
     # double check weld
-    if not np.allclose(coords_a[-1][:2], coords_b[0][:2], atol=tolerance, rtol=0):
+    if not coords_close(coords_a[-1][:2], coords_b[0][:2]):
         raise ValueError(f"Unable to weld LineString geometries with the given tolerance of {tolerance}.")
     # drop the duplicate interleaving coordinate
     return coords_a[:-1] + coords_b  # type: ignore
