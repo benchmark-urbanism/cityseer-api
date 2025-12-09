@@ -763,8 +763,7 @@ def nx_from_osm(osm_json: str) -> nx.MultiGraph:
                     start_nd_key, end_nd_key = get_merged_nd_keys(idx)
                     nx_multigraph.add_edge(start_nd_key, end_nd_key)
 
-    # geoms not created yet
-    return util.validate_cityseer_networkx_graph(nx_multigraph, validate_edges=False)
+    return nx_multigraph  # skip validation as geoms not yet assigned
 
 
 def nx_from_osm_nx(

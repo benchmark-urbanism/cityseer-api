@@ -49,7 +49,7 @@ def nx_simple_geoms(nx_multigraph: nx.MultiGraph) -> nx.MultiGraph:
 
     """
     logger.info("Generating interpolated edge geometries.")
-    g_multi_copy = util.validate_cityseer_networkx_graph(nx_multigraph, validate_edges=False)
+    g_multi_copy = nx_multigraph.copy()  # skip validation as geoms not yet assigned
 
     def _process_node(nd_key: NodeKey) -> tuple[float, float]:
         return g_multi_copy.nodes[nd_key]["x"], g_multi_copy.nodes[nd_key]["y"]

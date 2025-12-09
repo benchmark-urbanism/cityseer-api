@@ -37,7 +37,7 @@ ListCoordsType = list[CoordsType] | coords.CoordinateSequence
 
 def validate_cityseer_networkx_graph(
     nx_multigraph: nx.MultiGraph,
-    validate_edges: bool = True,
+    validate_edges: bool = False,
 ) -> nx.MultiGraph:
     """
     Validates a `networkX` `MultiGraph` for use with `cityseer`.
@@ -76,15 +76,15 @@ def validate_cityseer_networkx_graph(
         if "y" not in node_data:
             raise KeyError(f'Encountered node missing "y" coordinate attribute at node {nd_key}.')
     #
-    if validate_edges is True:
-        for start_nd_key, end_nd_key, edge_data in g_multi_copy.edges(data=True):
-            # check if geom present
-            if "geom" not in edge_data:
-                raise KeyError(
-                    f'No edge geom found for edge {start_nd_key}-{end_nd_key}: Please add an edge "geom" '
-                    "attribute consisting of a shapely LineString. Simple (straight) geometries can be inferred "
-                    "automatically through the nx_simple_geoms() method."
-                )
+    for start_nd_key, end_nd_key, edge_data in g_multi_copy.edges(data=True):
+        # check if geom present
+        if "geom" not in edge_data:
+            raise KeyError(
+                f'No edge geom found for edge {start_nd_key}-{end_nd_key}: Please add an edge "geom" '
+                "attribute consisting of a shapely LineString. Simple (straight) geometries can be inferred "
+                "automatically through the nx_simple_geoms() method."
+            )
+        if validate_edges is True:
             # check if geometry is a LineString
             line_geom: geometry.LineString = edge_data["geom"]
             if line_geom.geom_type != "LineString":
@@ -93,14 +93,14 @@ def validate_cityseer_networkx_graph(
                 )
             if line_geom.is_empty:
                 raise TypeError(f"Found empty geom for edge {start_nd_key}-{end_nd_key}.")
+            if not line_geom.is_valid:
+                raise TypeError(f"Found invalid geom for edge {start_nd_key}-{end_nd_key}.")
             # Check for degenerate (zero-length) LineStrings where start and end points are identical
-            if line_geom.length < 0.001:
+            if g_multi_copy.graph["crs"].is_projected and line_geom.length < 0.001:
                 raise TypeError(
                     f"Found degenerate (zero-length) geom for edge {start_nd_key}-{end_nd_key}. "
                     f"Geometry: {line_geom.wkt}"
                 )
-            if not line_geom.is_valid:
-                raise TypeError(f"Found invalid geom for edge {start_nd_key}-{end_nd_key}.")
             # check that geom start / end match node coordinates
             start_nd_data: NodeData = g_multi_copy.nodes[start_nd_key]
             s_xy = (start_nd_data["x"], start_nd_data["y"])
