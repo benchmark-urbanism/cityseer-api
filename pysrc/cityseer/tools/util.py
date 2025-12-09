@@ -64,7 +64,7 @@ def validate_cityseer_networkx_graph(
         raise TypeError(f"Expected an undirected networkX MultiGraph but encountered {type(g_multi_copy)}.")
     # check CRS
     if "crs" not in g_multi_copy.graph:
-        raise KeyError("No CRS code found in graph. Please specify a CRS code via the crs_code parameter.")
+        raise KeyError('No CRS code found in graph. Please specify a CRS code as a "crs" graph attribute.')
     g_multi_copy.graph["crs"] = CRS(g_multi_copy.graph["crs"])
     if not g_multi_copy.graph["crs"].is_projected:
         logger.warning(f"The to_crs_code parameter {g_multi_copy.graph['crs'].to_epsg()} is not a projected CRS")
@@ -81,7 +81,7 @@ def validate_cityseer_networkx_graph(
             # check if geom present
             if "geom" not in edge_data:
                 raise KeyError(
-                    f"No edge geom found for edge {start_nd_key}-{end_nd_key}: Please add an edge 'geom' "
+                    f'No edge geom found for edge {start_nd_key}-{end_nd_key}: Please add an edge "geom" '
                     "attribute consisting of a shapely LineString. Simple (straight) geometries can be inferred "
                     "automatically through the nx_simple_geoms() method."
                 )
@@ -93,8 +93,28 @@ def validate_cityseer_networkx_graph(
                 )
             if line_geom.is_empty:
                 raise TypeError(f"Found empty geom for edge {start_nd_key}-{end_nd_key}.")
+            # Check for degenerate (zero-length) LineStrings where start and end points are identical
+            if line_geom.length < 0.001:
+                raise TypeError(
+                    f"Found degenerate (zero-length) geom for edge {start_nd_key}-{end_nd_key}. "
+                    f"Geometry: {line_geom.wkt}"
+                )
             if not line_geom.is_valid:
                 raise TypeError(f"Found invalid geom for edge {start_nd_key}-{end_nd_key}.")
+            # check that geom start / end match node coordinates
+            start_nd_data: NodeData = g_multi_copy.nodes[start_nd_key]
+            s_xy = (start_nd_data["x"], start_nd_data["y"])
+            end_nd_data: NodeData = g_multi_copy.nodes[end_nd_key]
+            e_xy = (end_nd_data["x"], end_nd_data["y"])
+            line_coords = list(line_geom.coords)
+            if not (
+                np.allclose(line_coords[0][:2], s_xy, atol=0.001, rtol=0)
+                and np.allclose(line_coords[-1][:2], e_xy, atol=0.001, rtol=0)
+            ) and not (
+                np.allclose(line_coords[0][:2], e_xy, atol=0.001, rtol=0)
+                and np.allclose(line_coords[-1][:2], s_xy, atol=0.001, rtol=0)
+            ):
+                raise ValueError(f"Linestring geometry {line_coords} does not touch nodes {s_xy} and {e_xy}.")
 
     return g_multi_copy
 

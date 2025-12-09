@@ -1,6 +1,6 @@
 [project]
 name = "cityseer"
-version = '4.22.2b10'
+version = '4.22.2b11'
 description = "Computational tools for network-based pedestrian-scale urban analysis"
 readme = "README.md"
 requires-python = ">=3.11, <3.14" # pending fiona support for 3.14
@@ -82,7 +82,7 @@ dev = [
   "pyright>=1.1.398",
   "docstring-parser>=0.16",
   "utm>=0.8.1",
-  "overturemaps>=0.17.0",
+  "overturemaps>=0.18.0",
 ]
 
 [build-system]

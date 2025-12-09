@@ -260,6 +260,9 @@ def _auto_clean_network(
     green_service_roads: bool = False,
 ) -> nx.MultiGraph:
     """ """
+    # Skip intermediate validations for performance - validate once at the end
+    was_skipping = config.SKIP_VALIDATION
+    config.SKIP_VALIDATION = True
     # deduplicate by hierarchy
     G = graphs.nx_deduplicate_edges(G, dissolve_distance=20, max_ang_diff=20)
     # parks
@@ -500,8 +503,9 @@ def _auto_clean_network(
     G = graphs.nx_iron_edges(G, min_self_loop_length=100, max_foot_tunnel_length=100)
     # do this last to clean up any orphaned sub components
     G = graphs.nx_remove_dangling_nodes(G, despine=25)
-
-    return G
+    # Restore validation flag and validate once at the end
+    config.SKIP_VALIDATION = was_skipping
+    return util.validate_cityseer_networkx_graph(G)
 
 
 def osm_graph_from_poly(
@@ -637,8 +641,6 @@ def osm_graph_from_poly(
         """
     # generate the query
     osm_response = fetch_osm_network(request, timeout=timeout, max_tries=max_tries)
-    # set config to skip validation
-    config.SKIP_VALIDATION = True
     # build graph
     graph_wgs = nx_from_osm(osm_json=osm_response.text)  # type: ignore
     graph_wgs = graphs.nx_simple_geoms(graph_wgs)
@@ -660,8 +662,6 @@ def osm_graph_from_poly(
             green_footways,
             green_service_roads,
         )
-    # reset validation flag
-    config.SKIP_VALIDATION = False
 
     return util.validate_cityseer_networkx_graph(graph_crs)
 

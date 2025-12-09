@@ -519,6 +519,9 @@ def nx_merge_parallel_edges(
                 # generate the new mid-line geom
                 new_coords = util.snap_linestring_endpoints(deduped_graph, start_nd_key, end_nd_key, new_coords)
                 new_geom = geometry.LineString(new_coords)
+                # Skip degenerate (zero-length) geometries - use shortest_geom as fallback
+                if new_geom.length < 0.001:
+                    new_geom = shortest_geom
                 # add to the graph
                 edge_idx = deduped_graph.add_edge(start_nd_key, end_nd_key, geom=new_geom)
                 edge_info.set_edge_info(deduped_graph, start_nd_key, end_nd_key, edge_idx)
@@ -1316,6 +1319,9 @@ def nx_snap_gapped_endings(
                     [j_nd_data["x"], j_nd_data["y"]],
                 ]
             )
+            # Skip degenerate (zero-length) geometries
+            if new_geom.length < 0.001:
+                continue
             # don't add new edges that would criss cross existing
             bail = False
             edge_hits = edges_tree.query(new_geom)
@@ -1494,7 +1500,10 @@ def nx_split_opposing_geoms(
             start_nd_key = edge_lookup["start_nd_key"]
             end_nd_key = edge_lookup["end_nd_key"]
             edge_idx = edge_lookup["edge_idx"]
-            edge_data: dict = nx_multigraph[start_nd_key][end_nd_key][edge_idx]
+            # Use _multi_graph (the working copy) not nx_multigraph (the original)
+            if not _multi_graph.has_edge(start_nd_key, end_nd_key, edge_idx):
+                continue
+            edge_data: dict = _multi_graph[start_nd_key][end_nd_key][edge_idx]
             # don't add attached edge
             if nd_key in (start_nd_key, end_nd_key):
                 continue
@@ -1572,6 +1581,21 @@ def nx_split_opposing_geoms(
             new_edge_geom_a: geometry.LineString
             new_edge_geom_b: geometry.LineString
             new_edge_geom_a, new_edge_geom_b = split_geoms.geoms  # type: ignore
+            if (
+                not isinstance(new_edge_geom_a, geometry.LineString)
+                or not new_edge_geom_a.is_valid
+                or not isinstance(
+                    new_edge_geom_b,
+                    geometry.LineString,
+                )
+                or not new_edge_geom_b.is_valid
+            ):
+                logger.warning("Invalid LineString produced when splitting opposing geom, skipping.")
+                continue
+            # Check for degenerate (zero-length) LineStrings where start and end points are identical
+            if new_edge_geom_a.length < 0.001 or new_edge_geom_b.length < 0.001:
+                logger.warning("Degenerate (zero-length) LineString produced when splitting opposing geom, skipping.")
+                continue
             # add the new node and edges to _multi_graph (don't modify nx_multigraph because of iter in place)
             new_nd_name, is_dupe = util.add_node(
                 _multi_graph,
@@ -1632,6 +1656,39 @@ def nx_split_opposing_geoms(
                 if _multi_graph.number_of_edges(end_nd_key, new_nd_name) != 1:
                     raise ValueError(f"Number of edges between {end_nd_key} and {new_nd_name} does not equal 1.")
                 s_k = e_k = 0
+            # Snap geometry endpoints to node coordinates to prevent misalignment
+            try:
+                # s_new_geom connects start_nd_key to new_nd_name
+                s_xy = (s_nd_data["x"], s_nd_data["y"])
+                new_xy = (nearest_point.x, nearest_point.y)
+                s_coords = util.align_linestring_coords(s_new_geom.coords, s_xy, tolerance=buffer_dist)
+                s_coords = util.snap_linestring_startpoint(s_coords, s_xy)
+                s_coords = util.snap_linestring_endpoint(s_coords, new_xy)
+                s_new_geom = geometry.LineString(s_coords)
+                # e_new_geom connects end_nd_key to new_nd_name
+                e_nd_data = _multi_graph.nodes[end_nd_key]
+                e_xy = (e_nd_data["x"], e_nd_data["y"])
+                e_coords = util.align_linestring_coords(e_new_geom.coords, e_xy, tolerance=buffer_dist)
+                e_coords = util.snap_linestring_startpoint(e_coords, e_xy)
+                e_coords = util.snap_linestring_endpoint(e_coords, new_xy)
+                e_new_geom = geometry.LineString(e_coords)
+            except Exception as e:
+                logger.warning(f"Error snapping split geometries to nodes: {e}, skipping split.")
+                # Remove the added edges and node
+                _multi_graph.remove_edge(start_nd_key, new_nd_name, s_k)
+                _multi_graph.remove_edge(end_nd_key, new_nd_name, e_k)
+                _multi_graph.remove_node(new_nd_name)
+                node_group.pop()
+                continue
+            # Check for degenerate geometries after snapping
+            if s_new_geom.length < 0.001 or e_new_geom.length < 0.001:
+                logger.warning("Degenerate geometry after snapping endpoints, skipping split.")
+                # Remove the added edges and node
+                _multi_graph.remove_edge(start_nd_key, new_nd_name, s_k)
+                _multi_graph.remove_edge(end_nd_key, new_nd_name, e_k)
+                _multi_graph.remove_node(new_nd_name)
+                node_group.pop()
+                continue
             # write the new edges
             _multi_graph[start_nd_key][new_nd_name][s_k]["geom"] = s_new_geom  # type: ignore
             _multi_graph[end_nd_key][new_nd_name][e_k]["geom"] = e_new_geom  # type: ignore
@@ -1681,6 +1738,9 @@ def nx_split_opposing_geoms(
                         [new_nd_data["x"], new_nd_data["y"]],
                     ]
                 )
+                # Skip degenerate (zero-length) geometries
+                if new_geom.length < 0.001:
+                    continue
                 # don't add overly similar new edges
                 if template is None:
                     template = new_geom.buffer(5, cap_style=BufferCapStyle.flat)
