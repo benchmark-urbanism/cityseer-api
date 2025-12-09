@@ -644,7 +644,7 @@ impl DataMap {
             .iter()
             .max()
             .expect("Distances should not be empty");
-        let landuses_map = landuses_map.bind(py).downcast::<PyDict>()?;
+        let landuses_map: &Bound<'_, PyDict> = landuses_map.bind(py).cast()?;
         if landuses_map.len() != self.count() {
             return Err(exceptions::PyValueError::new_err(
                 "The number of landuse encodings must match the number of data points",
@@ -652,7 +652,6 @@ impl DataMap {
         }
         let mut lu_map: HashMap<String, String> = HashMap::with_capacity(self.count());
         for (py_key, py_val) in landuses_map.iter() {
-            let py_key = py_key.downcast::<PyAny>()?;
             let comp_key = py_key_to_composite(py_key.clone())?;
             let lu_val: String = py_val.extract()?;
             if !self.get_entry(&comp_key).is_some() {

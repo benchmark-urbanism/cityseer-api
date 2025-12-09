@@ -1572,9 +1572,6 @@ def nx_split_opposing_geoms(
             new_edge_geom_a: geometry.LineString
             new_edge_geom_b: geometry.LineString
             new_edge_geom_a, new_edge_geom_b = split_geoms.geoms  # type: ignore
-            # don't make overly short edges
-            if new_edge_geom_a.length < buffer_dist / 2 or new_edge_geom_b.length < buffer_dist / 2:
-                continue
             # add the new node and edges to _multi_graph (don't modify nx_multigraph because of iter in place)
             new_nd_name, is_dupe = util.add_node(
                 _multi_graph,
