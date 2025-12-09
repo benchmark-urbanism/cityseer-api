@@ -84,17 +84,15 @@ def validate_cityseer_networkx_graph(
                 "attribute consisting of a shapely LineString. Simple (straight) geometries can be inferred "
                 "automatically through the nx_simple_geoms() method."
             )
+        # check if geometry is a LineString
+        line_geom: geometry.LineString = edge_data["geom"]
+        if line_geom.geom_type != "LineString":
+            raise TypeError(f"Found {line_geom.geom_type} instead of LineString at edge {start_nd_key}-{end_nd_key}.")
+        if line_geom.is_empty:
+            raise TypeError(f"Found empty geom for edge {start_nd_key}-{end_nd_key}.")
+        if not line_geom.is_valid:
+            raise TypeError(f"Found invalid geom for edge {start_nd_key}-{end_nd_key}.")
         if validate_edges is True:
-            # check if geometry is a LineString
-            line_geom: geometry.LineString = edge_data["geom"]
-            if line_geom.geom_type != "LineString":
-                raise TypeError(
-                    f"Found {line_geom.geom_type} instead of LineString at edge {start_nd_key}-{end_nd_key}."
-                )
-            if line_geom.is_empty:
-                raise TypeError(f"Found empty geom for edge {start_nd_key}-{end_nd_key}.")
-            if not line_geom.is_valid:
-                raise TypeError(f"Found invalid geom for edge {start_nd_key}-{end_nd_key}.")
             # Check for degenerate (zero-length) LineStrings where start and end points are identical
             if g_multi_copy.graph["crs"].is_projected and line_geom.length < 0.001:
                 raise TypeError(

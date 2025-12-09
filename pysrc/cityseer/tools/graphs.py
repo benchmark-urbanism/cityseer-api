@@ -1500,10 +1500,7 @@ def nx_split_opposing_geoms(
             start_nd_key = edge_lookup["start_nd_key"]
             end_nd_key = edge_lookup["end_nd_key"]
             edge_idx = edge_lookup["edge_idx"]
-            # Use _multi_graph (the working copy) not nx_multigraph (the original)
-            if not _multi_graph.has_edge(start_nd_key, end_nd_key, edge_idx):
-                continue
-            edge_data: dict = _multi_graph[start_nd_key][end_nd_key][edge_idx]
+            edge_data: dict = nx_multigraph[start_nd_key][end_nd_key][edge_idx]
             # don't add attached edge
             if nd_key in (start_nd_key, end_nd_key):
                 continue
