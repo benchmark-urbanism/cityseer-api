@@ -350,10 +350,10 @@ def _auto_clean_network(
     # clean by highway types - leave motorways alone
     # split only for a given type at a time
     for dist, tags, max_angle in (
-        (28, ["trunk"], 45),
-        (24, ["primary"], 45),
-        (20, ["secondary"], 45),
-        (16, ["tertiary"], 45),
+        (40, ["trunk"], 30),
+        (32, ["primary"], 35),
+        (28, ["secondary"], 40),
+        (24, ["tertiary"], 45),
     ):
         G = graphs.nx_split_opposing_geoms(
             G,
@@ -368,10 +368,10 @@ def _auto_clean_network(
         )
     # consolidate
     for dist, tags, max_angle in (
-        (28, ["trunk"], 95),
-        (24, ["trunk", "primary"], 95),
-        (20, ["trunk", "primary", "secondary"], 95),
-        (16, ["trunk", "primary", "secondary", "tertiary"], 95),
+        (32, ["trunk"], 45),
+        (28, ["primary"], 50),
+        (24, ["secondary"], 55),
+        (20, ["tertiary"], 60),
     ):
         G = graphs.nx_consolidate_nodes(
             G,
@@ -395,7 +395,7 @@ def _auto_clean_network(
             "cycleway",
             "bridleway",
             "pedestrian",
-            "steps",
+            # "steps",
             "footway",
             "footway_green",
             "footway_pedestrian",  # plazas
@@ -423,7 +423,7 @@ def _auto_clean_network(
             "cycleway",
             "bridleway",
             "pedestrian",
-            "steps",
+            # "steps",
             "footway",
             "footway_green",
             "footway_pedestrian",  # plazas
@@ -446,13 +446,13 @@ def _auto_clean_network(
             centroid_by_itx=True,
             osm_hwy_target_tags=[
                 # "trunk",  # intentionally omitted
-                "primary",
-                "primary_link",
-                "secondary",
-                "secondary_link",
-                "tertiary",
-                "tertiary_link",
-                "residential",
+                # "primary",
+                # "primary_link",
+                # "secondary",
+                # "secondary_link",
+                # "tertiary",
+                # "tertiary_link",
+                # "residential",
                 "living_street",
                 "service",
                 "cycleway",
@@ -474,15 +474,15 @@ def _auto_clean_network(
             crawl=True,
             centroid_by_itx=True,
             osm_hwy_target_tags=[
-                "trunk",
-                "trunk_link",
-                "primary",
-                "primary_link",
-                "secondary",
-                "secondary_link",
-                "tertiary",
-                "tertiary_link",
-                "residential",
+                # "trunk",
+                # "trunk_link",
+                # "primary",
+                # "primary_link",
+                # "secondary",
+                # "secondary_link",
+                # "tertiary",
+                # "tertiary_link",
+                # "residential",
                 "living_street",
                 "service",
                 "cycleway",
@@ -514,7 +514,7 @@ def osm_graph_from_poly(
     to_crs_code: int | str | None = None,
     custom_request: str | None = None,
     simplify: bool = True,
-    final_clean_distances: tuple[int, ...] = (5, 10),
+    final_clean_distances: tuple[int, ...] = (4, 8),
     remove_disconnected: int = 100,
     cycleways: bool = True,
     busways: bool = False,
