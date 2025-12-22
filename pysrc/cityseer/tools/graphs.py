@@ -283,7 +283,7 @@ def nx_remove_dangling_nodes(
 
     # finds connected components - this behaviour changed with networkx v2.4
     # do this after to prevent creation of new isolated components after dropping tunnels
-    connected_components = list(nx.algorithms.components.connected_components(g_multi_copy))
+    connected_components = list(nx.algorithms.components.connected_components(g_multi_copy))  # type: ignore
     # keep connected components greater than remove_disconnected param
     large_components = [component for component in connected_components if len(component) >= remove_disconnected]
     large_subgraphs = [g_multi_copy.subgraph(component).copy() for component in large_components]

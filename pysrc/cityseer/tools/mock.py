@@ -485,7 +485,13 @@ def mock_gtfs_stops_txt(path: str):
         "stop_lat": [51.5875, 51.5905, 51.5935, 51.5933, 51.596],
         "stop_lon": [-0.0965, -0.0985, -0.1022, -0.107, -0.1075],
     }
-    stops_gdf = gpd.GeoDataFrame(stops, geometry=gpd.points_from_xy(stops["stop_lon"], stops["stop_lat"]))
+    stops_gdf = gpd.GeoDataFrame(
+        stops,
+        geometry=gpd.points_from_xy(
+            stops["stop_lon"],
+            stops["stop_lat"],
+        ),
+    )  # type: ignore
     stops_gdf.to_csv(output_path / "stops.txt", index=False)
 
     stop_times = {
