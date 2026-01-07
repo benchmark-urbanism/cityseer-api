@@ -1,5 +1,6 @@
 use ndarray::{Array2, ArrayView2};
-use numpy::{IntoPyArray, PyArray2, PyReadonlyArray2};
+use numpy::ToPyArray;
+use numpy::{PyArray2, PyReadonlyArray2};
 use pyo3::prelude::*;
 use rayon::prelude::*;
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -247,7 +248,7 @@ impl Viewshed {
         }
         let max_res_dist = view_distance / resolution; // Ensure we don't divide by zero
 
-        let results: Vec<(u32, f32, f32)> = py.allow_threads(move || {
+        let results: Vec<(u32, f32, f32)> = py.detach(move || {
             (0..height * width)
                 .into_par_iter()
                 .map(|index| {
@@ -257,7 +258,7 @@ impl Viewshed {
                     let start_y = index / width;
                     let start_x = index % width;
                     calculate_visible_cells(
-                        raster_array,
+                        raster_array.view(),
                         max_res_dist,
                         observer_height,
                         start_x,
@@ -270,18 +271,18 @@ impl Viewshed {
 
         let array_u32 = Array2::from_shape_vec((height, width), results_u32)
             .unwrap()
-            .into_pyarray(py)
-            .to_owned();
+            .to_pyarray(py)
+            .unbind();
         let array_f32_a = Array2::from_shape_vec((height, width), results_f32_a)
             .unwrap()
-            .into_pyarray(py)
-            .to_owned();
+            .to_pyarray(py)
+            .unbind();
         let array_f32_b = Array2::from_shape_vec((height, width), results_f32_b)
             .unwrap()
-            .into_pyarray(py)
-            .to_owned();
+            .to_pyarray(py)
+            .unbind();
 
-        Ok((array_u32.into(), array_f32_a.into(), array_f32_b.into()))
+        Ok((array_u32, array_f32_a, array_f32_b))
     }
 
     /// Compute the viewshed for a single origin cell.
@@ -305,7 +306,7 @@ impl Viewshed {
         }
         let max_res_dist = view_distance / resolution; // Ensure we don't divide by zero
         let visibility = calculate_viewshed(
-            raster_array,
+            raster_array.view(),
             max_res_dist,
             observer_height,
             origin_x,
@@ -313,9 +314,9 @@ impl Viewshed {
         );
         let numpy_array = Array2::from_shape_vec((height, width), visibility)
             .unwrap()
-            .into_pyarray(py)
-            .to_owned();
-        Ok(numpy_array.into())
+            .to_pyarray(py)
+            .unbind();
+        Ok(numpy_array)
     }
 }
 

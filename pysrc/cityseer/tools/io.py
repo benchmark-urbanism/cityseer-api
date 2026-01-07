@@ -260,6 +260,9 @@ def _auto_clean_network(
     green_service_roads: bool = False,
 ) -> nx.MultiGraph:
     """ """
+    # Skip intermediate validations for performance - validate once at the end
+    was_skipping = config.SKIP_VALIDATION
+    config.SKIP_VALIDATION = True
     # deduplicate by hierarchy
     G = graphs.nx_deduplicate_edges(G, dissolve_distance=20, max_ang_diff=20)
     # parks
@@ -342,13 +345,15 @@ def _auto_clean_network(
     G.remove_edges_from(remove_edges)
     # remove disconnected components
     G = graphs.nx_remove_dangling_nodes(G, despine=0, remove_disconnected=remove_disconnected)
+    # initialize tag cache for performance
+    tag_cache: dict = {}
     # clean by highway types - leave motorways alone
     # split only for a given type at a time
     for dist, tags, max_angle in (
-        (28, ["trunk"], 45),
-        (24, ["primary"], 45),
-        (20, ["secondary"], 45),
-        (16, ["tertiary"], 45),
+        (40, ["trunk"], 30),
+        (32, ["primary"], 35),
+        (28, ["secondary"], 40),
+        (24, ["tertiary"], 45),
     ):
         G = graphs.nx_split_opposing_geoms(
             G,
@@ -359,13 +364,14 @@ def _auto_clean_network(
             osm_matched_tags_only=True,
             prioritise_by_hwy_tag=True,
             simplify_by_max_angle=max_angle,
+            tag_cache=tag_cache,
         )
     # consolidate
     for dist, tags, max_angle in (
-        (28, ["trunk"], 95),
-        (24, ["trunk", "primary"], 95),
-        (20, ["trunk", "primary", "secondary"], 95),
-        (16, ["trunk", "primary", "secondary", "tertiary"], 95),
+        (32, ["trunk"], 45),
+        (28, ["primary"], 50),
+        (24, ["secondary"], 55),
+        (20, ["tertiary"], 60),
     ):
         G = graphs.nx_consolidate_nodes(
             G,
@@ -376,6 +382,7 @@ def _auto_clean_network(
             osm_matched_tags_only=True,
             prioritise_by_hwy_tag=True,
             simplify_by_max_angle=max_angle,
+            tag_cache=tag_cache,
         )
         G = graphs.nx_remove_filler_nodes(G)
     # snap gapped endings - don't clean danglers before this
@@ -388,13 +395,14 @@ def _auto_clean_network(
             "cycleway",
             "bridleway",
             "pedestrian",
-            "steps",
+            # "steps",
             "footway",
             "footway_green",
             "footway_pedestrian",  # plazas
             "path",
         ],
         buffer_dist=20,
+        tag_cache=tag_cache,
     )
     # snap gapped endings to roads - don't clean danglers before this
     # look for degree 1 dead-ends and link to nearby edges
@@ -415,7 +423,7 @@ def _auto_clean_network(
             "cycleway",
             "bridleway",
             "pedestrian",
-            "steps",
+            # "steps",
             "footway",
             "footway_green",
             "footway_pedestrian",  # plazas
@@ -424,6 +432,7 @@ def _auto_clean_network(
         min_node_degree=1,
         max_node_degree=1,
         squash_nodes=False,
+        tag_cache=tag_cache,
     )
     # remove danglers
     G = graphs.nx_remove_dangling_nodes(G, despine=40)
@@ -437,13 +446,13 @@ def _auto_clean_network(
             centroid_by_itx=True,
             osm_hwy_target_tags=[
                 # "trunk",  # intentionally omitted
-                "primary",
-                "primary_link",
-                "secondary",
-                "secondary_link",
-                "tertiary",
-                "tertiary_link",
-                "residential",
+                # "primary",
+                # "primary_link",
+                # "secondary",
+                # "secondary_link",
+                # "tertiary",
+                # "tertiary_link",
+                # "residential",
                 "living_street",
                 "service",
                 "cycleway",
@@ -457,6 +466,7 @@ def _auto_clean_network(
             ],
             prioritise_by_hwy_tag=True,
             simplify_by_max_angle=max_angle,
+            tag_cache=tag_cache,
         )
         G = graphs.nx_consolidate_nodes(
             G,
@@ -464,15 +474,15 @@ def _auto_clean_network(
             crawl=True,
             centroid_by_itx=True,
             osm_hwy_target_tags=[
-                "trunk",
-                "trunk_link",
-                "primary",
-                "primary_link",
-                "secondary",
-                "secondary_link",
-                "tertiary",
-                "tertiary_link",
-                "residential",
+                # "trunk",
+                # "trunk_link",
+                # "primary",
+                # "primary_link",
+                # "secondary",
+                # "secondary_link",
+                # "tertiary",
+                # "tertiary_link",
+                # "residential",
                 "living_street",
                 "service",
                 "cycleway",
@@ -486,14 +496,16 @@ def _auto_clean_network(
             ],
             prioritise_by_hwy_tag=True,
             simplify_by_max_angle=max_angle,
+            tag_cache=tag_cache,
         )
     G = graphs.nx_remove_filler_nodes(G)
     G = graphs.nx_merge_parallel_edges(G, merge_edges_by_midline=True, contains_buffer_dist=50)
     G = graphs.nx_iron_edges(G, min_self_loop_length=100, max_foot_tunnel_length=100)
     # do this last to clean up any orphaned sub components
     G = graphs.nx_remove_dangling_nodes(G, despine=25)
-
-    return G
+    # Restore validation flag and validate once at the end
+    config.SKIP_VALIDATION = was_skipping
+    return util.validate_cityseer_networkx_graph(G)
 
 
 def osm_graph_from_poly(
@@ -502,7 +514,7 @@ def osm_graph_from_poly(
     to_crs_code: int | str | None = None,
     custom_request: str | None = None,
     simplify: bool = True,
-    final_clean_distances: tuple[int, ...] = (5, 10),
+    final_clean_distances: tuple[int, ...] = (4, 8),
     remove_disconnected: int = 100,
     cycleways: bool = True,
     busways: bool = False,
@@ -629,8 +641,6 @@ def osm_graph_from_poly(
         """
     # generate the query
     osm_response = fetch_osm_network(request, timeout=timeout, max_tries=max_tries)
-    # set config to skip validation
-    config.SKIP_VALIDATION = True
     # build graph
     graph_wgs = nx_from_osm(osm_json=osm_response.text)  # type: ignore
     graph_wgs = graphs.nx_simple_geoms(graph_wgs)
@@ -652,8 +662,6 @@ def osm_graph_from_poly(
             green_footways,
             green_service_roads,
         )
-    # reset validation flag
-    config.SKIP_VALIDATION = False
 
     return util.validate_cityseer_networkx_graph(graph_crs)
 
@@ -755,8 +763,7 @@ def nx_from_osm(osm_json: str) -> nx.MultiGraph:
                     start_nd_key, end_nd_key = get_merged_nd_keys(idx)
                     nx_multigraph.add_edge(start_nd_key, end_nd_key)
 
-    # geoms not created yet
-    return util.validate_cityseer_networkx_graph(nx_multigraph, validate_edges=False)
+    return nx_multigraph  # skip validation as geoms not yet assigned
 
 
 def nx_from_osm_nx(

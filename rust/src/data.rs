@@ -319,7 +319,7 @@ pub struct DataEntry {
 
 impl Clone for DataEntry {
     fn clone(&self) -> Self {
-        Python::with_gil(|py| DataEntry {
+        Python::attach(|py| DataEntry {
             data_key_py: self.data_key_py.clone_ref(py),
             data_key: self.data_key.clone(),
             dedupe_key_py: self.dedupe_key_py.clone_ref(py),
@@ -644,7 +644,7 @@ impl DataMap {
             .iter()
             .max()
             .expect("Distances should not be empty");
-        let landuses_map = landuses_map.bind(py).downcast::<PyDict>()?;
+        let landuses_map: &Bound<'_, PyDict> = landuses_map.bind(py).cast()?;
         if landuses_map.len() != self.count() {
             return Err(exceptions::PyValueError::new_err(
                 "The number of landuse encodings must match the number of data points",
@@ -652,7 +652,6 @@ impl DataMap {
         }
         let mut lu_map: HashMap<String, String> = HashMap::with_capacity(self.count());
         for (py_key, py_val) in landuses_map.iter() {
-            let py_key = py_key.downcast::<PyAny>()?;
             let comp_key = py_key_to_composite(py_key.clone())?;
             let lu_val: String = py_val.extract()?;
             if !self.get_entry(&comp_key).is_some() {
@@ -680,7 +679,7 @@ impl DataMap {
         let pbar_disabled = pbar_disabled.unwrap_or(false);
         self.progress_init();
 
-        let result = py.allow_threads(move || {
+        let result = py.detach(move || {
             node_indices.par_iter().for_each(|netw_src_idx| {
                 if !pbar_disabled {
                     self.progress.fetch_add(1, AtomicOrdering::Relaxed);
@@ -773,7 +772,7 @@ impl DataMap {
             pair_distances_betas_time(speed_m_s, distances, betas, minutes, min_threshold_wt)?;
 
         let max_walk_seconds = *seconds.iter().max().unwrap();
-        let landuses_map = landuses_map.bind(py).downcast::<PyDict>()?;
+        let landuses_map = landuses_map.bind(py).cast::<PyDict>()?;
         if landuses_map.len() != self.count() {
             return Err(exceptions::PyValueError::new_err(
                 "The number of landuse encodings must match the number of data points",
@@ -781,7 +780,7 @@ impl DataMap {
         }
         let mut lu_map: HashMap<String, String> = HashMap::with_capacity(self.count());
         for (py_key, py_val) in landuses_map.iter() {
-            let py_key = py_key.downcast::<PyAny>()?;
+            let py_key = py_key.cast::<PyAny>()?;
             let comp_key = py_key_to_composite(py_key.clone())?;
             let lu_val: String = py_val.extract()?;
             if !self.get_entry(&comp_key).is_some() {
@@ -811,7 +810,7 @@ impl DataMap {
         let pbar_disabled = pbar_disabled.unwrap_or(false);
         self.progress_init();
 
-        let result = py.allow_threads(move || {
+        let result = py.detach(move || {
             let mut classes_uniq: HashSet<String> = HashSet::new();
             for cl_code in lu_map.values() {
                 classes_uniq.insert(cl_code.clone());
@@ -1033,7 +1032,7 @@ impl DataMap {
         let max_walk_seconds = *seconds.iter().max().unwrap();
         let mut num_maps: Vec<HashMap<String, f32>> = Vec::with_capacity(numerical_maps.len());
         for numerical_map in numerical_maps.iter() {
-            let numerical_map = numerical_map.bind(py).downcast::<PyDict>()?;
+            let numerical_map = numerical_map.bind(py).cast::<PyDict>()?;
             if numerical_map.len() != self.count() {
                 return Err(exceptions::PyValueError::new_err(
                     "The number of numeric data points must match the number of data points",
@@ -1042,7 +1041,7 @@ impl DataMap {
             let mut num_map: HashMap<String, f32> = HashMap::with_capacity(self.count());
             // ToDo check order?
             for (py_key, py_val) in numerical_map.iter() {
-                let py_key = py_key.downcast::<PyAny>()?;
+                let py_key = py_key.cast::<PyAny>()?;
                 let comp_key = py_key_to_composite(py_key.clone())?;
                 let num_val: f32 = py_val.extract()?;
                 if !self.get_entry(&comp_key).is_some() {
@@ -1071,7 +1070,7 @@ impl DataMap {
         let pbar_disabled = pbar_disabled.unwrap_or(false);
         self.progress_init();
 
-        let result = py.allow_threads(move || {
+        let result = py.detach(move || {
             node_indices.par_iter().for_each(|netw_src_idx| {
                 if !pbar_disabled {
                     self.progress.fetch_add(1, AtomicOrdering::Relaxed);

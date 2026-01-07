@@ -17,15 +17,15 @@ crate-type = ["cdylib"]
 
 [dependencies]
 atomic_float = "1.1.0"
-geo = "0.30.0"
+geo = "0.31.0"
 ndarray = "0.16.1"
-numpy = "0.24.0"
-petgraph = "0.7.1"
-pyo3 = { version = "0.24.2", features = ["multiple-pymethods"] }
-rand = "0.9.0"
+numpy = "0.27.0"
+petgraph = "0.8.3"
+pyo3 = { version = "0.27.1", features = ["multiple-pymethods"] }
+rand = "0.9.2"
 rand_distr = "0.5.1"
-rayon = "1.10.0"
+rayon = "1.11.0"
 rstar = "0.12.2"
-wkt = "0.13.0"
-log = "0.4"
-pyo3-log = "0.12.3"
+wkt = "0.14.0"
+log = "0.4.28"
+pyo3-log = "0.13.2"

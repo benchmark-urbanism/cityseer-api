@@ -1,6 +1,6 @@
 use atomic_float::AtomicF32;
 use numpy::borrow::PyReadonlyArray2;
-use numpy::{IntoPyArray, PyArray1};
+use numpy::{PyArray1, ToPyArray};
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use std::collections::HashMap;
@@ -42,7 +42,7 @@ impl MetricResult {
             .map(|(&dist, row)| {
                 let vec_f32: Vec<f32> = row.iter().map(|a| a.load(Ordering::Relaxed)).collect();
                 // Convert filtered vector to PyArray
-                let array = Python::with_gil(|py| vec_f32.into_pyarray(py).to_owned().into());
+                let array = Python::attach(|py| vec_f32.to_pyarray(py).unbind());
                 (dist, array)
             })
             .collect()

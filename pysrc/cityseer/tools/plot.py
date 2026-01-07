@@ -265,11 +265,11 @@ def plot_nx_primal_or_dual(  # noqa
             font_color="w",
             font_weight="bold",
             nodelist=node_list,
-            node_color=_node_colour,
+            node_color=_node_colour,  # type: ignore
             node_size=_node_size,
             node_shape=_node_shape,
             edgelist=edge_list,
-            edge_color=_edge_colour,
+            edge_color=_edge_colour,  # type: ignore
             style=_edge_style,
             width=_edge_width,
             alpha=alpha,
@@ -498,7 +498,7 @@ def plot_assignment(
         font_size=5,
         font_color="w",
         font_weight="bold",
-        node_color=node_colour,
+        node_color=node_colour,  # type: ignore
         node_size=30,
         node_shape="o",
         edge_color="w",

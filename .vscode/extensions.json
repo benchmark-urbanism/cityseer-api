@@ -8,10 +8,10 @@
     "ms-toolsai.jupyter-renderers",
     "davidanson.vscode-markdownlint",
     "bierner.markdown-mermaid",
-    "ms-python.vscode-pylance",
     "ms-python.python",
     "ms-python.debugpy",
     "charliermarsh.ruff",
-    "mhutchie.git-graph"
+    "mhutchie.git-graph",
+    "astral-sh.ty"
   ]
 }
