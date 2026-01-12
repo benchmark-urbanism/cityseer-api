@@ -387,6 +387,8 @@ class NetworkStructure:
         min_threshold_wt: float | None = None,
         speed_m_s: float | None = None,
         jitter_scale: float | None = None,
+        sample_probability: float | None = None,
+        weighted_sample: bool | None = None,
         pbar_disabled: bool | None = None,
     ) -> CentralityShortestResult:
         """
@@ -434,6 +436,8 @@ class NetworkStructure:
         angular_scaling_unit: float | None = None,
         farness_scaling_offset: float | None = None,
         jitter_scale: float | None = None,
+        sample_probability: float | None = None,
+        weighted_sample: bool | None = None,
         pbar_disabled: bool | None = None,
     ) -> CentralitySimplestResult:
         """
@@ -464,6 +468,10 @@ class NetworkStructure:
             Offset for farness calculation (default: 1.0).
         jitter_scale: float | None
             Path cost jitter scale.
+        sample_probability: float | None
+            Probability of sampling a node as a source for centrality calculations.
+        weighted_sample: bool | None
+            If True, multiply sample_probability by node weight.
         pbar_disabled: bool | None
             Disable progress bar if True.
 
@@ -483,6 +491,8 @@ class NetworkStructure:
         min_threshold_wt: float | None = None,
         speed_m_s: float | None = None,
         jitter_scale: float | None = None,
+        sample_probability: float | None = None,
+        weighted_sample: bool | None = None,
         pbar_disabled: bool | None = None,
     ) -> CentralitySegmentResult:
         """
@@ -509,6 +519,10 @@ class NetworkStructure:
             Travel speed (m/s).
         jitter_scale: float | None
             Path cost jitter scale.
+        sample_probability: float | None
+            Probability of sampling a node as a source for centrality calculations.
+        weighted_sample: bool | None
+            If True, multiply sample_probability by node weight.
         pbar_disabled: bool | None
             Disable progress bar if True.
 

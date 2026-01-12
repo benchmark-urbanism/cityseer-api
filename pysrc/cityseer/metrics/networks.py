@@ -81,6 +81,8 @@ def node_centrality_shortest(
     min_threshold_wt: float = MIN_THRESH_WT,
     speed_m_s: float = SPEED_M_S,
     jitter_scale: float = 0.0,
+    sample_probability: float | None = None,
+    weighted_sample: bool | None = None,
 ) -> gpd.GeoDataFrame:
     r"""
     Compute node-based network centrality using the shortest path heuristic.
@@ -131,6 +133,10 @@ def node_centrality_shortest(
         shortest path calculations to provide random variation to the paths traced through the network. When working
         with shortest paths in metres, the random value represents distance in metres. When using a simplest path
         heuristic, the jitter will represent angular change in degrees.
+    sample_probability: float
+        Probability of sampling a node as a source for centrality calculations.
+    weighted_sample: bool
+        If True, multiply sample_probability by node weight.
 
     Returns
     -------
@@ -173,6 +179,8 @@ def node_centrality_shortest(
         min_threshold_wt=min_threshold_wt,
         speed_m_s=speed_m_s,
         jitter_scale=jitter_scale,
+        sample_probability=sample_probability,
+        weighted_sample=weighted_sample,
     )
     # wraps progress bar
     result = config.wrap_progress(
@@ -234,6 +242,8 @@ def node_centrality_simplest(
     angular_scaling_unit: float = 90,
     farness_scaling_offset: float = 1,
     jitter_scale: float = 0.0,
+    sample_probability: float | None = None,
+    weighted_sample: bool | None = None,
 ) -> gpd.GeoDataFrame:
     r"""
     Compute node-based network centrality using the simplest path (angular) heuristic.
@@ -291,6 +301,10 @@ def node_centrality_simplest(
         shortest path calculations to provide random variation to the paths traced through the network. When working
         with shortest paths in metres, the random value represents distance in metres. When using a simplest path
         heuristic, the jitter will represent angular change in degrees.
+    sample_probability: float
+        Probability of sampling a node as a source for centrality calculations.
+    weighted_sample: bool
+        If True, multiply sample_probability by node weight.
 
     Returns
     -------
@@ -329,6 +343,8 @@ def node_centrality_simplest(
         angular_scaling_unit=angular_scaling_unit,
         farness_scaling_offset=farness_scaling_offset,
         jitter_scale=jitter_scale,
+        sample_probability=sample_probability,
+        weighted_sample=weighted_sample,
     )
     # wraps progress bar
     result = config.wrap_progress(
@@ -383,6 +399,8 @@ def segment_centrality(
     min_threshold_wt: float = MIN_THRESH_WT,
     speed_m_s: float = SPEED_M_S,
     jitter_scale: float = 0.0,
+    sample_probability: float | None = None,
+    weighted_sample: bool | None = None,
 ) -> gpd.GeoDataFrame:
     r"""
     Compute segment-based network centrality using the shortest path heuristic.
@@ -432,6 +450,10 @@ def segment_centrality(
         shortest path calculations to provide random variation to the paths traced through the network. When working
         with shortest paths in metres, the random value represents distance in metres. When using a simplest path
         heuristic, the jitter will represent angular change in degrees.
+    sample_probability: float
+        Probability of sampling a node as a source for centrality calculations.
+    weighted_sample: bool
+        If True, multiply sample_probability by node weight.
 
     Returns
     -------
@@ -464,6 +486,8 @@ def segment_centrality(
         min_threshold_wt=min_threshold_wt,
         speed_m_s=speed_m_s,
         jitter_scale=jitter_scale,
+        sample_probability=sample_probability,
+        weighted_sample=weighted_sample,
     )
     # wraps progress bar
     result = config.wrap_progress(

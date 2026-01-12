@@ -493,6 +493,8 @@ impl NetworkStructure {
         min_threshold_wt=None,
         speed_m_s=None,
         jitter_scale=None,
+        sample_probability=None,
+        weighted_sample=None,
         pbar_disabled=None
     ))]
     pub fn local_node_centrality_shortest(
@@ -505,6 +507,8 @@ impl NetworkStructure {
         min_threshold_wt: Option<f32>,
         speed_m_s: Option<f32>,
         jitter_scale: Option<f32>,
+        sample_probability: Option<f32>,
+        weighted_sample: Option<bool>,
         pbar_disabled: Option<bool>,
         py: Python,
     ) -> PyResult<CentralityShortestResult> {
@@ -547,6 +551,16 @@ impl NetworkStructure {
                 }
                 if !self.is_node_live(*src_idx) {
                     return;
+                }
+                if let Some(prob) = sample_probability {
+                    let mut p = prob;
+                    if weighted_sample.unwrap_or(false) {
+                        p *= self.get_node_weight(*src_idx);
+                    }
+                    let mut rng = rand::rng();
+                    if rng.random::<f32>() > p {
+                        return;
+                    }
                 }
                 let (visited_nodes, tree_map) = self.dijkstra_tree_shortest(
                     *src_idx,
@@ -627,6 +641,8 @@ impl NetworkStructure {
         angular_scaling_unit=None,
         farness_scaling_offset=None,
         jitter_scale=None,
+        sample_probability=None,
+        weighted_sample=None,
         pbar_disabled=None
     ))]
     pub fn local_node_centrality_simplest(
@@ -641,6 +657,8 @@ impl NetworkStructure {
         angular_scaling_unit: Option<f32>,
         farness_scaling_offset: Option<f32>,
         jitter_scale: Option<f32>,
+        sample_probability: Option<f32>,
+        weighted_sample: Option<bool>,
         pbar_disabled: Option<bool>,
         py: Python,
     ) -> PyResult<CentralitySimplestResult> {
@@ -685,6 +703,16 @@ impl NetworkStructure {
                 }
                 if !self.is_node_live(*src_idx) {
                     return;
+                }
+                if let Some(prob) = sample_probability {
+                    let mut p = prob;
+                    if weighted_sample.unwrap_or(false) {
+                        p *= self.get_node_weight(*src_idx);
+                    }
+                    let mut rng = rand::rng();
+                    if rng.random::<f32>() > p {
+                        return;
+                    }
                 }
                 let (visited_nodes, tree_map) = self.dijkstra_tree_simplest(
                     *src_idx,
@@ -752,6 +780,8 @@ impl NetworkStructure {
         min_threshold_wt=None,
         speed_m_s=None,
         jitter_scale=None,
+        sample_probability=None,
+        weighted_sample=None,
         pbar_disabled=None
     ))]
     pub fn local_segment_centrality(
@@ -764,6 +794,8 @@ impl NetworkStructure {
         min_threshold_wt: Option<f32>,
         speed_m_s: Option<f32>,
         jitter_scale: Option<f32>,
+        sample_probability: Option<f32>,
+        weighted_sample: Option<bool>,
         pbar_disabled: Option<bool>,
         py: Python,
     ) -> PyResult<CentralitySegmentResult> {
@@ -806,6 +838,16 @@ impl NetworkStructure {
                 }
                 if !self.is_node_live(*src_idx) {
                     return;
+                }
+                if let Some(prob) = sample_probability {
+                    let mut p = prob;
+                    if weighted_sample.unwrap_or(false) {
+                        p *= self.get_node_weight(*src_idx);
+                    }
+                    let mut rng = rand::rng();
+                    if rng.random::<f32>() > p {
+                        return;
+                    }
                 }
                 let (visited_nodes, visited_edges, tree_map, edge_map) =
                     self.dijkstra_tree_segment(*src_idx, max_walk_seconds, speed_m_s, jitter_scale);
