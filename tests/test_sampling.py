@@ -151,7 +151,89 @@ def test_centrality_sampling_reproducibility():
     assert np.allclose(density1, density2)
     assert not np.allclose(density1, density3)
 
+def test_segment_weight_sampling():
+    """
+    Test a workflow where weights are on segments (LineStrings) and need to be mapped to nodes.
+    """
+    import geopandas as gpd
+    from shapely.geometry import LineString
+    import networkx as nx
+    
+    # Create a simple line geometry with high weight
+    line1 = LineString([(0, 0), (10, 0)])
+    # Create another line with low weight
+    line2 = LineString([(10, 0), (20, 0)])
+    
+    # GeoDataFrame with segment weights
+    edges_gdf = gpd.GeoDataFrame(
+        {'geometry': [line1, line2], 'segment_weight': [100.0, 1.0]},
+        crs="EPSG:27700"
+    )
+    
+    # Convert to NetworkX
+    G = io.nx_from_generic_geopandas(edges_gdf)
+    
+    # Map segment weights to nodes
+    # Strategy: Assign node weight as the maximum of incident edge weights
+    for node in G.nodes():
+        incident_weights = []
+        for n_nbr, n_dict in G[node].items():
+            for edge_key, edge_data in n_dict.items():
+                if 'segment_weight' in edge_data:
+                    incident_weights.append(edge_data['segment_weight'])
+        
+        if incident_weights:
+            G.nodes[node]['weight'] = max(incident_weights)
+        else:
+            G.nodes[node]['weight'] = 0.0
+            
+    # Verify node weights
+    # Node at (0,0) connects to line1 (wt 100) -> weight 100
+    # Node at (10,0) connects to line1 (wt 100) and line2 (wt 1) -> weight 100
+    # Node at (20,0) connects to line2 (wt 1) -> weight 1
+    
+    # Get node keys (io.nx_from_generic_geopandas uses coordinates as keys string formatted)
+    # We can check values directly
+    weights = [d['weight'] for n, d in G.nodes(data=True)]
+    assert 100.0 in weights
+    assert 1.0 in weights
+    
+    # Convert to NetworkStructure
+    nodes_gdf, edges_gdf, ns = io.network_structure_from_nx(G)
+    
+    # Run weighted sampling
+    # Nodes with weight 100 should be sampled ~100x more than node with weight 1
+    # But since probs are capped at 1.0, let's normalize or use a small probability
+    # If sample_probability=0.01:
+    # High weight nodes (100) -> prob 1.0 (capped)
+    # Low weight node (1) -> prob 0.01
+    
+    res = ns.local_node_centrality_shortest(
+        distances=[500],
+        sample_probability=0.01,
+        weighted_sample=True,
+        random_seed=42,
+        pbar_disabled=True
+    )
+    
+    # Check density to see which nodes were sources
+    density = res.node_density[500]
+    sampled_indices = [i for i, val in enumerate(density) if val > 0]
+    
+    # Get the indices of high weight nodes
+    high_weight_indices = nodes_gdf[nodes_gdf['weight'] == 100.0]['ns_node_idx'].tolist()
+    low_weight_indices = nodes_gdf[nodes_gdf['weight'] == 1.0]['ns_node_idx'].tolist()
+    
+    # We expect high weight nodes to be in sampled_indices
+    for idx in high_weight_indices:
+        assert idx in sampled_indices
+    
+    # Low weight index might or might not be sampled, but much less likely. 
+    # With seed 42 and only 1 low weight node, it's deterministic.
+    # Let's just assert that we successfully processed weights.
+
 if __name__ == "__main__":
     test_centrality_sampling_speed()
     test_centrality_weighted_sampling()
     test_centrality_sampling_reproducibility()
+    test_segment_weight_sampling()
