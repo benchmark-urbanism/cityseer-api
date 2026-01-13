@@ -309,7 +309,7 @@ class NetworkStructure:
         """Remove all barrier geometries and their R-tree."""
         ...
     def dijkstra_tree_shortest(
-        self, src_idx: int, max_seconds: int, speed_m_s: float, jitter_scale: float | None = None
+        self, src_idx: int, max_seconds: int, speed_m_s: float, jitter_scale: float | None = None, random_seed: int | None = None
     ) -> tuple[list[int], list[NodeVisit]]:
         """
         Compute shortest path tree (metric distance) from a source node using Dijkstra.
@@ -324,6 +324,8 @@ class NetworkStructure:
             Travel speed (m/s) to convert edge lengths to time.
         jitter_scale: float | None
             Optional scale for random cost jitter (tie-breaking).
+        random_seed: int | None
+            Optional seed for deterministic random cost jitter.
 
         Returns
         -------
@@ -332,7 +334,7 @@ class NetworkStructure:
         """
         ...
     def dijkstra_tree_simplest(
-        self, src_idx: int, max_seconds: int, speed_m_s: float, jitter_scale: float | None = None
+        self, src_idx: int, max_seconds: int, speed_m_s: float, jitter_scale: float | None = None, random_seed: int | None = None
     ) -> tuple[list[int], list[NodeVisit]]:
         """
         Compute simplest path tree (angular distance) from a source node using Dijkstra.
@@ -347,6 +349,8 @@ class NetworkStructure:
             Travel speed (m/s).
         jitter_scale: float | None
             Optional scale for random cost jitter.
+        random_seed: int | None
+            Optional seed for deterministic random cost jitter.
 
         Returns
         -------
@@ -355,7 +359,7 @@ class NetworkStructure:
         """
         ...
     def dijkstra_tree_segment(
-        self, src_idx: int, max_seconds: int, speed_m_s: float, jitter_scale: float | None = None
+        self, src_idx: int, max_seconds: int, speed_m_s: float, jitter_scale: float | None = None, random_seed: int | None = None
     ) -> tuple[list[int], list[int], list[NodeVisit], list[EdgeVisit]]:
         """
         Compute shortest path tree for segment-based analysis.
@@ -370,6 +374,8 @@ class NetworkStructure:
             Travel speed (m/s).
         jitter_scale: float | None
             Optional scale for random cost jitter.
+        random_seed: int | None
+            Optional seed for deterministic random cost jitter.
 
         Returns
         -------
@@ -389,6 +395,7 @@ class NetworkStructure:
         jitter_scale: float | None = None,
         sample_probability: float | None = None,
         weighted_sample: bool | None = None,
+        random_seed: int | None = None,
         pbar_disabled: bool | None = None,
     ) -> CentralityShortestResult:
         """
@@ -438,6 +445,7 @@ class NetworkStructure:
         jitter_scale: float | None = None,
         sample_probability: float | None = None,
         weighted_sample: bool | None = None,
+        random_seed: int | None = None,
         pbar_disabled: bool | None = None,
     ) -> CentralitySimplestResult:
         """
@@ -493,6 +501,7 @@ class NetworkStructure:
         jitter_scale: float | None = None,
         sample_probability: float | None = None,
         weighted_sample: bool | None = None,
+        random_seed: int | None = None,
         pbar_disabled: bool | None = None,
     ) -> CentralitySegmentResult:
         """

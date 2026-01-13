@@ -83,6 +83,7 @@ def node_centrality_shortest(
     jitter_scale: float = 0.0,
     sample_probability: float | None = None,
     weighted_sample: bool | None = None,
+    random_seed: int | None = None,
 ) -> gpd.GeoDataFrame:
     r"""
     Compute node-based network centrality using the shortest path heuristic.
@@ -137,6 +138,8 @@ def node_centrality_shortest(
         Probability of sampling a node as a source for centrality calculations.
     weighted_sample: bool
         If True, multiply sample_probability by node weight.
+    random_seed: int
+        Optional seed for deterministic sampling and random cost jitter.
 
     Returns
     -------
@@ -181,6 +184,7 @@ def node_centrality_shortest(
         jitter_scale=jitter_scale,
         sample_probability=sample_probability,
         weighted_sample=weighted_sample,
+        random_seed=random_seed,
     )
     # wraps progress bar
     result = config.wrap_progress(
@@ -244,6 +248,7 @@ def node_centrality_simplest(
     jitter_scale: float = 0.0,
     sample_probability: float | None = None,
     weighted_sample: bool | None = None,
+    random_seed: int | None = None,
 ) -> gpd.GeoDataFrame:
     r"""
     Compute node-based network centrality using the simplest path (angular) heuristic.
@@ -305,6 +310,8 @@ def node_centrality_simplest(
         Probability of sampling a node as a source for centrality calculations.
     weighted_sample: bool
         If True, multiply sample_probability by node weight.
+    random_seed: int
+        Optional seed for deterministic sampling and random cost jitter.
 
     Returns
     -------
@@ -345,6 +352,7 @@ def node_centrality_simplest(
         jitter_scale=jitter_scale,
         sample_probability=sample_probability,
         weighted_sample=weighted_sample,
+        random_seed=random_seed,
     )
     # wraps progress bar
     result = config.wrap_progress(
@@ -401,6 +409,7 @@ def segment_centrality(
     jitter_scale: float = 0.0,
     sample_probability: float | None = None,
     weighted_sample: bool | None = None,
+    random_seed: int | None = None,
 ) -> gpd.GeoDataFrame:
     r"""
     Compute segment-based network centrality using the shortest path heuristic.
@@ -454,6 +463,8 @@ def segment_centrality(
         Probability of sampling a node as a source for centrality calculations.
     weighted_sample: bool
         If True, multiply sample_probability by node weight.
+    random_seed: int
+        Optional seed for deterministic sampling and random cost jitter.
 
     Returns
     -------
@@ -488,6 +499,7 @@ def segment_centrality(
         jitter_scale=jitter_scale,
         sample_probability=sample_probability,
         weighted_sample=weighted_sample,
+        random_seed=random_seed,
     )
     # wraps progress bar
     result = config.wrap_progress(

@@ -9,7 +9,8 @@ use petgraph::prelude::*;
 use petgraph::Direction;
 use pyo3::exceptions;
 use pyo3::prelude::*;
-use rand::Rng;
+use rand::prelude::*;
+use rand::rngs::StdRng;
 use rayon::prelude::*;
 use std::cmp::Ordering;
 use std::collections::BinaryHeap;
@@ -233,13 +234,14 @@ impl Eq for NodeDistance {}
 
 #[pymethods]
 impl NetworkStructure {
-    #[pyo3(signature = (src_idx, max_seconds, speed_m_s, jitter_scale=None))]
+    #[pyo3(signature = (src_idx, max_seconds, speed_m_s, jitter_scale=None, random_seed=None))]
     pub fn dijkstra_tree_shortest(
         &self,
         src_idx: usize,
         max_seconds: u32,
         speed_m_s: f32,
         jitter_scale: Option<f32>,
+        random_seed: Option<u64>,
     ) -> (Vec<usize>, Vec<NodeVisit>) {
         let jitter_scale = jitter_scale.unwrap_or(0.0);
         let mut tree_map = vec![NodeVisit::new(); self.node_count()];
@@ -252,7 +254,11 @@ impl NetworkStructure {
             node_idx: src_idx,
             metric: 0.0,
         });
-        let mut rng = rand::rng();
+        let mut rng = if let Some(seed) = random_seed {
+            StdRng::seed_from_u64(seed)
+        } else {
+            StdRng::from_rng(&mut rand::rng())
+        };
         while let Some(NodeDistance { node_idx, .. }) = active.pop() {
             tree_map[node_idx].visited = true;
             visited_nodes.push(node_idx);
@@ -308,13 +314,14 @@ impl NetworkStructure {
         (visited_nodes, tree_map)
     }
 
-    #[pyo3(signature = (src_idx, max_seconds, speed_m_s, jitter_scale=None))]
+    #[pyo3(signature = (src_idx, max_seconds, speed_m_s, jitter_scale=None, random_seed=None))]
     pub fn dijkstra_tree_simplest(
         &self,
         src_idx: usize,
         max_seconds: u32,
         speed_m_s: f32,
         jitter_scale: Option<f32>,
+        random_seed: Option<u64>,
     ) -> (Vec<usize>, Vec<NodeVisit>) {
         let jitter_scale = jitter_scale.unwrap_or(0.0);
         let mut tree_map = vec![NodeVisit::new(); self.node_count()];
@@ -327,7 +334,11 @@ impl NetworkStructure {
             node_idx: src_idx,
             metric: 0.0,
         });
-        let mut rng = rand::rng();
+        let mut rng = if let Some(seed) = random_seed {
+            StdRng::seed_from_u64(seed)
+        } else {
+            StdRng::from_rng(&mut rand::rng())
+        };
         while let Some(NodeDistance { node_idx, .. }) = active.pop() {
             tree_map[node_idx].visited = true;
             visited_nodes.push(node_idx);
@@ -395,13 +406,14 @@ impl NetworkStructure {
         (visited_nodes, tree_map)
     }
 
-    #[pyo3(signature = (src_idx, max_seconds, speed_m_s, jitter_scale=None))]
+    #[pyo3(signature = (src_idx, max_seconds, speed_m_s, jitter_scale=None, random_seed=None))]
     pub fn dijkstra_tree_segment(
         &self,
         src_idx: usize,
         max_seconds: u32,
         speed_m_s: f32,
         jitter_scale: Option<f32>,
+        random_seed: Option<u64>,
     ) -> (Vec<usize>, Vec<usize>, Vec<NodeVisit>, Vec<EdgeVisit>) {
         let jitter_scale = jitter_scale.unwrap_or(0.0);
         let mut tree_map = vec![NodeVisit::new(); self.node_count()];
@@ -416,7 +428,11 @@ impl NetworkStructure {
             node_idx: src_idx,
             metric: 0.0,
         });
-        let mut rng = rand::rng();
+        let mut rng = if let Some(seed) = random_seed {
+            StdRng::seed_from_u64(seed)
+        } else {
+            StdRng::from_rng(&mut rand::rng())
+        };
         while let Some(NodeDistance { node_idx, .. }) = active.pop() {
             tree_map[node_idx].visited = true;
             visited_nodes.push(node_idx);
@@ -495,6 +511,7 @@ impl NetworkStructure {
         jitter_scale=None,
         sample_probability=None,
         weighted_sample=None,
+        random_seed=None,
         pbar_disabled=None
     ))]
     pub fn local_node_centrality_shortest(
@@ -509,6 +526,7 @@ impl NetworkStructure {
         jitter_scale: Option<f32>,
         sample_probability: Option<f32>,
         weighted_sample: Option<bool>,
+        random_seed: Option<u64>,
         pbar_disabled: Option<bool>,
         py: Python,
     ) -> PyResult<CentralityShortestResult> {
@@ -552,12 +570,16 @@ impl NetworkStructure {
                 if !self.is_node_live(*src_idx) {
                     return;
                 }
+                let mut rng = if let Some(seed) = random_seed {
+                    StdRng::seed_from_u64(seed.wrapping_add(*src_idx as u64))
+                } else {
+                    StdRng::from_rng(&mut rand::rng())
+                };
                 if let Some(prob) = sample_probability {
                     let mut p = prob;
                     if weighted_sample.unwrap_or(false) {
                         p *= self.get_node_weight(*src_idx);
                     }
-                    let mut rng = rand::rng();
                     if rng.random::<f32>() > p {
                         return;
                     }
@@ -567,6 +589,7 @@ impl NetworkStructure {
                     max_walk_seconds,
                     speed_m_s,
                     jitter_scale,
+                    random_seed.map(|s| s.wrapping_add(*src_idx as u64)),
                 );
                 for to_idx in visited_nodes.iter() {
                     let node_visit = &tree_map[*to_idx];
@@ -643,6 +666,7 @@ impl NetworkStructure {
         jitter_scale=None,
         sample_probability=None,
         weighted_sample=None,
+        random_seed=None,
         pbar_disabled=None
     ))]
     pub fn local_node_centrality_simplest(
@@ -659,6 +683,7 @@ impl NetworkStructure {
         jitter_scale: Option<f32>,
         sample_probability: Option<f32>,
         weighted_sample: Option<bool>,
+        random_seed: Option<u64>,
         pbar_disabled: Option<bool>,
         py: Python,
     ) -> PyResult<CentralitySimplestResult> {
@@ -704,12 +729,16 @@ impl NetworkStructure {
                 if !self.is_node_live(*src_idx) {
                     return;
                 }
+                let mut rng = if let Some(seed) = random_seed {
+                    StdRng::seed_from_u64(seed.wrapping_add(*src_idx as u64))
+                } else {
+                    StdRng::from_rng(&mut rand::rng())
+                };
                 if let Some(prob) = sample_probability {
                     let mut p = prob;
                     if weighted_sample.unwrap_or(false) {
                         p *= self.get_node_weight(*src_idx);
                     }
-                    let mut rng = rand::rng();
                     if rng.random::<f32>() > p {
                         return;
                     }
@@ -719,6 +748,7 @@ impl NetworkStructure {
                     max_walk_seconds,
                     speed_m_s,
                     jitter_scale,
+                    random_seed.map(|s| s.wrapping_add(*src_idx as u64)),
                 );
                 for to_idx in visited_nodes.iter() {
                     let node_visit = &tree_map[*to_idx];
@@ -782,6 +812,7 @@ impl NetworkStructure {
         jitter_scale=None,
         sample_probability=None,
         weighted_sample=None,
+        random_seed=None,
         pbar_disabled=None
     ))]
     pub fn local_segment_centrality(
@@ -796,6 +827,7 @@ impl NetworkStructure {
         jitter_scale: Option<f32>,
         sample_probability: Option<f32>,
         weighted_sample: Option<bool>,
+        random_seed: Option<u64>,
         pbar_disabled: Option<bool>,
         py: Python,
     ) -> PyResult<CentralitySegmentResult> {
@@ -839,18 +871,27 @@ impl NetworkStructure {
                 if !self.is_node_live(*src_idx) {
                     return;
                 }
+                let mut rng = if let Some(seed) = random_seed {
+                    StdRng::seed_from_u64(seed.wrapping_add(*src_idx as u64))
+                } else {
+                    StdRng::from_rng(&mut rand::rng())
+                };
                 if let Some(prob) = sample_probability {
                     let mut p = prob;
                     if weighted_sample.unwrap_or(false) {
                         p *= self.get_node_weight(*src_idx);
                     }
-                    let mut rng = rand::rng();
                     if rng.random::<f32>() > p {
                         return;
                     }
                 }
-                let (visited_nodes, visited_edges, tree_map, edge_map) =
-                    self.dijkstra_tree_segment(*src_idx, max_walk_seconds, speed_m_s, jitter_scale);
+                let (visited_nodes, visited_edges, tree_map, edge_map) = self.dijkstra_tree_segment(
+                    *src_idx,
+                    max_walk_seconds,
+                    speed_m_s,
+                    jitter_scale,
+                    random_seed.map(|s| s.wrapping_add(*src_idx as u64)),
+                );
                 for edge_idx in visited_edges.iter() {
                     let edge_visit = &edge_map[*edge_idx];
                     let start_node_idx = edge_visit

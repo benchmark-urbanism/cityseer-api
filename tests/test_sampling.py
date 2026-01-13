@@ -108,6 +108,50 @@ def test_centrality_weighted_sampling():
     # Since weight 0 nodes have 0 probability, only node 0 should be processed.
     assert source_indices == [0]
 
+def test_centrality_sampling_reproducibility():
+    """
+    Test that providing a seed produces reproducible results.
+    """
+    G_primal = mock.mock_graph(nx_rows=10, nx_cols=10)
+    G_primal = graphs.nx_simple_geoms(G_primal)
+    _nodes_gdf, _edges_gdf, ns = io.network_structure_from_nx(G_primal)
+    
+    distances = [500]
+    seed = 42
+    
+    # First run
+    res1 = ns.local_node_centrality_shortest(
+        distances=distances,
+        sample_probability=0.3,
+        random_seed=seed,
+        pbar_disabled=True
+    )
+    
+    # Second run
+    res2 = ns.local_node_centrality_shortest(
+        distances=distances,
+        sample_probability=0.3,
+        random_seed=seed,
+        pbar_disabled=True
+    )
+    
+    # Third run with different seed
+    res3 = ns.local_node_centrality_shortest(
+        distances=distances,
+        sample_probability=0.3,
+        random_seed=seed + 1,
+        pbar_disabled=True
+    )
+    
+    density1 = res1.node_density[500]
+    density2 = res2.node_density[500]
+    density3 = res3.node_density[500]
+    
+    import numpy as np
+    assert np.allclose(density1, density2)
+    assert not np.allclose(density1, density3)
+
 if __name__ == "__main__":
     test_centrality_sampling_speed()
     test_centrality_weighted_sampling()
+    test_centrality_sampling_reproducibility()
