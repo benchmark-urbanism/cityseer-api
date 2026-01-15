@@ -37,7 +37,7 @@ ListCoordsType = list[CoordsType] | coords.CoordinateSequence
 
 def validate_cityseer_networkx_graph(
     nx_multigraph: nx.MultiGraph,
-    validate_edges: bool = True,
+    validate_edges: bool = False,
 ) -> nx.MultiGraph:
     """
     Validates a `networkX` `MultiGraph` for use with `cityseer`.
@@ -64,7 +64,7 @@ def validate_cityseer_networkx_graph(
         raise TypeError(f"Expected an undirected networkX MultiGraph but encountered {type(g_multi_copy)}.")
     # check CRS
     if "crs" not in g_multi_copy.graph:
-        raise KeyError("No CRS code found in graph. Please specify a CRS code via the crs_code parameter.")
+        raise KeyError('No CRS code found in graph. Please specify a CRS code as a "crs" graph attribute.')
     g_multi_copy.graph["crs"] = CRS(g_multi_copy.graph["crs"])
     if not g_multi_copy.graph["crs"].is_projected:
         logger.warning(f"The to_crs_code parameter {g_multi_copy.graph['crs'].to_epsg()} is not a projected CRS")
@@ -76,25 +76,43 @@ def validate_cityseer_networkx_graph(
         if "y" not in node_data:
             raise KeyError(f'Encountered node missing "y" coordinate attribute at node {nd_key}.')
     #
-    if validate_edges is True:
-        for start_nd_key, end_nd_key, edge_data in g_multi_copy.edges(data=True):
-            # check if geom present
-            if "geom" not in edge_data:
-                raise KeyError(
-                    f"No edge geom found for edge {start_nd_key}-{end_nd_key}: Please add an edge 'geom' "
-                    "attribute consisting of a shapely LineString. Simple (straight) geometries can be inferred "
-                    "automatically through the nx_simple_geoms() method."
-                )
-            # check if geometry is a LineString
-            line_geom: geometry.LineString = edge_data["geom"]
-            if line_geom.geom_type != "LineString":
+    for start_nd_key, end_nd_key, edge_data in g_multi_copy.edges(data=True):
+        # check if geom present
+        if "geom" not in edge_data:
+            raise KeyError(
+                f'No edge geom found for edge {start_nd_key}-{end_nd_key}: Please add an edge "geom" '
+                "attribute consisting of a shapely LineString. Simple (straight) geometries can be inferred "
+                "automatically through the nx_simple_geoms() method."
+            )
+        # check if geometry is a LineString
+        line_geom: geometry.LineString = edge_data["geom"]
+        if line_geom.geom_type != "LineString":
+            raise TypeError(f"Found {line_geom.geom_type} instead of LineString at edge {start_nd_key}-{end_nd_key}.")
+        if line_geom.is_empty:
+            raise TypeError(f"Found empty geom for edge {start_nd_key}-{end_nd_key}.")
+        if not line_geom.is_valid:
+            raise TypeError(f"Found invalid geom for edge {start_nd_key}-{end_nd_key}.")
+        if validate_edges is True:
+            # Check for degenerate (zero-length) LineStrings where start and end points are identical
+            if g_multi_copy.graph["crs"].is_projected and line_geom.length < 0.001:
                 raise TypeError(
-                    f"Found {line_geom.geom_type} instead of LineString at edge {start_nd_key}-{end_nd_key}."
+                    f"Found degenerate (zero-length) geom for edge {start_nd_key}-{end_nd_key}. "
+                    f"Geometry: {line_geom.wkt}"
                 )
-            if line_geom.is_empty:
-                raise TypeError(f"Found empty geom for edge {start_nd_key}-{end_nd_key}.")
-            if not line_geom.is_valid:
-                raise TypeError(f"Found invalid geom for edge {start_nd_key}-{end_nd_key}.")
+            # check that geom start / end match node coordinates
+            start_nd_data: NodeData = g_multi_copy.nodes[start_nd_key]
+            s_xy = (start_nd_data["x"], start_nd_data["y"])
+            end_nd_data: NodeData = g_multi_copy.nodes[end_nd_key]
+            e_xy = (end_nd_data["x"], end_nd_data["y"])
+            line_coords = list(line_geom.coords)
+            if not (
+                np.allclose(line_coords[0][:2], s_xy, atol=0.001, rtol=0)
+                and np.allclose(line_coords[-1][:2], e_xy, atol=0.001, rtol=0)
+            ) and not (
+                np.allclose(line_coords[0][:2], e_xy, atol=0.001, rtol=0)
+                and np.allclose(line_coords[-1][:2], s_xy, atol=0.001, rtol=0)
+            ):
+                raise ValueError(f"Linestring geometry {line_coords} does not touch nodes {s_xy} and {e_xy}.")
 
     return g_multi_copy
 
@@ -358,8 +376,11 @@ def weld_linestring_coords(
     for line_coords in [linestring_coords_a, linestring_coords_b]:
         if not isinstance(line_coords, list | np.ndarray | coords.CoordinateSequence):
             raise ValueError("Expecting a list, tuple, numpy array, or shapely LineString coordinate sequence.")
-    linestring_coords_a = list(linestring_coords_a)  # type: ignore
-    linestring_coords_b = list(linestring_coords_b)  # type: ignore
+    # Convert to list only if needed
+    if not isinstance(linestring_coords_a, list):
+        linestring_coords_a = list(linestring_coords_a)  # type: ignore
+    if not isinstance(linestring_coords_b, list):
+        linestring_coords_b = list(linestring_coords_b)  # type: ignore
     # if both lists are empty, raise
     if len(linestring_coords_a) == 0 and len(linestring_coords_b) == 0:
         raise ValueError("Neither of the provided linestring coordinate lists contain any coordinates.")
@@ -368,32 +389,38 @@ def weld_linestring_coords(
         return linestring_coords_a
     if not linestring_coords_a:
         return linestring_coords_b
+
+    # Helper for fast coordinate comparison (avoid np.allclose overhead)
+    def coords_close(c1: Any, c2: Any) -> bool:
+        return abs(c1[0] - c2[0]) <= tolerance and abs(c1[1] - c2[1]) <= tolerance
+
+    # Pre-extract endpoint coordinates
+    a_start = linestring_coords_a[0][:2]
+    a_end = linestring_coords_a[-1][:2]
+    b_start = linestring_coords_b[0][:2]
+    b_end = linestring_coords_b[-1][:2]
+
     # match the directionality of the linestrings
     # if override_xy is provided, then make sure that the sides with the specified x_y are merged
-    # this is useful for looping components or overlapping components
-    # i.e. where both the start and end points match an endpoint on the opposite line
-    # in this case it is necessary to know which is the inner side of the weld and which is the outer endpoint
     if force_xy:
-        if not np.allclose(linestring_coords_a[-1][:2], force_xy, atol=tolerance, rtol=0):
+        if not coords_close(a_end, force_xy):
             coords_a = align_linestring_coords(linestring_coords_a, force_xy, reverse=True)
         else:
             coords_a = linestring_coords_a
-        if not np.allclose(linestring_coords_b[0][:2], force_xy, atol=tolerance, rtol=0):
+        if not coords_close(b_start, force_xy):
             coords_b = align_linestring_coords(linestring_coords_b, force_xy, reverse=False)
         else:
             coords_b = linestring_coords_b
     # case A: the linestring_b has to be flipped to start from x, y
-    elif np.allclose(linestring_coords_a[-1][:2], linestring_coords_b[-1][:2], atol=tolerance, rtol=0):
-        anchor_xy = linestring_coords_a[-1][:2]
+    elif coords_close(a_end, b_end):
         coords_a = linestring_coords_a
-        coords_b = align_linestring_coords(linestring_coords_b, anchor_xy)  # type: ignore
+        coords_b = align_linestring_coords(linestring_coords_b, a_end)  # type: ignore
     # case B: linestring_a has to be flipped to end at x, y
-    elif np.allclose(linestring_coords_a[0][:2], linestring_coords_b[0][:2], atol=tolerance, rtol=0):
-        anchor_xy = linestring_coords_a[0][:2]
-        coords_a = align_linestring_coords(linestring_coords_a, anchor_xy)  # type: ignore
+    elif coords_close(a_start, b_start):
+        coords_a = align_linestring_coords(linestring_coords_a, a_start)  # type: ignore
         coords_b = linestring_coords_b
     # case C: merge in the b -> a order (saves flipping both)
-    elif np.allclose(linestring_coords_a[0][:2], linestring_coords_b[-1][:2], atol=tolerance, rtol=0):
+    elif coords_close(a_start, b_end):
         coords_a = linestring_coords_b
         coords_b = linestring_coords_a
     # case D: no further alignment is necessary
@@ -401,7 +428,7 @@ def weld_linestring_coords(
         coords_a = linestring_coords_a
         coords_b = linestring_coords_b
     # double check weld
-    if not np.allclose(coords_a[-1][:2], coords_b[0][:2], atol=tolerance, rtol=0):
+    if not coords_close(coords_a[-1][:2], coords_b[0][:2]):
         raise ValueError(f"Unable to weld LineString geometries with the given tolerance of {tolerance}.")
     # drop the duplicate interleaving coordinate
     return coords_a[:-1] + coords_b  # type: ignore

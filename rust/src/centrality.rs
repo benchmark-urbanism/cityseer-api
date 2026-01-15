@@ -562,7 +562,7 @@ impl NetworkStructure {
         let pbar_disabled = pbar_disabled.unwrap_or(false);
         self.progress_init();
 
-        let result = py.allow_threads(move || {
+        let result = py.detach(move || {
             node_indices.par_iter().for_each(|src_idx| {
                 if !pbar_disabled {
                     self.progress.fetch_add(1, AtomicOrdering::Relaxed);
@@ -721,7 +721,7 @@ impl NetworkStructure {
         let pbar_disabled = pbar_disabled.unwrap_or(false);
         self.progress_init();
 
-        let result = py.allow_threads(move || {
+        let result = py.detach(move || {
             node_indices.par_iter().for_each(|src_idx| {
                 if !pbar_disabled {
                     self.progress.fetch_add(1, AtomicOrdering::Relaxed);
@@ -863,7 +863,7 @@ impl NetworkStructure {
         let pbar_disabled = pbar_disabled.unwrap_or(false);
         self.progress_init();
 
-        let result = py.allow_threads(move || {
+        let result = py.detach(move || {
             node_indices.par_iter().for_each(|src_idx| {
                 if !pbar_disabled {
                     self.progress.fetch_add(1, AtomicOrdering::Relaxed);
