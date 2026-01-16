@@ -47,13 +47,13 @@ def test_sampling_comprehensive_report():
     n_runs = 5  # For both error estimation and timing
 
     print("\n")
-    print("=" * 95)
-    print("                    SAMPLING: ACCURACY vs SPEED TRADE-OFFS")
-    print("=" * 95)
-    print(f"  Grid: {grid_size}x{grid_size} = {grid_size * grid_size} nodes")
-    print(f"  Distances: {distances}m | Probabilities: {probabilities}")
-    print(f"  All metrics averaged over {n_runs} runs")
-    print("=" * 95)
+    print("## SAMPLING: ACCURACY vs SPEED TRADE-OFFS")
+    print()
+    print(f"- **Grid:** {grid_size}x{grid_size} = {grid_size * grid_size} nodes")
+    print(f"- **Distances:** {distances}m")
+    print(f"- **Probabilities:** {probabilities}")
+    print(f"- **Runs:** {n_runs} (for averaging)")
+    print()
 
     # Get full computation for all distances
     res_full = ns.local_node_centrality_shortest(
@@ -139,36 +139,33 @@ def test_sampling_comprehensive_report():
                 }
             )
 
-    # Print results table
-    print()
-    hdr1 = "  ┌──────────┬────────┬──────────┬───────────────────────┬───────────────────────┬────────────────┐"
-    hdr2 = "  │          │        │   Avg    │      CLOSENESS        │      BETWEENNESS      │     SPEED      │"
-    hdr3 = "  │ Distance │  Prob  │ Reachable│  Zeros  │    Error    │  Zeros  │    Error    │  Time  │Speedup│"
-    hdr4 = "  ├──────────┼────────┼──────────┼─────────┼─────────────┼─────────┼─────────────┼────────┼───────┤"
-    print(hdr1)
-    print(hdr2)
-    print(hdr3)
-    print(hdr4)
+    # Print results table in Markdown format
+    hdr = "| Distance | Prob | Avg Reachable | Closeness Zeros | Closeness Error "
+    hdr += "| Betweenness Zeros | Betweenness Error | Time | Speedup |"
+    print(hdr)
+    print(
+        "|----------|------|---------------|-----------------|-----------------|"
+        "-------------------|-------------------|------|---------|"
+    )
 
     for r in results:
-        d_err = f"{r['density_err']:5.1%}" if not np.isnan(r["density_err"]) else "  N/A"
-        b_err = f"{r['betw_err']:5.1%}" if not np.isnan(r["betw_err"]) else "  N/A"
+        d_err = f"{r['density_err']:.1%}" if not np.isnan(r["density_err"]) else "N/A"
+        b_err = f"{r['betw_err']:.1%}" if not np.isnan(r["betw_err"]) else "N/A"
         row = (
-            f"  │  {r['dist']:5d}m │  {r['prob']:4.1f} │  {r['avg_reachable']:6.0f}  │"
-            f"  {r['density_zeros']:5.1f}  │   {d_err}    │"
-            f"  {r['betw_zeros']:5.1f}  │   {b_err}    │"
-            f" {r['time_ms']:4.0f}ms │ {r['speedup']:4.1f}x │"
+            f"| {r['dist']}m | {r['prob']:.1f} | {r['avg_reachable']:.0f} | "
+            f"{r['density_zeros']:.1f} | {d_err} | "
+            f"{r['betw_zeros']:.1f} | {b_err} | "
+            f"{r['time_ms']:.0f}ms | {r['speedup']:.1f}x |"
         )
         print(row)
 
-    print("  └──────────┴────────┴──────────┴─────────┴─────────────┴─────────┴─────────────┴────────┴───────┘")
     print()
-    print("  KEY FINDINGS:")
-    print("  • Higher probability → lower error, but slower (less speedup)")
-    print("  • Larger distance → more reachable nodes → lower error for same probability")
-    print("  • Closeness: zero nodes means isolated from sampled sources")
-    print("  • Speedup ~1/p for source sampling with flipped aggregation")
-    print("=" * 95)
+    print("### Key Findings")
+    print()
+    print("- Higher probability → lower error, but slower (less speedup)")
+    print("- Larger distance → more reachable nodes → lower error for same probability")
+    print("- Closeness: zero nodes means isolated from sampled sources")
+    print("- Speedup ~1/p for source sampling with flipped aggregation")
 
     # Basic assertions
     # At p=0.5, closeness error should be reasonable
@@ -241,9 +238,10 @@ def test_sampling_approximation_quality():
         else 0
     )
 
-    print(f"\nApproximation quality (p={sample_probability}, {num_runs} runs):")
-    print(f"  Closeness error: {density_error:.1%}")
-    print(f"  Betweenness error: {betweenness_error:.1%}")
+    print(f"\n### Approximation Quality (p={sample_probability}, {num_runs} runs)")
+    print()
+    print(f"- **Closeness error:** {density_error:.1%}")
+    print(f"- **Betweenness error:** {betweenness_error:.1%}")
 
     # Assertions - averaged results should be close to true values
     assert density_error < 0.15, f"Averaged density error {density_error:.1%} exceeds 15%"
@@ -361,10 +359,11 @@ def test_sampling_all_nodes_get_results():
     sampled_zeros = np.sum((sampled_density == 0) & mask)
     pct_with_results = (total_with_values - sampled_zeros) / total_with_values if total_with_values > 0 else 0
 
-    print("\nTarget aggregation coverage:")
-    print(f"  Nodes with values in full: {total_with_values}")
-    print(f"  Nodes with zero in sampled: {sampled_zeros}")
-    print(f"  Coverage: {pct_with_results:.1%}")
+    print("\n### Target Aggregation Coverage")
+    print()
+    print(f"- **Nodes with values in full:** {total_with_values}")
+    print(f"- **Nodes with zero in sampled:** {sampled_zeros}")
+    print(f"- **Coverage:** {pct_with_results:.1%}")
 
     # With target aggregation, most nodes should get results
     assert pct_with_results > 0.9, f"Expected >90% coverage, got {pct_with_results:.1%}"
@@ -415,15 +414,16 @@ def test_sampling_simplest_centrality():
     mask = full_density > 0
     if np.any(mask):
         density_error = np.mean(np.abs(avg_density[mask] - full_density[mask]) / full_density[mask])
-        print(f"\nSimplest centrality sampling (p={sample_probability}, {num_runs} runs):")
-        print(f"  Density error: {density_error:.1%}")
+        print(f"\n### Simplest Centrality Sampling (p={sample_probability}, {num_runs} runs)")
+        print()
+        print(f"- **Density error:** {density_error:.1%}")
         assert density_error < 0.20, f"Simplest density error {density_error:.1%} exceeds 20%"
 
     # Check coverage - all nodes should get results with target aggregation
     single_sample = density_samples[0]
     zeros_in_sample = np.sum((single_sample == 0) & mask)
     coverage = (np.sum(mask) - zeros_in_sample) / np.sum(mask) if np.sum(mask) > 0 else 0
-    print(f"  Single sample coverage: {coverage:.1%}")
+    print(f"- **Single sample coverage:** {coverage:.1%}")
     assert coverage > 0.8, f"Expected >80% coverage for single sample, got {coverage:.1%}"
 
     # Reproducibility check
@@ -487,10 +487,11 @@ def test_sampling_ipw_scaling():
         avg_sampled_mean = np.mean(sampled_means)
         # The IPW-scaled mean should be close to the full mean
         relative_error = abs(avg_sampled_mean - full_mean) / full_mean
-        print(f"\nIPW test at p={prob}:")
-        print(f"  Full mean: {full_mean:.2f}")
-        print(f"  Avg sampled mean: {avg_sampled_mean:.2f}")
-        print(f"  Relative error: {relative_error:.1%}")
+        print(f"\n### IPW Test at p={prob}")
+        print()
+        print(f"- **Full mean:** {full_mean:.2f}")
+        print(f"- **Avg sampled mean:** {avg_sampled_mean:.2f}")
+        print(f"- **Relative error:** {relative_error:.1%}")
 
         # Allow some variance, but should be reasonably close
         assert relative_error < 0.25, f"IPW scaling error {relative_error:.1%} exceeds 25% at p={prob}"
@@ -542,10 +543,11 @@ def test_sampling_cycles_coverage():
     sampled_zeros = np.sum((sampled_cycles == 0) & mask)
     coverage = (total_with_cycles - sampled_zeros) / total_with_cycles if total_with_cycles > 0 else 0
 
-    print(f"\nCycles coverage with sampling (p={sample_probability}):")
-    print(f"  Nodes with cycles in full: {total_with_cycles}")
-    print(f"  Nodes with zero cycles in sampled: {sampled_zeros}")
-    print(f"  Coverage: {coverage:.1%}")
+    print(f"\n### Cycles Coverage with Sampling (p={sample_probability})")
+    print()
+    print(f"- **Nodes with cycles in full:** {total_with_cycles}")
+    print(f"- **Nodes with zero cycles in sampled:** {sampled_zeros}")
+    print(f"- **Coverage:** {coverage:.1%}")
 
     # With target aggregation, we should have good coverage
     # (not as high as density since cycles are sparser)
@@ -568,9 +570,143 @@ def test_sampling_cycles_coverage():
 
     if np.any(mask):
         cycle_error = np.mean(np.abs(avg_cycles[mask] - full_cycles[mask]) / full_cycles[mask])
-        print(f"  Cycle error (averaged over {num_runs} runs): {cycle_error:.1%}")
+        print(f"- **Cycle error** (averaged over {num_runs} runs): {cycle_error:.1%}")
         # Cycles have higher variance, so allow more error
         assert cycle_error < 0.5, f"Averaged cycle error {cycle_error:.1%} exceeds 50%"
+
+
+def test_sampling_weights_validation():
+    """
+    Test that sampling_weights outside [0.0, 1.0] raise ValueError.
+    """
+    G_primal = mock.mock_graph()
+    G_primal = graphs.nx_simple_geoms(G_primal)
+    nodes_gdf, _edges_gdf, ns = io.network_structure_from_nx(G_primal)
+
+    num_nodes = len(nodes_gdf)
+
+    # Test weight > 1.0
+    weights_too_high = [1.0] * num_nodes
+    weights_too_high[0] = 1.5
+    with pytest.raises(ValueError, match="out of range"):
+        ns.local_node_centrality_shortest(
+            distances=[500],
+            sample_probability=0.5,
+            sampling_weights=weights_too_high,
+            pbar_disabled=True,
+        )
+
+    # Test weight < 0.0
+    weights_negative = [1.0] * num_nodes
+    weights_negative[0] = -0.1
+    with pytest.raises(ValueError, match="out of range"):
+        ns.local_node_centrality_shortest(
+            distances=[500],
+            sample_probability=0.5,
+            sampling_weights=weights_negative,
+            pbar_disabled=True,
+        )
+
+    # Test wrong length
+    weights_wrong_len = [1.0] * (num_nodes - 1)
+    with pytest.raises(ValueError, match="must match node count"):
+        ns.local_node_centrality_shortest(
+            distances=[500],
+            sample_probability=0.5,
+            sampling_weights=weights_wrong_len,
+            pbar_disabled=True,
+        )
+
+
+def test_sampling_weights_scaling():
+    """
+    Test that sampling_weights properly scale the effective sampling probability.
+
+    Nodes with weight 0.5 should be sampled half as often as nodes with weight 1.0,
+    resulting in different contributions to centrality metrics.
+    """
+    G_primal = mock.mock_graph()
+    G_primal = graphs.nx_simple_geoms(G_primal)
+    nodes_gdf, _edges_gdf, ns = io.network_structure_from_nx(G_primal)
+
+    num_nodes = len(nodes_gdf)
+    distance = 500
+    num_runs = 30
+    sample_probability = 1.0  # Use 1.0 so weights directly control sampling
+
+    # Baseline: uniform weights of 0.5 (equivalent to sample_probability=0.5)
+    uniform_weights = [0.5] * num_nodes
+    uniform_samples = []
+    for seed in range(num_runs):
+        res = ns.local_node_centrality_shortest(
+            distances=[distance],
+            compute_closeness=True,
+            sample_probability=sample_probability,
+            sampling_weights=uniform_weights,
+            random_seed=seed,
+            pbar_disabled=True,
+        )
+        uniform_samples.append(np.array(res.node_density[distance]))
+
+    # Compare: no weights with sample_probability=0.5
+    no_weight_samples = []
+    for seed in range(num_runs):
+        res = ns.local_node_centrality_shortest(
+            distances=[distance],
+            compute_closeness=True,
+            sample_probability=0.5,
+            random_seed=seed,
+            pbar_disabled=True,
+        )
+        no_weight_samples.append(np.array(res.node_density[distance]))
+
+    # Average over runs
+    avg_uniform = np.mean(uniform_samples, axis=0)
+    avg_no_weight = np.mean(no_weight_samples, axis=0)
+
+    # These should be very similar since uniform 0.5 weights with p=1.0
+    # is equivalent to p=0.5 with no weights
+    mask = (avg_uniform > 0) & (avg_no_weight > 0)
+    if np.any(mask):
+        correlation = np.corrcoef(avg_uniform[mask], avg_no_weight[mask])[0, 1]
+        print("\n### Sampling Weights Scaling Test")
+        print()
+        print(f"- **Correlation (uniform 0.5 weights vs p=0.5):** {correlation:.3f}")
+        assert correlation > 0.95, f"Expected high correlation, got {correlation:.3f}"
+
+    # Test varying weights: first half weight=1.0, second half weight=0.25
+    # First half should contribute ~4x more often
+    varying_weights = [1.0 if i < num_nodes // 2 else 0.25 for i in range(num_nodes)]
+    varying_samples = []
+    for seed in range(num_runs):
+        res = ns.local_node_centrality_shortest(
+            distances=[distance],
+            compute_closeness=True,
+            sample_probability=sample_probability,
+            sampling_weights=varying_weights,
+            random_seed=seed,
+            pbar_disabled=True,
+        )
+        varying_samples.append(np.array(res.node_density[distance]))
+
+    # Full computation for reference
+    res_full = ns.local_node_centrality_shortest(
+        distances=[distance],
+        compute_closeness=True,
+        pbar_disabled=True,
+    )
+    full_density = np.array(res_full.node_density[distance])
+
+    # With varying weights, the IPW correction should still produce unbiased estimates
+    avg_varying = np.mean(varying_samples, axis=0)
+    mask_full = full_density > 0
+    if np.any(mask_full):
+        relative_error = np.mean(
+            np.abs(avg_varying[mask_full] - full_density[mask_full]) / full_density[mask_full]
+        )
+        print(f"- **Relative error (varying weights, IPW corrected):** {relative_error:.1%}")
+        # IPW should correct for unequal sampling, so error should be reasonable
+        assert relative_error < 0.30, f"IPW-corrected error {relative_error:.1%} exceeds 30%"
 
 
 if __name__ == "__main__":
@@ -582,3 +718,5 @@ if __name__ == "__main__":
     test_sampling_simplest_centrality()
     test_sampling_ipw_scaling()
     test_sampling_cycles_coverage()
+    test_sampling_weights_validation()
+    test_sampling_weights_scaling()
