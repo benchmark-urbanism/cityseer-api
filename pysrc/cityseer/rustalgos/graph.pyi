@@ -309,7 +309,12 @@ class NetworkStructure:
         """Remove all barrier geometries and their R-tree."""
         ...
     def dijkstra_tree_shortest(
-        self, src_idx: int, max_seconds: int, speed_m_s: float, jitter_scale: float | None = None, random_seed: int | None = None
+        self,
+        src_idx: int,
+        max_seconds: int,
+        speed_m_s: float,
+        jitter_scale: float | None = None,
+        random_seed: int | None = None,
     ) -> tuple[list[int], list[NodeVisit]]:
         """
         Compute shortest path tree (metric distance) from a source node using Dijkstra.
@@ -334,7 +339,12 @@ class NetworkStructure:
         """
         ...
     def dijkstra_tree_simplest(
-        self, src_idx: int, max_seconds: int, speed_m_s: float, jitter_scale: float | None = None, random_seed: int | None = None
+        self,
+        src_idx: int,
+        max_seconds: int,
+        speed_m_s: float,
+        jitter_scale: float | None = None,
+        random_seed: int | None = None,
     ) -> tuple[list[int], list[NodeVisit]]:
         """
         Compute simplest path tree (angular distance) from a source node using Dijkstra.
@@ -359,7 +369,12 @@ class NetworkStructure:
         """
         ...
     def dijkstra_tree_segment(
-        self, src_idx: int, max_seconds: int, speed_m_s: float, jitter_scale: float | None = None, random_seed: int | None = None
+        self,
+        src_idx: int,
+        max_seconds: int,
+        speed_m_s: float,
+        jitter_scale: float | None = None,
+        random_seed: int | None = None,
     ) -> tuple[list[int], list[int], list[NodeVisit], list[EdgeVisit]]:
         """
         Compute shortest path tree for segment-based analysis.
@@ -394,7 +409,7 @@ class NetworkStructure:
         speed_m_s: float | None = None,
         jitter_scale: float | None = None,
         sample_probability: float | None = None,
-        weighted_sample: bool | None = None,
+        sampling_weights: list[float] | None = None,
         random_seed: int | None = None,
         pbar_disabled: bool | None = None,
     ) -> CentralityShortestResult:
@@ -422,6 +437,13 @@ class NetworkStructure:
             Travel speed (m/s).
         jitter_scale: float | None
             Path cost jitter scale.
+        sample_probability: float | None
+            Probability of sampling a node as a source for centrality calculations.
+        sampling_weights: list[float] | None
+            Per-node sampling weights in range [0.0, 1.0]. When provided, sampling probability
+            for each node becomes sample_probability * sampling_weights[node_idx].
+        random_seed: int | None
+            Optional seed for reproducible sampling and jitter.
         pbar_disabled: bool | None
             Disable progress bar if True.
 
@@ -444,7 +466,7 @@ class NetworkStructure:
         farness_scaling_offset: float | None = None,
         jitter_scale: float | None = None,
         sample_probability: float | None = None,
-        weighted_sample: bool | None = None,
+        sampling_weights: list[float] | None = None,
         random_seed: int | None = None,
         pbar_disabled: bool | None = None,
     ) -> CentralitySimplestResult:
@@ -478,8 +500,11 @@ class NetworkStructure:
             Path cost jitter scale.
         sample_probability: float | None
             Probability of sampling a node as a source for centrality calculations.
-        weighted_sample: bool | None
-            If True, multiply sample_probability by node weight.
+        sampling_weights: list[float] | None
+            Per-node sampling weights in range [0.0, 1.0]. When provided, sampling probability
+            for each node becomes sample_probability * sampling_weights[node_idx].
+        random_seed: int | None
+            Optional seed for reproducible sampling and jitter.
         pbar_disabled: bool | None
             Disable progress bar if True.
 
@@ -499,8 +524,6 @@ class NetworkStructure:
         min_threshold_wt: float | None = None,
         speed_m_s: float | None = None,
         jitter_scale: float | None = None,
-        sample_probability: float | None = None,
-        weighted_sample: bool | None = None,
         random_seed: int | None = None,
         pbar_disabled: bool | None = None,
     ) -> CentralitySegmentResult:
@@ -528,10 +551,8 @@ class NetworkStructure:
             Travel speed (m/s).
         jitter_scale: float | None
             Path cost jitter scale.
-        sample_probability: float | None
-            Probability of sampling a node as a source for centrality calculations.
-        weighted_sample: bool | None
-            If True, multiply sample_probability by node weight.
+        random_seed: int | None
+            Optional seed for random cost jitter.
         pbar_disabled: bool | None
             Disable progress bar if True.
 

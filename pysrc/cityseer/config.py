@@ -82,6 +82,28 @@ def log_thresholds(
     return distances
 
 
+def log_sampling(
+    sample_probability: float | None = None,
+    distances: list[int] | None = None,
+) -> None:
+    """Log sampling statistics when sampling is enabled."""
+    if sample_probability is None:
+        return
+    # Log sampling info
+    logger.info(f"Sampling enabled: probability = {sample_probability}")
+    logger.info(f"  Expected speedup: ~{1 / sample_probability:.1f}x")
+    # Theoretical relative standard error formula: RSE ≈ sqrt((1-p) / (p * k))
+    # We don't know k (reachable nodes) until after computation, so provide guidance
+    if distances:
+        logger.info("  Error estimates (vary with reachable node count k):")
+        logger.info("    RSE ≈ sqrt((1-p) / (p * k)) where k = avg reachable nodes")
+        # Example estimates for typical k values
+        p = sample_probability
+        for k in distances:
+            rse = ((1 - p) / (p * k)) ** 0.5
+            logger.info(f"    k={k}: ~{rse:.0%} error")
+
+
 RustResults = (
     rustalgos.centrality.CentralityShortestResult
     | rustalgos.centrality.CentralitySimplestResult

@@ -241,7 +241,8 @@ def test_local_node_centrality_shortest(primal_graph):
     far_short_dist: npt.NDArray[np.float32] = np.full((d_n, n_nodes), 0.0, dtype=np.float32)
     harmonic_cl: npt.NDArray[np.float32] = np.full((d_n, n_nodes), 0.0, dtype=np.float32)
     grav: npt.NDArray[np.float32] = np.full((d_n, n_nodes), 0.0, dtype=np.float32)
-    cyc: npt.NDArray[np.float32] = np.full((d_n, n_nodes), 0.0, dtype=np.float32)
+    cyc_to: npt.NDArray[np.float32] = np.full((d_n, n_nodes), 0.0, dtype=np.float32)
+    cyc_src: npt.NDArray[np.float32] = np.full((d_n, n_nodes), 0.0, dtype=np.float32)
     #
     max_seconds_5000 = 5000 / config.SPEED_M_S
     for src_idx in range(n_nodes):
@@ -270,8 +271,10 @@ def test_local_node_centrality_shortest(primal_graph):
                     far_short_dist[d_idx][src_idx] += to_short_dist
                     harmonic_cl[d_idx][src_idx] += 1 / to_short_dist
                     grav[d_idx][src_idx] += np.exp(-beta * to_short_dist)
-                    # cycles
-                    cyc[d_idx][src_idx] += n_cycles
+                    # cycles - compute both source and target aggregation
+                    # Rust uses target aggregation; source aggregation verifies totals match
+                    cyc_to[d_idx][to_idx] += n_cycles
+                    cyc_src[d_idx][src_idx] += n_cycles
                     # only process betweenness in one direction
                     if to_idx < src_idx:
                         continue
@@ -294,7 +297,12 @@ def test_local_node_centrality_shortest(primal_graph):
         assert np.allclose(
             node_result_short.node_farness[dist], far_short_dist[d_idx], atol=config.ATOL, rtol=config.RTOL
         )
-        assert np.allclose(node_result_short.node_cycles[dist], cyc[d_idx], atol=config.ATOL, rtol=config.RTOL)
+        # Cycles: Rust uses target aggregation (cyc_to), check exact match
+        assert np.allclose(node_result_short.node_cycles[dist], cyc_to[d_idx], atol=config.ATOL, rtol=config.RTOL)
+        # Source aggregation (cyc_src) has different distribution but same total - verifies correctness
+        assert np.allclose(
+            node_result_short.node_cycles[dist].sum(), cyc_src[d_idx].sum(), atol=config.ATOL, rtol=config.RTOL
+        )
         assert np.allclose(
             node_result_short.node_harmonic[dist], harmonic_cl[d_idx], atol=config.ATOL, rtol=config.RTOL
         )

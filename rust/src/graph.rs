@@ -258,7 +258,9 @@ pub struct NodeVisit {
     #[pyo3(get)]
     pub last_seg: Option<usize>,
     #[pyo3(get)]
-    pub out_bearing: f32,
+    /// For reversed distance computation: stores the in_bearing (departure bearing)
+    /// from this node toward the source. Used for angular turn calculations.
+    pub prev_in_bearing: f32,
     #[pyo3(get)]
     pub agg_seconds: f32,
 }
@@ -276,7 +278,7 @@ impl NodeVisit {
             cycles: 0.0,
             origin_seg: None,
             last_seg: None,
-            out_bearing: f32::NAN,
+            prev_in_bearing: f32::NAN,
             agg_seconds: f32::INFINITY,
         }
     }

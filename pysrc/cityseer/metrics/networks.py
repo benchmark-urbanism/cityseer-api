@@ -82,7 +82,7 @@ def node_centrality_shortest(
     speed_m_s: float = SPEED_M_S,
     jitter_scale: float = 0.0,
     sample_probability: float | None = None,
-    weighted_sample: bool | None = None,
+    sampling_weights: list[float] | None = None,
     random_seed: int | None = None,
 ) -> gpd.GeoDataFrame:
     r"""
@@ -135,9 +135,13 @@ def node_centrality_shortest(
         with shortest paths in metres, the random value represents distance in metres. When using a simplest path
         heuristic, the jitter will represent angular change in degrees.
     sample_probability: float
-        Probability of sampling a node as a source for centrality calculations.
-    weighted_sample: bool
-        If True, multiply sample_probability by node weight.
+        Probability of sampling a node as a source for centrality calculations. When used alone, provides uniform
+        random sampling. When combined with `sampling_weights`, the final probability for each node is
+        `sample_probability * sampling_weights[node_idx]`.
+    sampling_weights: list[float]
+        Optional array of per-node sampling weights. Must have length equal to the number of nodes, with values
+        in the range [0.0, 1.0]. Use this to bias sampling toward certain nodes (e.g., by normalized population).
+        When provided, the sampling probability for each node becomes `sample_probability * sampling_weights[node_idx]`.
     random_seed: int
         Optional seed for deterministic sampling and random cost jitter.
 
@@ -183,7 +187,7 @@ def node_centrality_shortest(
         speed_m_s=speed_m_s,
         jitter_scale=jitter_scale,
         sample_probability=sample_probability,
-        weighted_sample=weighted_sample,
+        sampling_weights=sampling_weights,
         random_seed=random_seed,
     )
     # wraps progress bar
@@ -198,6 +202,7 @@ def node_centrality_shortest(
         min_threshold_wt=min_threshold_wt,
         speed_m_s=speed_m_s,
     )
+    config.log_sampling(sample_probability=sample_probability, distances=distances)
     # intersect computed keys with those available in the gdf index (stations vs. streets)
     gdf_idx = nodes_gdf.index.intersection(result.node_keys_py)  # type: ignore
     # create a dictionary to hold the data
@@ -247,7 +252,7 @@ def node_centrality_simplest(
     farness_scaling_offset: float = 1,
     jitter_scale: float = 0.0,
     sample_probability: float | None = None,
-    weighted_sample: bool | None = None,
+    sampling_weights: list[float] | None = None,
     random_seed: int | None = None,
 ) -> gpd.GeoDataFrame:
     r"""
@@ -307,9 +312,13 @@ def node_centrality_simplest(
         with shortest paths in metres, the random value represents distance in metres. When using a simplest path
         heuristic, the jitter will represent angular change in degrees.
     sample_probability: float
-        Probability of sampling a node as a source for centrality calculations.
-    weighted_sample: bool
-        If True, multiply sample_probability by node weight.
+        Probability of sampling a node as a source for centrality calculations. When used alone, provides uniform
+        random sampling. When combined with `sampling_weights`, the final probability for each node is
+        `sample_probability * sampling_weights[node_idx]`.
+    sampling_weights: list[float]
+        Optional array of per-node sampling weights. Must have length equal to the number of nodes, with values
+        in the range [0.0, 1.0]. Use this to bias sampling toward certain nodes (e.g., by normalized population).
+        When provided, the sampling probability for each node becomes `sample_probability * sampling_weights[node_idx]`.
     random_seed: int
         Optional seed for deterministic sampling and random cost jitter.
 
@@ -351,7 +360,7 @@ def node_centrality_simplest(
         farness_scaling_offset=farness_scaling_offset,
         jitter_scale=jitter_scale,
         sample_probability=sample_probability,
-        weighted_sample=weighted_sample,
+        sampling_weights=sampling_weights,
         random_seed=random_seed,
     )
     # wraps progress bar
@@ -366,6 +375,7 @@ def node_centrality_simplest(
         min_threshold_wt=min_threshold_wt,
         speed_m_s=speed_m_s,
     )
+    config.log_sampling(sample_probability=sample_probability, distances=distances)
     # intersect computed keys with those available in the gdf index (stations vs. streets)
     gdf_idx = nodes_gdf.index.intersection(result.node_keys_py)  # type: ignore
     # create a dictionary to hold the data
@@ -407,8 +417,6 @@ def segment_centrality(
     min_threshold_wt: float = MIN_THRESH_WT,
     speed_m_s: float = SPEED_M_S,
     jitter_scale: float = 0.0,
-    sample_probability: float | None = None,
-    weighted_sample: bool | None = None,
     random_seed: int | None = None,
 ) -> gpd.GeoDataFrame:
     r"""
@@ -459,12 +467,8 @@ def segment_centrality(
         shortest path calculations to provide random variation to the paths traced through the network. When working
         with shortest paths in metres, the random value represents distance in metres. When using a simplest path
         heuristic, the jitter will represent angular change in degrees.
-    sample_probability: float
-        Probability of sampling a node as a source for centrality calculations.
-    weighted_sample: bool
-        If True, multiply sample_probability by node weight.
     random_seed: int
-        Optional seed for deterministic sampling and random cost jitter.
+        Optional seed for random cost jitter.
 
     Returns
     -------
@@ -497,8 +501,6 @@ def segment_centrality(
         min_threshold_wt=min_threshold_wt,
         speed_m_s=speed_m_s,
         jitter_scale=jitter_scale,
-        sample_probability=sample_probability,
-        weighted_sample=weighted_sample,
         random_seed=random_seed,
     )
     # wraps progress bar

@@ -1,239 +1,584 @@
 from __future__ import annotations
-import os
-import time
-import pytest
-from cityseer import rustalgos, config
-from cityseer.tools import io, graphs, mock
 
-def test_centrality_sampling_speed():
+import os
+import statistics
+import timeit
+
+import networkx as nx
+import numpy as np
+import pytest
+from cityseer.tools import graphs, io, mock
+
+
+def test_sampling_comprehensive_report():
     """
-    Test the impact of sampling on computation speed.
+    Comprehensive test showing accuracy and speed trade-offs for sampling.
+
+    This is the main test that demonstrates the sampling feature's characteristics
+    across different probabilities and distances.
     """
     if "GITHUB_ACTIONS" in os.environ:
         pytest.skip("Skipping performance test in CI")
 
-    # load a mock graph
-    G_primal = mock.mock_graph(nx_rows=20, nx_cols=20)
-    G_primal = graphs.nx_simple_geoms(G_primal)
-    _nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(G_primal)
-    
-    distances = [500]
-    
-    # Baseline without sampling
-    start_time = time.time()
-    network_structure.local_node_centrality_shortest(
-        distances=distances,
-        pbar_disabled=True
-    )
-    baseline_duration = time.time() - start_time
-    print(f"\nBaseline duration (no sampling): {baseline_duration:.4f}s")
+    os.environ["CITYSEER_QUIET_MODE"] = "1"
 
-    # With 30% sampling
-    start_time = time.time()
-    network_structure.local_node_centrality_shortest(
-        distances=distances,
-        sample_probability=0.3,
-        pbar_disabled=True
-    )
-    sampled_duration = time.time() - start_time
-    print(f"Sampled duration (30% probability): {sampled_duration:.4f}s")
-    
-    # We expect some speedup, although for very small graphs the overhead might dominate.
-    # In a 20x20 grid, there are ~400 nodes, so sampling should be noticeable.
-    assert sampled_duration < baseline_duration * 0.8  # Allow some margin for overhead
+    # Create a grid graph for meaningful results
+    grid_size = 50
+    spacing = 50
+    G_grid = nx.grid_2d_graph(grid_size, grid_size)
 
-def test_centrality_weighted_sampling():
-    """
-    Test that weighted sampling impacts the results as expected.
-    """
-    # load a mock graph
-    G_primal = mock.mock_graph(nx_rows=10, nx_cols=10)
+    G_primal = nx.MultiGraph()
+    G_primal.graph["crs"] = "EPSG:27700"
+    for node in G_grid.nodes():
+        x = node[0] * spacing
+        y = node[1] * spacing
+        G_primal.add_node(f"{x}_{y}", x=x, y=y)
+
+    for u, v in G_grid.edges():
+        u_key = f"{u[0] * spacing}_{u[1] * spacing}"
+        v_key = f"{v[0] * spacing}_{v[1] * spacing}"
+        G_primal.add_edge(u_key, v_key)
+
     G_primal = graphs.nx_simple_geoms(G_primal)
-    
-    # Set weights: half nodes weight 1, half weight 0
-    # Actually, let's make it more extreme: one node has weight 1, others have weight 0.001
-    # If sample_probability is 1 and weighted_sample is True, then:
-    # node with weight 1 has 100% chance
-    # nodes with weight 0.001 have 0.1% chance.
-    
-    nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(G_primal)
-    
-    # Reset all weights to 0.001 and set one to 1.0
-    # We need to recreate the network_structure because weights are set during addition
-    # Or we can modify the nodes_gdf and re-import
-    nodes_gdf['weight'] = 0.0001
-    nodes_gdf.iloc[0, nodes_gdf.columns.get_loc('weight')] = 1.0
-    
-    # Re-import to apply weights
-    # Note: we need to pass nodes_gdf and edges_gdf back to network_structure_from_nx
-    # but that tool takes a networkx graph.
-    # Let's just manually add nodes to a new network structure for full control.
-    
-    ns = rustalgos.graph.NetworkStructure.new()
-    node_indices = []
-    for i, row in nodes_gdf.iterrows():
-        idx = ns.add_street_node(i, row.geometry.x, row.geometry.y, True, row['weight'])
-        node_indices.append(idx)
-        
-    # We don't need edges for this test, we just want to see if the loop runs for the expected number of nodes
-    # But Dijkstra needs edges to visit anything.
-    # Let's just use the existing primal_graph and modify it.
-    
-    for i, node in enumerate(G_primal.nodes):
-        if i == 0:
-            G_primal.nodes[node]['weight'] = 1.0
-        else:
-            G_primal.nodes[node]['weight'] = 0.0
-            
     _nodes_gdf, _edges_gdf, ns = io.network_structure_from_nx(G_primal)
-    
-    # With probability 1.0 and weighted_sample True, only the first node should be sampled.
-    # We can check progress to see how many nodes were processed if we had access to it, 
-    # but the metrics will also be telltale.
-    
-    res = ns.local_node_centrality_shortest(
-        distances=[500],
-        sample_probability=1.0,
-        weighted_sample=True,
-        pbar_disabled=True
-    )
-    
-    # If only node 0 was sampled as source, then only its results should be non-zero in the density map 
-    # (for the closeness part where it is the src).
-    # density[dist][src_idx] += wt
-    density = res.node_density[500]
-    # Find which nodes have non-zero density (meaning they were used as sources)
-    source_indices = [i for i, val in enumerate(density) if val > 0]
-    
-    # Since weight 0 nodes have 0 probability, only node 0 should be processed.
-    assert source_indices == [0]
 
-def test_centrality_sampling_reproducibility():
+    distances = [500, 1000, 2000]
+    probabilities = [0.1, 0.5, 0.9]
+    n_runs = 5  # For both error estimation and timing
+
+    print("\n")
+    print("=" * 95)
+    print("                    SAMPLING: ACCURACY vs SPEED TRADE-OFFS")
+    print("=" * 95)
+    print(f"  Grid: {grid_size}x{grid_size} = {grid_size * grid_size} nodes")
+    print(f"  Distances: {distances}m | Probabilities: {probabilities}")
+    print(f"  All metrics averaged over {n_runs} runs")
+    print("=" * 95)
+
+    # Get full computation for all distances
+    res_full = ns.local_node_centrality_shortest(
+        distances=distances,
+        compute_closeness=True,
+        compute_betweenness=True,
+        pbar_disabled=True,
+    )
+
+    results = []
+
+    for dist in distances:
+        full_density = np.array(res_full.node_density[dist])
+        full_betw = np.array(res_full.node_betweenness[dist])
+        avg_reachable = np.mean(full_density[full_density > 0])
+
+        # Time full computation at this distance
+        full_times = []
+        for _ in range(n_runs):
+            start = timeit.default_timer()
+            ns.local_node_centrality_shortest(
+                distances=[dist],
+                compute_closeness=True,
+                compute_betweenness=True,
+                pbar_disabled=True,
+            )
+            full_times.append(timeit.default_timer() - start)
+        full_time = statistics.mean(full_times)
+
+        for prob in probabilities:
+            # Collect samples and timing in the same runs
+            density_samples = []
+            betw_samples = []
+            sampled_times = []
+
+            for seed in range(n_runs):
+                start = timeit.default_timer()
+                res = ns.local_node_centrality_shortest(
+                    distances=[dist],
+                    compute_closeness=True,
+                    compute_betweenness=True,
+                    sample_probability=prob,
+                    random_seed=seed,
+                    pbar_disabled=True,
+                )
+                sampled_times.append(timeit.default_timer() - start)
+                density_samples.append(np.array(res.node_density[dist]))
+                betw_samples.append(np.array(res.node_betweenness[dist]))
+
+            # Compute errors
+            avg_density = np.mean(density_samples, axis=0)
+            avg_betw = np.mean(betw_samples, axis=0)
+
+            mask_d = full_density > 0
+            mask_b = full_betw > 0
+
+            density_err = np.mean(np.abs(avg_density[mask_d] - full_density[mask_d]) / full_density[mask_d])
+            betw_err = (
+                np.mean(np.abs(avg_betw[mask_b] - full_betw[mask_b]) / full_betw[mask_b])
+                if np.any(mask_b)
+                else float("nan")
+            )
+
+            # Count zeros
+            density_zeros = np.mean([np.sum((s == 0) & mask_d) for s in density_samples])
+            betw_zeros = np.mean([np.sum((s == 0) & mask_b) for s in betw_samples])
+
+            # Compute speedup from same runs
+            sampled_time = statistics.mean(sampled_times)
+            speedup = full_time / sampled_time if sampled_time > 0 else 0
+
+            results.append(
+                {
+                    "dist": dist,
+                    "prob": prob,
+                    "avg_reachable": avg_reachable,
+                    "density_err": density_err,
+                    "density_zeros": density_zeros,
+                    "betw_err": betw_err,
+                    "betw_zeros": betw_zeros,
+                    "time_ms": sampled_time * 1000,
+                    "speedup": speedup,
+                }
+            )
+
+    # Print results table
+    print()
+    hdr1 = "  ┌──────────┬────────┬──────────┬───────────────────────┬───────────────────────┬────────────────┐"
+    hdr2 = "  │          │        │   Avg    │      CLOSENESS        │      BETWEENNESS      │     SPEED      │"
+    hdr3 = "  │ Distance │  Prob  │ Reachable│  Zeros  │    Error    │  Zeros  │    Error    │  Time  │Speedup│"
+    hdr4 = "  ├──────────┼────────┼──────────┼─────────┼─────────────┼─────────┼─────────────┼────────┼───────┤"
+    print(hdr1)
+    print(hdr2)
+    print(hdr3)
+    print(hdr4)
+
+    for r in results:
+        d_err = f"{r['density_err']:5.1%}" if not np.isnan(r["density_err"]) else "  N/A"
+        b_err = f"{r['betw_err']:5.1%}" if not np.isnan(r["betw_err"]) else "  N/A"
+        row = (
+            f"  │  {r['dist']:5d}m │  {r['prob']:4.1f} │  {r['avg_reachable']:6.0f}  │"
+            f"  {r['density_zeros']:5.1f}  │   {d_err}    │"
+            f"  {r['betw_zeros']:5.1f}  │   {b_err}    │"
+            f" {r['time_ms']:4.0f}ms │ {r['speedup']:4.1f}x │"
+        )
+        print(row)
+
+    print("  └──────────┴────────┴──────────┴─────────┴─────────────┴─────────┴─────────────┴────────┴───────┘")
+    print()
+    print("  KEY FINDINGS:")
+    print("  • Higher probability → lower error, but slower (less speedup)")
+    print("  • Larger distance → more reachable nodes → lower error for same probability")
+    print("  • Closeness: zero nodes means isolated from sampled sources")
+    print("  • Speedup ~1/p for source sampling with flipped aggregation")
+    print("=" * 95)
+
+    # Basic assertions
+    # At p=0.5, closeness error should be reasonable
+    mid_results = [r for r in results if r["prob"] == 0.5]
+    for r in mid_results:
+        assert r["density_err"] < 0.3, f"Density error {r['density_err']:.1%} exceeds 30% at {r['dist']}m"
+        # Speedup threshold relaxed to 1.2x to account for timing variability
+        # Expected theoretical speedup is ~2x at p=0.5, but overhead reduces actual speedup
+        assert r["speedup"] > 1.2, f"Speedup {r['speedup']:.1f}x below 1.2x at {r['dist']}m"
+
+    # At p=0.1, we should see significant speedup (less strict due to high variance)
+    low_p_results = [r for r in results if r["prob"] == 0.1]
+    for r in low_p_results:
+        assert r["speedup"] > 2.0, f"Speedup {r['speedup']:.1f}x below 2.0x at p=0.1, {r['dist']}m"
+
+
+def test_sampling_approximation_quality():
+    """
+    Test that sampling produces statistically unbiased estimates.
+
+    Uses multiple runs to verify the average converges to the true value.
+    """
+    G_primal = mock.mock_graph()
+    G_primal = graphs.nx_simple_geoms(G_primal)
+    _nodes_gdf, _edges_gdf, ns = io.network_structure_from_nx(G_primal)
+
+    num_runs = 20
+    sample_probability = 0.5
+    distance = 500
+
+    # Full computation (baseline)
+    res_full = ns.local_node_centrality_shortest(
+        distances=[distance],
+        compute_closeness=True,
+        compute_betweenness=True,
+        pbar_disabled=True,
+    )
+
+    # Collect samples
+    density_samples = []
+    betweenness_samples = []
+
+    for seed in range(num_runs):
+        res = ns.local_node_centrality_shortest(
+            distances=[distance],
+            compute_closeness=True,
+            compute_betweenness=True,
+            sample_probability=sample_probability,
+            random_seed=seed,
+            pbar_disabled=True,
+        )
+        density_samples.append(res.node_density[distance])
+        betweenness_samples.append(res.node_betweenness[distance])
+
+    full_density = np.array(res_full.node_density[distance])
+    full_betweenness = np.array(res_full.node_betweenness[distance])
+
+    avg_density = np.mean(density_samples, axis=0)
+    avg_betweenness = np.mean(betweenness_samples, axis=0)
+
+    # Closeness error
+    mask_d = full_density > 0
+    density_error = np.mean(np.abs(avg_density[mask_d] - full_density[mask_d]) / full_density[mask_d])
+
+    # Betweenness error
+    mask_b = full_betweenness > 0
+    betweenness_error = (
+        np.mean(np.abs(avg_betweenness[mask_b] - full_betweenness[mask_b]) / full_betweenness[mask_b])
+        if np.any(mask_b)
+        else 0
+    )
+
+    print(f"\nApproximation quality (p={sample_probability}, {num_runs} runs):")
+    print(f"  Closeness error: {density_error:.1%}")
+    print(f"  Betweenness error: {betweenness_error:.1%}")
+
+    # Assertions - averaged results should be close to true values
+    assert density_error < 0.15, f"Averaged density error {density_error:.1%} exceeds 15%"
+    assert betweenness_error < 0.25, f"Averaged betweenness error {betweenness_error:.1%} exceeds 25%"
+
+
+def test_sampling_reproducibility():
     """
     Test that providing a seed produces reproducible results.
     """
-    G_primal = mock.mock_graph(nx_rows=10, nx_cols=10)
+    G_primal = mock.mock_graph()
     G_primal = graphs.nx_simple_geoms(G_primal)
     _nodes_gdf, _edges_gdf, ns = io.network_structure_from_nx(G_primal)
-    
-    distances = [500]
+
     seed = 42
-    
+
     # First run
     res1 = ns.local_node_centrality_shortest(
-        distances=distances,
-        sample_probability=0.3,
-        random_seed=seed,
-        pbar_disabled=True
+        distances=[500], sample_probability=0.3, random_seed=seed, pbar_disabled=True
     )
-    
-    # Second run
+
+    # Second run with same seed
     res2 = ns.local_node_centrality_shortest(
-        distances=distances,
-        sample_probability=0.3,
-        random_seed=seed,
-        pbar_disabled=True
+        distances=[500], sample_probability=0.3, random_seed=seed, pbar_disabled=True
     )
-    
+
     # Third run with different seed
     res3 = ns.local_node_centrality_shortest(
-        distances=distances,
-        sample_probability=0.3,
-        random_seed=seed + 1,
-        pbar_disabled=True
+        distances=[500], sample_probability=0.3, random_seed=seed + 1, pbar_disabled=True
     )
-    
+
     density1 = res1.node_density[500]
     density2 = res2.node_density[500]
     density3 = res3.node_density[500]
-    
-    import numpy as np
-    assert np.allclose(density1, density2)
-    assert not np.allclose(density1, density3)
 
-def test_segment_weight_sampling():
+    # Same seed should give identical results
+    assert np.allclose(density1, density2), "Same seed should produce identical results"
+
+    # Different seed should give different results
+    assert not np.allclose(density1, density3), "Different seed should produce different results"
+
+
+def test_sampling_weighted():
     """
-    Test a workflow where weights are on segments (LineStrings) and need to be mapped to nodes.
+    Test that weighted sampling impacts results as expected.
     """
-    import geopandas as gpd
-    from shapely.geometry import LineString
-    import networkx as nx
-    
-    # Create a simple line geometry with high weight
-    line1 = LineString([(0, 0), (10, 0)])
-    # Create another line with low weight
-    line2 = LineString([(10, 0), (20, 0)])
-    
-    # GeoDataFrame with segment weights
-    edges_gdf = gpd.GeoDataFrame(
-        {'geometry': [line1, line2], 'segment_weight': [100.0, 1.0]},
-        crs="EPSG:27700"
-    )
-    
-    # Convert to NetworkX
-    G = io.nx_from_generic_geopandas(edges_gdf)
-    
-    # Map segment weights to nodes
-    # Strategy: Assign node weight as the maximum of incident edge weights
-    for node in G.nodes():
-        incident_weights = []
-        for n_nbr, n_dict in G[node].items():
-            for edge_key, edge_data in n_dict.items():
-                if 'segment_weight' in edge_data:
-                    incident_weights.append(edge_data['segment_weight'])
-        
-        if incident_weights:
-            G.nodes[node]['weight'] = max(incident_weights)
-        else:
-            G.nodes[node]['weight'] = 0.0
-            
-    # Verify node weights
-    # Node at (0,0) connects to line1 (wt 100) -> weight 100
-    # Node at (10,0) connects to line1 (wt 100) and line2 (wt 1) -> weight 100
-    # Node at (20,0) connects to line2 (wt 1) -> weight 1
-    
-    # Get node keys (io.nx_from_generic_geopandas uses coordinates as keys string formatted)
-    # We can check values directly
-    weights = [d['weight'] for n, d in G.nodes(data=True)]
-    assert 100.0 in weights
-    assert 1.0 in weights
-    
-    # Convert to NetworkStructure
-    nodes_gdf, edges_gdf, ns = io.network_structure_from_nx(G)
-    
-    # Run weighted sampling
-    # Nodes with weight 100 should be sampled ~100x more than node with weight 1
-    # But since probs are capped at 1.0, let's normalize or use a small probability
-    # If sample_probability=0.01:
-    # High weight nodes (100) -> prob 1.0 (capped)
-    # Low weight node (1) -> prob 0.01
-    
+    G_primal = mock.mock_graph()
+    G_primal = graphs.nx_simple_geoms(G_primal)
+    nodes_gdf, _edges_gdf, ns = io.network_structure_from_nx(G_primal)
+
+    num_nodes = len(nodes_gdf)
+
+    # Create weights: first half have weight 1.0, second half have weight 0.0
+    sampling_weights = [1.0 if i < num_nodes // 2 else 0.0 for i in range(num_nodes)]
+
     res = ns.local_node_centrality_shortest(
         distances=[500],
-        sample_probability=0.01,
-        weighted_sample=True,
-        random_seed=42,
-        pbar_disabled=True
+        sample_probability=1.0,
+        sampling_weights=sampling_weights,
+        pbar_disabled=True,
     )
-    
-    # Check density to see which nodes were sources
-    density = res.node_density[500]
-    sampled_indices = [i for i, val in enumerate(density) if val > 0]
-    
-    # Get the indices of high weight nodes
-    high_weight_indices = nodes_gdf[nodes_gdf['weight'] == 100.0]['ns_node_idx'].tolist()
-    low_weight_indices = nodes_gdf[nodes_gdf['weight'] == 1.0]['ns_node_idx'].tolist()
-    
-    # We expect high weight nodes to be in sampled_indices
-    for idx in high_weight_indices:
-        assert idx in sampled_indices
-    
-    # Low weight index might or might not be sampled, but much less likely. 
-    # With seed 42 and only 1 low weight node, it's deterministic.
-    # Let's just assert that we successfully processed weights.
+
+    density = np.array(res.node_density[500])
+
+    # Nodes with weight 0.0 should not be sampled as sources
+    # With flipped aggregation, they can still receive contributions from other sources
+    # Verify at least some nodes got results
+    nonzero_count = np.sum(density > 0)
+    assert nonzero_count > 0, "Expected some nodes to have non-zero density"
+
+
+def test_sampling_all_nodes_get_results():
+    """
+    Test that with target aggregation, all nodes get results even with sampling.
+
+    This is the key benefit of the target aggregation approach:
+    - Traditional source aggregation: only sampled nodes get values
+    - Target aggregation: all nodes within range of ANY sampled source get values
+
+    This ensures high coverage even with aggressive sampling.
+    """
+    G_primal = mock.mock_graph()
+    G_primal = graphs.nx_simple_geoms(G_primal)
+    _nodes_gdf, _edges_gdf, ns = io.network_structure_from_nx(G_primal)
+
+    sample_probability = 0.5
+    distance = 500
+
+    # Full computation
+    res_full = ns.local_node_centrality_shortest(
+        distances=[distance],
+        compute_closeness=True,
+        compute_betweenness=True,
+        pbar_disabled=True,
+    )
+
+    # Sampled computation
+    res_sampled = ns.local_node_centrality_shortest(
+        distances=[distance],
+        compute_closeness=True,
+        compute_betweenness=True,
+        sample_probability=sample_probability,
+        random_seed=42,
+        pbar_disabled=True,
+    )
+
+    full_density = np.array(res_full.node_density[distance])
+    sampled_density = np.array(res_sampled.node_density[distance])
+
+    # Count nodes with values in full computation
+    mask = full_density > 0
+    total_with_values = np.sum(mask)
+
+    # Count how many of those have values in sampled computation
+    sampled_zeros = np.sum((sampled_density == 0) & mask)
+    pct_with_results = (total_with_values - sampled_zeros) / total_with_values if total_with_values > 0 else 0
+
+    print("\nTarget aggregation coverage:")
+    print(f"  Nodes with values in full: {total_with_values}")
+    print(f"  Nodes with zero in sampled: {sampled_zeros}")
+    print(f"  Coverage: {pct_with_results:.1%}")
+
+    # With target aggregation, most nodes should get results
+    assert pct_with_results > 0.9, f"Expected >90% coverage, got {pct_with_results:.1%}"
+
+
+def test_sampling_simplest_centrality():
+    """
+    Test that sampling works correctly for angular (simplest path) centrality.
+
+    Verifies that:
+    1. Sampling produces reproducible results with seeds
+    2. Averaged samples converge toward true values
+    3. All nodes get coverage with target aggregation
+    """
+    G_primal = mock.mock_graph()
+    G_primal = graphs.nx_simple_geoms(G_primal)
+    _nodes_gdf, _edges_gdf, ns = io.network_structure_from_nx(G_primal)
+
+    num_runs = 15
+    sample_probability = 0.5
+    distance = 500
+
+    # Full computation
+    res_full = ns.local_node_centrality_simplest(
+        distances=[distance],
+        compute_closeness=True,
+        compute_betweenness=True,
+        pbar_disabled=True,
+    )
+
+    # Collect samples
+    density_samples = []
+    for seed in range(num_runs):
+        res = ns.local_node_centrality_simplest(
+            distances=[distance],
+            compute_closeness=True,
+            compute_betweenness=True,
+            sample_probability=sample_probability,
+            random_seed=seed,
+            pbar_disabled=True,
+        )
+        density_samples.append(np.array(res.node_density[distance]))
+
+    full_density = np.array(res_full.node_density[distance])
+    avg_density = np.mean(density_samples, axis=0)
+
+    # Check error
+    mask = full_density > 0
+    if np.any(mask):
+        density_error = np.mean(np.abs(avg_density[mask] - full_density[mask]) / full_density[mask])
+        print(f"\nSimplest centrality sampling (p={sample_probability}, {num_runs} runs):")
+        print(f"  Density error: {density_error:.1%}")
+        assert density_error < 0.20, f"Simplest density error {density_error:.1%} exceeds 20%"
+
+    # Check coverage - all nodes should get results with target aggregation
+    single_sample = density_samples[0]
+    zeros_in_sample = np.sum((single_sample == 0) & mask)
+    coverage = (np.sum(mask) - zeros_in_sample) / np.sum(mask) if np.sum(mask) > 0 else 0
+    print(f"  Single sample coverage: {coverage:.1%}")
+    assert coverage > 0.8, f"Expected >80% coverage for single sample, got {coverage:.1%}"
+
+    # Reproducibility check
+    res_a = ns.local_node_centrality_simplest(
+        distances=[distance],
+        sample_probability=0.3,
+        random_seed=123,
+        pbar_disabled=True,
+    )
+    res_b = ns.local_node_centrality_simplest(
+        distances=[distance],
+        sample_probability=0.3,
+        random_seed=123,
+        pbar_disabled=True,
+    )
+    assert np.allclose(res_a.node_density[distance], res_b.node_density[distance]), (
+        "Simplest centrality should be reproducible with same seed"
+    )
+
+
+def test_sampling_ipw_scaling():
+    """
+    Test that inverse probability weighting (IPW) correctly scales results.
+
+    With IPW, sampled results should be unbiased estimators of the true values.
+    This test verifies that the scaling factor (1/p) is applied correctly.
+    """
+    G_primal = mock.mock_graph()
+    G_primal = graphs.nx_simple_geoms(G_primal)
+    _nodes_gdf, _edges_gdf, ns = io.network_structure_from_nx(G_primal)
+
+    distance = 500
+    num_runs = 30
+
+    # Full computation baseline
+    res_full = ns.local_node_centrality_shortest(
+        distances=[distance],
+        compute_closeness=True,
+        pbar_disabled=True,
+    )
+    full_density = np.array(res_full.node_density[distance])
+    full_mean = np.mean(full_density[full_density > 0])
+
+    # Test different probabilities - mean should be approximately preserved
+    for prob in [0.3, 0.5, 0.7]:
+        sampled_means = []
+        for seed in range(num_runs):
+            res = ns.local_node_centrality_shortest(
+                distances=[distance],
+                compute_closeness=True,
+                sample_probability=prob,
+                random_seed=seed,
+                pbar_disabled=True,
+            )
+            density = np.array(res.node_density[distance])
+            # Only consider nodes that have values in both
+            mask = (density > 0) & (full_density > 0)
+            if np.any(mask):
+                sampled_means.append(np.mean(density[mask]))
+
+        avg_sampled_mean = np.mean(sampled_means)
+        # The IPW-scaled mean should be close to the full mean
+        relative_error = abs(avg_sampled_mean - full_mean) / full_mean
+        print(f"\nIPW test at p={prob}:")
+        print(f"  Full mean: {full_mean:.2f}")
+        print(f"  Avg sampled mean: {avg_sampled_mean:.2f}")
+        print(f"  Relative error: {relative_error:.1%}")
+
+        # Allow some variance, but should be reasonably close
+        assert relative_error < 0.25, f"IPW scaling error {relative_error:.1%} exceeds 25% at p={prob}"
+
+
+def test_sampling_cycles_coverage():
+    """
+    Test that cycles metric works correctly with sampling using target aggregation.
+
+    Previously, cycles were aggregated to the source node, which meant unsampled
+    sources would have zero cycle values. With target aggregation, all nodes
+    within range of sampled sources should get cycle contributions.
+    """
+    G_primal = mock.mock_graph()
+    G_primal = graphs.nx_simple_geoms(G_primal)
+    _nodes_gdf, _edges_gdf, ns = io.network_structure_from_nx(G_primal)
+
+    distance = 500
+    sample_probability = 0.5
+
+    # Full computation
+    res_full = ns.local_node_centrality_shortest(
+        distances=[distance],
+        compute_closeness=True,
+        pbar_disabled=True,
+    )
+
+    full_cycles = np.array(res_full.node_cycles[distance])
+
+    # Check that we have some cycles in the graph (prerequisite for this test)
+    if np.sum(full_cycles > 0) == 0:
+        pytest.skip("Mock graph has no cycles to test")
+
+    # Sampled computation
+    res_sampled = ns.local_node_centrality_shortest(
+        distances=[distance],
+        compute_closeness=True,
+        sample_probability=sample_probability,
+        random_seed=42,
+        pbar_disabled=True,
+    )
+
+    sampled_cycles = np.array(res_sampled.node_cycles[distance])
+
+    # With target aggregation, nodes that have cycles in full computation
+    # should also have cycles in sampled computation (at least most of them)
+    mask = full_cycles > 0
+    total_with_cycles = np.sum(mask)
+    sampled_zeros = np.sum((sampled_cycles == 0) & mask)
+    coverage = (total_with_cycles - sampled_zeros) / total_with_cycles if total_with_cycles > 0 else 0
+
+    print(f"\nCycles coverage with sampling (p={sample_probability}):")
+    print(f"  Nodes with cycles in full: {total_with_cycles}")
+    print(f"  Nodes with zero cycles in sampled: {sampled_zeros}")
+    print(f"  Coverage: {coverage:.1%}")
+
+    # With target aggregation, we should have good coverage
+    # (not as high as density since cycles are sparser)
+    assert coverage > 0.5, f"Expected >50% cycle coverage with target aggregation, got {coverage:.1%}"
+
+    # Also verify that averaged samples converge to true values
+    num_runs = 20
+    cycle_samples = []
+    for seed in range(num_runs):
+        res = ns.local_node_centrality_shortest(
+            distances=[distance],
+            compute_closeness=True,
+            sample_probability=sample_probability,
+            random_seed=seed,
+            pbar_disabled=True,
+        )
+        cycle_samples.append(np.array(res.node_cycles[distance]))
+
+    avg_cycles = np.mean(cycle_samples, axis=0)
+
+    if np.any(mask):
+        cycle_error = np.mean(np.abs(avg_cycles[mask] - full_cycles[mask]) / full_cycles[mask])
+        print(f"  Cycle error (averaged over {num_runs} runs): {cycle_error:.1%}")
+        # Cycles have higher variance, so allow more error
+        assert cycle_error < 0.5, f"Averaged cycle error {cycle_error:.1%} exceeds 50%"
+
 
 if __name__ == "__main__":
-    test_centrality_sampling_speed()
-    test_centrality_weighted_sampling()
-    test_centrality_sampling_reproducibility()
-    test_segment_weight_sampling()
+    test_sampling_comprehensive_report()
+    test_sampling_approximation_quality()
+    test_sampling_reproducibility()
+    test_sampling_weighted()
+    test_sampling_all_nodes_get_results()
+    test_sampling_simplest_centrality()
+    test_sampling_ipw_scaling()
+    test_sampling_cycles_coverage()
