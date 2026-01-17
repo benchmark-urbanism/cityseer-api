@@ -605,6 +605,19 @@ impl NetworkStructure {
         // When sampling: all nodes within range of ANY sampled source get contributions
         self.progress_init();
 
+        // Pre-generate random samples from a single RNG to ensure uniform distribution.
+        // Using consecutive seeds (seed + src_idx) causes biased first draws from PRNGs.
+        let sample_randoms: Vec<f32> = if sample_probability.is_some() {
+            let mut rng = if let Some(seed) = random_seed {
+                StdRng::seed_from_u64(seed)
+            } else {
+                StdRng::from_rng(&mut rand::rng())
+            };
+            (0..self.node_count()).map(|_| rng.random()).collect()
+        } else {
+            Vec::new()
+        };
+
         let result = py.detach(move || {
             node_indices.par_iter().for_each(|src_idx| {
                 if !pbar_disabled {
@@ -613,12 +626,6 @@ impl NetworkStructure {
                 if !self.is_node_live(*src_idx) {
                     return;
                 }
-                // RNG for sampling - seeded per source for reproducibility
-                let mut rng = if let Some(seed) = random_seed {
-                    StdRng::seed_from_u64(seed.wrapping_add(*src_idx as u64))
-                } else {
-                    StdRng::from_rng(&mut rand::rng())
-                };
 
                 // Source sampling: skip Dijkstra for unsampled sources
                 // IPW scale applies to all contributions from this source
@@ -627,7 +634,7 @@ impl NetworkStructure {
                     if let Some(ref weights) = sampling_weights {
                         p *= weights[*src_idx];
                     }
-                    if rng.random::<f32>() > p {
+                    if sample_randoms[*src_idx] >= p {
                         return; // Skip this source entirely
                     }
                     1.0 / p // Inverse probability weight
@@ -797,6 +804,19 @@ impl NetworkStructure {
         // When sampling: all nodes within range of ANY sampled source get contributions.
         self.progress_init();
 
+        // Pre-generate random samples from a single RNG to ensure uniform distribution.
+        // Using consecutive seeds (seed + src_idx) causes biased first draws from PRNGs.
+        let sample_randoms: Vec<f32> = if sample_probability.is_some() {
+            let mut rng = if let Some(seed) = random_seed {
+                StdRng::seed_from_u64(seed)
+            } else {
+                StdRng::from_rng(&mut rand::rng())
+            };
+            (0..self.node_count()).map(|_| rng.random()).collect()
+        } else {
+            Vec::new()
+        };
+
         let result = py.detach(move || {
             node_indices.par_iter().for_each(|src_idx| {
                 if !pbar_disabled {
@@ -805,12 +825,6 @@ impl NetworkStructure {
                 if !self.is_node_live(*src_idx) {
                     return;
                 }
-                // RNG for sampling - seeded per source for reproducibility
-                let mut rng = if let Some(seed) = random_seed {
-                    StdRng::seed_from_u64(seed.wrapping_add(*src_idx as u64))
-                } else {
-                    StdRng::from_rng(&mut rand::rng())
-                };
 
                 // Source sampling: skip Dijkstra for unsampled sources
                 // IPW scale applies to all contributions from this source
@@ -819,7 +833,7 @@ impl NetworkStructure {
                     if let Some(ref weights) = sampling_weights {
                         p *= weights[*src_idx];
                     }
-                    if rng.random::<f32>() > p {
+                    if sample_randoms[*src_idx] >= p {
                         return; // Skip this source entirely
                     }
                     1.0 / p // Inverse probability weight

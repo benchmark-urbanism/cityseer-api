@@ -83,6 +83,8 @@ dev = [
   "utm>=0.8.1",
   "overturemaps>=0.18.0",
   "ty>=0.0.5",
+  "esda>=2.8.1",
+  "libpysal>=4.13.0",
 ]
 
 [build-system]
