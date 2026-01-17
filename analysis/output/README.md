@@ -1,30 +1,31 @@
 # Centrality Sampling: Validation Report
 
-Generated: 2026-01-17T16:03:46.179518
+Generated: 2026-01-17T19:58:10.856369
 
 ---
 
 ## Executive Summary
 
-This analysis validates cityseer's sampling-based centrality approximation:
+This analysis evaluates cityseer's sampling-based centrality approximation for both
+**harmonic closeness** and **betweenness** centrality metrics:
 
-1. **Correctness**: Target-based aggregation matches NetworkX exactly for closeness and betweenness measures.
-2. **Statistics**: Empirical analysis of sampling errors across 557 experimental configurations.
-3. **Guidance**: Practical recommendations based on observed RMSE by topology and reachability.
+1. **Correctness**: Target-based aggregation matches NetworkX within numerical precision.
+2. **Statistics**: Empirical analysis across 1109 observations (2 metrics × configs).
+3. **Guidance**: Recommendations based on observed RMSE by topology, metric, and reachability.
 
-### The Key Finding
+### Key Observations
 
-**Effective reachability** (mean_reachability × sampling_probability) is the key predictor of
+**Effective reachability** (mean_reachability × sampling_probability) is the primary predictor of
 sampling accuracy. Higher effective reachability means more source nodes contribute to each
-target's estimate, reducing variance.
+target's estimate, which tends to reduce variance.
 
-### The Fortuitous Alignment
+### Practical Consideration
 
-Sampling works best precisely when it's most needed:
+Sampling tends to be more effective for larger networks:
 
-- Large networks need sampling for speed
-- Large networks have high reachability
-- High reachability means low sampling variance
+- Large networks benefit most from sampling speedup
+- Large networks typically have higher reachability
+- Higher reachability is associated with lower sampling variance
 
 ---
 
@@ -35,9 +36,9 @@ identical to standard NetworkX implementations.
 
 | Test               | Max Difference | Status   |
 | ------------------ | -------------- | -------- |
-| Harmonic Closeness | 2.24e-08       | ✓ PASSED |
+| Harmonic Closeness | 2.98e-08       | ✓ PASSED |
 | Betweenness        | 0.0000         | ✓ PASSED |
-| Total Farness      | 1.30e-07       | ✓ PASSED |
+| Total Farness      | 1.95e-07       | ✓ PASSED |
 
 ![Correctness Verification](ch1_correctness.png)
 
@@ -58,6 +59,13 @@ Each configuration (network × distance × sampling rate) is run 25 times with d
 random samples. For each run, we compute that run's RMSE across all nodes. We then report
 the **mean ± standard deviation** of these per-run RMSE values. This follows standard Monte
 Carlo methodology and tells practitioners what error to expect from a single sampling run.
+
+### Metrics Analyzed
+
+Both metrics are analyzed with identical experimental configurations:
+
+- **Harmonic Closeness**: Sum of inverse distances to reachable nodes — measures accessibility
+- **Betweenness**: Count of shortest paths passing through each node — measures intermediacy
 
 ### Network Topologies Tested
 
@@ -89,7 +97,7 @@ More contributors means more information, which means lower variance.
 error across all nodes: `bias = mean((sampled - exact) / exact)`. Positive bias indicates
 overestimation; negative bias indicates underestimation.
 
-**Bias by topology**:
+**Bias by topology (Harmonic Closeness)**:
 
 | Topology | Mean Bias | Std Bias |
 | -------- | --------- | -------- |
@@ -97,13 +105,23 @@ overestimation; negative bias indicates underestimation.
 | Tree     | -0.4%     | 1.0%     |
 | Organic  | -0.2%     | 1.1%     |
 
-**Key observations:**
+**Bias by topology (Betweenness)**:
 
-1. Across all topologies, mean bias is low and the majority of estimates fall within ±5% of the true value.
-2. Standard deviation reflects the spread of bias, but systematic error is minimal.
-3. The ±5% band column shows the proportion of estimates with bias less than 5% in magnitude.
+| Topology | Mean Bias | Std Bias |
+| -------- | --------- | -------- |
+| Grid     | -0.6%     | 1.1%     |
+| Tree     | -0.6%     | 1.4%     |
+| Organic  | -0.7%     | 1.1%     |
 
-![Statistical Properties](ch2_statistics.png)
+**Observations:**
+
+1. Mean bias tends to be low across configurations, though individual estimates may vary.
+2. Standard deviation indicates the spread of bias across experimental runs.
+3. Results should be interpreted alongside the RMSE values below.
+
+![Statistical Properties - Harmonic](ch2_statistics_harmonic.png)
+
+![Statistical Properties - Betweenness](ch2_statistics_betweenness.png)
 
 ### Spatial Autocorrelation (Moran's I)
 
@@ -116,9 +134,9 @@ Higher I means values cluster spatially (similar values near each other).
 | Tree     | 0.807     |
 | Organic  | 0.622     |
 
-All topologies show strong positive spatial autocorrelation (I > 0.7), which is expected for
-centrality measures—nearby nodes tend to have similar accessibility. Grid networks show the
-highest autocorrelation due to their regular structure.
+The observed Moran's I values indicate spatial autocorrelation in centrality measures—nearby
+nodes tend to have similar values. Grid networks typically show higher autocorrelation due to
+their regular structure.
 
 ### RMSE Prediction Formula
 
@@ -129,6 +147,8 @@ From statistical sampling theory, the variance of the Horvitz-Thompson estimator
 
 where effective_n = mean_reachability × p.
 
+**Harmonic Closeness:**
+
 | Fit                     | k     | R²     |
 | ----------------------- | ----- | ------ |
 | Global (all topologies) | 1.351 | 0.9629 |
@@ -136,15 +156,49 @@ where effective_n = mean_reachability × p.
 | Tree                    | 1.241 | —      |
 | Organic                 | 1.646 | —      |
 
-The formula achieves R² > 0.98 across all observations, meaning effective reachability and
-sampling probability explain nearly all variance in RMSE.
+**Betweenness:**
 
-**Practical use**: Given your network's mean reachability (from node_density) and chosen
-sampling probability p, you can estimate expected RMSE as:
+| Fit                     | k     | R²     |
+| ----------------------- | ----- | ------ |
+| Global (all topologies) | 2.137 | 0.6075 |
+| Grid                    | 3.294 | —      |
+| Tree                    | 1.617 | —      |
+| Organic                 | 2.827 | —      |
 
-`expected_rmse ≈ 1.1 × √((1-p) / (mean_reach × p))`
+The formula fit varies by metric. Harmonic closeness typically shows a stronger fit (higher R²),
+while betweenness may exhibit larger prediction residuals. The R² values above indicate how well
+the theoretical formula matches empirical observations for each metric.
 
-![RMSE Prediction Formula](ch2_rmse_formula.png)
+![RMSE Prediction Formula - Harmonic](ch2_rmse_formula_harmonic.png)
+
+![RMSE Prediction Formula - Betweenness](ch2_rmse_formula_betweenness.png)
+
+### Automatic Sampling Probability Selection
+
+By inverting the RMSE formula, we can compute the minimum sampling probability needed
+to achieve a target RMSE:
+
+**p = k² / (RMSE² × mean_reach + k²)**
+
+The table below uses a **conservative (worst-case) k = 2.137**, which is the
+maximum k value observed across both metrics (harmonic k = 1.351, betweenness
+k = 2.137). This means the recommended p values should achieve the target RMSE
+for whichever metric has worse sampling characteristics:
+
+| Mean Reach | 5% RMSE | 10% RMSE | 15% RMSE | 20% RMSE |
+| ---------- | ------- | -------- | -------- | -------- |
+| 25         | 99%     | 95%      | 89%      | 82%      |
+| 50         | 97%     | 90%      | 80%      | 70%      |
+| 100        | 95%     | 82%      | 67%      | 53%      |
+| 200        | 90%     | 70%      | 50%      | 36%      |
+| 500        | 79%     | 48%      | 29%      | 19%      |
+| 1000       | 65%     | 31%      | 17%      | 10%      |
+
+**Note**: Networks with high reachability (>200) may tolerate lower sampling rates while
+maintaining acceptable RMSE. Networks with low reachability (<50) typically require higher
+sampling rates for accurate results. Actual results depend on network characteristics and metric.
+
+![Sampling Recommendation](ch2_sampling_recommendation.png)
 
 ---
 
@@ -158,7 +212,9 @@ empirically observed RMSE for each topology at different reachability levels and
 Results are aggregated across all graph sizes within each topology. The heatmaps below bin
 results by mean reachability (which depends on both graph size and distance threshold).
 
-![RMSE by Topology](ch3_topology_rmse.png)
+![RMSE by Topology - Harmonic](ch3_topology_rmse_harmonic.png)
+
+![RMSE by Topology - Betweenness](ch3_topology_rmse_betweenness.png)
 
 ### Empirical RMSE Heatmaps
 
@@ -166,27 +222,38 @@ The heatmaps show observed RMSE (green = low/good, red = high/poor) across all t
 aggregated by reachability bin. Use these to select an appropriate sampling probability for your
 network type and expected reachability.
 
-![Practical Guidance](ch3_guidance.png)
+![Practical Guidance - Harmonic](ch3_guidance_harmonic.png)
+
+![Practical Guidance - Betweenness](ch3_guidance_betweenness.png)
 
 ### Speedup vs Accuracy Tradeoff
 
 Sampling at probability p provides an expected speedup of 1/p (e.g., p=0.5 gives ~2x speedup).
-The RMSE scales approximately as √((1-p)/p), meaning accuracy improves faster than speedup
-decreases at moderate sampling rates.
+The figures below show how RMSE varies with sampling probability, **stratified by reachability**:
 
-![Speedup vs Accuracy Tradeoff](ch3_speedup_tradeoff.png)
+- **Low reachability (<50)**: Higher RMSE at all sampling rates; limited benefit from sampling
+- **Medium reachability (50-150)**: Moderate RMSE; sampling viable at higher p values
+- **High reachability (150-500)**: Lower RMSE; sampling becomes practical
+- **Very high reachability (>500)**: Lowest RMSE; aggressive sampling may be acceptable
 
-**Sweet spot**: At p=0.5, you achieve 2x speedup with ~8-13% RMSE depending on topology and reachability.
+![Speedup vs Accuracy Tradeoff - Harmonic](ch3_speedup_tradeoff_harmonic.png)
+
+![Speedup vs Accuracy Tradeoff - Betweenness](ch3_speedup_tradeoff_betweenness.png)
+
+The stratification shows that reachability is the primary determinant of the speedup-accuracy
+tradeoff. Networks with similar reachability will have similar tradeoff curves regardless of
+topology.
 
 ---
 
 ## Discussion and Conclusions
 
-1. **The algorithm is correct** — Matches NetworkX within numerical precision
-2. **The estimator is unbiased**
-3. **Reachability determines accuracy** — Effective_n is the key predictor, not topology alone
-4. **Sampling works when needed** — Large networks have high reachability
-5. **Use the heatmaps** — Select p based on your expected reachability
+1. **Algorithm correctness** — Matches NetworkX within numerical precision for both metrics
+2. **Bias** — Mean bias is low, though individual run variance can be substantial
+3. **Reachability and accuracy** — Effective_n is associated with RMSE, though fit quality varies by metric
+4. **Metric differences** — Harmonic closeness shows stronger formula fit; betweenness has larger residuals
+5. **Practical use** — Consult the heatmaps to select p based on expected reachability and acceptable error
+6. **Limitations** — Results are from synthetic networks; real-world networks may differ
 
 ---
 

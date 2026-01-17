@@ -55,7 +55,7 @@ CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
 # Cache control (env var to force recompute)
 CACHE_ENABLED = True
-FORCE_RECOMPUTE = True
+FORCE_RECOMPUTE = False
 
 if CACHE_ENABLED and not FORCE_RECOMPUTE:
     print("WARNING: Caching is ENABLED. Set FORCE_RECOMPUTE=True to disable caching.\n")
@@ -586,6 +586,9 @@ print_header("2.1 Experimental Design", level=2)
 # Standard distances: 200, 500, 1000, 2000, 4000m
 STANDARD_DISTANCES = [500, 1000, 2000, 3000, 4000]
 
+# Metrics to analyze
+METRICS = ["harmonic", "betweenness"]
+
 CONFIGS = [
     # GRID: Regular, well-connected networks (typical urban cores)
     # These have predictable, uniform reachability
@@ -716,89 +719,108 @@ if not skip_experiments:
             print(f"  Skipping d={dist}m: no reachability")
             continue
 
-        # Compute ground truth density (use cache where possible)
-        true_density = load_cache(f"true_density_{topo}_{n_nodes}_{dist}")
-        if true_density is None:
+        # Compute ground truth for both metrics (use cache where possible)
+        true_harmonic = load_cache(f"true_harmonic_{topo}_{n_nodes}_{dist}")
+        true_betweenness = load_cache(f"true_betweenness_{topo}_{n_nodes}_{dist}")
+        if true_harmonic is None or true_betweenness is None:
             true_result = net.local_node_centrality_shortest(
-                distances=[dist], compute_closeness=True, compute_betweenness=False, pbar_disabled=True
+                distances=[dist], compute_closeness=True, compute_betweenness=True, pbar_disabled=True
             )
-            true_density = np.array(true_result.node_harmonic[dist])
-            save_cache(f"true_density_{topo}_{n_nodes}_{dist}", true_density)
-        mask = true_density > 0
+            true_harmonic = np.array(true_result.node_harmonic[dist])
+            true_betweenness = np.array(true_result.node_betweenness[dist])
+            save_cache(f"true_harmonic_{topo}_{n_nodes}_{dist}", true_harmonic)
+            save_cache(f"true_betweenness_{topo}_{n_nodes}_{dist}", true_betweenness)
 
-        # Compute Moran's I spatial autocorrelation on the true centrality values
-        morans_i = compute_morans_i(ndf, true_density)
+        true_values = {"harmonic": true_harmonic, "betweenness": true_betweenness}
+        masks = {metric: true_values[metric] > 0 for metric in METRICS}
+
+        # Compute Moran's I spatial autocorrelation on the true centrality values (using harmonic)
+        morans_i = compute_morans_i(ndf, true_harmonic)
 
         print(f"  d={dist}m, reach={mean_reach:.0f}: ", end="")
 
         for p in PROBS:
             # Run multiple samples
-            estimates = []
+            estimates = {metric: [] for metric in METRICS}
             for seed in range(N_RUNS):
                 # Try per-seed cached estimate to avoid recomputation
-                est = load_cache(f"estimate_{topo}_{n_nodes}_{dist}_p{p}_s{seed}")
-                if est is not None:
-                    estimates.append(np.array(est))
+                cached_harmonic = load_cache(f"estimate_harmonic_{topo}_{n_nodes}_{dist}_p{p}_s{seed}")
+                cached_betweenness = load_cache(f"estimate_betweenness_{topo}_{n_nodes}_{dist}_p{p}_s{seed}")
+                if cached_harmonic is not None and cached_betweenness is not None:
+                    estimates["harmonic"].append(np.array(cached_harmonic))
+                    estimates["betweenness"].append(np.array(cached_betweenness))
                 else:
                     r = net.local_node_centrality_shortest(
                         distances=[dist],
                         compute_closeness=True,
-                        compute_betweenness=False,
+                        compute_betweenness=True,
                         sample_probability=p,
                         random_seed=seed,
                         pbar_disabled=True,
                     )
-                    arr = np.array(r.node_harmonic[dist])
-                    save_cache(f"estimate_{topo}_{n_nodes}_{dist}_p{p}_s{seed}", arr)
-                    estimates.append(arr)
+                    arr_harmonic = np.array(r.node_harmonic[dist])
+                    arr_betweenness = np.array(r.node_betweenness[dist])
+                    save_cache(f"estimate_harmonic_{topo}_{n_nodes}_{dist}_p{p}_s{seed}", arr_harmonic)
+                    save_cache(f"estimate_betweenness_{topo}_{n_nodes}_{dist}_p{p}_s{seed}", arr_betweenness)
+                    estimates["harmonic"].append(arr_harmonic)
+                    estimates["betweenness"].append(arr_betweenness)
 
-            estimates = np.array(estimates)  # Shape: (N_RUNS, n_nodes)
-
-            # Per-run approach: compute RMSE for each run independently, then aggregate
-            # This matches standard Monte Carlo reporting: mean ± std across trials
-            if np.any(mask):
-                per_run_rmses = []
-                per_run_biases = []
-                per_run_maes = []
-
-                for run_idx in range(N_RUNS):
-                    run_errors = (estimates[run_idx, mask] - true_density[mask]) / true_density[mask]
-                    per_run_rmses.append(np.sqrt(np.mean(run_errors**2)))
-                    per_run_biases.append(np.mean(run_errors))
-                    per_run_maes.append(np.mean(np.abs(run_errors)))
-
-                # Report mean and std across runs
-                rmse = float(np.mean(per_run_rmses))
-                rmse_std = float(np.std(per_run_rmses))
-                bias = float(np.mean(per_run_biases))
-                bias_std = float(np.std(per_run_biases))
-                mae = float(np.mean(per_run_maes))
-            else:
-                rmse, rmse_std = np.nan, np.nan
-                bias, bias_std = np.nan, np.nan
-                mae = np.nan
+            estimates = {metric: np.array(estimates[metric]) for metric in METRICS}  # Shape: (N_RUNS, n_nodes)
 
             effective_n = mean_reach * p
 
-            results.append(
-                {
-                    "topology": topo,
-                    "n_nodes": actual_n,
-                    "distance": dist,
-                    "sample_prob": p,
-                    "mean_reach": mean_reach,
-                    "effective_n": effective_n,
-                    "bias": bias,
-                    "bias_std": bias_std,
-                    "rmse": rmse,  # Mean RMSE across runs
-                    "rmse_std": rmse_std,  # Std of RMSE across runs
-                    "mae": mae,
-                    "morans_i": morans_i,
-                }
-            )
+            # Per-run approach: compute RMSE for each run independently, then aggregate
+            # This matches standard Monte Carlo reporting: mean ± std across trials
+            for metric in METRICS:
+                mask = masks[metric]
+                true_vals = true_values[metric]
+                est_vals = estimates[metric]
 
-        # Print summary for this config
-        p05_result = next((r for r in results[-len(PROBS) :] if r["sample_prob"] == 0.5), None)
+                if np.any(mask):
+                    per_run_rmses = []
+                    per_run_biases = []
+                    per_run_maes = []
+
+                    for run_idx in range(N_RUNS):
+                        run_errors = (est_vals[run_idx, mask] - true_vals[mask]) / true_vals[mask]
+                        per_run_rmses.append(np.sqrt(np.mean(run_errors**2)))
+                        per_run_biases.append(np.mean(run_errors))
+                        per_run_maes.append(np.mean(np.abs(run_errors)))
+
+                    # Report mean and std across runs (use ddof=1 for sample std)
+                    rmse = float(np.mean(per_run_rmses))
+                    rmse_std = float(np.std(per_run_rmses, ddof=1))
+                    bias = float(np.mean(per_run_biases))
+                    bias_std = float(np.std(per_run_biases, ddof=1))
+                    mae = float(np.mean(per_run_maes))
+                else:
+                    rmse, rmse_std = np.nan, np.nan
+                    bias, bias_std = np.nan, np.nan
+                    mae = np.nan
+
+                results.append(
+                    {
+                        "metric": metric,
+                        "topology": topo,
+                        "n_nodes": actual_n,
+                        "distance": dist,
+                        "sample_prob": p,
+                        "mean_reach": mean_reach,
+                        "effective_n": effective_n,
+                        "bias": bias,
+                        "bias_std": bias_std,
+                        "rmse": rmse,  # Mean RMSE across runs
+                        "rmse_std": rmse_std,  # Std of RMSE across runs
+                        "mae": mae,
+                        "morans_i": morans_i,
+                    }
+                )
+
+        # Print summary for this config (harmonic metric)
+        p05_result = next(
+            (r for r in results[-len(PROBS) * len(METRICS) :] if r["sample_prob"] == 0.5 and r["metric"] == "harmonic"),
+            None,
+        )
         if p05_result and not np.isnan(p05_result["rmse"]):
             print(f"RMSE@p=0.5: {p05_result['rmse']:.1%} ± {p05_result['rmse_std']:.1%}")
         else:
@@ -835,24 +857,47 @@ UNDERSTANDING THE STATISTICAL METRICS
   - effective_n = mean_reachability × sampling_probability
   - Higher effective_n → more "samples" → lower variance → lower RMSE
   - This follows from standard statistical sampling theory
+
+**Metrics Analyzed**:
+  - Harmonic Closeness: Sum of inverse distances to reachable nodes
+  - Betweenness: Count of shortest paths passing through each node
 """)
 
-valid = results_df[(results_df["rmse"].notna()) & (results_df["rmse"] < 1.0)]
+# Filter valid results
+valid_all = results_df[(results_df["rmse"].notna()) & (results_df["rmse"] < 1.0)]
 
-# Compute summary statistics by topology
+# Separate by metric for analysis
+valid_harmonic = valid_all[valid_all["metric"] == "harmonic"]
+valid_betweenness = valid_all[valid_all["metric"] == "betweenness"]
+
+# For backwards compatibility, use harmonic as default "valid" where needed
+valid = valid_harmonic
+
+# Compute summary statistics by topology and metric
 topology_colors = {"grid": "blue", "tree": "red", "organic": "green"}
-print("\nRMSE summary by topology:")
-for topo in valid["topology"].unique():
-    subset = valid[valid["topology"] == topo]
-    print(
-        f"  {topo.title()}: mean RMSE = {subset['rmse'].mean():.1%}, "
-        f"range = {subset['rmse'].min():.1%} - {subset['rmse'].max():.1%}"
-    )
+metric_markers = {"harmonic": "o", "betweenness": "s"}
+
+print("\nRMSE summary by metric and topology:")
+for metric in METRICS:
+    metric_data = valid_all[valid_all["metric"] == metric]
+    print(f"\n  {metric.upper()}:")
+    for topo in metric_data["topology"].unique():
+        subset = metric_data[metric_data["topology"] == topo]
+        print(
+            f"    {topo.title()}: mean RMSE = {subset['rmse'].mean():.1%}, "
+            f"range = {subset['rmse'].min():.1%} - {subset['rmse'].max():.1%}"
+        )
 
 REPORT["chapters"]["ch2_stats"] = {
-    "n_observations": len(valid),
-    "mean_rmse": float(valid["rmse"].mean()),
-    "mean_effective_n": float(valid["effective_n"].mean()),
+    "n_observations": len(valid_all),
+    "by_metric": {
+        metric: {
+            "n": len(valid_all[valid_all["metric"] == metric]),
+            "mean_rmse": float(valid_all[valid_all["metric"] == metric]["rmse"].mean()),
+            "mean_effective_n": float(valid_all[valid_all["metric"] == metric]["effective_n"].mean()),
+        }
+        for metric in METRICS
+    },
 }
 
 # %% Chapter 2.4: Bias Analysis
@@ -871,89 +916,99 @@ Bias and variance are two different types of error:
 
 The Horvitz-Thompson estimator used here is *theoretically* unbiased - meaning
 that over many samples, estimates should average to the true value. We verify
-this empirically below.
+this empirically below for both harmonic closeness and betweenness.
 """)
 
-mean_bias = valid["bias"].mean()
-std_bias = valid["bias"].std()
-max_abs_bias = valid["bias"].abs().max()
-
-print(f"Overall mean bias: {mean_bias:+.1%}")
-print(f"Std of bias: {std_bias:.1%}")
-print(f"Max |bias|: {max_abs_bias:.1%}")
-
-# Analyse bias by effective reachability - THIS IS CRITICAL
-# Bias is NOT negligible at low effective reachability!
-print("\nBias by effective reachability:")
-print("-" * 60)
-bias_by_reach = []
-reach_bins = [
-    (0, 10, "<10"),
-    (10, 25, "10-25"),
-    (25, 50, "25-50"),
-    (50, 100, "50-100"),
-    (100, 500, "100-500"),
-    (500, 10000, ">500"),
-]
-for lo, hi, label in reach_bins:
-    subset = valid[(valid["effective_n"] >= lo) & (valid["effective_n"] < hi)]
-    if len(subset) > 0:
-        bias_mean = subset["bias"].mean()
-        bias_std = subset["bias"].std()
-        n_obs = len(subset)
-        bias_by_reach.append({"range": label, "mean_bias": bias_mean, "std_bias": bias_std, "n": n_obs})
-        print(f"  effective_n {label:>8}: bias = {bias_mean:+.1%} ± {bias_std:.1%} (n={n_obs})")
-
-print("\nBias by topology:")
-print("-" * 60)
+# Analyze bias for each metric
+BIAS_BY_METRIC = {}
 BIAS_BY_TOPOLOGY = {}
-for topo in ["grid", "tree", "organic"]:
-    topo_data = valid[valid["topology"] == topo]
-    # Unified bias calculation for all of topo_data
-    mean_bias = topo_data["bias"].mean() if len(topo_data) > 0 else 0
-    std_bias = topo_data["bias"].std() if len(topo_data) > 0 else 0
-    n_obs = len(topo_data)
-    in_band = (topo_data["bias"].abs() <= 0.05).mean() if n_obs > 0 else 0
-    BIAS_BY_TOPOLOGY[topo] = {
-        "n": n_obs,
-        "mean_bias": mean_bias,
-        "std_bias": std_bias,
-        "in_band": in_band,
+
+for metric in METRICS:
+    metric_data = valid_all[valid_all["metric"] == metric]
+    print(f"\n{'=' * 60}")
+    print(f"BIAS ANALYSIS: {metric.upper()}")
+    print("=" * 60)
+
+    mean_bias = metric_data["bias"].mean()
+    std_bias = metric_data["bias"].std()
+    max_abs_bias = metric_data["bias"].abs().max()
+
+    print(f"\nOverall mean bias: {mean_bias:+.1%}")
+    print(f"Std of bias: {std_bias:.1%}")
+    print(f"Max |bias|: {max_abs_bias:.1%}")
+
+    # Analyse bias by effective reachability
+    print("\nBias by effective reachability:")
+    print("-" * 60)
+    reach_bins = [
+        (0, 10, "<10"),
+        (10, 25, "10-25"),
+        (25, 50, "25-50"),
+        (50, 100, "50-100"),
+        (100, 500, "100-500"),
+        (500, 10000, ">500"),
+    ]
+    for lo, hi, label in reach_bins:
+        subset = metric_data[(metric_data["effective_n"] >= lo) & (metric_data["effective_n"] < hi)]
+        if len(subset) > 0:
+            bias_mean = subset["bias"].mean()
+            bias_std = subset["bias"].std()
+            n_obs = len(subset)
+            print(f"  effective_n {label:>8}: bias = {bias_mean:+.1%} ± {bias_std:.1%} (n={n_obs})")
+
+    print(f"\nBias by topology ({metric}):")
+    print("-" * 60)
+    BIAS_BY_TOPOLOGY[metric] = {}
+    for topo in ["grid", "tree", "organic"]:
+        topo_data = metric_data[metric_data["topology"] == topo]
+        topo_mean_bias = topo_data["bias"].mean() if len(topo_data) > 0 else 0
+        topo_std_bias = topo_data["bias"].std() if len(topo_data) > 0 else 0
+        n_obs = len(topo_data)
+        in_band = (topo_data["bias"].abs() <= 0.05).mean() if n_obs > 0 else 0
+        BIAS_BY_TOPOLOGY[metric][topo] = {
+            "n": n_obs,
+            "mean_bias": topo_mean_bias,
+            "std_bias": topo_std_bias,
+            "in_band": in_band,
+        }
+        print(f"\n  {topo.upper()}:")
+        print(f"    Bias = {topo_mean_bias:+.1%} ± {topo_std_bias:.1%} (n={n_obs}, ±5% band: {in_band:.0%})")
+
+    # Unified bias statistics for this metric
+    n_metric = len(metric_data)
+    metric_mean_bias = metric_data["bias"].mean() if n_metric > 0 else 0
+    metric_std_bias = metric_data["bias"].std() if n_metric > 0 else 0
+    metric_in_band = (metric_data["bias"].abs() <= 0.05).mean() if n_metric > 0 else 0
+    if n_metric > 1:
+        t_stat, p_value = stats.ttest_1samp(metric_data["bias"].dropna(), 0)
+        unbiased = p_value > 0.05
+    else:
+        t_stat, p_value, unbiased = 0, 1, True
+
+    print(f"\nUnified bias statistics ({metric}):")
+    print(f"  n = {n_metric}")
+    print(f"  Mean bias: {metric_mean_bias:+.1%}")
+    print(f"  Std bias: {metric_std_bias:.1%}")
+    print(f"  Within ±5% band: {metric_in_band:.0%}")
+    print(f"  t-test: t={t_stat:.2f}, p={p_value:.4f}")
+    if unbiased:
+        print("  ✓ Bias is NOT statistically significant")
+    else:
+        print("  ⚠ Bias IS statistically significant!")
+
+    BIAS_BY_METRIC[metric] = {
+        "n": n_metric,
+        "mean": float(metric_mean_bias),
+        "std": float(metric_std_bias),
+        "t_stat": float(t_stat),
+        "p_value": float(p_value),
+        "unbiased": unbiased,
+        "pct_in_band": float(metric_in_band),
     }
-    print(f"\n  {topo.upper()}:")
-    print(f"    Bias = {mean_bias:+.1%} ± {std_bias:.1%} (n={n_obs}, ±5% band: {in_band:.0%})")
-
-
-# Unified bias statistics for all valid data
-n_valid = len(valid)
-mean_bias = valid["bias"].mean() if n_valid > 0 else 0
-std_bias = valid["bias"].std() if n_valid > 0 else 0
-in_band = (valid["bias"].abs() <= 0.05).mean() if n_valid > 0 else 0
-if n_valid > 1:
-    t_stat, p_value = stats.ttest_1samp(valid["bias"].dropna(), 0)
-    unbiased = p_value > 0.05
-else:
-    t_stat, p_value, unbiased = 0, 1, True
-
-print("\nUnified bias statistics (all data):")
-print(f"  n = {n_valid}")
-print(f"  Mean bias: {mean_bias:+.1%}")
-print(f"  Std bias: {std_bias:.1%}")
-print(f"  Within ±5% band: {in_band:.0%}")
-print(f"  t-test: t={t_stat:.2f}, p={p_value:.4f}")
-if unbiased:
-    print("  ✓ Bias is NOT statistically significant")
-else:
-    print("  ⚠ Bias IS statistically significant!")
 
 REPORT["chapters"]["ch2_bias"] = {
-    "n": n_valid,
-    "mean": float(mean_bias),
-    "std": float(std_bias),
-    "t_stat": float(t_stat),
-    "p_value": float(p_value),
-    "unbiased": unbiased,
-    "pct_in_band": float(in_band),
+    "by_metric": BIAS_BY_METRIC,
+    "by_topology": BIAS_BY_TOPOLOGY,
 }
 
 # %% Chapter 2.5: Spatial Autocorrelation Analysis (Moran's I)
@@ -1053,95 +1108,102 @@ REPORT["chapters"]["ch2_morans"] = {
 }
 
 # %% Chapter 2: Summary Figures
-fig, axes = plt.subplots(2, 2, figsize=(14, 12))
+# Create separate figures for each metric
+for metric in METRICS:
+    metric_data = valid_all[valid_all["metric"] == metric]
 
-# 2a: Reachability distribution by config (TOP LEFT)
-ax = axes[0, 0]
-reach_data = results_df.groupby(["topology", "n_nodes", "distance"])["mean_reach"].first().reset_index()
-for topo in reach_data["topology"].unique():
-    subset = reach_data[reach_data["topology"] == topo]
-    color = topology_colors.get(topo, "gray")
-    ax.scatter(
-        subset["distance"], subset["mean_reach"], s=subset["n_nodes"] / 10, alpha=0.6, label=topo.title(), color=color
+    fig, axes = plt.subplots(2, 2, figsize=(14, 12))
+
+    # 2a: Reachability distribution by config (TOP LEFT)
+    ax = axes[0, 0]
+    reach_data = results_df.groupby(["topology", "n_nodes", "distance"])["mean_reach"].first().reset_index()
+    for topo in reach_data["topology"].unique():
+        subset = reach_data[reach_data["topology"] == topo]
+        color = topology_colors.get(topo, "gray")
+        ax.scatter(
+            subset["distance"],
+            subset["mean_reach"],
+            s=subset["n_nodes"] / 10,
+            alpha=0.6,
+            label=topo.title(),
+            color=color,
+        )
+    ax.set_xlabel("Distance Threshold (m)")
+    ax.set_ylabel("Mean Reachability")
+    ax.set_title("Reachability by Distance and Topology")
+    ax.legend()
+    ax.set_yscale("log")
+    reach_min = reach_data["mean_reach"].min()
+    reach_max = reach_data["mean_reach"].max()
+    ax.set_ylim(max(1, reach_min * 0.5), reach_max * 2)
+
+    # 2b: Bias vs Effective N (TOP RIGHT)
+    ax = axes[0, 1]
+    for topo in metric_data["topology"].unique():
+        subset = metric_data[metric_data["topology"] == topo]
+        color = topology_colors.get(topo, "gray")
+        ax.scatter(subset["effective_n"], subset["bias"], alpha=0.6, s=50, label=topo.title(), color=color)
+    ax.axhline(0, color="black", linestyle="-", linewidth=1)
+    bias_min, bias_max = metric_data["bias"].min(), metric_data["bias"].max()
+    bias_margin = (bias_max - bias_min) * 0.1
+    max_eff_n = metric_data["effective_n"].max()
+    ax.fill_between([0.1, max_eff_n * 1.5], -0.05, 0.05, alpha=0.2, color="green", label="±5% band")
+    ax.set_xlabel("Effective Reachability (mean_reach × p)")
+    ax.set_ylabel("Mean Relative Bias")
+    ax.set_title(f"Bias vs Effective Reachability ({metric.title()})")
+    ax.legend(loc="lower right")
+    ax.set_xscale("log")
+    ax.set_xlim(metric_data["effective_n"].min() * 0.8, max_eff_n * 1.5)
+    ax.set_ylim(bias_min - bias_margin, bias_max + bias_margin)
+
+    # 2c: RMSE vs Effective N (BOTTOM LEFT)
+    ax = axes[1, 0]
+    for topo in metric_data["topology"].unique():
+        subset = metric_data[metric_data["topology"] == topo]
+        color = topology_colors.get(topo, "gray")
+        ax.scatter(subset["effective_n"], subset["rmse"], alpha=0.5, s=40, color=color, label=topo.title())
+    ax.set_xlabel("Effective Reachability (log scale)")
+    ax.set_ylabel("RMSE")
+    ax.set_title(f"RMSE vs Effective Reachability ({metric.title()})")
+    ax.legend()
+    ax.set_xscale("log")
+    rmse_max = metric_data["rmse"].max()
+    eff_n_min = metric_data["effective_n"].min()
+    eff_n_max = metric_data["effective_n"].max()
+    ax.set_xlim(max(1, eff_n_min * 0.8), eff_n_max * 1.5)
+    ax.set_ylim(0, rmse_max * 1.1)
+
+    # 2d: RMSE vs p for different reachabilities (BOTTOM RIGHT)
+    ax = axes[1, 1]
+    reach_bins = [
+        (0, 20, "Low (<20)"),
+        (20, 50, "Medium (20-50)"),
+        (50, 200, "High (50-200)"),
+        (200, 1000, "Very High (>200)"),
+    ]
+    for lo, hi, label in reach_bins:
+        subset = metric_data[(metric_data["mean_reach"] >= lo) & (metric_data["mean_reach"] < hi)]
+        if len(subset) > 0:
+            by_p = subset.groupby("sample_prob")["rmse"].mean()
+            ax.plot(by_p.index, by_p.values, "o-", label=label, linewidth=2, markersize=8)
+    ax.set_xlabel("Sampling Probability (p)")
+    ax.set_ylabel("Mean RMSE")
+    ax.set_title(f"RMSE Decreases with Both p and Reachability ({metric.title()})")
+    ax.legend(title="Reachability")
+    ax.set_xlim(0, 1.0)
+    ax.set_ylim(0, metric_data["rmse"].max() * 1.1)
+
+    fig.suptitle(
+        f"{metric.title()} Centrality: Effective Reachability = mean_reachability × p",
+        fontsize=12,
+        style="italic",
+        y=1.02,
     )
-ax.set_xlabel("Distance Threshold (m)")
-ax.set_ylabel("Mean Reachability")
-ax.set_title("Reachability by Distance and Topology")
-ax.legend()
-ax.set_yscale("log")
-# Let matplotlib auto-scale to fit all data, with a minimum lower bound
-# Use the actual data range to set appropriate limits
-reach_min = reach_data["mean_reach"].min()
-reach_max = reach_data["mean_reach"].max()
-ax.set_ylim(max(1, reach_min * 0.5), reach_max * 2)
-
-# 2b: Bias vs Effective N (TOP RIGHT) - use log scale to show low-reachability bias
-ax = axes[0, 1]
-for topo in valid["topology"].unique():
-    subset = valid[valid["topology"] == topo]
-    color = topology_colors.get(topo, "gray")
-    ax.scatter(subset["effective_n"], subset["bias"], alpha=0.6, s=50, label=topo.title(), color=color)
-ax.axhline(0, color="black", linestyle="-", linewidth=1)
-# Dynamic Y limits based on data
-bias_min, bias_max = valid["bias"].min(), valid["bias"].max()
-bias_margin = (bias_max - bias_min) * 0.1
-max_eff_n = valid["effective_n"].max()
-ax.fill_between([0.1, max_eff_n * 1.5], -0.05, 0.05, alpha=0.2, color="green", label="±5% band")
-ax.set_xlabel("Effective Reachability (mean_reach × p)")
-ax.set_ylabel("Mean Relative Bias")
-ax.set_title("Bias vs Effective Reachability (all p, threshold = {BIAS_THRESHOLD})")
-ax.legend(loc="lower right")
-ax.set_xscale("log")
-ax.set_xlim(valid["effective_n"].min() * 0.8, max_eff_n * 1.5)
-ax.set_ylim(bias_min - bias_margin, bias_max + bias_margin)
-
-# 2c: RMSE vs Effective N (BOTTOM LEFT) - scatter by topology
-ax = axes[1, 0]
-for topo in valid["topology"].unique():
-    subset = valid[valid["topology"] == topo]
-    color = topology_colors.get(topo, "gray")
-    ax.scatter(subset["effective_n"], subset["rmse"], alpha=0.5, s=40, color=color, label=topo.title())
-
-ax.set_xlabel("Effective Reachability (log scale)")
-ax.set_ylabel("RMSE")
-ax.set_title("RMSE vs Effective Reachability")
-ax.legend()
-# Use log scale for x-axis to better show relationship across orders of magnitude
-ax.set_xscale("log")
-rmse_max = valid["rmse"].max()
-eff_n_min = valid["effective_n"].min()
-eff_n_max = valid["effective_n"].max()
-ax.set_xlim(max(1, eff_n_min * 0.8), eff_n_max * 1.5)
-ax.set_ylim(0, rmse_max * 1.1)
-
-# 2d: RMSE vs p for different reachabilities (BOTTOM RIGHT)
-ax = axes[1, 1]
-reach_bins = [
-    (0, 20, "Low (<20)"),
-    (20, 50, "Medium (20-50)"),
-    (50, 200, "High (50-200)"),
-    (200, 1000, "Very High (>200)"),
-]
-for lo, hi, label in reach_bins:
-    subset = valid[(valid["mean_reach"] >= lo) & (valid["mean_reach"] < hi)]
-    if len(subset) > 0:
-        by_p = subset.groupby("sample_prob")["rmse"].mean()
-        ax.plot(by_p.index, by_p.values, "o-", label=label, linewidth=2, markersize=8)
-ax.set_xlabel("Sampling Probability (p)")
-ax.set_ylabel("Mean RMSE")
-ax.set_title("RMSE Decreases with Both p and Reachability")
-ax.legend(title="Reachability")
-ax.set_xlim(0, 1.0)
-ax.set_ylim(0, valid["rmse"].max() * 1.1)
-
-fig.suptitle(
-    "Effective Reachability = mean_reachability × sampling_probability (p)", fontsize=12, style="italic", y=1.02
-)
-plt.tight_layout()
-fig_path = OUTPUT_DIR / "ch2_statistics.png"
-plt.savefig(fig_path, dpi=150, bbox_inches="tight")
-plt.close()
-print(f"\nFigure saved: {fig_path}")
+    plt.tight_layout()
+    fig_path = OUTPUT_DIR / f"ch2_statistics_{metric}.png"
+    plt.savefig(fig_path, dpi=150, bbox_inches="tight")
+    plt.close()
+    print(f"\nFigure saved: {fig_path}")
 
 # %% Chapter 2.7: RMSE Prediction Formula
 print_header("2.7 RMSE Prediction Formula", level=2)
@@ -1158,22 +1220,7 @@ def rmse_formula(X, k):
     return k * np.sqrt((1 - p) / effective_n)
 
 
-# Prepare data for fitting
-valid_for_fit = valid[valid["effective_n"] > 0].copy()
-X_data = (valid_for_fit["effective_n"].values, valid_for_fit["sample_prob"].values)
-y_data = valid_for_fit["rmse"].values
-
-# Fit the model
-popt, pcov = curve_fit(rmse_formula, X_data, y_data, p0=[1.0])
-k_global = popt[0]
-
-# Calculate R² for the fit
-y_pred = rmse_formula(X_data, k_global)
-ss_res = np.sum((y_data - y_pred) ** 2)
-ss_tot = np.sum((y_data - np.mean(y_data)) ** 2)
-r_squared = 1 - ss_res / ss_tot
-
-print(f"""
+print("""
 RMSE PREDICTION FORMULA
 =======================
 
@@ -1182,104 +1229,362 @@ scales as (1-p)/n, where p is the sampling probability and n is the effective
 sample size. Taking the square root gives the expected RMSE scaling.
 
 Fitted formula: RMSE = k × √((1-p) / effective_n)
-
-Global fit (all topologies):
-  k = {k_global:.4f}
-  R² = {r_squared:.4f}
-
-This means: RMSE ≈ {k_global:.2f} × √((1-p) / effective_n)
 """)
 
-# Fit per topology to check for variation
-print("Per-topology coefficients:")
-topology_k = {}
-for topo in valid_for_fit["topology"].unique():
-    subset = valid_for_fit[valid_for_fit["topology"] == topo]
-    X_topo = (subset["effective_n"].values, subset["sample_prob"].values)
-    y_topo = subset["rmse"].values
-    popt_topo, _ = curve_fit(rmse_formula, X_topo, y_topo, p0=[1.0])
-    k_topo = popt_topo[0]
-    topology_k[topo] = k_topo
+# Fit for each metric
+RMSE_FORMULA_BY_METRIC = {}
+k_global_by_metric = {}
+r_squared_by_metric = {}
+topology_k_by_metric = {}
 
-    # Calculate R² for this topology
-    y_pred_topo = rmse_formula(X_topo, k_topo)
-    ss_res_topo = np.sum((y_topo - y_pred_topo) ** 2)
-    ss_tot_topo = np.sum((y_topo - np.mean(y_topo)) ** 2)
-    r2_topo = 1 - ss_res_topo / ss_tot_topo
+for metric in METRICS:
+    metric_data = valid_all[valid_all["metric"] == metric]
+    valid_for_fit = metric_data[metric_data["effective_n"] > 0].copy()
+    X_data = (valid_for_fit["effective_n"].values, valid_for_fit["sample_prob"].values)
+    y_data = valid_for_fit["rmse"].values
 
-    print(f"  {topo.title()}: k = {k_topo:.4f} (R² = {r2_topo:.4f})")
+    # Fit the model
+    popt, pcov = curve_fit(rmse_formula, X_data, y_data, p0=[1.0])
+    k_global = popt[0]
+    k_global_by_metric[metric] = k_global
+
+    # Calculate R² for the fit
+    y_pred = rmse_formula(X_data, k_global)
+    ss_res = np.sum((y_data - y_pred) ** 2)
+    ss_tot = np.sum((y_data - np.mean(y_data)) ** 2)
+    r_squared = 1 - ss_res / ss_tot
+    r_squared_by_metric[metric] = r_squared
+
+    print(f"\n{metric.upper()}:")
+    print(f"  Global fit: k = {k_global:.4f}, R² = {r_squared:.4f}")
+    print(f"  Formula: RMSE ≈ {k_global:.2f} × √((1-p) / effective_n)")
+
+    # Fit per topology to check for variation
+    print(f"\n  Per-topology coefficients ({metric}):")
+    topology_k = {}
+    for topo in valid_for_fit["topology"].unique():
+        subset = valid_for_fit[valid_for_fit["topology"] == topo]
+        X_topo = (subset["effective_n"].values, subset["sample_prob"].values)
+        y_topo = subset["rmse"].values
+        popt_topo, _ = curve_fit(rmse_formula, X_topo, y_topo, p0=[1.0])
+        k_topo = popt_topo[0]
+        topology_k[topo] = k_topo
+
+        # Calculate R² for this topology
+        y_pred_topo = rmse_formula(X_topo, k_topo)
+        ss_res_topo = np.sum((y_topo - y_pred_topo) ** 2)
+        ss_tot_topo = np.sum((y_topo - np.mean(y_topo)) ** 2)
+        r2_topo = 1 - ss_res_topo / ss_tot_topo
+
+        print(f"    {topo.title()}: k = {k_topo:.4f} (R² = {r2_topo:.4f})")
+
+    topology_k_by_metric[metric] = topology_k
+
+    RMSE_FORMULA_BY_METRIC[metric] = {
+        "k_global": float(k_global),
+        "r_squared": float(r_squared),
+        "topology_k": {k: float(v) for k, v in topology_k.items()},
+    }
+
+    # Validate the formula against actual observations
+    print(f"\n  Validation: Predicted vs Observed RMSE ({metric})")
+    print("  " + "-" * 50)
+
+    # Add predicted RMSE to the dataframe
+    valid_for_fit["rmse_predicted"] = rmse_formula(
+        (valid_for_fit["effective_n"].values, valid_for_fit["sample_prob"].values), k_global
+    )
+    valid_for_fit["rmse_error"] = valid_for_fit["rmse_predicted"] - valid_for_fit["rmse"]
+    valid_for_fit["rmse_error_pct"] = valid_for_fit["rmse_error"] / valid_for_fit["rmse"] * 100
+
+    # Summary by topology and p
+    for topo in ["grid", "tree", "organic"]:
+        topo_data = valid_for_fit[valid_for_fit["topology"] == topo]
+        print(f"\n  {topo.upper()}:")
+        for p in [0.3, 0.5, 0.7, 0.9]:
+            p_data = topo_data[topo_data["sample_prob"] == p]
+            if len(p_data) > 0:
+                obs_mean = p_data["rmse"].mean()
+                pred_mean = p_data["rmse_predicted"].mean()
+                err_mean = p_data["rmse_error_pct"].mean()
+                print(f"    p={p}: observed={obs_mean:.1%}, predicted={pred_mean:.1%}, error={err_mean:+.1f}%")
+
+    # Overall prediction accuracy
+    mae_pct = np.abs(valid_for_fit["rmse_error_pct"]).mean()
+    print(f"\n  Overall Mean Absolute Error: {mae_pct:.1f}% of observed RMSE")
 
 # Store the formula in the report
 REPORT["chapters"]["ch2_rmse_formula"] = {
-    "k_global": float(k_global),
-    "r_squared": float(r_squared),
-    "topology_k": {k: float(v) for k, v in topology_k.items()},
+    "by_metric": RMSE_FORMULA_BY_METRIC,
     "formula": "RMSE = k × sqrt((1-p) / effective_n)",
 }
 
-# Validate the formula against actual observations
-print("\nValidation: Predicted vs Observed RMSE")
-print("-" * 50)
+# Create validation plots for each metric
+for metric in METRICS:
+    metric_data = valid_all[valid_all["metric"] == metric]
+    valid_for_fit = metric_data[metric_data["effective_n"] > 0].copy()
+    k_global = k_global_by_metric[metric]
+    r_squared = r_squared_by_metric[metric]
 
-# Add predicted RMSE to the dataframe
-valid_for_fit["rmse_predicted"] = rmse_formula(
-    (valid_for_fit["effective_n"].values, valid_for_fit["sample_prob"].values), k_global
-)
-valid_for_fit["rmse_error"] = valid_for_fit["rmse_predicted"] - valid_for_fit["rmse"]
-valid_for_fit["rmse_error_pct"] = valid_for_fit["rmse_error"] / valid_for_fit["rmse"] * 100
+    valid_for_fit["rmse_predicted"] = rmse_formula(
+        (valid_for_fit["effective_n"].values, valid_for_fit["sample_prob"].values), k_global
+    )
+    valid_for_fit["rmse_error_pct"] = (
+        (valid_for_fit["rmse_predicted"] - valid_for_fit["rmse"]) / valid_for_fit["rmse"] * 100
+    )
 
-# Summary by topology and p
-for topo in ["grid", "tree", "organic"]:
-    topo_data = valid_for_fit[valid_for_fit["topology"] == topo]
-    print(f"\n{topo.upper()}:")
-    for p in [0.3, 0.5, 0.7, 0.9]:
-        p_data = topo_data[topo_data["sample_prob"] == p]
-        if len(p_data) > 0:
-            obs_mean = p_data["rmse"].mean()
-            pred_mean = p_data["rmse_predicted"].mean()
-            err_mean = p_data["rmse_error_pct"].mean()
-            print(f"  p={p}: observed={obs_mean:.1%}, predicted={pred_mean:.1%}, error={err_mean:+.1f}%")
+    fig, axes = plt.subplots(1, 2, figsize=(14, 6))
 
-# Overall prediction accuracy
-mae_pct = np.abs(valid_for_fit["rmse_error_pct"]).mean()
-print(f"\nOverall Mean Absolute Error: {mae_pct:.1f}% of observed RMSE")
+    # Left: Predicted vs Observed scatter
+    ax = axes[0]
+    for topo in ["grid", "tree", "organic"]:
+        subset = valid_for_fit[valid_for_fit["topology"] == topo]
+        color = topology_colors.get(topo, "gray")
+        ax.scatter(subset["rmse"], subset["rmse_predicted"], alpha=0.5, s=40, color=color, label=topo.title())
 
-# Create validation plot
+    # Add perfect prediction line
+    max_rmse = max(valid_for_fit["rmse"].max(), valid_for_fit["rmse_predicted"].max())
+    ax.plot([0, max_rmse], [0, max_rmse], "k--", linewidth=2, label="Perfect prediction")
+    ax.set_xlabel("Observed RMSE")
+    ax.set_ylabel("Predicted RMSE")
+    ax.set_title(f"{metric.title()}: RMSE Prediction Accuracy (R² = {r_squared:.3f})")
+    ax.legend()
+    ax.set_xlim(0, max_rmse * 1.1)
+    ax.set_ylim(0, max_rmse * 1.1)
+    ax.set_aspect("equal")
+
+    # Right: Residuals by effective_n
+    ax = axes[1]
+    for topo in ["grid", "tree", "organic"]:
+        subset = valid_for_fit[valid_for_fit["topology"] == topo]
+        color = topology_colors.get(topo, "gray")
+        ax.scatter(subset["effective_n"], subset["rmse_error_pct"], alpha=0.5, s=40, color=color, label=topo.title())
+    ax.axhline(0, color="black", linestyle="--", linewidth=1)
+    ax.set_xlabel("Effective Reachability (log scale)")
+    ax.set_ylabel("Prediction Error (%)")
+    ax.set_title(f"{metric.title()}: Prediction Residuals by Effective Reachability")
+    ax.legend()
+    ax.set_xscale("log")
+
+    plt.tight_layout()
+    fig_path = OUTPUT_DIR / f"ch2_rmse_formula_{metric}.png"
+    plt.savefig(fig_path, dpi=150, bbox_inches="tight")
+    plt.close()
+    print(f"\nFigure saved: {fig_path}")
+
+# %% Chapter 2.8: Deriving Optimal Sampling Probability
+print_header("2.8 Deriving Optimal Sampling Probability", level=2)
+
+print("""
+INVERTING THE FORMULA TO FIND OPTIMAL p
+=======================================
+
+Given the RMSE formula: RMSE = k × √((1-p) / (mean_reach × p))
+
+We can solve for p given a target RMSE and known mean reachability:
+
+    RMSE² = k² × (1-p) / (mean_reach × p)
+    RMSE² × mean_reach × p = k² × (1-p)
+    RMSE² × mean_reach × p + k² × p = k²
+    p = k² / (RMSE² × mean_reach + k²)
+
+This gives us a function to compute the minimum sampling probability
+needed to achieve a target RMSE for a given network.
+""")
+
+
+def compute_min_p_for_target_rmse(target_rmse: float, mean_reach: float, k: float) -> float:
+    """
+    Compute minimum sampling probability to achieve target RMSE.
+
+    Parameters
+    ----------
+    target_rmse : float
+        Target RMSE (e.g., 0.10 for 10% error)
+    mean_reach : float
+        Mean reachability of the network at the chosen distance threshold
+    k : float
+        Fitted coefficient from RMSE formula (metric-specific)
+
+    Returns
+    -------
+    float
+        Minimum sampling probability (clamped to [0.1, 1.0])
+    """
+    if target_rmse <= 0 or mean_reach <= 0:
+        return 1.0
+    k_sq = k**2
+    rmse_sq = target_rmse**2
+    p = k_sq / (rmse_sq * mean_reach + k_sq)
+    # Clamp to reasonable range
+    return max(0.1, min(1.0, p))
+
+
+def compute_expected_rmse(p: float, mean_reach: float, k: float) -> float:
+    """
+    Compute expected RMSE for given sampling probability and reachability.
+
+    Parameters
+    ----------
+    p : float
+        Sampling probability
+    mean_reach : float
+        Mean reachability of the network
+    k : float
+        Fitted coefficient from RMSE formula
+
+    Returns
+    -------
+    float
+        Expected RMSE
+    """
+    if p <= 0 or mean_reach <= 0:
+        return float("inf")
+    effective_n = mean_reach * p
+    return k * np.sqrt((1 - p) / effective_n)
+
+
+# Use the maximum k across metrics for conservative estimates
+k_conservative = max(k_global_by_metric.values())
+print(f"Using conservative k = {k_conservative:.4f} (max across metrics)")
+
+# Generate guidance table: for various reachabilities, what p is needed for target RMSEs?
+print("\nMinimum p for Target RMSE (conservative estimate):")
+print("-" * 75)
+print(f"{'Mean Reach':>12} | {'5% RMSE':>10} | {'10% RMSE':>10} | {'15% RMSE':>10} | {'20% RMSE':>10}")
+print("-" * 75)
+
+SAMPLING_GUIDANCE = {}
+for reach in [10, 25, 50, 100, 200, 500, 1000, 2000]:
+    p_5 = compute_min_p_for_target_rmse(0.05, reach, k_conservative)
+    p_10 = compute_min_p_for_target_rmse(0.10, reach, k_conservative)
+    p_15 = compute_min_p_for_target_rmse(0.15, reach, k_conservative)
+    p_20 = compute_min_p_for_target_rmse(0.20, reach, k_conservative)
+    SAMPLING_GUIDANCE[reach] = {"5%": p_5, "10%": p_10, "15%": p_15, "20%": p_20}
+    print(f"{reach:>12} | {p_5:>10.0%} | {p_10:>10.0%} | {p_15:>10.0%} | {p_20:>10.0%}")
+print("-" * 75)
+
+# Reverse table: for various p values, what RMSE to expect at different reachabilities?
+print("\nExpected RMSE for Given p and Reachability:")
+print("-" * 85)
+header = f"{'p':>6} |"
+for reach in [25, 50, 100, 200, 500, 1000]:
+    header += f" reach={reach:>4} |"
+print(header)
+print("-" * 85)
+
+for p in [0.2, 0.3, 0.5, 0.7, 0.9, 1.0]:
+    row = f"{p:>6.0%} |"
+    for reach in [25, 50, 100, 200, 500, 1000]:
+        expected = compute_expected_rmse(p, reach, k_conservative)
+        row += f" {expected:>9.1%} |"
+    print(row)
+print("-" * 85)
+
+
+# Define automatic sampling probability recommendation
+def recommend_sampling_probability(
+    mean_reach: float,
+    target_rmse: float = 0.10,
+    min_p: float = 0.2,
+    max_p: float = 1.0,
+) -> tuple[float, float]:
+    """
+    Recommend a sampling probability for a given network.
+
+    Parameters
+    ----------
+    mean_reach : float
+        Mean reachability of the network
+    target_rmse : float
+        Target RMSE (default 10%)
+    min_p : float
+        Minimum allowed p (default 0.2 for stability)
+    max_p : float
+        Maximum p (default 1.0, i.e., no sampling)
+
+    Returns
+    -------
+    tuple[float, float]
+        (recommended_p, expected_rmse)
+    """
+    # Use conservative k
+    k = k_conservative
+
+    # Compute p needed for target RMSE
+    p_needed = compute_min_p_for_target_rmse(target_rmse, mean_reach, k)
+
+    # Clamp to allowed range
+    p_recommended = max(min_p, min(max_p, p_needed))
+
+    # Compute actual expected RMSE at recommended p
+    expected_rmse = compute_expected_rmse(p_recommended, mean_reach, k)
+
+    return p_recommended, expected_rmse
+
+
+print("""
+AUTOMATIC SAMPLING RECOMMENDATION
+=================================
+
+The recommend_sampling_probability() function can suggest a sampling probability
+based on a network's mean reachability and desired accuracy:
+
+    p, expected_rmse = recommend_sampling_probability(mean_reach, target_rmse=0.10)
+
+Example recommendations for 10% target RMSE:
+""")
+
+for reach in [25, 50, 100, 200, 500, 1000]:
+    p_rec, exp_rmse = recommend_sampling_probability(reach, target_rmse=0.10)
+    speedup = 1.0 / p_rec
+    print(f"  mean_reach={reach:>4}: p={p_rec:.0%} (expected RMSE={exp_rmse:.1%}, speedup={speedup:.1f}x)")
+
+# Store in report
+REPORT["chapters"]["ch2_sampling_guidance"] = {
+    "k_conservative": float(k_conservative),
+    "guidance_table": SAMPLING_GUIDANCE,
+    "formula": "p = k² / (RMSE² × mean_reach + k²)",
+}
+
+# Create visualization of the recommendation function
 fig, axes = plt.subplots(1, 2, figsize=(14, 6))
 
-# Left: Predicted vs Observed scatter
+# Left: Recommended p vs mean reachability for different target RMSEs
 ax = axes[0]
-for topo in ["grid", "tree", "organic"]:
-    subset = valid_for_fit[valid_for_fit["topology"] == topo]
-    color = topology_colors.get(topo, "gray")
-    ax.scatter(subset["rmse"], subset["rmse_predicted"], alpha=0.5, s=40, color=color, label=topo.title())
+reach_range = np.logspace(1, 3.5, 100)  # 10 to ~3000
+for target, color, style in [(0.05, "red", "-"), (0.10, "blue", "-"), (0.15, "green", "-"), (0.20, "orange", "-")]:
+    p_values = [compute_min_p_for_target_rmse(target, r, k_conservative) for r in reach_range]
+    ax.plot(reach_range, p_values, color=color, linestyle=style, linewidth=2, label=f"Target RMSE = {target:.0%}")
 
-# Add perfect prediction line
-max_rmse = max(valid_for_fit["rmse"].max(), valid_for_fit["rmse_predicted"].max())
-ax.plot([0, max_rmse], [0, max_rmse], "k--", linewidth=2, label="Perfect prediction")
-ax.set_xlabel("Observed RMSE")
-ax.set_ylabel("Predicted RMSE")
-ax.set_title(f"RMSE Prediction Accuracy (R² = {r_squared:.3f})")
-ax.legend()
-ax.set_xlim(0, max_rmse * 1.1)
-ax.set_ylim(0, max_rmse * 1.1)
-ax.set_aspect("equal")
-
-# Right: Residuals by effective_n
-ax = axes[1]
-for topo in ["grid", "tree", "organic"]:
-    subset = valid_for_fit[valid_for_fit["topology"] == topo]
-    color = topology_colors.get(topo, "gray")
-    ax.scatter(subset["effective_n"], subset["rmse_error_pct"], alpha=0.5, s=40, color=color, label=topo.title())
-ax.axhline(0, color="black", linestyle="--", linewidth=1)
-ax.set_xlabel("Effective Reachability (log scale)")
-ax.set_ylabel("Prediction Error (%)")
-ax.set_title("Prediction Residuals by Effective Reachability")
-ax.legend()
+ax.set_xlabel("Mean Reachability")
+ax.set_ylabel("Recommended Sampling Probability (p)")
+ax.set_title("Recommended p for Target RMSE")
 ax.set_xscale("log")
+ax.set_xlim(10, 3000)
+ax.set_ylim(0, 1.05)
+ax.legend(loc="upper right")
+ax.grid(True, alpha=0.3)
+ax.axhline(0.5, color="gray", linestyle=":", alpha=0.5, label="_p=0.5")
+
+# Right: Expected RMSE vs mean reachability for different p values
+ax = axes[1]
+for p, color in [(0.2, "red"), (0.3, "orange"), (0.5, "blue"), (0.7, "green"), (1.0, "black")]:
+    rmse_values = [compute_expected_rmse(p, r, k_conservative) for r in reach_range]
+    ax.plot(reach_range, [r * 100 for r in rmse_values], color=color, linewidth=2, label=f"p = {p:.0%}")
+
+ax.set_xlabel("Mean Reachability")
+ax.set_ylabel("Expected RMSE (%)")
+ax.set_title("Expected RMSE for Given Sampling Probability")
+ax.set_xscale("log")
+ax.set_xlim(10, 3000)
+ax.set_ylim(0, 50)
+ax.legend(loc="upper right")
+ax.grid(True, alpha=0.3)
+ax.axhline(10, color="gray", linestyle=":", alpha=0.5, label="_10% target")
 
 plt.tight_layout()
-fig_path = OUTPUT_DIR / "ch2_rmse_formula.png"
+fig_path = OUTPUT_DIR / "ch2_sampling_recommendation.png"
 plt.savefig(fig_path, dpi=150, bbox_inches="tight")
 plt.close()
 print(f"\nFigure saved: {fig_path}")
@@ -1328,36 +1633,40 @@ print_header("3.2 Topology-Specific Analysis", level=2)
 
 # Analyse each topology separately to understand their different behaviours
 topology_stats = {}
-for topo in valid["topology"].unique():
-    subset = valid[valid["topology"] == topo]
-    topo_stats = {
-        "n_configs": len(subset),
-        "mean_reach": subset["mean_reach"].mean(),
-        "min_reach": subset["mean_reach"].min(),
-        "max_reach": subset["mean_reach"].max(),
-        "mean_rmse_p03": subset[subset["sample_prob"] == 0.3]["rmse"].mean(),
-        "mean_rmse_p05": subset[subset["sample_prob"] == 0.5]["rmse"].mean(),
-        "mean_rmse_p07": subset[subset["sample_prob"] == 0.7]["rmse"].mean(),
-        "mean_rmse_p09": subset[subset["sample_prob"] == 0.9]["rmse"].mean(),
-    }
-    topology_stats[topo] = topo_stats
-    print(f"\n{topo.upper()} networks:")
-    print(f"  Configurations: {topo_stats['n_configs']}")
-    print(f"  Reachability range: {topo_stats['min_reach']:.0f} - {topo_stats['max_reach']:.0f}")
-    print(f"  Mean reachability: {topo_stats['mean_reach']:.0f}")
-    print(f"  RMSE at p=0.3: {topo_stats['mean_rmse_p03']:.1%}")
-    print(f"  RMSE at p=0.5: {topo_stats['mean_rmse_p05']:.1%}")
-    print(f"  RMSE at p=0.7: {topo_stats['mean_rmse_p07']:.1%}")
-    print(f"  RMSE at p=0.9: {topo_stats['mean_rmse_p09']:.1%}")
+for metric in METRICS:
+    metric_data = valid_all[valid_all["metric"] == metric]
+    topology_stats[metric] = {}
+
+    print(f"\n{'=' * 60}")
+    print(f"TOPOLOGY ANALYSIS: {metric.upper()}")
+    print("=" * 60)
+
+    for topo in metric_data["topology"].unique():
+        subset = metric_data[metric_data["topology"] == topo]
+        topo_stats = {
+            "n_configs": len(subset),
+            "mean_reach": subset["mean_reach"].mean(),
+            "min_reach": subset["mean_reach"].min(),
+            "max_reach": subset["mean_reach"].max(),
+            "mean_rmse_p03": subset[subset["sample_prob"] == 0.3]["rmse"].mean(),
+            "mean_rmse_p05": subset[subset["sample_prob"] == 0.5]["rmse"].mean(),
+            "mean_rmse_p07": subset[subset["sample_prob"] == 0.7]["rmse"].mean(),
+            "mean_rmse_p09": subset[subset["sample_prob"] == 0.9]["rmse"].mean(),
+        }
+        topology_stats[metric][topo] = topo_stats
+        print(f"\n{topo.upper()} networks ({metric}):")
+        print(f"  Configurations: {topo_stats['n_configs']}")
+        print(f"  Reachability range: {topo_stats['min_reach']:.0f} - {topo_stats['max_reach']:.0f}")
+        print(f"  Mean reachability: {topo_stats['mean_reach']:.0f}")
+        print(f"  RMSE at p=0.3: {topo_stats['mean_rmse_p03']:.1%}")
+        print(f"  RMSE at p=0.5: {topo_stats['mean_rmse_p05']:.1%}")
+        print(f"  RMSE at p=0.7: {topo_stats['mean_rmse_p07']:.1%}")
+        print(f"  RMSE at p=0.9: {topo_stats['mean_rmse_p09']:.1%}")
 
 REPORT["chapters"]["ch3_topology_stats"] = topology_stats
-# topology_models already fitted in Chapter 2
 
 # %% Chapter 3.2b: RMSE by Topology Figure
 print_header("3.2b RMSE by Topology", level=2)
-
-# RMSE comparison by topology, showing lines for different reachability ranges
-fig, axes = plt.subplots(1, 3, figsize=(15, 5))
 
 # Define reachability bins with colors (red=low/bad, green=high/good)
 reach_bins_plot = [
@@ -1368,54 +1677,60 @@ reach_bins_plot = [
     (500, 10000, "> 500", "green"),
 ]
 
+# RMSE comparison by topology for each metric
+for metric in METRICS:
+    metric_data = valid_all[valid_all["metric"] == metric]
 
-# Compute global y-axis limit across all bins and topologies
-global_max_rmse = 0
-for topo in ["grid", "tree", "organic"]:
-    subset = valid[valid["topology"] == topo]
-    if len(subset) > 0:
-        for lo, hi, label, color in reach_bins_plot:
-            bin_data = subset[(subset["mean_reach"] >= lo) & (subset["mean_reach"] < hi)]
-            if len(bin_data) >= 2:
-                by_p = bin_data.groupby("sample_prob")["rmse"].mean()
-                if len(by_p) > 0:
-                    global_max_rmse = max(global_max_rmse, by_p.max())
+    fig, axes = plt.subplots(1, 3, figsize=(15, 5))
 
-rmse_ylim = global_max_rmse * 1.1 if global_max_rmse > 0 else 1
+    # Compute global y-axis limit across all bins and topologies for this metric
+    global_max_rmse = 0
+    for topo in ["grid", "tree", "organic"]:
+        subset = metric_data[metric_data["topology"] == topo]
+        if len(subset) > 0:
+            for lo, hi, _label, _color in reach_bins_plot:
+                bin_data = subset[(subset["mean_reach"] >= lo) & (subset["mean_reach"] < hi)]
+                if len(bin_data) >= 2:
+                    by_p = bin_data.groupby("sample_prob")["rmse"].mean()
+                    if len(by_p) > 0:
+                        global_max_rmse = max(global_max_rmse, by_p.max())
 
-for idx, topo in enumerate(["grid", "tree", "organic"]):
-    ax = axes[idx]
-    subset = valid[valid["topology"] == topo]
+    rmse_ylim = global_max_rmse * 1.1 if global_max_rmse > 0 else 1
 
-    if len(subset) > 0:
-        for lo, hi, label, color in reach_bins_plot:
-            bin_data = subset[(subset["mean_reach"] >= lo) & (subset["mean_reach"] < hi)]
-            if len(bin_data) >= 2:
-                by_p = bin_data.groupby("sample_prob")["rmse"].mean()
-                ax.plot(
-                    by_p.index,
-                    by_p.values,
-                    "o-",
-                    color=color,
-                    label=f"reach {label}",
-                    linewidth=2,
-                    markersize=6,
-                    alpha=0.8,
-                )
+    for idx, topo in enumerate(["grid", "tree", "organic"]):
+        ax = axes[idx]
+        subset = metric_data[metric_data["topology"] == topo]
 
-    ax.set_xlabel("Sampling Probability (p)")
-    ax.set_ylabel("RMSE")
-    ax.set_title(f"{topo.title()}: RMSE by Reachability")
-    ax.set_ylim(0, rmse_ylim)
-    ax.set_xlim(0, 1.0)
-    ax.legend(loc="upper right", fontsize=8)
-    ax.grid(True, alpha=0.3)
+        if len(subset) > 0:
+            for lo, hi, label, color in reach_bins_plot:
+                bin_data = subset[(subset["mean_reach"] >= lo) & (subset["mean_reach"] < hi)]
+                if len(bin_data) >= 2:
+                    by_p = bin_data.groupby("sample_prob")["rmse"].mean()
+                    ax.plot(
+                        by_p.index,
+                        by_p.values,
+                        "o-",
+                        color=color,
+                        label=f"reach {label}",
+                        linewidth=2,
+                        markersize=6,
+                        alpha=0.8,
+                    )
 
-plt.tight_layout()
-fig_path = OUTPUT_DIR / "ch3_topology_rmse.png"
-plt.savefig(fig_path, dpi=150, bbox_inches="tight")
-plt.close()
-print(f"Figure saved: {fig_path}")
+        ax.set_xlabel("Sampling Probability (p)")
+        ax.set_ylabel("RMSE")
+        ax.set_title(f"{topo.title()}: RMSE by Reachability")
+        ax.set_ylim(0, rmse_ylim)
+        ax.set_xlim(0, 1.0)
+        ax.legend(loc="upper right", fontsize=8)
+        ax.grid(True, alpha=0.3)
+
+    fig.suptitle(f"{metric.title()} Centrality", fontsize=14, fontweight="bold", y=1.02)
+    plt.tight_layout()
+    fig_path = OUTPUT_DIR / f"ch3_topology_rmse_{metric}.png"
+    plt.savefig(fig_path, dpi=150, bbox_inches="tight")
+    plt.close()
+    print(f"Figure saved: {fig_path}")
 
 # %% Chapter 3.3: Empirical Guidance Tables
 print_header("3.3 Empirical RMSE by Topology", level=2)
@@ -1437,97 +1752,108 @@ def get_reach_bin(reach):
         return "> 500"
 
 
-valid["reach_bin"] = valid["mean_reach"].apply(get_reach_bin)
+valid_all["reach_bin"] = valid_all["mean_reach"].apply(get_reach_bin)
 
-# Show empirical RMSE for each topology
-for topo in ["grid", "tree", "organic"]:
-    subset = valid[valid["topology"] == topo]
-    if len(subset) == 0:
-        continue
-    print(f"\n{topo.upper()} networks:")
-    pivot = subset.pivot_table(values="rmse", index="reach_bin", columns="sample_prob", aggfunc="mean")
-    # Reorder bins
-    bin_order = ["< 50", "50-100", "100-200", "200-500", "> 500"]
-    pivot = pivot.reindex([b for b in bin_order if b in pivot.index])
-    print(pivot.applymap(lambda x: f"{x:.1%}" if pd.notna(x) else "-").to_string())
-
-# Convert tuple keys to string for JSON serialization
+# Show empirical RMSE for each metric and topology
 REPORT["chapters"]["ch3_empirical"] = {}
-for topo in valid["topology"].unique():
-    topo_data = valid[valid["topology"] == topo]
-    grouped = topo_data.groupby(["reach_bin", "sample_prob"])["rmse"].mean().to_dict()
-    REPORT["chapters"]["ch3_empirical"][topo] = {f"{k[0]}_{k[1]}": v for k, v in grouped.items()}
+for metric in METRICS:
+    metric_data = valid_all[valid_all["metric"] == metric]
+    REPORT["chapters"]["ch3_empirical"][metric] = {}
+
+    print(f"\n{'=' * 60}")
+    print(f"EMPIRICAL RMSE: {metric.upper()}")
+    print("=" * 60)
+
+    for topo in ["grid", "tree", "organic"]:
+        subset = metric_data[metric_data["topology"] == topo]
+        if len(subset) == 0:
+            continue
+        print(f"\n{topo.upper()} networks ({metric}):")
+        pivot = subset.pivot_table(values="rmse", index="reach_bin", columns="sample_prob", aggfunc="mean")
+        # Reorder bins
+        bin_order = ["< 50", "50-100", "100-200", "200-500", "> 500"]
+        pivot = pivot.reindex([b for b in bin_order if b in pivot.index])
+        print(pivot.map(lambda x: f"{x:.1%}" if pd.notna(x) else "-").to_string())
+
+        # Store for report
+        grouped = subset.groupby(["reach_bin", "sample_prob"])["rmse"].mean().to_dict()
+        REPORT["chapters"]["ch3_empirical"][metric][topo] = {f"{k[0]}_{k[1]}": v for k, v in grouped.items()}
 
 # %% Chapter 3.4: Empirical Heatmaps by Topology
 print_header("3.4 RMSE Heatmaps", level=2)
 
-# Create heatmap showing RMSE for each topology
-# Use constrained_layout and explicit colorbar axis for proper spacing
-fig, axes = plt.subplots(1, 4, figsize=(18, 5), gridspec_kw={"width_ratios": [1, 1, 1, 0.08]})
-
 bin_order = ["< 50", "50-100", "100-200", "200-500", "> 500"]
-prob_order = sorted(valid["sample_prob"].unique())
+prob_order = sorted(valid_all["sample_prob"].unique())
 
-# Compute vmax from actual data (round up to nearest 0.1 for clean colorbar)
-heatmap_vmax = np.ceil(valid["rmse"].max() * 10) / 10
+# Create heatmap showing RMSE for each topology and metric
+for metric in METRICS:
+    metric_data = valid_all[valid_all["metric"] == metric]
 
-for idx, topo in enumerate(["grid", "tree", "organic"]):
-    ax = axes[idx]
-    subset = valid[valid["topology"] == topo]
+    fig, axes = plt.subplots(1, 4, figsize=(18, 5), gridspec_kw={"width_ratios": [1, 1, 1, 0.08]})
 
-    if len(subset) == 0:
-        ax.text(0.5, 0.5, "No data", ha="center", va="center", transform=ax.transAxes)
-        ax.set_title(f"{topo.title()}")
-        continue
+    # Compute vmax from actual data for this metric (round up to nearest 0.1 for clean colorbar)
+    heatmap_vmax = np.ceil(metric_data["rmse"].max() * 10) / 10
 
-    pivot = subset.pivot_table(values="rmse", index="reach_bin", columns="sample_prob", aggfunc="mean")
-    # Reindex to ensure all bins and probs are present (NaN for missing)
-    pivot = pivot.reindex(index=bin_order, columns=prob_order)
+    for idx, topo in enumerate(["grid", "tree", "organic"]):
+        ax = axes[idx]
+        subset = metric_data[metric_data["topology"] == topo]
 
-    # Create heatmap with consistent 5x5 grid
-    # Use masked array to handle NaN values (shown as gray)
-    masked_data = np.ma.masked_invalid(pivot.values)
-    im = ax.imshow(masked_data, cmap="RdYlGn_r", aspect="auto", vmin=0, vmax=heatmap_vmax)
+        if len(subset) == 0:
+            ax.text(0.5, 0.5, "No data", ha="center", va="center", transform=ax.transAxes)
+            ax.set_title(f"{topo.title()}")
+            continue
 
-    # Add text annotations - dynamically choose color based on background luminance
-    cmap = plt.cm.RdYlGn_r
-    for i in range(len(bin_order)):
-        for j in range(len(prob_order)):
-            val = pivot.iloc[i, j]
-            if pd.notna(val):
-                # Get the normalized value (0-1) based on vmin=0, vmax=heatmap_vmax
-                norm_val = min(1.0, max(0.0, val / heatmap_vmax))
-                # Get the RGB color from the colormap
-                rgba = cmap(norm_val)
-                # Calculate relative luminance using standard formula
-                # (weights for perceived brightness: R=0.299, G=0.587, B=0.114)
-                luminance = 0.299 * rgba[0] + 0.587 * rgba[1] + 0.114 * rgba[2]
-                # Use black text on light backgrounds, white text on dark backgrounds
-                text_color = "black" if luminance > 0.5 else "white"
-                ax.text(j, i, f"{val:.0%}", ha="center", va="center", color=text_color, fontsize=10, fontweight="bold")
-            else:
-                ax.text(j, i, "-", ha="center", va="center", color="gray", fontsize=10)
+        pivot = subset.pivot_table(values="rmse", index="reach_bin", columns="sample_prob", aggfunc="mean")
+        # Reindex to ensure all bins and probs are present (NaN for missing)
+        pivot = pivot.reindex(index=bin_order, columns=prob_order)
 
-    ax.set_xticks(range(len(prob_order)))
-    ax.set_xticklabels([f"{p:.0%}" for p in prob_order])
-    ax.set_yticks(range(len(bin_order)))
-    ax.set_yticklabels(bin_order)
-    ax.set_xlabel("Sampling Probability")
-    if idx == 0:
-        ax.set_ylabel("Reachability")
-    else:
-        ax.set_ylabel("")
-    ax.set_title(f"{topo.title()} Networks", fontsize=12, fontweight="bold")
+        # Create heatmap with consistent 5x5 grid
+        # Use masked array to handle NaN values (shown as gray)
+        masked_data = np.ma.masked_invalid(pivot.values)
+        im = ax.imshow(masked_data, cmap="RdYlGn_r", aspect="auto", vmin=0, vmax=heatmap_vmax)
 
-# Add colorbar in the dedicated axis
-cbar = fig.colorbar(im, cax=axes[3])
-cbar.set_label("RMSE (lower is better)", rotation=270, labelpad=15)
+        # Add text annotations - dynamically choose color based on background luminance
+        cmap = plt.cm.RdYlGn_r
+        for i in range(len(bin_order)):
+            for j in range(len(prob_order)):
+                val = pivot.iloc[i, j]
+                if pd.notna(val):
+                    # Get the normalized value (0-1) based on vmin=0, vmax=heatmap_vmax
+                    norm_val = min(1.0, max(0.0, val / heatmap_vmax))
+                    # Get the RGB color from the colormap
+                    rgba = cmap(norm_val)
+                    # Calculate relative luminance using standard formula
+                    # (weights for perceived brightness: R=0.299, G=0.587, B=0.114)
+                    luminance = 0.299 * rgba[0] + 0.587 * rgba[1] + 0.114 * rgba[2]
+                    # Use black text on light backgrounds, white text on dark backgrounds
+                    text_color = "black" if luminance > 0.5 else "white"
+                    ax.text(
+                        j, i, f"{val:.0%}", ha="center", va="center", color=text_color, fontsize=10, fontweight="bold"
+                    )
+                else:
+                    ax.text(j, i, "-", ha="center", va="center", color="gray", fontsize=10)
 
-plt.tight_layout()
-fig_path = OUTPUT_DIR / "ch3_guidance.png"
-plt.savefig(fig_path, dpi=150, bbox_inches="tight")
-plt.close()
-print(f"Figure saved: {fig_path}")
+        ax.set_xticks(range(len(prob_order)))
+        ax.set_xticklabels([f"{p:.0%}" for p in prob_order])
+        ax.set_yticks(range(len(bin_order)))
+        ax.set_yticklabels(bin_order)
+        ax.set_xlabel("Sampling Probability")
+        if idx == 0:
+            ax.set_ylabel("Reachability")
+        else:
+            ax.set_ylabel("")
+        ax.set_title(f"{topo.title()} Networks", fontsize=12, fontweight="bold")
+
+    # Add colorbar in the dedicated axis
+    cbar = fig.colorbar(im, cax=axes[3])
+    cbar.set_label("RMSE (lower is better)", rotation=270, labelpad=15)
+
+    fig.suptitle(f"{metric.title()} Centrality", fontsize=14, fontweight="bold", y=1.02)
+    plt.tight_layout()
+    fig_path = OUTPUT_DIR / f"ch3_guidance_{metric}.png"
+    plt.savefig(fig_path, dpi=150, bbox_inches="tight")
+    plt.close()
+    print(f"Figure saved: {fig_path}")
 
 # %% Chapter 3.5: Speedup vs Accuracy Tradeoff
 print_header("3.5 Speedup vs Accuracy Tradeoff", level=2)
@@ -1548,120 +1874,114 @@ The key insight is that RMSE scales roughly as sqrt((1-p)/p):
 This means you can achieve significant speedup with modest accuracy loss.
 """)
 
-# Create the speedup vs accuracy figure
-fig, axes = plt.subplots(1, 3, figsize=(16, 5))
+# Create the speedup vs accuracy figure for each metric
+# Define reachability bins for stratification
+reach_bins_speedup = [
+    (0, 50, "<50", "#d62728"),      # red - low reach
+    (50, 150, "50-150", "#ff7f0e"),  # orange - medium reach
+    (150, 500, "150-500", "#2ca02c"),  # green - high reach
+    (500, float("inf"), ">500", "#1f77b4"),  # blue - very high reach
+]
 
-# Panel 1: Theoretical speedup vs p
-ax = axes[0]
-p_values = np.linspace(0.1, 1.0, 100)
-speedup = 1.0 / p_values
-ax.plot(p_values, speedup, "b-", linewidth=2, label="Theoretical (1/p)")
-ax.set_xlabel("Sampling Probability (p)")
-ax.set_ylabel("Speedup Factor")
-ax.set_title("Expected Speedup vs Sampling Probability")
-ax.set_xlim(0, 1.05)
-ax.set_ylim(0, 11)
-ax.axhline(1, color="gray", linestyle="--", alpha=0.5)
-ax.grid(True, alpha=0.3)
+for metric in METRICS:
+    metric_data = valid_all[valid_all["metric"] == metric]
 
-# Add reference points
-for p, label in [(0.1, "10x"), (0.2, "5x"), (0.5, "2x"), (1.0, "1x")]:
-    ax.axvline(p, color="gray", linestyle=":", alpha=0.3)
-    ax.annotate(label, xy=(p, 1 / p), xytext=(p + 0.02, 1 / p + 0.3), fontsize=9, color="blue")
+    fig, axes = plt.subplots(1, 3, figsize=(16, 5))
 
-# Panel 2: RMSE vs p for each topology (empirical)
-ax = axes[1]
-for topo in ["grid", "tree", "organic"]:
-    subset = valid[valid["topology"] == topo]
-    by_p = subset.groupby("sample_prob")["rmse"].mean()
-    color = topology_colors.get(topo, "gray")
-    ax.plot(by_p.index, by_p.values * 100, "o-", color=color, label=topo.title(), linewidth=2, markersize=6)
+    # Panel 1: Sampling probability p (x) vs p itself (y) - shows the identity
+    # This panel now shows p on both axes to match 0-1 scale
+    ax = axes[0]
+    p_values = np.linspace(0.1, 1.0, 100)
+    ax.plot(p_values, p_values, "b-", linewidth=2, label="p (computational effort)")
+    ax.set_xlabel("Sampling Probability (p)")
+    ax.set_ylabel("Relative Computational Cost (p)")
+    ax.set_title("Computational Cost vs Sampling Probability")
+    ax.set_xlim(0, 1)
+    ax.set_ylim(0, 1)
+    ax.grid(True, alpha=0.3)
 
-# Add theoretical curve (scaled to match data)
-p_theory = np.linspace(0.1, 1.0, 50)
-# Scale to match observed RMSE at p=0.5
-rmse_at_05 = valid[valid["sample_prob"] == 0.5]["rmse"].mean()
-theory_rmse = rmse_at_05 * np.sqrt((1 - p_theory) / p_theory) / np.sqrt((1 - 0.5) / 0.5)
-ax.plot(p_theory, theory_rmse * 100, "k--", linewidth=1.5, alpha=0.7, label="Theory: √((1-p)/p)")
+    # Add reference points
+    for p in [0.1, 0.2, 0.5, 1.0]:
+        ax.axvline(p, color="gray", linestyle=":", alpha=0.3)
+        ax.annotate(f"p={p}", xy=(p, p), xytext=(p + 0.02, p + 0.05), fontsize=9, color="blue")
 
-ax.set_xlabel("Sampling Probability (p)")
-ax.set_ylabel("Mean RMSE (%)")
-ax.set_title("Accuracy vs Sampling Probability")
-ax.set_xlim(0, 1.05)
-ax.set_ylim(0, valid["rmse"].max() * 110)  # Use actual data max
-ax.legend(loc="upper right")
-ax.grid(True, alpha=0.3)
+    # Panel 2: RMSE vs p stratified by reachability bins (0-1 scale)
+    ax = axes[1]
+    for lo, hi, label, color in reach_bins_speedup:
+        bin_data = metric_data[(metric_data["mean_reach"] >= lo) & (metric_data["mean_reach"] < hi)]
+        if len(bin_data) >= 2:
+            by_p = bin_data.groupby("sample_prob")["rmse"].mean()
+            if len(by_p) >= 2:
+                ax.plot(
+                    by_p.index, by_p.values, "o-",
+                    color=color, label=f"reach {label}", linewidth=2, markersize=5
+                )
 
-# Panel 3: Speedup vs RMSE tradeoff curve
-ax = axes[2]
+    ax.set_xlabel("Sampling Probability (p)")
+    ax.set_ylabel("Mean RMSE")
+    ax.set_title(f"RMSE vs Sampling Probability by Reachability ({metric.title()})")
+    ax.set_xlim(0, 1)
+    ax.set_ylim(0, 1)
+    ax.legend(loc="upper right", fontsize=9)
+    ax.grid(True, alpha=0.3)
 
-# For each topology, plot speedup vs RMSE
-for topo in ["grid", "tree", "organic"]:
-    subset = valid[valid["topology"] == topo]
-    by_p = subset.groupby("sample_prob")["rmse"].mean()
-    speedups = 1.0 / by_p.index
-    color = topology_colors.get(topo, "gray")
-    ax.plot(by_p.values * 100, speedups, "o-", color=color, label=topo.title(), linewidth=2, markersize=6)
+    # Panel 3: RMSE vs p tradeoff (both 0-1 scale)
+    ax = axes[2]
 
-    # Annotate key points
-    for p in [0.5, 0.3, 0.1]:
-        if p in by_p.index:
-            rmse_val = by_p[p] * 100
-            speedup_val = 1 / p
-            ax.annotate(
-                f"p={p}",
-                xy=(rmse_val, speedup_val),
-                xytext=(rmse_val + 0.3, speedup_val + 0.2),
-                fontsize=8,
-                color=color,
-                alpha=0.7,
-            )
+    for lo, hi, label, color in reach_bins_speedup:
+        bin_data = metric_data[(metric_data["mean_reach"] >= lo) & (metric_data["mean_reach"] < hi)]
+        if len(bin_data) >= 2:
+            by_p = bin_data.groupby("sample_prob")["rmse"].mean()
+            if len(by_p) >= 2:
+                # x = RMSE (0-1), y = p (0-1, where lower p = more speedup)
+                ax.plot(
+                    by_p.values, by_p.index, "o-",
+                    color=color, label=f"reach {label}", linewidth=2, markersize=5
+                )
 
-ax.set_xlabel("Mean RMSE (%)")
-ax.set_ylabel("Speedup Factor")
-ax.set_title("Speedup-Accuracy Tradeoff")
-# Use dynamic x-limit based on actual data
-max_rmse_pct = max(
-    by_p.values.max() * 100
-    for topo in ["grid", "tree", "organic"]
-    for by_p in [valid[valid["topology"] == topo].groupby("sample_prob")["rmse"].mean()]
-)
-ax.set_xlim(0, max_rmse_pct * 1.1)
-ax.set_ylim(0, 5)
-ax.legend(loc="lower right")  # Move legend to bottom-right to avoid overlapping data
-ax.grid(True, alpha=0.3)
+    ax.set_xlabel("Mean RMSE")
+    ax.set_ylabel("Sampling Probability (p)")
+    ax.set_title(f"Accuracy-Cost Tradeoff by Reachability ({metric.title()})")
+    ax.set_xlim(0, 1)
+    ax.set_ylim(0, 1)
+    ax.legend(loc="lower right", fontsize=9)
+    ax.grid(True, alpha=0.3)
 
-# Add "sweet spot" region annotation - p=0.5 gives 2x speedup with ~8-13% RMSE
-ax.axvspan(5, 15, alpha=0.1, color="green", label="_Sweet spot")
-# Position annotation at top of plot where it doesn't overlap data
-ax.annotate(
-    "Sweet spot:\n2x speedup\n~10% RMSE",
-    xy=(10, 10),
-    fontsize=9,
-    ha="center",
-    va="top",
-    style="italic",
-    color="darkgreen",
-)
+    # Add note about interpretation
+    ax.annotate(
+        "Lower p = faster\nLower RMSE = more accurate",
+        xy=(0.95, 0.95),
+        xycoords="axes fraction",
+        fontsize=9,
+        ha="right",
+        va="top",
+        style="italic",
+        color="gray",
+    )
 
-plt.tight_layout()
-fig_path = OUTPUT_DIR / "ch3_speedup_tradeoff.png"
-plt.savefig(fig_path, dpi=150, bbox_inches="tight")
-plt.close()
-print(f"Figure saved: {fig_path}")
+    fig.suptitle(f"{metric.title()} Centrality", fontsize=14, fontweight="bold", y=1.02)
+    plt.tight_layout()
+    fig_path = OUTPUT_DIR / f"ch3_speedup_tradeoff_{metric}.png"
+    plt.savefig(fig_path, dpi=150, bbox_inches="tight")
+    plt.close()
+    print(f"Figure saved: {fig_path}")
 
-# Print summary table
-print("\nSpeedup vs Accuracy Summary:")
-print("-" * 70)
-print(f"{'p':>6} | {'Speedup':>8} | {'Grid RMSE':>10} | {'Tree RMSE':>10} | {'Organic RMSE':>12}")
-print("-" * 70)
-for p in [0.1, 0.2, 0.3, 0.5, 0.7, 0.9, 1.0]:
-    speedup = 1 / p
-    grid_rmse = valid[(valid["topology"] == "grid") & (valid["sample_prob"] == p)]["rmse"].mean()
-    tree_rmse = valid[(valid["topology"] == "tree") & (valid["sample_prob"] == p)]["rmse"].mean()
-    organic_rmse = valid[(valid["topology"] == "organic") & (valid["sample_prob"] == p)]["rmse"].mean()
-    print(f"{p:>6.1f} | {speedup:>7.1f}x | {grid_rmse:>9.1%} | {tree_rmse:>9.1%} | {organic_rmse:>11.1%}")
-print("-" * 70)
+# Print summary tables for each metric
+for metric in METRICS:
+    metric_data = valid_all[valid_all["metric"] == metric]
+    print(f"\nSpeedup vs Accuracy Summary ({metric.upper()}):")
+    print("-" * 70)
+    print(f"{'p':>6} | {'Speedup':>8} | {'Grid RMSE':>10} | {'Tree RMSE':>10} | {'Organic RMSE':>12}")
+    print("-" * 70)
+    for p in [0.1, 0.2, 0.3, 0.5, 0.7, 0.9, 1.0]:
+        speedup = 1 / p
+        grid_rmse = metric_data[(metric_data["topology"] == "grid") & (metric_data["sample_prob"] == p)]["rmse"].mean()
+        tree_rmse = metric_data[(metric_data["topology"] == "tree") & (metric_data["sample_prob"] == p)]["rmse"].mean()
+        organic_rmse = metric_data[(metric_data["topology"] == "organic") & (metric_data["sample_prob"] == p)][
+            "rmse"
+        ].mean()
+        print(f"{p:>6.1f} | {speedup:>7.1f}x | {grid_rmse:>9.1%} | {tree_rmse:>9.1%} | {organic_rmse:>11.1%}")
+    print("-" * 70)
 
 REPORT["chapters"]["ch3_speedup"] = {
     "probabilities": [0.1, 0.2, 0.3, 0.5, 0.7, 0.9, 1.0],
@@ -1672,8 +1992,8 @@ REPORT["chapters"]["ch3_speedup"] = {
 print_header("GENERATING FINAL REPORT")
 
 # Compute empirical summary statistics for the report
-mean_rmse_by_topo = valid.groupby("topology")["rmse"].mean()
-mean_rmse_overall = valid["rmse"].mean()
+mean_rmse_by_metric = {metric: valid_all[valid_all["metric"] == metric]["rmse"].mean() for metric in METRICS}
+mean_rmse_overall = valid_all["rmse"].mean()
 
 
 # Format Moran's I values for report (handle None)
@@ -1687,6 +2007,46 @@ morans_grid = fmt_morans("grid")
 morans_tree = fmt_morans("tree")
 morans_organic = fmt_morans("organic")
 
+# Get RMSE formula values for harmonic (primary metric for report)
+k_harmonic = k_global_by_metric.get("harmonic", 1.0)
+r2_harmonic = r_squared_by_metric.get("harmonic", 0.0)
+topo_k_harmonic = topology_k_by_metric.get("harmonic", {})
+
+k_betweenness = k_global_by_metric.get("betweenness", 1.0)
+r2_betweenness = r_squared_by_metric.get("betweenness", 0.0)
+topo_k_betweenness = topology_k_by_metric.get("betweenness", {})
+
+# Extract bias values for report formatting
+h_grid_bias = BIAS_BY_TOPOLOGY["harmonic"]["grid"]["mean_bias"]
+h_grid_std = BIAS_BY_TOPOLOGY["harmonic"]["grid"]["std_bias"]
+h_tree_bias = BIAS_BY_TOPOLOGY["harmonic"]["tree"]["mean_bias"]
+h_tree_std = BIAS_BY_TOPOLOGY["harmonic"]["tree"]["std_bias"]
+h_org_bias = BIAS_BY_TOPOLOGY["harmonic"]["organic"]["mean_bias"]
+h_org_std = BIAS_BY_TOPOLOGY["harmonic"]["organic"]["std_bias"]
+
+b_grid_bias = BIAS_BY_TOPOLOGY["betweenness"]["grid"]["mean_bias"]
+b_grid_std = BIAS_BY_TOPOLOGY["betweenness"]["grid"]["std_bias"]
+b_tree_bias = BIAS_BY_TOPOLOGY["betweenness"]["tree"]["mean_bias"]
+b_tree_std = BIAS_BY_TOPOLOGY["betweenness"]["tree"]["std_bias"]
+b_org_bias = BIAS_BY_TOPOLOGY["betweenness"]["organic"]["mean_bias"]
+b_org_std = BIAS_BY_TOPOLOGY["betweenness"]["organic"]["std_bias"]
+
+# Extract sampling guidance values for report formatting (shorter variable names)
+sg25_5, sg25_10, sg25_15, sg25_20 = [SAMPLING_GUIDANCE[25][k] for k in ["5%", "10%", "15%", "20%"]]
+sg50_5, sg50_10, sg50_15, sg50_20 = [SAMPLING_GUIDANCE[50][k] for k in ["5%", "10%", "15%", "20%"]]
+sg100_5, sg100_10, sg100_15, sg100_20 = [SAMPLING_GUIDANCE[100][k] for k in ["5%", "10%", "15%", "20%"]]
+sg200_5, sg200_10, sg200_15, sg200_20 = [SAMPLING_GUIDANCE[200][k] for k in ["5%", "10%", "15%", "20%"]]
+sg500_5, sg500_10, sg500_15, sg500_20 = [SAMPLING_GUIDANCE[500][k] for k in ["5%", "10%", "15%", "20%"]]
+sg1000_5, sg1000_10, sg1000_15, sg1000_20 = [SAMPLING_GUIDANCE[1000][k] for k in ["5%", "10%", "15%", "20%"]]
+
+# Extract chapter 1 results for report formatting
+ch1_h = REPORT["chapters"]["ch1_harmonic"]
+ch1_b = REPORT["chapters"]["ch1_betweenness"]
+ch1_f = REPORT["chapters"]["ch1_farness"]
+ch1_h_status = "✓ PASSED" if ch1_h["passed"] else "✗ FAILED"
+ch1_b_status = "✓ PASSED" if ch1_b["passed"] else "✗ FAILED"
+ch1_f_status = "✓ PASSED" if ch1_f["passed"] else "✗ FAILED"
+
 report_md = f"""# Centrality Sampling: Validation Report
 
 Generated: {REPORT["generated"]}
@@ -1695,24 +2055,25 @@ Generated: {REPORT["generated"]}
 
 ## Executive Summary
 
-This analysis validates cityseer's sampling-based centrality approximation:
+This analysis evaluates cityseer's sampling-based centrality approximation for both
+**harmonic closeness** and **betweenness** centrality metrics:
 
-1. **Correctness**: Target-based aggregation matches NetworkX exactly for closeness and betweenness measures.
-2. **Statistics**: Empirical analysis of sampling errors across {len(valid)} experimental configurations.
-3. **Guidance**: Practical recommendations based on observed RMSE by topology and reachability.
+1. **Correctness**: Target-based aggregation matches NetworkX within numerical precision.
+2. **Statistics**: Empirical analysis across {len(valid_all)} observations (2 metrics × configs).
+3. **Guidance**: Recommendations based on observed RMSE by topology, metric, and reachability.
 
-### The Key Finding
+### Key Observations
 
-**Effective reachability** (mean_reachability × sampling_probability) is the key predictor of
+**Effective reachability** (mean_reachability × sampling_probability) is the primary predictor of
 sampling accuracy. Higher effective reachability means more source nodes contribute to each
-target's estimate, reducing variance.
+target's estimate, which tends to reduce variance.
 
-### The Fortuitous Alignment
+### Practical Consideration
 
-Sampling works best precisely when it's most needed:
-- Large networks need sampling for speed
-- Large networks have high reachability
-- High reachability means low sampling variance
+Sampling tends to be more effective for larger networks:
+- Large networks benefit most from sampling speedup
+- Large networks typically have higher reachability
+- Higher reachability is associated with lower sampling variance
 
 ---
 
@@ -1723,9 +2084,9 @@ identical to standard NetworkX implementations.
 
 | Test | Max Difference | Status |
 |------|---------------|--------|
-| Harmonic Closeness | {REPORT["chapters"]["ch1_harmonic"]["max_diff"]:.2e} | {"✓ PASSED" if REPORT["chapters"]["ch1_harmonic"]["passed"] else "✗ FAILED"} |
-| Betweenness | {REPORT["chapters"]["ch1_betweenness"]["max_diff"]:.4f} | {"✓ PASSED" if REPORT["chapters"]["ch1_betweenness"]["passed"] else "✗ FAILED"} |
-| Total Farness | {REPORT["chapters"]["ch1_farness"]["rel_diff"]:.2e} | {"✓ PASSED" if REPORT["chapters"]["ch1_farness"]["passed"] else "✗ FAILED"} |
+| Harmonic Closeness | {ch1_h["max_diff"]:.2e} | {ch1_h_status} |
+| Betweenness | {ch1_b["max_diff"]:.4f} | {ch1_b_status} |
+| Total Farness | {ch1_f["rel_diff"]:.2e} | {ch1_f_status} |
 
 ![Correctness Verification](ch1_correctness.png)
 
@@ -1746,6 +2107,13 @@ Each configuration (network × distance × sampling rate) is run {N_RUNS} times 
 random samples. For each run, we compute that run's RMSE across all nodes. We then report
 the **mean ± standard deviation** of these per-run RMSE values. This follows standard Monte
 Carlo methodology and tells practitioners what error to expect from a single sampling run.
+
+### Metrics Analyzed
+
+Both metrics are analyzed with identical experimental configurations:
+
+- **Harmonic Closeness**: Sum of inverse distances to reachable nodes — measures accessibility
+- **Betweenness**: Count of shortest paths passing through each node — measures intermediacy
 
 ### Network Topologies Tested
 
@@ -1777,24 +2145,31 @@ More contributors means more information, which means lower variance.
 error across all nodes: `bias = mean((sampled - exact) / exact)`. Positive bias indicates
 overestimation; negative bias indicates underestimation.
 
-
-
-
-**Bias by topology**:
+**Bias by topology (Harmonic Closeness)**:
 
 | Topology | Mean Bias | Std Bias |
 |----------|----------|----------|
-| Grid     | {BIAS_BY_TOPOLOGY["grid"]["mean_bias"]:+.1%} | {BIAS_BY_TOPOLOGY["grid"]["std_bias"]:.1%} |
-| Tree     | {BIAS_BY_TOPOLOGY["tree"]["mean_bias"]:+.1%} | {BIAS_BY_TOPOLOGY["tree"]["std_bias"]:.1%} |
-| Organic  | {BIAS_BY_TOPOLOGY["organic"]["mean_bias"]:+.1%} | {BIAS_BY_TOPOLOGY["organic"]["std_bias"]:.1%} |
+| Grid     | {h_grid_bias:+.1%} | {h_grid_std:.1%} |
+| Tree     | {h_tree_bias:+.1%} | {h_tree_std:.1%} |
+| Organic  | {h_org_bias:+.1%} | {h_org_std:.1%} |
 
-**Key observations:**
+**Bias by topology (Betweenness)**:
 
-1. Across all topologies, mean bias is low and the majority of estimates fall within ±5% of the true value.
-2. Standard deviation reflects the spread of bias, but systematic error is minimal.
-3. The ±5% band column shows the proportion of estimates with bias less than 5% in magnitude.
+| Topology | Mean Bias | Std Bias |
+|----------|----------|----------|
+| Grid     | {b_grid_bias:+.1%} | {b_grid_std:.1%} |
+| Tree     | {b_tree_bias:+.1%} | {b_tree_std:.1%} |
+| Organic  | {b_org_bias:+.1%} | {b_org_std:.1%} |
 
-![Statistical Properties](ch2_statistics.png)
+**Observations:**
+
+1. Mean bias tends to be low across configurations, though individual estimates may vary.
+2. Standard deviation indicates the spread of bias across experimental runs.
+3. Results should be interpreted alongside the RMSE values below.
+
+![Statistical Properties - Harmonic](ch2_statistics_harmonic.png)
+
+![Statistical Properties - Betweenness](ch2_statistics_betweenness.png)
 
 ### Spatial Autocorrelation (Moran's I)
 
@@ -1807,9 +2182,9 @@ Higher I means values cluster spatially (similar values near each other).
 | Tree | {morans_tree} |
 | Organic | {morans_organic} |
 
-All topologies show strong positive spatial autocorrelation (I > 0.7), which is expected for
-centrality measures—nearby nodes tend to have similar accessibility. Grid networks show the
-highest autocorrelation due to their regular structure.
+The observed Moran's I values indicate spatial autocorrelation in centrality measures—nearby
+nodes tend to have similar values. Grid networks typically show higher autocorrelation due to
+their regular structure.
 
 ### RMSE Prediction Formula
 
@@ -1820,22 +2195,58 @@ From statistical sampling theory, the variance of the Horvitz-Thompson estimator
 
 where effective_n = mean_reachability × p.
 
+**Harmonic Closeness:**
+
 | Fit | k | R² |
 |-----|---|-----|
-| Global (all topologies) | {k_global:.3f} | {r_squared:.4f} |
-| Grid | {topology_k["grid"]:.3f} | — |
-| Tree | {topology_k["tree"]:.3f} | — |
-| Organic | {topology_k["organic"]:.3f} | — |
+| Global (all topologies) | {k_harmonic:.3f} | {r2_harmonic:.4f} |
+| Grid | {topo_k_harmonic.get("grid", 0):.3f} | — |
+| Tree | {topo_k_harmonic.get("tree", 0):.3f} | — |
+| Organic | {topo_k_harmonic.get("organic", 0):.3f} | — |
 
-The formula achieves R² > 0.98 across all observations, meaning effective reachability and
-sampling probability explain nearly all variance in RMSE.
+**Betweenness:**
 
-**Practical use**: Given your network's mean reachability (from node_density) and chosen
-sampling probability p, you can estimate expected RMSE as:
+| Fit | k | R² |
+|-----|---|-----|
+| Global (all topologies) | {k_betweenness:.3f} | {r2_betweenness:.4f} |
+| Grid | {topo_k_betweenness.get("grid", 0):.3f} | — |
+| Tree | {topo_k_betweenness.get("tree", 0):.3f} | — |
+| Organic | {topo_k_betweenness.get("organic", 0):.3f} | — |
 
-`expected_rmse ≈ 1.1 × √((1-p) / (mean_reach × p))`
+The formula fit varies by metric. Harmonic closeness typically shows a stronger fit (higher R²),
+while betweenness may exhibit larger prediction residuals. The R² values above indicate how well
+the theoretical formula matches empirical observations for each metric.
 
-![RMSE Prediction Formula](ch2_rmse_formula.png)
+![RMSE Prediction Formula - Harmonic](ch2_rmse_formula_harmonic.png)
+
+![RMSE Prediction Formula - Betweenness](ch2_rmse_formula_betweenness.png)
+
+### Automatic Sampling Probability Selection
+
+By inverting the RMSE formula, we can compute the minimum sampling probability needed
+to achieve a target RMSE:
+
+**p = k² / (RMSE² × mean_reach + k²)**
+
+The table below uses a **conservative (worst-case) k = {k_conservative:.3f}**, which is the
+maximum k value observed across both metrics (harmonic k = {k_harmonic:.3f}, betweenness
+k = {k_betweenness:.3f}). This means the recommended p values should achieve the target RMSE
+for whichever metric has worse sampling characteristics:
+
+| Mean Reach | 5% RMSE | 10% RMSE | 15% RMSE | 20% RMSE |
+|------------|---------|----------|----------|----------|
+| 25 | {sg25_5:.0%} | {sg25_10:.0%} | {sg25_15:.0%} | {sg25_20:.0%} |
+| 50 | {sg50_5:.0%} | {sg50_10:.0%} | {sg50_15:.0%} | {sg50_20:.0%} |
+| 100 | {sg100_5:.0%} | {sg100_10:.0%} | {sg100_15:.0%} | {sg100_20:.0%} |
+| 200 | {sg200_5:.0%} | {sg200_10:.0%} | {sg200_15:.0%} | {sg200_20:.0%} |
+| 500 | {sg500_5:.0%} | {sg500_10:.0%} | {sg500_15:.0%} | {sg500_20:.0%} |
+| 1000 | {sg1000_5:.0%} | {sg1000_10:.0%} | {sg1000_15:.0%} | {sg1000_20:.0%} |
+
+**Note**: Networks with high reachability (>200) may tolerate lower sampling rates while
+maintaining acceptable RMSE. Networks with low reachability (<50) typically require higher
+sampling rates for accurate results. Actual results depend on network characteristics and metric.
+
+![Sampling Recommendation](ch2_sampling_recommendation.png)
 
 ---
 
@@ -1849,7 +2260,9 @@ empirically observed RMSE for each topology at different reachability levels and
 Results are aggregated across all graph sizes within each topology. The heatmaps below bin
 results by mean reachability (which depends on both graph size and distance threshold).
 
-![RMSE by Topology](ch3_topology_rmse.png)
+![RMSE by Topology - Harmonic](ch3_topology_rmse_harmonic.png)
+
+![RMSE by Topology - Betweenness](ch3_topology_rmse_betweenness.png)
 
 ### Empirical RMSE Heatmaps
 
@@ -1857,27 +2270,38 @@ The heatmaps show observed RMSE (green = low/good, red = high/poor) across all t
 aggregated by reachability bin. Use these to select an appropriate sampling probability for your
 network type and expected reachability.
 
-![Practical Guidance](ch3_guidance.png)
+![Practical Guidance - Harmonic](ch3_guidance_harmonic.png)
+
+![Practical Guidance - Betweenness](ch3_guidance_betweenness.png)
 
 ### Speedup vs Accuracy Tradeoff
 
 Sampling at probability p provides an expected speedup of 1/p (e.g., p=0.5 gives ~2x speedup).
-The RMSE scales approximately as √((1-p)/p), meaning accuracy improves faster than speedup
-decreases at moderate sampling rates.
+The figures below show how RMSE varies with sampling probability, **stratified by reachability**:
 
-![Speedup vs Accuracy Tradeoff](ch3_speedup_tradeoff.png)
+- **Low reachability (<50)**: Higher RMSE at all sampling rates; limited benefit from sampling
+- **Medium reachability (50-150)**: Moderate RMSE; sampling viable at higher p values
+- **High reachability (150-500)**: Lower RMSE; sampling becomes practical
+- **Very high reachability (>500)**: Lowest RMSE; aggressive sampling may be acceptable
 
-**Sweet spot**: At p=0.5, you achieve 2x speedup with ~8-13% RMSE depending on topology and reachability.
+![Speedup vs Accuracy Tradeoff - Harmonic](ch3_speedup_tradeoff_harmonic.png)
+
+![Speedup vs Accuracy Tradeoff - Betweenness](ch3_speedup_tradeoff_betweenness.png)
+
+The stratification shows that reachability is the primary determinant of the speedup-accuracy
+tradeoff. Networks with similar reachability will have similar tradeoff curves regardless of
+topology.
 
 ---
 
 ## Discussion and Conclusions
 
-1. **The algorithm is correct** — Matches NetworkX within numerical precision
-2. **The estimator is unbiased**
-3. **Reachability determines accuracy** — Effective_n is the key predictor, not topology alone
-4. **Sampling works when needed** — Large networks have high reachability
-5. **Use the heatmaps** — Select p based on your expected reachability
+1. **Algorithm correctness** — Matches NetworkX within numerical precision for both metrics
+2. **Bias** — Mean bias is low, though individual run variance can be substantial
+3. **Reachability and accuracy** — Effective_n is associated with RMSE, though fit quality varies by metric
+4. **Metric differences** — Harmonic closeness shows stronger formula fit; betweenness has larger residuals
+5. **Practical use** — Consult the heatmaps to select p based on expected reachability and acceptable error
+6. **Limitations** — Results are from synthetic networks; real-world networks may differ
 
 ---
 
@@ -1905,15 +2329,22 @@ print(f"Report saved: {readme_path}")
 print_header("ANALYSIS COMPLETE")
 print(f"""
 Files generated in {OUTPUT_DIR}:
-  - README.md                    : Complete validation report
-  - ch1_correctness.png          : Chapter 1 figure
-  - ch2_topology_comparison.png  : Chapter 2 topology examples
-  - ch2_statistics.png           : Chapter 2 statistics figure
-  - ch3_topology_rmse.png        : Chapter 3 topology RMSE curves
-  - ch3_guidance.png             : Chapter 3 guidance figure
-  - ch3_speedup_tradeoff.png     : Chapter 3 speedup vs accuracy
+  - README.md                           : Complete validation report
+  - ch1_correctness.png                 : Chapter 1 figure
+  - ch2_topology_comparison.png         : Chapter 2 topology examples
+  - ch2_statistics_harmonic.png         : Chapter 2 statistics (harmonic)
+  - ch2_statistics_betweenness.png      : Chapter 2 statistics (betweenness)
+  - ch2_rmse_formula_harmonic.png       : Chapter 2 RMSE formula (harmonic)
+  - ch2_rmse_formula_betweenness.png    : Chapter 2 RMSE formula (betweenness)
+  - ch3_topology_rmse_harmonic.png      : Chapter 3 topology RMSE (harmonic)
+  - ch3_topology_rmse_betweenness.png   : Chapter 3 topology RMSE (betweenness)
+  - ch3_guidance_harmonic.png           : Chapter 3 guidance (harmonic)
+  - ch3_guidance_betweenness.png        : Chapter 3 guidance (betweenness)
+  - ch3_speedup_tradeoff_harmonic.png   : Chapter 3 speedup (harmonic)
+  - ch3_speedup_tradeoff_betweenness.png: Chapter 3 speedup (betweenness)
 
 Key findings:
-  - Correctness: ✓ Matches NetworkX
-  - Mean RMSE: {mean_rmse_overall:.1%} across all configurations
+  - Correctness: ✓ Matches NetworkX for both metrics
+  - Mean RMSE (Harmonic): {mean_rmse_by_metric.get("harmonic", 0):.1%}
+  - Mean RMSE (Betweenness): {mean_rmse_by_metric.get("betweenness", 0):.1%}
 """)
