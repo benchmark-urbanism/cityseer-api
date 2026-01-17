@@ -15,6 +15,7 @@ use rayon::prelude::*;
 use std::cmp::Ordering;
 use std::collections::BinaryHeap;
 use std::collections::HashMap;
+use std::sync::atomic::AtomicU32;
 use std::sync::atomic::Ordering as AtomicOrdering;
 
 #[pyclass]
@@ -33,6 +34,13 @@ pub struct CentralityShortestResult {
     node_beta_vec: MetricResult,
     node_betweenness_vec: MetricResult,
     node_betweenness_beta_vec: MetricResult,
+
+    /// Total reachability counts per distance (only populated when sampling)
+    #[pyo3(get)]
+    pub reachability_totals: Vec<u32>,
+    /// Number of sources that were sampled
+    #[pyo3(get)]
+    pub sampled_source_count: u32,
 }
 
 impl CentralityShortestResult {
@@ -54,6 +62,8 @@ impl CentralityShortestResult {
             node_beta_vec: MetricResult::new(&distances, len, init_val),
             node_betweenness_vec: MetricResult::new(&distances, len, init_val),
             node_betweenness_beta_vec: MetricResult::new(&distances, len, init_val),
+            reachability_totals: Vec::new(),
+            sampled_source_count: 0,
         }
     }
 }
@@ -103,6 +113,13 @@ pub struct CentralitySimplestResult {
     node_farness_vec: MetricResult,
     node_harmonic_vec: MetricResult,
     node_betweenness_vec: MetricResult,
+
+    /// Total reachability counts per distance (only populated when sampling)
+    #[pyo3(get)]
+    pub reachability_totals: Vec<u32>,
+    /// Number of sources that were sampled
+    #[pyo3(get)]
+    pub sampled_source_count: u32,
 }
 
 impl CentralitySimplestResult {
@@ -121,6 +138,8 @@ impl CentralitySimplestResult {
             node_farness_vec: MetricResult::new(&distances, len, init_val),
             node_harmonic_vec: MetricResult::new(&distances, len, init_val),
             node_betweenness_vec: MetricResult::new(&distances, len, init_val),
+            reachability_totals: Vec::new(),
+            sampled_source_count: 0,
         }
     }
 }
@@ -593,7 +612,7 @@ impl NetworkStructure {
 
         let node_keys_py = self.node_keys_py(py);
         let node_indices = self.node_indices();
-        let res = CentralityShortestResult::new(
+        let mut res = CentralityShortestResult::new(
             distances.clone(),
             node_keys_py,
             node_indices.clone(),
@@ -618,6 +637,11 @@ impl NetworkStructure {
             Vec::new()
         };
 
+        // Atomic counters for tracking source reachability when sampling
+        let source_reachability_totals: Vec<AtomicU32> =
+            distances.iter().map(|_| AtomicU32::new(0)).collect();
+        let sampled_source_count = AtomicU32::new(0);
+
         let result = py.detach(move || {
             node_indices.par_iter().for_each(|src_idx| {
                 if !pbar_disabled {
@@ -637,6 +661,7 @@ impl NetworkStructure {
                     if sample_randoms[*src_idx] >= p {
                         return; // Skip this source entirely
                     }
+                    sampled_source_count.fetch_add(1, AtomicOrdering::Relaxed);
                     1.0 / p // Inverse probability weight
                 } else {
                     1.0
@@ -649,6 +674,7 @@ impl NetworkStructure {
                     jitter_scale,
                     random_seed.map(|s| s.wrapping_add(*src_idx as u64)),
                 );
+
                 for to_idx in visited_nodes.iter() {
                     let node_visit = &tree_map[*to_idx];
                     if to_idx == src_idx {
@@ -656,6 +682,14 @@ impl NetworkStructure {
                     }
                     if !node_visit.agg_seconds.is_finite() {
                         continue;
+                    }
+                    // Track reachability per distance when sampling
+                    if sample_probability.is_some() {
+                        for i in 0..distances.len() {
+                            if node_visit.short_dist <= distances[i] as f32 {
+                                source_reachability_totals[i].fetch_add(1, AtomicOrdering::Relaxed);
+                            }
+                        }
                     }
                     // Flipped aggregation: accumulate to target (to_idx) not source
                     // Weight comes from the source node (the node contributing to others' closeness)
@@ -711,8 +745,19 @@ impl NetworkStructure {
                     }
                 }
             });
+
+            // Store reachability totals after parallel processing
+            if sample_probability.is_some() {
+                res.sampled_source_count = sampled_source_count.load(AtomicOrdering::Relaxed);
+                res.reachability_totals = source_reachability_totals
+                    .iter()
+                    .map(|a| a.load(AtomicOrdering::Relaxed))
+                    .collect();
+            }
+
             res
         });
+
         Ok(result)
     }
 
@@ -791,7 +836,7 @@ impl NetworkStructure {
 
         let node_keys_py = self.node_keys_py(py);
         let node_indices = self.node_indices();
-        let res = CentralitySimplestResult::new(
+        let mut res = CentralitySimplestResult::new(
             distances.clone(),
             node_keys_py,
             node_indices.clone(),
@@ -817,6 +862,11 @@ impl NetworkStructure {
             Vec::new()
         };
 
+        // Atomic counters for tracking source reachability when sampling
+        let source_reachability_totals: Vec<AtomicU32> =
+            seconds.iter().map(|_| AtomicU32::new(0)).collect();
+        let sampled_source_count = AtomicU32::new(0);
+
         let result = py.detach(move || {
             node_indices.par_iter().for_each(|src_idx| {
                 if !pbar_disabled {
@@ -836,6 +886,7 @@ impl NetworkStructure {
                     if sample_randoms[*src_idx] >= p {
                         return; // Skip this source entirely
                     }
+                    sampled_source_count.fetch_add(1, AtomicOrdering::Relaxed);
                     1.0 / p // Inverse probability weight
                 } else {
                     1.0
@@ -848,6 +899,7 @@ impl NetworkStructure {
                     jitter_scale,
                     random_seed.map(|s| s.wrapping_add(*src_idx as u64)),
                 );
+
                 for to_idx in visited_nodes.iter() {
                     let node_visit = &tree_map[*to_idx];
                     if to_idx == src_idx {
@@ -855,6 +907,14 @@ impl NetworkStructure {
                     }
                     if !node_visit.agg_seconds.is_finite() {
                         continue;
+                    }
+                    // Track reachability per time threshold when sampling
+                    if sample_probability.is_some() {
+                        for i in 0..seconds.len() {
+                            if node_visit.agg_seconds <= seconds[i] as f32 {
+                                source_reachability_totals[i].fetch_add(1, AtomicOrdering::Relaxed);
+                            }
+                        }
                     }
                     // Flipped aggregation: accumulate to target (to_idx) not source
                     // Weight comes from the source node (the node contributing to others' closeness)
@@ -896,8 +956,19 @@ impl NetworkStructure {
                     }
                 }
             });
+
+            // Store reachability totals after parallel processing
+            if sample_probability.is_some() {
+                res.sampled_source_count = sampled_source_count.load(AtomicOrdering::Relaxed);
+                res.reachability_totals = source_reachability_totals
+                    .iter()
+                    .map(|a| a.load(AtomicOrdering::Relaxed))
+                    .collect();
+            }
+
             res
         });
+
         Ok(result)
     }
 

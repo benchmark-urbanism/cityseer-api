@@ -1,6 +1,6 @@
 # Centrality Sampling: Validation Report
 
-Generated: 2026-01-17T19:58:10.856369
+Generated: 2026-01-17T22:32:08.779155
 
 ---
 
@@ -38,7 +38,7 @@ identical to standard NetworkX implementations.
 | ------------------ | -------------- | -------- |
 | Harmonic Closeness | 2.98e-08       | ✓ PASSED |
 | Betweenness        | 0.0000         | ✓ PASSED |
-| Total Farness      | 1.95e-07       | ✓ PASSED |
+| Total Farness      | 6.51e-08       | ✓ PASSED |
 
 ![Correctness Verification](ch1_correctness.png)
 

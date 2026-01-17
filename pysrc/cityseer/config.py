@@ -62,6 +62,45 @@ SPEED_M_S = 1.33333
 # for all_close equality checks
 ATOL: float = 0.01
 RTOL: float = 0.0001
+# Empirical k values from sampling analysis (see analysis/output/README.md)
+# RMSE = k × √((1-p) / effective_n) where effective_n = mean_reachability × p
+SAMPLING_K_HARMONIC: float = 1.35
+SAMPLING_K_BETWEENNESS: float = 2.14
+
+
+def compute_expected_rmse(
+    sample_probability: float,
+    mean_reachability: float,
+    k: float = SAMPLING_K_BETWEENNESS,
+) -> float:
+    """
+    Compute expected RMSE for given sampling probability and reachability.
+
+    Based on Horvitz-Thompson estimator variance analysis.
+    Formula: RMSE = k × √((1-p) / effective_n)
+
+    Parameters
+    ----------
+    sample_probability : float
+        The sampling probability used (0 < p <= 1)
+    mean_reachability : float
+        Mean number of nodes reachable from sampled sources
+    k : float
+        Empirical constant from sampling analysis.
+        Default uses betweenness k (2.14) as conservative worst-case.
+        Harmonic closeness has lower k (1.35).
+
+    Returns
+    -------
+    float
+        Expected RMSE as a fraction (e.g., 0.05 = 5%)
+    """
+    if sample_probability <= 0 or mean_reachability <= 0:
+        return float("inf")
+    if sample_probability >= 1.0:
+        return 0.0
+    effective_n = mean_reachability * sample_probability
+    return k * ((1 - sample_probability) / effective_n) ** 0.5
 
 
 def log_thresholds(
@@ -85,6 +124,8 @@ def log_thresholds(
 def log_sampling(
     sample_probability: float | None = None,
     distances: list[int] | None = None,
+    reachability_totals: list[int] | None = None,
+    sampled_source_count: int | None = None,
 ) -> None:
     """Log sampling statistics when sampling is enabled."""
     if sample_probability is None:
@@ -92,16 +133,18 @@ def log_sampling(
     # Log sampling info
     logger.info(f"Sampling enabled: probability = {sample_probability}")
     logger.info(f"  Expected speedup: ~{1 / sample_probability:.1f}x")
-    # Theoretical relative standard error formula: RSE ≈ sqrt((1-p) / (p * k))
-    # We don't know k (reachable nodes) until after computation, so provide guidance
-    if distances:
-        logger.info("  Error estimates (vary with reachable node count k):")
-        logger.info("    RSE ≈ sqrt((1-p) / (p * k)) where k = avg reachable nodes")
-        # Example estimates for typical k values
-        p = sample_probability
-        for k in distances:
-            rse = ((1 - p) / (p * k)) ** 0.5
-            logger.info(f"    k={k}: ~{rse:.0%} error")
+    # If we have actual reachability data, log post-hoc expected RMSE
+    if reachability_totals and sampled_source_count and sampled_source_count > 0 and distances:
+        for dist, total_reach in zip(distances, reachability_totals, strict=True):
+            mean_reach = total_reach / sampled_source_count
+            if mean_reach > 0:
+                rmse_harmonic = compute_expected_rmse(sample_probability, mean_reach, SAMPLING_K_HARMONIC)
+                rmse_betweenness = compute_expected_rmse(sample_probability, mean_reach, SAMPLING_K_BETWEENNESS)
+                logger.info(
+                    f"  {dist}m: {sampled_source_count} sources, "
+                    f"mean_reach={mean_reach:.0f}, "
+                    f"RMSE ~{rmse_harmonic:.0%} (closeness) / ~{rmse_betweenness:.0%} (betweenness)"
+                )
 
 
 RustResults = (

@@ -1877,7 +1877,7 @@ This means you can achieve significant speedup with modest accuracy loss.
 # Create the speedup vs accuracy figure for each metric
 # Define reachability bins for stratification
 reach_bins_speedup = [
-    (0, 50, "<50", "#d62728"),      # red - low reach
+    (0, 50, "<50", "#d62728"),  # red - low reach
     (50, 150, "50-150", "#ff7f0e"),  # orange - medium reach
     (150, 500, "150-500", "#2ca02c"),  # green - high reach
     (500, float("inf"), ">500", "#1f77b4"),  # blue - very high reach
@@ -1912,10 +1912,7 @@ for metric in METRICS:
         if len(bin_data) >= 2:
             by_p = bin_data.groupby("sample_prob")["rmse"].mean()
             if len(by_p) >= 2:
-                ax.plot(
-                    by_p.index, by_p.values, "o-",
-                    color=color, label=f"reach {label}", linewidth=2, markersize=5
-                )
+                ax.plot(by_p.index, by_p.values, "o-", color=color, label=f"reach {label}", linewidth=2, markersize=5)
 
     ax.set_xlabel("Sampling Probability (p)")
     ax.set_ylabel("Mean RMSE")
@@ -1934,10 +1931,7 @@ for metric in METRICS:
             by_p = bin_data.groupby("sample_prob")["rmse"].mean()
             if len(by_p) >= 2:
                 # x = RMSE (0-1), y = p (0-1, where lower p = more speedup)
-                ax.plot(
-                    by_p.values, by_p.index, "o-",
-                    color=color, label=f"reach {label}", linewidth=2, markersize=5
-                )
+                ax.plot(by_p.values, by_p.index, "o-", color=color, label=f"reach {label}", linewidth=2, markersize=5)
 
     ax.set_xlabel("Mean RMSE")
     ax.set_ylabel("Sampling Probability (p)")

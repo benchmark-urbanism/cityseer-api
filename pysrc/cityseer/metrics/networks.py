@@ -202,7 +202,12 @@ def node_centrality_shortest(
         min_threshold_wt=min_threshold_wt,
         speed_m_s=speed_m_s,
     )
-    config.log_sampling(sample_probability=sample_probability, distances=distances)
+    config.log_sampling(
+        sample_probability=sample_probability,
+        distances=distances,
+        reachability_totals=result.reachability_totals,
+        sampled_source_count=result.sampled_source_count,
+    )
     # intersect computed keys with those available in the gdf index (stations vs. streets)
     gdf_idx = nodes_gdf.index.intersection(result.node_keys_py)  # type: ignore
     # create a dictionary to hold the data
@@ -375,7 +380,12 @@ def node_centrality_simplest(
         min_threshold_wt=min_threshold_wt,
         speed_m_s=speed_m_s,
     )
-    config.log_sampling(sample_probability=sample_probability, distances=distances)
+    config.log_sampling(
+        sample_probability=sample_probability,
+        distances=distances,
+        reachability_totals=result.reachability_totals,
+        sampled_source_count=result.sampled_source_count,
+    )
     # intersect computed keys with those available in the gdf index (stations vs. streets)
     gdf_idx = nodes_gdf.index.intersection(result.node_keys_py)  # type: ignore
     # create a dictionary to hold the data
