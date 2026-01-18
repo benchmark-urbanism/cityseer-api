@@ -62,45 +62,126 @@ SPEED_M_S = 1.33333
 # for all_close equality checks
 ATOL: float = 0.01
 RTOL: float = 0.0001
-# Empirical k values from sampling analysis (see analysis/output/README.md)
-# RMSE = k × √((1-p) / effective_n) where effective_n = mean_reachability × p
-SAMPLING_K_HARMONIC: float = 1.35
-SAMPLING_K_BETWEENNESS: float = 2.14
+
+# Empirical model parameters for sampling accuracy prediction
+# Fitted from analysis across network topologies (trellis, tree, linear)
+# effective_n = mean_reachability × sample_probability
+# See analysis/output/README.md for methodology
+#
+# Model for expected Spearman ρ: rho = 1 - A / (B + eff_n)
+# Model for standard deviation: std = C / sqrt(D + eff_n)
+# Model for expected scale (magnitude bias): scale = 1 - E / (F + eff_n)
+SAMPLING_MODEL_RHO_A: float = 14.27  # Numerator coefficient for rho model
+SAMPLING_MODEL_RHO_B: float = 20.1  # Denominator offset for rho model
+SAMPLING_MODEL_STD_C: float = 0.806  # Numerator coefficient for std model
+SAMPLING_MODEL_STD_D: float = 8.31  # Denominator offset for std model
+SAMPLING_MODEL_BIAS_E: float = 0.46  # Numerator coefficient for bias model
+SAMPLING_MODEL_BIAS_F: float = -0.13  # Denominator offset for bias model
 
 
-def compute_expected_rmse(
-    sample_probability: float,
-    mean_reachability: float,
-    k: float = SAMPLING_K_BETWEENNESS,
-) -> float:
+def get_expected_spearman(effective_n: float) -> tuple[float, float]:
     """
-    Compute expected RMSE for given sampling probability and reachability.
+    Get expected Spearman ρ and standard deviation for given effective sample size.
 
-    Based on Horvitz-Thompson estimator variance analysis.
-    Formula: RMSE = k × √((1-p) / effective_n)
+    Uses fitted empirical models:
+    - Expected ρ = 1 - A / (B + eff_n)
+    - Std dev = C / sqrt(D + eff_n)
 
     Parameters
     ----------
-    sample_probability : float
-        The sampling probability used (0 < p <= 1)
-    mean_reachability : float
-        Mean number of nodes reachable from sampled sources
-    k : float
-        Empirical constant from sampling analysis.
-        Default uses betweenness k (2.14) as conservative worst-case.
-        Harmonic closeness has lower k (1.35).
+    effective_n : float
+        The effective sample size (reach × p)
+
+    Returns
+    -------
+    tuple[float, float]
+        (expected_spearman, std_dev)
+    """
+    # Ensure minimum effective_n of 1 to avoid edge cases
+    eff_n = max(1.0, effective_n)
+
+    # Expected Spearman ρ
+    expected_rho = 1.0 - SAMPLING_MODEL_RHO_A / (SAMPLING_MODEL_RHO_B + eff_n)
+    expected_rho = max(0.0, min(1.0, expected_rho))  # Clamp to [0, 1]
+
+    # Standard deviation
+    std_dev = SAMPLING_MODEL_STD_C / (SAMPLING_MODEL_STD_D + eff_n) ** 0.5
+    std_dev = max(0.001, std_dev)  # Minimum std
+
+    return expected_rho, std_dev
+
+
+def get_expected_bias(effective_n: float) -> float:
+    """
+    Get expected magnitude bias for given effective sample size.
+
+    Uses fitted empirical model: scale = 1 - E / (F + eff_n)
+    Bias is reported as (1 - scale), i.e., the fraction by which
+    magnitudes are expected to be underestimated.
+
+    Parameters
+    ----------
+    effective_n : float
+        The effective sample size (reach × p)
 
     Returns
     -------
     float
-        Expected RMSE as a fraction (e.g., 0.05 = 5%)
+        Expected bias as a fraction (e.g., 0.05 means ~5% underestimate)
     """
-    if sample_probability <= 0 or mean_reachability <= 0:
-        return float("inf")
-    if sample_probability >= 1.0:
+    eff_n = max(1.0, effective_n)
+    expected_scale = 1.0 - SAMPLING_MODEL_BIAS_E / (SAMPLING_MODEL_BIAS_F + eff_n)
+    expected_scale = max(0.0, min(1.0, expected_scale))  # Clamp to [0, 1]
+    return 1.0 - expected_scale
+
+
+def get_required_effective_n(target_spearman: float) -> float | None:
+    """
+    Get the minimum effective_n required to achieve a target Spearman ρ.
+
+    Inverts the model: eff_n = A / (1 - target) - B
+
+    Parameters
+    ----------
+    target_spearman : float
+        Target Spearman ρ (e.g., 0.95)
+
+    Returns
+    -------
+    float | None
+        Required effective_n, or None if target is impossible (≥1.0)
+    """
+    if target_spearman >= 1.0:
+        return None
+    if target_spearman <= 0.0:
         return 0.0
-    effective_n = mean_reachability * sample_probability
-    return k * ((1 - sample_probability) / effective_n) ** 0.5
+
+    # Invert: rho = 1 - A / (B + n) => n = A / (1 - rho) - B
+    required_n = SAMPLING_MODEL_RHO_A / (1.0 - target_spearman) - SAMPLING_MODEL_RHO_B
+    return max(1.0, required_n)
+
+
+def compute_required_p(mean_reachability: float, target_spearman: float = 0.95) -> float | None:
+    """
+    Compute the sampling probability required to achieve target accuracy.
+
+    Parameters
+    ----------
+    mean_reachability : float
+        Average number of nodes reachable within distance threshold
+    target_spearman : float
+        Target Spearman ρ (default 0.95)
+
+    Returns
+    -------
+    float | None
+        Required sampling probability, or None if impossible
+    """
+    required_n = get_required_effective_n(target_spearman)
+    if required_n is None or mean_reachability <= 0:
+        return None
+    required_p = required_n / mean_reachability
+    return min(1.0, required_p)
 
 
 def log_thresholds(
@@ -127,24 +208,71 @@ def log_sampling(
     reachability_totals: list[int] | None = None,
     sampled_source_count: int | None = None,
 ) -> None:
-    """Log sampling statistics when sampling is enabled."""
+    """
+    Log sampling statistics when sampling is enabled.
+
+    Provides users with:
+    - Expected ranking accuracy (Spearman ρ) based on effective sample size
+    - Recommendations for achieving target accuracy levels where applicable
+    - Warnings when effective sample size is very low
+
+    The effective sample size (eff_n = reachability × p) determines accuracy:
+    - eff_n ≥ 260: Expected ρ ≥ 0.95
+    - eff_n ≥ 120: Expected ρ ≥ 0.90
+    - eff_n < 50:  High variance expected
+    """
     if sample_probability is None:
         return
-    # Log sampling info
-    logger.info(f"Sampling enabled: probability = {sample_probability}")
-    logger.info(f"  Expected speedup: ~{1 / sample_probability:.1f}x")
-    # If we have actual reachability data, log post-hoc expected RMSE
+
+    # Log sampling overview
+    speedup = 1 / sample_probability
+    logger.info(f"Sampling enabled: p={sample_probability:.0%}, theoretical speedup ~{speedup:.1f}x")
+    logger.info("  Spearman ρ measures ranking preservation (0=uncorrelated, 1=identical)")
+    logger.info("  Bias shows expected magnitude underestimate (0%=unbiased)")
+
+    # If we have actual reachability data, log effective_n and expected accuracy
     if reachability_totals and sampled_source_count and sampled_source_count > 0 and distances:
+        logger.info("  Per-distance accuracy estimates:")
+
         for dist, total_reach in zip(distances, reachability_totals, strict=True):
             mean_reach = total_reach / sampled_source_count
-            if mean_reach > 0:
-                rmse_harmonic = compute_expected_rmse(sample_probability, mean_reach, SAMPLING_K_HARMONIC)
-                rmse_betweenness = compute_expected_rmse(sample_probability, mean_reach, SAMPLING_K_BETWEENNESS)
-                logger.info(
-                    f"  {dist}m: {sampled_source_count} sources, "
-                    f"mean_reach={mean_reach:.0f}, "
-                    f"RMSE ~{rmse_harmonic:.0%} (closeness) / ~{rmse_betweenness:.0%} (betweenness)"
-                )
+            if mean_reach <= 0:
+                continue
+
+            effective_n = mean_reach * sample_probability
+            expected_rho, std_rho = get_expected_spearman(effective_n)
+
+            # Compute required p for different accuracy targets
+            p_for_90 = compute_required_p(mean_reach, 0.90)
+            p_for_95 = compute_required_p(mean_reach, 0.95)
+
+            # Build recommendation based on achievable targets
+            # Check if targets are achievable (p < 1.0 means sampling still provides speedup)
+            can_reach_95 = p_for_95 is not None and p_for_95 < 1.0
+            can_reach_90 = p_for_90 is not None and p_for_90 < 1.0
+
+            if expected_rho >= 0.95:
+                # Already at ρ≥0.95
+                recommendation = ""
+            elif can_reach_95:
+                # Can achieve ρ≥0.95 with higher p
+                recommendation = f" → p≥{p_for_95:.0%} for ρ≥0.95"
+            elif can_reach_90:
+                # Can achieve ρ≥0.90 with higher p, but ρ≥0.95 requires full computation
+                recommendation = f" → p≥{p_for_90:.0%} for ρ≥0.90"
+            else:
+                # Neither target achievable with sampling - reach is too low
+                recommendation = " (reach too low for ρ≥0.90 with sampling)"
+
+            # Get expected bias
+            expected_bias = get_expected_bias(effective_n)
+            bias_str = f", bias={expected_bias:.0%}" if expected_bias >= 0.01 else ""
+
+            # Log the main info line
+            logger.info(
+                f"    {dist}m: reach={mean_reach:.0f}, eff_n={effective_n:.0f}, "
+                f"expected ρ={expected_rho:.2f}±{std_rho:.2f}{bias_str}{recommendation}"
+            )
 
 
 RustResults = (

@@ -1,0 +1,22 @@
+{
+  "generated": "2026-01-18T19:52:10",
+  "data_points": 533,
+  "rho_model": {
+    "formula": "rho = 1 - A / (B + eff_n)",
+    "A": 14.27,
+    "B": 20.1,
+    "rmse": 0.1312
+  },
+  "std_model": {
+    "formula": "std = C / sqrt(D + eff_n)",
+    "C": 0.806,
+    "D": 8.31,
+    "rmse": 0.0275
+  },
+  "bias_model": {
+    "formula": "scale = 1 - E / (F + eff_n)",
+    "E": 0.46,
+    "F": -0.13,
+    "rmse": 0.0672
+  }
+}

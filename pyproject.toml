@@ -62,7 +62,11 @@ generate_docs = "python docs/generate_docs.py"
 docs_dev = { shell = "uv run poe generate_docs && npm run dev --prefix docs" }
 docs_build = { shell = "uv run poe generate_docs && npm run build --prefix docs" }
 docs_preview = { shell = "uv run poe generate_docs && npm run preview --prefix docs" }
-verify_project = { shell = "ruff format && ruff check && ty check && pytest ./tests" }
+verify_project = { shell = "ruff format && ruff check && ty check && python analysis/sync_sampling_constants.py && pytest ./tests" }
+# Run full sampling analysis (slow) - regenerates JSON with new fitted values
+run_sampling_analysis = "python analysis/sampling_analysis.py"
+# Sync sampling model constants from analysis output to config.py
+sync_sampling_constants = "python analysis/sync_sampling_constants.py"
 
 [dependency-groups]
 dev = [
@@ -85,6 +89,7 @@ dev = [
   "ty>=0.0.5",
   "esda>=2.8.1",
   "libpysal>=4.13.0",
+  "colorcet>=3.1.0",
 ]
 
 [build-system]
