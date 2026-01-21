@@ -32,9 +32,21 @@ def main():
 
     print(f"Loaded constants from: {CONSTANTS_FILE}")
     print(f"  Generated: {constants['generated']}")
-    print(f"  Data points: {constants['data_points']}")
 
-    # Extract values
+    # Handle both old (int) and new (dict) data_points format
+    data_points = constants["data_points"]
+    if isinstance(data_points, dict):
+        h_count = data_points.get("harmonic", "?")
+        b_count = data_points.get("betweenness", "?")
+        print(f"  Data points: harmonic={h_count}, betweenness={b_count}")
+    else:
+        print(f"  Data points: {data_points}")
+
+    # Print conservative percentile if present
+    if "conservative_percentile" in constants:
+        print(f"  Conservative percentile: {constants['conservative_percentile']}th")
+
+    # Extract values (uses primary rho_model which is betweenness conservative)
     rho_a = constants["rho_model"]["A"]
     rho_b = constants["rho_model"]["B"]
     std_c = constants["std_model"]["C"]
@@ -42,24 +54,43 @@ def main():
     bias_e = constants.get("bias_model", {}).get("E", 0.46)
     bias_f = constants.get("bias_model", {}).get("F", -0.13)
 
-    print("\nModel parameters:")
+    print("\nPrimary model parameters (betweenness conservative):")
     print(f"  Rho: A={rho_a}, B={rho_b}")
     print(f"  Std: C={std_c}, D={std_d}")
     print(f"  Bias: E={bias_e}, F={bias_f}")
+
+    # Show metric-specific models if available
+    if "harmonic_model" in constants and "betweenness_model" in constants:
+        print("\nMetric-specific models:")
+        h = constants["harmonic_model"]
+        b = constants["betweenness_model"]
+        print(f"  Harmonic:    A={h['A']}, B={h['B']}")
+        print(f"  Betweenness: A={b['A']}, B={b['B']}")
+
+    # Extract metric-specific models if available
+    harmonic_a = constants.get("harmonic_model", {}).get("A", rho_a)
+    harmonic_b = constants.get("harmonic_model", {}).get("B", rho_b)
+    betweenness_a = constants.get("betweenness_model", {}).get("A", rho_a)
+    betweenness_b = constants.get("betweenness_model", {}).get("B", rho_b)
 
     # Read config.py
     config_content = CONFIG_FILE.read_text()
 
     # Define patterns and replacements
     updates = [
-        ("SAMPLING_MODEL_RHO_A", rho_a),
-        ("SAMPLING_MODEL_RHO_B", rho_b),
+        # Metric-specific rho models
+        ("SAMPLING_MODEL_HARMONIC_A", harmonic_a),
+        ("SAMPLING_MODEL_HARMONIC_B", harmonic_b),
+        ("SAMPLING_MODEL_BETWEENNESS_A", betweenness_a),
+        ("SAMPLING_MODEL_BETWEENNESS_B", betweenness_b),
+        # Std and bias models
         ("SAMPLING_MODEL_STD_C", std_c),
         ("SAMPLING_MODEL_STD_D", std_d),
         ("SAMPLING_MODEL_BIAS_E", bias_e),
         ("SAMPLING_MODEL_BIAS_F", bias_f),
     ]
 
+    print("\nUpdating config.py:")
     updated = False
     for var_name, new_value in updates:
         # Pattern to match the variable assignment (handles negative numbers)

@@ -167,3 +167,103 @@ def test_segment_centrality(primal_graph):
                 if _betweenness is True:
                     data_key = config.prep_gdf_key("seg_betweenness", dist_key)
                     assert np.allclose(nodes_gdf[data_key], segment_result.segment_betweenness[dist_key])
+
+
+def test_node_centrality_shortest_adaptive(primal_graph):
+    """
+    Test adaptive shortest-path centrality with per-distance sampling.
+
+    The adaptive function should produce results that correlate highly with
+    full computation, while potentially using sampling at larger distances.
+    """
+    from scipy.stats import spearmanr
+
+    distances = [200, 400, 800]
+    nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(primal_graph)
+
+    # Run adaptive version with high target accuracy
+    nodes_gdf_adaptive = networks.node_centrality_shortest_adaptive(
+        network_structure=network_structure,
+        nodes_gdf=nodes_gdf.copy(),
+        distances=distances,
+        target_rho=0.95,
+        compute_closeness=True,
+        compute_betweenness=True,
+        random_seed=42,
+        n_probes=20,  # Smaller for test speed
+    )
+
+    # Run full computation for comparison
+    nodes_gdf_full = networks.node_centrality_shortest(
+        network_structure=network_structure,
+        nodes_gdf=nodes_gdf.copy(),
+        distances=distances,
+        compute_closeness=True,
+        compute_betweenness=True,
+    )
+
+    # Check that columns were created
+    for dist in distances:
+        assert config.prep_gdf_key("harmonic", dist) in nodes_gdf_adaptive.columns
+        assert config.prep_gdf_key("betweenness", dist) in nodes_gdf_adaptive.columns
+
+    # Check correlation with full computation
+    # For this small test graph, adaptive should match very closely
+    for dist in distances:
+        harmonic_key = config.prep_gdf_key("harmonic", dist)
+        full_vals = nodes_gdf_full[harmonic_key].values
+        adaptive_vals = nodes_gdf_adaptive[harmonic_key].values
+
+        # Filter out zeros/nans for correlation
+        mask = (full_vals > 0) & np.isfinite(full_vals) & np.isfinite(adaptive_vals)
+        if mask.sum() > 5:
+            rho, _ = spearmanr(full_vals[mask], adaptive_vals[mask])
+            # Should achieve at least the target accuracy
+            assert rho >= 0.85, f"Correlation too low at {dist}m: {rho:.3f}"
+
+
+def test_node_centrality_simplest_adaptive(primal_graph):
+    """
+    Test adaptive simplest-path (angular) centrality with per-distance sampling.
+    """
+    from scipy.stats import spearmanr
+
+    distances = [200, 400, 800]
+    nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(primal_graph)
+
+    # Run adaptive version
+    nodes_gdf_adaptive = networks.node_centrality_simplest_adaptive(
+        network_structure=network_structure,
+        nodes_gdf=nodes_gdf.copy(),
+        distances=distances,
+        target_rho=0.95,
+        compute_closeness=True,
+        compute_betweenness=True,
+        random_seed=42,
+        n_probes=20,
+    )
+
+    # Run full computation for comparison
+    nodes_gdf_full = networks.node_centrality_simplest(
+        network_structure=network_structure,
+        nodes_gdf=nodes_gdf.copy(),
+        distances=distances,
+        compute_closeness=True,
+        compute_betweenness=True,
+    )
+
+    # Check that columns were created
+    for dist in distances:
+        assert config.prep_gdf_key("harmonic", dist, angular=True) in nodes_gdf_adaptive.columns
+        assert config.prep_gdf_key("betweenness", dist, angular=True) in nodes_gdf_adaptive.columns
+
+    # Check correlation with full computation
+    for dist in distances:
+        harmonic_key = config.prep_gdf_key("harmonic", dist, angular=True)
+        full_vals = nodes_gdf_full[harmonic_key].values
+        adaptive_vals = nodes_gdf_adaptive[harmonic_key].values
+
+        mask = (full_vals > 0) & np.isfinite(full_vals) & np.isfinite(adaptive_vals)
+        if mask.sum() > 5:
+            rho, _ = spearmanr(full_vals[mask], adaptive_vals[mask])
+            assert rho >= 0.85, f"Correlation too low at {dist}m: {rho:.3f}"

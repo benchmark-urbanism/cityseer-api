@@ -32,7 +32,8 @@ from utils.substrates import generate_keyed_template
 warnings.filterwarnings("ignore")
 
 # Output and cache directories
-OUTPUT_DIR = Path(__file__).parent / "output"
+SCRIPT_DIR = Path(__file__).parent
+OUTPUT_DIR = SCRIPT_DIR / "output"
 OUTPUT_DIR.mkdir(exist_ok=True)
 CACHE_DIR = Path(__file__).parent.parent / "temp" / "sampling_cache"
 CACHE_DIR.mkdir(parents=True, exist_ok=True)
@@ -562,10 +563,13 @@ plt.suptitle(
     y=1.02,
 )
 fig.text(
-    0.5, -0.02,
+    0.5,
+    -0.02,
     "Points: mean Spearman ρ across all runs in each effective_n bin. "
     "Error bars: ±1 standard deviation. Dashed lines: accuracy targets.",
-    ha="center", fontsize=9, style="italic",
+    ha="center",
+    fontsize=9,
+    style="italic",
 )
 plt.tight_layout()
 plt.savefig(OUTPUT_DIR / "sampling_accuracy_vs_eff_n.png", dpi=150, bbox_inches="tight")
@@ -574,12 +578,18 @@ print(f"Saved: {OUTPUT_DIR / 'sampling_accuracy_vs_eff_n.png'}")
 
 # %% Fit Continuous Models for Sampling Accuracy
 print("\n" + "=" * 70)
-print("FITTING CONTINUOUS MODELS")
+print("FITTING CONTINUOUS MODELS (Separate for Closeness and Betweenness)")
 print("=" * 70)
 
 # Fit models to predict Spearman ρ and std from effective_n
 # Model for ρ: rho = 1 - A / (B + eff_n)  [approaches 1.0 as eff_n → ∞]
 # Model for std: std = C / sqrt(D + eff_n)  [decreases with eff_n]
+#
+# Key insight: Betweenness has higher variance than closeness, so we need
+# separate models. For conservative estimates, we use lower percentiles
+# (10th percentile) instead of mean values per effective_n bin.
+
+CONSERVATIVE_PERCENTILE = 10  # Use 10th percentile for conservative estimates
 
 
 def rho_model(eff_n, a, b):
@@ -597,39 +607,111 @@ def bias_model(eff_n, e, f):
     return 1 - e / (f + eff_n)
 
 
-# Get data for fitting (use harmonic as primary, but could combine both)
+def fit_rho_model_for_metric(
+    metric_data: pd.DataFrame,
+    metric_name: str,
+    use_percentile: bool = False,
+    percentile: int = 10,
+) -> tuple[float, float, float]:
+    """
+    Fit rho model for a specific metric.
+
+    If use_percentile=True, bins data by effective_n and fits to the lower
+    percentile values for conservative estimates.
+    """
+    eff_n_vals = metric_data["effective_n"].values
+    spearman_vals = metric_data["spearman"].values
+
+    # Filter valid data
+    valid_mask = (eff_n_vals > 0) & (spearman_vals > 0) & np.isfinite(eff_n_vals) & np.isfinite(spearman_vals)
+    eff_n_valid = eff_n_vals[valid_mask]
+    spearman_valid = spearman_vals[valid_mask]
+
+    if use_percentile:
+        # Bin data and compute percentiles for conservative fitting
+        bins = np.array([0, 10, 25, 50, 75, 100, 150, 200, 300, 400, 600, 1000, 2000])
+        bin_centers = []
+        bin_percentiles = []
+
+        for i in range(len(bins) - 1):
+            lo, hi = bins[i], bins[i + 1]
+            mask = (eff_n_valid >= lo) & (eff_n_valid < hi)
+            subset_spearman = spearman_valid[mask]
+
+            if len(subset_spearman) >= 10:  # Need enough samples for percentile
+                bin_centers.append((lo + hi) / 2)
+                bin_percentiles.append(np.percentile(subset_spearman, percentile))
+
+        eff_n_fit = np.array(bin_centers)
+        spearman_fit = np.array(bin_percentiles)
+        fit_type = f"{percentile}th percentile"
+    else:
+        eff_n_fit = eff_n_valid
+        spearman_fit = spearman_valid
+        fit_type = "all data"
+
+    print(f"\n{metric_name.upper()} model ({fit_type}):")
+    print(f"  Data points: {len(eff_n_fit)}")
+    print(f"  Effective_n range: {eff_n_fit.min():.1f} - {eff_n_fit.max():.1f}")
+    print(f"  Spearman range: {spearman_fit.min():.3f} - {spearman_fit.max():.3f}")
+
+    # Fit model
+    try:
+        params, _ = scipy_optimize.curve_fit(rho_model, eff_n_fit, spearman_fit, p0=[15, 20], maxfev=5000)
+        a, b = params
+        pred = rho_model(eff_n_fit, a, b)
+        rmse = np.sqrt(np.mean((spearman_fit - pred) ** 2))
+        print(f"  Model: ρ = 1 - {a:.2f} / ({b:.2f} + eff_n)")
+        print(f"  RMSE: {rmse:.4f}")
+        return a, b, rmse
+    except Exception as e:
+        print(f"  Warning: Could not fit model: {e}")
+        return 14.11, 21.58, 0.0  # Fallback
+
+
+# Separate data by metric
 harmonic_data = sampled[sampled["metric"] == "harmonic"]
-eff_n_vals = harmonic_data["effective_n"].values
-spearman_vals = harmonic_data["spearman"].values
+betweenness_data = sampled[sampled["metric"] == "betweenness"]
 
-# Filter valid data
-valid_mask = (eff_n_vals > 0) & (spearman_vals > 0) & np.isfinite(eff_n_vals) & np.isfinite(spearman_vals)
-eff_n_fit = eff_n_vals[valid_mask]
-spearman_fit = spearman_vals[valid_mask]
+print(f"\nHarmonic (closeness) data points: {len(harmonic_data)}")
+print(f"Betweenness data points: {len(betweenness_data)}")
 
-print(f"\nFitting models using {len(eff_n_fit)} data points...")
-print(f"  Effective_n range: {eff_n_fit.min():.1f} - {eff_n_fit.max():.1f}")
-print(f"  Spearman range: {spearman_fit.min():.3f} - {spearman_fit.max():.3f}")
+# Fit models for each metric using lower percentiles (conservative)
+print("\n--- Fitting Conservative Models (10th percentile) ---")
 
-# Fit rho model
-try:
-    rho_params, _ = scipy_optimize.curve_fit(rho_model, eff_n_fit, spearman_fit, p0=[15, 20], maxfev=5000)
-    rho_a, rho_b = rho_params
-    rho_pred = rho_model(eff_n_fit, rho_a, rho_b)
-    rho_rmse = np.sqrt(np.mean((spearman_fit - rho_pred) ** 2))
-    print(f"\nRho model: ρ = 1 - {rho_a:.2f} / ({rho_b:.2f} + eff_n)")
-    print(f"  RMSE: {rho_rmse:.4f}")
-except Exception as e:
-    print(f"  Warning: Could not fit rho model: {e}")
-    rho_a, rho_b = 14.11, 21.58  # Fallback to previous values
+harmonic_a, harmonic_b, harmonic_rmse = fit_rho_model_for_metric(
+    harmonic_data, "harmonic", use_percentile=True, percentile=CONSERVATIVE_PERCENTILE
+)
 
-# Compute std per effective_n bin for fitting
+betweenness_a, betweenness_b, betweenness_rmse = fit_rho_model_for_metric(
+    betweenness_data, "betweenness", use_percentile=True, percentile=CONSERVATIVE_PERCENTILE
+)
+
+# Also fit mean-based models for comparison
+print("\n--- Fitting Mean Models (for comparison) ---")
+
+harmonic_mean_a, harmonic_mean_b, harmonic_mean_rmse = fit_rho_model_for_metric(
+    harmonic_data, "harmonic (mean)", use_percentile=False
+)
+
+betweenness_mean_a, betweenness_mean_b, betweenness_mean_rmse = fit_rho_model_for_metric(
+    betweenness_data, "betweenness (mean)", use_percentile=False
+)
+
+# Use betweenness conservative model as primary (it's more demanding)
+# This ensures we meet accuracy targets for both metrics
+rho_a, rho_b = betweenness_a, betweenness_b
+rho_rmse = betweenness_rmse
+print("\n*** Using BETWEENNESS conservative model for primary sampling config ***")
+print("    (Betweenness has higher variance, so this ensures both metrics meet targets)")
+
+# Compute std per effective_n bin for fitting (using betweenness for conservative)
 std_bins = np.array([0, 10, 25, 50, 75, 100, 150, 200, 300, 400, 600, 1000])
 bin_centers = []
 bin_stds = []
 for i in range(len(std_bins) - 1):
     lo, hi = std_bins[i], std_bins[i + 1]
-    subset = harmonic_data[(harmonic_data["effective_n"] >= lo) & (harmonic_data["effective_n"] < hi)]
+    subset = betweenness_data[(betweenness_data["effective_n"] >= lo) & (betweenness_data["effective_n"] < hi)]
     if len(subset) > 10:
         bin_centers.append((lo + hi) / 2)
         bin_stds.append(subset["spearman"].std())
@@ -643,7 +725,7 @@ try:
     std_c, std_d = std_params
     std_pred = std_model(bin_centers, std_c, std_d)
     std_rmse = np.sqrt(np.mean((bin_stds - std_pred) ** 2))
-    print(f"\nStd model: std = {std_c:.3f} / sqrt({std_d:.2f} + eff_n)")
+    print(f"\nStd model (betweenness): std = {std_c:.3f} / sqrt({std_d:.2f} + eff_n)")
     print(f"  RMSE: {std_rmse:.4f}")
 except Exception as e:
     print(f"  Warning: Could not fit std model: {e}")
@@ -668,26 +750,59 @@ except Exception as e:
     print(f"  Warning: Could not fit bias model: {e}")
     bias_e, bias_f, bias_rmse = 0.46, -0.13, None  # Fallback values
 
-# Print model predictions at key effective_n values
-print("\nModel predictions:")
-print(f"{'eff_n':>8} | {'predicted ρ':>12} | {'predicted std':>13} | {'expected bias':>13}")
-print("-" * 55)
+# Print model predictions comparing harmonic vs betweenness
+print("\n" + "=" * 70)
+print("MODEL COMPARISON: Harmonic vs Betweenness (Conservative / 10th percentile)")
+print("=" * 70)
+print(f"{'eff_n':>8} | {'Harmonic ρ':>12} | {'Betweenness ρ':>14} | {'Diff':>8}")
+print("-" * 50)
 for n in [10, 25, 50, 100, 200, 400, 800]:
-    pred_rho = rho_model(n, rho_a, rho_b)
-    pred_std = std_model(n, std_c, std_d)
-    pred_scale = bias_model(n, bias_e, bias_f)
-    pred_bias = (1 - pred_scale) * 100
-    print(f"{n:>8} | {pred_rho:>12.3f} | {pred_std:>13.3f} | {pred_bias:>12.1f}%")
+    pred_harmonic = rho_model(n, harmonic_a, harmonic_b)
+    pred_between = rho_model(n, betweenness_a, betweenness_b)
+    diff = pred_harmonic - pred_between
+    print(f"{n:>8} | {pred_harmonic:>12.3f} | {pred_between:>14.3f} | {diff:>+8.3f}")
+
+# Print required effective_n for various target rho values
+print("\n" + "=" * 70)
+print("REQUIRED EFFECTIVE_N FOR TARGET ACCURACY")
+print("=" * 70)
+print(f"{'Target ρ':>10} | {'Harmonic eff_n':>15} | {'Betweenness eff_n':>18}")
+print("-" * 50)
+for target in [0.90, 0.95, 0.96, 0.97, 0.98, 0.99]:
+    req_harmonic = harmonic_a / (1 - target) - harmonic_b
+    req_between = betweenness_a / (1 - target) - betweenness_b
+    print(f"{target:>10.2f} | {req_harmonic:>15.0f} | {req_between:>18.0f}")
 
 # Save model constants to JSON for syncing to config.py
+# Include both metric-specific and combined conservative models
 model_constants = {
     "generated": datetime.now().isoformat(timespec="seconds"),
-    "data_points": len(eff_n_fit),
+    "conservative_percentile": CONSERVATIVE_PERCENTILE,
+    "data_points": {
+        "harmonic": len(harmonic_data),
+        "betweenness": len(betweenness_data),
+    },
+    "harmonic_model": {
+        "formula": "rho = 1 - A / (B + eff_n)",
+        "A": round(harmonic_a, 2),
+        "B": round(harmonic_b, 2),
+        "rmse": round(harmonic_rmse, 4),
+        "note": f"Fitted to {CONSERVATIVE_PERCENTILE}th percentile for conservative estimates",
+    },
+    "betweenness_model": {
+        "formula": "rho = 1 - A / (B + eff_n)",
+        "A": round(betweenness_a, 2),
+        "B": round(betweenness_b, 2),
+        "rmse": round(betweenness_rmse, 4),
+        "note": f"Fitted to {CONSERVATIVE_PERCENTILE}th percentile for conservative estimates",
+    },
+    # Primary model uses betweenness (more demanding) for safety
     "rho_model": {
         "formula": "rho = 1 - A / (B + eff_n)",
         "A": round(rho_a, 2),
         "B": round(rho_b, 2),
         "rmse": round(rho_rmse, 4),
+        "note": "Uses betweenness conservative model (higher variance metric)",
     },
     "std_model": {
         "formula": "std = C / sqrt(D + eff_n)",
@@ -718,48 +833,59 @@ print("=" * 70)
 # Solving for eff_n: eff_n = A / (1 - ρ) - B
 # Since eff_n = reach × p: p = eff_n / reach = (A / (1 - ρ) - B) / reach
 
-fig, ax = plt.subplots(1, 1, figsize=(10, 6))
+# Create side-by-side plots for harmonic and betweenness models
+fig, axes = plt.subplots(1, 2, figsize=(14, 6))
 
-spearman_targets = [0.90, 0.95, 0.96, 0.97, 0.98, 0.99]
+spearman_targets = [0.90, 0.95, 0.97, 0.99]
 target_colors = {
     "0.9": "steelblue",
     "0.95": "darkorange",
-    "0.96": "goldenrod",
     "0.97": "mediumseagreen",
-    "0.98": "teal",
-    "0.99": "seagreen",
+    "0.99": "teal",
 }
-reach_range = np.linspace(50, 2500, 100)
 
-for target_rho in spearman_targets:
-    # Calculate required effective_n from model
-    required_eff_n = rho_a / (1 - target_rho) - rho_b
-    # Calculate required p for each reachability
-    required_p = required_eff_n / reach_range
-    # Clip to valid probability range [0, 1]
-    required_p = np.clip(required_p, 0, 1)
+# For each model, find the max required_eff_n (at ρ=0.99) to set appropriate x-axis
+max_eff_n_harmonic = harmonic_a / (1 - 0.99) - harmonic_b
+max_eff_n_betweenness = betweenness_a / (1 - 0.99) - betweenness_b
 
-    ax.plot(reach_range, required_p, "-", linewidth=2.5,
+# Set x-axis to show full curves (where p drops below 1.0)
+# x_max should be at least max_eff_n so curves can reach p=1
+x_max = max(max_eff_n_harmonic, max_eff_n_betweenness) * 1.5
+reach_range = np.linspace(50, x_max, 200)
+
+models = [
+    ("Harmonic (Closeness)", harmonic_a, harmonic_b, axes[0]),
+    ("Betweenness", betweenness_a, betweenness_b, axes[1]),
+]
+
+for title, a, b, ax in models:
+    for target_rho in spearman_targets:
+        # Calculate required effective_n from model
+        required_eff_n = a / (1 - target_rho) - b
+        # Calculate required p for each reachability
+        required_p = required_eff_n / reach_range
+        # Clip to valid probability range [0, 1]
+        required_p = np.clip(required_p, 0, 1)
+
+        ax.plot(
+            reach_range,
+            required_p,
+            "-",
+            linewidth=2.5,
             label=f"ρ ≥ {target_rho} (eff_n ≥ {required_eff_n:.0f})",
-            color=target_colors[str(target_rho)])
+            color=target_colors[str(target_rho)],
+        )
 
-ax.set_xlabel("Mean Reachability", fontsize=12)
-ax.set_ylabel("Required Sampling Probability (p)", fontsize=12)
-ax.set_ylim(0, 1.05)
-ax.set_xlim(0, 2500)
-ax.legend(loc="upper right", title="Target Spearman ρ", fontsize=10)
-ax.grid(True, alpha=0.3)
+    ax.set_xlabel("Mean Reachability", fontsize=12)
+    ax.set_ylabel("Required Sampling Probability (p)", fontsize=12)
+    ax.set_ylim(0, 1.05)
+    ax.set_xlim(0, x_max)
+    ax.legend(loc="lower left", title="Target Spearman ρ", fontsize=9)
+    ax.grid(True, alpha=0.3)
+    ax.set_title(f"{title}\nModel: ρ = 1 - {a:.1f}/({b:.1f} + reach×p)", fontsize=11)
 
-# Add annotation explaining the relationship
-ax.annotate(
-    f"Model: ρ = 1 - {rho_a:.1f}/({rho_b:.1f} + reach×p)",
-    xy=(0.02, 0.02), xycoords="axes fraction",
-    fontsize=9, style="italic", color="gray"
-)
-
-plt.title(
-    "Required Sampling Probability to Achieve Target Ranking Accuracy\n"
-    "(Theoretical curves from fitted model)",
+fig.suptitle(
+    "Required Sampling Probability to Achieve Target Ranking Accuracy\n(Conservative 10th percentile models)",
     fontsize=13,
     fontweight="bold",
 )
@@ -784,6 +910,23 @@ correctness_table = "\n".join(
 # Compute key thresholds from the fitted model for documentation
 eff_n_for_95 = rho_a / (1 - 0.95) - rho_b if rho_a and rho_b else 261
 eff_n_for_90 = rho_a / (1 - 0.90) - rho_b if rho_a and rho_b else 120
+
+# Precompute model predictions for README table
+pred_rows = []
+for n in [10, 25, 50, 100, 200, 400]:
+    rho_pred = rho_model(n, betweenness_a, betweenness_b)
+    std_pred = std_model(n, std_c, std_d)
+    bias_pred = (1 - bias_model(n, bias_e, bias_f)) * 100
+    pred_rows.append(f"| {n} | {rho_pred:.3f} | {std_pred:.3f} | {bias_pred:.1f}% |")
+model_pred_table = "\n".join(pred_rows)
+
+# Precompute required eff_n for README table
+req_rows = []
+for target, div in [(0.90, 0.1), (0.95, 0.05), (0.97, 0.03), (0.99, 0.01)]:
+    h_req = harmonic_a / div - harmonic_b
+    b_req = betweenness_a / div - betweenness_b
+    req_rows.append(f"| {target} | {h_req:.0f} | {b_req:.0f} |")
+req_eff_n_table = "\n".join(req_rows)
 
 readme_content = f"""# Sampling Analysis: When Can You Trust Sampled Centrality?
 
@@ -824,7 +967,7 @@ All metrics pass verification, confirming cityseer computes correct centrality v
 
 Three synthetic network topologies are used for testing:
 
-![Test Network Topologies](topologies.png)
+![Test Network Topologies](output/topologies.png)
 
 - **Trellis**: Dense grid-like networks (urban cores, high connectivity)
 - **Tree**: Branching dendritic networks (suburban areas, hierarchical)
@@ -867,16 +1010,28 @@ The effective_n approximates how many sampled sources contribute to each node's 
 
 ## Chapter 4: Fitted Models
 
-Empirical models fitted to the experimental data:
+Empirical models fitted to the experimental data using the {CONSERVATIVE_PERCENTILE}th percentile
+for conservative estimates (accounting for variance across network topologies).
 
-### Spearman ρ Model (Ranking Accuracy)
+### Spearman ρ Models (Ranking Accuracy)
 
+Separate models are fitted for closeness (harmonic) and betweenness centrality,
+as betweenness shows higher variance at the same effective_n.
+
+**Harmonic (Closeness)**:
 ```
-ρ = 1 - {rho_a:.2f} / ({rho_b:.2f} + effective_n)
+ρ = 1 - {harmonic_a:.2f} / ({harmonic_b:.2f} + effective_n)
 ```
+- RMSE: {harmonic_rmse:.4f}
 
-- Approaches 1.0 as effective_n increases
-- RMSE of fit: {rho_rmse:.4f}
+**Betweenness**:
+```
+ρ = 1 - {betweenness_a:.2f} / ({betweenness_b:.2f} + effective_n)
+```
+- RMSE: {betweenness_rmse:.4f}
+
+When computing both metrics together, the betweenness (more conservative) model
+is used to ensure both metrics meet accuracy targets.
 
 ### Standard Deviation Model (Uncertainty)
 
@@ -899,16 +1054,17 @@ bias = 1 - scale
 - RMSE of fit: {f"{bias_rmse:.4f}" if bias_rmse is not None else "N/A"}
 - Note: Higher RMSE than ranking model; predictions less reliable
 
-### Model Predictions
+### Model Predictions (Betweenness / Conservative)
 
 | effective_n | Expected ρ | Std Dev | Bias |
 |-------------|------------|---------|------|
-| 10 | {rho_model(10, rho_a, rho_b):.3f} | {std_model(10, std_c, std_d):.3f} | {(1 - bias_model(10, bias_e, bias_f)) * 100:.1f}% |
-| 25 | {rho_model(25, rho_a, rho_b):.3f} | {std_model(25, std_c, std_d):.3f} | {(1 - bias_model(25, bias_e, bias_f)) * 100:.1f}% |
-| 50 | {rho_model(50, rho_a, rho_b):.3f} | {std_model(50, std_c, std_d):.3f} | {(1 - bias_model(50, bias_e, bias_f)) * 100:.1f}% |
-| 100 | {rho_model(100, rho_a, rho_b):.3f} | {std_model(100, std_c, std_d):.3f} | {(1 - bias_model(100, bias_e, bias_f)) * 100:.1f}% |
-| 200 | {rho_model(200, rho_a, rho_b):.3f} | {std_model(200, std_c, std_d):.3f} | {(1 - bias_model(200, bias_e, bias_f)) * 100:.1f}% |
-| 400 | {rho_model(400, rho_a, rho_b):.3f} | {std_model(400, std_c, std_d):.3f} | {(1 - bias_model(400, bias_e, bias_f)) * 100:.1f}% |
+{model_pred_table}
+
+### Required effective_n for Target Accuracy
+
+| Target ρ | Harmonic | Betweenness |
+|----------|----------|-------------|
+{req_eff_n_table}
 
 ---
 
@@ -916,14 +1072,14 @@ bias = 1 - scale
 
 ### Figure 1: Accuracy vs Effective Sample Size
 
-![Sampling Accuracy](sampling_accuracy.png)
+![Sampling Accuracy](output/sampling_accuracy.png)
 
 Scatter plots of observed ranking (top) and magnitude (bottom) accuracy across
 all experimental configurations. Points are coloured by network topology.
 
 ### Figure 2a: Required Sampling Probability
 
-![Sampling Probability](sampling_probability.png)
+![Sampling Probability](output/sampling_probability.png)
 
 Theoretical curves showing the sampling probability required to achieve each
 target Spearman ρ, derived from the fitted model. The legend shows the
@@ -931,7 +1087,7 @@ effective_n threshold needed for each accuracy level.
 
 ### Figure 2b: Expected Ranking Accuracy
 
-![Sampling Accuracy vs Effective N](sampling_accuracy_vs_eff_n.png)
+![Sampling Accuracy vs Effective N](output/sampling_accuracy_vs_eff_n.png)
 
 Mean observed Spearman ρ binned by effective sample size. Error bars show
 ±1 standard deviation within each bin.
@@ -977,27 +1133,34 @@ These are exported to `sampling_model_constants.json` and synced to
 
 ```json
 {{
+  "harmonic_model": {{"A": {harmonic_a:.2f}, "B": {harmonic_b:.2f}}},
+  "betweenness_model": {{"A": {betweenness_a:.2f}, "B": {betweenness_b:.2f}}},
   "rho_model": {{"A": {rho_a:.2f}, "B": {rho_b:.2f}}},
   "std_model": {{"C": {std_c:.3f}, "D": {std_d:.2f}}},
   "bias_model": {{"E": {bias_e:.2f}, "F": {bias_f:.2f}}}
 }}
 ```
 
+Note: `rho_model` uses the betweenness (more conservative) model for backward compatibility
+when computing both metrics together.
+
 ---
 
 *Generated by `sampling_analysis.py` — Run `poe sync_sampling_constants` to update config.py*
 """
 
-readme_path = OUTPUT_DIR / "README.md"
-with open(readme_path, "w") as f:
+results_md_path = SCRIPT_DIR / "sampling_analysis_results.md"
+with open(results_md_path, "w") as f:
     f.write(readme_content)
 
-print(f"README saved to: {readme_path}")
+print(f"Results saved to: {results_md_path}")
 
 # %% Summary
 print("\n" + "=" * 70)
 print("SUMMARY")
 print("=" * 70)
+eff_n_for_95_h = harmonic_a / 0.05 - harmonic_b
+eff_n_for_95_b = betweenness_a / 0.05 - betweenness_b
 print(f"""
 KEY TAKEAWAY:
 
@@ -1006,28 +1169,32 @@ KEY TAKEAWAY:
   Higher effective_n = better accuracy for both ranking and magnitude.
   This relationship holds across all tested network topologies.
 
-FITTED MODEL:
+FITTED MODELS (Conservative {CONSERVATIVE_PERCENTILE}th percentile):
 
-  Expected Spearman ρ = 1 - {rho_a:.2f} / ({rho_b:.2f} + effective_n)
+  Harmonic (closeness):
+    Expected ρ = 1 - {harmonic_a:.2f} / ({harmonic_b:.2f} + effective_n)
+    For ρ ≥ 0.95: eff_n ≥ {eff_n_for_95_h:.0f}
 
-  Key thresholds:
-    - eff_n ≥ {eff_n_for_95:.0f}: Expected ρ ≥ 0.95
-    - eff_n ≥ {eff_n_for_90:.0f}: Expected ρ ≥ 0.90
+  Betweenness (higher variance):
+    Expected ρ = 1 - {betweenness_a:.2f} / ({betweenness_b:.2f} + effective_n)
+    For ρ ≥ 0.95: eff_n ≥ {eff_n_for_95_b:.0f}
+
+  When computing both metrics, use the betweenness (more conservative) model.
 
 PRACTICAL GUIDANCE:
 
   1. Estimate your reachability from network density and distance threshold
   2. Choose p to achieve your target effective_n:
-     - For ρ ≥ 0.95: p ≥ {eff_n_for_95:.0f} / reachability
-     - For ρ ≥ 0.90: p ≥ {eff_n_for_90:.0f} / reachability
+     - Closeness only: p ≥ {eff_n_for_95_h:.0f} / reachability
+     - Betweenness or both: p ≥ {eff_n_for_95_b:.0f} / reachability
   3. Check cityseer's runtime logs for actual accuracy estimates
 
 OUTPUT FILES:
 
-  - README.md: Full documentation with figures
-  - sampling_accuracy.png: Main results figure
-  - sampling_guidance.png: Practical guidance figure
-  - sampling_model_constants.json: Model parameters for config.py
+  - sampling_analysis_results.md: Full documentation with figures
+  - output/sampling_accuracy.png: Main results figure
+  - output/sampling_probability.png: Required sampling probability curves
+  - output/sampling_model_constants.json: Model parameters for config.py
 
 NEXT STEPS:
 

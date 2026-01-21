@@ -547,3 +547,326 @@ def segment_centrality(
     nodes_gdf.loc[gdf_idx, temp_df.columns] = temp_df.loc[gdf_idx, temp_df.columns]  # type: ignore
 
     return nodes_gdf
+
+
+# =============================================================================
+# Adaptive Sampling Functions
+# =============================================================================
+# These functions run centrality with per-distance adaptive sampling, where
+# sampling probability is calibrated separately for each distance threshold.
+# This allows aggressive sampling at large distances (high reach) while
+# maintaining accuracy at short distances (low reach).
+
+
+def _run_adaptive_centrality(
+    network_structure: rustalgos.graph.NetworkStructure,
+    nodes_gdf: gpd.GeoDataFrame,
+    distances: list[int],
+    target_rho: float,
+    centrality_func: str,  # "shortest" or "simplest"
+    compute_closeness: bool,
+    compute_betweenness: bool,
+    min_threshold_wt: float,
+    speed_m_s: float,
+    jitter_scale: float,
+    random_seed: int | None,
+    n_probes: int,
+    # simplest-only params
+    angular_scaling_unit: float | None = None,
+    farness_scaling_offset: float | None = None,
+) -> gpd.GeoDataFrame:
+    """
+    Internal: Run centrality with per-distance adaptive sampling.
+
+    This function handles the shared logic for both shortest and simplest
+    path adaptive centrality computation.
+    """
+    # Determine which metric model to use for sampling calibration
+    # Use the more conservative model when computing both metrics
+    if compute_closeness and compute_betweenness:
+        metric = "both"
+    elif compute_betweenness:
+        metric = "betweenness"
+    else:
+        metric = "harmonic"
+
+    # 1. Probe reachability
+    logger.info(f"Probing reachability ({n_probes} samples)...")
+    reach_estimates = config.probe_reachability(network_structure, distances, n_probes=n_probes, speed_m_s=speed_m_s)
+
+    # 2. Compute sampling probabilities using appropriate metric model
+    sample_probs = config.compute_sample_probs_for_target_rho(reach_estimates, target_rho, metric=metric)
+
+    # 3. Log the plan
+    config.log_adaptive_sampling_plan(distances, reach_estimates, sample_probs, target_rho, metric=metric)
+
+    # 4. Run per-distance
+    logger.info("Running per-distance centrality...")
+
+    # Track all results to merge
+    all_results: dict[
+        int, rustalgos.centrality.CentralityShortestResult | rustalgos.centrality.CentralitySimplestResult
+    ] = {}
+
+    for d in sorted(distances):
+        p = sample_probs.get(d)
+        # Use None (full computation) if p >= 1.0 or None
+        effective_p = p if (p is not None and p < 1.0) else None
+
+        logger.info(f"  {d}m: {'full' if effective_p is None else f'p={effective_p:.0%}'}...")
+
+        if centrality_func == "shortest":
+            result = network_structure.local_node_centrality_shortest(
+                distances=[d],
+                compute_closeness=compute_closeness,
+                compute_betweenness=compute_betweenness,
+                min_threshold_wt=min_threshold_wt,
+                speed_m_s=speed_m_s,
+                jitter_scale=jitter_scale,
+                sample_probability=effective_p,
+                random_seed=random_seed,
+                pbar_disabled=True,  # Disable per-distance progress bars
+            )
+        else:  # simplest
+            result = network_structure.local_node_centrality_simplest(
+                distances=[d],
+                compute_closeness=compute_closeness,
+                compute_betweenness=compute_betweenness,
+                min_threshold_wt=min_threshold_wt,
+                speed_m_s=speed_m_s,
+                angular_scaling_unit=angular_scaling_unit,
+                farness_scaling_offset=farness_scaling_offset,
+                jitter_scale=jitter_scale,
+                sample_probability=effective_p,
+                random_seed=random_seed,
+                pbar_disabled=True,
+            )
+
+        all_results[d] = result
+
+        # Log actual accuracy achieved
+        if effective_p is not None and result.sampled_source_count > 0:
+            total_reach = result.reachability_totals[0] if result.reachability_totals else 0
+            mean_reach = total_reach / result.sampled_source_count
+            eff_n = mean_reach * effective_p
+            exp_rho, _ = config.get_expected_spearman(eff_n, metric=metric)
+            logger.info(f"    actual: reach={mean_reach:.0f}, eff_n={eff_n:.0f}, expected ρ={exp_rho:.2f}")
+
+    # 5. Merge results into GeoDataFrame
+    # Get reference result for node keys
+    ref_result = next(iter(all_results.values()))
+    gdf_idx = nodes_gdf.index.intersection(ref_result.node_keys_py)  # type: ignore
+
+    temp_data: dict[str, object] = {}
+
+    if centrality_func == "shortest":
+        if compute_closeness:
+            for measure_key, attr_key in [
+                ("beta", "node_beta"),
+                ("cycles", "node_cycles"),
+                ("density", "node_density"),
+                ("farness", "node_farness"),
+                ("harmonic", "node_harmonic"),
+            ]:
+                for d, res in all_results.items():
+                    data_key = config.prep_gdf_key(measure_key, d)
+                    temp_data[data_key] = getattr(res, attr_key)[d]
+            for d, res in all_results.items():
+                data_key = config.prep_gdf_key("hillier", d)
+                temp_data[data_key] = res.node_density[d] ** 2 / res.node_farness[d]  # type: ignore
+        if compute_betweenness:
+            for measure_key, attr_key in [
+                ("betweenness", "node_betweenness"),
+                ("betweenness_beta", "node_betweenness_beta"),
+            ]:
+                for d, res in all_results.items():
+                    data_key = config.prep_gdf_key(measure_key, d)
+                    temp_data[data_key] = getattr(res, attr_key)[d]
+    else:  # simplest
+        if compute_closeness:
+            for d, res in all_results.items():
+                temp_data[config.prep_gdf_key("density", d, angular=True)] = res.node_density[d]
+                temp_data[config.prep_gdf_key("harmonic", d, angular=True)] = res.node_harmonic[d]
+                temp_data[config.prep_gdf_key("farness", d, angular=True)] = res.node_farness[d]
+                temp_data[config.prep_gdf_key("hillier", d, angular=True)] = (
+                    res.node_density[d] ** 2 / res.node_farness[d]  # type: ignore
+                )
+        if compute_betweenness:
+            for d, res in all_results.items():
+                temp_data[config.prep_gdf_key("betweenness", d, angular=True)] = res.node_betweenness[d]
+
+    temp_df = pd.DataFrame(temp_data, index=ref_result.node_keys_py)
+    nodes_gdf.loc[gdf_idx, temp_df.columns] = temp_df.loc[gdf_idx, temp_df.columns]  # type: ignore
+
+    logger.info("Adaptive centrality complete.")
+    return nodes_gdf
+
+
+def node_centrality_shortest_adaptive(
+    network_structure: rustalgos.graph.NetworkStructure,
+    nodes_gdf: gpd.GeoDataFrame,
+    distances: list[int],
+    target_rho: float = 0.95,
+    compute_closeness: bool = True,
+    compute_betweenness: bool = True,
+    min_threshold_wt: float = MIN_THRESH_WT,
+    speed_m_s: float = SPEED_M_S,
+    jitter_scale: float = 0.0,
+    random_seed: int | None = None,
+    n_probes: int = 50,
+) -> gpd.GeoDataFrame:
+    """
+    Compute shortest-path node centrality with per-distance adaptive sampling.
+
+    This function automatically calibrates sampling probability for each distance
+    threshold to achieve a target accuracy level (Spearman ρ). Short distances
+    use full or near-full computation (where reach is low), while long distances
+    use aggressive sampling (where high reach provides statistical power).
+
+    This can provide substantial speedups for analyses spanning multiple scales
+    (e.g., 500m to 20km) while maintaining consistent accuracy across all distances.
+
+    Parameters
+    ----------
+    network_structure
+        A NetworkStructure. Best generated with io.network_structure_from_nx.
+    nodes_gdf
+        A GeoDataFrame representing nodes. Results are written to this GeoDataFrame.
+    distances
+        Distance thresholds in metres. Unlike the standard function, only distances
+        (not betas or minutes) are supported for adaptive sampling.
+    target_rho
+        Target Spearman ρ correlation for ranking accuracy. Default 0.95.
+        Higher values (e.g., 0.97) provide better accuracy but less speedup.
+        Note: Model was fitted on closeness; betweenness may have higher variance.
+    compute_closeness
+        Compute closeness centralities. True by default.
+    compute_betweenness
+        Compute betweenness centralities. True by default.
+    min_threshold_wt
+        Minimum threshold weight for beta computation.
+    speed_m_s
+        Walking speed in m/s for distance-to-time conversion.
+    jitter_scale
+        Scale of random jitter for path calculations.
+    random_seed
+        Optional seed for reproducible sampling.
+    n_probes
+        Number of nodes to probe for reachability estimation. Default 50.
+
+    Returns
+    -------
+    nodes_gdf
+        The input GeoDataFrame with centrality columns added.
+
+    See Also
+    --------
+    node_centrality_shortest : Standard (non-adaptive) version with uniform sampling.
+
+    Examples
+    --------
+    ```python
+    # Compute centrality across scales with automatic sampling
+    nodes_gdf = node_centrality_shortest_adaptive(
+        network_structure,
+        nodes_gdf,
+        distances=[500, 2000, 5000, 20000],
+        target_rho=0.95,
+    )
+    ```
+    """
+    logger.info("Computing adaptive shortest path node centrality.")
+    return _run_adaptive_centrality(
+        network_structure=network_structure,
+        nodes_gdf=nodes_gdf,
+        distances=distances,
+        target_rho=target_rho,
+        centrality_func="shortest",
+        compute_closeness=compute_closeness,
+        compute_betweenness=compute_betweenness,
+        min_threshold_wt=min_threshold_wt,
+        speed_m_s=speed_m_s,
+        jitter_scale=jitter_scale,
+        random_seed=random_seed,
+        n_probes=n_probes,
+    )
+
+
+def node_centrality_simplest_adaptive(
+    network_structure: rustalgos.graph.NetworkStructure,
+    nodes_gdf: gpd.GeoDataFrame,
+    distances: list[int],
+    target_rho: float = 0.95,
+    compute_closeness: bool = True,
+    compute_betweenness: bool = True,
+    min_threshold_wt: float = MIN_THRESH_WT,
+    speed_m_s: float = SPEED_M_S,
+    angular_scaling_unit: float = 90,
+    farness_scaling_offset: float = 1,
+    jitter_scale: float = 0.0,
+    random_seed: int | None = None,
+    n_probes: int = 50,
+) -> gpd.GeoDataFrame:
+    """
+    Compute simplest-path (angular) node centrality with per-distance adaptive sampling.
+
+    This function automatically calibrates sampling probability for each distance
+    threshold to achieve a target accuracy level (Spearman ρ). Short distances
+    use full or near-full computation (where reach is low), while long distances
+    use aggressive sampling (where high reach provides statistical power).
+
+    Parameters
+    ----------
+    network_structure
+        A NetworkStructure. Best generated with io.network_structure_from_nx.
+    nodes_gdf
+        A GeoDataFrame representing nodes. Results are written to this GeoDataFrame.
+    distances
+        Distance thresholds in metres.
+    target_rho
+        Target Spearman ρ correlation for ranking accuracy. Default 0.95.
+    compute_closeness
+        Compute closeness centralities. True by default.
+    compute_betweenness
+        Compute betweenness centralities. True by default.
+    min_threshold_wt
+        Minimum threshold weight for beta computation.
+    speed_m_s
+        Walking speed in m/s for distance-to-time conversion.
+    angular_scaling_unit
+        Scaling unit for angular distance. Default 90 degrees.
+    farness_scaling_offset
+        Offset for farness calculation. Default 1.
+    jitter_scale
+        Scale of random jitter for path calculations.
+    random_seed
+        Optional seed for reproducible sampling.
+    n_probes
+        Number of nodes to probe for reachability estimation. Default 50.
+
+    Returns
+    -------
+    nodes_gdf
+        The input GeoDataFrame with centrality columns added.
+
+    See Also
+    --------
+    node_centrality_simplest : Standard (non-adaptive) version with uniform sampling.
+    """
+    logger.info("Computing adaptive simplest path node centrality.")
+    return _run_adaptive_centrality(
+        network_structure=network_structure,
+        nodes_gdf=nodes_gdf,
+        distances=distances,
+        target_rho=target_rho,
+        centrality_func="simplest",
+        compute_closeness=compute_closeness,
+        compute_betweenness=compute_betweenness,
+        min_threshold_wt=min_threshold_wt,
+        speed_m_s=speed_m_s,
+        jitter_scale=jitter_scale,
+        random_seed=random_seed,
+        n_probes=n_probes,
+        angular_scaling_unit=angular_scaling_unit,
+        farness_scaling_offset=farness_scaling_offset,
+    )

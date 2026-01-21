@@ -1,17 +1,36 @@
 {
-  "generated": "2026-01-18T19:52:10",
-  "data_points": 533,
+  "generated": "2026-01-21T11:50:28",
+  "conservative_percentile": 10,
+  "data_points": {
+    "harmonic": 533,
+    "betweenness": 533
+  },
+  "harmonic_model": {
+    "formula": "rho = 1 - A / (B + eff_n)",
+    "A": 32.3,
+    "B": 31.45,
+    "rmse": 0.0409,
+    "note": "Fitted to 10th percentile for conservative estimates"
+  },
+  "betweenness_model": {
+    "formula": "rho = 1 - A / (B + eff_n)",
+    "A": 48.31,
+    "B": 49.12,
+    "rmse": 0.0491,
+    "note": "Fitted to 10th percentile for conservative estimates"
+  },
   "rho_model": {
     "formula": "rho = 1 - A / (B + eff_n)",
-    "A": 14.27,
-    "B": 20.1,
-    "rmse": 0.1312
+    "A": 48.31,
+    "B": 49.12,
+    "rmse": 0.0491,
+    "note": "Uses betweenness conservative model (higher variance metric)"
   },
   "std_model": {
     "formula": "std = C / sqrt(D + eff_n)",
-    "C": 0.806,
-    "D": 8.31,
-    "rmse": 0.0275
+    "C": 1.166,
+    "D": 14.01,
+    "rmse": 0.0337
   },
   "bias_model": {
     "formula": "scale = 1 - E / (F + eff_n)",
