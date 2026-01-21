@@ -58,23 +58,9 @@ nodes_gdf = networks.node_centrality_shortest_adaptive(
 
 ## Empirical Models
 
-The expected Spearman ρ is predicted using fitted models (10th percentile for conservative estimates):
+The expected Spearman ρ is predicted using fitted hyperbolic models of the form `ρ = 1 - A / (B + effective_n)`, where `effective_n = mean_reachability × sample_probability`.
 
-**Harmonic (Closeness):**
-
-```
-ρ = 1 - 32.3 / (31.45 + effective_n)
-```
-
-**Betweenness** (higher variance, more conservative):
-
-```
-ρ = 1 - 48.31 / (49.12 + effective_n)
-```
-
-Where `effective_n = mean_reachability × sample_probability`.
-
-When computing both metrics, the betweenness (more conservative) model is used.
+Separate models are fitted for harmonic (closeness) and betweenness centrality based on 10th percentile estimates across network topologies. Betweenness exhibits higher variance than harmonic, so its model is more conservative. When computing both metrics together, the betweenness model is used to ensure both achieve the target accuracy.
 
 ## Performance Results
 

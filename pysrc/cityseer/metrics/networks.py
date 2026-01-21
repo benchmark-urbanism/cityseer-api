@@ -738,7 +738,8 @@ def node_centrality_shortest_adaptive(
     target_rho
         Target Spearman ρ correlation for ranking accuracy. Default 0.95.
         Higher values (e.g., 0.97) provide better accuracy but less speedup.
-        Note: Model was fitted on closeness; betweenness may have higher variance.
+        Separate models are fitted for closeness and betweenness; when computing
+        both metrics, the more conservative betweenness model is used.
     compute_closeness
         Compute closeness centralities. True by default.
     compute_betweenness
