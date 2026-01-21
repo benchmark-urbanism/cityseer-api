@@ -205,11 +205,11 @@ def node_centrality_shortest(
     config.log_sampling(
         sample_probability=sample_probability,
         distances=distances,
-        reachability_totals=result.reachability_totals,
-        sampled_source_count=result.sampled_source_count,
+        reachability_totals=result.reachability_totals,  # type: ignore
+        sampled_source_count=result.sampled_source_count,  # type: ignore
     )
     # intersect computed keys with those available in the gdf index (stations vs. streets)
-    gdf_idx = nodes_gdf.index.intersection(result.node_keys_py)  # type: ignore
+    gdf_idx = nodes_gdf.index.intersection(result.node_keys_py)
     # create a dictionary to hold the data
     temp_data = {}
     # set the index to the gdf index
@@ -221,10 +221,10 @@ def node_centrality_shortest(
             ("farness", "node_farness"),
             ("harmonic", "node_harmonic"),
         ]:
-            for distance in distances:  # type: ignore
+            for distance in distances:
                 data_key = config.prep_gdf_key(measure_key, distance)
                 temp_data[data_key] = getattr(result, attr_key)[distance]
-        for distance in distances:  # type: ignore
+        for distance in distances:
             data_key = config.prep_gdf_key("hillier", distance)
             # existing columns
             temp_data[data_key] = result.node_density[distance] ** 2 / result.node_farness[distance]  # type: ignore
@@ -233,12 +233,12 @@ def node_centrality_shortest(
             ("betweenness", "node_betweenness"),
             ("betweenness_beta", "node_betweenness_beta"),
         ]:
-            for distance in distances:  # type: ignore
+            for distance in distances:
                 data_key = config.prep_gdf_key(measure_key, distance)
-                temp_data[data_key] = getattr(result, attr_key)[distance]  # type: ignore
+                temp_data[data_key] = getattr(result, attr_key)[distance]
 
     temp_df = pd.DataFrame(temp_data, index=result.node_keys_py)
-    nodes_gdf.loc[gdf_idx, temp_df.columns] = temp_df.loc[gdf_idx, temp_df.columns]  # type: ignore
+    nodes_gdf.loc[gdf_idx, temp_df.columns] = temp_df.loc[gdf_idx, temp_df.columns]
 
     return nodes_gdf
 
@@ -383,35 +383,35 @@ def node_centrality_simplest(
     config.log_sampling(
         sample_probability=sample_probability,
         distances=distances,
-        reachability_totals=result.reachability_totals,
-        sampled_source_count=result.sampled_source_count,
+        reachability_totals=result.reachability_totals,  # type: ignore
+        sampled_source_count=result.sampled_source_count,  # type: ignore
     )
     # intersect computed keys with those available in the gdf index (stations vs. streets)
-    gdf_idx = nodes_gdf.index.intersection(result.node_keys_py)  # type: ignore
+    gdf_idx = nodes_gdf.index.intersection(result.node_keys_py)
     # create a dictionary to hold the data
     temp_data = {}
     if compute_closeness is True:
-        for distance in distances:  # type: ignore
+        for distance in distances:
             data_key = config.prep_gdf_key("density", distance, angular=True)
             temp_data[data_key] = result.node_density[distance]  # type: ignore
-        for distance in distances:  # type: ignore
+        for distance in distances:
             data_key = config.prep_gdf_key("harmonic", distance, angular=True)
             temp_data[data_key] = result.node_harmonic[distance]  # type: ignore
-        for distance in distances:  # type: ignore
+        for distance in distances:
             data_key = config.prep_gdf_key("hillier", distance, angular=True)
             temp_data[data_key] = (
                 result.node_density[distance] ** 2 / result.node_farness[distance]  # type: ignore
-            )  # type: ignore
-        for distance in distances:  # type: ignore
+            )
+        for distance in distances:
             data_key = config.prep_gdf_key("farness", distance, angular=True)
             temp_data[data_key] = result.node_farness[distance]  # type: ignore
     if compute_betweenness is True:
-        for distance in distances:  # type: ignore
+        for distance in distances:
             data_key = config.prep_gdf_key("betweenness", distance, angular=True)
             temp_data[data_key] = result.node_betweenness[distance]  # type: ignore
 
     temp_df = pd.DataFrame(temp_data, index=result.node_keys_py)
-    nodes_gdf.loc[gdf_idx, temp_df.columns] = temp_df.loc[gdf_idx, temp_df.columns]  # type: ignore
+    nodes_gdf.loc[gdf_idx, temp_df.columns] = temp_df.loc[gdf_idx, temp_df.columns]
 
     return nodes_gdf
 
@@ -526,7 +526,7 @@ def segment_centrality(
         speed_m_s=speed_m_s,
     )
     # intersect computed keys with those available in the gdf index (stations vs. streets)
-    gdf_idx = nodes_gdf.index.intersection(result.node_keys_py)  # type: ignore
+    gdf_idx = nodes_gdf.index.intersection(result.node_keys_py)
     # create a dictionary to hold the data
     temp_data = {}
     if compute_closeness is True:
@@ -535,16 +535,16 @@ def segment_centrality(
             ("seg_harmonic", "segment_harmonic"),
             ("seg_beta", "segment_beta"),
         ]:
-            for distance in distances:  # type: ignore
+            for distance in distances:
                 data_key = config.prep_gdf_key(measure_key, distance)
                 temp_data[data_key] = getattr(result, attr_key)[distance]
     if compute_betweenness is True:
-        for distance in distances:  # type: ignore
+        for distance in distances:
             data_key = config.prep_gdf_key("seg_betweenness", distance)
             temp_data[data_key] = result.segment_betweenness[distance]  # type: ignore
 
     temp_df = pd.DataFrame(temp_data, index=result.node_keys_py)
-    nodes_gdf.loc[gdf_idx, temp_df.columns] = temp_df.loc[gdf_idx, temp_df.columns]  # type: ignore
+    nodes_gdf.loc[gdf_idx, temp_df.columns] = temp_df.loc[gdf_idx, temp_df.columns]
 
     return nodes_gdf
 
@@ -655,7 +655,7 @@ def _run_adaptive_centrality(
     # 5. Merge results into GeoDataFrame
     # Get reference result for node keys
     ref_result = next(iter(all_results.values()))
-    gdf_idx = nodes_gdf.index.intersection(ref_result.node_keys_py)  # type: ignore
+    gdf_idx = nodes_gdf.index.intersection(ref_result.node_keys_py)
 
     temp_data: dict[str, object] = {}
 
@@ -673,7 +673,7 @@ def _run_adaptive_centrality(
                     temp_data[data_key] = getattr(res, attr_key)[d]
             for d, res in all_results.items():
                 data_key = config.prep_gdf_key("hillier", d)
-                temp_data[data_key] = res.node_density[d] ** 2 / res.node_farness[d]  # type: ignore
+                temp_data[data_key] = res.node_density[d] ** 2 / res.node_farness[d]
         if compute_betweenness:
             for measure_key, attr_key in [
                 ("betweenness", "node_betweenness"),
@@ -689,14 +689,14 @@ def _run_adaptive_centrality(
                 temp_data[config.prep_gdf_key("harmonic", d, angular=True)] = res.node_harmonic[d]
                 temp_data[config.prep_gdf_key("farness", d, angular=True)] = res.node_farness[d]
                 temp_data[config.prep_gdf_key("hillier", d, angular=True)] = (
-                    res.node_density[d] ** 2 / res.node_farness[d]  # type: ignore
+                    res.node_density[d] ** 2 / res.node_farness[d]
                 )
         if compute_betweenness:
             for d, res in all_results.items():
                 temp_data[config.prep_gdf_key("betweenness", d, angular=True)] = res.node_betweenness[d]
 
     temp_df = pd.DataFrame(temp_data, index=ref_result.node_keys_py)
-    nodes_gdf.loc[gdf_idx, temp_df.columns] = temp_df.loc[gdf_idx, temp_df.columns]  # type: ignore
+    nodes_gdf.loc[gdf_idx, temp_df.columns] = temp_df.loc[gdf_idx, temp_df.columns]
 
     logger.info("Adaptive centrality complete.")
     return nodes_gdf

@@ -18,7 +18,7 @@ import numpy as np
 import osmnx as ox
 import pandas as pd
 import requests
-from osmnx._errors import InsufficientResponseError  # type: ignore
+from osmnx._errors import InsufficientResponseError
 from pyproj import CRS, Transformer
 from shapely import geometry
 from shapely.strtree import STRtree
@@ -90,9 +90,9 @@ def nx_epsg_conversion(
     end_nd_key: NodeKey
     edge_idx: int
     edge_data: EdgeData
-    for start_nd_key, end_nd_key, edge_idx, edge_data in tqdm(  # type: ignore
-        g_multi_copy.edges(data=True, keys=True),  # type: ignore
-        disable=config.QUIET_MODE,  # type: ignore
+    for start_nd_key, end_nd_key, edge_idx, edge_data in tqdm(
+        g_multi_copy.edges(data=True, keys=True),
+        disable=config.QUIET_MODE,
     ):
         # check if geom present - optional step
         if "geom" in edge_data:
@@ -102,7 +102,7 @@ def nx_epsg_conversion(
             # snap ends
             edge_coords = util.snap_linestring_endpoints(g_multi_copy, start_nd_key, end_nd_key, edge_coords)
             # write back to edge
-            g_multi_copy[start_nd_key][end_nd_key][edge_idx]["geom"] = geometry.LineString(edge_coords)  # type: ignore
+            g_multi_copy[start_nd_key][end_nd_key][edge_idx]["geom"] = geometry.LineString(edge_coords)
 
     # update CRS to new CRS
     g_multi_copy.graph["crs"] = CRS(to_crs_code)
@@ -171,7 +171,7 @@ def buffered_point_poly(lng: float, lat: float, buffer: int, projected: bool = F
     poly_utm: geometry.Polygon = point_utm.buffer(buffer)
     if projected:
         return poly_utm, utm_epsg_code
-    return util.project_geom(poly_utm, utm_epsg_code, 4326), 4326  # type: ignore
+    return util.project_geom(poly_utm, utm_epsg_code, 4326), 4326
 
 
 def fetch_osm_network(osm_request: str, timeout: int = 300, max_tries: int = 3) -> requests.Response | None:
@@ -208,7 +208,7 @@ def fetch_osm_network(osm_request: str, timeout: int = 300, max_tries: int = 3) 
             params={"data": osm_request},
         )
         # break if OK response
-        if osm_response is not None and osm_response.status_code == 200:  # type: ignore
+        if osm_response is not None and osm_response.status_code == 200:
             break
         # otherwise try until max_tries is exhausted
         logger.warning("Unsuccessful OSM API request response, trying again...")
@@ -303,13 +303,13 @@ def _auto_clean_network(
     except InsufficientResponseError:
         parking_area_gdf = gpd.GeoDataFrame(columns=["geometry"], geometry="geometry", crs=to_crs_code)  # type: ignore
     # use STR Tree for performance
-    parks_buff_str_tree = STRtree(park_area_gdf.buffer(5).geometry.to_list())  # type: ignore
-    plaza_str_tree = STRtree(plaza_area_gdf.geometry.to_list())  # type: ignore
-    parking_str_tree = STRtree(parking_area_gdf.geometry.to_list())  # type: ignore
+    parks_buff_str_tree = STRtree(park_area_gdf.buffer(5).geometry.to_list())
+    plaza_str_tree = STRtree(plaza_area_gdf.geometry.to_list())
+    parking_str_tree = STRtree(parking_area_gdf.geometry.to_list())
     # iter edges to find edges for marking
     remove_edges = []
-    for start_node_key, end_node_key, edge_key, edge_data in tqdm(  # type: ignore
-        G.edges(keys=True, data=True),  # type: ignore
+    for start_node_key, end_node_key, edge_key, edge_data in tqdm(
+        G.edges(keys=True, data=True),
         total=G.number_of_edges(),
         disable=config.QUIET_MODE,
     ):
@@ -853,11 +853,11 @@ def nx_from_osm_nx(
     end_nd_key: NodeKey
     edge_idx: int
     edge_data: EdgeData
-    for start_nd_key, end_nd_key, edge_idx, edge_data in tqdm(  # type: ignore
-        nx_multidigraph.edges(data=True, keys=True),  # type: ignore
-        disable=config.QUIET_MODE,  # type: ignore
+    for start_nd_key, end_nd_key, edge_idx, edge_data in tqdm(
+        nx_multidigraph.edges(data=True, keys=True),
+        disable=config.QUIET_MODE,
     ):
-        edge_data = cast(EdgeData, edge_data)  # type: ignore
+        edge_data = cast(EdgeData, edge_data)
         s_x, s_y = _process_node(start_nd_key)
         e_x, e_y = _process_node(end_nd_key)
         # copy edge if present
@@ -893,7 +893,7 @@ def nx_from_osm_nx(
             for edge_att in edge_attributes:
                 if edge_att not in edge_data:
                     raise ValueError(f"Attribute {edge_att} is not available for edge {start_nd_key}-{end_nd_key}.")
-                g_multi[start_nd_key][end_nd_key][edge_idx][edge_att] = edge_data[edge_att]  # type: ignore
+                g_multi[start_nd_key][end_nd_key][edge_idx][edge_att] = edge_data[edge_att]
 
     return util.validate_cityseer_networkx_graph(g_multi)
 
@@ -944,7 +944,7 @@ def nx_from_open_roads(
     with fiona.open(open_roads_path, layer=road_link_layer_key) as edges:
         for edge_data in edges.values(bbox=target_bbox):
             # x, y = edge_data['geometry']['coordinates']
-            props: dict = edge_data.properties  # type: ignore
+            props: dict = edge_data.properties
             start_nd: str = props["start_node"]
             end_nd: str = props["end_node"]
             names: set[str] = set()
@@ -979,7 +979,7 @@ def nx_from_open_roads(
             )
             # create the geometry
             geom = geometry.LineString(edge_data.geometry["coordinates"])
-            geom: geometry.LineString = geom.simplify(5)  # type: ignore
+            geom: geometry.LineString = geom.simplify(5)
             # do not add edges to clipped extents
             if start_nd not in g_multi or end_nd not in g_multi:
                 n_dropped += 1
@@ -1067,7 +1067,7 @@ def network_structure_from_nx(
         # set node
         ns_node_idx = network_structure.add_street_node(node_key, node_x, node_y, is_live, weight)
         agg_node_data[node_key] = (ns_node_idx, node_x, node_y, is_live, weight, geometry.Point(node_x, node_y))
-        if "is_dual" in g_multi_copy.graph and g_multi_copy.graph["is_dual"]:  # type: ignore
+        if "is_dual" in g_multi_copy.graph and g_multi_copy.graph["is_dual"]:
             agg_node_dual_data[node_key] = (
                 node_data["primal_edge"],
                 node_data["primal_edge_node_a"],
@@ -1107,7 +1107,7 @@ def network_structure_from_nx(
                     util.measure_bearing(np.array(line_geom_coords[0]), np.array(line_geom_coords[-1])),
                     aligned_line_geom,
                 )
-                if "is_dual" in g_multi_copy.graph and g_multi_copy.graph["is_dual"]:  # type: ignore
+                if "is_dual" in g_multi_copy.graph and g_multi_copy.graph["is_dual"]:
                     agg_edge_dual_data.append(edge_data["primal_node_id"])
     # create geopandas for node keys and data state
     nodes_gdf = gpd.GeoDataFrame.from_dict(
@@ -1136,7 +1136,7 @@ def network_structure_from_nx(
         geometry="geom",
         crs=g_multi_copy.graph["crs"],
     )
-    if "is_dual" in g_multi_copy.graph and g_multi_copy.graph["is_dual"]:  # type: ignore
+    if "is_dual" in g_multi_copy.graph and g_multi_copy.graph["is_dual"]:
         nodes_dual_gdf = pd.DataFrame.from_dict(
             agg_node_dual_data,
             orient="index",
@@ -1148,10 +1148,10 @@ def network_structure_from_nx(
             ],
         )
         edges_gdf["primal_node_id"] = agg_edge_dual_data
-        nodes_gdf: gpd.GeoDataFrame = nodes_gdf.join(nodes_dual_gdf)  # type: ignore
+        nodes_gdf: gpd.GeoDataFrame = nodes_gdf.join(nodes_dual_gdf)
         nodes_gdf.set_geometry("primal_edge", inplace=True)
-        nodes_gdf.set_crs(crs=g_multi_copy.graph["crs"], inplace=True)  # type: ignore
-        nodes_gdf["dual_node"] = nodes_gdf["geom"].to_wkt()  # type: ignore
+        nodes_gdf.set_crs(crs=g_multi_copy.graph["crs"], inplace=True)
+        nodes_gdf["dual_node"] = nodes_gdf["geom"].to_wkt()
         nodes_gdf.drop(columns=["geom"], inplace=True)
 
     network_structure.validate()
@@ -1239,7 +1239,7 @@ def network_structure_from_gpd(
         start_ns_nd_key = node_mapping[start_nx_nd_key]
         end_ns_nd_key = node_mapping[end_nx_nd_key]
         #
-        line_geom = edge_data[edges_gdf.geometry.name]  # type: ignore
+        line_geom = edge_data[edges_gdf.geometry.name]
         start_nd_data = nodes_gdf.loc[start_nx_nd_key]
         line_geom_coords = util.align_linestring_coords(line_geom.coords, (start_nd_data.x, start_nd_data.y))
         aligned_line_geom = geometry.LineString(line_geom_coords)
@@ -1417,7 +1417,7 @@ def nx_from_cityseer_geopandas(
                 row_data.edge_idx,
                 imp_factor=row_data.imp_factor,
                 total_bearing=row_data.total_bearing,
-                geom=row_data[geom_key],  # type: ignore
+                geom=row_data[geom_key],
             )
     # unpack any metrics written to the nodes
     metrics_column_labels: list[str] = [c for c in nodes_gdf.columns if c.startswith("cc_")]
@@ -1469,7 +1469,7 @@ def geopandas_from_nx(
     g_multi_copy = util.validate_cityseer_networkx_graph(nx_multigraph)
     agg_edge_data = []
     # set edges
-    for start_nd_key, end_nd_key, edge_idx, edge_data in g_multi_copy.edges(keys=True, data=True):  # type: ignore
+    for start_nd_key, end_nd_key, edge_idx, edge_data in g_multi_copy.edges(keys=True, data=True):
         edge_data["start_nd_key"] = start_nd_key
         edge_data["end_nd_key"] = end_nd_key
         edge_data["edge_idx"] = edge_idx
@@ -1480,7 +1480,7 @@ def geopandas_from_nx(
 
 
 def nx_from_generic_geopandas(
-    gdf_network: gpd.GeoDataFrame,  # type: ignore
+    gdf_network: gpd.GeoDataFrame,
     drop_self_loops_dist: int = 50,
 ) -> nx.MultiGraph:
     """
@@ -1501,10 +1501,10 @@ def nx_from_generic_geopandas(
         A `cityseer` compatible `networkX` graph with `x` and `y` node attributes and `geom` edge attributes.
 
     """
-    gdf_network: gpd.GeoDataFrame = gdf_network.copy()  # type: ignore
+    gdf_network: gpd.GeoDataFrame = gdf_network.copy()
     if gdf_network.crs is None:
         raise ValueError("The GeoDataframe must have a CRS set.")
-    if not gdf_network.crs.is_projected:  # type: ignore
+    if not gdf_network.crs.is_projected:
         raise ValueError("The GeoDataframe CRS must be projected, i.e. not geographic.")
     g_multi = nx.MultiGraph()
     g_multi.graph["crs"] = CRS(gdf_network.crs)
@@ -1556,7 +1556,7 @@ def nx_from_generic_geopandas(
         # names, routes, highways, levels
         for k in ["names", "routes", "highways", "levels"]:
             if k not in props:
-                props[k] = []  # type: ignore
+                props[k] = []
             else:
                 prop = props[k]
                 if isinstance(prop, str):
@@ -1566,8 +1566,8 @@ def nx_from_generic_geopandas(
                     prop = [p for p in prop if p not in ["", " ", None]]
                 if not isinstance(prop, tuple | list):
                     raise TypeError(f"Expected key {k} to be a list type to retain compatibility with OSM workflows.")
-                props[k] = prop  # type: ignore
-        g_multi.add_edge(node_key_a, node_key_b, src_edge_idx=edge_idx, geom=edge_geom, **props)  # type: ignore
+                props[k] = prop
+        g_multi.add_edge(node_key_a, node_key_b, src_edge_idx=edge_idx, geom=edge_geom, **props)
 
     # deduplicate
     g_multi = graphs.nx_merge_parallel_edges(g_multi, merge_edges_by_midline=True, contains_buffer_dist=1)

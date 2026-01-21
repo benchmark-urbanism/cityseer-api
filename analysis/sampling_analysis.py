@@ -390,7 +390,8 @@ print("LOOKUP TABLE: Effective Sample Size = Reachability × Probability")
 print("-" * 55)
 reach_values = [100, 200, 400, 600, 800, 1000]
 p_values = [0.1, 0.2, 0.3, 0.4, 0.5]
-print(f"{'Reach \\ p':>10} |" + "".join([f" {p:>7.0%} |" for p in p_values]))
+header = r"Reach \ p"
+print(f"{header:>10} |" + "".join([f" {p:>7.0%} |" for p in p_values]))
 print("-" * 55)
 for reach in reach_values:
     row = f"{reach:>10} |"

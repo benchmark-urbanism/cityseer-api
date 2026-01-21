@@ -76,8 +76,8 @@ RTOL: float = 0.0001
 # Model for expected scale (magnitude bias): scale = 1 - E / (F + eff_n)
 
 # Harmonic (closeness) model - lower variance, more permissive
-SAMPLING_MODEL_HARMONIC_A: float = 32.3
-SAMPLING_MODEL_HARMONIC_B: float = 31.45
+SAMPLING_MODEL_HARMONIC_A: float = 32.4
+SAMPLING_MODEL_HARMONIC_B: float = 31.54
 
 # Betweenness model - higher variance, more conservative (used as default)
 SAMPLING_MODEL_BETWEENNESS_A: float = 48.31
@@ -510,14 +510,14 @@ RustResults = (
 def wrap_progress(
     total: int,
     rust_struct: rustalgos.graph.NetworkStructure | rustalgos.data.DataMap | rustalgos.viewshed.Viewshed,
-    partial_func: Callable,  # type: ignore
+    partial_func: Callable,
 ) -> RustResults:
     """Wraps long running parallelised rust functions with a progress counter."""
 
     def wrapper(queue: Queue[RustResults | Exception]):
         try:
-            result: RustResults = partial_func()  # type: ignore
-            queue.put(result)  # type: ignore
+            result: RustResults = partial_func()
+            queue.put(result)
         except Exception as e:
             queue.put(e)
 

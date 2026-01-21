@@ -1,5 +1,5 @@
 {
-  "generated": "2026-01-21T11:50:28",
+  "generated": "2026-01-21T16:19:48",
   "conservative_percentile": 10,
   "data_points": {
     "harmonic": 533,
@@ -7,9 +7,9 @@
   },
   "harmonic_model": {
     "formula": "rho = 1 - A / (B + eff_n)",
-    "A": 32.3,
-    "B": 31.45,
-    "rmse": 0.0409,
+    "A": 32.4,
+    "B": 31.54,
+    "rmse": 0.0414,
     "note": "Fitted to 10th percentile for conservative estimates"
   },
   "betweenness_model": {

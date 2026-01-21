@@ -1,6 +1,6 @@
 # Sampling Analysis: When Can You Trust Sampled Centrality?
 
-Generated: 2026-01-21T11:50:29
+Generated: 2026-01-21T16:19:49
 
 This document summarises empirical observations on how sampling affects centrality
 accuracy. Models fitted here are used by cityseer to provide runtime accuracy estimates.
@@ -27,7 +27,7 @@ matches NetworkX (the reference implementation).
 
 | Metric | Max Difference | Status |
 |--------|----------------|--------|
-| Harmonic Closeness | 2.15e-08 | PASSED |
+| Harmonic Closeness | 3.01e-08 | PASSED |
 | Node Density | 0.00e+00 | PASSED |
 | Betweenness | 0.00e+00 | PASSED |
 
@@ -92,9 +92,9 @@ as betweenness shows higher variance at the same effective_n.
 
 **Harmonic (Closeness)**:
 ```
-ρ = 1 - 32.30 / (31.45 + effective_n)
+ρ = 1 - 32.40 / (31.54 + effective_n)
 ```
-- RMSE: 0.0409
+- RMSE: 0.0414
 
 **Betweenness**:
 ```
@@ -141,10 +141,10 @@ bias = 1 - scale
 
 | Target ρ | Harmonic | Betweenness |
 |----------|----------|-------------|
-| 0.9 | 292 | 434 |
-| 0.95 | 615 | 917 |
-| 0.97 | 1045 | 1561 |
-| 0.99 | 3199 | 4782 |
+| 0.9 | 293 | 434 |
+| 0.95 | 617 | 917 |
+| 0.97 | 1049 | 1561 |
+| 0.99 | 3209 | 4782 |
 
 ---
 
@@ -213,7 +213,7 @@ These are exported to `sampling_model_constants.json` and synced to
 
 ```json
 {
-  "harmonic_model": {"A": 32.30, "B": 31.45},
+  "harmonic_model": {"A": 32.40, "B": 31.54},
   "betweenness_model": {"A": 48.31, "B": 49.12},
   "rho_model": {"A": 48.31, "B": 49.12},
   "std_model": {"C": 1.166, "D": 14.01},

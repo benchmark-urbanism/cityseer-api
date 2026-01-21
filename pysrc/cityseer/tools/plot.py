@@ -229,7 +229,7 @@ def plot_nx_primal_or_dual(  # noqa
         for start_node_key, end_node_key, node_data in tqdm(
             _graph.edges(data=True),
             disable=config.QUIET_MODE,
-        ):  # type: ignore
+        ):
             # filter out if start and end nodes are not in the active node list
             if start_node_key not in node_list or end_node_key not in node_list:
                 continue
@@ -243,20 +243,20 @@ def plot_nx_primal_or_dual(  # noqa
                         f"Can't plot geoms because a 'geom' key can't be found for edge {start_node_key} to "
                         f"{end_node_key}. Use the nx_simple_geoms() method if you need to create geoms for a graph."
                     ) from err
-                edge_geoms.append(tuple(zip(x_arr, y_arr, strict=True)))  # type: ignore
+                edge_geoms.append(tuple(zip(x_arr, y_arr, strict=True)))
             else:
                 edge_list.append((start_node_key, end_node_key))
         # plot geoms manually if required
         if plot_geoms:
             lines = LineCollection(
                 edge_geoms,
-                colors=_edge_colour,  # type: ignore
-                linewidths=_edge_width,  # type: ignore
-                linestyles=_edge_style,  # type: ignore
+                colors=_edge_colour,
+                linewidths=_edge_width,
+                linestyles=_edge_style,
             )
-            target_ax.add_collection(lines)  # type: ignore
+            target_ax.add_collection(lines)
         # go ahead and plot: note that edge_list will be empty if plotting geoms
-        nx.draw(  # type: ignore
+        nx.draw(
             _graph,
             pos=pos,
             ax=target_ax,
@@ -265,11 +265,11 @@ def plot_nx_primal_or_dual(  # noqa
             font_color="w",
             font_weight="bold",
             nodelist=node_list,
-            node_color=_node_colour,  # type: ignore
+            node_color=_node_colour,
             node_size=_node_size,
             node_shape=_node_shape,
             edgelist=edge_list,
-            edge_color=_edge_colour,  # type: ignore
+            edge_color=_edge_colour,
             style=_edge_style,
             width=_edge_width,
             alpha=alpha,
@@ -498,7 +498,7 @@ def plot_assignment(
         font_size=5,
         font_color="w",
         font_weight="bold",
-        node_color=node_colour,  # type: ignore
+        node_color=node_colour,
         node_size=30,
         node_shape="o",
         edge_color="w",
@@ -527,12 +527,12 @@ def plot_assignment(
         x, y = data_geom.centroid.x, data_geom.centroid.y
         data_xs.append(x)
         data_ys.append(y)
-        plt.annotate(data_entry.data_key_py, xy=(x, y), size=8, color="white")  # type: ignore
+        plt.annotate(data_entry.data_key_py, xy=(x, y), size=8, color="white")
     plt.scatter(
         x=data_xs,
         y=data_ys,
-        c=data_colour,  # type: ignore
-        cmap=data_cmap,  # type: ignore
+        c=data_colour,
+        cmap=data_cmap,
         s=30,
         edgecolors="white",
         lw=0.5,
@@ -592,7 +592,7 @@ def plot_network_structure(
     _open_plots_reset()
     # the edges are bi-directional - therefore duplicated per directional from-to edge
     # use two axes to check each copy of edges
-    _fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(6, 12))  # type: ignore
+    _fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(6, 12))
     # set extents
     xs_arr = np.array(network_structure.node_xs)
     ys_arr = np.array(network_structure.node_ys)
@@ -759,25 +759,25 @@ def plot_scatter(
     # shape if requested
     v_shape = v_shape**shape_exp
     # normalise
-    c_norm = mpl.colors.Normalize(vmin=v_min, vmax=v_max, clip=True)  # type: ignore
+    c_norm = mpl.colors.Normalize(vmin=v_min, vmax=v_max, clip=True)
     colours: npt.ArrayLike = c_norm(v_shape)
-    sizes: npt.ArrayLike = _minmax_scale_manual(colours, (s_min, s_max))  # type: ignore
+    sizes: npt.ArrayLike = _minmax_scale_manual(colours, (s_min, s_max))
     # plot
     img: Any = ax.scatter(
         xs[select_idx],
         ys[select_idx],
-        c=colours[select_idx],  # type: ignore
-        s=sizes[select_idx],  # type: ignore
+        c=colours[select_idx],
+        s=sizes[select_idx],
         linewidths=0,
         edgecolors="none",
-        cmap=plt.get_cmap(cmap_key),  # type: ignore
+        cmap=plt.get_cmap(cmap_key),
         rasterized=rasterized,
     )
     # limits
     ax.set_xlim(left=min_x, right=max_x)
     ax.set_ylim(bottom=min_y, top=max_y)
-    ax.set_xticks([])  # type: ignore
-    ax.set_yticks([])  # type: ignore
+    ax.set_xticks([])
+    ax.set_yticks([])
     ax.set_aspect(1)
     ax.set_facecolor(face_colour)
     ax.axis("off")
@@ -841,16 +841,14 @@ def plot_nx_edges(
 
     """
     min_x, min_y, max_x, max_y = bbox_extents
-    cmap = plt.get_cmap(cmap_key)  # type: ignore
+    cmap = plt.get_cmap(cmap_key)
     # extract data for shaping
     vals: list[str] = []
     edge_geoms: list[geometry.LineString] = []
     labels_info: dict[str, dict[str, Any]] = {}
     logger.info("Extracting edge geometries")
     edge_data: EdgeData
-    for idx, (_, _, edge_data) in tqdm(  # type: ignore
-        enumerate(nx_multigraph.edges(data=True)), disable=config.QUIET_MODE
-    ):
+    for idx, (_, _, edge_data) in tqdm(enumerate(nx_multigraph.edges(data=True)), disable=config.QUIET_MODE):
         vals.append(edge_data[edge_metrics_key])
         edge_geoms.append(edge_data["geom"])
         # if label key provided
@@ -874,15 +872,15 @@ def plot_nx_edges(
                 labels_info[label_val]["idxs"].append(idx)
     vals_arr: npt.ArrayLike = np.array(vals)
     # remove any extreme outliers
-    v_min: float = np.nanpercentile(vals_arr, perc_range[0])  # type: ignore
-    v_max: float = np.nanpercentile(vals_arr, perc_range[1])  # type: ignore
+    v_min: float = np.nanpercentile(vals_arr, perc_range[0])
+    v_max: float = np.nanpercentile(vals_arr, perc_range[1])
     v_shape = np.clip(vals_arr, v_min, v_max)
     # shape if requested
     v_shape = v_shape**shape_exp
     # normalise
-    c_norm = mpl.colors.Normalize(vmin=v_shape.min(), vmax=v_shape.max())  # type: ignore
+    c_norm = mpl.colors.Normalize(vmin=v_shape.min(), vmax=v_shape.max())
     colours: npt.ArrayLike = c_norm(v_shape)
-    sizes: npt.ArrayLike = _minmax_scale_manual(colours, (lw_min, lw_max))  # type: ignore
+    sizes: npt.ArrayLike = _minmax_scale_manual(colours, (lw_min, lw_max))
     # sort so that larger lines plot over smaller lines
     sort_idx: npt.ArrayLike = np.argsort(colours)
     if invert_plot_order:
@@ -902,8 +900,8 @@ def plot_nx_edges(
             if np.any(ys < min_y) or np.any(ys > max_y):
                 continue
             plot_geoms.append(tuple(zip(xs, ys, strict=True)))
-            plot_colours.append(cmap(colours[idx]))  # type: ignore
-            plot_lws.append(sizes[idx])  # type: ignore
+            plot_colours.append(cmap(colours[idx]))
+            plot_lws.append(sizes[idx])
         lines = LineCollection(
             plot_geoms,
             colors=plot_colours,
@@ -911,7 +909,7 @@ def plot_nx_edges(
             rasterized=rasterized,
             alpha=0.9,
         )
-        ax.add_collection(lines)  # type: ignore
+        ax.add_collection(lines)
     else:
         plot_handles = []
         plot_geoms = []
@@ -962,12 +960,12 @@ def plot_nx_edges(
             rasterized=rasterized,
             alpha=0.9,
         )
-        ax.add_collection(lines)  # type: ignore
+        ax.add_collection(lines)
         ax.legend(handles=plot_handles)
 
     ax.set_xlim(left=min_x, right=max_x)
     ax.set_ylim(bottom=min_y, top=max_y)
-    ax.set_xticks([])  # type: ignore
-    ax.set_yticks([])  # type: ignore
+    ax.set_xticks([])
+    ax.set_yticks([])
     ax.set_aspect(1)
     ax.set_facecolor(face_colour)

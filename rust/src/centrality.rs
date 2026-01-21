@@ -18,6 +18,17 @@ use std::collections::HashMap;
 use std::sync::atomic::AtomicU32;
 use std::sync::atomic::Ordering as AtomicOrdering;
 
+/// Derive a seed for a specific source index using hash-based mixing.
+/// This avoids statistical correlations that can occur with linear seed derivation
+/// (e.g., seed + index) by using SplitMix64-style mixing to produce independent streams.
+#[inline]
+fn derive_seed(base_seed: u64, index: usize) -> u64 {
+    let mut x = base_seed.wrapping_add((index as u64).wrapping_mul(0x9e3779b97f4a7c15));
+    x = (x ^ (x >> 30)).wrapping_mul(0xbf58476d1ce4e5b9);
+    x = (x ^ (x >> 27)).wrapping_mul(0x94d049bb133111eb);
+    x ^ (x >> 31)
+}
+
 #[pyclass]
 pub struct CentralityShortestResult {
     #[pyo3(get)]
@@ -672,7 +683,7 @@ impl NetworkStructure {
                     max_walk_seconds,
                     speed_m_s,
                     jitter_scale,
-                    random_seed.map(|s| s.wrapping_add(*src_idx as u64)),
+                    random_seed.map(|s| derive_seed(s, *src_idx)),
                 );
 
                 for to_idx in visited_nodes.iter() {
@@ -897,7 +908,7 @@ impl NetworkStructure {
                     max_walk_seconds,
                     speed_m_s,
                     jitter_scale,
-                    random_seed.map(|s| s.wrapping_add(*src_idx as u64)),
+                    random_seed.map(|s| derive_seed(s, *src_idx)),
                 );
 
                 for to_idx in visited_nodes.iter() {
@@ -1045,7 +1056,7 @@ impl NetworkStructure {
                         max_walk_seconds,
                         speed_m_s,
                         jitter_scale,
-                        random_seed.map(|s| s.wrapping_add(*src_idx as u64)),
+                        random_seed.map(|s| derive_seed(s, *src_idx)),
                     );
                 for edge_idx in visited_edges.iter() {
                     let edge_visit = &edge_map[*edge_idx];

@@ -1,6 +1,6 @@
 # Adaptive Sampling for Network Centrality Analysis
 
-Generated: 2026-01-21T11:51:59
+Generated: 2026-01-21T16:21:51
 
 This document summarises the implementation and testing of **per-distance adaptive sampling** for network centrality computations in cityseer. The adaptive approach automatically calibrates sampling probability for each distance threshold based on network reachability.
 
@@ -79,17 +79,17 @@ These cover the range of real-world network structures.
 
 | Topology | Full (s) | Uniform (s) | Uni Speedup | Uni ρ | Adaptive (s) | Adp Speedup | Adp ρ |
 |----------|----------|-------------|-------------|-------|--------------|-------------|-------|
-| trellis  |     3.00 |        1.92 |         1.6x |  0.78 |         1.44 |         2.1x |  0.96 |
-| tree     |     1.39 |        0.97 |         1.4x |  0.93 |         0.76 |         1.8x |  1.00 |
-| linear   |     3.09 |        1.72 |         1.8x |  0.93 |         1.55 |         2.0x |  1.00 |
+| trellis  |     4.09 |        2.32 |         1.8x |  0.76 |         1.89 |         2.2x |  0.97 |
+| tree     |     1.89 |        1.09 |         1.7x |  0.92 |         1.06 |         1.8x |  1.00 |
+| linear   |     3.18 |        1.90 |         1.7x |  0.91 |         1.64 |         1.9x |  1.00 |
 
 **Betweenness Accuracy:**
 
 | Topology | Full (s) | Uniform (s) | Uni Speedup | Uni ρ | Adaptive (s) | Adp Speedup | Adp ρ |
 |----------|----------|-------------|-------------|-------|--------------|-------------|-------|
-| trellis  |     3.00 |        1.92 |         1.6x |  0.81 |         1.44 |         2.1x |  1.00 |
-| tree     |     1.39 |        0.97 |         1.4x |  0.95 |         0.76 |         1.8x |  0.99 |
-| linear   |     3.09 |        1.72 |         1.8x |  0.89 |         1.55 |         2.0x |  1.00 |
+| trellis  |     4.09 |        2.32 |         1.8x |  0.80 |         1.89 |         2.2x |  1.00 |
+| tree     |     1.89 |        1.09 |         1.7x |  0.95 |         1.06 |         1.8x |  0.99 |
+| linear   |     3.18 |        1.90 |         1.7x |  0.88 |         1.64 |         1.9x |  1.00 |
 
 ### Per-Distance Accuracy Comparison
 
@@ -99,35 +99,35 @@ from the adaptive plan. This gives both approaches equivalent computational budg
 | Topology | Uniform p |
 |----------|-----------|
 | trellis | 54% |
-| tree | 60% |
-| linear | 57% |
+| tree | 57% |
+| linear | 56% |
 
 **Uniform Sampling — Harmonic:**
 
 | Distance | trellis | tree | linear |
 |----------|-------|-------|-------|
-| 500m | 0.413 | 0.815 | 0.824 |
-| 1000m | 0.754 | 0.920 | 0.928 |
-| 2000m | 0.976 | 0.968 | 0.981 |
-| 5000m | 0.995 | 0.996 | 0.996 |
+| 500m | 0.380 | 0.799 | 0.796 |
+| 1000m | 0.682 | 0.917 | 0.882 |
+| 2000m | 0.974 | 0.984 | 0.975 |
+| 5000m | 0.994 | 0.996 | 0.991 |
 
 **Uniform Sampling — Betweenness:**
 
 | Distance | trellis | tree | linear |
 |----------|-------|-------|-------|
-| 500m | 0.480 | 0.878 | 0.693 |
-| 1000m | 0.804 | 0.955 | 0.903 |
-| 2000m | 0.962 | 0.972 | 0.974 |
-| 5000m | 0.993 | 0.974 | 0.996 |
+| 500m | 0.458 | 0.880 | 0.673 |
+| 1000m | 0.796 | 0.958 | 0.880 |
+| 2000m | 0.959 | 0.974 | 0.971 |
+| 5000m | 0.992 | 0.970 | 0.994 |
 
 **Adaptive Sampling — Harmonic (target ρ ≥ 0.95):**
 
 | Distance | trellis | tree | linear |
 |----------|-------|-------|-------|
-| 500m | 0.882 | 0.997 | 0.999 |
-| 1000m | 0.986 | 0.998 | 1.000 |
+| 500m | 0.903 | 0.997 | 0.999 |
+| 1000m | 0.981 | 0.998 | 1.000 |
 | 2000m | 1.000 | 1.000 | 1.000 |
-| 5000m | 0.986 | 0.993 | 0.989 |
+| 5000m | 0.987 | 0.994 | 0.987 |
 
 **Adaptive Sampling — Betweenness (target ρ ≥ 0.95):**
 
@@ -136,7 +136,7 @@ from the adaptive plan. This gives both approaches equivalent computational budg
 | 500m | 1.000 | 1.000 | 1.000 |
 | 1000m | 1.000 | 1.000 | 1.000 |
 | 2000m | 1.000 | 1.000 | 1.000 |
-| 5000m | 0.984 | 0.960 | 0.993 |
+| 5000m | 0.983 | 0.959 | 0.992 |
 
 ---
 
