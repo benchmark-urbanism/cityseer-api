@@ -1,0 +1,39 @@
+% Conclusion section
+
+We have presented an adaptive per-distance sampling approach for efficient multi-scale network centrality computation. Our key contributions are:
+
+\begin{enumerate}
+    \item \textbf{Effective sample size as unifying concept}: We demonstrated that $\effn = \text{reachability} \times p$ determines accuracy for both harmonic closeness and betweenness centrality, and across diverse network topologies.
+
+    \item \textbf{Separate models for different metrics}: We found that betweenness centrality requires approximately 1.5$\times$ more samples than harmonic closeness for equivalent ranking accuracy, motivating metric-specific calibration.
+
+    \item \textbf{Practical adaptive algorithm}: Our algorithm achieves approximately 2$\times$ speedup while maintaining $\rho \geq 0.95$ across all distance thresholds, addressing the fundamental limitation of uniform sampling in multi-scale analysis.
+
+    \item \textbf{Validated on real-world networks}: The empirical models generalise from synthetic to real-world street networks (London, Madrid), supporting practical applicability.
+
+    \item \textbf{Open-source implementation}: The approach is implemented in the \cityseer{} Python library, making it immediately available to researchers and practitioners.
+\end{enumerate}
+
+Adaptive sampling addresses a practical bottleneck in urban network analysis, enabling multi-scale centrality computation on large networks that would otherwise be prohibitive. The approach is particularly valuable for:
+
+\begin{itemize}
+    \item \textbf{Regional-scale planning}: At distances of 5--20km (relevant for cycling infrastructure and transit catchment analysis), metropolitan networks may contain 100,000+ nodes. For example, the Madrid metropolitan street network spans approximately 60km diameter (30km radius from centre), representative of the scale required for regional transport planning. Full computation at multiple distance thresholds can require hours; adaptive sampling reduces this to minutes while preserving ranking accuracy.
+
+    \item \textbf{Iterative analysis workflows}: Urban planners and researchers frequently need to test multiple scenarios, adjust parameters, or compare network configurations. The 2$\times$ speedup enables more rapid iteration and exploration.
+
+    \item \textbf{Interactive applications}: For planning support tools and dashboards that compute centrality on demand, reduced computation time improves user experience and enables real-time analysis.
+\end{itemize}
+
+A key enabling factor is the use of \emph{target aggregation} in the centrality computation, where values are accumulated at reachable target nodes rather than at source nodes. This ensures that even nodes not selected as sample sources receive contributions from sources that reach them, providing high coverage and spatial smoothing of sampling error.
+
+The decision between adaptive and uniform sampling is straightforward: use adaptive sampling for multi-scale analyses spanning short to long distances, and uniform sampling for single-distance analyses or when all distances have high reachability. The probing overhead (approximately 50 Dijkstra computations) is negligible for networks where adaptive sampling provides benefit.
+
+As cities increasingly use network analysis to inform planning decisions---from pedestrian accessibility studies to metropolitan transit planning---efficient and accurate methods become essential. Adaptive per-distance sampling provides a principled approach to balancing computational cost against accuracy requirements, making large-scale multi-modal network analysis practical for routine use.
+
+\subsection*{Data Availability}
+
+The \cityseer{} library is available at \url{https://github.com/benchmark-urbanism/cityseer-api}. Analysis code and data for reproducing the results in this paper are available in the \texttt{analysis/paper/} directory of the repository.
+
+\subsection*{Acknowledgements}
+
+% To be added

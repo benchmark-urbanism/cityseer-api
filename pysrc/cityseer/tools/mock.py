@@ -59,7 +59,7 @@ def mock_graph(wgs84_coords: bool = False) -> MultiGraph:
     _Mock graph._
 
     """
-    nx_multigraph: MultiGraph = nx.MultiGraph()  # type: ignore
+    nx_multigraph: MultiGraph = nx.MultiGraph()
 
     nodes = [
         ("0", {"x": 700700, "y": 5719700}),
@@ -221,7 +221,7 @@ def mock_graph(wgs84_coords: bool = False) -> MultiGraph:
         for node_idx, node_data in nx_multigraph.nodes(data=True):
             easting = node_data["x"]
             northing = node_data["y"]
-            wgs_pnt = util.project_geom(geometry.Point(easting, northing), 32630, 4326)  # type: ignore
+            wgs_pnt = util.project_geom(geometry.Point(easting, northing), 32630, 4326)
             nx_multigraph.nodes[node_idx]["x"] = wgs_pnt.x
             nx_multigraph.nodes[node_idx]["y"] = wgs_pnt.y
         nx_multigraph.graph["crs"] = CRS(4326)
@@ -306,7 +306,7 @@ def mock_data_gdf(nx_multigraph: MultiGraph, length: int = 50, random_seed: int 
     # last 5 datapoints are a cluster of nodes where the nodes share the same data_id for deduplication checks
     for idx, loc_idx in enumerate(range(length - 5, length)):
         data_gpd.loc[loc_idx, "data_id"] = length - 5
-        data_gpd.loc[loc_idx, "geometry"] = geometry.Point(700100 + idx * 10, 5719100 + idx * 10)  # type: ignore
+        data_gpd.loc[loc_idx, "geometry"] = geometry.Point(700100 + idx * 10, 5719100 + idx * 10)
 
     return data_gpd
 
@@ -469,7 +469,7 @@ def mock_species_data(
             counts[idx] = (data == uniq).sum()
         probs = counts / len(data)
 
-        yield counts.tolist(), probs.tolist()  # type: ignore
+        yield counts.tolist(), probs.tolist()
 
 
 def mock_gtfs_stops_txt(path: str):
@@ -552,11 +552,11 @@ def mock_data_map(data_gdf: gpd.GeoDataFrame, dedupe_key_col: str | None = None)
         An instance of DataMap (Rust-backed, from data.rs) populated with the mock data.
     """
     data_map = rustalgos.data.DataMap()
-    for uid, row in data_gdf.iterrows():  # type: ignore
+    for uid, row in data_gdf.iterrows():
         if dedupe_key_col is not None:
-            data_map.insert(uid, row.geometry.wkt, row[dedupe_key_col])  # type: ignore
+            data_map.insert(uid, row.geometry.wkt, row[dedupe_key_col])
         else:
-            data_map.insert(uid, row.geometry.wkt, None)  # type: ignore
+            data_map.insert(uid, row.geometry.wkt, None)
     return data_map
 
 
@@ -606,6 +606,6 @@ def mock_barriers():
     barrier_wkts: list[str] | None = None
     barrier_wkts = []
     for _, row in barriers_gdf.iterrows():  # type: ignore
-        barrier_wkts.append(row.geometry.wkt)  # type: ignore
+        barrier_wkts.append(row.geometry.wkt)
 
     return barriers_gdf, barrier_wkts

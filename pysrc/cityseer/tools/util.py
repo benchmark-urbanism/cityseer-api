@@ -56,7 +56,7 @@ def validate_cityseer_networkx_graph(
         edge with associated `geom` attributes spliced together.
 
     """
-    g_multi_copy: nx.MultiGraph = nx_multigraph.copy()  # type: ignore
+    g_multi_copy: nx.MultiGraph = nx_multigraph.copy()
     if config.SKIP_VALIDATION is True:
         return g_multi_copy
     # check graph type
@@ -203,14 +203,14 @@ def _snap_linestring_idx(
     # check types
     if not isinstance(linestring_coords, list | np.ndarray | coords.CoordinateSequence):
         raise ValueError("Expecting a list, tuple, numpy array, or shapely LineString coordinate sequence.")
-    list_linestring_coords: ListCoordsType = list(linestring_coords)  # type: ignore
+    list_linestring_coords: ListCoordsType = list(linestring_coords)
     # check that the index is either 0 or -1
     if idx not in [0, -1]:
         raise ValueError('Expecting either a start index of "0" or an end index of "-1"')
     # handle 3D
     coord = list(list_linestring_coords[idx])  # tuples don't support indexed assignment
     coord[:2] = x_y
-    list_linestring_coords[idx] = tuple(coord)  # type: ignore
+    list_linestring_coords[idx] = tuple(coord)
 
     return list_linestring_coords
 
@@ -291,17 +291,17 @@ def align_linestring_coords(
     # check types
     if not isinstance(linestring_coords, list | np.ndarray | coords.CoordinateSequence):
         raise ValueError("Expecting a list, numpy array, or shapely LineString coordinate sequence.")
-    linestring_coords = list(linestring_coords)  # type: ignore
+    linestring_coords = list(linestring_coords)
     a_dist = np.hypot(linestring_coords[0][0] - x_y[0], linestring_coords[0][1] - x_y[1])
     b_dist = np.hypot(linestring_coords[-1][0] - x_y[0], linestring_coords[-1][1] - x_y[1])
     # the target indices depend on whether reversed or not
     if not reverse:
         if a_dist > b_dist:
-            linestring_coords = linestring_coords[::-1]  # type: ignore
+            linestring_coords = linestring_coords[::-1]
         tol_dist = np.hypot(linestring_coords[0][0] - x_y[0], linestring_coords[0][1] - x_y[1])
     else:
         if a_dist < b_dist:
-            linestring_coords = linestring_coords[::-1]  # type: ignore
+            linestring_coords = linestring_coords[::-1]
         tol_dist = np.hypot(linestring_coords[-1][0] - x_y[0], linestring_coords[-1][1] - x_y[1])
     if tol_dist > tolerance:
         raise ValueError(
@@ -378,9 +378,9 @@ def weld_linestring_coords(
             raise ValueError("Expecting a list, tuple, numpy array, or shapely LineString coordinate sequence.")
     # Convert to list only if needed
     if not isinstance(linestring_coords_a, list):
-        linestring_coords_a = list(linestring_coords_a)  # type: ignore
+        linestring_coords_a = list(linestring_coords_a)
     if not isinstance(linestring_coords_b, list):
-        linestring_coords_b = list(linestring_coords_b)  # type: ignore
+        linestring_coords_b = list(linestring_coords_b)
     # if both lists are empty, raise
     if len(linestring_coords_a) == 0 and len(linestring_coords_b) == 0:
         raise ValueError("Neither of the provided linestring coordinate lists contain any coordinates.")
@@ -414,10 +414,10 @@ def weld_linestring_coords(
     # case A: the linestring_b has to be flipped to start from x, y
     elif coords_close(a_end, b_end):
         coords_a = linestring_coords_a
-        coords_b = align_linestring_coords(linestring_coords_b, a_end)  # type: ignore
+        coords_b = align_linestring_coords(linestring_coords_b, a_end)
     # case B: linestring_a has to be flipped to end at x, y
     elif coords_close(a_start, b_start):
-        coords_a = align_linestring_coords(linestring_coords_a, a_start)  # type: ignore
+        coords_a = align_linestring_coords(linestring_coords_a, a_start)
         coords_b = linestring_coords_b
     # case C: merge in the b -> a order (saves flipping both)
     elif coords_close(a_start, b_end):

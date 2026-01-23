@@ -28,6 +28,14 @@ class CentralityShortestResult:
     def node_betweenness(self) -> dict[int, npt.NDArray[np.float32]]: ...
     @property
     def node_betweenness_beta(self) -> dict[int, npt.NDArray[np.float32]]: ...  # Beta-weighted betweenness
+    @property
+    def reachability_totals(self) -> list[int]:
+        """Total reachability counts per distance from sampled sources."""
+        ...
+    @property
+    def sampled_source_count(self) -> int:
+        """Number of sources that were sampled."""
+        ...
 
 class CentralitySimplestResult:
     """Holds results for simplest path (angular distance) centrality calculations."""
@@ -44,6 +52,14 @@ class CentralitySimplestResult:
     def node_harmonic(self) -> dict[int, npt.NDArray[np.float32]]: ...  # Angular closeness (harmonic)
     @property
     def node_betweenness(self) -> dict[int, npt.NDArray[np.float32]]: ...
+    @property
+    def reachability_totals(self) -> list[int]:
+        """Total reachability counts per distance from sampled sources."""
+        ...
+    @property
+    def sampled_source_count(self) -> int:
+        """Number of sources that were sampled."""
+        ...
 
 class CentralitySegmentResult:
     """Holds results for segment-based centrality calculations."""

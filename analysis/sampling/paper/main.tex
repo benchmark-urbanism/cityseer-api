@@ -1,0 +1,106 @@
+\documentclass[11pt,a4paper]{article}
+
+% Packages - configured for XeLaTeX
+\usepackage{fontspec}  % XeLaTeX font handling
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{natbib}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{float}  % for [H] placement
+
+% Custom commands
+\newcommand{\effn}{\ensuremath{n_{\text{eff}}}}
+\newcommand{\rhosp}{\ensuremath{\rho_{\text{sp}}}}
+\newcommand{\cityseer}{\texttt{cityseer}}
+
+% Title and authors
+\title{Adaptive Per-Distance Sampling for Efficient Multi-Scale Network Centrality Analysis}
+\author{%
+  Author Name\\
+  \textit{Affiliation}\\
+  \texttt{email@example.com}
+}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+Computing network centrality measures across multiple distance thresholds is fundamental to urban morphology analysis but computationally expensive for large networks. We present an adaptive sampling approach that automatically calibrates sampling probability for each distance threshold based on network reachability. Our key insight is that \emph{effective sample size}---the product of mean reachability and sampling probability---determines both ranking accuracy (Spearman $\rho$) and magnitude accuracy across network topologies. Through experiments on synthetic networks representing urban cores, suburban areas, and transit corridors, we fit empirical models predicting accuracy from effective sample size for both shortest path (metric) and simplest path (angular) distance heuristics. We find that betweenness centrality requires approximately 1.5$\times$ more samples than harmonic closeness for equivalent accuracy with shortest paths, while angular distances exhibit distinct behaviour: angular harmonic converges faster (requiring half the samples) but angular betweenness has higher variance (requiring 27\% more samples). Our adaptive algorithm achieves approximately 2$\times$ speedup while maintaining $\rho \geq 0.95$ across all distance thresholds, compared to uniform sampling which fails to maintain accuracy at short distances. We validate our approach on real-world street networks from London and Madrid, demonstrating that the empirical models generalise beyond synthetic test cases. The implementation is available as part of the open-source \cityseer{} Python library.
+\end{abstract}
+
+\textbf{Keywords:} network centrality, sampling, urban morphology, betweenness, closeness, computational efficiency
+
+%==============================================================================
+\section{Introduction}
+\label{sec:introduction}
+%==============================================================================
+
+\input{sections/01_introduction}
+
+%==============================================================================
+\section{Background and Related Work}
+\label{sec:background}
+%==============================================================================
+
+\input{sections/02_background}
+
+%==============================================================================
+\section{Methodology}
+\label{sec:methodology}
+%==============================================================================
+
+\input{sections/03_methodology}
+
+%==============================================================================
+\section{Empirical Models}
+\label{sec:empirical_models}
+%==============================================================================
+
+\input{sections/04_empirical_models}
+
+%==============================================================================
+\section{Adaptive Sampling Algorithm}
+\label{sec:algorithm}
+%==============================================================================
+
+\input{sections/05_algorithm}
+
+%==============================================================================
+\section{Validation}
+\label{sec:validation}
+%==============================================================================
+
+\input{sections/06_validation}
+
+%==============================================================================
+\section{Discussion}
+\label{sec:discussion}
+%==============================================================================
+
+\input{sections/07_discussion}
+
+%==============================================================================
+\section{Conclusion}
+\label{sec:conclusion}
+%==============================================================================
+
+\input{sections/08_conclusion}
+
+%==============================================================================
+% References
+%==============================================================================
+\bibliographystyle{apalike}
+\bibliography{references}
+
+%==============================================================================
+% Appendix (optional - model parameters already in Section 4)
+%==============================================================================
+
+\end{document}

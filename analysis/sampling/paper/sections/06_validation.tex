@@ -1,0 +1,157 @@
+% Validation section
+
+The validation experiments in this section use \textbf{shortest path (metric) distances}. Results for angular (simplest path) distances show qualitatively similar patterns, with the key quantitative differences captured by the separate model parameters in Table~\ref{tab:model_parameters}.
+
+\subsection{Synthetic Network Validation}
+
+We compare three approaches on the synthetic network topologies using shortest path distances:
+\begin{enumerate}
+    \item \textbf{Full}: Complete computation without sampling (baseline)
+    \item \textbf{Uniform}: Single sampling probability across all distances
+    \item \textbf{Adaptive}: Per-distance calibrated sampling
+\end{enumerate}
+
+For fair comparison, uniform sampling uses the reach-weighted mean probability from the adaptive plan, giving both approaches equivalent computational budget.
+
+\subsubsection{Overall Accuracy}
+
+% Auto-generated table
+\input{tables/synthetic_results}
+
+Key observations:
+\begin{itemize}
+    \item Uniform sampling achieves 1.4--1.8$\times$ speedup but with inconsistent accuracy (mean $\rho$ varies from 0.76 to 0.93)
+    \item Adaptive sampling achieves 1.8--2.2$\times$ speedup while maintaining $\rho \geq 0.95$ across all topologies
+    \item Betweenness shows higher variance than harmonic, confirming the need for separate models
+\end{itemize}
+
+\subsubsection{Per-Distance Accuracy}
+
+The critical advantage of adaptive sampling is consistent accuracy \emph{across all distances}. Table~\ref{tab:perdistance} shows accuracy broken down by distance threshold.
+
+% Auto-generated table
+\input{tables/perdistance_accuracy}
+
+With uniform sampling, short distances (500m, 1000m) show poor accuracy ($\rho < 0.85$) while long distances (5000m) are over-sampled. Adaptive sampling maintains $\rho \geq 0.95$ at all distances by using full computation at short distances and aggressive sampling at long distances.
+
+\subsection{Real-World Network Validation}
+
+We validate the empirical models on street networks from London and Madrid, downloaded from OpenStreetMap using \cityseer{}.
+
+\subsubsection{Network Characteristics}
+
+% Auto-generated table
+\input{tables/realworld_networks}
+
+\subsubsection{Model Prediction Accuracy}
+
+For each network, we compare model-predicted accuracy against observed accuracy:
+
+% Auto-generated table
+\input{tables/realworld_validation}
+
+The empirical models generalise well to real-world networks:
+\begin{itemize}
+    \item Predicted $\rho$ values are within $\pm 0.05$ of observed values in most cases
+    \item The conservative (10th percentile) model provides reliable lower bounds
+    \item No systematic bias toward over- or under-prediction
+\end{itemize}
+
+\subsubsection{Speedup Analysis}
+
+% Auto-generated table
+\input{tables/realworld_speedup}
+
+Adaptive sampling achieves 1.8--2.3$\times$ speedup on real-world networks while maintaining target accuracy, consistent with synthetic network results.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\textwidth]{figures/realworld_validation.pdf}
+    \caption{Observed versus predicted Spearman $\rho$ for real-world networks using \textbf{shortest path} distances. Points show mean observed accuracy at each effective sample size; error bars show $\pm 1$ standard deviation. Solid line shows the shortest path model prediction.}
+    \label{fig:realworld_validation}
+\end{figure}
+
+\subsection{Spatial Analysis: Does Accuracy Hold Across All Areas?}
+\label{sec:spatial_analysis}
+
+The empirical models predict accuracy from \emph{mean} reachability, but reachability varies spatially within each network---boundary areas have lower reachability than network centres. This raises an important question: does sampling accuracy hold uniformly across the network, or do low-reachability areas show systematically worse accuracy?
+
+We investigate this by analysing accuracy separately for nodes grouped by local reachability quartile. For each city (London, Madrid, Phoenix) and distance threshold (500m, 1000m, 2000m), we compute ground truth centrality, then compare against sampled estimates ($p = 0.30$, averaged over 3 runs). Table~\ref{tab:spatial_reachability} summarises accuracy by reachability quartile.
+
+% Auto-generated table
+\input{tables/spatial_reachability}
+
+\subsubsection{Non-Monotonic Pattern for Harmonic Closeness}
+
+A surprising finding emerges: harmonic closeness accuracy does not increase monotonically with reachability. Instead, we observe a U-shaped pattern where Q1 (lowest reachability) and Q4 (highest reachability) both show higher accuracy than the middle quartiles Q2 and Q3.
+
+Figure~\ref{fig:spatial_quartiles} shows this pattern is consistent across all three cities:
+\begin{itemize}
+    \item \textbf{Q1 nodes} (boundaries): $\rho_H \approx 0.94$ despite lowest effective sample size
+    \item \textbf{Q2--Q3 nodes} (transitional zones): $\rho_H$ drops to 0.83--0.89
+    \item \textbf{Q4 nodes} (dense cores): $\rho_H \approx 0.92$
+\end{itemize}
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\textwidth]{figures/spatial_reachability_accuracy.pdf}
+    \caption{Accuracy by local reachability quartile. Left: harmonic closeness shows a non-monotonic U-shaped pattern across all three cities. Right: betweenness shows the expected monotonic increase with reachability.}
+    \label{fig:spatial_quartiles}
+\end{figure}
+
+Betweenness centrality, in contrast, shows the expected monotonic pattern: accuracy increases consistently from Q1 to Q4, and remains above the 0.95 target across all quartiles.
+
+\subsubsection{Spatial Clustering of Residuals}
+
+To assess whether errors are spatially structured, we compute Moran's I for the residuals (relative error between sampled and true values). Table~\ref{tab:morans_i} summarises the spatial autocorrelation.
+
+\begin{table}[htbp]
+\centering
+\caption{Moran's I spatial autocorrelation of sampling residuals. Higher values indicate stronger spatial clustering of errors.}
+\label{tab:morans_i}
+\begin{tabular}{lcc}
+\toprule
+City & Harmonic & Betweenness \\
+\midrule
+London (Soho) & 0.59 & 0.27 \\
+Madrid (Centro) & 0.58 & 0.36 \\
+Phoenix (Scottsdale) & 0.53 & 0.22 \\
+\midrule
+Average & 0.57 & 0.28 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Harmonic closeness residuals show substantial spatial clustering (Moran's I $\approx$ 0.57), while betweenness residuals are more dispersed (Moran's I $\approx$ 0.28). Figure~\ref{fig:residual_maps} visualises the spatial distribution of residuals.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\textwidth]{figures/spatial_residual_maps_500m.pdf}
+    \caption{Spatial residual maps at 500m distance threshold. Blue indicates underestimation, red indicates overestimation. Harmonic residuals (left column) show coherent spatial clusters, particularly at network boundaries. Betweenness residuals (right column) show a more dispersed pattern.}
+    \label{fig:residual_maps}
+\end{figure}
+
+\subsubsection{Interpretation}
+
+The non-monotonic pattern for harmonic closeness can be understood through network topology:
+
+\begin{enumerate}
+    \item \textbf{Q1 nodes (boundaries)}: These nodes have truncated catchments---reachability extends predominantly in one direction. This simpler topology makes the distance-weighted sum (harmonic closeness) more predictable from a sample.
+
+    \item \textbf{Q2--Q3 nodes (transitional zones)}: These nodes sit at the interface between dense and sparse areas. Their catchments have complex, asymmetric structure with multiple competing paths, making sampled estimates more variable.
+
+    \item \textbf{Q4 nodes (dense cores)}: High connectivity means many redundant paths contribute to closeness. Sampling any subset captures the essential structure due to path redundancy.
+\end{enumerate}
+
+Betweenness does not show this pattern because it measures path \emph{flow} rather than \emph{proximity}. The flow structure depends on global network topology, not local catchment shape, so accuracy scales more directly with effective sample size.
+
+\subsubsection{Implications for Practice}
+
+The spatial analysis reveals that:
+\begin{itemize}
+    \item \textbf{Betweenness accuracy is well-predicted by the model} across all reachability levels
+    \item \textbf{Harmonic closeness has topology-dependent variance} not fully captured by effective sample size alone
+    \item \textbf{The Q3 dip is most pronounced at short distances} (500m) and diminishes at longer distances where effective sample size is higher
+\end{itemize}
+
+For harmonic closeness at short distances in transitional urban zones, practitioners may wish to use higher target accuracy ($\rho^* = 0.97$) or verify results against full computation on a subset of nodes.

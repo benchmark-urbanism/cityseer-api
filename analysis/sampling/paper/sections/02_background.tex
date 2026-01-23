@@ -1,0 +1,75 @@
+% Background and Related Work section
+
+\subsection{Foundations of Network Centrality}
+
+Network centrality measures quantify the relative importance of nodes within a graph structure. The concept originated in social network analysis, with \citet{Bavelas1950} first proposing that communication efficiency in groups depends on the structural position of individuals. \citet{Sabidussi1966} formalised closeness centrality as the reciprocal of the sum of distances to all other nodes, while \citet{Freeman1977} introduced betweenness centrality based on the fraction of shortest paths passing through a node. Freeman's subsequent conceptual clarification \citep{Freeman1979} established the theoretical framework that remains foundational to centrality analysis across disciplines.
+
+\textbf{Betweenness centrality} measures how often a node lies on shortest paths between other nodes:
+\begin{equation}
+    C_B(v) = \sum_{s \neq v \neq t} \frac{\sigma_{st}(v)}{\sigma_{st}}
+\end{equation}
+where $\sigma_{st}$ is the number of shortest paths from $s$ to $t$, and $\sigma_{st}(v)$ is the number passing through $v$. High betweenness indicates locations with high through-movement potential---nodes that serve as bridges or bottlenecks in the network.
+
+\textbf{Closeness centrality} measures proximity to all other nodes. The classic formulation by \citet{Sabidussi1966} uses the reciprocal of total distance, but this is undefined for disconnected graphs. Following \citet{Marchiori2000}, who showed that the harmonic mean behaves better than the arithmetic mean for networks with infinite distances, the \emph{harmonic closeness} variant has gained widespread adoption \citep{Rochat2009,Boldi2014}:
+\begin{equation}
+    C_H(v) = \sum_{u \neq v} \frac{1}{d(v, u)}
+\end{equation}
+where $d(v, u)$ is the shortest-path distance from $v$ to $u$. \citet{Boldi2014} provided axiomatic foundations showing that harmonic centrality uniquely satisfies desirable properties for centrality measures, including proper handling of unreachable nodes.
+
+\subsection{Centrality in Urban Street Networks}
+
+The application of network centrality to urban analysis emerged from two parallel traditions. In the \emph{space syntax} tradition, \citet{Hillier1984} developed configurational analysis methods based on the insight that spatial layout influences pedestrian movement patterns. Their ``natural movement'' theory \citep{Hillier1993} demonstrated strong correlations between network integration (a topological centrality measure) and observed pedestrian flows.
+
+The \emph{complex networks} tradition, drawing on physics and network science \citep{Watts1998,Barabasi1999}, brought metric-based centrality analysis to urban streets. \citet{Porta2006} introduced ``multiple centrality assessment'' (MCA), applying degree, closeness, betweenness, and other centrality measures to primal graph representations of urban streets using metric rather than topological distance. \citet{Crucitti2006} analysed 18 cities worldwide, finding that self-organised cities exhibit scale-free centrality distributions while planned cities do not.
+
+Modern urban network analysis tools---including OSMnx \citep{Boeing2017,Boeing2021}, Urban Network Analysis \citep{Sevtsuk2012}, sDNA \citep{Cooper2018}, and \cityseer{} \citep{Simons2022}---enable large-scale computation of centrality metrics on street networks derived from OpenStreetMap and other sources.
+
+\subsection{Localised Centrality Measures}
+
+Traditional centrality measures consider the entire network, but pedestrian behaviour is influenced primarily by local accessibility within walking distance. \citet{Cooper2015} formalised \emph{localised} or \emph{distance-bounded} centrality measures that restrict computation to nodes within a distance threshold $r$:
+\begin{equation}
+    C_H^r(v) = \sum_{\substack{u \neq v \\ d(v,u) \leq r}} \frac{1}{d(v, u)}
+\end{equation}
+
+This localisation addresses what Cooper termed a ``self-contradictory but useful'' aspect of centrality---that global measures may not reflect local accessibility patterns relevant for pedestrian-scale analysis. Multi-scale analysis, computing centrality at multiple distance thresholds (e.g., 500m, 1000m, 2000m, 5000m), has become standard practice for capturing both immediate neighbourhood accessibility and broader urban connectivity \citep{Turner2007}.
+
+\subsection{Computational Complexity and the Brandes Algorithm}
+
+The computational cost of centrality measures limited early applications. Computing betweenness exactly required $O(n^3)$ time until \citet{Brandes2001} introduced an algorithm running in $O(nm)$ time for unweighted graphs and $O(nm + n^2 \log n)$ for weighted graphs. This breakthrough, which accumulates betweenness scores during single-source shortest-path computations, remains the foundation for exact betweenness computation \citep{Brandes2008}.
+
+However, for multi-scale localised centrality with $d$ distance thresholds, the naive approach requires $O(n^2 d)$ shortest-path computations. For large urban networks with tens or hundreds of thousands of nodes, this remains prohibitive, especially when rapid iteration is needed for planning applications.
+
+\subsection{Sampling-Based Approximation}
+
+Sampling-based approximation offers a path to tractable computation. The key insight is that centrality can be estimated by computing shortest paths from a \emph{sample} of source nodes rather than all nodes.
+
+\textbf{Pivot-based sampling.} \citet{Brandes2007} showed that sampling $k$ uniformly random ``pivots'' and scaling by $n/k$ produces an unbiased estimator. They tested various sampling strategies (random, degree-proportional, maximising distance from previous pivots) and found that uniformly random sampling performs best. The expected error decreases proportionally to $1/\sqrt{k}$.
+
+\textbf{Adaptive sampling.} \citet{Bader2007} introduced adaptive sampling that adjusts the number of samples based on information obtained during computation. Their method achieves smaller sample sizes for high-centrality nodes, where fewer samples suffice for accurate estimation.
+
+\textbf{VC-dimension bounds.} \citet{Riondato2014,Riondato2016} provided the first theoretically-grounded sample size bounds using Vapnik-Chervonenkis (VC) dimension theory from statistical learning. By proving that the VC-dimension of the associated range space depends only on the \emph{vertex diameter} (maximum number of nodes in any shortest path), not on graph size, they obtained sample sizes guaranteeing $(\epsilon, \delta)$-approximation---that is, all estimates within additive error $\epsilon$ with probability at least $1-\delta$.
+
+\textbf{Advanced algorithms.} \citet{Borassi2016,Borassi2019} developed KADABRA (ADaptive Algorithm for Betweenness via Random Approximation), which combines efficient shortest-path sampling with adaptive stopping criteria. Comparative benchmarks \citep{Bergamini2019} found KADABRA to be among the best-performing algorithms across diverse network types.
+
+\textbf{Closeness approximation.} Less attention has been paid to closeness centrality approximation. \citet{Cohen2014} proposed a hybrid sampling-pivoting algorithm for classic closeness that achieves near-linear time complexity with bounded relative error.
+
+\subsection{Gap in Existing Literature}
+
+Prior work on sampling for centrality has focused predominantly on:
+\begin{itemize}
+    \item \textbf{Global centrality}: Measures computed over the entire network, not localised to distance thresholds
+    \item \textbf{Single-scale computation}: Fixed analysis scope rather than multi-scale approaches
+    \item \textbf{Betweenness centrality}: With comparatively less attention to harmonic closeness
+    \item \textbf{Theoretical bounds}: Sample sizes derived from worst-case analysis, which may be conservative for practical networks
+    \item \textbf{Network-independent guarantees}: Bounds that do not account for network topology characteristics
+\end{itemize}
+
+The specific challenge of \emph{multi-scale localised centrality}---where different distance thresholds have fundamentally different reachability characteristics---has received little attention. At short distances, typical urban networks have low reachability (few nodes within threshold), while at long distances, reachability can approach the full network size. Uniform sampling fails in this setting because a fixed sampling probability that works well at long distances provides insufficient samples at short distances.
+
+Our work addresses this gap by:
+\begin{enumerate}
+    \item Introducing \emph{effective sample size} as a unifying concept that explains accuracy across diverse topologies and distance thresholds
+    \item Fitting separate empirical models for harmonic closeness and betweenness, revealing that betweenness requires approximately $1.5\times$ more samples for equivalent accuracy
+    \item Developing an \emph{adaptive per-distance} algorithm that calibrates sampling probability independently for each distance threshold
+    \item Validating on both synthetic networks and real-world street networks from London and Madrid
+\end{enumerate}

@@ -258,7 +258,9 @@ pub struct NodeVisit {
     #[pyo3(get)]
     pub last_seg: Option<usize>,
     #[pyo3(get)]
-    pub out_bearing: f32,
+    /// For reversed distance computation: stores the in_bearing (departure bearing)
+    /// from this node toward the source. Used for angular turn calculations.
+    pub prev_in_bearing: f32,
     #[pyo3(get)]
     pub agg_seconds: f32,
 }
@@ -276,7 +278,7 @@ impl NodeVisit {
             cycles: 0.0,
             origin_seg: None,
             last_seg: None,
-            out_bearing: f32::NAN,
+            prev_in_bearing: f32::NAN,
             agg_seconds: f32::INFINITY,
         }
     }
@@ -712,13 +714,21 @@ impl NetworkStructure {
         }
 
         let length = Euclidean.length(&geom) as f32;
+        // Compute in_bearing: use first segment, fallback to overall edge direction
         let in_bearing = if coords[0] != coords[1] {
             measure_bearing(coords[0], coords[1]) as f32
+        } else if coords[0] != coords[num_coords - 1] {
+            // Fallback: use overall edge direction when first segment has duplicate coords
+            measure_bearing(coords[0], coords[num_coords - 1]) as f32
         } else {
             f32::NAN
         };
+        // Compute out_bearing: use last segment, fallback to overall edge direction
         let out_bearing = if coords[num_coords - 2] != coords[num_coords - 1] {
             measure_bearing(coords[num_coords - 2], coords[num_coords - 1]) as f32
+        } else if coords[0] != coords[num_coords - 1] {
+            // Fallback: use overall edge direction when last segment has duplicate coords
+            measure_bearing(coords[0], coords[num_coords - 1]) as f32
         } else {
             f32::NAN
         };

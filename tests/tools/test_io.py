@@ -1,3 +1,5 @@
+import os
+
 import networkx as nx
 import numpy as np
 import pytest
@@ -152,6 +154,7 @@ def test_fetch_osm_network():
     pass
 
 
+@pytest.mark.skipif("GITHUB_ACTIONS" in os.environ, reason="Skip in CI due to network dependency")
 def test_osm_graph_from_poly():
     """ """
     # scaffold

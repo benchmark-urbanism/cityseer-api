@@ -9,12 +9,25 @@ use petgraph::prelude::*;
 use petgraph::Direction;
 use pyo3::exceptions;
 use pyo3::prelude::*;
-use rand::Rng;
+use rand::prelude::*;
+use rand::rngs::StdRng;
 use rayon::prelude::*;
 use std::cmp::Ordering;
 use std::collections::BinaryHeap;
 use std::collections::HashMap;
+use std::sync::atomic::AtomicU32;
 use std::sync::atomic::Ordering as AtomicOrdering;
+
+/// Derive a seed for a specific source index using hash-based mixing.
+/// This avoids statistical correlations that can occur with linear seed derivation
+/// (e.g., seed + index) by using SplitMix64-style mixing to produce independent streams.
+#[inline]
+fn derive_seed(base_seed: u64, index: usize) -> u64 {
+    let mut x = base_seed.wrapping_add((index as u64).wrapping_mul(0x9e3779b97f4a7c15));
+    x = (x ^ (x >> 30)).wrapping_mul(0xbf58476d1ce4e5b9);
+    x = (x ^ (x >> 27)).wrapping_mul(0x94d049bb133111eb);
+    x ^ (x >> 31)
+}
 
 #[pyclass]
 pub struct CentralityShortestResult {
@@ -32,6 +45,13 @@ pub struct CentralityShortestResult {
     node_beta_vec: MetricResult,
     node_betweenness_vec: MetricResult,
     node_betweenness_beta_vec: MetricResult,
+
+    /// Total reachability counts per distance (only populated when sampling)
+    #[pyo3(get)]
+    pub reachability_totals: Vec<u32>,
+    /// Number of sources that were sampled
+    #[pyo3(get)]
+    pub sampled_source_count: u32,
 }
 
 impl CentralityShortestResult {
@@ -53,6 +73,8 @@ impl CentralityShortestResult {
             node_beta_vec: MetricResult::new(&distances, len, init_val),
             node_betweenness_vec: MetricResult::new(&distances, len, init_val),
             node_betweenness_beta_vec: MetricResult::new(&distances, len, init_val),
+            reachability_totals: Vec::new(),
+            sampled_source_count: 0,
         }
     }
 }
@@ -102,6 +124,13 @@ pub struct CentralitySimplestResult {
     node_farness_vec: MetricResult,
     node_harmonic_vec: MetricResult,
     node_betweenness_vec: MetricResult,
+
+    /// Total reachability counts per distance (only populated when sampling)
+    #[pyo3(get)]
+    pub reachability_totals: Vec<u32>,
+    /// Number of sources that were sampled
+    #[pyo3(get)]
+    pub sampled_source_count: u32,
 }
 
 impl CentralitySimplestResult {
@@ -120,6 +149,8 @@ impl CentralitySimplestResult {
             node_farness_vec: MetricResult::new(&distances, len, init_val),
             node_harmonic_vec: MetricResult::new(&distances, len, init_val),
             node_betweenness_vec: MetricResult::new(&distances, len, init_val),
+            reachability_totals: Vec::new(),
+            sampled_source_count: 0,
         }
     }
 }
@@ -233,13 +264,14 @@ impl Eq for NodeDistance {}
 
 #[pymethods]
 impl NetworkStructure {
-    #[pyo3(signature = (src_idx, max_seconds, speed_m_s, jitter_scale=None))]
+    #[pyo3(signature = (src_idx, max_seconds, speed_m_s, jitter_scale=None, random_seed=None))]
     pub fn dijkstra_tree_shortest(
         &self,
         src_idx: usize,
         max_seconds: u32,
         speed_m_s: f32,
         jitter_scale: Option<f32>,
+        random_seed: Option<u64>,
     ) -> (Vec<usize>, Vec<NodeVisit>) {
         let jitter_scale = jitter_scale.unwrap_or(0.0);
         let mut tree_map = vec![NodeVisit::new(); self.node_count()];
@@ -252,16 +284,25 @@ impl NetworkStructure {
             node_idx: src_idx,
             metric: 0.0,
         });
-        let mut rng = rand::rng();
+        let mut rng = if let Some(seed) = random_seed {
+            StdRng::seed_from_u64(seed)
+        } else {
+            StdRng::from_rng(&mut rand::rng())
+        };
         while let Some(NodeDistance { node_idx, .. }) = active.pop() {
             tree_map[node_idx].visited = true;
             visited_nodes.push(node_idx);
             let current_node_index = NodeIndex::new(node_idx);
+            // Use Incoming direction to discover neighbors via edges pointing INTO current node.
+            // Edge Y→X (neighbor→current) gives us the distance FROM Y TO X, which is what we
+            // want for reversed/flipped aggregation where we accumulate TO the target node.
             for edge_ref in self
                 .graph
-                .edges_directed(current_node_index, Direction::Outgoing)
+                .edges_directed(current_node_index, Direction::Incoming)
             {
-                let nb_nd_idx = edge_ref.target();
+                // With Incoming, source() gives the neighbor node (edge goes: neighbor → current)
+                let nb_nd_idx = edge_ref.source();
+                // Use incoming edge directly - it has the correct distance for Y→X
                 let edge_payload = edge_ref.weight();
                 if nb_nd_idx.index() == node_idx {
                     continue;
@@ -272,6 +313,8 @@ impl NetworkStructure {
                     }
                 }
                 if tree_map[nb_nd_idx.index()].pred.is_some() {
+                    // Cycle detection: another path exists to this neighbor
+                    // Attribution based on which node was discovered first (smaller agg_seconds)
                     if tree_map[node_idx].agg_seconds <= tree_map[nb_nd_idx.index()].agg_seconds {
                         tree_map[nb_nd_idx.index()].cycles += 0.5;
                     } else {
@@ -308,13 +351,14 @@ impl NetworkStructure {
         (visited_nodes, tree_map)
     }
 
-    #[pyo3(signature = (src_idx, max_seconds, speed_m_s, jitter_scale=None))]
+    #[pyo3(signature = (src_idx, max_seconds, speed_m_s, jitter_scale=None, random_seed=None))]
     pub fn dijkstra_tree_simplest(
         &self,
         src_idx: usize,
         max_seconds: u32,
         speed_m_s: f32,
         jitter_scale: Option<f32>,
+        random_seed: Option<u64>,
     ) -> (Vec<usize>, Vec<NodeVisit>) {
         let jitter_scale = jitter_scale.unwrap_or(0.0);
         let mut tree_map = vec![NodeVisit::new(); self.node_count()];
@@ -327,16 +371,26 @@ impl NetworkStructure {
             node_idx: src_idx,
             metric: 0.0,
         });
-        let mut rng = rand::rng();
+        let mut rng = if let Some(seed) = random_seed {
+            StdRng::seed_from_u64(seed)
+        } else {
+            StdRng::from_rng(&mut rand::rng())
+        };
         while let Some(NodeDistance { node_idx, .. }) = active.pop() {
             tree_map[node_idx].visited = true;
             visited_nodes.push(node_idx);
             let current_node_index = NodeIndex::new(node_idx);
+            // Use Incoming direction to discover neighbors via edges pointing INTO current node.
+            // Edge Y→X (neighbor→current) gives us the distance FROM Y TO X, which is what we
+            // want for reversed/flipped aggregation where we accumulate TO the target node.
+            // For angular paths, the incoming edge has the correct bearings for Y→X travel.
             for edge_ref in self
                 .graph
-                .edges_directed(current_node_index, Direction::Outgoing)
+                .edges_directed(current_node_index, Direction::Incoming)
             {
-                let nb_nd_idx = edge_ref.target();
+                // With Incoming, source() gives the neighbor node (edge goes: neighbor → current)
+                let nb_nd_idx = edge_ref.source();
+                // Use incoming edge directly - it has correct distance and bearings for Y→X
                 let edge_payload = edge_ref.weight();
                 if nb_nd_idx.index() == node_idx {
                     continue;
@@ -352,13 +406,18 @@ impl NetworkStructure {
                 {
                     continue;
                 }
+                // Turn angle at node_idx when path goes: predecessor → node_idx → nb_nd_idx
+                // Using Direction::Incoming, we get edge Y→X (neighbor→current) but travel is X→Y.
+                // Both bearings are 180° offset from the actual travel direction, but the turn
+                // calculation still works if we use rem_euclid for proper modular arithmetic.
                 let mut turn = 0.0;
                 if node_idx != src_idx
-                    && edge_payload.in_bearing.is_finite()
-                    && tree_map[node_idx].out_bearing.is_finite()
+                    && edge_payload.out_bearing.is_finite()
+                    && tree_map[node_idx].prev_in_bearing.is_finite()
                 {
-                    turn = ((edge_payload.in_bearing - tree_map[node_idx].out_bearing + 180.0)
-                        % 360.0
+                    turn = ((edge_payload.out_bearing - tree_map[node_idx].prev_in_bearing
+                        + 180.0)
+                        .rem_euclid(360.0)
                         - 180.0)
                         .abs();
                 }
@@ -388,20 +447,23 @@ impl NetworkStructure {
                     tree_map[nb_nd_idx.index()].simpl_dist = simpl_total_dist + jitter;
                     tree_map[nb_nd_idx.index()].agg_seconds = total_seconds;
                     tree_map[nb_nd_idx.index()].pred = Some(node_idx);
-                    tree_map[nb_nd_idx.index()].out_bearing = edge_payload.out_bearing;
+                    // Store in_bearing for next turn calculation
+                    // in_bearing on edge Y→X = inward bearing from future Z to Y
+                    tree_map[nb_nd_idx.index()].prev_in_bearing = edge_payload.in_bearing;
                 }
             }
         }
         (visited_nodes, tree_map)
     }
 
-    #[pyo3(signature = (src_idx, max_seconds, speed_m_s, jitter_scale=None))]
+    #[pyo3(signature = (src_idx, max_seconds, speed_m_s, jitter_scale=None, random_seed=None))]
     pub fn dijkstra_tree_segment(
         &self,
         src_idx: usize,
         max_seconds: u32,
         speed_m_s: f32,
         jitter_scale: Option<f32>,
+        random_seed: Option<u64>,
     ) -> (Vec<usize>, Vec<usize>, Vec<NodeVisit>, Vec<EdgeVisit>) {
         let jitter_scale = jitter_scale.unwrap_or(0.0);
         let mut tree_map = vec![NodeVisit::new(); self.node_count()];
@@ -416,17 +478,25 @@ impl NetworkStructure {
             node_idx: src_idx,
             metric: 0.0,
         });
-        let mut rng = rand::rng();
+        let mut rng = if let Some(seed) = random_seed {
+            StdRng::seed_from_u64(seed)
+        } else {
+            StdRng::from_rng(&mut rand::rng())
+        };
         while let Some(NodeDistance { node_idx, .. }) = active.pop() {
             tree_map[node_idx].visited = true;
             visited_nodes.push(node_idx);
             let current_node_index = NodeIndex::new(node_idx);
+            // Use Incoming direction to discover neighbors via edges pointing INTO current node.
+            // Edge Y→X (neighbor→current) gives us the distance FROM Y TO X, which is what we
+            // want for reversed/flipped aggregation where we accumulate TO the target node.
             for edge_ref in self
                 .graph
-                .edges_directed(current_node_index, Direction::Outgoing)
+                .edges_directed(current_node_index, Direction::Incoming)
             {
-                let nb_nd_idx = edge_ref.target();
+                let nb_nd_idx = edge_ref.source();
                 let edge_idx = edge_ref.id();
+                // Use incoming edge directly - it has the correct distance for Y→X
                 let edge_payload = edge_ref.weight();
                 if nb_nd_idx.index() == node_idx {
                     visited_edges.push(edge_idx.index());
@@ -493,6 +563,9 @@ impl NetworkStructure {
         min_threshold_wt=None,
         speed_m_s=None,
         jitter_scale=None,
+        sample_probability=None,
+        sampling_weights=None,
+        random_seed=None,
         pbar_disabled=None
     ))]
     pub fn local_node_centrality_shortest(
@@ -505,6 +578,9 @@ impl NetworkStructure {
         min_threshold_wt: Option<f32>,
         speed_m_s: Option<f32>,
         jitter_scale: Option<f32>,
+        sample_probability: Option<f32>,
+        sampling_weights: Option<Vec<f32>>,
+        random_seed: Option<u64>,
         pbar_disabled: Option<bool>,
         py: Python,
     ) -> PyResult<CentralityShortestResult> {
@@ -527,10 +603,27 @@ impl NetworkStructure {
             "Either or both closeness and betweenness flags is required, but both parameters are False.",
         ));
         }
+        if let Some(ref weights) = sampling_weights {
+            if weights.len() != self.node_count() {
+                return Err(exceptions::PyValueError::new_err(format!(
+                    "sampling_weights length ({}) must match node count ({})",
+                    weights.len(),
+                    self.node_count()
+                )));
+            }
+            for (i, &w) in weights.iter().enumerate() {
+                if w < 0.0 || w > 1.0 {
+                    return Err(exceptions::PyValueError::new_err(format!(
+                        "sampling_weights[{}] = {} is out of range [0.0, 1.0]",
+                        i, w
+                    )));
+                }
+            }
+        }
 
         let node_keys_py = self.node_keys_py(py);
         let node_indices = self.node_indices();
-        let res = CentralityShortestResult::new(
+        let mut res = CentralityShortestResult::new(
             distances.clone(),
             node_keys_py,
             node_indices.clone(),
@@ -538,7 +631,27 @@ impl NetworkStructure {
         );
 
         let pbar_disabled = pbar_disabled.unwrap_or(false);
+        // Closeness uses flipped aggregation: accumulate to TARGET nodes (to_idx) not source
+        // When sampling: all nodes within range of ANY sampled source get contributions
         self.progress_init();
+
+        // Pre-generate random samples from a single RNG to ensure uniform distribution.
+        // Using consecutive seeds (seed + src_idx) causes biased first draws from PRNGs.
+        let sample_randoms: Vec<f32> = if sample_probability.is_some() {
+            let mut rng = if let Some(seed) = random_seed {
+                StdRng::seed_from_u64(seed)
+            } else {
+                StdRng::from_rng(&mut rand::rng())
+            };
+            (0..self.node_count()).map(|_| rng.random()).collect()
+        } else {
+            Vec::new()
+        };
+
+        // Atomic counters for tracking source reachability when sampling
+        let source_reachability_totals: Vec<AtomicU32> =
+            distances.iter().map(|_| AtomicU32::new(0)).collect();
+        let sampled_source_count = AtomicU32::new(0);
 
         let result = py.detach(move || {
             node_indices.par_iter().for_each(|src_idx| {
@@ -548,12 +661,31 @@ impl NetworkStructure {
                 if !self.is_node_live(*src_idx) {
                     return;
                 }
+
+                // Source sampling: skip Dijkstra for unsampled sources
+                // IPW scale applies to all contributions from this source
+                let ipw_scale = if let Some(prob) = sample_probability {
+                    let mut p = prob;
+                    if let Some(ref weights) = sampling_weights {
+                        p *= weights[*src_idx];
+                    }
+                    if sample_randoms[*src_idx] >= p {
+                        return; // Skip this source entirely
+                    }
+                    sampled_source_count.fetch_add(1, AtomicOrdering::Relaxed);
+                    1.0 / p // Inverse probability weight
+                } else {
+                    1.0
+                };
+
                 let (visited_nodes, tree_map) = self.dijkstra_tree_shortest(
                     *src_idx,
                     max_walk_seconds,
                     speed_m_s,
                     jitter_scale,
+                    random_seed.map(|s| derive_seed(s, *src_idx)),
                 );
+
                 for to_idx in visited_nodes.iter() {
                     let node_visit = &tree_map[*to_idx];
                     if to_idx == src_idx {
@@ -562,23 +694,36 @@ impl NetworkStructure {
                     if !node_visit.agg_seconds.is_finite() {
                         continue;
                     }
-                    let wt = self.get_node_weight(*to_idx);
+                    // Track reachability per distance when sampling
+                    if sample_probability.is_some() {
+                        for i in 0..distances.len() {
+                            if node_visit.short_dist <= distances[i] as f32 {
+                                source_reachability_totals[i].fetch_add(1, AtomicOrdering::Relaxed);
+                            }
+                        }
+                    }
+                    // Flipped aggregation: accumulate to target (to_idx) not source
+                    // Weight comes from the source node (the node contributing to others' closeness)
+                    let wt = self.get_node_weight(*src_idx) * ipw_scale;
                     if compute_closeness {
                         for i in 0..distances.len() {
                             let distance = distances[i];
                             let beta = betas[i];
                             if node_visit.short_dist <= distance as f32 {
-                                res.node_density_vec.metric[i][*src_idx]
+                                res.node_density_vec.metric[i][*to_idx]
                                     .fetch_add(wt, AtomicOrdering::Relaxed);
-                                res.node_farness_vec.metric[i][*src_idx]
+                                res.node_farness_vec.metric[i][*to_idx]
                                     .fetch_add(node_visit.short_dist * wt, AtomicOrdering::Relaxed);
-                                res.node_cycles_vec.metric[i][*src_idx]
+                                // Cycles: accumulate to target (to_idx) for consistency with other metrics
+                                // and to ensure all nodes get cycle values with sampling.
+                                // node_visit.cycles represents cycles detected at the target node during traversal.
+                                res.node_cycles_vec.metric[i][*to_idx]
                                     .fetch_add(node_visit.cycles * wt, AtomicOrdering::Relaxed);
-                                res.node_harmonic_vec.metric[i][*src_idx].fetch_add(
+                                res.node_harmonic_vec.metric[i][*to_idx].fetch_add(
                                     (1.0 / node_visit.short_dist) * wt,
                                     AtomicOrdering::Relaxed,
                                 );
-                                res.node_beta_vec.metric[i][*src_idx].fetch_add(
+                                res.node_beta_vec.metric[i][*to_idx].fetch_add(
                                     (-beta * node_visit.short_dist).exp() * wt,
                                     AtomicOrdering::Relaxed,
                                 );
@@ -611,8 +756,19 @@ impl NetworkStructure {
                     }
                 }
             });
+
+            // Store reachability totals after parallel processing
+            if sample_probability.is_some() {
+                res.sampled_source_count = sampled_source_count.load(AtomicOrdering::Relaxed);
+                res.reachability_totals = source_reachability_totals
+                    .iter()
+                    .map(|a| a.load(AtomicOrdering::Relaxed))
+                    .collect();
+            }
+
             res
         });
+
         Ok(result)
     }
 
@@ -627,6 +783,9 @@ impl NetworkStructure {
         angular_scaling_unit=None,
         farness_scaling_offset=None,
         jitter_scale=None,
+        sample_probability=None,
+        sampling_weights=None,
+        random_seed=None,
         pbar_disabled=None
     ))]
     pub fn local_node_centrality_simplest(
@@ -641,6 +800,9 @@ impl NetworkStructure {
         angular_scaling_unit: Option<f32>,
         farness_scaling_offset: Option<f32>,
         jitter_scale: Option<f32>,
+        sample_probability: Option<f32>,
+        sampling_weights: Option<Vec<f32>>,
+        random_seed: Option<u64>,
         pbar_disabled: Option<bool>,
         py: Python,
     ) -> PyResult<CentralitySimplestResult> {
@@ -663,12 +825,29 @@ impl NetworkStructure {
             "Either or both closeness and betweenness flags is required, but both parameters are False.",
         ));
         }
+        if let Some(ref weights) = sampling_weights {
+            if weights.len() != self.node_count() {
+                return Err(exceptions::PyValueError::new_err(format!(
+                    "sampling_weights length ({}) must match node count ({})",
+                    weights.len(),
+                    self.node_count()
+                )));
+            }
+            for (i, &w) in weights.iter().enumerate() {
+                if w < 0.0 || w > 1.0 {
+                    return Err(exceptions::PyValueError::new_err(format!(
+                        "sampling_weights[{}] = {} is out of range [0.0, 1.0]",
+                        i, w
+                    )));
+                }
+            }
+        }
         let angular_scaling_unit = angular_scaling_unit.unwrap_or(180.0);
         let farness_scaling_offset = farness_scaling_offset.unwrap_or(1.0);
 
         let node_keys_py = self.node_keys_py(py);
         let node_indices = self.node_indices();
-        let res = CentralitySimplestResult::new(
+        let mut res = CentralitySimplestResult::new(
             distances.clone(),
             node_keys_py,
             node_indices.clone(),
@@ -676,7 +855,28 @@ impl NetworkStructure {
         );
 
         let pbar_disabled = pbar_disabled.unwrap_or(false);
+        // Angular (simplest) centrality uses flipped aggregation: accumulate to TARGET nodes (to_idx).
+        // dijkstra_tree_simplest uses Direction::Incoming to discover neighbors, then looks up the
+        // When sampling: all nodes within range of ANY sampled source get contributions.
         self.progress_init();
+
+        // Pre-generate random samples from a single RNG to ensure uniform distribution.
+        // Using consecutive seeds (seed + src_idx) causes biased first draws from PRNGs.
+        let sample_randoms: Vec<f32> = if sample_probability.is_some() {
+            let mut rng = if let Some(seed) = random_seed {
+                StdRng::seed_from_u64(seed)
+            } else {
+                StdRng::from_rng(&mut rand::rng())
+            };
+            (0..self.node_count()).map(|_| rng.random()).collect()
+        } else {
+            Vec::new()
+        };
+
+        // Atomic counters for tracking source reachability when sampling
+        let source_reachability_totals: Vec<AtomicU32> =
+            seconds.iter().map(|_| AtomicU32::new(0)).collect();
+        let sampled_source_count = AtomicU32::new(0);
 
         let result = py.detach(move || {
             node_indices.par_iter().for_each(|src_idx| {
@@ -686,12 +886,31 @@ impl NetworkStructure {
                 if !self.is_node_live(*src_idx) {
                     return;
                 }
+
+                // Source sampling: skip Dijkstra for unsampled sources
+                // IPW scale applies to all contributions from this source
+                let ipw_scale = if let Some(prob) = sample_probability {
+                    let mut p = prob;
+                    if let Some(ref weights) = sampling_weights {
+                        p *= weights[*src_idx];
+                    }
+                    if sample_randoms[*src_idx] >= p {
+                        return; // Skip this source entirely
+                    }
+                    sampled_source_count.fetch_add(1, AtomicOrdering::Relaxed);
+                    1.0 / p // Inverse probability weight
+                } else {
+                    1.0
+                };
+
                 let (visited_nodes, tree_map) = self.dijkstra_tree_simplest(
                     *src_idx,
                     max_walk_seconds,
                     speed_m_s,
                     jitter_scale,
+                    random_seed.map(|s| derive_seed(s, *src_idx)),
                 );
+
                 for to_idx in visited_nodes.iter() {
                     let node_visit = &tree_map[*to_idx];
                     if to_idx == src_idx {
@@ -700,19 +919,29 @@ impl NetworkStructure {
                     if !node_visit.agg_seconds.is_finite() {
                         continue;
                     }
-                    let wt = self.get_node_weight(*to_idx);
+                    // Track reachability per time threshold when sampling
+                    if sample_probability.is_some() {
+                        for i in 0..seconds.len() {
+                            if node_visit.agg_seconds <= seconds[i] as f32 {
+                                source_reachability_totals[i].fetch_add(1, AtomicOrdering::Relaxed);
+                            }
+                        }
+                    }
+                    // Flipped aggregation: accumulate to target (to_idx) not source
+                    // Weight comes from the source node (the node contributing to others' closeness)
+                    let wt = self.get_node_weight(*src_idx) * ipw_scale;
                     if compute_closeness {
                         for i in 0..seconds.len() {
                             let sec = seconds[i];
                             if node_visit.agg_seconds <= sec as f32 {
-                                res.node_density_vec.metric[i][*src_idx]
+                                res.node_density_vec.metric[i][*to_idx]
                                     .fetch_add(wt, AtomicOrdering::Relaxed);
                                 let far_ang = farness_scaling_offset
                                     + (node_visit.simpl_dist / angular_scaling_unit);
-                                res.node_farness_vec.metric[i][*src_idx]
+                                res.node_farness_vec.metric[i][*to_idx]
                                     .fetch_add(far_ang * wt, AtomicOrdering::Relaxed);
                                 let harm_ang = 1.0 + (node_visit.simpl_dist / angular_scaling_unit);
-                                res.node_harmonic_vec.metric[i][*src_idx]
+                                res.node_harmonic_vec.metric[i][*to_idx]
                                     .fetch_add((1.0 / harm_ang) * wt, AtomicOrdering::Relaxed);
                             }
                         }
@@ -738,8 +967,19 @@ impl NetworkStructure {
                     }
                 }
             });
+
+            // Store reachability totals after parallel processing
+            if sample_probability.is_some() {
+                res.sampled_source_count = sampled_source_count.load(AtomicOrdering::Relaxed);
+                res.reachability_totals = source_reachability_totals
+                    .iter()
+                    .map(|a| a.load(AtomicOrdering::Relaxed))
+                    .collect();
+            }
+
             res
         });
+
         Ok(result)
     }
 
@@ -752,6 +992,7 @@ impl NetworkStructure {
         min_threshold_wt=None,
         speed_m_s=None,
         jitter_scale=None,
+        random_seed=None,
         pbar_disabled=None
     ))]
     pub fn local_segment_centrality(
@@ -764,6 +1005,7 @@ impl NetworkStructure {
         min_threshold_wt: Option<f32>,
         speed_m_s: Option<f32>,
         jitter_scale: Option<f32>,
+        random_seed: Option<u64>,
         pbar_disabled: Option<bool>,
         py: Python,
     ) -> PyResult<CentralitySegmentResult> {
@@ -807,8 +1049,15 @@ impl NetworkStructure {
                 if !self.is_node_live(*src_idx) {
                     return;
                 }
-                let (visited_nodes, visited_edges, tree_map, edge_map) =
-                    self.dijkstra_tree_segment(*src_idx, max_walk_seconds, speed_m_s, jitter_scale);
+
+                let (visited_nodes, visited_edges, tree_map, edge_map) = self
+                    .dijkstra_tree_segment(
+                        *src_idx,
+                        max_walk_seconds,
+                        speed_m_s,
+                        jitter_scale,
+                        random_seed.map(|s| derive_seed(s, *src_idx)),
+                    );
                 for edge_idx in visited_edges.iter() {
                     let edge_visit = &edge_map[*edge_idx];
                     let start_node_idx = edge_visit
@@ -828,6 +1077,7 @@ impl NetworkStructure {
                     {
                         continue;
                     }
+
                     if compute_closeness {
                         let n_nearer = node_visit_n.short_dist <= node_visit_m.short_dist;
                         let (a, a_imp) = if n_nearer {

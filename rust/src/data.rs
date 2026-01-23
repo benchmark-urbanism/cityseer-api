@@ -541,6 +541,7 @@ impl DataMap {
                 max_walk_seconds,
                 speed_m_s,
                 Some(jitter_scale),
+                None,
             )
         } else {
             network_structure.dijkstra_tree_simplest(
@@ -548,6 +549,7 @@ impl DataMap {
                 max_walk_seconds,
                 speed_m_s,
                 Some(jitter_scale),
+                None,
             )
         };
 

@@ -76,8 +76,8 @@ def _prepare_bldgs_rast(
     Convert a buildings GeoDataFrame into a raster with accompanying Transform object.
     """
     logger.info("Preparing buildings raster.")
-    bldgs_gdf = bldgs_gdf.to_crs(to_crs_code)  # type: ignore
-    if not bldgs_gdf.crs.is_projected:  # type: ignore
+    bldgs_gdf = bldgs_gdf.to_crs(to_crs_code)
+    if not bldgs_gdf.crs.is_projected:
         raise ValueError("Buildings GeoDataFrame must be in a projected coordinate reference system.")
     # prepare extents from original bounds
     # i.e. don't use bldgs GDF because this will overshoot per building polys
@@ -168,7 +168,7 @@ def visibility_from_gpd(
         height=bldgs_rast.shape[0],  # type: ignore
         width=bldgs_rast.shape[1],  # type: ignore
         count=1,
-        dtype=np.float32,  # type: ignore
+        dtype=np.float32,
         crs=to_crs_code,
         transform=transform,
     ) as dst:
@@ -419,7 +419,7 @@ def viewshed_from_gpd(
     bldgs_rast, transform = _prepare_bldgs_rast(bldgs_gdf, bounds, from_crs_code, to_crs_code, resolution)
     # prepare cell coordinates
     point_projected = util.project_geom(geometry.Point(origin_x, origin_y), from_crs_code, to_crs_code)
-    x_idx, y_idx = ~transform * (point_projected.x, point_projected.y)  # type: ignore
+    x_idx, y_idx = ~transform * (point_projected.x, point_projected.y)
     x_idx = int(x_idx)
     y_idx = int(y_idx)
     # run viewshed

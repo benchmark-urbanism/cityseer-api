@@ -1,0 +1,126 @@
+% Discussion section
+
+\subsection{Adaptive vs Uniform Sampling}
+
+The choice between adaptive and uniform sampling depends on the analysis requirements.
+
+\subsubsection{When Adaptive Sampling is Beneficial}
+
+Adaptive sampling provides the greatest advantage when:
+\begin{itemize}
+    \item \textbf{Multi-scale analyses} span short to long distances (e.g., 500m to 20km), where uniform sampling cannot maintain consistent accuracy across all thresholds
+    \item \textbf{Large networks} ($>$10,000 nodes) make full computation prohibitively slow
+    \item \textbf{Consistent accuracy guarantees} are needed across all distances---adaptive sampling ensures $\rho \geq \rhosp^*$ regardless of reachability
+\end{itemize}
+
+In our experiments, adaptive sampling achieves approximately $2\times$ speedup while maintaining $\rho \geq 0.95$ across all distances.
+
+\subsubsection{When Uniform Sampling is Sufficient}
+
+Uniform sampling remains appropriate when:
+\begin{itemize}
+    \item \textbf{Single-distance computation}: With only one distance threshold, there is no need for per-distance calibration
+    \item \textbf{Long distances only}: At long distances (high reachability), even low uniform sampling probabilities provide sufficient $\effn$ for accurate results
+    \item \textbf{Simplicity is prioritised}: Uniform sampling has simpler implementation and no probing overhead
+    \item \textbf{Accuracy requirements are modest}: For exploratory analyses where approximate rankings suffice, uniform sampling may be adequate
+\end{itemize}
+
+\subsubsection{Decision Framework}
+
+For practitioners choosing between approaches:
+\begin{enumerate}
+    \item If computing centrality at a \emph{single} distance threshold: use uniform sampling
+    \item If all distance thresholds have high reachability ($>$1000 nodes): uniform sampling may suffice
+    \item If distance thresholds span short to long (e.g., 500m to 5000m+): use adaptive sampling
+    \item If consistent accuracy guarantees are required: use adaptive sampling
+\end{enumerate}
+
+\subsection{Choosing Between Distance Heuristics}
+
+The choice between shortest path (metric) and angular (simplest path) distances depends on the research question:
+
+\begin{itemize}
+    \item \textbf{Shortest path distances} are appropriate for transport accessibility analyses where physical travel distance matters (e.g., service area coverage, walking accessibility)
+    \item \textbf{Angular distances} are appropriate for movement prediction and spatial cognition analyses where route legibility matters (e.g., pedestrian flow prediction, wayfinding)
+\end{itemize}
+
+The separate models ensure that adaptive sampling uses appropriate parameters for each heuristic. The implementation automatically selects the correct model based on which centrality function is called.
+
+\subsection{Choice of Target Accuracy}
+
+We recommend $\rhosp^* = 0.95$ for general use, which provides excellent ranking preservation with meaningful speedup. Higher targets (0.97, 0.99) are available but require substantially more samples. The table below shows requirements for shortest path betweenness (the more conservative model):
+
+\begin{center}
+\begin{tabular}{lrrr}
+\toprule
+Target $\rho$ & Shortest $\effn$ & Angular $\effn$ & Relative cost \\
+\midrule
+0.90 & 434 & 553 & 1.0$\times$ \\
+0.95 & 917 & 1168 & 2.1$\times$ \\
+0.97 & 1561 & 1987 & 3.6$\times$ \\
+0.99 & 4782 & 6085 & 11.0$\times$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Note that angular betweenness requires approximately 27\% more samples than shortest path betweenness for equivalent accuracy, due to the concentration of betweenness values along straight routes.
+
+\subsection{Limitations}
+
+\subsubsection{Model Applicability}
+
+The empirical models were fitted on specific network topologies. While validation on London and Madrid suggests good generalisation, networks with unusual characteristics (e.g., extreme sparsity, very long edges) may require model recalibration.
+
+\subsubsection{Low Effective Sample Size}
+
+At very low $\effn$ (< 25), observed accuracy shows high variance, and model predictions become unreliable. The algorithm handles this by defaulting to full computation when required $p > 1.0$.
+
+\subsubsection{Magnitude Accuracy}
+
+While the paper focuses on ranking accuracy (Spearman $\rho$), magnitude accuracy is lower and more variable. For applications requiring accurate absolute values (e.g., comparing centrality across different networks), higher sampling rates are recommended.
+
+\subsubsection{Per-Distance Overhead}
+
+Adaptive sampling runs separate Dijkstra computations for each distance threshold, whereas full computation visits each node once and records reachability at all distances. For analyses with many distance thresholds, this overhead can reduce the speedup advantage.
+
+\subsubsection{Spatial Heterogeneity in Harmonic Closeness Accuracy}
+
+The spatial analysis (Section~\ref{sec:spatial_analysis}) reveals that harmonic closeness accuracy is not solely determined by effective sample size. Nodes in transitional zones (Q2--Q3 reachability) show lower accuracy than both boundary nodes (Q1) and dense core nodes (Q4), despite having intermediate effective sample sizes. This U-shaped pattern, consistent across three diverse cities, suggests that local network topology affects the estimability of closeness in ways not captured by the current model.
+
+The practical implication is that for harmonic closeness at short distances (500--1000m), the model may underestimate the sampling probability needed for nodes in transitional urban areas. Betweenness centrality does not exhibit this limitation---its accuracy increases monotonically with effective sample size as the model predicts.
+
+For applications where harmonic closeness accuracy in mid-reachability zones is critical, we recommend either using a higher target accuracy ($\rho^* = 0.97$) or validating against full computation on a representative subset of nodes.
+
+\subsection{Future Work}
+
+Several directions merit further investigation:
+
+\begin{enumerate}
+    \item \textbf{Theoretical foundations}: Deriving the model form from first principles (e.g., via central limit theorem arguments) rather than empirical fitting
+
+    \item \textbf{Other centrality measures}: Extending the approach to other localised metrics such as gravity-weighted accessibility or segment-based centrality
+
+    \item \textbf{Adaptive threshold selection}: Automatically selecting distance thresholds based on network characteristics
+
+    \item \textbf{Stratified sampling}: Using network structure (e.g., betweenness-based importance) to inform sampling rather than uniform random selection
+
+    \item \textbf{Progressive refinement}: Starting with low sampling rates and iteratively refining until target accuracy is achieved
+
+    \item \textbf{Topology-aware models}: Extending the accuracy model to incorporate local network topology features (e.g., clustering coefficient, catchment asymmetry) to better predict harmonic closeness accuracy in transitional zones
+\end{enumerate}
+
+\subsection{Practical Recommendations}
+
+For practitioners using this approach:
+
+\begin{enumerate}
+    \item \textbf{Check the sampling plan}: Before running adaptive centrality, review the logged sampling probabilities and expected accuracy for each distance. The log output indicates whether shortest path or angular models are being used.
+
+    \item \textbf{Use betweenness model when computing both metrics}: The more conservative betweenness model ensures both metrics achieve target accuracy
+
+    \item \textbf{Match the model to your distance heuristic}: Use the shortest path model for metric distance functions and the angular model for simplest path functions. The \cityseer{} implementation handles this automatically.
+
+    \item \textbf{Set target slightly higher than needed}: The 2\% safety margin is built in, but setting $\rhosp^* = 0.96$ when you need 0.95 provides additional robustness
+
+    \item \textbf{Validate on a subset}: For critical applications, run full computation on a sample of distance/topology combinations to verify model accuracy for your specific network
+\end{enumerate}
