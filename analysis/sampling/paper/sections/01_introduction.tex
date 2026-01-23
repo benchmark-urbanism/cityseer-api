@@ -1,0 +1,52 @@
+% Introduction section
+
+Network centrality measures are fundamental tools for understanding urban morphology, identifying key locations in street networks, and informing urban planning decisions \citep{Porta2006,Boeing2017}. Measures such as betweenness centrality (which captures through-movement potential) and closeness centrality (which captures accessibility) have been widely applied to characterise pedestrian-scale urban environments \citep{Hillier1984,Cooper2015}.
+
+A key methodological advance in urban network analysis is the use of \emph{localised} or \emph{distance-bounded} centrality measures, where centrality is computed within a specified network distance rather than across the entire graph \citep{Cooper2015}. While early applications focused on pedestrian-scale analysis within walking distance (500m--2000m), contemporary urban analytics increasingly requires \emph{regional-scale} analysis at distances of 5--20km. Such analyses are essential for:
+
+\begin{itemize}
+    \item \textbf{Cycling infrastructure planning}: Identifying strategic routes and connectivity gaps at distances of 5--15km
+    \item \textbf{Transit accessibility}: Evaluating station catchments and transfer patterns across metropolitan regions
+    \item \textbf{Regional economic analysis}: Understanding accessibility to employment centres and services
+    \item \textbf{Multi-modal integration}: Combining pedestrian, cycling, and transit networks in unified analyses
+\end{itemize}
+
+Multi-scale analysis---computing centrality at multiple distance thresholds spanning local to regional scales---enables researchers to capture accessibility patterns across spatial scales relevant to different transport modes and planning questions.
+
+\subsection{The Computational Challenge}
+
+Multi-scale centrality computation is computationally expensive. For a network with $n$ nodes and $d$ distance thresholds, na\"ive computation requires $O(n^2 \cdot d)$ shortest-path calculations. To illustrate the practical implications:
+
+\begin{itemize}
+    \item A \textbf{neighbourhood-scale network} (5,000 nodes, 4 distances) requires $\sim$100 million path calculations
+    \item A \textbf{city-scale network} (50,000 nodes, 4 distances) requires $\sim$10 billion path calculations
+    \item A \textbf{metropolitan-scale network} (200,000 nodes, 6 distances) requires $\sim$240 billion path calculations
+\end{itemize}
+
+Even with optimised implementations, city-scale analyses can require hours of computation, while metropolitan-scale analyses may be impractical without approximation methods. This computational burden limits the ability of researchers and practitioners to iterate rapidly, explore parameter sensitivity, or integrate network analysis into interactive planning tools.
+
+\subsection{Sampling-Based Approximation}
+
+A natural approach to reducing computational cost is \emph{sampling}: rather than computing shortest paths from all nodes, we sample a subset of source nodes and extrapolate. This approach has been explored extensively for betweenness centrality \citep{Brandes2007,Riondato2016}, but less attention has been paid to multi-scale, distance-bounded centrality computation.
+
+The key insight is that sampling becomes increasingly effective at longer distances. At a 20km threshold in a metropolitan network, each node may be reachable from 50,000+ other nodes. Computing exact centrality requires shortest-path calculations from all 50,000 sources, but sampling just 2\% of sources (1,000 nodes) can yield highly accurate estimates---because the statistical power comes from the large number of source-target pairs, not the proportion sampled.
+
+However, the challenge with sampling in the multi-scale context is that a \emph{uniform} sampling probability fails to provide consistent accuracy across distance thresholds. At short distances (e.g., 500m), typical urban networks have low \emph{reachability}---perhaps only 100--300 nodes. Sampling 2\% would yield just 2--6 source nodes per estimate, resulting in unacceptably high variance. At long distances, the same 2\% provides excellent accuracy but may still be more computation than necessary.
+
+\subsection{Contributions}
+
+This paper presents an \emph{adaptive per-distance sampling} approach that addresses this tension. Our contributions are:
+
+\begin{enumerate}
+    \item We introduce the concept of \emph{effective sample size}, $\effn = \text{reachability} \times p$, and demonstrate empirically that this quantity determines both ranking accuracy (Spearman $\rho$) and magnitude accuracy across diverse network topologies.
+
+    \item We fit empirical models predicting accuracy from effective sample size for both harmonic closeness and betweenness centrality. Notably, we find that betweenness requires approximately 1.5$\times$ more samples than closeness for equivalent accuracy due to higher variance.
+
+    \item We present an adaptive algorithm that probes network reachability at each distance threshold and calibrates sampling probability to achieve a target accuracy level (e.g., $\rho \geq 0.95$).
+
+    \item We validate our approach on both synthetic networks representing archetypal urban forms (grid, dendritic, linear) and real-world street networks from London and Madrid.
+
+    \item We provide an open-source implementation integrated into the \cityseer{} Python library for urban network analysis.
+\end{enumerate}
+
+The remainder of this paper is organised as follows. Section~\ref{sec:background} reviews related work on network centrality and sampling methods. Section~\ref{sec:methodology} describes our experimental methodology. Section~\ref{sec:empirical_models} presents the fitted empirical models. Section~\ref{sec:algorithm} describes the adaptive sampling algorithm. Section~\ref{sec:validation} presents validation results on synthetic and real-world networks. Section~\ref{sec:discussion} discusses limitations and implications, and Section~\ref{sec:conclusion} concludes.

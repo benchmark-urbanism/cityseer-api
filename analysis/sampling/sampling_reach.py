@@ -11,6 +11,9 @@ This analysis measures two dimensions of accuracy:
 
 Key finding: Effective sample size (reach × p) drives both.
 Rule of thumb: effective_n >= 200 gives reliable results for both dimensions.
+
+NOTE: This analysis runs for BOTH shortest (metric) and simplest (angular)
+distance heuristics, fitting separate models for each.
 """
 
 import json
@@ -27,16 +30,28 @@ from cityseer.tools import graphs, io
 from cityseer.tools.mock import mock_graph
 from scipy import optimize as scipy_optimize
 from scipy import stats as scipy_stats
-from utils.substrates import generate_keyed_template
 
 warnings.filterwarnings("ignore")
+
+# Add parent directory to path for utils import
+import sys
+
+sys.path.insert(0, str(Path(__file__).parent.parent))
+from utils.substrates import generate_keyed_template
 
 # Output and cache directories
 SCRIPT_DIR = Path(__file__).parent
 OUTPUT_DIR = SCRIPT_DIR / "output"
 OUTPUT_DIR.mkdir(exist_ok=True)
-CACHE_DIR = Path(__file__).parent.parent / "temp" / "sampling_cache"
+CACHE_DIR = SCRIPT_DIR.parent.parent / "temp" / "sampling_cache"
 CACHE_DIR.mkdir(parents=True, exist_ok=True)
+
+# Paper output directories
+PAPER_DIR = SCRIPT_DIR / "paper"
+FIGURES_DIR = PAPER_DIR / "figures"
+TABLES_DIR = PAPER_DIR / "tables"
+FIGURES_DIR.mkdir(parents=True, exist_ok=True)
+TABLES_DIR.mkdir(parents=True, exist_ok=True)
 
 # Cache version - increment to force re-run
 CACHE_VERSION = "v5"
@@ -224,12 +239,12 @@ for i, topo in enumerate(TEMPLATE_NAMES):
 
 plt.suptitle("Test Network Topologies", fontsize=13, fontweight="bold")
 plt.tight_layout()
-plt.savefig(OUTPUT_DIR / "topologies.png", dpi=150, bbox_inches="tight")
-print(f"Saved: {OUTPUT_DIR / 'topologies.png'}")
+plt.savefig(FIGURES_DIR / "topologies.pdf", dpi=300, bbox_inches="tight")
+print(f"Saved: {FIGURES_DIR / 'topologies.pdf'}")
 
-# %% Run Sampling Analysis
+# %% Run Sampling Analysis for SHORTEST (metric) distances
 print("\n" + "=" * 70)
-print("CHAPTER 2: Sampling Accuracy Analysis")
+print("CHAPTER 2: Sampling Accuracy Analysis - SHORTEST (metric) distances")
 print("=" * 70)
 print(f"\nTemplates: {TEMPLATE_NAMES}")
 print(f"Distances: {DISTANCES}")
@@ -361,13 +376,145 @@ else:
     save_cache("sampling_analysis", results)
     print("\nResults cached.")
 
+
+# %% Run Sampling Analysis for SIMPLEST (angular) distances
+print("\n" + "=" * 70)
+print("CHAPTER 2b: Sampling Accuracy Analysis - SIMPLEST (angular) distances")
+print("=" * 70)
+
+cached_angular = load_cache("sampling_analysis_angular")
+if cached_angular is not None:
+    print("\nLoading cached angular results...")
+    results_angular = cached_angular
+else:
+    results_angular = []
+
+    for topo in TEMPLATE_NAMES:
+        print(f"\n{'=' * 50}")
+        print(f"Topology: {topo} (angular)")
+        print(f"{'=' * 50}")
+
+        G = generate_substrate(topo)
+        if not nx.is_connected(G):
+            largest = max(nx.connected_components(G), key=len)
+            G = G.subgraph(largest).copy()
+
+        n_nodes = G.number_of_nodes()
+        avg_degree = 2 * G.number_of_edges() / n_nodes
+        print(f"Nodes: {n_nodes}, Avg degree: {avg_degree:.2f}")
+
+        # Convert to cityseer format
+        ndf, edf, net = io.network_structure_from_nx(G)
+
+        for dist in DISTANCES:
+            # Ground truth (full computation) - SIMPLEST (angular) path
+            true_result = net.local_node_centrality_simplest(
+                distances=[dist],
+                compute_closeness=True,
+                compute_betweenness=True,
+                pbar_disabled=True,
+            )
+            true_harmonic = np.array(true_result.node_harmonic[dist])
+            true_betweenness = np.array(true_result.node_betweenness[dist])
+            reach = np.array(true_result.node_density[dist])
+            mean_reach = float(np.mean(reach))
+
+            if mean_reach < 5:
+                continue
+
+            print(f"  d={dist}m, reach={mean_reach:.0f}: ", end="", flush=True)
+
+            for p in PROBS:
+                if p == 1.0:
+                    # Perfect accuracy at p=1.0
+                    for metric in ["harmonic", "betweenness"]:
+                        results_angular.append(
+                            {
+                                "topology": topo,
+                                "distance": dist,
+                                "mean_reach": mean_reach,
+                                "sample_prob": p,
+                                "effective_n": mean_reach,
+                                "metric": metric,
+                                "spearman": 1.0,
+                                "spearman_std": 0.0,
+                                "top_k_precision": 1.0,
+                                "precision_std": 0.0,
+                                "scale_ratio": 1.0,
+                                "scale_ratio_std": 0.0,
+                                "scale_iqr": 0.0,
+                                "scale_iqr_std": 0.0,
+                            }
+                        )
+                    continue
+
+                # Multiple runs for variance estimation
+                metrics_data = {
+                    "harmonic": {"spearmans": [], "precisions": [], "scale_ratios": [], "scale_iqrs": []},
+                    "betweenness": {"spearmans": [], "precisions": [], "scale_ratios": [], "scale_iqrs": []},
+                }
+                true_vals = {"harmonic": true_harmonic, "betweenness": true_betweenness}
+
+                for seed in range(N_RUNS):
+                    r = net.local_node_centrality_simplest(
+                        distances=[dist],
+                        compute_closeness=True,
+                        compute_betweenness=True,
+                        sample_probability=p,
+                        random_seed=seed,
+                        pbar_disabled=True,
+                    )
+                    est_vals = {
+                        "harmonic": np.array(r.node_harmonic[dist]),
+                        "betweenness": np.array(r.node_betweenness[dist]),
+                    }
+
+                    for metric in ["harmonic", "betweenness"]:
+                        sp, prec, scale, iqr = compute_accuracy_metrics(true_vals[metric], est_vals[metric])
+                        if not np.isnan(sp):
+                            metrics_data[metric]["spearmans"].append(sp)
+                            metrics_data[metric]["precisions"].append(prec)
+                            metrics_data[metric]["scale_ratios"].append(scale)
+                            metrics_data[metric]["scale_iqrs"].append(iqr)
+
+                effective_n = mean_reach * p
+
+                for metric in ["harmonic", "betweenness"]:
+                    data = metrics_data[metric]
+                    if data["spearmans"]:
+                        results_angular.append(
+                            {
+                                "topology": topo,
+                                "distance": dist,
+                                "mean_reach": mean_reach,
+                                "sample_prob": p,
+                                "effective_n": effective_n,
+                                "metric": metric,
+                                "spearman": np.mean(data["spearmans"]),
+                                "spearman_std": np.std(data["spearmans"]),
+                                "top_k_precision": np.mean(data["precisions"]),
+                                "precision_std": np.std(data["precisions"]),
+                                "scale_ratio": np.mean(data["scale_ratios"]),
+                                "scale_ratio_std": np.std(data["scale_ratios"]),
+                                "scale_iqr": np.mean(data["scale_iqrs"]),
+                                "scale_iqr_std": np.std(data["scale_iqrs"]),
+                            }
+                        )
+
+            print("done")
+
+    save_cache("sampling_analysis_angular", results_angular)
+    print("\nAngular results cached.")
+
 df = pd.DataFrame(results)
-print(f"\nTotal observations: {len(df)}")
+df_angular = pd.DataFrame(results_angular)
+print(f"\nTotal observations (shortest): {len(df)}")
+print(f"Total observations (angular): {len(df_angular)}")
 
 
 # %% THE KEY TABLE: Combined Ranking + Magnitude by Effective N
 print("\n" + "=" * 70)
-print("KEY FINDING: Quality by Effective Sample Size")
+print("KEY FINDING: Quality by Effective Sample Size (SHORTEST distances)")
 print("=" * 70)
 print("""
 WHAT IS EFFECTIVE SAMPLE SIZE?
@@ -442,10 +589,22 @@ print("\nINTERPRETATION:")
 print("  Spearman ρ: 1.0 = perfect ranking preservation")
 print("  Scale ratio: 1.0 = no bias, >1 = overestimate, <1 = underestimate")
 
-
-# %% Figure 1: The Key Visual - Both Dimensions vs Effective N
+# %% Angular distance tables
 print("\n" + "=" * 70)
-print("FIGURE 1: Accuracy vs Effective Sample Size")
+print("KEY FINDING: Quality by Effective Sample Size (ANGULAR distances)")
+print("=" * 70)
+
+sampled_angular = df_angular[df_angular["sample_prob"] < 1.0]
+harmonic_sampled_angular = sampled_angular[sampled_angular["metric"] == "harmonic"]
+betweenness_sampled_angular = sampled_angular[sampled_angular["metric"] == "betweenness"]
+
+print_accuracy_table("Harmonic Closeness (Angular)", harmonic_sampled_angular)
+print_accuracy_table("Betweenness (Angular)", betweenness_sampled_angular)
+
+
+# %% Figure 1a: SHORTEST (metric) distances - Both Dimensions vs Effective N
+print("\n" + "=" * 70)
+print("FIGURE 1a: Accuracy vs Effective Sample Size (SHORTEST distances)")
 print("=" * 70)
 
 fig, axes = plt.subplots(2, 2, figsize=(14, 10))
@@ -456,6 +615,7 @@ for col, metric in enumerate(["harmonic", "betweenness"]):
 
     # Top row: Spearman (ranking)
     ax = axes[0, col]
+    # Plot synthetic networks (circles)
     for topo in TEMPLATE_NAMES:
         subset = metric_df[metric_df["topology"] == topo]
         ax.scatter(subset["effective_n"], subset["spearman"], alpha=0.5, s=30, color=colors[topo], label=topo.title())
@@ -467,13 +627,14 @@ for col, metric in enumerate(["harmonic", "betweenness"]):
     ax.set_ylabel("Spearman ρ (ranking)", fontsize=11)
     ax.set_title(f"{metric.title()}: Ranking Accuracy", fontsize=12, fontweight="bold")
     ax.set_xscale("log")
-    ax.set_xlim(5, 2000)
-    ax.set_ylim(0.5, 1.02)
+    ax.set_xlim(5, 3500)
+    ax.set_ylim(0.4, 1.02)
     ax.legend(loc="lower right", fontsize=8)
     ax.grid(True, alpha=0.3)
 
     # Bottom row: Scale ratio (magnitude)
     ax = axes[1, col]
+    # Plot synthetic networks (circles)
     for topo in TEMPLATE_NAMES:
         subset = metric_df[metric_df["topology"] == topo]
         ax.scatter(
@@ -488,26 +649,87 @@ for col, metric in enumerate(["harmonic", "betweenness"]):
     ax.set_ylabel("Scale Ratio (est/true)", fontsize=11)
     ax.set_title(f"{metric.title()}: Magnitude Accuracy", fontsize=12, fontweight="bold")
     ax.set_xscale("log")
-    ax.set_xlim(5, 2000)
-    ax.set_ylim(0.7, 1.3)
-    ax.legend(loc="upper right", fontsize=8)
+    ax.set_xlim(5, 3500)
+    ax.set_ylim(0.65, 1.15)
+    ax.legend(loc="lower right", fontsize=8)
     ax.grid(True, alpha=0.3)
 
 plt.suptitle(
-    "Sampling Accuracy: Both Ranking and Magnitude Depend on Effective Sample Size\n"
+    "SHORTEST Path: Sampling Accuracy vs Effective Sample Size\n(effective_n = reachability × sampling_probability)",
+    fontsize=13,
+    fontweight="bold",
+    y=1.02,
+)
+plt.tight_layout()
+plt.savefig(OUTPUT_DIR / "sampling_accuracy_shortest.png", dpi=150, bbox_inches="tight")
+print(f"Saved: {OUTPUT_DIR / 'sampling_accuracy_shortest.png'}")
+
+# %% Figure 1b: ANGULAR (simplest) distances - Both Dimensions vs Effective N
+print("\n" + "=" * 70)
+print("FIGURE 1b: Accuracy vs Effective Sample Size (ANGULAR distances)")
+print("=" * 70)
+
+fig, axes = plt.subplots(2, 2, figsize=(14, 10))
+
+for col, metric in enumerate(["harmonic", "betweenness"]):
+    metric_df = sampled_angular[sampled_angular["metric"] == metric]
+
+    # Top row: Spearman (ranking)
+    ax = axes[0, col]
+    # Plot synthetic networks (circles)
+    for topo in TEMPLATE_NAMES:
+        subset = metric_df[metric_df["topology"] == topo]
+        ax.scatter(subset["effective_n"], subset["spearman"], alpha=0.5, s=30, color=colors[topo], label=topo.title())
+
+    ax.axhline(y=0.95, color="green", linestyle=":", linewidth=1.5, alpha=0.8, label="ρ = 0.95")
+    ax.axhline(y=0.90, color="orange", linestyle=":", linewidth=1.5, alpha=0.8, label="ρ = 0.90")
+
+    ax.set_xlabel("Effective Sample Size (reach × p)", fontsize=11)
+    ax.set_ylabel("Spearman ρ (ranking)", fontsize=11)
+    ax.set_title(f"{metric.title()}: Ranking Accuracy", fontsize=12, fontweight="bold")
+    ax.set_xscale("log")
+    ax.set_xlim(5, 3500)
+    ax.set_ylim(0.4, 1.02)
+    ax.legend(loc="lower right", fontsize=8)
+    ax.grid(True, alpha=0.3)
+
+    # Bottom row: Scale ratio (magnitude)
+    ax = axes[1, col]
+    # Plot synthetic networks (circles)
+    for topo in TEMPLATE_NAMES:
+        subset = metric_df[metric_df["topology"] == topo]
+        ax.scatter(
+            subset["effective_n"], subset["scale_ratio"], alpha=0.5, s=30, color=colors[topo], label=topo.title()
+        )
+
+    ax.axhline(y=1.0, color="black", linestyle="-", alpha=0.7, linewidth=1.5)
+    ax.axhline(y=1.05, color="orange", linestyle=":", linewidth=1.5, alpha=0.6)
+    ax.axhline(y=0.95, color="orange", linestyle=":", linewidth=1.5, alpha=0.6)
+
+    ax.set_xlabel("Effective Sample Size (reach × p)", fontsize=11)
+    ax.set_ylabel("Scale Ratio (est/true)", fontsize=11)
+    ax.set_title(f"{metric.title()}: Magnitude Accuracy", fontsize=12, fontweight="bold")
+    ax.set_xscale("log")
+    ax.set_xlim(5, 3500)
+    ax.set_ylim(0.65, 1.15)
+    ax.legend(loc="lower right", fontsize=8)
+    ax.grid(True, alpha=0.3)
+
+plt.suptitle(
+    "ANGULAR (Simplest) Path: Sampling Accuracy vs Effective Sample Size\n"
     "(effective_n = reachability × sampling_probability)",
     fontsize=13,
     fontweight="bold",
     y=1.02,
 )
 plt.tight_layout()
-plt.savefig(OUTPUT_DIR / "sampling_accuracy.png", dpi=150, bbox_inches="tight")
-print(f"Saved: {OUTPUT_DIR / 'sampling_accuracy.png'}")
+plt.savefig(OUTPUT_DIR / "sampling_accuracy_angular.png", dpi=150, bbox_inches="tight")
+print(f"Saved: {OUTPUT_DIR / 'sampling_accuracy_angular.png'}")
 
 
-# %% Figure 2b: Expected Ranking Accuracy by Effective Sample Size
+# %% Figure 2b: Expected Ranking Accuracy by Effective Sample Size (SHORTEST)
 print("\n" + "=" * 70)
-print("FIGURE 2b: Expected Ranking Accuracy by Effective Sample Size")
+print("FIGURE 2b: Expected Ranking Accuracy by Effective Sample Size (SHORTEST)")
 print("=" * 70)
 
 # Plot B: What Spearman ρ can you expect at different effective_n values?
@@ -558,7 +780,7 @@ for col, metric in enumerate(["harmonic", "betweenness"]):
     ax.grid(True, alpha=0.3)
 
 plt.suptitle(
-    "Ranking Accuracy vs Effective Sample Size",
+    "SHORTEST Path: Ranking Accuracy vs Effective Sample Size",
     fontsize=13,
     fontweight="bold",
     y=1.02,
@@ -573,13 +795,81 @@ fig.text(
     style="italic",
 )
 plt.tight_layout()
-plt.savefig(OUTPUT_DIR / "sampling_accuracy_vs_eff_n.png", dpi=150, bbox_inches="tight")
-print(f"Saved: {OUTPUT_DIR / 'sampling_accuracy_vs_eff_n.png'}")
+plt.savefig(FIGURES_DIR / "accuracy_vs_effn_shortest.pdf", dpi=300, bbox_inches="tight")
+print(f"Saved: {FIGURES_DIR / 'accuracy_vs_effn_shortest.pdf'}")
 
-
-# %% Fit Continuous Models for Sampling Accuracy
+# %% Figure 2c: Expected Ranking Accuracy by Effective Sample Size (ANGULAR)
 print("\n" + "=" * 70)
-print("FITTING CONTINUOUS MODELS (Separate for Closeness and Betweenness)")
+print("FIGURE 2c: Expected Ranking Accuracy by Effective Sample Size (ANGULAR)")
+print("=" * 70)
+
+fig, axes = plt.subplots(1, 2, figsize=(14, 5))
+
+for col, metric in enumerate(["harmonic", "betweenness"]):
+    metric_df = sampled_angular[sampled_angular["metric"] == metric]
+    ax = axes[col]
+
+    # Bin by effective_n and compute mean Spearman
+    eff_n_centers = []
+    spearman_means = []
+    spearman_stds = []
+
+    for i in range(len(eff_n_bins) - 1):
+        lo, hi = eff_n_bins[i], eff_n_bins[i + 1]
+        subset = metric_df[(metric_df["effective_n"] >= lo) & (metric_df["effective_n"] < hi)]
+        if len(subset) >= 3:
+            eff_n_centers.append((lo + hi) / 2)
+            spearman_means.append(subset["spearman"].mean())
+            spearman_stds.append(subset["spearman"].std())
+
+    # Plot empirical data with error bars
+    ax.errorbar(
+        eff_n_centers,
+        spearman_means,
+        yerr=spearman_stds,
+        fmt="o",
+        markersize=5,
+        capsize=3,
+        alpha=0.7,
+        color="darkorange",
+    )
+
+    # Add horizontal reference lines for target accuracies
+    for target_rho, color in [(0.90, "green"), (0.95, "orange"), (0.99, "red")]:
+        ax.axhline(y=target_rho, color=color, linestyle="--", alpha=0.5, linewidth=1)
+        ax.text(610, target_rho, f"ρ={target_rho}", fontsize=9, va="center", color=color)
+
+    ax.set_xlabel("Effective Sample Size (reachability × p)", fontsize=11)
+    ax.set_ylabel("Mean Spearman ρ", fontsize=11)
+    ax.set_title(f"{metric.title()}", fontsize=12)
+    ax.set_ylim(0.5, 1.02)
+    ax.set_xlim(0, 650)
+    ax.grid(True, alpha=0.3)
+
+plt.suptitle(
+    "ANGULAR Path: Ranking Accuracy vs Effective Sample Size",
+    fontsize=13,
+    fontweight="bold",
+    y=1.02,
+)
+fig.text(
+    0.5,
+    -0.02,
+    "Points: mean Spearman ρ across all runs in each effective_n bin. "
+    "Error bars: ±1 standard deviation. Dashed lines: accuracy targets.",
+    ha="center",
+    fontsize=9,
+    style="italic",
+)
+plt.tight_layout()
+plt.savefig(FIGURES_DIR / "accuracy_vs_effn_angular.pdf", dpi=300, bbox_inches="tight")
+print(f"Saved: {FIGURES_DIR / 'accuracy_vs_effn_angular.pdf'}")
+
+
+# %% Fit Continuous Models for Sampling Accuracy (SHORTEST distances)
+print("\n" + "=" * 70)
+print("FITTING CONTINUOUS MODELS - SHORTEST DISTANCES")
+print("(Separate for Closeness and Betweenness)")
 print("=" * 70)
 
 # Fit models to predict Spearman ρ and std from effective_n
@@ -765,7 +1055,7 @@ for n in [10, 25, 50, 100, 200, 400, 800]:
 
 # Print required effective_n for various target rho values
 print("\n" + "=" * 70)
-print("REQUIRED EFFECTIVE_N FOR TARGET ACCURACY")
+print("REQUIRED EFFECTIVE_N FOR TARGET ACCURACY (SHORTEST)")
 print("=" * 70)
 print(f"{'Target ρ':>10} | {'Harmonic eff_n':>15} | {'Betweenness eff_n':>18}")
 print("-" * 50)
@@ -774,11 +1064,173 @@ for target in [0.90, 0.95, 0.96, 0.97, 0.98, 0.99]:
     req_between = betweenness_a / (1 - target) - betweenness_b
     print(f"{target:>10.2f} | {req_harmonic:>15.0f} | {req_between:>18.0f}")
 
+
+# %% Fit Continuous Models for Sampling Accuracy (ANGULAR distances)
+print("\n" + "=" * 70)
+print("FITTING CONTINUOUS MODELS - ANGULAR DISTANCES")
+print("(Separate for Closeness and Betweenness)")
+print("=" * 70)
+
+# Separate angular data by metric
+harmonic_data_angular = sampled_angular[sampled_angular["metric"] == "harmonic"]
+betweenness_data_angular = sampled_angular[sampled_angular["metric"] == "betweenness"]
+
+print(f"\nAngular Harmonic (closeness) data points: {len(harmonic_data_angular)}")
+print(f"Angular Betweenness data points: {len(betweenness_data_angular)}")
+
+# Fit models for each metric using lower percentiles (conservative)
+print("\n--- Fitting Angular Conservative Models (10th percentile) ---")
+
+harmonic_a_angular, harmonic_b_angular, harmonic_rmse_angular = fit_rho_model_for_metric(
+    harmonic_data_angular, "harmonic (angular)", use_percentile=True, percentile=CONSERVATIVE_PERCENTILE
+)
+
+betweenness_a_angular, betweenness_b_angular, betweenness_rmse_angular = fit_rho_model_for_metric(
+    betweenness_data_angular, "betweenness (angular)", use_percentile=True, percentile=CONSERVATIVE_PERCENTILE
+)
+
+# Compute std per effective_n bin for fitting (using betweenness for conservative)
+std_bins_ang = np.array([0, 10, 25, 50, 75, 100, 150, 200, 300, 400, 600, 1000])
+bin_centers_ang = []
+bin_stds_ang = []
+for i in range(len(std_bins_ang) - 1):
+    lo, hi = std_bins_ang[i], std_bins_ang[i + 1]
+    subset = betweenness_data_angular[
+        (betweenness_data_angular["effective_n"] >= lo) & (betweenness_data_angular["effective_n"] < hi)
+    ]
+    if len(subset) > 10:
+        bin_centers_ang.append((lo + hi) / 2)
+        bin_stds_ang.append(subset["spearman"].std())
+
+bin_centers_ang = np.array(bin_centers_ang)
+bin_stds_ang = np.array(bin_stds_ang)
+
+# Fit std model for angular
+try:
+    std_params_ang, _ = scipy_optimize.curve_fit(std_model, bin_centers_ang, bin_stds_ang, p0=[1, 10], maxfev=5000)
+    std_c_angular, std_d_angular = std_params_ang
+    std_pred_ang = std_model(bin_centers_ang, std_c_angular, std_d_angular)
+    std_rmse_angular = np.sqrt(np.mean((bin_stds_ang - std_pred_ang) ** 2))
+    print(f"\nAngular std model (betweenness): std = {std_c_angular:.3f} / sqrt({std_d_angular:.2f} + eff_n)")
+    print(f"  RMSE: {std_rmse_angular:.4f}")
+except Exception as e:
+    print(f"  Warning: Could not fit angular std model: {e}")
+    std_c_angular, std_d_angular, std_rmse_angular = 0.907, 10.06, None  # Fallback
+
+# Fit bias model for angular
+all_eff_n_ang = sampled_angular["effective_n"].values
+all_scale_ang = sampled_angular["scale_ratio"].values
+bias_mask_ang = (all_eff_n_ang > 0) & np.isfinite(all_scale_ang) & (all_scale_ang > 0)
+eff_n_bias_ang = all_eff_n_ang[bias_mask_ang]
+scale_bias_ang = all_scale_ang[bias_mask_ang]
+
+try:
+    bias_params_ang, _ = scipy_optimize.curve_fit(bias_model, eff_n_bias_ang, scale_bias_ang, p0=[0.5, 0], maxfev=5000)
+    bias_e_angular, bias_f_angular = bias_params_ang
+    bias_pred_ang = bias_model(eff_n_bias_ang, bias_e_angular, bias_f_angular)
+    bias_rmse_angular = np.sqrt(np.mean((scale_bias_ang - bias_pred_ang) ** 2))
+    print(f"\nAngular bias model: scale = 1 - {bias_e_angular:.2f} / ({bias_f_angular:.2f} + eff_n)")
+    print(f"  RMSE: {bias_rmse_angular:.4f}")
+except Exception as e:
+    print(f"  Warning: Could not fit angular bias model: {e}")
+    bias_e_angular, bias_f_angular, bias_rmse_angular = 0.46, -0.13, None  # Fallback
+
+# Print model comparison for angular
+print("\n" + "=" * 70)
+print("MODEL COMPARISON: Harmonic vs Betweenness (Angular, 10th percentile)")
+print("=" * 70)
+print(f"{'eff_n':>8} | {'Harmonic ρ':>12} | {'Betweenness ρ':>14} | {'Diff':>8}")
+print("-" * 50)
+for n in [10, 25, 50, 100, 200, 400, 800]:
+    pred_harmonic_ang = rho_model(n, harmonic_a_angular, harmonic_b_angular)
+    pred_between_ang = rho_model(n, betweenness_a_angular, betweenness_b_angular)
+    diff_ang = pred_harmonic_ang - pred_between_ang
+    print(f"{n:>8} | {pred_harmonic_ang:>12.3f} | {pred_between_ang:>14.3f} | {diff_ang:>+8.3f}")
+
+# Print required effective_n for various target rho values (angular)
+print("\n" + "=" * 70)
+print("REQUIRED EFFECTIVE_N FOR TARGET ACCURACY (ANGULAR)")
+print("=" * 70)
+print(f"{'Target ρ':>10} | {'Harmonic eff_n':>15} | {'Betweenness eff_n':>18}")
+print("-" * 50)
+for target in [0.90, 0.95, 0.96, 0.97, 0.98, 0.99]:
+    req_harmonic_ang = harmonic_a_angular / (1 - target) - harmonic_b_angular
+    req_between_ang = betweenness_a_angular / (1 - target) - betweenness_b_angular
+    print(f"{target:>10.2f} | {req_harmonic_ang:>15.0f} | {req_between_ang:>18.0f}")
+
+
 # Save model constants to JSON for syncing to config.py
-# Include both metric-specific and combined conservative models
+# Include both metric-specific and combined conservative models for BOTH distance types
 model_constants = {
     "generated": datetime.now().isoformat(timespec="seconds"),
     "conservative_percentile": CONSERVATIVE_PERCENTILE,
+    # === SHORTEST (metric) distance models ===
+    "shortest": {
+        "data_points": {
+            "harmonic": len(harmonic_data),
+            "betweenness": len(betweenness_data),
+        },
+        "harmonic_model": {
+            "formula": "rho = 1 - A / (B + eff_n)",
+            "A": round(harmonic_a, 2),
+            "B": round(harmonic_b, 2),
+            "rmse": round(harmonic_rmse, 4),
+            "note": f"Fitted to {CONSERVATIVE_PERCENTILE}th percentile for conservative estimates",
+        },
+        "betweenness_model": {
+            "formula": "rho = 1 - A / (B + eff_n)",
+            "A": round(betweenness_a, 2),
+            "B": round(betweenness_b, 2),
+            "rmse": round(betweenness_rmse, 4),
+            "note": f"Fitted to {CONSERVATIVE_PERCENTILE}th percentile for conservative estimates",
+        },
+        "std_model": {
+            "formula": "std = C / sqrt(D + eff_n)",
+            "C": round(std_c, 3),
+            "D": round(std_d, 2),
+            "rmse": round(std_rmse, 4) if "std_rmse" in dir() else None,
+        },
+        "bias_model": {
+            "formula": "scale = 1 - E / (F + eff_n)",
+            "E": round(bias_e, 2),
+            "F": round(bias_f, 2),
+            "rmse": round(bias_rmse, 4) if bias_rmse is not None else None,
+        },
+    },
+    # === ANGULAR (simplest) distance models ===
+    "angular": {
+        "data_points": {
+            "harmonic": len(harmonic_data_angular),
+            "betweenness": len(betweenness_data_angular),
+        },
+        "harmonic_model": {
+            "formula": "rho = 1 - A / (B + eff_n)",
+            "A": round(harmonic_a_angular, 2),
+            "B": round(harmonic_b_angular, 2),
+            "rmse": round(harmonic_rmse_angular, 4),
+            "note": f"Fitted to {CONSERVATIVE_PERCENTILE}th percentile for conservative estimates",
+        },
+        "betweenness_model": {
+            "formula": "rho = 1 - A / (B + eff_n)",
+            "A": round(betweenness_a_angular, 2),
+            "B": round(betweenness_b_angular, 2),
+            "rmse": round(betweenness_rmse_angular, 4),
+            "note": f"Fitted to {CONSERVATIVE_PERCENTILE}th percentile for conservative estimates",
+        },
+        "std_model": {
+            "formula": "std = C / sqrt(D + eff_n)",
+            "C": round(std_c_angular, 3),
+            "D": round(std_d_angular, 2),
+            "rmse": round(std_rmse_angular, 4) if std_rmse_angular is not None else None,
+        },
+        "bias_model": {
+            "formula": "scale = 1 - E / (F + eff_n)",
+            "E": round(bias_e_angular, 2),
+            "F": round(bias_f_angular, 2),
+            "rmse": round(bias_rmse_angular, 4) if bias_rmse_angular is not None else None,
+        },
+    },
+    # === Legacy format (for backward compatibility) - uses shortest betweenness ===
     "data_points": {
         "harmonic": len(harmonic_data),
         "betweenness": len(betweenness_data),
@@ -824,9 +1276,63 @@ with open(constants_path, "w") as f:
     json.dump(model_constants, f, indent=2)
 print(f"\nModel constants saved to: {constants_path}")
 
-# %% Figure 2a: Required Sampling Probability (Model-Based)
+# %% Generate Model Parameters LaTeX Table
 print("\n" + "=" * 70)
-print("FIGURE 2a: Required Sampling Probability by Reachability (Model-Based)")
+print("GENERATING MODEL PARAMETERS TABLE")
+print("=" * 70)
+
+
+def required_eff_n(a, b_param, target):
+    """Calculate required effective_n for target rho."""
+    return a / (1 - target) - b_param
+
+
+# Shortest path models
+sh = model_constants["shortest"]["harmonic_model"]
+sb = model_constants["shortest"]["betweenness_model"]
+sh_95 = required_eff_n(sh["A"], sh["B"], 0.95)
+sh_99 = required_eff_n(sh["A"], sh["B"], 0.99)
+sb_95 = required_eff_n(sb["A"], sb["B"], 0.95)
+sb_99 = required_eff_n(sb["A"], sb["B"], 0.99)
+
+# Angular models
+ah = model_constants["angular"]["harmonic_model"]
+ab = model_constants["angular"]["betweenness_model"]
+ah_95 = required_eff_n(ah["A"], ah["B"], 0.95)
+ah_99 = required_eff_n(ah["A"], ah["B"], 0.99)
+ab_95 = required_eff_n(ab["A"], ab["B"], 0.95)
+ab_99 = required_eff_n(ab["A"], ab["B"], 0.99)
+
+model_params_tex = rf"""% Auto-generated table: Model Parameters
+% Generated by sampling_reach.py on {datetime.now().isoformat(timespec="seconds")}
+% DO NOT EDIT MANUALLY - regenerate with: python sampling_reach.py
+
+\begin{{table}}[htbp]
+\centering
+\caption{{Fitted model parameters for predicting Spearman $\rho$ from effective sample size ($\rho = 1 - A/(B + \effn)$). Models fitted to 10th percentile for conservative estimates. Shortest path models apply to metric distance functions; angular models apply to simplest path (angular) distance functions.}}
+\label{{tab:model_parameters}}
+\begin{{tabular}}{{llrrrrr}}
+\toprule
+Distance & Metric & $A$ & $B$ & RMSE & $\effn$ for $\rho=0.95$ & $\effn$ for $\rho=0.99$ \\
+\midrule
+Shortest & Harmonic & {sh["A"]:.2f} & {sh["B"]:.2f} & {sh["rmse"]:.3f} & {sh_95:.0f} & {sh_99:.0f} \\
+Shortest & Betweenness & {sb["A"]:.2f} & {sb["B"]:.2f} & {sb["rmse"]:.3f} & {sb_95:.0f} & {sb_99:.0f} \\
+\midrule
+Angular & Harmonic & {ah["A"]:.2f} & {ah["B"]:.2f} & {ah["rmse"]:.3f} & {ah_95:.0f} & {ah_99:.0f} \\
+Angular & Betweenness & {ab["A"]:.2f} & {ab["B"]:.2f} & {ab["rmse"]:.3f} & {ab_95:.0f} & {ab_99:.0f} \\
+\bottomrule
+\end{{tabular}}
+\end{{table}}
+"""
+
+model_params_path = TABLES_DIR / "model_parameters.tex"
+with open(model_params_path, "w") as f:
+    f.write(model_params_tex)
+print(f"Saved: {model_params_path}")
+
+# %% Figure 2a: Required Sampling Probability (SHORTEST distances)
+print("\n" + "=" * 70)
+print("FIGURE 2a: Required Sampling Probability by Reachability (SHORTEST)")
 print("=" * 70)
 
 # Plot A: Given a target Spearman, what p do you need at different reachabilities?
@@ -886,13 +1392,67 @@ for title, a, b, ax in models:
     ax.set_title(f"{title}\nModel: ρ = 1 - {a:.1f}/({b:.1f} + reach×p)", fontsize=11)
 
 fig.suptitle(
-    "Required Sampling Probability to Achieve Target Ranking Accuracy\n(Conservative 10th percentile models)",
+    "SHORTEST Path: Required Sampling Probability\n(Conservative 10th percentile models)",
     fontsize=13,
     fontweight="bold",
 )
 plt.tight_layout()
-plt.savefig(OUTPUT_DIR / "sampling_probability.png", dpi=150, bbox_inches="tight")
-print(f"Saved: {OUTPUT_DIR / 'sampling_probability.png'}")
+plt.savefig(FIGURES_DIR / "required_probability_shortest.pdf", dpi=300, bbox_inches="tight")
+print(f"Saved: {FIGURES_DIR / 'required_probability_shortest.pdf'}")
+
+# %% Figure 2d: Required Sampling Probability (ANGULAR distances)
+print("\n" + "=" * 70)
+print("FIGURE 2d: Required Sampling Probability by Reachability (ANGULAR)")
+print("=" * 70)
+
+fig, axes = plt.subplots(1, 2, figsize=(14, 6))
+
+# For angular models
+max_eff_n_harmonic_ang = harmonic_a_angular / (1 - 0.99) - harmonic_b_angular
+max_eff_n_betweenness_ang = betweenness_a_angular / (1 - 0.99) - betweenness_b_angular
+
+x_max_ang = max(max_eff_n_harmonic_ang, max_eff_n_betweenness_ang) * 1.5
+reach_range_ang = np.linspace(50, x_max_ang, 200)
+
+models_ang = [
+    ("Harmonic (Closeness)", harmonic_a_angular, harmonic_b_angular, axes[0]),
+    ("Betweenness", betweenness_a_angular, betweenness_b_angular, axes[1]),
+]
+
+for title, a, b, ax in models_ang:
+    for target_rho in spearman_targets:
+        # Calculate required effective_n from model
+        required_eff_n = a / (1 - target_rho) - b
+        # Calculate required p for each reachability
+        required_p = required_eff_n / reach_range_ang
+        # Clip to valid probability range [0, 1]
+        required_p = np.clip(required_p, 0, 1)
+
+        ax.plot(
+            reach_range_ang,
+            required_p,
+            "-",
+            linewidth=2.5,
+            label=f"ρ ≥ {target_rho} (eff_n ≥ {required_eff_n:.0f})",
+            color=target_colors[str(target_rho)],
+        )
+
+    ax.set_xlabel("Mean Reachability", fontsize=12)
+    ax.set_ylabel("Required Sampling Probability (p)", fontsize=12)
+    ax.set_ylim(0, 1.05)
+    ax.set_xlim(0, x_max_ang)
+    ax.legend(loc="lower left", title="Target Spearman ρ", fontsize=9)
+    ax.grid(True, alpha=0.3)
+    ax.set_title(f"{title}\nModel: ρ = 1 - {a:.1f}/({b:.1f} + reach×p)", fontsize=11)
+
+fig.suptitle(
+    "ANGULAR Path: Required Sampling Probability\n(Conservative 10th percentile models)",
+    fontsize=13,
+    fontweight="bold",
+)
+plt.tight_layout()
+plt.savefig(FIGURES_DIR / "required_probability_angular.pdf", dpi=300, bbox_inches="tight")
+print(f"Saved: {FIGURES_DIR / 'required_probability_angular.pdf'}")
 
 # %% Generate README
 print("\n" + "=" * 70)
@@ -1147,10 +1707,10 @@ when computing both metrics together.
 
 ---
 
-*Generated by `sampling_analysis.py` — Run `poe sync_sampling_constants` to update config.py*
+*Generated by `sampling_reach.py` — Run `poe sync_sampling_constants` to update config.py*
 """
 
-results_md_path = SCRIPT_DIR / "sampling_analysis_results.md"
+results_md_path = SCRIPT_DIR / "sampling_reach_results.md"
 with open(results_md_path, "w") as f:
     f.write(readme_content)
 
@@ -1192,7 +1752,7 @@ PRACTICAL GUIDANCE:
 
 OUTPUT FILES:
 
-  - sampling_analysis_results.md: Full documentation with figures
+  - sampling_reach_results.md: Full documentation with figures
   - output/sampling_accuracy.png: Main results figure
   - output/sampling_probability.png: Required sampling probability curves
   - output/sampling_model_constants.json: Model parameters for config.py

@@ -1,0 +1,111 @@
+% Empirical Models section
+
+\subsection{Model Form}
+
+Based on the experimental data, we fit empirical models predicting accuracy from effective sample size. We use a hyperbolic model form:
+\begin{equation}
+    \rhosp = 1 - \frac{A}{B + \effn}
+    \label{eq:rho_model}
+\end{equation}
+
+This form has desirable properties:
+\begin{itemize}
+    \item Approaches 1.0 as $\effn \to \infty$ (perfect accuracy with infinite samples)
+    \item Bounded below (accuracy cannot be negative)
+    \item Captures diminishing returns at high $\effn$
+\end{itemize}
+
+\subsection{Fitting Procedure}
+
+We fit separate models for harmonic closeness and betweenness centrality, as initial analysis revealed different variance characteristics between the metrics. We also fit separate models for shortest path (metric) distances and simplest path (angular) distances, as these distance heuristics exhibit different accuracy characteristics.
+
+To provide \emph{conservative} estimates suitable for practical use, we fit to the 10th percentile of observed accuracy within effective sample size bins, rather than the mean. This ensures that the model predictions represent a lower bound on expected accuracy, accounting for topology-dependent variation.
+
+\subsection{Fitted Model Parameters}
+
+% Auto-generated table
+\input{tables/model_parameters}
+
+The results reveal several key differences between metrics and distance heuristics:
+
+\subsubsection{Metric Differences}
+The betweenness model has larger coefficients than harmonic closeness, reflecting higher variance and the need for more samples to achieve equivalent accuracy. This is consistent across both distance types.
+
+\subsubsection{Distance Heuristic Differences}
+Angular (simplest path) distances show markedly different behaviour from shortest path distances:
+\begin{itemize}
+    \item \textbf{Angular harmonic closeness} converges faster than shortest-path harmonic, requiring only $\effn \geq 321$ for $\rhosp = 0.95$ compared to $\effn \geq 615$ for shortest paths---approximately half the samples
+    \item \textbf{Angular betweenness} exhibits higher variance than shortest-path betweenness, requiring $\effn \geq 1168$ for $\rhosp = 0.95$ compared to $\effn \geq 917$---approximately 27\% more samples
+\end{itemize}
+
+This difference reflects the nature of angular distance computation: angular paths preferentially follow straight routes, concentrating betweenness on fewer ``through-movement'' corridors. This increases variance in betweenness estimates (high values are more sensitive to sampling), while angular closeness benefits from the smoother accumulation of inverse distances along fewer candidate paths.
+
+\subsection{Additional Models}
+
+We also fit models for uncertainty (standard deviation) and magnitude bias:
+
+\subsubsection{Standard Deviation Model}
+\begin{equation}
+    \sigma = \frac{C}{\sqrt{D + \effn}}
+\end{equation}
+
+This captures the expected $1/\sqrt{n}$ convergence rate from sampling theory.
+
+\subsubsection{Magnitude Bias Model}
+\begin{equation}
+    \text{scale} = 1 - \frac{E}{F + \effn}
+\end{equation}
+
+This captures the observed tendency for sampling to underestimate magnitudes at low $\effn$.
+
+\subsection{Model Validation}
+
+Figures~\ref{fig:accuracy_vs_effn_shortest} and~\ref{fig:accuracy_vs_effn_angular} show observed accuracy versus effective sample size for shortest and angular distances, respectively. The models capture the central tendency well across all configurations.
+
+% Auto-generated figure - Shortest path distances
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\textwidth]{figures/accuracy_vs_effn_shortest.pdf}
+    \caption{Observed Spearman $\rho$ versus effective sample size for \textbf{shortest path} (metric) distances. Left: harmonic closeness. Right: betweenness. Points are coloured by network topology. Solid lines show fitted models (10th percentile). Dashed horizontal lines indicate common accuracy targets.}
+    \label{fig:accuracy_vs_effn_shortest}
+\end{figure}
+
+% Auto-generated figure - Angular distances
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\textwidth]{figures/accuracy_vs_effn_angular.pdf}
+    \caption{Observed Spearman $\rho$ versus effective sample size for \textbf{angular} (simplest path) distances. Left: harmonic closeness. Right: betweenness. Note the faster convergence for harmonic closeness and higher variance for betweenness compared to shortest path distances (Figure~\ref{fig:accuracy_vs_effn_shortest}).}
+    \label{fig:accuracy_vs_effn_angular}
+\end{figure}
+
+\subsection{Inverting the Model}
+
+For practical use, we need to compute the required effective sample size for a target accuracy level. Inverting Equation~\ref{eq:rho_model}:
+\begin{equation}
+    \effn^* = \frac{A}{1 - \rhosp^*} - B
+    \label{eq:required_effn}
+\end{equation}
+
+Given target $\rhosp^*$ and observed reachability $\bar{R}$, the required sampling probability is:
+\begin{equation}
+    p^* = \frac{\effn^*}{\bar{R}} = \frac{1}{\bar{R}} \left( \frac{A}{1 - \rhosp^*} - B \right)
+    \label{eq:required_p}
+\end{equation}
+
+Figures~\ref{fig:required_probability_shortest} and~\ref{fig:required_probability_angular} show the required sampling probability for various target accuracy levels as a function of network reachability, for shortest and angular distances respectively.
+
+% Auto-generated figure - Shortest path
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\textwidth]{figures/required_probability_shortest.pdf}
+    \caption{Required sampling probability for \textbf{shortest path} distances to achieve target accuracy levels ($\rho = 0.90, 0.95, 0.97, 0.99$) as a function of mean network reachability. Based on the betweenness (conservative) model.}
+    \label{fig:required_probability_shortest}
+\end{figure}
+
+% Auto-generated figure - Angular
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\textwidth]{figures/required_probability_angular.pdf}
+    \caption{Required sampling probability for \textbf{angular} (simplest path) distances to achieve target accuracy levels. The angular betweenness model requires higher sampling probabilities than shortest-path betweenness due to the increased variance from angular path concentration.}
+    \label{fig:required_probability_angular}
+\end{figure}

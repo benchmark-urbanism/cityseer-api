@@ -570,7 +570,7 @@ def _run_adaptive_centrality(
     speed_m_s: float,
     jitter_scale: float,
     random_seed: int | None,
-    n_probes: int,
+    probe_density: float,
     # simplest-only params
     angular_scaling_unit: float | None = None,
     farness_scaling_offset: float | None = None,
@@ -590,15 +590,24 @@ def _run_adaptive_centrality(
     else:
         metric = "harmonic"
 
+    # Determine distance type for model selection
+    distance_type = "angular" if centrality_func == "simplest" else "shortest"
+
     # 1. Probe reachability
-    logger.info(f"Probing reachability ({n_probes} samples)...")
-    reach_estimates = config.probe_reachability(network_structure, distances, n_probes=n_probes, speed_m_s=speed_m_s)
+    logger.info(f"Probing reachability ({probe_density} probes/km²)...")
+    reach_estimates = config.probe_reachability(
+        network_structure, distances, probe_density=probe_density, speed_m_s=speed_m_s
+    )
 
     # 2. Compute sampling probabilities using appropriate metric model
-    sample_probs = config.compute_sample_probs_for_target_rho(reach_estimates, target_rho, metric=metric)
+    sample_probs = config.compute_sample_probs_for_target_rho(
+        reach_estimates, target_rho, metric=metric, distance_type=distance_type
+    )
 
     # 3. Log the plan
-    config.log_adaptive_sampling_plan(distances, reach_estimates, sample_probs, target_rho, metric=metric)
+    config.log_adaptive_sampling_plan(
+        distances, reach_estimates, sample_probs, target_rho, metric=metric, distance_type=distance_type
+    )
 
     # 4. Run per-distance
     logger.info("Running per-distance centrality...")
@@ -649,7 +658,7 @@ def _run_adaptive_centrality(
             total_reach = result.reachability_totals[0] if result.reachability_totals else 0
             mean_reach = total_reach / result.sampled_source_count
             eff_n = mean_reach * effective_p
-            exp_rho, _ = config.get_expected_spearman(eff_n, metric=metric)
+            exp_rho, _ = config.get_expected_spearman(eff_n, metric=metric, distance_type=distance_type)
             logger.info(f"    actual: reach={mean_reach:.0f}, eff_n={eff_n:.0f}, expected ρ={exp_rho:.2f}")
 
     # 5. Merge results into GeoDataFrame
@@ -713,7 +722,7 @@ def node_centrality_shortest_adaptive(
     speed_m_s: float = SPEED_M_S,
     jitter_scale: float = 0.0,
     random_seed: int | None = None,
-    n_probes: int = 50,
+    probe_density: float = config.DEFAULT_PROBE_DENSITY,
 ) -> gpd.GeoDataFrame:
     """
     Compute shortest-path node centrality with per-distance adaptive sampling.
@@ -752,8 +761,8 @@ def node_centrality_shortest_adaptive(
         Scale of random jitter for path calculations.
     random_seed
         Optional seed for reproducible sampling.
-    n_probes
-        Number of nodes to probe for reachability estimation. Default 50.
+    probe_density
+        Number of probes per km² for reachability estimation. Default 4.0.
 
     Returns
     -------
@@ -789,7 +798,7 @@ def node_centrality_shortest_adaptive(
         speed_m_s=speed_m_s,
         jitter_scale=jitter_scale,
         random_seed=random_seed,
-        n_probes=n_probes,
+        probe_density=probe_density,
     )
 
 
@@ -806,7 +815,7 @@ def node_centrality_simplest_adaptive(
     farness_scaling_offset: float = 1,
     jitter_scale: float = 0.0,
     random_seed: int | None = None,
-    n_probes: int = 50,
+    probe_density: float = config.DEFAULT_PROBE_DENSITY,
 ) -> gpd.GeoDataFrame:
     """
     Compute simplest-path (angular) node centrality with per-distance adaptive sampling.
@@ -842,8 +851,8 @@ def node_centrality_simplest_adaptive(
         Scale of random jitter for path calculations.
     random_seed
         Optional seed for reproducible sampling.
-    n_probes
-        Number of nodes to probe for reachability estimation. Default 50.
+    probe_density
+        Number of probes per km² for reachability estimation. Default 4.0.
 
     Returns
     -------
@@ -867,7 +876,7 @@ def node_centrality_simplest_adaptive(
         speed_m_s=speed_m_s,
         jitter_scale=jitter_scale,
         random_seed=random_seed,
-        n_probes=n_probes,
+        probe_density=probe_density,
         angular_scaling_unit=angular_scaling_unit,
         farness_scaling_offset=farness_scaling_offset,
     )

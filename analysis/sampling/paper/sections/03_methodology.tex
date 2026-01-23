@@ -1,0 +1,124 @@
+% Methodology section
+
+\subsection{Experimental Design}
+
+We conduct experiments on both synthetic and real-world networks to understand the relationship between sampling parameters and accuracy.
+
+\subsubsection{Synthetic Networks}
+
+We generate three synthetic network topologies representing archetypal urban forms (Figure~\ref{fig:topologies}):
+
+\begin{itemize}
+    \item \textbf{Trellis}: Dense grid-like networks characteristic of urban cores with high connectivity
+    \item \textbf{Tree}: Branching dendritic networks characteristic of suburban areas with hierarchical structure
+    \item \textbf{Linear}: Corridor networks characteristic of transit routes with low transverse connectivity
+\end{itemize}
+
+Each network is generated as a $3 \times 3$ tile pattern with approximately 2940m network extent.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\textwidth]{figures/topologies.pdf}
+    \caption{Synthetic network topologies representing archetypal urban forms: trellis (dense grid), tree (dendritic/suburban), and linear (corridor). Each topology is generated as a $3 \times 3$ tile pattern.}
+    \label{fig:topologies}
+\end{figure}
+
+\subsubsection{Real-World Networks}
+
+We validate on street networks downloaded from OpenStreetMap representing diverse urban forms:
+\begin{itemize}
+    \item \textbf{London (Soho)}: Dense, irregular historical street pattern
+    \item \textbf{Madrid (Centro)}: Mediterranean grid with radial elements
+    \item \textbf{Phoenix (Scottsdale)}: American suburban sprawl with cul-de-sacs and low connectivity
+\end{itemize}
+
+Networks are extracted using the \cityseer{} library with automatic simplification and cleaning. The network structures are visible in Figure~\ref{fig:residual_maps}, which shows the spatial distribution of nodes for each city.
+
+\subsection{Centrality Computation}
+
+We compute two localised centrality measures:
+
+\begin{enumerate}
+    \item \textbf{Harmonic closeness}: Sum of inverse distances to nodes within threshold
+    \item \textbf{Betweenness}: Count of shortest paths through each node, restricted to source-target pairs within threshold
+\end{enumerate}
+
+\subsubsection{Distance Heuristics}
+
+Both metrics can be computed using different distance heuristics:
+
+\begin{itemize}
+    \item \textbf{Shortest path (metric)}: Traditional distance-minimising paths using physical edge lengths. This captures accessibility based on travel distance.
+    \item \textbf{Simplest path (angular)}: Paths that minimise cumulative angular change at intersections. Following \citet{Turner2007}, we compute angular change at each turn and accumulate a cost proportional to the deviation from straight-ahead travel. This captures movement patterns that favour ``legible'' routes requiring fewer direction changes.
+\end{itemize}
+
+The angular heuristic aligns with space syntax's emphasis on cognitive aspects of navigation, while shortest paths align with traditional transport accessibility. We fit separate empirical models for each heuristic, as they exhibit different variance characteristics.
+
+Implementation uses Dijkstra's algorithm with distance-bounded search, implemented in Rust for performance.
+
+\subsection{Accuracy Metrics}
+
+We evaluate accuracy along two dimensions:
+
+\subsubsection{Ranking Accuracy (Spearman $\rho$)}
+
+The primary accuracy metric is Spearman's rank correlation coefficient between true (full computation) and estimated (sampled) centrality values:
+\begin{equation}
+    \rhosp = 1 - \frac{6 \sum_i (r_i - \hat{r}_i)^2}{n(n^2 - 1)}
+\end{equation}
+where $r_i$ and $\hat{r}_i$ are the ranks of node $i$ under true and estimated centrality. A value of $\rhosp = 1$ indicates perfect ranking preservation.
+
+Ranking accuracy is the most important metric for typical urban analysis applications, where researchers identify ``high centrality'' or ``low centrality'' locations rather than interpreting absolute values.
+
+\subsubsection{Magnitude Accuracy (Scale Ratio)}
+
+We also measure the scale ratio between estimated and true values:
+\begin{equation}
+    \text{scale} = \text{median}\left(\frac{\hat{C}(v)}{C(v)}\right)
+\end{equation}
+
+A scale ratio of 1.0 indicates no systematic bias. Values below 1.0 indicate underestimation.
+
+\subsection{Effective Sample Size}
+
+The key insight motivating our approach is that accuracy depends on \emph{effective sample size}:
+\begin{equation}
+    \effn = \bar{R} \times p
+    \label{eq:effective_n}
+\end{equation}
+where $\bar{R}$ is the mean reachability (average number of nodes reachable within the distance threshold) and $p$ is the sampling probability.
+
+Equation~\ref{eq:effective_n} captures the intuition that each node's centrality estimate is derived from contributions by approximately $\effn$ sampled source nodes. When $\effn$ is small, estimates have high variance; when $\effn$ is large, estimates are reliable.
+
+Table~\ref{tab:effn_lookup} provides a lookup showing $\effn$ for various combinations of reachability and sampling probability. The highlighted cells indicate configurations achieving $\effn \geq 400$, which corresponds to $\rhosp \approx 0.90$ for betweenness centrality (shortest path).
+
+\begin{table}[htbp]
+\centering
+\caption{Effective sample size ($\effn = \bar{R} \times p$) for various reachability and sampling probability combinations. Bold values indicate $\effn \geq 400$, yielding $\rhosp \geq 0.90$.}
+\label{tab:effn_lookup}
+\begin{tabular}{r|rrrrr}
+\toprule
+Reachability & $p=10\%$ & $p=20\%$ & $p=30\%$ & $p=40\%$ & $p=50\%$ \\
+\midrule
+100 & 10 & 20 & 30 & 40 & 50 \\
+200 & 20 & 40 & 60 & 80 & 100 \\
+400 & 40 & 80 & 120 & 160 & 200 \\
+800 & 80 & 160 & 240 & 320 & \textbf{400} \\
+1000 & 100 & 200 & 300 & \textbf{400} & \textbf{500} \\
+2000 & 200 & \textbf{400} & \textbf{600} & \textbf{800} & \textbf{1000} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Experimental Parameters}
+
+% Auto-generated from analysis
+\input{tables/experimental_parameters}
+
+For each configuration (topology $\times$ distance $\times$ probability), we run 20 independent trials with different random seeds to estimate variance.
+
+\subsection{Correctness Verification}
+
+Before analysing sampling effects, we verify that \cityseer{}'s centrality implementation matches NetworkX (the reference implementation). All metrics pass verification with maximum differences below $10^{-6}$:
+
+\input{tables/correctness_verification}

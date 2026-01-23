@@ -1,0 +1,105 @@
+{
+  "generated": "2026-01-23T23:03:51",
+  "conservative_percentile": 10,
+  "shortest": {
+    "data_points": {
+      "harmonic": 533,
+      "betweenness": 533
+    },
+    "harmonic_model": {
+      "formula": "rho = 1 - A / (B + eff_n)",
+      "A": 32.3,
+      "B": 31.45,
+      "rmse": 0.0409,
+      "note": "Fitted to 10th percentile for conservative estimates"
+    },
+    "betweenness_model": {
+      "formula": "rho = 1 - A / (B + eff_n)",
+      "A": 48.31,
+      "B": 49.12,
+      "rmse": 0.0491,
+      "note": "Fitted to 10th percentile for conservative estimates"
+    },
+    "std_model": {
+      "formula": "std = C / sqrt(D + eff_n)",
+      "C": 1.166,
+      "D": 14.01,
+      "rmse": 0.0337
+    },
+    "bias_model": {
+      "formula": "scale = 1 - E / (F + eff_n)",
+      "E": 0.46,
+      "F": -0.13,
+      "rmse": 0.0672
+    }
+  },
+  "angular": {
+    "data_points": {
+      "harmonic": 533,
+      "betweenness": 533
+    },
+    "harmonic_model": {
+      "formula": "rho = 1 - A / (B + eff_n)",
+      "A": 16.87,
+      "B": 16.13,
+      "rmse": 0.0302,
+      "note": "Fitted to 10th percentile for conservative estimates"
+    },
+    "betweenness_model": {
+      "formula": "rho = 1 - A / (B + eff_n)",
+      "A": 61.46,
+      "B": 61.36,
+      "rmse": 0.0464,
+      "note": "Fitted to 10th percentile for conservative estimates"
+    },
+    "std_model": {
+      "formula": "std = C / sqrt(D + eff_n)",
+      "C": 1.416,
+      "D": 20.76,
+      "rmse": 0.0341
+    },
+    "bias_model": {
+      "formula": "scale = 1 - E / (F + eff_n)",
+      "E": 0.33,
+      "F": -0.24,
+      "rmse": 0.0681
+    }
+  },
+  "data_points": {
+    "harmonic": 533,
+    "betweenness": 533
+  },
+  "harmonic_model": {
+    "formula": "rho = 1 - A / (B + eff_n)",
+    "A": 32.3,
+    "B": 31.45,
+    "rmse": 0.0409,
+    "note": "Fitted to 10th percentile for conservative estimates"
+  },
+  "betweenness_model": {
+    "formula": "rho = 1 - A / (B + eff_n)",
+    "A": 48.31,
+    "B": 49.12,
+    "rmse": 0.0491,
+    "note": "Fitted to 10th percentile for conservative estimates"
+  },
+  "rho_model": {
+    "formula": "rho = 1 - A / (B + eff_n)",
+    "A": 48.31,
+    "B": 49.12,
+    "rmse": 0.0491,
+    "note": "Uses betweenness conservative model (higher variance metric)"
+  },
+  "std_model": {
+    "formula": "std = C / sqrt(D + eff_n)",
+    "C": 1.166,
+    "D": 14.01,
+    "rmse": 0.0337
+  },
+  "bias_model": {
+    "formula": "scale = 1 - E / (F + eff_n)",
+    "E": 0.46,
+    "F": -0.13,
+    "rmse": 0.0672
+  }
+}

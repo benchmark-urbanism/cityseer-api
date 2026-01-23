@@ -75,24 +75,41 @@ RTOL: float = 0.0001
 # Model for standard deviation: std = C / sqrt(D + eff_n)
 # Model for expected scale (magnitude bias): scale = 1 - E / (F + eff_n)
 
+# === SHORTEST (metric) distance models ===
+# Generated from analysis/sampling_analysis.py on 2026-01-23
 # Harmonic (closeness) model - lower variance, more permissive
-SAMPLING_MODEL_HARMONIC_A: float = 32.4
-SAMPLING_MODEL_HARMONIC_B: float = 31.54
+SAMPLING_MODEL_SHORTEST_HARMONIC_A: float = 32.3
+SAMPLING_MODEL_SHORTEST_HARMONIC_B: float = 31.45
 
 # Betweenness model - higher variance, more conservative (used as default)
-SAMPLING_MODEL_BETWEENNESS_A: float = 48.31
-SAMPLING_MODEL_BETWEENNESS_B: float = 49.12
+SAMPLING_MODEL_SHORTEST_BETWEENNESS_A: float = 48.31
+SAMPLING_MODEL_SHORTEST_BETWEENNESS_B: float = 49.12
 
 # Additional models for std deviation and bias estimation
-SAMPLING_MODEL_STD_C: float = 1.166  # Numerator coefficient for std model
-SAMPLING_MODEL_STD_D: float = 14.01  # Denominator offset for std model
-SAMPLING_MODEL_BIAS_E: float = 0.46  # Numerator coefficient for bias model
-SAMPLING_MODEL_BIAS_F: float = -0.13  # Denominator offset for bias model
+SAMPLING_MODEL_SHORTEST_STD_C: float = 1.166  # Numerator coefficient for std model
+SAMPLING_MODEL_SHORTEST_STD_D: float = 14.01  # Denominator offset for std model
+SAMPLING_MODEL_SHORTEST_BIAS_E: float = 0.46  # Numerator coefficient for bias model
+SAMPLING_MODEL_SHORTEST_BIAS_F: float = -0.13  # Denominator offset for bias model
+
+# === ANGULAR (simplest) distance models ===
+# Generated from analysis/sampling_analysis.py on 2026-01-23
+# Angular paths show different accuracy characteristics vs shortest paths
+SAMPLING_MODEL_ANGULAR_HARMONIC_A: float = 16.87
+SAMPLING_MODEL_ANGULAR_HARMONIC_B: float = 16.13
+
+SAMPLING_MODEL_ANGULAR_BETWEENNESS_A: float = 61.46
+SAMPLING_MODEL_ANGULAR_BETWEENNESS_B: float = 61.36
+
+SAMPLING_MODEL_ANGULAR_STD_C: float = 1.416
+SAMPLING_MODEL_ANGULAR_STD_D: float = 20.76
+SAMPLING_MODEL_ANGULAR_BIAS_E: float = 0.33
+SAMPLING_MODEL_ANGULAR_BIAS_F: float = -0.24
 
 
 def get_expected_spearman(
     effective_n: float,
     metric: str = "betweenness",
+    distance_type: str = "shortest",
 ) -> tuple[float, float]:
     """
     Get expected Spearman ρ and standard deviation for given effective sample size.
@@ -109,6 +126,9 @@ def get_expected_spearman(
         Which metric model to use: "harmonic", "betweenness", or "both".
         Use "both" when computing both metrics together (uses betweenness/conservative).
         Default "betweenness" for backward compatibility.
+    distance_type : str
+        Which distance type model to use: "shortest" (metric) or "angular" (simplest).
+        Default "shortest" for backward compatibility.
 
     Returns
     -------
@@ -118,25 +138,34 @@ def get_expected_spearman(
     # Ensure minimum effective_n of 1 to avoid edge cases
     eff_n = max(1.0, effective_n)
 
-    # Select model parameters based on metric
-    if metric == "harmonic":
-        a, b = SAMPLING_MODEL_HARMONIC_A, SAMPLING_MODEL_HARMONIC_B
-    else:
-        # "betweenness" or "both" - use conservative model
-        a, b = SAMPLING_MODEL_BETWEENNESS_A, SAMPLING_MODEL_BETWEENNESS_B
+    # Select model parameters based on distance_type and metric
+    if distance_type == "angular":
+        if metric == "harmonic":
+            a, b = SAMPLING_MODEL_ANGULAR_HARMONIC_A, SAMPLING_MODEL_ANGULAR_HARMONIC_B
+        else:
+            # "betweenness" or "both" - use conservative model
+            a, b = SAMPLING_MODEL_ANGULAR_BETWEENNESS_A, SAMPLING_MODEL_ANGULAR_BETWEENNESS_B
+        std_c, std_d = SAMPLING_MODEL_ANGULAR_STD_C, SAMPLING_MODEL_ANGULAR_STD_D
+    else:  # shortest (default)
+        if metric == "harmonic":
+            a, b = SAMPLING_MODEL_SHORTEST_HARMONIC_A, SAMPLING_MODEL_SHORTEST_HARMONIC_B
+        else:
+            # "betweenness" or "both" - use conservative model
+            a, b = SAMPLING_MODEL_SHORTEST_BETWEENNESS_A, SAMPLING_MODEL_SHORTEST_BETWEENNESS_B
+        std_c, std_d = SAMPLING_MODEL_SHORTEST_STD_C, SAMPLING_MODEL_SHORTEST_STD_D
 
     # Expected Spearman ρ
     expected_rho = 1.0 - a / (b + eff_n)
     expected_rho = max(0.0, min(1.0, expected_rho))  # Clamp to [0, 1]
 
     # Standard deviation
-    std_dev = SAMPLING_MODEL_STD_C / (SAMPLING_MODEL_STD_D + eff_n) ** 0.5
+    std_dev = std_c / (std_d + eff_n) ** 0.5
     std_dev = max(0.001, std_dev)  # Minimum std
 
     return expected_rho, std_dev
 
 
-def get_expected_bias(effective_n: float) -> float:
+def get_expected_bias(effective_n: float, distance_type: str = "shortest") -> float:
     """
     Get expected magnitude bias for given effective sample size.
 
@@ -148,6 +177,9 @@ def get_expected_bias(effective_n: float) -> float:
     ----------
     effective_n : float
         The effective sample size (reach × p)
+    distance_type : str
+        Which distance type model to use: "shortest" (metric) or "angular" (simplest).
+        Default "shortest" for backward compatibility.
 
     Returns
     -------
@@ -155,7 +187,14 @@ def get_expected_bias(effective_n: float) -> float:
         Expected bias as a fraction (e.g., 0.05 means ~5% underestimate)
     """
     eff_n = max(1.0, effective_n)
-    expected_scale = 1.0 - SAMPLING_MODEL_BIAS_E / (SAMPLING_MODEL_BIAS_F + eff_n)
+
+    # Select model parameters based on distance_type
+    if distance_type == "angular":
+        bias_e, bias_f = SAMPLING_MODEL_ANGULAR_BIAS_E, SAMPLING_MODEL_ANGULAR_BIAS_F
+    else:  # shortest (default)
+        bias_e, bias_f = SAMPLING_MODEL_SHORTEST_BIAS_E, SAMPLING_MODEL_SHORTEST_BIAS_F
+
+    expected_scale = 1.0 - bias_e / (bias_f + eff_n)
     expected_scale = max(0.0, min(1.0, expected_scale))  # Clamp to [0, 1]
     return 1.0 - expected_scale
 
@@ -163,6 +202,7 @@ def get_expected_bias(effective_n: float) -> float:
 def get_required_effective_n(
     target_spearman: float,
     metric: str = "betweenness",
+    distance_type: str = "shortest",
 ) -> float | None:
     """
     Get the minimum effective_n required to achieve a target Spearman ρ.
@@ -177,6 +217,9 @@ def get_required_effective_n(
         Which metric model to use: "harmonic", "betweenness", or "both".
         Use "both" when computing both metrics together (uses betweenness/conservative).
         Default "betweenness" for backward compatibility.
+    distance_type : str
+        Which distance type model to use: "shortest" (metric) or "angular" (simplest).
+        Default "shortest" for backward compatibility.
 
     Returns
     -------
@@ -188,12 +231,19 @@ def get_required_effective_n(
     if target_spearman <= 0.0:
         return 0.0
 
-    # Select model parameters based on metric
-    if metric == "harmonic":
-        a, b = SAMPLING_MODEL_HARMONIC_A, SAMPLING_MODEL_HARMONIC_B
-    else:
-        # "betweenness" or "both" - use conservative model
-        a, b = SAMPLING_MODEL_BETWEENNESS_A, SAMPLING_MODEL_BETWEENNESS_B
+    # Select model parameters based on distance_type and metric
+    if distance_type == "angular":
+        if metric == "harmonic":
+            a, b = SAMPLING_MODEL_ANGULAR_HARMONIC_A, SAMPLING_MODEL_ANGULAR_HARMONIC_B
+        else:
+            # "betweenness" or "both" - use conservative model
+            a, b = SAMPLING_MODEL_ANGULAR_BETWEENNESS_A, SAMPLING_MODEL_ANGULAR_BETWEENNESS_B
+    else:  # shortest (default)
+        if metric == "harmonic":
+            a, b = SAMPLING_MODEL_SHORTEST_HARMONIC_A, SAMPLING_MODEL_SHORTEST_HARMONIC_B
+        else:
+            # "betweenness" or "both" - use conservative model
+            a, b = SAMPLING_MODEL_SHORTEST_BETWEENNESS_A, SAMPLING_MODEL_SHORTEST_BETWEENNESS_B
 
     # Invert: rho = 1 - A / (B + n) => n = A / (1 - rho) - B
     required_n = a / (1.0 - target_spearman) - b
@@ -324,19 +374,97 @@ def log_sampling(
 # while maintaining accuracy at short distances (low reach).
 
 
+def spatial_sample(
+    network_structure: rustalgos.graph.NetworkStructure,
+    n_samples: int,
+) -> tuple[list[int], float]:
+    """
+    Sample nodes with spatial distribution using grid stratification.
+
+    Divides the network bounding box into 1km² grid cells and samples round-robin
+    from each cell, ensuring spatial coverage across the network.
+
+    Parameters
+    ----------
+    network_structure
+        The network to sample from.
+    n_samples
+        Number of nodes to sample.
+
+    Returns
+    -------
+    tuple[list[int], float]
+        Indices of sampled nodes (spatially distributed) and network area in km².
+    """
+    import random
+
+    # Get live nodes
+    live_indices = [i for i in network_structure.node_indices() if network_structure.is_node_live(i)]
+
+    # Get coordinates for live nodes
+    all_xs = network_structure.node_xs
+    all_ys = network_structure.node_ys
+    coords = np.array([(all_xs[i], all_ys[i]) for i in live_indices])
+
+    # Compute bounding box and area
+    x_min, x_max = coords[:, 0].min(), coords[:, 0].max()
+    y_min, y_max = coords[:, 1].min(), coords[:, 1].max()
+    x_range = max(x_max - x_min, 1.0)  # metres
+    y_range = max(y_max - y_min, 1.0)  # metres
+    area_km2 = (x_range * y_range) / 1_000_000  # convert m² to km²
+
+    if len(live_indices) <= n_samples:
+        return live_indices, area_km2
+
+    # Grid with ~1km cells (1000m)
+    grid_side_x = max(1, int(np.ceil(x_range / 1000)))
+    grid_side_y = max(1, int(np.ceil(y_range / 1000)))
+
+    # Compute grid cell for each node
+    cell_x = ((coords[:, 0] - x_min) / x_range * (grid_side_x - 0.001)).astype(int)
+    cell_y = ((coords[:, 1] - y_min) / y_range * (grid_side_y - 0.001)).astype(int)
+    cell_ids = cell_x * grid_side_y + cell_y
+
+    # Group nodes by cell
+    cells: dict[int, list[int]] = {}
+    for idx, cell_id in zip(live_indices, cell_ids, strict=False):
+        cells.setdefault(cell_id, []).append(idx)
+
+    # Sample round-robin from cells
+    selected = []
+    cell_lists = list(cells.values())
+    random.shuffle(cell_lists)
+
+    while len(selected) < n_samples:
+        for cell_nodes in cell_lists:
+            if cell_nodes and len(selected) < n_samples:
+                idx = random.randrange(len(cell_nodes))
+                selected.append(cell_nodes.pop(idx))
+
+    return selected, area_km2
+
+
+DEFAULT_PROBE_DENSITY: float = 4.0  # Probes per km² for reachability estimation
+MIN_PROBES: int = 20  # Minimum probes regardless of area
+MAX_PROBES: int = 200  # Maximum probes to limit computation
+
+
 def probe_reachability(
     network_structure: rustalgos.graph.NetworkStructure,
     distances: list[int],
-    n_probes: int = 50,
+    probe_density: float = DEFAULT_PROBE_DENSITY,
     speed_m_s: float = SPEED_M_S,
 ) -> dict[int, float]:
     """
-    Estimate mean reachability per distance by probing a sample of nodes.
+    Estimate reachability per distance by probing spatially distributed nodes.
 
-    This is a lightweight pre-computation step that runs Dijkstra from a small
-    sample of nodes to estimate how many nodes are typically reachable at each
-    distance threshold. The estimates are used to compute appropriate sampling
-    probabilities for adaptive sampling.
+    This is a lightweight pre-computation step that runs Dijkstra from a sample
+    of nodes to estimate how many nodes are typically reachable at each distance
+    threshold. The estimates are used to compute appropriate sampling probabilities
+    for adaptive sampling.
+
+    Uses spatial stratification with ~1km² grid cells to ensure probes are
+    distributed across the network rather than clustered in one area.
 
     Parameters
     ----------
@@ -344,28 +472,37 @@ def probe_reachability(
         The network to probe.
     distances
         Distance thresholds in metres.
-    n_probes
-        Number of random nodes to sample for probing. Default 50.
-        More probes = more accurate estimates but longer probe time.
+    probe_density
+        Number of probes per km² of network area. Default 4.0.
+        The actual probe count is bounded by MIN_PROBES (20) and MAX_PROBES (200).
     speed_m_s
         Walking speed for converting distance to seconds.
 
     Returns
     -------
     dict[int, float]
-        Mean reachability (node count) for each distance threshold.
+        25th percentile reachability (node count) for each distance threshold.
+        Using a lower percentile provides conservative estimates that account
+        for spatial variation in reachability across the network.
     """
-    import random
-
-    # Get live nodes for sampling
+    # Get live nodes
     live_indices = [i for i in network_structure.node_indices() if network_structure.is_node_live(i)]
 
     if not live_indices:
         return {d: 0.0 for d in distances}
 
-    # Sample probe nodes
+    # Compute n_probes from network area and density
+    all_xs = network_structure.node_xs
+    all_ys = network_structure.node_ys
+    xs = [all_xs[i] for i in live_indices]
+    ys = [all_ys[i] for i in live_indices]
+    x_range = max(xs) - min(xs)
+    y_range = max(ys) - min(ys)
+    area_km2 = max(x_range, 1.0) * max(y_range, 1.0) / 1_000_000
+    n_probes = int(np.clip(area_km2 * probe_density, MIN_PROBES, MAX_PROBES))
+
     n_probes = min(n_probes, len(live_indices))
-    probe_indices = random.sample(live_indices, n_probes)
+    probe_indices, _ = spatial_sample(network_structure, n_probes)
 
     # Accumulate reach counts per distance
     reach_counts: dict[int, list[int]] = {d: [] for d in distances}
@@ -382,15 +519,15 @@ def probe_reachability(
             count = sum(1 for v_idx in visited if tree_map[v_idx].short_dist <= d and v_idx != src_idx)
             reach_counts[d].append(count)
 
-    # Return mean reachability per distance
-    return {d: float(np.mean(counts)) if counts else 0.0 for d, counts in reach_counts.items()}
+    # Return 25th percentile reachability (conservative estimate for spatial variation)
+    return {d: float(np.percentile(counts, 25)) if counts else 0.0 for d, counts in reach_counts.items()}
 
 
 def compute_sample_probs_for_target_rho(
     reach_estimates: dict[int, float],
     target_rho: float = 0.95,
     metric: str = "both",
-    safety_margin: float = 0.02,
+    distance_type: str = "shortest",
 ) -> dict[int, float | None]:
     """
     Compute the sampling probability required at each distance to achieve target accuracy.
@@ -401,14 +538,14 @@ def compute_sample_probs_for_target_rho(
     Solving for p: p = required_eff_n / reach
     where required_eff_n = A / (1 - target_rho) - B
 
-    A safety margin is added to the target ρ to account for model variance.
-    The model is fitted to the 10th percentile, so ~10% of observations may
-    fall below the predicted value. The safety margin compensates for this.
+    Conservative estimates are achieved through:
+    1. Reachability probing uses 25th percentile (handles spatial variation)
+    2. Accuracy model is fitted to 10th percentile of observations
 
     Parameters
     ----------
     reach_estimates
-        Mean reachability per distance (from probe_reachability).
+        Reachability per distance (from probe_reachability, 25th percentile).
     target_rho
         Target Spearman ρ correlation. Default 0.95.
     metric
@@ -416,9 +553,9 @@ def compute_sample_probs_for_target_rho(
         - "harmonic": Use closeness model (less conservative, more speedup)
         - "betweenness": Use betweenness model (more conservative)
         - "both": Use betweenness model to ensure both metrics meet target
-    safety_margin
-        Additional margin added to target_rho for robustness. Default 0.02.
-        E.g., target_rho=0.95 with margin=0.02 internally targets 0.97.
+    distance_type
+        Which distance type model to use: "shortest" (metric) or "angular" (simplest).
+        Default "shortest" for backward compatibility.
 
     Returns
     -------
@@ -426,10 +563,7 @@ def compute_sample_probs_for_target_rho(
         Sampling probability for each distance.
         Returns None for distances where reach is too low to achieve target with any p ≤ 1.0.
     """
-    # Apply safety margin to target - this ensures we overshoot slightly
-    # to account for model variance (fitted to 10th percentile)
-    effective_target = min(0.99, target_rho + safety_margin)
-    required_eff_n = get_required_effective_n(effective_target, metric=metric)
+    required_eff_n = get_required_effective_n(target_rho, metric=metric, distance_type=distance_type)
     if required_eff_n is None:
         # Target ρ ≥ 1.0 is impossible
         return {d: None for d in reach_estimates}
@@ -453,6 +587,7 @@ def log_adaptive_sampling_plan(
     target_rho: float,
     metric: str = "both",
     safety_margin: float = 0.02,
+    distance_type: str = "shortest",
 ) -> None:
     """
     Log the adaptive sampling plan before execution.
@@ -471,14 +606,17 @@ def log_adaptive_sampling_plan(
         Which metric model is being used: "harmonic", "betweenness", or "both".
     safety_margin
         Safety margin applied to target_rho internally.
+    distance_type
+        Which distance type model to use: "shortest" (metric) or "angular" (simplest).
     """
     logger.info("")  # Visual separator
     metric_label = {"harmonic": "closeness", "betweenness": "betweenness", "both": "both metrics"}.get(
         metric, "both metrics"
     )
+    dist_label = "angular" if distance_type == "angular" else "shortest"
     effective_target = min(0.99, target_rho + safety_margin)
     logger.info(
-        f"Adaptive sampling plan (target ρ ≥ {target_rho:.2f}, "
+        f"Adaptive sampling plan ({dist_label}, target ρ ≥ {target_rho:.2f}, "
         f"internal target {effective_target:.2f} for {metric_label}):"
     )
     logger.info("  Distance │  Reach │ Sample p │ Expected ρ")
@@ -493,7 +631,7 @@ def log_adaptive_sampling_plan(
             logger.info(f"  {d:>7}m │ {reach:>6.0f} │     full │ 1.00 (exact)")
         else:
             eff_n = reach * p
-            exp_rho, _ = get_expected_spearman(eff_n, metric=metric)
+            exp_rho, _ = get_expected_spearman(eff_n, metric=metric, distance_type=distance_type)
             logger.info(f"  {d:>7}m │ {reach:>6.0f} │ {p:>7.0%} │ {exp_rho:.2f} (eff_n={eff_n:.0f})")
 
 

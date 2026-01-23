@@ -123,3 +123,16 @@ bin/
 include/
 man/
 
+# LaTeX generated files
+*.aux
+*.bbl
+*.blg
+*.fdb_latexmk
+*.fls
+*.lof
+*.lot
+*.out
+*.toc
+*.synctex.gz
+missfont.log
+

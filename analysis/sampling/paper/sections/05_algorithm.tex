@@ -1,0 +1,150 @@
+% Algorithm section
+
+\subsection{Problem Statement}
+
+Given a network $G = (V, E)$, a set of distance thresholds $\{r_1, r_2, \ldots, r_d\}$, and a target accuracy $\rhosp^*$, compute localised centrality measures at each threshold with guaranteed accuracy while minimising computation time.
+
+\subsection{The Uniform Sampling Problem}
+
+When computing centrality across multiple distance thresholds using a \emph{uniform} sampling probability $p$, accuracy varies dramatically by distance:
+
+\begin{center}
+\begin{tabular}{rrrrl}
+\toprule
+Distance & Typical Reach & $\effn$ at $p=20\%$ & Expected $\rho$ & Quality \\
+\midrule
+500m & $\sim$100 nodes & 20 & 0.35 & Poor \\
+1000m & $\sim$300 nodes & 60 & 0.55 & Marginal \\
+2000m & $\sim$800 nodes & 160 & 0.77 & Acceptable \\
+5000m & $\sim$2000 nodes & 400 & 0.89 & Good \\
+20000m & $\sim$10000 nodes & 2000 & 0.98 & Excellent \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The fundamental tension:
+\begin{itemize}
+    \item \textbf{Short distances} have low reachability, so even moderate sampling results in insufficient $\effn$ and poor accuracy
+    \item \textbf{Long distances} have high reachability, so the same sampling probability provides excellent accuracy---but at unnecessary computational cost
+\end{itemize}
+
+No single sampling probability achieves consistent accuracy across all distances. Increasing $p$ improves short-distance accuracy but wastes computation at long distances; decreasing $p$ improves efficiency at long distances but degrades short-distance accuracy further.
+
+\subsection{Adaptive Per-Distance Sampling}
+
+The adaptive approach resolves this tension by calibrating sampling probability \emph{independently} for each distance threshold:
+
+\begin{itemize}
+    \item \textbf{Short distances}: Use full or near-full computation ($p \to 1.0$), accepting that sampling provides no speedup when reachability is low
+    \item \textbf{Long distances}: Use aggressive sampling ($p \ll 1.0$), exploiting high reachability to achieve accuracy with fewer computations
+\end{itemize}
+
+This ensures consistent $\rho \geq \rhosp^*$ across all distances while maximising speedup where the network structure allows.
+
+Our algorithm operates in three phases:
+
+\begin{enumerate}
+    \item \textbf{Probe}: Estimate mean reachability at each distance threshold
+    \item \textbf{Plan}: Compute required sampling probability for each threshold
+    \item \textbf{Execute}: Run centrality computation with per-threshold sampling
+\end{enumerate}
+
+\subsubsection{Phase 1: Reachability Probing}
+
+We estimate mean reachability by running Dijkstra's algorithm from a small sample of nodes (default: 50) and counting reachable nodes at each distance threshold.
+
+\medskip
+\noindent\textbf{Algorithm 1: Probe Reachability}\\
+\textbf{Input:} Network $G$, distances $\{r_1, \ldots, r_d\}$, probe count $k$\\
+\textbf{Output:} Mean reachability $\bar{R}_i$ for each distance $r_i$
+\begin{enumerate}
+    \item Sample $k$ nodes uniformly from $V$
+    \item For each sampled node $s$:
+    \begin{enumerate}
+        \item Run Dijkstra from $s$ up to $\max(r_i)$
+        \item For each distance $r_i$: count nodes reachable within $r_i$
+    \end{enumerate}
+    \item Return mean reachability per distance
+\end{enumerate}
+
+This probing step is lightweight: with $k = 50$ probes, the overhead is approximately $50 \times$ single-source Dijkstra, which is negligible compared to full centrality computation.
+
+\subsubsection{Phase 2: Sampling Probability Computation}
+
+Using the empirical model (Equation~\ref{eq:required_p}), we compute the required sampling probability for each distance:
+
+\medskip
+\noindent\textbf{Algorithm 2: Compute Sampling Probabilities}\\
+\textbf{Input:} Mean reachability $\{\bar{R}_1, \ldots, \bar{R}_d\}$, target $\rhosp^*$, model parameters $(A, B)$\\
+\textbf{Output:} Sampling probabilities $\{p_1, \ldots, p_d\}$
+\begin{enumerate}
+    \item Compute required effective sample size: $\effn^* \gets \frac{A}{1 - \rhosp^*} - B$
+    \item For each distance $r_i$: $p_i \gets \min\left(1.0, \frac{\effn^*}{\bar{R}_i}\right)$
+    \item Return $\{p_1, \ldots, p_d\}$
+\end{enumerate}
+
+When reachability is low (short distances), $p_i$ approaches or equals 1.0, indicating full computation is needed. When reachability is high (long distances), $p_i$ can be much smaller, enabling significant speedup.
+
+\subsubsection{Phase 3: Per-Distance Execution}
+
+Unlike uniform sampling (which runs a single computation with one sampling probability), adaptive sampling runs separate computations for each distance threshold:
+
+\medskip
+\noindent\textbf{Algorithm 3: Adaptive Centrality Computation}\\
+\textbf{Input:} Network $G$, distances $\{r_1, \ldots, r_d\}$, probabilities $\{p_1, \ldots, p_d\}$\\
+\textbf{Output:} Centrality values $\{C^{r_1}, \ldots, C^{r_d}\}$
+\begin{enumerate}
+    \item For each distance $r_i$:
+    \begin{enumerate}
+        \item Sample source nodes with probability $p_i$
+        \item Run centrality computation up to distance $r_i$
+        \item Scale results by $1/p_i$
+    \end{enumerate}
+    \item Return centrality values
+\end{enumerate}
+
+\subsection{Implementation Considerations}
+
+\subsubsection{Target Aggregation}
+
+A key implementation detail concerns how centrality values are accumulated. Traditional implementations use \emph{source aggregation}: when running Dijkstra from source node $s$, all contributions (closeness sums, betweenness counts) are accumulated at $s$. This is problematic for sampling, because nodes not selected as sources receive no values at all.
+
+Our implementation uses \emph{target aggregation}: when running Dijkstra from source $s$, contributions are accumulated at each reachable \emph{target} node $t$:
+\begin{itemize}
+    \item For closeness: node $t$ receives $1/d(s,t)$ from source $s$
+    \item For betweenness: each node on shortest paths from $s$ to $t$ receives its path count contribution
+\end{itemize}
+
+This is mathematically equivalent to source aggregation for full computation (the same values sum to the same totals), but has crucial advantages for sampling:
+
+\begin{enumerate}
+    \item \textbf{High coverage}: Even nodes not sampled as sources receive contributions from sampled sources that reach them. With 50\% sampling, most nodes still receive values from many sources.
+    \item \textbf{Spatial smoothing}: The sampling error is distributed across many node contributions rather than concentrated in a binary sampled/not-sampled decision.
+    \item \textbf{Unbiased estimation}: Scaling by $1/p$ produces unbiased estimates because each source-target pair is included with probability $p$.
+\end{enumerate}
+
+This design choice is why the effective sample size $\effn = \bar{R} \times p$ predicts accuracy: each node's estimate is effectively derived from $\effn$ independent source contributions.
+
+\subsubsection{Metric Selection}
+
+When computing both harmonic closeness and betweenness, we use the betweenness (more conservative) model to ensure both metrics achieve the target accuracy.
+
+\subsubsection{Safety Margin}
+
+In practice, we add a 2\% safety margin to the target accuracy to account for model uncertainty:
+\begin{equation}
+    \rho^*_{\text{internal}} = \rhosp^* + 0.02
+\end{equation}
+
+\subsubsection{Progress Logging}
+
+Before execution, the algorithm logs the sampling plan showing expected accuracy at each distance, enabling users to verify the configuration.
+
+\subsection{Complexity Analysis}
+
+Let $T_{\text{full}}$ be the time for full centrality computation at all distances, and let $\bar{p}$ be the mean sampling probability across distances. The expected time for adaptive computation is approximately:
+\begin{equation}
+    T_{\text{adaptive}} \approx T_{\text{probe}} + \sum_{i=1}^{d} p_i \cdot T_{\text{full}}^{r_i}
+\end{equation}
+
+where $T_{\text{full}}^{r_i}$ is the full computation time at distance $r_i$. In practice, we observe approximately 2$\times$ speedup for typical multi-scale analyses.
