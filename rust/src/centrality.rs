@@ -663,8 +663,8 @@ impl NetworkStructure {
                 }
 
                 // Source sampling: skip Dijkstra for unsampled sources
-                // IPW scale applies to all contributions from this source
-                let ipw_scale = if let Some(prob) = sample_probability {
+                // Hájek estimator: accumulate unscaled, apply N/n correction after
+                if let Some(prob) = sample_probability {
                     let mut p = prob;
                     if let Some(ref weights) = sampling_weights {
                         p *= weights[*src_idx];
@@ -673,10 +673,7 @@ impl NetworkStructure {
                         return; // Skip this source entirely
                     }
                     sampled_source_count.fetch_add(1, AtomicOrdering::Relaxed);
-                    1.0 / p // Inverse probability weight
-                } else {
-                    1.0
-                };
+                }
 
                 let (visited_nodes, tree_map) = self.dijkstra_tree_shortest(
                     *src_idx,
@@ -703,8 +700,8 @@ impl NetworkStructure {
                         }
                     }
                     // Flipped aggregation: accumulate to target (to_idx) not source
-                    // Weight comes from the source node (the node contributing to others' closeness)
-                    let wt = self.get_node_weight(*src_idx) * ipw_scale;
+                    // Weight comes from the source node (no IPW scaling - Hájek applied after)
+                    let wt = self.get_node_weight(*src_idx);
                     if compute_closeness {
                         for i in 0..distances.len() {
                             let distance = distances[i];
@@ -745,10 +742,10 @@ impl NetworkStructure {
                                 let beta = betas[i];
                                 if node_visit_short_dist <= distance as f32 {
                                     res.node_betweenness_vec.metric[i][inter_idx]
-                                        .fetch_add(wt, AtomicOrdering::Acquire);
+                                        .fetch_add(wt, AtomicOrdering::Relaxed);
                                     let exp_val = (-beta * node_visit_short_dist).exp();
                                     res.node_betweenness_beta_vec.metric[i][inter_idx]
-                                        .fetch_add(exp_val * wt, AtomicOrdering::Acquire);
+                                        .fetch_add(exp_val * wt, AtomicOrdering::Relaxed);
                                 }
                             }
                             current_pred = tree_map[inter_idx].pred;
@@ -757,9 +754,34 @@ impl NetworkStructure {
                 }
             });
 
-            // Store reachability totals after parallel processing
+            // Apply Hájek scaling: N/n instead of per-contribution 1/p (Horvitz-Thompson)
+            // This reduces variance by using actual sample count rather than expected
             if sample_probability.is_some() {
                 res.sampled_source_count = sampled_source_count.load(AtomicOrdering::Relaxed);
+                let n_sampled = res.sampled_source_count as f32;
+                if n_sampled > 0.0 {
+                    let n_total = self.node_count() as f32;
+                    let hajek_scale = n_total / n_sampled;
+                    // Scale all metric vectors (load, multiply, store for AtomicF32)
+                    for i in 0..distances.len() {
+                        for j in 0..self.node_count() {
+                            let v = res.node_density_vec.metric[i][j].load(AtomicOrdering::Relaxed);
+                            res.node_density_vec.metric[i][j].store(v * hajek_scale, AtomicOrdering::Relaxed);
+                            let v = res.node_farness_vec.metric[i][j].load(AtomicOrdering::Relaxed);
+                            res.node_farness_vec.metric[i][j].store(v * hajek_scale, AtomicOrdering::Relaxed);
+                            let v = res.node_harmonic_vec.metric[i][j].load(AtomicOrdering::Relaxed);
+                            res.node_harmonic_vec.metric[i][j].store(v * hajek_scale, AtomicOrdering::Relaxed);
+                            let v = res.node_beta_vec.metric[i][j].load(AtomicOrdering::Relaxed);
+                            res.node_beta_vec.metric[i][j].store(v * hajek_scale, AtomicOrdering::Relaxed);
+                            let v = res.node_cycles_vec.metric[i][j].load(AtomicOrdering::Relaxed);
+                            res.node_cycles_vec.metric[i][j].store(v * hajek_scale, AtomicOrdering::Relaxed);
+                            let v = res.node_betweenness_vec.metric[i][j].load(AtomicOrdering::Relaxed);
+                            res.node_betweenness_vec.metric[i][j].store(v * hajek_scale, AtomicOrdering::Relaxed);
+                            let v = res.node_betweenness_beta_vec.metric[i][j].load(AtomicOrdering::Relaxed);
+                            res.node_betweenness_beta_vec.metric[i][j].store(v * hajek_scale, AtomicOrdering::Relaxed);
+                        }
+                    }
+                }
                 res.reachability_totals = source_reachability_totals
                     .iter()
                     .map(|a| a.load(AtomicOrdering::Relaxed))
@@ -888,8 +910,8 @@ impl NetworkStructure {
                 }
 
                 // Source sampling: skip Dijkstra for unsampled sources
-                // IPW scale applies to all contributions from this source
-                let ipw_scale = if let Some(prob) = sample_probability {
+                // Hájek estimator: accumulate unscaled, apply N/n correction after
+                if let Some(prob) = sample_probability {
                     let mut p = prob;
                     if let Some(ref weights) = sampling_weights {
                         p *= weights[*src_idx];
@@ -898,10 +920,7 @@ impl NetworkStructure {
                         return; // Skip this source entirely
                     }
                     sampled_source_count.fetch_add(1, AtomicOrdering::Relaxed);
-                    1.0 / p // Inverse probability weight
-                } else {
-                    1.0
-                };
+                }
 
                 let (visited_nodes, tree_map) = self.dijkstra_tree_simplest(
                     *src_idx,
@@ -928,8 +947,8 @@ impl NetworkStructure {
                         }
                     }
                     // Flipped aggregation: accumulate to target (to_idx) not source
-                    // Weight comes from the source node (the node contributing to others' closeness)
-                    let wt = self.get_node_weight(*src_idx) * ipw_scale;
+                    // Weight comes from the source node (no IPW scaling - Hájek applied after)
+                    let wt = self.get_node_weight(*src_idx);
                     if compute_closeness {
                         for i in 0..seconds.len() {
                             let sec = seconds[i];
@@ -959,7 +978,7 @@ impl NetworkStructure {
                                 let sec = seconds[i];
                                 if node_visit.agg_seconds <= sec as f32 {
                                     res.node_betweenness_vec.metric[i][inter_idx]
-                                        .fetch_add(wt, AtomicOrdering::Acquire);
+                                        .fetch_add(wt, AtomicOrdering::Relaxed);
                                 }
                             }
                             current_pred = tree_map[inter_idx].pred;
@@ -968,9 +987,28 @@ impl NetworkStructure {
                 }
             });
 
-            // Store reachability totals after parallel processing
+            // Apply Hájek scaling: N/n instead of per-contribution 1/p (Horvitz-Thompson)
+            // This reduces variance by using actual sample count rather than expected
             if sample_probability.is_some() {
                 res.sampled_source_count = sampled_source_count.load(AtomicOrdering::Relaxed);
+                let n_sampled = res.sampled_source_count as f32;
+                if n_sampled > 0.0 {
+                    let n_total = self.node_count() as f32;
+                    let hajek_scale = n_total / n_sampled;
+                    // Scale all metric vectors (load, multiply, store for AtomicF32)
+                    for i in 0..seconds.len() {
+                        for j in 0..self.node_count() {
+                            let v = res.node_density_vec.metric[i][j].load(AtomicOrdering::Relaxed);
+                            res.node_density_vec.metric[i][j].store(v * hajek_scale, AtomicOrdering::Relaxed);
+                            let v = res.node_farness_vec.metric[i][j].load(AtomicOrdering::Relaxed);
+                            res.node_farness_vec.metric[i][j].store(v * hajek_scale, AtomicOrdering::Relaxed);
+                            let v = res.node_harmonic_vec.metric[i][j].load(AtomicOrdering::Relaxed);
+                            res.node_harmonic_vec.metric[i][j].store(v * hajek_scale, AtomicOrdering::Relaxed);
+                            let v = res.node_betweenness_vec.metric[i][j].load(AtomicOrdering::Relaxed);
+                            res.node_betweenness_vec.metric[i][j].store(v * hajek_scale, AtomicOrdering::Relaxed);
+                        }
+                    }
+                }
                 res.reachability_totals = source_reachability_totals
                     .iter()
                     .map(|a| a.load(AtomicOrdering::Relaxed))

@@ -9,6 +9,7 @@
 # https://github.com/songololo/ua-dataset-madrid
 
 # %% Imports
+import json
 import time
 import warnings
 from pathlib import Path
@@ -143,6 +144,20 @@ def compute_morans_i(values: np.ndarray, coords: np.ndarray, k: int = 8) -> tupl
     return morans_i, p_value
 
 
+def load_ci_width_model() -> dict:
+    """Load CI-width model constants from the fitted model file."""
+    model_path = SCRIPT_DIR / "output" / "sampling_model_constants.json"
+    if not model_path.exists():
+        return None
+    with open(model_path) as f:
+        return json.load(f)
+
+
+def predict_ci_width(eff_n: float, c: float, d: float) -> float:
+    """Predict CI width using the fitted model: ci_width = c / sqrt(d + eff_n)."""
+    return c / np.sqrt(d + eff_n)
+
+
 # %% Spatial Analysis Functions
 
 
@@ -203,6 +218,38 @@ def run_spatial_analysis(
     est_harmonic = np.mean(est_harmonic_runs, axis=0)
     est_betweenness = np.mean(est_betweenness_runs, axis=0)
 
+    # Compute per-node CI widths from multi-run data
+    print("      Computing per-node CI widths...")
+    est_harmonic_arr = np.array(est_harmonic_runs)  # Shape: (n_runs, n_nodes)
+    est_betweenness_arr = np.array(est_betweenness_runs)
+
+    # Harmonic CI widths
+    harmonic_means = np.mean(est_harmonic_arr, axis=0)
+    harmonic_stds = np.std(est_harmonic_arr, axis=0)
+    harmonic_ci_widths = np.where(harmonic_means > 0, 1.96 * harmonic_stds / harmonic_means, np.nan)
+
+    # Betweenness CI widths
+    betweenness_means = np.mean(est_betweenness_arr, axis=0)
+    betweenness_stds = np.std(est_betweenness_arr, axis=0)
+    betweenness_ci_widths = np.where(betweenness_means > 0, 1.96 * betweenness_stds / betweenness_means, np.nan)
+
+    # Compute CI-width statistics
+    valid_h_ci = harmonic_ci_widths[~np.isnan(harmonic_ci_widths)]
+    valid_b_ci = betweenness_ci_widths[~np.isnan(betweenness_ci_widths)]
+
+    ci_width_stats = {
+        "harmonic": {
+            "median": float(np.median(valid_h_ci)) if len(valid_h_ci) > 0 else np.nan,
+            "pct_90": float(np.percentile(valid_h_ci, 90)) if len(valid_h_ci) > 0 else np.nan,
+            "pct_95": float(np.percentile(valid_h_ci, 95)) if len(valid_h_ci) > 0 else np.nan,
+        },
+        "betweenness": {
+            "median": float(np.median(valid_b_ci)) if len(valid_b_ci) > 0 else np.nan,
+            "pct_90": float(np.percentile(valid_b_ci, 90)) if len(valid_b_ci) > 0 else np.nan,
+            "pct_95": float(np.percentile(valid_b_ci, 95)) if len(valid_b_ci) > 0 else np.nan,
+        },
+    }
+
     # Residuals (relative error)
     harmonic_residual = np.where(true_harmonic > 0, (est_harmonic - true_harmonic) / true_harmonic, 0)
     betweenness_residual = np.where(true_betweenness > 0, (est_betweenness - true_betweenness) / true_betweenness, 0)
@@ -248,16 +295,25 @@ def run_spatial_analysis(
             }
         )
 
+    # Compute mean effective_n for CI-width model validation
+    mean_reachability = float(np.mean(reachability))
+    mean_eff_n = mean_reachability * sample_prob
+
     return {
         "distance": dist,
         "sample_prob": sample_prob,
+        "mean_reachability": mean_reachability,
+        "mean_eff_n": mean_eff_n,
         "morans_i_harmonic": morans_h,
         "morans_p_harmonic": p_h,
         "morans_i_betweenness": morans_b,
         "morans_p_betweenness": p_b,
         "quartile_results": quartile_results,
+        "ci_width_stats": ci_width_stats,
         "coords": coords,
         "reachability": reachability,
+        "true_harmonic": true_harmonic,
+        "true_betweenness": true_betweenness,
         "harmonic_residual": harmonic_residual,
         "betweenness_residual": betweenness_residual,
     }
@@ -637,53 +693,73 @@ def generate_spatial_report(spatial_results: list[dict], n_nodes: int):
     plt.savefig(FIGURES_DIR / "spatial_reachability_accuracy.pdf", dpi=300, bbox_inches="tight")
     print(f"\nSaved: {FIGURES_DIR / 'spatial_reachability_accuracy.pdf'}")
 
-    # Generate figure: Spatial residual map (for one distance)
-    sr = spatial_results[0]  # Use first distance
-    fig, axes = plt.subplots(1, 2, figsize=(14, 6))
+    # Generate figure: Spatial residual map (all distances)
+    n_distances = len(spatial_results)
+    fig, axes = plt.subplots(n_distances, 2, figsize=(12, 4 * n_distances))
 
-    for col, metric in enumerate(["harmonic", "betweenness"]):
-        ax = axes[col]
-        residuals = sr[f"{metric}_residual"]
+    # Compute consistent scales across all distances for each metric
+    cmaps = {"harmonic": "PuOr", "betweenness": "RdBu_r"}
+    vmax_all = {}
+    for metric in ["harmonic", "betweenness"]:
+        all_residuals = np.concatenate([sr[f"{metric}_residual"] for sr in spatial_results])
+        vmax_all[metric] = np.percentile(np.abs(all_residuals), 95)
 
-        vmax = np.percentile(np.abs(residuals), 95)
-        clipped = np.clip(residuals, -vmax, vmax)
+    for row, sr in enumerate(spatial_results):
+        dist_km = sr["distance"] / 1000
+        for col, metric in enumerate(["harmonic", "betweenness"]):
+            ax = axes[row, col]
+            residuals = sr[f"{metric}_residual"]
+            vmax = vmax_all[metric]
+            clipped = np.clip(residuals, -vmax, vmax)
 
-        scatter = ax.scatter(
-            sr["coords"][:, 0],
-            sr["coords"][:, 1],
-            c=clipped,
-            cmap="RdBu_r",
-            s=1,
-            alpha=0.6,
-            vmin=-vmax,
-            vmax=vmax,
-        )
-        plt.colorbar(scatter, ax=ax, label="Relative residual")
+            scatter = ax.scatter(
+                sr["coords"][:, 0],
+                sr["coords"][:, 1],
+                c=clipped,
+                cmap=cmaps[metric],
+                s=0.5,
+                alpha=0.6,
+                vmin=-vmax,
+                vmax=vmax,
+            )
 
-        morans_i = sr[f"morans_i_{metric}"]
-        ax.annotate(
-            f"Moran's I = {morans_i:.3f}",
-            xy=(0.02, 0.98),
-            xycoords="axes fraction",
-            fontsize=10,
-            verticalalignment="top",
-            bbox=dict(boxstyle="round", facecolor="white", alpha=0.8),
-        )
+            # Add colorbar for each metric
+            cbar = plt.colorbar(scatter, ax=ax, shrink=0.4, pad=0.02)
+            cbar.set_label("Relative residual", fontsize=6)
+            cbar.ax.tick_params(labelsize=5)
 
-        ax.set_xlabel("X (m)")
-        ax.set_ylabel("Y (m)")
-        ax.set_title(f"{metric.title()} Residuals")
-        ax.set_aspect("equal")
+            # Clean axes - remove borders, ticks, labels
+            ax.set_xticks([])
+            ax.set_yticks([])
+            for spine in ax.spines.values():
+                spine.set_visible(False)
+            ax.set_aspect("equal")
 
+            # Add distance and Moran's I as text
+            morans_i = sr[f"morans_i_{metric}"]
+            ax.text(
+                0.02,
+                0.98,
+                f"{dist_km:.0f}km\nMoran's I = {morans_i:.3f}",
+                transform=ax.transAxes,
+                fontsize=10,
+                verticalalignment="top",
+                bbox=dict(boxstyle="round", facecolor="white", alpha=0.8, edgecolor="none"),
+            )
+
+            # Column headers on first row only
+            if row == 0:
+                ax.set_title(f"{metric.title()}", fontsize=12, fontweight="bold")
+
+    sample_prob = spatial_results[0]["sample_prob"]
     plt.suptitle(
-        f"Spatial Distribution of Sampling Residuals\n"
-        f"(Distance={sr['distance'] / 1000:.0f}km, p={sr['sample_prob']:.0%})",
-        fontsize=12,
+        f"Spatial Distribution of Sampling Residuals (p={sample_prob:.0%})",
+        fontsize=13,
         fontweight="bold",
     )
     plt.tight_layout()
-    plt.savefig(FIGURES_DIR / "spatial_residuals_map.pdf", dpi=150, bbox_inches="tight")
-    print(f"Saved: {FIGURES_DIR / 'spatial_residuals_map.pdf'}")
+    plt.savefig(FIGURES_DIR / "spatial_residuals_map.png", dpi=150, bbox_inches="tight")
+    print(f"Saved: {FIGURES_DIR / 'spatial_residuals_map.png'}")
 
     # Save data
     q_df.to_csv(TABLES_DIR / "spatial_reachability_accuracy.csv", index=False)
@@ -726,6 +802,173 @@ Distance & Quartile & Mean Reach & Eff. N & $\rho_H$ & $\rho_B$ \\
         f.write(latex)
     print(f"Saved: {TABLES_DIR / 'spatial_reachability.tex'}")
 
+    # Generate Moran's I table
+    morans_latex = r"""% Auto-generated table: Moran's I Spatial Autocorrelation
+% DO NOT EDIT MANUALLY - regenerate with: python benchmark_regional.py
+
+\begin{tabular}{lcc}
+\toprule
+Distance & Harmonic & Betweenness \\
+\midrule
+"""
+    morans_h_values = []
+    morans_b_values = []
+    for sr in spatial_results:
+        dist_km = sr["distance"] / 1000
+        morans_h = sr["morans_i_harmonic"]
+        morans_b = sr["morans_i_betweenness"]
+        morans_h_values.append(morans_h)
+        morans_b_values.append(morans_b)
+        morans_latex += f"{dist_km:.0f} km & {morans_h:.2f} & {morans_b:.2f} \\\\\n"
+
+    avg_h = np.mean(morans_h_values)
+    avg_b = np.mean(morans_b_values)
+    morans_latex += r"""\midrule
+"""
+    morans_latex += f"Average & {avg_h:.2f} & {avg_b:.2f} \\\\\n"
+    morans_latex += r"""\bottomrule
+\end{tabular}
+"""
+
+    with open(TABLES_DIR / "morans_i.tex", "w") as f:
+        f.write(morans_latex)
+    print(f"Saved: {TABLES_DIR / 'morans_i.tex'}")
+
+    # Generate LaTeX macros for in-text statistics
+    # Average across cities for each quartile at 500m (most pronounced U-shape)
+    macros = r"""% Auto-generated LaTeX macros for spatial analysis statistics
+% DO NOT EDIT MANUALLY - regenerate with: python benchmark_regional.py
+% Usage: \input{tables/spatial_statistics.tex} in preamble, then use macros in text
+
+"""
+    dist_500 = q_df[q_df["distance"] == 500]
+
+    # Mapping from quartile names to clean macro suffixes
+    quartile_macro_map = {
+        "Q1 (low)": "Qlow",
+        "Q2": "Qtwo",
+        "Q3": "Qthree",
+        "Q4 (high)": "Qhigh",
+    }
+
+    for q in quartile_order:
+        q_data = dist_500[dist_500["quartile"] == q]
+        if len(q_data) > 0:
+            rho_h = q_data["rho_harmonic"].mean()
+            rho_b = q_data["rho_betweenness"].mean()
+            q_suffix = quartile_macro_map.get(q, q.replace(" ", ""))
+            macros += f"\\newcommand{{\\spatial{q_suffix}H}}{{{rho_h:.2f}}}\n"
+            macros += f"\\newcommand{{\\spatial{q_suffix}B}}{{{rho_b:.2f}}}\n"
+
+    # Add range statistics for Q2-Q3 combined (the "dip")
+    q23_data = dist_500[dist_500["quartile"].isin(["Q2", "Q3"])]
+    if len(q23_data) > 0:
+        rho_h_min = q23_data["rho_harmonic"].min()
+        rho_h_max = q23_data["rho_harmonic"].max()
+        macros += f"\\newcommand{{\\spatialQmidHrange}}{{{rho_h_min:.2f}--{rho_h_max:.2f}}}\n"
+
+    with open(TABLES_DIR / "spatial_statistics.tex", "w") as f:
+        f.write(macros)
+    print(f"Saved: {TABLES_DIR / 'spatial_statistics.tex'}")
+
+
+def generate_ci_width_validation_report(spatial_results: list[dict]):
+    """
+    Generate CI-width model validation report.
+
+    Compares observed CI widths from real network analysis against
+    the predicted CI widths from the fitted model.
+    """
+    print("\n" + "=" * 70)
+    print("CI-WIDTH MODEL VALIDATION")
+    print("=" * 70)
+
+    # Load model constants
+    model_constants = load_ci_width_model()
+    if model_constants is None:
+        print("WARNING: Could not load CI-width model constants. Skipping validation.")
+        return
+
+    # Get shortest distance CI-width models
+    shortest = model_constants.get("shortest", {})
+    h_model = shortest.get("ci_width_harmonic_model", {})
+    b_model = shortest.get("ci_width_betweenness_model", {})
+
+    h_c, h_d = h_model.get("C", 3.437), h_model.get("D", -3.15)
+    b_c, b_d = b_model.get("C", 9.847), b_model.get("D", 1.13)
+
+    print("\nFitted models (from synthetic networks):")
+    print(f"  Harmonic:    ci_width = {h_c:.3f} / sqrt({h_d:.2f} + eff_n)")
+    print(f"  Betweenness: ci_width = {b_c:.3f} / sqrt({b_d:.2f} + eff_n)")
+
+    print("\n--- Observed vs Predicted CI Widths (90th percentile) ---")
+    print("-" * 85)
+    print(f"{'Distance':<12} {'Eff_N':<10} {'Metric':<12} {'Observed':<12} {'Predicted':<12} {'Ratio':<10}")
+    print("-" * 85)
+
+    validation_rows = []
+    for sr in spatial_results:
+        dist_km = sr["distance"] / 1000
+        eff_n = sr["mean_eff_n"]
+        ci_stats = sr["ci_width_stats"]
+
+        # Harmonic
+        obs_h = ci_stats["harmonic"]["pct_90"]
+        pred_h = predict_ci_width(eff_n, h_c, h_d)
+        ratio_h = obs_h / pred_h if pred_h > 0 else np.nan
+        print(
+            f"{dist_km:.0f} km       {eff_n:>8.0f}  {'Harmonic':<12} {obs_h:>10.1%}   {pred_h:>10.1%}   {ratio_h:>8.2f}"
+        )
+        validation_rows.append(
+            {
+                "distance_km": dist_km,
+                "eff_n": eff_n,
+                "metric": "harmonic",
+                "observed_ci_90": obs_h,
+                "predicted_ci_90": pred_h,
+                "ratio": ratio_h,
+            }
+        )
+
+        # Betweenness
+        obs_b = ci_stats["betweenness"]["pct_90"]
+        pred_b = predict_ci_width(eff_n, b_c, b_d)
+        ratio_b = obs_b / pred_b if pred_b > 0 else np.nan
+        print(f"{'':12} {'':10} {'Betweenness':<12} {obs_b:>10.1%}   {pred_b:>10.1%}   {ratio_b:>8.2f}")
+        validation_rows.append(
+            {
+                "distance_km": dist_km,
+                "eff_n": eff_n,
+                "metric": "betweenness",
+                "observed_ci_90": obs_b,
+                "predicted_ci_90": pred_b,
+                "ratio": ratio_b,
+            }
+        )
+
+    print("-" * 85)
+
+    # Compute overall validation metrics
+    ratios_h = [r["ratio"] for r in validation_rows if r["metric"] == "harmonic" and not np.isnan(r["ratio"])]
+    ratios_b = [r["ratio"] for r in validation_rows if r["metric"] == "betweenness" and not np.isnan(r["ratio"])]
+
+    if ratios_h:
+        print(f"\nHarmonic validation: mean ratio = {np.mean(ratios_h):.2f} (ideal = 1.0)")
+    if ratios_b:
+        print(f"Betweenness validation: mean ratio = {np.mean(ratios_b):.2f} (ideal = 1.0)")
+
+    # Interpretation
+    print("\nInterpretation:")
+    print("  - Ratio < 1: Model over-predicts CI width (conservative)")
+    print("  - Ratio > 1: Model under-predicts CI width (optimistic)")
+    print("  - Note: Model was fitted on synthetic networks; real-world networks")
+    print("    may have different characteristics (density gradients, topology).")
+
+    # Save validation data
+    val_df = pd.DataFrame(validation_rows)
+    val_df.to_csv(TABLES_DIR / "ci_width_validation.csv", index=False)
+    print(f"\nSaved: {TABLES_DIR / 'ci_width_validation.csv'}")
+
 
 # %% Run benchmark
 print("=" * 70)
@@ -759,6 +1002,7 @@ print("Testing whether accuracy holds spatially across all areas...")
 print("(Reachability varies spatially - low-reach areas may have lower accuracy)")
 
 SPATIAL_SAMPLE_PROB = 0.3  # Use fixed p for spatial analysis
+SPATIAL_N_RUNS = 10  # Number of runs for CI-width estimation
 spatial_results = []
 
 for dist in DISTANCES:
@@ -767,11 +1011,15 @@ for dist in DISTANCES:
         nodes_gdf,
         dist=dist,
         sample_prob=SPATIAL_SAMPLE_PROB,
-        n_runs=3,
+        n_runs=SPATIAL_N_RUNS,
     )
     spatial_results.append(sr)
 
+# %%
 generate_spatial_report(spatial_results, n_nodes)
+
+# %% CI-width model validation
+generate_ci_width_validation_report(spatial_results)
 
 print("\n" + "=" * 70)
 print("BENCHMARK COMPLETE")

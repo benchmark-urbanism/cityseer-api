@@ -609,11 +609,26 @@ def run_spatial_analysis(city_key: str, distances: list[int], sample_prob: float
             true_betweenness > 0, (est_betweenness - true_betweenness) / true_betweenness, 0
         )
 
+        # Compute local density using KDTree (Euclidean, for topology transition analysis)
+        local_radius = 500  # meters
+        tree = KDTree(coords)
+        local_density = np.array([len(tree.query_ball_point(c, local_radius)) for c in coords])
+
+        # Compute topology transition score: local_density / regional_density (reachability)
+        # High score = locally dense relative to region (village core)
+        # Low score = locally sparse relative to region (rural near city)
+        with np.errstate(divide="ignore", invalid="ignore"):
+            transition_score = np.where(reachability > 0, local_density / reachability, np.nan)
+
         # Store spatial data for mapping
         spatial_data["distances"][dist] = {
+            "true_harmonic": true_harmonic,
+            "true_betweenness": true_betweenness,
             "harmonic_residual": harmonic_residual,
             "betweenness_residual": betweenness_residual,
             "reachability": reachability,
+            "local_density": local_density,
+            "transition_score": transition_score,
         }
 
         # Moran's I
@@ -667,9 +682,23 @@ def generate_residual_maps(spatial_data_list: list[dict], distance: int):
     Each city gets a row with harmonic and betweenness residual maps.
     """
     n_cities = len(spatial_data_list)
-    fig, axes = plt.subplots(n_cities, 2, figsize=(12, 5 * n_cities))
+    fig, axes = plt.subplots(n_cities, 2, figsize=(10, 4 * n_cities))
     if n_cities == 1:
         axes = axes.reshape(1, 2)
+
+    # Compute consistent scales across all cities for each metric
+    cmaps = {"harmonic": "PuOr", "betweenness": "RdBu_r"}
+    vmax_all = {}
+    for metric in ["harmonic", "betweenness"]:
+        all_residuals = []
+        for sp_data in spatial_data_list:
+            dist_data = sp_data["distances"].get(distance, {})
+            if dist_data:
+                all_residuals.append(dist_data[f"{metric}_residual"])
+        if all_residuals:
+            vmax_all[metric] = np.percentile(np.abs(np.concatenate(all_residuals)), 95)
+        else:
+            vmax_all[metric] = 0.1
 
     for row, sp_data in enumerate(spatial_data_list):
         city_key = sp_data["city"]
@@ -682,50 +711,386 @@ def generate_residual_maps(spatial_data_list: list[dict], distance: int):
         for col, metric in enumerate(["harmonic", "betweenness"]):
             ax = axes[row, col]
             residuals = dist_data[f"{metric}_residual"]
-
-            # Clip to 95th percentile for visualization
-            vmax = np.percentile(np.abs(residuals), 95)
+            vmax = vmax_all[metric]
             clipped = np.clip(residuals, -vmax, vmax)
 
             scatter = ax.scatter(
                 coords[:, 0],
                 coords[:, 1],
                 c=clipped,
-                cmap="RdBu_r",
-                s=3,
+                cmap=cmaps[metric],
+                s=1.5,
                 alpha=0.7,
                 vmin=-vmax,
                 vmax=vmax,
             )
-            cbar = plt.colorbar(scatter, ax=ax, shrink=0.8)
-            cbar.set_label("Relative Error")
 
+            # Add colorbar for each metric
+            cbar = plt.colorbar(scatter, ax=ax, shrink=0.4, pad=0.02)
+            cbar.set_label("Relative error", fontsize=6)
+            cbar.ax.tick_params(labelsize=5)
+
+            # Clean axes - remove borders, ticks, labels
+            ax.set_xticks([])
+            ax.set_yticks([])
+            for spine in ax.spines.values():
+                spine.set_visible(False)
             ax.set_aspect("equal")
-            ax.set_xlabel("X (m)")
-            ax.set_ylabel("Y (m)")
-            ax.set_title(f"{CITIES[city_key]['name']} - {metric.title()}")
 
-            # Add Moran's I annotation
+            # Add city name and Moran's I as text
             morans_i, _ = compute_morans_i(residuals, coords)
             ax.text(
-                0.02,
-                0.98,
-                f"Moran's I = {morans_i:.3f}",
+                0.02, 0.98,
+                f"{CITIES[city_key]['name']}\nMoran's I = {morans_i:.3f}",
+                transform=ax.transAxes,
+                fontsize=10,
+                verticalalignment="top",
+                bbox=dict(boxstyle="round", facecolor="white", alpha=0.8, edgecolor="none"),
+            )
+
+            # Column headers on first row only
+            if row == 0:
+                ax.set_title(f"{metric.title()}", fontsize=12, fontweight="bold")
+
+    plt.suptitle(
+        f"Spatial Residual Maps ({distance}m)",
+        fontsize=13,
+        fontweight="bold",
+    )
+    plt.tight_layout()
+    plt.savefig(FIGURES_DIR / f"spatial_residual_maps_{distance}m.png", dpi=150, bbox_inches="tight")
+    print(f"Saved: {FIGURES_DIR / f'spatial_residual_maps_{distance}m.png'}")
+
+
+def generate_residual_vs_centrality(spatial_data_list: list[dict], distance: int):
+    """
+    Generate residual vs centrality analysis to test for regression-to-mean bias.
+
+    Tests whether high-centrality nodes are systematically underestimated by sampling.
+    Each city gets a row showing mean residual by centrality decile.
+
+    Returns list of correlation results for CSV output.
+    """
+    n_cities = len(spatial_data_list)
+    fig, axes = plt.subplots(n_cities, 2, figsize=(12, 3.5 * n_cities))
+    if n_cities == 1:
+        axes = axes.reshape(1, 2)
+
+    print(f"\n--- Residual vs Centrality Analysis ({distance}m) ---")
+    print("Testing for regression-to-mean bias...")
+
+    correlation_results = []
+
+    for row, sp_data in enumerate(spatial_data_list):
+        city_key = sp_data["city"]
+        dist_data = sp_data["distances"].get(distance, {})
+
+        if not dist_data:
+            continue
+
+        for col, metric in enumerate(["harmonic", "betweenness"]):
+            ax = axes[row, col]
+            true_vals = dist_data[f"true_{metric}"]
+            residuals = dist_data[f"{metric}_residual"]
+
+            # Filter valid values (exclude bottom 5% for betweenness to avoid denominator artifacts)
+            if metric == "betweenness":
+                threshold = np.percentile(true_vals[true_vals > 0], 5)
+                valid = (true_vals > threshold) & np.isfinite(true_vals) & np.isfinite(residuals)
+            else:
+                valid = (true_vals > 0) & np.isfinite(true_vals) & np.isfinite(residuals)
+            true_valid = true_vals[valid]
+            resid_valid = residuals[valid]
+
+            # Compute correlation
+            corr_pearson, p_pearson = scipy_stats.pearsonr(true_valid, resid_valid)
+            corr_spearman, p_spearman = scipy_stats.spearmanr(true_valid, resid_valid)
+
+            # Store correlation results
+            correlation_results.append({
+                "city": city_key,
+                "city_name": CITIES[city_key]["name"],
+                "distance": distance,
+                "metric": metric,
+                "pearson_r": corr_pearson,
+                "pearson_p": p_pearson,
+                "spearman_rho": corr_spearman,
+                "spearman_p": p_spearman,
+                "n_valid": len(true_valid),
+            })
+
+            # Bin by centrality decile and compute mean residual per decile
+            decile_labels = pd.qcut(true_valid, 10, labels=False, duplicates="drop")
+            decile_df = pd.DataFrame({"decile": decile_labels, "true": true_valid, "residual": resid_valid})
+            decile_means = decile_df.groupby("decile").agg({"true": "mean", "residual": "mean"}).reset_index()
+
+            # Plot mean residual by decile
+            ax.bar(
+                decile_means["decile"],
+                decile_means["residual"],
+                color="steelblue" if metric == "harmonic" else "coral",
+                alpha=0.7,
+                edgecolor="black",
+                linewidth=0.5,
+            )
+            ax.axhline(y=0, color="black", linestyle="-", linewidth=0.8)
+
+            ax.set_xlabel("Centrality Decile (1=low, 10=high)", fontsize=9)
+            ax.set_ylabel("Mean Relative Residual", fontsize=9)
+            ax.set_xticks(range(len(decile_means)))
+            ax.set_xticklabels([f"{i + 1}" for i in range(len(decile_means))], fontsize=8)
+            ax.tick_params(axis="y", labelsize=8)
+
+            # Add city name and correlation annotation
+            ax.text(
+                0.02, 0.98,
+                f"{CITIES[city_key]['name']}\nr = {corr_pearson:.3f}",
                 transform=ax.transAxes,
                 fontsize=9,
                 verticalalignment="top",
-                bbox=dict(boxstyle="round", facecolor="white", alpha=0.8),
+                bbox=dict(boxstyle="round", facecolor="white", alpha=0.8, edgecolor="none"),
+            )
+
+            # Column headers on first row only
+            if row == 0:
+                ax.set_title(f"{metric.title()}", fontsize=12, fontweight="bold")
+
+            ax.grid(True, alpha=0.3, axis="y")
+
+            print(
+                f"  {CITIES[city_key]['name']} {metric}: "
+                f"r = {corr_pearson:.3f} (p={p_pearson:.1e}), "
+                f"ρ = {corr_spearman:.3f} (p={p_spearman:.1e})"
             )
 
     plt.suptitle(
-        f"Spatial Residual Maps ({distance}m)\n"
-        "Blue = underestimate, Red = overestimate",
+        f"Residual by Centrality Decile ({distance}m)\n"
+        "(Negative bars at high deciles = underestimation of peaks)",
         fontsize=12,
         fontweight="bold",
     )
     plt.tight_layout()
-    plt.savefig(FIGURES_DIR / f"spatial_residual_maps_{distance}m.pdf", dpi=300, bbox_inches="tight")
-    print(f"Saved: {FIGURES_DIR / f'spatial_residual_maps_{distance}m.pdf'}")
+    plt.savefig(FIGURES_DIR / f"residual_vs_centrality_{distance}m.png", dpi=150, bbox_inches="tight")
+    print(f"Saved: {FIGURES_DIR / f'residual_vs_centrality_{distance}m.png'}")
+
+    return correlation_results
+
+
+def generate_residual_scatter(spatial_data_list: list[dict], distance: int):
+    """
+    Generate scatter plots of residual vs true centrality.
+
+    Shows the full distribution with density coloring to reveal patterns
+    that might be hidden in the decile-binned bar charts.
+    """
+    n_cities = len(spatial_data_list)
+    fig, axes = plt.subplots(n_cities, 2, figsize=(12, 4 * n_cities))
+    if n_cities == 1:
+        axes = axes.reshape(1, 2)
+
+    for row, sp_data in enumerate(spatial_data_list):
+        city_key = sp_data["city"]
+        dist_data = sp_data["distances"].get(distance, {})
+
+        if not dist_data:
+            continue
+
+        for col, metric in enumerate(["harmonic", "betweenness"]):
+            ax = axes[row, col]
+            true_vals = dist_data[f"true_{metric}"]
+            residuals = dist_data[f"{metric}_residual"]
+
+            # Filter valid values
+            valid = (true_vals > 0) & np.isfinite(true_vals) & np.isfinite(residuals)
+            true_valid = true_vals[valid]
+            resid_valid = residuals[valid]
+
+            # Normalize true values to percentile for comparable x-axis
+            true_pct = scipy_stats.rankdata(true_valid) / len(true_valid) * 100
+
+            # Hexbin for density visualization
+            hb = ax.hexbin(
+                true_pct,
+                resid_valid,
+                gridsize=30,
+                cmap="YlOrRd",
+                mincnt=1,
+                reduce_C_function=np.mean,
+            )
+            ax.axhline(y=0, color="black", linestyle="-", linewidth=0.8, alpha=0.7)
+
+            # Add trend line
+            z = np.polyfit(true_pct, resid_valid, 1)
+            p = np.poly1d(z)
+            x_line = np.linspace(0, 100, 100)
+            ax.plot(x_line, p(x_line), "b--", linewidth=1.5, alpha=0.8, label=f"slope={z[0]:.4f}")
+
+            ax.set_xlabel("Centrality Percentile", fontsize=9)
+            ax.set_ylabel("Relative Residual", fontsize=9)
+            ax.set_xlim(0, 100)
+
+            # Clip y-axis to 95th percentile
+            ylim = np.percentile(np.abs(resid_valid), 95) * 1.2
+            ax.set_ylim(-ylim, ylim)
+
+            # Add city name annotation
+            corr, _ = scipy_stats.pearsonr(true_valid, resid_valid)
+            ax.text(
+                0.02, 0.98,
+                f"{CITIES[city_key]['name']}\nr = {corr:.3f}",
+                transform=ax.transAxes,
+                fontsize=9,
+                verticalalignment="top",
+                bbox=dict(boxstyle="round", facecolor="white", alpha=0.8, edgecolor="none"),
+            )
+
+            # Column headers on first row only
+            if row == 0:
+                ax.set_title(f"{metric.title()}", fontsize=12, fontweight="bold")
+
+            ax.grid(True, alpha=0.3)
+
+    plt.suptitle(
+        f"Residual vs Centrality Scatter ({distance}m)\n"
+        "(Density hexbin with trend line)",
+        fontsize=12,
+        fontweight="bold",
+    )
+    plt.tight_layout()
+    plt.savefig(FIGURES_DIR / f"residual_scatter_{distance}m.png", dpi=150, bbox_inches="tight")
+    print(f"Saved: {FIGURES_DIR / f'residual_scatter_{distance}m.png'}")
+
+
+def analyze_topology_transition(spatial_data_list: list[dict], distance: int):
+    """
+    Analyze whether topology transition (local vs regional density mismatch)
+    explains the spatial clustering of residuals.
+
+    Hypothesis: Nodes where local density differs from regional density
+    will have larger residuals because sampling misrepresents their context.
+    """
+    print(f"\n--- Topology Transition Analysis ({distance}m) ---")
+    print("Testing: Do local/regional density mismatches cause residual clustering?")
+
+    n_cities = len(spatial_data_list)
+    fig, axes = plt.subplots(n_cities, 3, figsize=(15, 4 * n_cities))
+    if n_cities == 1:
+        axes = axes.reshape(1, 3)
+
+    all_results = []
+
+    for row, sp_data in enumerate(spatial_data_list):
+        city_key = sp_data["city"]
+        coords = sp_data["coords"]
+        dist_data = sp_data["distances"].get(distance, {})
+
+        if not dist_data:
+            continue
+
+        transition_score = dist_data["transition_score"]
+        harmonic_residual = dist_data["harmonic_residual"]
+        betweenness_residual = dist_data["betweenness_residual"]
+
+        # Filter valid values
+        valid = np.isfinite(transition_score) & np.isfinite(harmonic_residual)
+        ts_valid = transition_score[valid]
+        hr_valid = np.abs(harmonic_residual[valid])  # Use absolute residual
+        br_valid = np.abs(betweenness_residual[valid])
+
+        # Correlation between transition score deviation and residual magnitude
+        # Use deviation from 1.0 (perfect local/regional match)
+        ts_deviation = np.abs(np.log(ts_valid + 1e-6))  # Log scale, deviation from 0 = ratio of 1
+
+        corr_h, p_h = scipy_stats.pearsonr(ts_deviation, hr_valid)
+        corr_b, p_b = scipy_stats.pearsonr(ts_deviation, br_valid)
+
+        all_results.append({
+            "city": city_key,
+            "city_name": CITIES[city_key]["name"],
+            "distance": distance,
+            "corr_harmonic": corr_h,
+            "p_harmonic": p_h,
+            "corr_betweenness": corr_b,
+            "p_betweenness": p_b,
+        })
+
+        print(f"  {CITIES[city_key]['name']}:")
+        print(f"    Transition deviation vs |harmonic residual|: r = {corr_h:.3f} (p = {p_h:.1e})")
+        print(f"    Transition deviation vs |betweenness residual|: r = {corr_b:.3f} (p = {p_b:.1e})")
+
+        # Plot 1: Transition score map
+        ax = axes[row, 0]
+        ts_clipped = np.clip(transition_score, 0.5, 2.0)  # Clip for visualization
+        scatter = ax.scatter(
+            coords[:, 0], coords[:, 1],
+            c=ts_clipped, cmap="RdYlBu_r", s=0.5, alpha=0.6,
+            vmin=0.5, vmax=2.0
+        )
+        cbar = plt.colorbar(scatter, ax=ax, shrink=0.4, pad=0.02)
+        cbar.set_label("Transition score", fontsize=6)
+        cbar.ax.tick_params(labelsize=5)
+        ax.set_xticks([])
+        ax.set_yticks([])
+        for spine in ax.spines.values():
+            spine.set_visible(False)
+        ax.set_aspect("equal")
+        ax.text(0.02, 0.98, f"{CITIES[city_key]['name']}\nlocal/regional",
+                transform=ax.transAxes, fontsize=9, verticalalignment="top",
+                bbox=dict(boxstyle="round", facecolor="white", alpha=0.8, edgecolor="none"))
+        if row == 0:
+            ax.set_title("Transition Score\n(red=locally dense)", fontsize=10, fontweight="bold")
+
+        # Plot 2: Harmonic residual map (for comparison)
+        ax = axes[row, 1]
+        hr_clipped = np.clip(harmonic_residual, -0.15, 0.15)
+        scatter = ax.scatter(
+            coords[:, 0], coords[:, 1],
+            c=hr_clipped, cmap="PuOr", s=0.5, alpha=0.6,
+            vmin=-0.15, vmax=0.15
+        )
+        cbar = plt.colorbar(scatter, ax=ax, shrink=0.4, pad=0.02)
+        cbar.set_label("Residual", fontsize=6)
+        cbar.ax.tick_params(labelsize=5)
+        ax.set_xticks([])
+        ax.set_yticks([])
+        for spine in ax.spines.values():
+            spine.set_visible(False)
+        ax.set_aspect("equal")
+        if row == 0:
+            ax.set_title("Harmonic Residual", fontsize=10, fontweight="bold")
+
+        # Plot 3: Scatter of transition deviation vs absolute residual
+        ax = axes[row, 2]
+        # Subsample for visualization
+        n_sample = min(5000, len(ts_deviation))
+        idx = np.random.choice(len(ts_deviation), n_sample, replace=False)
+        ax.scatter(ts_deviation[idx], hr_valid[idx], s=1, alpha=0.3, c="steelblue", label="Harmonic")
+        ax.scatter(ts_deviation[idx], br_valid[idx], s=1, alpha=0.3, c="coral", label="Betweenness")
+
+        # Trend lines
+        z_h = np.polyfit(ts_deviation, hr_valid, 1)
+        z_b = np.polyfit(ts_deviation, br_valid, 1)
+        x_line = np.linspace(0, ts_deviation.max(), 100)
+        ax.plot(x_line, np.poly1d(z_h)(x_line), "b-", linewidth=2, label=f"H: r={corr_h:.2f}")
+        ax.plot(x_line, np.poly1d(z_b)(x_line), "r-", linewidth=2, label=f"B: r={corr_b:.2f}")
+
+        ax.set_xlabel("|log(transition score)|", fontsize=9)
+        ax.set_ylabel("|Relative residual|", fontsize=9)
+        ax.legend(fontsize=7, loc="upper right")
+        ax.grid(True, alpha=0.3)
+        if row == 0:
+            ax.set_title("Transition vs Residual", fontsize=10, fontweight="bold")
+
+    plt.suptitle(
+        f"Topology Transition Analysis ({distance}m)\n"
+        "Does local/regional density mismatch explain residual clustering?",
+        fontsize=12, fontweight="bold"
+    )
+    plt.tight_layout()
+    plt.savefig(FIGURES_DIR / f"topology_transition_{distance}m.png", dpi=150, bbox_inches="tight")
+    print(f"Saved: {FIGURES_DIR / f'topology_transition_{distance}m.png'}")
+
+    return all_results
 
 
 def generate_spatial_report(spatial_results: list[dict], spatial_data_list: list[dict]):
@@ -793,11 +1158,50 @@ def generate_spatial_report(spatial_results: list[dict], spatial_data_list: list
     morans_b = df.groupby(["city", "distance"])["morans_i_betweenness"].first().mean()
     print(f"  Overall average: H={morans_h:.3f}, B={morans_b:.3f}")
 
-    # Generate residual maps for each distance
+    # Generate residual maps and centrality analysis for each distance
+    all_correlation_results = []
+    all_transition_results = []
     if spatial_data_list:
         distances = list(spatial_data_list[0]["distances"].keys())
         for dist in distances:
             generate_residual_maps(spatial_data_list, dist)
+            corr_results = generate_residual_vs_centrality(spatial_data_list, dist)
+            all_correlation_results.extend(corr_results)
+            generate_residual_scatter(spatial_data_list, dist)
+            transition_results = analyze_topology_transition(spatial_data_list, dist)
+            all_transition_results.extend(transition_results)
+
+    # Save correlation summary table
+    if all_correlation_results:
+        corr_df = pd.DataFrame(all_correlation_results)
+        corr_df.to_csv(TABLES_DIR / "residual_centrality_correlations.csv", index=False)
+        print(f"\nSaved: {TABLES_DIR / 'residual_centrality_correlations.csv'}")
+
+        # Print summary
+        print("\n--- Regression-to-Mean Summary ---")
+        print("Correlation between true centrality and relative residual:")
+        print(f"  {'City':<12} {'Dist':<8} {'Harmonic r':<12} {'Betweenness r':<14}")
+        print(f"  {'-' * 46}")
+        for dist in sorted(corr_df["distance"].unique()):
+            for city in corr_df["city_name"].unique():
+                h_row = corr_df[(corr_df["distance"] == dist) & (corr_df["city_name"] == city) & (corr_df["metric"] == "harmonic")]
+                b_row = corr_df[(corr_df["distance"] == dist) & (corr_df["city_name"] == city) & (corr_df["metric"] == "betweenness")]
+                if len(h_row) > 0 and len(b_row) > 0:
+                    print(f"  {city:<12} {dist:<8} {h_row['pearson_r'].values[0]:>+.3f}        {b_row['pearson_r'].values[0]:>+.3f}")
+
+    # Save topology transition results
+    if all_transition_results:
+        trans_df = pd.DataFrame(all_transition_results)
+        trans_df.to_csv(TABLES_DIR / "topology_transition_correlations.csv", index=False)
+        print(f"\nSaved: {TABLES_DIR / 'topology_transition_correlations.csv'}")
+
+        # Print summary
+        print("\n--- Topology Transition Summary ---")
+        print("Correlation between |log(transition_score)| and |residual|:")
+        print(f"  {'City':<12} {'Dist':<8} {'Harmonic r':<12} {'Betweenness r':<14}")
+        print(f"  {'-' * 46}")
+        for _, row in trans_df.iterrows():
+            print(f"  {row['city_name']:<12} {row['distance']:<8} {row['corr_harmonic']:>+.3f}        {row['corr_betweenness']:>+.3f}")
 
     # Generate quartile accuracy figure
     fig, axes = plt.subplots(1, 2, figsize=(12, 5))
@@ -832,7 +1236,7 @@ def generate_spatial_report(spatial_results: list[dict], spatial_data_list: list
     print(f"\nSaved: {FIGURES_DIR / 'spatial_reachability_accuracy.pdf'}")
 
     # Save data
-    df.to_csv(OUTPUT_DIR / "spatial_analysis.csv", index=False)
+    df.to_csv(TABLES_DIR / "spatial_analysis.csv", index=False)
 
     # Generate LaTeX table
     timestamp = datetime.now().isoformat(timespec="seconds")

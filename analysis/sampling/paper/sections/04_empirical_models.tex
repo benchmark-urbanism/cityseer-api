@@ -2,24 +2,21 @@
 
 \subsection{Model Form}
 
-Based on the experimental data, we fit empirical models predicting accuracy from effective sample size. We use a hyperbolic model form:
+Based on the experimental data, we fit empirical models predicting accuracy from effective sample size. We considered four functional forms: hyperbolic, power-law, exponential, and logistic (Table~\ref{tab:model_comparison}). The hyperbolic, exponential, and logistic forms perform similarly, while the power law shows weaker support ($\Delta\text{AIC} \geq 7$). We select the hyperbolic form for its desirable asymptotic properties ($\rhosp \to 1$ as $\effn \to \infty$) and intuitive interpretation:
 \begin{equation}
-    \rhosp = 1 - \frac{A}{B + \effn}
+    \rhosp = 1 - \frac{A}{B + \effn} - C \times (1-p)^D
     \label{eq:rho_model}
 \end{equation}
+where the first term is the baseline hyperbolic model and the second term is a power correction that penalises low sampling probabilities. At $p = 1$ (full sampling), the penalty term vanishes and the model reduces to the baseline form $\rhosp = 1 - A/(B + \effn)$. At low $p$, additional variance from sampling effects reduces accuracy beyond what $\effn$ alone predicts. The power correction accounts for this by requiring higher effective sample sizes at low sampling probabilities to achieve equivalent accuracy.
 
-This form has desirable properties:
-\begin{itemize}
-    \item Approaches 1.0 as $\effn \to \infty$ (perfect accuracy with infinite samples)
-    \item Bounded below (accuracy cannot be negative)
-    \item Captures diminishing returns at high $\effn$
-\end{itemize}
+% Auto-generated table
+\input{tables/model_comparison}
 
 \subsection{Fitting Procedure}
 
 We fit separate models for harmonic closeness and betweenness centrality, as initial analysis revealed different variance characteristics between the metrics. We also fit separate models for shortest path (metric) distances and simplest path (angular) distances, as these distance heuristics exhibit different accuracy characteristics.
 
-To provide \emph{conservative} estimates suitable for practical use, we fit to the 10th percentile of observed accuracy within effective sample size bins, rather than the mean. This ensures that the model predictions represent a lower bound on expected accuracy, accounting for topology-dependent variation.
+We fit the 10th percentile conditional quantile using quantile regression \citep{Koenker1978} rather than the conditional mean for three reasons: (1) urban analysts need accuracy guarantees that hold across diverse network types; (2) under-predicting accuracy (sampling too little) is costlier than over-predicting (minor computational overhead); and (3) accuracy variance decreases with $\effn$, making mean-based prediction intervals unreliable at low $\effn$. The 10th percentile ensures 90\% of network configurations will meet or exceed predicted accuracy.
 
 \subsection{Fitted Model Parameters}
 
@@ -29,16 +26,12 @@ To provide \emph{conservative} estimates suitable for practical use, we fit to t
 The results reveal several key differences between metrics and distance heuristics:
 
 \subsubsection{Metric Differences}
-The betweenness model has larger coefficients than harmonic closeness, reflecting higher variance and the need for more samples to achieve equivalent accuracy. This is consistent across both distance types.
+The relationship between harmonic closeness and betweenness sample requirements varies by distance heuristic. For shortest paths, harmonic closeness has larger model coefficients and requires more samples than betweenness. For angular paths, this relationship reverses, with betweenness requiring more samples.
 
 \subsubsection{Distance Heuristic Differences}
-Angular (simplest path) distances show markedly different behaviour from shortest path distances:
-\begin{itemize}
-    \item \textbf{Angular harmonic closeness} converges faster than shortest-path harmonic, requiring only $\effn \geq 321$ for $\rhosp = 0.95$ compared to $\effn \geq 615$ for shortest paths---approximately half the samples
-    \item \textbf{Angular betweenness} exhibits higher variance than shortest-path betweenness, requiring $\effn \geq 1168$ for $\rhosp = 0.95$ compared to $\effn \geq 917$---approximately 27\% more samples
-\end{itemize}
+Angular (simplest path) distances show markedly different behaviour from shortest path distances. For shortest paths, harmonic closeness requires $\effn \geq \effnShortestHarmonicNinetyFive$ for $\rhosp = 0.95$, while betweenness requires only $\effn \geq \effnShortestBetweennessNinetyFive$---meaning harmonic closeness needs approximately \ratioHBShortest$\times$ more samples than betweenness. For angular paths, the pattern reverses: harmonic closeness requires $\effn \geq \effnAngularHarmonicNinetyFive$ while betweenness requires $\effn \geq \effnAngularBetweennessNinetyFive$---betweenness needs approximately \ratioBHAngular$\times$ more samples. These differences reflect the distinct ways that path concentration affects each metric under different distance heuristics.
 
-This difference reflects the nature of angular distance computation: angular paths preferentially follow straight routes, concentrating betweenness on fewer ``through-movement'' corridors. This increases variance in betweenness estimates (high values are more sensitive to sampling), while angular closeness benefits from the smoother accumulation of inverse distances along fewer candidate paths.
+These differences reflect the nature of angular distance computation: angular paths preferentially follow straight routes, concentrating betweenness on fewer ``through-movement'' corridors. This concentration increases variance in betweenness estimates because high values are more sensitive to sampling, while angular closeness benefits from the smoother accumulation of inverse distances along fewer candidate paths.
 
 \subsection{Additional Models}
 
@@ -47,6 +40,7 @@ We also fit models for uncertainty (standard deviation) and magnitude bias:
 \subsubsection{Standard Deviation Model}
 \begin{equation}
     \sigma = \frac{C}{\sqrt{D + \effn}}
+    \label{eq:ci_model}
 \end{equation}
 
 This captures the expected $1/\sqrt{n}$ convergence rate from sampling theory.
@@ -60,52 +54,65 @@ This captures the observed tendency for sampling to underestimate magnitudes at 
 
 \subsection{Model Validation}
 
-Figures~\ref{fig:accuracy_vs_effn_shortest} and~\ref{fig:accuracy_vs_effn_angular} show observed accuracy versus effective sample size for shortest and angular distances, respectively. The models capture the central tendency well across all configurations.
+Figure~\ref{fig:accuracy_vs_effn_shortest} shows observed accuracy versus effective sample size for shortest path distances. The model captures the central tendency well across all configurations. Angular distance results are reported in Supplementary Material Figure~S1.
 
 % Auto-generated figure - Shortest path distances
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=\textwidth]{figures/accuracy_vs_effn_shortest.pdf}
-    \caption{Observed Spearman $\rho$ versus effective sample size for \textbf{shortest path} (metric) distances. Left: harmonic closeness. Right: betweenness. Points are coloured by network topology. Solid lines show fitted models (10th percentile). Dashed horizontal lines indicate common accuracy targets.}
+    \caption{Observed Spearman $\rhosp$ versus effective sample size for \textbf{shortest path} (metric) distances. Left: harmonic closeness. Right: betweenness. Points are coloured by network topology. Solid lines show fitted models (10th percentile). Dashed horizontal lines indicate common accuracy targets.}
     \label{fig:accuracy_vs_effn_shortest}
 \end{figure}
 
-% Auto-generated figure - Angular distances
-\begin{figure}[htbp]
-    \centering
-    \includegraphics[width=\textwidth]{figures/accuracy_vs_effn_angular.pdf}
-    \caption{Observed Spearman $\rho$ versus effective sample size for \textbf{angular} (simplest path) distances. Left: harmonic closeness. Right: betweenness. Note the faster convergence for harmonic closeness and higher variance for betweenness compared to shortest path distances (Figure~\ref{fig:accuracy_vs_effn_shortest}).}
-    \label{fig:accuracy_vs_effn_angular}
-\end{figure}
+% Angular distances figure moved to Supplementary Material (Figure S1)
+% \begin{figure}[htbp]
+%     \centering
+%     \includegraphics[width=\textwidth]{figures/accuracy_vs_effn_angular.pdf}
+%     \caption{Observed Spearman $\rhosp$ versus effective sample size for \textbf{angular} (simplest path) distances. Left: harmonic closeness. Right: betweenness. Note the faster convergence for harmonic closeness and higher variance for betweenness compared to shortest path distances (Figure~\ref{fig:accuracy_vs_effn_shortest}).}
+%     \label{fig:accuracy_vs_effn_angular}
+% \end{figure}
 
 \subsection{Inverting the Model}
 
-For practical use, we need to compute the required effective sample size for a target accuracy level. Inverting Equation~\ref{eq:rho_model}:
+For practical use, we need to compute the required sampling probability for a target accuracy level. Since $p$ appears both in the effective sample size term ($\effn = \bar{R} \times p$) and in the power correction term, inverting Equation~\ref{eq:rho_model} requires numerical solution. Given a target accuracy $\rhosp^*$ and reachability $\bar{R}$, we find $p^*$ such that:
 \begin{equation}
-    \effn^* = \frac{A}{1 - \rhosp^*} - B
-    \label{eq:required_effn}
-\end{equation}
-
-Given target $\rhosp^*$ and observed reachability $\bar{R}$, the required sampling probability is:
-\begin{equation}
-    p^* = \frac{\effn^*}{\bar{R}} = \frac{1}{\bar{R}} \left( \frac{A}{1 - \rhosp^*} - B \right)
+    1 - \frac{A}{B + \bar{R} \times p^*} - C \times (1-p^*)^D = \rhosp^*
     \label{eq:required_p}
 \end{equation}
+The power correction term ensures that higher sampling probabilities are required at low $p$ (i.e., high reachability, long distances) to compensate for the additional variance effects. At high $p$, the correction vanishes and the required $p$ approaches the baseline solution $p^* = \effn^* / \bar{R}$.
 
-Figures~\ref{fig:required_probability_shortest} and~\ref{fig:required_probability_angular} show the required sampling probability for various target accuracy levels as a function of network reachability, for shortest and angular distances respectively.
+Figure~\ref{fig:required_probability_shortest} shows the required sampling probability for various target accuracy levels as a function of network reachability. Angular distance results are reported in Supplementary Material Figure~S2.
 
 % Auto-generated figure - Shortest path
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=\textwidth]{figures/required_probability_shortest.pdf}
-    \caption{Required sampling probability for \textbf{shortest path} distances to achieve target accuracy levels ($\rho = 0.90, 0.95, 0.97, 0.99$) as a function of mean network reachability. Based on the betweenness (conservative) model.}
+    \caption{Required sampling probability for \textbf{shortest path} distances to achieve target accuracy levels ($\rhosp = 0.90, 0.95, 0.97, 0.99$) as a function of mean network reachability. Based on the betweenness (conservative) model.}
     \label{fig:required_probability_shortest}
 \end{figure}
 
-% Auto-generated figure - Angular
-\begin{figure}[htbp]
-    \centering
-    \includegraphics[width=\textwidth]{figures/required_probability_angular.pdf}
-    \caption{Required sampling probability for \textbf{angular} (simplest path) distances to achieve target accuracy levels. The angular betweenness model requires higher sampling probabilities than shortest-path betweenness due to the increased variance from angular path concentration.}
-    \label{fig:required_probability_angular}
-\end{figure}
+% Angular required probability figure moved to Supplementary Material (Figure S2)
+% \begin{figure}[htbp]
+%     \centering
+%     \includegraphics[width=\textwidth]{figures/required_probability_angular.pdf}
+%     \caption{Required sampling probability for \textbf{angular} (simplest path) distances to achieve target accuracy levels. The angular betweenness model requires higher sampling probabilities than shortest-path betweenness due to the increased variance from angular path concentration.}
+%     \label{fig:required_probability_angular}
+% \end{figure}
+
+\subsection{Confidence Interval Width}
+
+The standard deviation model (Equation~\ref{eq:ci_model}) predicts how uncertainty in individual node estimates varies with effective sample size. When expressed as a \emph{relative} CI-width (uncertainty as a proportion of the node's centrality value), this model implies that low-reachability nodes will show high relative uncertainty. However, this apparent limitation is offset by an important structural property of network centrality.
+
+Relative CI-width decreases with effective sample size following the expected $1/\sqrt{\effn}$ relationship. Nodes with low effective sample size (peripheral locations with limited reachability) show relative CI-widths of 50--100\%, which might appear problematic. However, because low-reachability nodes necessarily have low centrality values, their \emph{absolute} uncertainty (in the same units as centrality) remains small. A peripheral street with relative CI-width of 50\% but centrality value of 0.02 has absolute uncertainty of just 0.01 units---negligible compared to the range of centrality values across the network. Conversely, high-centrality nodes in urban cores have high effective sample size and correspondingly low relative CI-width, ensuring precise estimates where precision matters most. The relationship between relative and absolute CI-width is illustrated in Supplementary Material Figure~S3.
+
+This precision-importance relationship is strongest for betweenness centrality, where high-centrality nodes lie on major through-movement corridors with high reachability. For harmonic closeness, the relationship is still present but exhibits topology-dependent variance in transitional zones between urban cores and peripheries. Section~\ref{sec:spatial_analysis} discusses the spatial patterns of this variance.
+
+With these empirical models established, we now describe an algorithm that automatically calibrates sampling probability at each distance threshold to achieve a target accuracy level.
+
+% CI-width figure moved to Supplementary Material (Figure S3)
+% \begin{figure}[htbp]
+%     \centering
+%     \includegraphics[width=\textwidth]{figures/absolute_vs_relative_precision.pdf}
+%     \caption{Relative versus absolute confidence interval width. (A) Relative CI-width (as percentage of node centrality) decreases with effective sample size, with low-reachability nodes showing high relative uncertainty. (B) Absolute CI-width (as percentage of network maximum centrality) remains bounded across all effective sample sizes. Low-centrality peripheral nodes have high relative but low absolute uncertainty; high-centrality core nodes have low relative and moderate absolute uncertainty. The practical implication is that absolute precision is approximately uniform across the network.}
+%     \label{fig:abs_vs_rel}
+% \end{figure}
