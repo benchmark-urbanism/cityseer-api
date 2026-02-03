@@ -2533,6 +2533,7 @@ model_params_tex = rf"""% Auto-generated table: Model Parameters
 \centering
 \caption{{Fitted model parameters for predicting Spearman $\rho$ from effective sample size. Baseline model: $\rho = 1 - A/(B + \effn)$. Power correction model: $\rho = 1 - A/(B + \effn) - C \times (1-p)^D$ where $p$ is sampling probability. The correction term penalises low sampling probabilities where variance is higher. Models fitted to 10th percentile for conservative estimates. $\Delta$AIC compares power correction vs baseline (negative favours correction). $p$-value from likelihood ratio test.}}
 \label{{tab:model_parameters}}
+\resizebox{{\textwidth}}{{!}}{{
 \begin{{tabular}}{{llrrrrrrrr}}
 \toprule
 Distance & Metric & $A$ & $B$ & $C$ & $D$ & RMSE & $\Delta$AIC & $\effn$ for $\rho\!=\!0.95$ & $\effn$ for $\rho\!=\!0.99$ \\
@@ -2544,6 +2545,7 @@ Angular & Harmonic & {ah_pwr["A"] or ah["A"]:.2f} & {ah_pwr["B"] or ah["B"]:.2f}
 Angular & Betweenness & {ab_pwr["A"] or ab["A"]:.2f} & {ab_pwr["B"] or ab["B"]:.2f} & {ab_c} & {ab_d} & {ab_pwr["rmse"] or ab["rmse"]:.4f} & {fmt_delta_aic(ab_pwr.get("comparison"))} & {ab_95:.0f} & {ab_99:.0f} \\
 \bottomrule
 \end{{tabular}}
+}}
 \end{{table}}
 """
 
