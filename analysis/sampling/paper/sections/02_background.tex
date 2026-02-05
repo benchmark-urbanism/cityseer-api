@@ -1,7 +1,54 @@
-% Background and Related Work section
+% =============================================================================
+% Section 2: Background and Related Work
+% =============================================================================
 
-Network centrality measures are widely used in urban analysis, with modern tools such as OSMnx \citep{Boeing2017}, sDNA \citep{Cooper2018}, and \cityseer{} \citep{Simons2022} enabling large-scale computation on street networks. For pedestrian-scale analysis, \emph{localised} centrality measures restrict computation to nodes within a distance threshold \citep{Turner2007,Cooper2015}, reflecting that accessibility patterns relevant to walking behaviour operate at limited distances. Multi-scale analysis---computing centrality at multiple thresholds (e.g., 500m, 1000m, 2000m, 5000m)---has become standard practice for capturing both neighbourhood accessibility and broader urban connectivity.
+\subsection{Network Centrality in Urban Analysis}
 
-The \citet{Brandes2001} algorithm provides the foundation for efficient centrality computation, yet multi-scale localised analysis on large urban networks remains prohibitive for rapid planning iteration. Sampling-based approximation \citep{Brandes2007} estimates centrality from a subset of source nodes, with error decreasing as $1/\sqrt{k}$ samples. However, prior work has focused primarily on global rather than localised measures, leaving a gap in understanding how sampling performs across multiple distance thresholds.
+Network centrality measures have become essential tools for urban morphology and spatial analysis. Originally developed in social network analysis \citep{freeman1977set, freeman1978centrality}, these measures were adapted for urban street networks by \citet{hillier1984social} and subsequently formalised in the space syntax tradition.
 
-The specific challenge of multi-scale localised centrality has received little attention. At short distances, urban networks have low reachability (few nodes within threshold), while at long distances, reachability approaches the full network. Uniform sampling fails to address this variation: a fixed sampling probability that works at long distances provides insufficient samples at short distances. This paper addresses this gap by introducing \emph{effective sample size} as a unifying concept and developing an adaptive algorithm that calibrates sampling probability independently for each distance threshold.
+\textbf{Closeness centrality} measures how efficiently a node can reach all others. The harmonic variant, which we use throughout this paper, is defined as:
+\begin{equation}
+C_H(v) = \sum_{u \neq v} \frac{1}{d(v, u)}
+\end{equation}
+where $d(v, u)$ is the shortest path distance from $v$ to $u$. The harmonic formulation handles disconnected graphs naturally and is preferred for distance-weighted urban analysis \citep{porta2006network}.
+
+\textbf{Betweenness centrality} measures the extent to which a node lies on shortest paths between other pairs:
+\begin{equation}
+C_B(v) = \sum_{s \neq v \neq t} \frac{\sigma_{st}(v)}{\sigma_{st}}
+\end{equation}
+where $\sigma_{st}$ is the number of shortest paths from $s$ to $t$, and $\sigma_{st}(v)$ is the number passing through $v$. High betweenness indicates locations that control flow through the network.
+
+For urban applications, these measures are typically computed with a distance threshold $d_{\max}$, considering only nodes within a specified radius. This reflects the reality that pedestrian accessibility is local rather than global. Common thresholds range from 400m (5-minute walk) to 20km (regional connectivity).
+
+\subsection{Computational Complexity}
+
+The computational cost of centrality measures scales poorly with network size. Brandes' algorithm \citep{brandes2001faster} computes both betweenness and harmonic closeness in $O(NM + N^2 \log N)$ time for weighted graphs, where $N$ is nodes and $M$ is edges. For a network of \glaNnodes{} nodes with average degree 3, this translates to billions of operations per distance threshold.
+
+When analysis requires multiple distance thresholds---as is common in urban morphology studies---the computational burden multiplies. A typical multi-scale analysis with 12 distance thresholds on a large network can require days of computation.
+
+\subsection{Sampling Approximation}
+
+Sampling-based approximation of centrality has been studied extensively. \citet{brandes2007centrality} showed that betweenness can be approximated by computing from a random subset of source nodes and scaling appropriately. Subsequent work established theoretical bounds on approximation quality \citep{geisberger2008better, riondato2016fast}.
+
+The key insight is that centrality computed from $k$ random sources produces estimates with standard error proportional to $1/\sqrt{k}$. This suggests that effective sample size---the product of reach and sampling probability---should be the key determinant of accuracy.
+
+However, prior work has focused on theoretical worst-case bounds rather than empirical calibration for practical use. The question of \emph{how many samples are sufficient for urban network analysis} has not been systematically addressed. Our work fills this gap by:
+\begin{enumerate}
+\item Empirically validating that effective sample size determines accuracy across topologies
+\item Fitting practical thresholds for achieving target accuracy ($\rho \geq \targetRho$)
+\item Deriving a simple model that practitioners can apply directly
+\end{enumerate}
+
+\subsection{Distance-Weighted Centrality}
+
+Urban network analysis typically uses \emph{local} centrality measures with distance thresholds. For a threshold $d_{\max}$, we compute:
+\begin{equation}
+C_H(v; d_{\max}) = \sum_{u: d(v,u) \leq d_{\max}} \frac{1}{d(v, u)}
+\end{equation}
+
+The \emph{reach} $r$ at distance $d_{\max}$ is the mean number of nodes within that distance:
+\begin{equation}
+r = \frac{1}{N} \sum_{v} \left| \{u : d(v, u) \leq d_{\max}\} \right|
+\end{equation}
+
+Reach varies dramatically with distance threshold. In our Greater London validation network, reach ranges from \glaFiveKmReach{} at 5km to \glaTwentyKmReach{} at 20km---a 15-fold increase. This variation is central to our sampling model: larger reach allows more aggressive sampling while maintaining accuracy.

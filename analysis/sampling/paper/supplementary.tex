@@ -153,43 +153,10 @@ The main paper focuses on shortest-path (metric) distance results. Here we prese
     \label{fig:required_prob_angular}
 \end{figure}
 
-\subsection{Detailed Confidence Interval Analysis}
-\label{sec:ci_analysis}
-
-These figures provide additional detail on the precision characteristics of our sampling approach.
-
-\begin{figure}[htbp]
-    \centering
-    \includegraphics[width=0.9\textwidth]{figures/pernode_ciwidth_vs_effn.pdf}
-    \caption{Per-node confidence interval width as a function of effective sample size. This analysis shows how estimation uncertainty varies across individual nodes, complementing the aggregate accuracy metrics in the main paper.}
-    \label{fig:pernode_ci}
-\end{figure}
-
-\begin{figure}[htbp]
-    \centering
-    \includegraphics[width=0.9\textwidth]{figures/absolute_vs_relative_precision.pdf}
-    \caption{Comparison of absolute vs relative precision metrics. Relative precision (coefficient of variation) provides a scale-invariant measure suitable for comparing accuracy across different distance thresholds and network sizes.}
-    \label{fig:abs_vs_rel}
-\end{figure}
-
-\begin{figure}[htbp]
-    \centering
-    \includegraphics[width=0.9\textwidth]{figures/ci_width_vs_rho.pdf}
-    \caption{Relationship between confidence interval width and Spearman correlation ($\rho$). This figure demonstrates that narrower confidence intervals correspond to higher ranking accuracy, validating the use of $\rho$ as our primary accuracy metric.}
-    \label{fig:ci_vs_rho}
-\end{figure}
-
 %==============================================================================
 \section{Supplementary Tables}
 \label{sec:supp_tables}
 %==============================================================================
-
-\subsection{Full Synthetic Network Results}
-\label{sec:synthetic_full}
-
-Table~\ref{tab:synthetic_full} provides the complete results across all synthetic network topologies, including timing breakdowns and accuracy metrics for both centrality measures.
-
-\input{tables/synthetic_results.tex}
 
 \subsection{Detailed Model Comparison}
 \label{sec:model_comparison_detail}

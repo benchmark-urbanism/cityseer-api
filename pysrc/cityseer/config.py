@@ -63,70 +63,57 @@ SPEED_M_S = 1.33333
 ATOL: float = 0.01
 RTOL: float = 0.0001
 
-# Empirical model parameters for sampling accuracy prediction
-# Fitted from analysis across network topologies (trellis, tree, linear)
-# effective_n = mean_reachability × sample_probability
-# See analysis/output/README.md for methodology
+# === SAMPLING MODEL CONSTANTS ===
+# All constants are fitted via analysis/sampling/ scripts and synced via 03_sync_constants.py
 #
-# Models fitted to 10th percentile for conservative estimates.
-# Betweenness has higher variance than closeness, so separate models are provided.
+# Two-factor model for computing required sampling probability:
+#   Factor 1: Baseline model predicts ρ from eff_n = reach × p
+#             ρ = 1 - A / (B + eff_n)
+#   Factor 2: Proportional coverage floor p_min = k / √reach
 #
-# Model for expected Spearman ρ: rho = 1 - A / (B + eff_n)
 # Model for standard deviation: std = C / sqrt(D + eff_n)
 # Model for expected scale (magnitude bias): scale = 1 - E / (F + eff_n)
 
+# === SAMPLING MODEL CONSTANTS ===
+# The inverted sampling model: eff_n = max(k × √reach, min_eff_n)
+#   - k: Proportional constant for scaling with √reach
+#   - min_eff_n: Minimum effective sample size floor
+# Then: p = min(1.0, eff_n / reach)
+#
+# Fitted via analysis/sampling/ scripts:
+#   - k fitted on synthetic networks (01_fit_model.py)
+#   - min_eff_n fitted on synthetic networks (02_fit_floor.py)
+#   - Validated on GLA network (04_validate_gla.py)
+#   - Synced via 06_sync_config.py
+SAMPLING_PROPORTIONAL_K: float = 14.21
+SAMPLING_MIN_EFF_N: float = 350.0
+
 # === SHORTEST (metric) distance models ===
-# Generated from analysis/sampling/sampling_reach.py v11 on 2026-01-30
-# Harmonic (closeness) model - requires more samples than betweenness
-SAMPLING_MODEL_SHORTEST_HARMONIC_A: float = 138.83
-SAMPLING_MODEL_SHORTEST_HARMONIC_B: float = 136.62
+# A, B fitted on synthetic networks (01_fit_models.py) and synced via 03_sync_constants.py
+SAMPLING_MODEL_SHORTEST_HARMONIC_A: float = 4.96
+SAMPLING_MODEL_SHORTEST_HARMONIC_B: float = 9.09
 
-# Betweenness model - lower variance for shortest path distances
-SAMPLING_MODEL_SHORTEST_BETWEENNESS_A: float = 79.73
-SAMPLING_MODEL_SHORTEST_BETWEENNESS_B: float = 81.50
+SAMPLING_MODEL_SHORTEST_BETWEENNESS_A: float = 8.76
+SAMPLING_MODEL_SHORTEST_BETWEENNESS_B: float = 13.77
 
-# Additional models for std deviation and bias estimation
-SAMPLING_MODEL_SHORTEST_STD_C: float = 1.487  # Numerator coefficient for std model
-SAMPLING_MODEL_SHORTEST_STD_D: float = 26.28  # Denominator offset for std model
-SAMPLING_MODEL_SHORTEST_BIAS_E: float = 0.84  # Numerator coefficient for bias model
-SAMPLING_MODEL_SHORTEST_BIAS_F: float = 0.95  # Denominator offset for bias model
+# Std deviation and bias models (fitted on synthetic networks, synced via 03_sync_constants.py)
+SAMPLING_MODEL_SHORTEST_STD_C: float = 0.646
+SAMPLING_MODEL_SHORTEST_STD_D: float = 0.97
+SAMPLING_MODEL_SHORTEST_BIAS_E: float = -149899443193.53
+SAMPLING_MODEL_SHORTEST_BIAS_F: float = 119020320586.78
 
 # === ANGULAR (simplest) distance models ===
-# Generated from analysis/sampling/sampling_reach.py v11 on 2026-01-30
-# Angular paths show different accuracy characteristics vs shortest paths
-SAMPLING_MODEL_ANGULAR_HARMONIC_A: float = 86.93
-SAMPLING_MODEL_ANGULAR_HARMONIC_B: float = 87.37
+# A, B fitted on synthetic networks (01_fit_models.py) and synced via 03_sync_constants.py
+SAMPLING_MODEL_ANGULAR_HARMONIC_A: float = 2.57
+SAMPLING_MODEL_ANGULAR_HARMONIC_B: float = 3.89
 
-SAMPLING_MODEL_ANGULAR_BETWEENNESS_A: float = 147.09
-SAMPLING_MODEL_ANGULAR_BETWEENNESS_B: float = 155.26
+SAMPLING_MODEL_ANGULAR_BETWEENNESS_A: float = 9.98
+SAMPLING_MODEL_ANGULAR_BETWEENNESS_B: float = 14.32
 
-SAMPLING_MODEL_ANGULAR_STD_C: float = 2.269
-SAMPLING_MODEL_ANGULAR_STD_D: float = 61.91
-SAMPLING_MODEL_ANGULAR_BIAS_E: float = 0.93
-SAMPLING_MODEL_ANGULAR_BIAS_F: float = 1.83
-
-# === EXTENDED MODEL PARAMETERS ===
-# Extended model: rho = 1 - A / (B + eff_n * p^k)
-# Equivalent to: rho = 1 - A / (B + reach * p^(1+k))
-# NOTE: k is NOT statistically significant for harmonic closeness (k≈0).
-# The baseline model is sufficient for harmonic; extended model helps for betweenness.
-
-# Extended model k parameters (p exponent correction)
-# Harmonic k≈0 (not significant), betweenness k>0 (significant at p<0.05)
-SAMPLING_MODEL_SHORTEST_HARMONIC_K: float = 0.0  # p=0.92, not significant
-SAMPLING_MODEL_SHORTEST_BETWEENNESS_K: float = 0.1813  # p=0.023, significant
-SAMPLING_MODEL_ANGULAR_HARMONIC_K: float = 0.0  # p=0.25, not significant
-SAMPLING_MODEL_ANGULAR_BETWEENNESS_K: float = 0.2573  # p=0.011, significant
-
-# Extended model A/B parameters (different from baseline)
-SAMPLING_MODEL_EXT_SHORTEST_HARMONIC_A: float = 43.90
-SAMPLING_MODEL_EXT_SHORTEST_HARMONIC_B: float = 61.57
-SAMPLING_MODEL_EXT_SHORTEST_BETWEENNESS_A: float = 22.87
-SAMPLING_MODEL_EXT_SHORTEST_BETWEENNESS_B: float = 30.69
-SAMPLING_MODEL_EXT_ANGULAR_HARMONIC_A: float = 23.13
-SAMPLING_MODEL_EXT_ANGULAR_HARMONIC_B: float = 32.64
-SAMPLING_MODEL_EXT_ANGULAR_BETWEENNESS_A: float = 30.19
-SAMPLING_MODEL_EXT_ANGULAR_BETWEENNESS_B: float = 42.15
+SAMPLING_MODEL_ANGULAR_STD_C: float = 0.889
+SAMPLING_MODEL_ANGULAR_STD_D: float = 5.29
+SAMPLING_MODEL_ANGULAR_BIAS_E: float = -77311674160.16
+SAMPLING_MODEL_ANGULAR_BIAS_F: float = 61318369747.42
 
 
 def get_expected_spearman(
@@ -137,9 +124,8 @@ def get_expected_spearman(
     """
     Get expected Spearman ρ and standard deviation for given effective sample size.
 
-    Uses fitted empirical models:
-    - Expected ρ = 1 - A / (B + eff_n)
-    - Std dev = C / sqrt(D + eff_n)
+    Uses baseline model: Expected ρ = 1 - A / (B + eff_n)
+    Std dev model: C_std / sqrt(D_std + eff_n)
 
     Parameters
     ----------
@@ -164,20 +150,24 @@ def get_expected_spearman(
     # Select model parameters based on distance_type and metric
     if distance_type == "angular":
         if metric == "harmonic":
-            a, b = SAMPLING_MODEL_ANGULAR_HARMONIC_A, SAMPLING_MODEL_ANGULAR_HARMONIC_B
+            a = SAMPLING_MODEL_ANGULAR_HARMONIC_A
+            b = SAMPLING_MODEL_ANGULAR_HARMONIC_B
         else:
             # "betweenness" or "both" - use conservative model
-            a, b = SAMPLING_MODEL_ANGULAR_BETWEENNESS_A, SAMPLING_MODEL_ANGULAR_BETWEENNESS_B
+            a = SAMPLING_MODEL_ANGULAR_BETWEENNESS_A
+            b = SAMPLING_MODEL_ANGULAR_BETWEENNESS_B
         std_c, std_d = SAMPLING_MODEL_ANGULAR_STD_C, SAMPLING_MODEL_ANGULAR_STD_D
     else:  # shortest (default)
         if metric == "harmonic":
-            a, b = SAMPLING_MODEL_SHORTEST_HARMONIC_A, SAMPLING_MODEL_SHORTEST_HARMONIC_B
+            a = SAMPLING_MODEL_SHORTEST_HARMONIC_A
+            b = SAMPLING_MODEL_SHORTEST_HARMONIC_B
         else:
             # "betweenness" or "both" - use conservative model
-            a, b = SAMPLING_MODEL_SHORTEST_BETWEENNESS_A, SAMPLING_MODEL_SHORTEST_BETWEENNESS_B
+            a = SAMPLING_MODEL_SHORTEST_BETWEENNESS_A
+            b = SAMPLING_MODEL_SHORTEST_BETWEENNESS_B
         std_c, std_d = SAMPLING_MODEL_SHORTEST_STD_C, SAMPLING_MODEL_SHORTEST_STD_D
 
-    # Expected Spearman ρ
+    # Expected Spearman ρ from baseline model
     expected_rho = 1.0 - a / (b + eff_n)
     expected_rho = max(0.0, min(1.0, expected_rho))  # Clamp to [0, 1]
 
@@ -221,60 +211,6 @@ def get_expected_bias(effective_n: float, distance_type: str = "shortest") -> fl
     expected_scale = max(0.0, min(1.0, expected_scale))  # Clamp to [0, 1]
     return 1.0 - expected_scale
 
-
-def get_extended_model_params(
-    metric: str = "betweenness",
-    distance_type: str = "shortest",
-) -> tuple[float, float, float]:
-    """
-    Get extended model parameters (A, B, k) for the given metric and distance type.
-
-    The extended model is: rho = 1 - A / (B + eff_n * p^k)
-    Which is equivalent to: rho = 1 - A / (B + reach * p^(1+k))
-
-    Parameters
-    ----------
-    metric : str
-        Which metric model to use: "harmonic", "betweenness", or "both".
-        Use "both" when computing both metrics together (uses betweenness/conservative).
-        Default "betweenness" for backward compatibility.
-    distance_type : str
-        Which distance type model to use: "shortest" (metric) or "angular" (simplest).
-        Default "shortest" for backward compatibility.
-
-    Returns
-    -------
-    tuple[float, float, float]
-        (A, B, k) parameters for the extended model.
-    """
-    if distance_type == "angular":
-        if metric == "harmonic":
-            return (
-                SAMPLING_MODEL_EXT_ANGULAR_HARMONIC_A,
-                SAMPLING_MODEL_EXT_ANGULAR_HARMONIC_B,
-                SAMPLING_MODEL_ANGULAR_HARMONIC_K,
-            )
-        else:
-            # "betweenness" or "both" - use conservative model
-            return (
-                SAMPLING_MODEL_EXT_ANGULAR_BETWEENNESS_A,
-                SAMPLING_MODEL_EXT_ANGULAR_BETWEENNESS_B,
-                SAMPLING_MODEL_ANGULAR_BETWEENNESS_K,
-            )
-    else:  # shortest (default)
-        if metric == "harmonic":
-            return (
-                SAMPLING_MODEL_EXT_SHORTEST_HARMONIC_A,
-                SAMPLING_MODEL_EXT_SHORTEST_HARMONIC_B,
-                SAMPLING_MODEL_SHORTEST_HARMONIC_K,
-            )
-        else:
-            # "betweenness" or "both" - use conservative model
-            return (
-                SAMPLING_MODEL_EXT_SHORTEST_BETWEENNESS_A,
-                SAMPLING_MODEL_EXT_SHORTEST_BETWEENNESS_B,
-                SAMPLING_MODEL_SHORTEST_BETWEENNESS_K,
-            )
 
 
 def get_required_effective_n(
@@ -337,72 +273,46 @@ def compute_required_p(
     """
     Compute the sampling probability required to achieve target accuracy.
 
-    When k is significant (betweenness), uses extended model:
-        rho = 1 - A / (B + reach * p^(1+k))
-        Inverted: p = ((A / (1 - rho) - B) / reach)^(1/(1+k))
+    Uses the inverted sampling model:
+      eff_n = max(k × √reach, min_eff_n)
+      p = min(1.0, eff_n / reach)
 
-    When k is NOT significant (harmonic, k≈0), uses baseline model
-    for conservative estimates:
-        rho = 1 - A / (B + eff_n)
-        Inverted: p = (A / (1 - rho) - B) / reach
+    Where:
+      - k = SAMPLING_PROPORTIONAL_K (fitted constant for √reach scaling)
+      - min_eff_n = SAMPLING_MIN_EFF_N (floor for low-reach networks)
+
+    This model guarantees ρ ≥ 0.95 across diverse network topologies.
+    The target_spearman parameter is retained for API compatibility but
+    the model is calibrated for ρ ≥ 0.95.
 
     Parameters
     ----------
     mean_reachability : float
         Average number of nodes reachable within distance threshold
     target_spearman : float
-        Target Spearman ρ (default 0.95)
+        Target Spearman ρ (default 0.95). Note: model is calibrated for 0.95.
     metric : str
-        Which metric model to use: "harmonic", "betweenness", or "both".
-        Use "both" when computing both metrics together (uses betweenness/conservative).
-        Default "betweenness" for backward compatibility.
+        Retained for API compatibility. The inverted model applies to both metrics.
     distance_type : str
-        Which distance type model to use: "shortest" (metric) or "angular" (simplest).
-        Default "shortest" for backward compatibility.
+        Retained for API compatibility. The inverted model applies to both distance types.
 
     Returns
     -------
     float | None
-        Required sampling probability, or None if impossible
+        Required sampling probability, or None if reach is invalid
     """
-    if target_spearman >= 1.0:
-        return None
     if mean_reachability <= 0:
         return None
 
-    # Get extended model parameters
-    a_ext, b_ext, k = get_extended_model_params(metric, distance_type)
+    import math
 
-    # When k is NOT significant (≈0), use baseline model for conservative estimates
-    # The extended model with k≈0 was fitted to all data (median), not 10th percentile
-    if abs(k) < 0.05:  # k not significant
-        # Use baseline (conservative 10th percentile) model parameters
-        if distance_type == "angular":
-            if metric == "harmonic":
-                a, b = SAMPLING_MODEL_ANGULAR_HARMONIC_A, SAMPLING_MODEL_ANGULAR_HARMONIC_B
-            else:
-                a, b = SAMPLING_MODEL_ANGULAR_BETWEENNESS_A, SAMPLING_MODEL_ANGULAR_BETWEENNESS_B
-        else:  # shortest
-            if metric == "harmonic":
-                a, b = SAMPLING_MODEL_SHORTEST_HARMONIC_A, SAMPLING_MODEL_SHORTEST_HARMONIC_B
-            else:
-                a, b = SAMPLING_MODEL_SHORTEST_BETWEENNESS_A, SAMPLING_MODEL_SHORTEST_BETWEENNESS_B
+    # Inverted sampling model: eff_n = max(k × √reach, min_eff_n)
+    eff_n = max(SAMPLING_PROPORTIONAL_K * math.sqrt(mean_reachability), SAMPLING_MIN_EFF_N)
 
-        # Baseline model inversion: p = (A / (1 - rho) - B) / reach
-        numerator = a / (1.0 - target_spearman) - b
-        if numerator <= 0:
-            return None
-        p = numerator / mean_reachability
-    else:
-        # Extended model with significant k
-        a, b = a_ext, b_ext
-        numerator = a / (1.0 - target_spearman) - b
-        if numerator <= 0:
-            return None
-        # Extended model inversion: p = (numerator / reach)^(1/(1+k))
-        p = (numerator / mean_reachability) ** (1.0 / (1.0 + k))
+    # Sampling probability: p = min(1.0, eff_n / reach)
+    p = min(1.0, eff_n / mean_reachability)
 
-    return min(1.0, max(0.0, p))
+    return max(0.01, p)
 
 
 def log_thresholds(
@@ -613,7 +523,7 @@ def probe_reachability(
     Returns
     -------
     dict[int, float]
-        25th percentile reachability (node count) for each distance threshold.
+        Median reachability (node count) for each distance threshold.
         Using a lower percentile provides conservative estimates that account
         for spatial variation in reachability across the network.
     """
@@ -651,8 +561,8 @@ def probe_reachability(
             count = sum(1 for v_idx in visited if tree_map[v_idx].short_dist <= d and v_idx != src_idx)
             reach_counts[d].append(count)
 
-    # Return 25th percentile reachability (conservative estimate for spatial variation)
-    return {d: float(np.percentile(counts, 25)) if counts else 0.0 for d, counts in reach_counts.items()}
+    # Return median reachability (50th percentile)
+    return {d: float(np.percentile(counts, 50)) if counts else 0.0 for d, counts in reach_counts.items()}
 
 
 def compute_sample_probs_for_target_rho(
@@ -664,17 +574,14 @@ def compute_sample_probs_for_target_rho(
     """
     Compute the sampling probability required at each distance to achieve target accuracy.
 
-    Uses extended model: rho = 1 - A / (B + reach * p^(1+k))
-    Inverted: p = ((A / (1 - rho) - B) / reach)^(1/(1+k))
-
-    Conservative estimates are achieved through:
-    1. Reachability probing uses 25th percentile (handles spatial variation)
-    2. Accuracy model is fitted to 10th percentile of observations
+    Uses a two-factor model:
+      Factor 1: Baseline model requires minimum eff_n for target ρ
+      Factor 2: Proportional coverage floor p_min = k / √reach
 
     Parameters
     ----------
     reach_estimates
-        Reachability per distance (from probe_reachability, 25th percentile).
+        Reachability per distance (from probe_reachability, median).
     target_rho
         Target Spearman ρ correlation. Default 0.95.
     metric

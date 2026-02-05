@@ -1,0 +1,70 @@
+% =============================================================================
+% Section 8: Discussion
+% =============================================================================
+
+\subsection{Model Assumptions and Limitations}
+
+Our sampling model rests on several assumptions that may not hold in all contexts:
+
+\subsubsection{Uniform Sampling}
+
+We assume sources are sampled uniformly at random. Non-uniform sampling (e.g., stratified by location or centrality) could potentially achieve higher accuracy with fewer samples, but would require additional information about node importance that may not be available before computation.
+
+\subsubsection{Network Homogeneity}
+
+The model treats the network as statistically homogeneous---accuracy depends on global reach, not local structure. Real networks have heterogeneous topology: dense urban cores surrounded by sparse suburbs. Our validation on the GLA network (which exhibits such heterogeneity) suggests the model remains conservative, but accuracy may vary locally.
+
+\subsubsection{Metric-Specific Behaviour}
+
+We fitted the model primarily to betweenness centrality, which is more demanding than harmonic closeness (requiring more samples for the same accuracy). The model is therefore conservative for harmonic closeness, where practitioners could potentially use even lower sampling probabilities.
+
+\subsubsection{Distance Heuristic}
+
+Our synthetic experiments used shortest-path distance. Angular (simplest-path) distance, common in space syntax analysis, may exhibit different accuracy characteristics. Preliminary tests suggest similar behaviour, but systematic validation is needed.
+
+\subsection{Comparison with Theoretical Bounds}
+
+Theoretical work on centrality approximation \citep{riondato2016fast} provides worst-case bounds on approximation error as a function of sample size. These bounds are typically conservative, requiring many more samples than our empirical analysis suggests are sufficient.
+
+The gap arises because theoretical bounds must hold for adversarial graph structures, while real urban networks have regular, well-behaved topology. Our empirical approach trades theoretical guarantees for practical efficiency, achieving high accuracy with fewer samples by exploiting the regularity of urban street networks.
+
+For applications where worst-case guarantees are required, theoretical bounds should be preferred. For typical urban analysis, our empirical model provides more practical guidance.
+
+\subsection{Spatial Heterogeneity}
+
+Network centrality exhibits spatial heterogeneity: accuracy may vary across different parts of the network. Central areas with high local density may have different accuracy characteristics than peripheral areas with lower density.
+
+We partially address this through the live-node buffer, which excludes edge nodes with incomplete catchments. However, within the live zone, some spatial variation in accuracy likely remains. For applications where spatially uniform accuracy is critical, local calibration or stratified sampling could be explored.
+
+\subsection{Computational Overhead}
+
+Sampling introduces computational overhead beyond the centrality computation itself:
+\begin{itemize}
+\item Random sampling of source nodes
+\item Reach estimation (if not already available)
+\item Result scaling
+\end{itemize}
+
+For very short distances (low reach), this overhead may exceed the savings from sampling. Our floor constraint ($\effn \geq \minEffN$) mitigates this by preventing sampling when it would provide minimal benefit, but practitioners should be aware that the crossover point ($r \approx \crossoverReach$) represents the minimum reach where sampling provides meaningful speedup.
+
+\subsection{Multiple Distance Thresholds}
+
+Multi-scale urban analysis computes centrality at many distance thresholds simultaneously. Our algorithm handles this naturally, but the computational savings are uneven: short distances (requiring full or near-full computation) may dominate total runtime even when long distances are heavily sampled.
+
+Practitioners should consider whether all distance thresholds are necessary, or whether interpolation from a subset of distances could provide adequate resolution with lower computational cost.
+
+\subsection{Future Directions}
+
+Several extensions could improve or extend this work:
+
+\begin{itemize}
+\item \textbf{Adaptive per-node sampling}: Rather than uniform sampling probability, adapt sampling based on local reach. High-reach nodes could be sampled more aggressively.
+
+\item \textbf{Importance sampling}: Weight sampling toward high-centrality sources, which contribute more to final estimates.
+
+\item \textbf{Online calibration}: Adjust sampling probability during computation based on observed variance, increasing samples if accuracy is insufficient.
+
+\item \textbf{Angular distance validation}: Systematically validate the model for angular (simplest-path) distance, commonly used in space syntax analysis.
+
+\item \textbf{Other centrality measures}: Extend the model to eigenvector centrality, PageRank, and other network measures.
+\end{itemize}

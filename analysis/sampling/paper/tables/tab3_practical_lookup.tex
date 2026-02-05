@@ -1,0 +1,26 @@
+\begin{table}[htbp]
+\centering
+\caption{Practical Sampling Lookup Table}
+\label{tab:lookup}
+\begin{tabular}{rrrrl}
+\toprule
+\textbf{Reach} & \textbf{eff\_n} & \textbf{$p$ (\%)} & \textbf{Speedup} & \textbf{Typical Scenario} \\
+\midrule
+100 & 350 & 100.0 & 1.0$\times$ & Very local \\
+200 & 350 & 100.0 & 1.0$\times$ & Local \\
+500 & 350 & 70.0 & 1.4$\times$ & 500m walking \\
+1,000 & 449 & 44.9 & 2.2$\times$ & Neighborhood \\
+2,000 & 635 & 31.8 & 3.1$\times$ & District \\
+5,000 & 1005 & 20.1 & 5.0$\times$ & 5km cycling \\
+10,000 & 1421 & 14.2 & 7.0$\times$ & City \\
+20,000 & 2010 & 10.0 & 10.0$\times$ & Metro area \\
+50,000 & 3177 & 6.4 & 15.7$\times$ & Regional \\
+100,000 & 4494 & 4.5 & 22.3$\times$ & Large regional \\
+\bottomrule
+\end{tabular}
+
+\vspace{0.5em}
+\footnotesize
+\textbf{Usage:} Find your network reach (nodes within analysis distance), read off the required sampling probability.\\
+\textbf{Model:} $n_{\mathrm{eff}} = \max(14.21 \cdot \sqrt{r}, 350)$, $p = n_{\mathrm{eff}} / r$.
+\end{table}

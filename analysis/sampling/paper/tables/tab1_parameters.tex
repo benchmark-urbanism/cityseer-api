@@ -1,0 +1,19 @@
+\begin{table}[htbp]
+\centering
+\caption{Fitted Sampling Model Parameters}
+\label{tab:parameters}
+\begin{tabular}{lrl}
+\toprule
+\textbf{Parameter} & \textbf{Value} & \textbf{Description} \\
+\midrule
+$k$ & 14.2 & Proportional scaling constant \\
+$n_{\min}$ & 350 & Minimum effective sample size \\
+Crossover reach & 607 & Where $k\sqrt{r} = n_{\min}$ \\
+\bottomrule
+\end{tabular}
+
+\vspace{0.5em}
+\footnotesize
+\textbf{Model:} $n_{\mathrm{eff}} = \max(k \cdot \sqrt{r}, n_{\min})$, where $r$ is the network reach.\\
+Sampling probability: $p = n_{\mathrm{eff}} / r$ (capped at 1.0).
+\end{table}

@@ -1,0 +1,16 @@
+{
+  "generated": "2026-02-05T13:11:57",
+  "script": "01_fit_model.py",
+  "description": "Proportional sampling constant k fitted from synthetic data",
+  "model": {
+    "formula": "eff_n = k \u00d7 sqrt(reach)",
+    "k": 14.21,
+    "k_with_margin": 15.63,
+    "target_rho": 0.95
+  },
+  "fitting_stats": {
+    "k_mean": 7.32,
+    "k_p95": 13.86,
+    "n_configs": 35
+  }
+}

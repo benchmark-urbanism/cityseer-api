@@ -1,40 +1,121 @@
+% =============================================================================
 % Appendix A: Technical Details
+% =============================================================================
 
-\section{Estimator Comparison}
-\label{sec:appendix_estimator}
+\subsection{Synthetic Network Generation}
 
-We selected the H\'{a}jek estimator over the Horvitz-Thompson (H-T) estimator based on theoretical and empirical considerations. The H-T estimator computes population totals as $\hat{T}_{HT} = \sum_{i \in S} y_i / \pi_i$, while the H\'{a}jek estimator uses a ratio form:
-\begin{equation}
-    \hat{T}_{H} = N \cdot \frac{\sum_{i \in S} y_i / \pi_i}{\sum_{i \in S} 1 / \pi_i}
-\end{equation}
-where $N$ is the known population size and $\pi_i$ is the inclusion probability.
+Synthetic networks are generated using tile-based templates. Each template defines a connectivity pattern within a single tile; tiles are then arrayed to create networks of the desired extent.
 
-The H\'{a}jek estimator exhibits lower variance when the population size is known and sample values correlate with inclusion probabilities---both conditions satisfied in our setting. Empirical comparison across synthetic networks confirmed that the H\'{a}jek estimator consistently achieved equal or higher accuracy.
+\begin{description}
+\item[Trellis] A regular grid with diagonal connections, representing highly connected urban cores. Average degree $\approx 4$.
 
-\section{Model Selection}
-\label{sec:appendix_model}
+\item[Tree] A hierarchical branching structure where each node connects to at most 3 others. Represents suburban cul-de-sac development. Average degree $\approx 2.3$.
 
-We evaluated four candidate functional forms for modelling the relationship between effective sample size (\effn) and accuracy ($\rho$): hyperbolic, power law, exponential, and logistic. Table~\ref{tab:model_comparison} presents the Akaike Information Criterion (AIC) comparison.
+\item[Linear] A constrained grid with fewer cross-connections than trellis. Intermediate connectivity. Average degree $\approx 3$.
+\end{description}
 
-\input{tables/model_comparison.tex}
+Networks are tiled 24$\times$24 to achieve approximately 12km extent, then the largest connected component is extracted. Node positions are perturbed slightly to avoid perfectly regular spacing.
 
-The hyperbolic form $\rho = 1 - a / (\effn + b)$ shows decisive support ($\Delta$AIC $> 10$) across all metric and distance-type combinations, indicating it provides the best balance of fit quality and model complexity for predicting sampling accuracy.
+\subsection{Live Node Buffer Implementation}
 
-\section{Algorithm Pseudocode}
-\label{sec:appendix_algorithm}
+Edge artifacts arise when nodes near network boundaries have truncated catchments. We eliminate these by computing an inward buffer from the convex hull of all nodes.
 
-The adaptive sampling procedure operates in three phases:
-
+Algorithm:
 \begin{enumerate}
-    \item \textbf{Probe phase:} Sample $n_{\text{probe}} = f_{\text{probe}} \cdot |V|$ nodes uniformly at random. Compute centralities from these nodes to estimate mean reachability $\bar{R}_d$ at each distance threshold $d$.
-
-    \item \textbf{Calibration phase:} For each distance $d$:
-    \begin{itemize}
-        \item Look up required \effn{} for target $\rho$ from the appropriate empirical model (closeness or betweenness; shortest or angular)
-        \item Compute sampling probability: $p_d = \effn / \bar{R}_d$, clamped to $[0, 1]$
-    \end{itemize}
-
-    \item \textbf{Sampling phase:} For each node, include if $\text{rand}() < \max_d(p_d)$. Run bounded Dijkstra from sampled nodes and apply the H\'{a}jek estimator with distance-specific weights $w_d = p_d / \max_d(p_d)$.
+\item Compute the convex hull of all node positions
+\item Apply a negative (inward) buffer equal to the maximum analysis distance
+\item Mark nodes inside the buffered polygon as ``live''
+\item Compute accuracy metrics using only live nodes
 \end{enumerate}
 
-The computational complexity is $O((f_{\text{probe}} + p_{\max}) \cdot |V| \cdot (|V| + |E|) \log |V|)$, yielding speedup factor $\approx 1 / (f_{\text{probe}} + p_{\max})$ when $p_{\max} < 1$.
+For synthetic networks, the buffer is \syntheticBuffer{}km (matching the maximum 4km analysis distance). For GLA validation, the buffer is \glaBuffer{}km (matching the maximum 20km analysis distance).
+
+\subsection{Centrality Implementation}
+
+Centrality measures are computed using the \cityseer{} library, which implements distance-weighted local centrality with efficient shortest-path algorithms.
+
+\textbf{Harmonic closeness}:
+\begin{equation}
+C_H(v; d_{\max}) = \sum_{u: d(v,u) \leq d_{\max}} \frac{1}{d(v, u)}
+\end{equation}
+
+\textbf{Betweenness}:
+\begin{equation}
+C_B(v; d_{\max}) = \sum_{\substack{s, t: s \neq v \neq t \\ d(s,t) \leq d_{\max}}} \frac{\sigma_{st}(v)}{\sigma_{st}}
+\end{equation}
+
+Both measures are computed using Dijkstra's algorithm with early termination at $d_{\max}$.
+
+\subsection{Sampling Implementation}
+
+Source nodes are sampled using uniform random selection with a specified probability $p$. For reproducibility, random seeds are fixed for each configuration.
+
+Sampled centrality is computed by:
+\begin{enumerate}
+\item Selecting a random subset $S$ of source nodes with probability $p$
+\item Computing centrality contributions from sources in $S$ only
+\item Scaling results by $1/p$ to produce unbiased estimates
+\end{enumerate}
+
+The scaling is exact for betweenness (each source contributes independently to path counts). For harmonic closeness, the scaling is approximate but accurate for our parameter range.
+
+\subsection{Model Fitting Procedure}
+
+\subsubsection{Fitting $k$}
+
+For each (topology, distance) configuration:
+\begin{enumerate}
+\item Sort by sampling probability
+\item Find minimum $p^*$ where $\rho \geq \targetRho$
+\item Compute $k_{\text{implied}} = p^* \cdot \sqrt{r}$
+\end{enumerate}
+
+The final $k$ is the maximum $k_{\text{implied}}$ across all \nConfigs{} configurations, plus a 10\% safety margin: $k = 1.1 \times \max(k_{\text{implied}}) = \kProp$.
+
+\subsubsection{Fitting $\minEffN$}
+
+Effective sample sizes are binned: $[0, 50), [50, 100), \ldots, [750, 1000)$.
+
+For each bin, we compute the \emph{local} success rate: the fraction of observations in that bin achieving $\rho \geq \targetRho$.
+
+The floor $\minEffN$ is the lower bound of the first bin achieving $\geq 95\%$ local success rate. This avoids the issue where cumulative success rates are inflated by high-$\effn$ observations.
+
+The fitted value is $\minEffN = \minEffN$, corresponding to the $[350, 400)$ bin which achieves \floorSuccessRate{}\% success rate.
+
+\subsection{GLA Network Preprocessing}
+
+The Greater London Authority road network is sourced from Ordnance Survey Open Roads data (GeoPackage format).
+
+Preprocessing steps:
+\begin{enumerate}
+\item Remove invalid and empty geometries
+\item Explode multi-part geometries
+\item Build NetworkX graph from edges
+\item Remove filler nodes (degree-2 nodes that don't represent junctions)
+\item Remove dangling nodes (dead-end segments $< 20$m)
+\item Consolidate nearby nodes (threshold 1m)
+\item Extract largest connected component
+\end{enumerate}
+
+Final network: $\approx$ \glaNnodes{} nodes.
+
+\subsection{Reproducibility}
+
+All analysis scripts and data are available at:
+\begin{center}
+\texttt{https://github.com/benchmark-urbanism/cityseer-api/tree/master/analysis/sampling}
+\end{center}
+
+Key files (in \texttt{scripts/} subdirectory):
+\begin{itemize}
+\item \texttt{00\_generate\_cache.py}: Regenerate cached data
+\item \texttt{01\_fit\_model.py}: Fit proportional constant $k$
+\item \texttt{02\_fit\_floor.py}: Fit minimum floor $\minEffN$
+\item \texttt{03\_combined\_model.py}: Combine model parameters
+\item \texttt{04\_validate\_gla.py}: Validate on GLA network
+\item \texttt{05\_practical\_guide.py}: Generate practical guidance
+\item \texttt{06\_sync\_config.py}: Sync parameters to library
+\item \texttt{07\_generate\_macros.py}: Generate LaTeX macros from JSON
+\end{itemize}
+
+Model parameters are stored in \texttt{output/sampling\_model.json} and synced to \texttt{pysrc/cityseer/config.py} for library integration. LaTeX macros are auto-generated by \texttt{07\_generate\_macros.py} into \texttt{paper/tables/model\_macros.tex}.

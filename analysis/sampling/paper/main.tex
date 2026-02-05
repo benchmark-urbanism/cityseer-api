@@ -11,24 +11,16 @@
 \usepackage{caption}
 \usepackage{subcaption}
 \usepackage{float}  % for [H] placement
+\usepackage{algorithm}
+\usepackage{algpseudocode}
 
 % Custom commands
 \newcommand{\effn}{\ensuremath{n_{\text{eff}}}}
 \newcommand{\rhosp}{\ensuremath{\rho_{\text{sp}}}}
-\newcommand{\rhospH}{\ensuremath{\rho_{\text{sp},H}}}  % Spearman rho for Harmonic closeness
-\newcommand{\rhospB}{\ensuremath{\rho_{\text{sp},B}}}  % Spearman rho for Betweenness
-\newcommand{\rhospstar}{\ensuremath{\rho^*_{\text{sp}}}}  % Target Spearman rho
 \newcommand{\cityseer}{\texttt{cityseer}}
 
-% Auto-generated model macros (from sampling_reach.py)
+% Auto-generated model macros (from analysis pipeline)
 \input{tables/model_macros}
-
-% Auto-generated statistics (from benchmark_regional.py)
-% Fallback definitions if file not yet generated
-\providecommand{\spatialQlowH}{[??]}
-\providecommand{\spatialQhighH}{[??]}
-\providecommand{\spatialQmidHrange}{[??--??]}
-\InputIfFileExists{tables/spatial_statistics.tex}{}{}
 
 % Title and authors
 \title{Adaptive Per-Distance Sampling for Efficient Multi-Scale Network Centrality Analysis}
@@ -44,10 +36,10 @@
 \maketitle
 
 \begin{abstract}
-  We show that \emph{effective sample size}---the product of mean network reachability and sampling probability---is a sufficient statistic for predicting centrality estimation accuracy across network topologies and distance thresholds. This insight enables adaptive per-distance sampling that maintains consistent accuracy where uniform sampling fails. Through experiments on synthetic networks, we fit empirical models predicting Spearman rank correlation from effective sample size, finding that harmonic closeness and betweenness centrality have distinct accuracy characteristics that vary by distance heuristic. Our adaptive algorithm uses these models to automatically calibrate sampling probability for each distance threshold; as distance increases, so too does the speedup, while accuracy remains consistent at $\rho \geq 0.95$ across all scales. Validation on real-world street networks from London, Madrid, and Phoenix confirms that the empirical models generalise beyond synthetic test cases. The implementation is available in the open-source \cityseer{} Python library.
+  Computing network centrality at scale is expensive. Sampling can help, but how much is enough? We present a practical model: maintain an effective sample size of $\effn = \max(k \cdot \sqrt{r}, n_{\min})$, where $r$ is network reach, to achieve ranking accuracy $\rho \geq \targetRho$. The proportional term ($k = \kProp$) handles large networks; the floor ($n_{\min} = \minEffN$) ensures reliability at low reach. The model validates on a \glaNnodes{}-node Greater London street network, achieving $\rho > \glaMinRho$ at distances from 5--20km with speedups of \glaFiveKmSpeedup{}--\glaTwentyKmSpeedup{}$\times$. The implementation is available in the open-source \cityseer{} Python library.
 \end{abstract}
 
-\textbf{Keywords:} network centrality, sampling, urban morphology, betweenness, closeness, computational efficiency
+\textbf{Keywords:} network centrality, sampling, urban morphology, betweenness, harmonic closeness, computational efficiency
 
 %==============================================================================
 \section{Introduction}
@@ -68,7 +60,21 @@
 \label{sec:methods}
 %==============================================================================
 
-\input{sections/03_methods}
+\input{sections/03_methodology}
+
+%==============================================================================
+\section{Empirical Accuracy Models}
+\label{sec:models}
+%==============================================================================
+
+\input{sections/04_empirical_models}
+
+%==============================================================================
+\section{Adaptive Sampling Algorithm}
+\label{sec:algorithm}
+%==============================================================================
+
+\input{sections/05_algorithm}
 
 %==============================================================================
 \section{Validation}
@@ -78,18 +84,25 @@
 \input{sections/06_validation}
 
 %==============================================================================
+\section{Practical Guidelines}
+\label{sec:guidelines}
+%==============================================================================
+
+\input{sections/07_practical_guidelines}
+
+%==============================================================================
 \section{Discussion}
 \label{sec:discussion}
 %==============================================================================
 
-\input{sections/07_discussion}
+\input{sections/08_discussion}
 
 %==============================================================================
 \section{Conclusion}
 \label{sec:conclusion}
 %==============================================================================
 
-\input{sections/08_conclusion}
+\input{sections/09_conclusion}
 
 %==============================================================================
 % References
@@ -105,9 +118,5 @@
 \section{Technical Details}
 \label{sec:appendix_technical}
 \input{sections/appendix_technical}
-
-\section{Spatial Analysis Details}
-\label{sec:appendix_spatial}
-\input{sections/appendix_spatial}
 
 \end{document}

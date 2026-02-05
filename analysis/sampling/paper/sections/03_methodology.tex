@@ -1,46 +1,70 @@
-% Methodology section
+% =============================================================================
+% Section 3: Methods
+% =============================================================================
 
 \subsection{Experimental Design}
 
-We conduct experiments on both synthetic and real-world networks to understand the relationship between sampling parameters and accuracy.
+Our analysis proceeds in two stages: (1) model fitting on synthetic networks with controlled topology, and (2) validation on a large real-world street network.
 
-\subsubsection{Networks}
+\subsubsection{Synthetic Networks}
 
-We generate three synthetic network topologies representing archetypal urban forms---trellis (dense grid), tree (dendritic/suburban), and linear (corridor)---each as a $3 \times 3$ tile pattern with approximately 2940m extent (Figure~\ref{fig:topologies}). For validation on real-world networks, we extract street networks from OpenStreetMap for London (Soho), Madrid (Centro), and Phoenix (Scottsdale), representing dense irregular, Mediterranean grid, and American suburban patterns respectively.
+We generate synthetic networks using \nTopologies{} topology templates that span the range of urban street network connectivity:
 
-\begin{figure}[htbp]
-    \centering
-    \includegraphics[width=\textwidth]{figures/topologies.pdf}
-    \caption{Synthetic network topologies: trellis, tree, and linear.}
-    \label{fig:topologies}
-\end{figure}
+\begin{itemize}
+\item \textbf{Trellis}: A regular grid with high connectivity, representing planned urban cores
+\item \textbf{Tree}: A hierarchical branching structure with low connectivity, representing suburban sprawl
+\item \textbf{Linear}: An intermediate topology with moderate connectivity
+\end{itemize}
 
-\subsubsection{Centrality Computation}
+Each topology is tiled to create networks of approximately 12km extent, ensuring sufficient scale for multi-distance analysis. We test \nDistances{} distance thresholds from 250m to \syntheticMaxDist{}m, and \nProbs{} sampling probabilities from 2.5\% to 100\%.
 
-We compute two localised centrality measures: harmonic closeness (sum of inverse distances to nodes within threshold) and betweenness (count of shortest paths through each node). Both metrics support shortest-path and angular distance heuristics; we focus on shortest-path computation, with angular results reported in the supplementary material.\footnote{Implementation uses Dijkstra's algorithm with distance-bounded search in Rust. Correctness has been verified against NetworkX with maximum differences below $10^{-6}$.}
+\subsubsection{Edge Artifact Elimination}
 
-\subsection{Sampling Estimator}
-\label{sec:sampling_estimator}
+A critical methodological consideration is the treatment of boundary effects. Nodes near network edges have artificially lower centrality because their catchments are truncated. This creates a confound: edge nodes appear less central not because of their network position, but because the network boundary intersects their analysis radius.
 
-When estimating centrality from a sample of source nodes, we use the H\'{a}jek estimator \citep{Hajek1971}, which scales by the ratio of population size $N$ to actual sample size $n$. This has lower variance than the Horvitz-Thompson estimator \citep{Sarndal2003}.
+We address this by applying an inward buffer from the convex hull of all nodes. Only nodes inside this buffered zone are marked as ``live'' and included in accuracy calculations. The buffer distance equals the maximum analysis distance (\syntheticBuffer{}km for synthetic networks, \glaBuffer{}km for GLA validation), ensuring that all live nodes have complete catchments at all tested distances.
 
-\subsection{Accuracy Metrics}
+\subsubsection{Accuracy Metrics}
 
-Our primary accuracy metric is Spearman's rank correlation coefficient ($\rhosp$) between true and estimated centrality values:
+We measure sampling accuracy using Spearman rank correlation ($\rho$) between sampled and ground-truth centrality values:
 \begin{equation}
-    \rhosp = 1 - \frac{6 \sum_i (r_i - \hat{r}_i)^2}{n(n^2 - 1)}
+\rho = 1 - \frac{6 \sum_i (R_i^{\text{sampled}} - R_i^{\text{true}})^2}{N(N^2 - 1)}
 \end{equation}
-where $r_i$ and $\hat{r}_i$ are the ranks of node $i$ under true and estimated centrality. Ranking accuracy is most relevant for urban analysis applications, where researchers identify high- or low-centrality locations rather than interpreting absolute values. We also report scale ratio (median of estimated/true values) to verify absence of systematic bias.
+where $R_i$ denotes the rank of node $i$. Spearman correlation is appropriate because:
+\begin{enumerate}
+\item Urban applications typically care about \emph{relative} rankings (which locations are most central) rather than absolute values
+\item It is robust to the systematic scaling that sampling introduces
+\item Values near 1.0 indicate that rankings are preserved even if magnitudes differ
+\end{enumerate}
 
-\subsection{Effective Sample Size}
+We target $\rho \geq \targetRho$ as our accuracy threshold, meaning 95\% of the ranking information is preserved.
 
-The key insight motivating our approach is that accuracy depends on \emph{effective sample size}:
+\subsection{Model Fitting Procedure}
+
+\subsubsection{Fitting the Proportional Constant $k$}
+
+For each (topology, distance) combination in the synthetic data, we identify the minimum sampling probability $p^*$ that achieves $\rho \geq \targetRho$. We then compute the implied proportional constant:
 \begin{equation}
-    \effn = \bar{R} \times p
-    \label{eq:effective_n}
+k_{\text{implied}} = p^* \cdot \sqrt{r}
 \end{equation}
-where $\bar{R}$ is the mean reachability (average number of nodes reachable within the distance threshold) and $p$ is the sampling probability.
 
-\subsection{Experimental Parameters}
+This formulation arises from sampling theory: standard error scales as $1/\sqrt{n}$, so maintaining consistent precision as reach grows requires $\effn \propto \sqrt{r}$, giving $p = k/\sqrt{r}$.
 
-For each configuration (topology $\times$ distance $\times$ probability), we run 20 independent trials with different random seeds to estimate variance.
+We take the maximum $k_{\text{implied}}$ across all configurations to ensure the model is conservative. The fitted value is $k = \kProp$, representing the 95th percentile plus a 10\% safety margin.
+
+\subsubsection{Fitting the Minimum Floor}
+
+The proportional model $\effn = k \cdot \sqrt{r}$ fails at low reach: when $r$ is small, the implied $\effn$ may be too few samples for reliable estimation. We determine the minimum floor by analysing success rates (proportion of configurations achieving $\rho \geq \targetRho$) across bins of effective sample size.
+
+We find the first bin where the \emph{local} success rate (within that bin) reaches \targetRho{}. The floor $\minEffN = \minEffN$ is the lower bound of the first bin achieving \floorSuccessRate{}\% success rate, ensuring reliability even at low reach.
+
+\subsection{Validation Network}
+
+We validate the fitted model on the Greater London Authority (GLA) road network, comprising approximately \glaNnodes{} nodes after preprocessing. This network is:
+\begin{itemize}
+\item Large enough to stress-test model predictions at high reach
+\item Topologically diverse, containing both grid-like central areas and tree-like suburban zones
+\item Representative of real-world street network complexity
+\end{itemize}
+
+We apply a \glaBuffer{}km inward buffer to eliminate edge artifacts, test distances of 5km, 10km, and 20km, and compare model predictions against observed accuracy across sampling probabilities from 1\% to 100\%.

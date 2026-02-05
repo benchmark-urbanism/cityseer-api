@@ -689,15 +689,24 @@ impl NetworkStructure {
         imp_factor: Option<f32>,
         py: Python, // Add Python GIL token
     ) -> PyResult<usize> {
+        // Truncate WKT for error messages if too long
+        let wkt_preview: String = if geom_wkt.len() > 200 {
+            format!("{}... (truncated, {} chars total)", &geom_wkt[..200], geom_wkt.len())
+        } else {
+            geom_wkt.clone()
+        };
         let geom = match LineString::try_from_wkt_str(&geom_wkt) {
             Ok(geom) => geom,
             Err(e) => {
                 return Err(exceptions::PyValueError::new_err(format!(
-                    "Failed to parse WKT for street edge (idx {}) between nodes {} and {}: {}",
+                    "Failed to parse WKT for street edge (idx {}) between nodes {} and {}.\n\
+                     Parse error: {}\n\
+                     WKT: {}",
                     edge_idx,
                     start_nd_idx,
                     end_nd_idx,
-                    e // Use indices in error
+                    e,
+                    wkt_preview
                 )));
             }
         };
@@ -708,29 +717,78 @@ impl NetworkStructure {
 
         if num_coords < 2 {
             return Err(exceptions::PyValueError::new_err(format!(
-                "Street edge geometry (idx {}) between nodes {} and {} must have at least 2 coordinates. Found {}.",
-                 edge_idx, start_nd_idx, end_nd_idx, num_coords
+                "Street edge geometry (idx {}) between nodes {} and {} must have at least 2 coordinates. Found {}.\n\
+                 WKT: {}",
+                 edge_idx, start_nd_idx, end_nd_idx, num_coords, wkt_preview
             )));
         }
 
         let length = Euclidean.length(&geom) as f32;
-        // Compute in_bearing: use first segment, fallback to overall edge direction
-        let in_bearing = if coords[0] != coords[1] {
-            measure_bearing(coords[0], coords[1]) as f32
-        } else if coords[0] != coords[num_coords - 1] {
-            // Fallback: use overall edge direction when first segment has duplicate coords
-            measure_bearing(coords[0], coords[num_coords - 1]) as f32
-        } else {
-            f32::NAN
+
+        // Check for degenerate (zero-length) geometry
+        if length < 1e-6 {
+            let first_coord = coords[0];
+            let last_coord = coords[num_coords - 1];
+            log::warn!(
+                "Degenerate edge geometry (idx {}) between nodes {} and {}: \
+                 length={:.2e}m, num_coords={}, first=({:.4}, {:.4}), last=({:.4}, {:.4})",
+                edge_idx, start_nd_idx, end_nd_idx, length, num_coords,
+                first_coord.x, first_coord.y, last_coord.x, last_coord.y
+            );
+        }
+
+        // Compute in_bearing: find first distinct coordinate pair from the start
+        let in_bearing = {
+            let mut bearing = f32::NAN;
+            let first = coords[0];
+            // Iterate forward to find first distinct coordinate
+            for i in 1..num_coords {
+                if coords[i] != first {
+                    bearing = measure_bearing(first, coords[i]) as f32;
+                    if i > 1 {
+                        log::debug!(
+                            "Edge (idx {}) first {} coords are identical, using coord[{}] for in_bearing",
+                            edge_idx, i, i
+                        );
+                    }
+                    break;
+                }
+            }
+            if bearing.is_nan() && length > 1e-6 {
+                // Non-degenerate geometry but all coords identical? Log details for debugging
+                log::warn!(
+                    "Edge (idx {}) between nodes {} and {}: length={:.4}m but all {} coords are identical at ({:.4}, {:.4}). \
+                     This may indicate a closed ring or corrupt geometry.",
+                    edge_idx, start_nd_idx, end_nd_idx, length, num_coords, first.x, first.y
+                );
+            }
+            bearing
         };
-        // Compute out_bearing: use last segment, fallback to overall edge direction
-        let out_bearing = if coords[num_coords - 2] != coords[num_coords - 1] {
-            measure_bearing(coords[num_coords - 2], coords[num_coords - 1]) as f32
-        } else if coords[0] != coords[num_coords - 1] {
-            // Fallback: use overall edge direction when last segment has duplicate coords
-            measure_bearing(coords[0], coords[num_coords - 1]) as f32
-        } else {
-            f32::NAN
+        // Compute out_bearing: find first distinct coordinate pair from the end
+        let out_bearing = {
+            let mut bearing = f32::NAN;
+            let last = coords[num_coords - 1];
+            // Iterate backward to find first distinct coordinate from end
+            for i in (0..num_coords - 1).rev() {
+                if coords[i] != last {
+                    bearing = measure_bearing(coords[i], last) as f32;
+                    if i < num_coords - 2 {
+                        log::debug!(
+                            "Edge (idx {}) last {} coords are identical, using coord[{}] for out_bearing",
+                            edge_idx, num_coords - 1 - i, i
+                        );
+                    }
+                    break;
+                }
+            }
+            if bearing.is_nan() && length > 1e-6 {
+                log::warn!(
+                    "Edge (idx {}) between nodes {} and {}: length={:.4}m but all {} coords match last coord ({:.4}, {:.4}). \
+                     This may indicate a closed ring or corrupt geometry.",
+                    edge_idx, start_nd_idx, end_nd_idx, length, num_coords, last.x, last.y
+                );
+            }
+            bearing
         };
 
         let angle_sum = measure_cumulative_angle(coords) as f32;
@@ -738,8 +796,10 @@ impl NetworkStructure {
         let imp = imp_factor.unwrap_or(1.0);
         if !imp.is_finite() || imp <= 0.0 {
             return Err(exceptions::PyValueError::new_err(format!(
-                "Invalid importance factor ({}) for edge (idx {}) between nodes {} and {}.",
-                imp, edge_idx, start_nd_idx, end_nd_idx
+                "Invalid impedance factor ({}) for edge (idx {}) between nodes {} and {}.\n\
+                 Impedance must be finite and positive (> 0.0).\n\
+                 Edge length: {:.4}m, num_coords: {}",
+                imp, edge_idx, start_nd_idx, end_nd_idx, length, num_coords
             )));
         }
 
