@@ -76,3 +76,14 @@ At recommended sampling probabilities, standard deviations are small ($< 0.005$ 
 \end{enumerate}
 
 The low variance arises because our floor constraint ensures $\effn \geq \minEffN$, guaranteeing a minimum sample size that provides statistical stability.
+
+\subsection{External Validation: Madrid}
+
+We perform external validation on the Madrid metropolitan street network to verify cross-city generalization. Following the same protocol as GLA (20km inward buffer, testing distances from 500m to 20km), the model achieves $\rho > 0.95$ for both closeness and betweenness at all distances (Figure~\ref{fig:madrid_validation}).
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{figures/fig6_madrid_validation.pdf}
+\caption{\textbf{Madrid validation.} (a) Accuracy vs.\ distance for closeness and betweenness. (b) Speedup at each distance.}
+\label{fig:madrid_validation}
+\end{figure}

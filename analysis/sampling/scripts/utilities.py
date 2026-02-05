@@ -27,9 +27,10 @@ warnings.filterwarnings("ignore")
 # =============================================================================
 
 SCRIPT_DIR = Path(__file__).parent
-CACHE_DIR = SCRIPT_DIR / "cache"
-OUTPUT_DIR = SCRIPT_DIR / "output"
-PAPER_DIR = SCRIPT_DIR / "paper"
+SAMPLING_DIR = SCRIPT_DIR.parent  # analysis/sampling
+CACHE_DIR = SAMPLING_DIR / ".cache"
+OUTPUT_DIR = SAMPLING_DIR / "output"
+PAPER_DIR = SAMPLING_DIR / "paper"
 FIGURES_DIR = PAPER_DIR / "figures"
 TABLES_DIR = PAPER_DIR / "tables"
 

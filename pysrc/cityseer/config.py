@@ -85,7 +85,7 @@ RTOL: float = 0.0001
 #   - min_eff_n fitted on synthetic networks (02_fit_floor.py)
 #   - Validated on GLA network (04_validate_gla.py)
 #   - Synced via 06_sync_config.py
-SAMPLING_PROPORTIONAL_K: float = 14.21
+SAMPLING_PROPORTIONAL_K: float = 9.91
 SAMPLING_MIN_EFF_N: float = 350.0
 
 # === SHORTEST (metric) distance models ===

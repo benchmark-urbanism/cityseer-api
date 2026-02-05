@@ -94,8 +94,9 @@ def generate_macros() -> str:
     # Extract values
     k = model_fit["model"]["k"]
     k_mean = model_fit["fitting_stats"]["k_mean"]
+    k_p75 = model_fit["fitting_stats"].get("k_p75", k)  # Upper quartile
     k_p95 = model_fit["fitting_stats"]["k_p95"]
-    k_with_margin = model_fit["model"]["k_with_margin"]
+    k_max = model_fit["model"].get("k_max", k * 1.1)  # Conservative max
     n_configs = model_fit["fitting_stats"]["n_configs"]
     target_rho = model_fit["model"]["target_rho"]
 
@@ -149,8 +150,9 @@ def generate_macros() -> str:
 
 % k fitting statistics
 \\newcommand{{\\kMean}}{{{k_mean}}}
+\\newcommand{{\\kPseventyFive}}{{{k_p75}}}
 \\newcommand{{\\kPninetyFive}}{{{k_p95}}}
-\\newcommand{{\\kWithMargin}}{{{k_with_margin}}}
+\\newcommand{{\\kMax}}{{{k_max}}}
 \\newcommand{{\\nConfigs}}{{{n_configs}}}
 
 % Floor fitting - achieved success rate at min_eff_n

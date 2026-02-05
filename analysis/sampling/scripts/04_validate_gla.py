@@ -16,14 +16,12 @@ Outputs:
 
 import json
 import math
-import pickle
-from datetime import datetime
 from pathlib import Path
 
 import matplotlib
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-import numpy as np
 import pandas as pd
 
 # =============================================================================
@@ -45,24 +43,27 @@ TABLES_DIR.mkdir(parents=True, exist_ok=True)
 DISTANCES = [5000, 10000, 20000]
 
 # Matplotlib style
-plt.rcParams.update({
-    "font.family": "sans-serif",
-    "font.size": 11,
-    "axes.titlesize": 12,
-    "axes.labelsize": 11,
-    "xtick.labelsize": 10,
-    "ytick.labelsize": 10,
-    "legend.fontsize": 10,
-    "figure.dpi": 150,
-    "savefig.dpi": 300,
-    "axes.spines.top": False,
-    "axes.spines.right": False,
-})
+plt.rcParams.update(
+    {
+        "font.family": "sans-serif",
+        "font.size": 11,
+        "axes.titlesize": 12,
+        "axes.labelsize": 11,
+        "xtick.labelsize": 10,
+        "ytick.labelsize": 10,
+        "legend.fontsize": 10,
+        "figure.dpi": 150,
+        "savefig.dpi": 300,
+        "axes.spines.top": False,
+        "axes.spines.right": False,
+    }
+)
 
 
 # =============================================================================
 # DATA LOADING
 # =============================================================================
+
 
 def load_model() -> tuple[float, int]:
     """Load the fitted model parameters."""
@@ -79,38 +80,49 @@ def load_model() -> tuple[float, int]:
 
 
 def load_validation_data() -> pd.DataFrame:
-    """Load or compute validation results from GLA cache."""
-    # Check for existing validation CSV
+    """Load validation results from model_validation.csv.
+
+    Handles both formats:
+    - Old format: combined rows with obs_rho_b, obs_rho_h columns
+    - New format (from 00_generate_cache.py): separate rows per metric
+    """
     validation_path = OUTPUT_DIR / "model_validation.csv"
-    if validation_path.exists():
-        print(f"Loading existing validation data from {validation_path}")
-        return pd.read_csv(validation_path)
-
-    # If not, we need the cache files
-    print("Validation data not found. Checking GLA cache...")
-
-    # Check for ground truth files
-    ground_truth_files = list(GLA_CACHE_DIR.glob("ground_truth_*m.pkl"))
-    if not ground_truth_files:
+    if not validation_path.exists():
         raise FileNotFoundError(
-            f"No ground truth cache files found in {GLA_CACHE_DIR}\n"
-            "Run the deprecated/old_02_validate_model.py first to generate GLA validation data."
+            f"Validation CSV not found at {validation_path}\n"
+            "Run: python 00_generate_cache.py --gla"
         )
 
-    print(f"Found {len(ground_truth_files)} ground truth files")
+    print(f"Loading validation data from {validation_path}")
+    df = pd.read_csv(validation_path)
 
-    # This script assumes validation data already exists from previous analysis
-    # The old validation script generates model_validation.csv
-    raise FileNotFoundError(
-        f"Validation CSV not found at {validation_path}\n"
-        "This script expects validation data from the old analysis.\n"
-        "If needed, run deprecated/old_02_validate_model.py first."
-    )
+    # Check if this is the new format (has 'metric' column with separate rows)
+    if "metric" in df.columns:
+        print("  Converting from 00_generate_cache.py format...")
+        # Pivot to combine harmonic/betweenness into columns
+        harmonic = df[df["metric"] == "harmonic"].copy()
+        betweenness = df[df["metric"] == "betweenness"].copy()
+
+        # Rename columns for merge
+        harmonic = harmonic.rename(columns={"spearman": "obs_rho_h", "spearman_std": "obs_rho_h_std"})
+        betweenness = betweenness.rename(columns={"spearman": "obs_rho_b", "spearman_std": "obs_rho_b_std"})
+
+        # Merge on distance and sample_prob
+        merged = pd.merge(
+            harmonic[["distance", "sample_prob", "mean_reach", "effective_n", "obs_rho_h", "obs_rho_h_std"]],
+            betweenness[["distance", "sample_prob", "obs_rho_b", "obs_rho_b_std"]],
+            on=["distance", "sample_prob"],
+        )
+        merged = merged.rename(columns={"mean_reach": "reach", "effective_n": "eff_n"})
+        df = merged
+
+    return df
 
 
 # =============================================================================
 # MODEL FUNCTIONS
 # =============================================================================
+
 
 def compute_model_p(reach: float, k: float, min_eff_n: int) -> float:
     """Compute the model's recommended sampling probability."""
@@ -121,6 +133,7 @@ def compute_model_p(reach: float, k: float, min_eff_n: int) -> float:
 # =============================================================================
 # FIGURE GENERATION
 # =============================================================================
+
 
 def generate_fig5_validation(df: pd.DataFrame, k: float, min_eff_n: int):
     """
@@ -148,9 +161,15 @@ def generate_fig5_validation(df: pd.DataFrame, k: float, min_eff_n: int):
         model_p = compute_model_p(reach, k, min_eff_n) * 100
 
         # Plot observed rho
-        ax.plot(subset["sample_prob"] * 100, subset["obs_rho_b"],
-                "o-", color=colors.get(dist, "gray"), linewidth=2, markersize=6,
-                label="Observed rho (betweenness)")
+        ax.plot(
+            subset["sample_prob"] * 100,
+            subset["obs_rho_b"],
+            "o-",
+            color=colors.get(dist, "gray"),
+            linewidth=2,
+            markersize=6,
+            label="Observed rho (betweenness)",
+        )
 
         # Target line
         ax.axhline(0.95, color="green", linestyle="--", linewidth=1.5, alpha=0.7)
@@ -158,8 +177,9 @@ def generate_fig5_validation(df: pd.DataFrame, k: float, min_eff_n: int):
 
         # Model recommendation
         ax.axvline(model_p, color="#0072B2", linestyle="-", linewidth=2, alpha=0.8)
-        ax.annotate(f"Model: {model_p:.1f}%", xy=(model_p + 2, 0.96),
-                    fontsize=9, color="#0072B2", rotation=90, va="bottom")
+        ax.annotate(
+            f"Model: {model_p:.1f}%", xy=(model_p + 2, 0.96), fontsize=9, color="#0072B2", rotation=90, va="bottom"
+        )
 
         # Find observed rho at model recommendation
         closest_idx = (subset["sample_prob"] * 100 - model_p).abs().argmin()
@@ -169,7 +189,7 @@ def generate_fig5_validation(df: pd.DataFrame, k: float, min_eff_n: int):
         ax.set_xlabel("Sampling Probability (%)")
         if i == 0:
             ax.set_ylabel("Spearman rho (ranking accuracy)")
-        ax.set_title(f"{dist//1000}km (reach={reach:,.0f})")
+        ax.set_title(f"{dist // 1000}km (reach={reach:,.0f})")
         ax.set_xlim(0, 100)
         ax.set_ylim(0.95, 1.005)
         ax.grid(True, alpha=0.3)
@@ -177,8 +197,7 @@ def generate_fig5_validation(df: pd.DataFrame, k: float, min_eff_n: int):
         if i == n_distances - 1:
             ax.legend(loc="lower right", fontsize=9)
 
-    fig.suptitle("Model Validation on Greater London Network (294k nodes)",
-                 fontsize=13, fontweight="bold", y=1.02)
+    fig.suptitle("Model Validation on Greater London Network (294k nodes)", fontsize=13, fontweight="bold", y=1.02)
     plt.tight_layout()
 
     output_path = FIGURES_DIR / "fig5_gla_validation.pdf"
@@ -208,16 +227,18 @@ def generate_validation_table(df: pd.DataFrame, k: float, min_eff_n: int):
         # Speedup
         speedup = 1 / model_p if model_p > 0 else float("inf")
 
-        rows.append({
-            "distance": dist,
-            "reach": reach,
-            "model_p": model_p,
-            "model_eff_n": model_eff_n,
-            "actual_p": actual_p,
-            "observed_rho": observed_rho,
-            "speedup": speedup,
-            "meets_target": observed_rho >= 0.95,
-        })
+        rows.append(
+            {
+                "distance": dist,
+                "reach": reach,
+                "model_p": model_p,
+                "model_eff_n": model_eff_n,
+                "actual_p": actual_p,
+                "observed_rho": observed_rho,
+                "speedup": speedup,
+                "meets_target": observed_rho >= 0.95,
+            }
+        )
 
     results_df = pd.DataFrame(rows)
 
@@ -240,8 +261,8 @@ def generate_validation_table(df: pd.DataFrame, k: float, min_eff_n: int):
     for _, row in results_df.iterrows():
         check = r"\checkmark" if row["meets_target"] else r"\texttimes"
         # Note: % must be escaped as \% in LaTeX (otherwise it starts a comment)
-        model_p_pct = f"{row['model_p']*100:.1f}\\%"
-        latex += f"{row['distance']//1000}km & {row['reach']:,.0f} & {model_p_pct} & "
+        model_p_pct = f"{row['model_p'] * 100:.1f}\\%"
+        latex += f"{row['distance'] // 1000}km & {row['reach']:,.0f} & {model_p_pct} & "
         latex += f"{row['observed_rho']:.4f} & {row['speedup']:.1f}$\\times$ & {check} \\\\\n"
 
     latex += r"""\bottomrule
@@ -264,6 +285,7 @@ Network: Greater London Area, 294,486 nodes, 20km live node buffer.
 # =============================================================================
 # MAIN
 # =============================================================================
+
 
 def main():
     print("=" * 70)
@@ -296,8 +318,10 @@ def main():
         status = "PASS" if row["meets_target"] else "FAIL"
         if not row["meets_target"]:
             all_pass = False
-        print(f"{row['distance']//1000}km       | {row['reach']:>10,.0f} | {row['model_p']:>9.1%} | "
-              f"{row['observed_rho']:>10.4f} | {status:>10}")
+        print(
+            f"{row['distance'] // 1000}km       | {row['reach']:>10,.0f} | {row['model_p']:>9.1%} | "
+            f"{row['observed_rho']:>10.4f} | {status:>10}"
+        )
 
     print("\n" + "-" * 60)
     if all_pass:

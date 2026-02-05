@@ -5,8 +5,8 @@ CLAUDE.md
 # astro
 .astro
 
-# cache
-*cache*
+# cache directories (trailing slash = directories only)
+*cache*/
 
 # code profiling
 .prof

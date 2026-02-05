@@ -6,7 +6,7 @@ Creates visual and tabular guidance for users to quickly determine
 the appropriate sampling probability for their analysis.
 
 Outputs:
-    - paper/figures/fig6_practical_guide.pdf: Visual lookup chart
+    - paper/figures/fig7_practical_guide.pdf: Visual lookup chart
     - paper/tables/tab3_practical_lookup.tex: Lookup table
 """
 
@@ -80,7 +80,7 @@ def compute_p(reach: float, k: float, min_eff_n: int) -> float:
 # FIGURE GENERATION
 # =============================================================================
 
-def generate_fig6_practical_guide(k: float, min_eff_n: int):
+def generate_fig7_practical_guide(k: float, min_eff_n: int):
     """
     Figure 6: Practical guidance chart.
 
@@ -162,7 +162,7 @@ def generate_fig6_practical_guide(k: float, min_eff_n: int):
                  fontsize=13, fontweight="bold", y=1.02)
     plt.tight_layout()
 
-    output_path = FIGURES_DIR / "fig6_practical_guide.pdf"
+    output_path = FIGURES_DIR / "fig7_practical_guide.pdf"
     fig.savefig(output_path, dpi=300, bbox_inches="tight")
     print(f"  Saved: {output_path}")
     plt.close()
@@ -179,32 +179,18 @@ def generate_practical_table(k: float, min_eff_n: int):
 \centering
 \caption{Practical Sampling Lookup Table}
 \label{tab:lookup}
-\begin{tabular}{rrrrl}
+\begin{tabular}{rrrr}
 \toprule
-\textbf{Reach} & \textbf{eff\_n} & \textbf{$p$ (\%)} & \textbf{Speedup} & \textbf{Typical Scenario} \\
+\textbf{Reach} & \textbf{eff\_n} & \textbf{$p$ (\%)} & \textbf{Speedup} \\
 \midrule
 """
-
-    scenarios = {
-        100: "Very local",
-        200: "Local",
-        500: "500m walking",
-        1000: "Neighborhood",
-        2000: "District",
-        5000: "5km cycling",
-        10000: "City",
-        20000: "Metro area",
-        50000: "Regional",
-        100000: "Large regional",
-    }
 
     for reach in reaches:
         eff_n = max(k * math.sqrt(reach), min_eff_n)
         p = min(1.0, eff_n / reach)
         speedup = 1 / p
-        scenario = scenarios.get(reach, "")
 
-        latex += f"{reach:,} & {eff_n:.0f} & {p*100:.1f} & {speedup:.1f}$\\times$ & {scenario} \\\\\n"
+        latex += f"{reach:,} & {eff_n:.0f} & {p*100:.1f} & {speedup:.1f}$\\times$ \\\\\n"
 
     latex += r"""\bottomrule
 \end{tabular}
@@ -236,7 +222,7 @@ def main():
     print(f"\nModel: eff_n = max({k} × sqrt(reach), {min_eff_n})")
 
     # Generate outputs
-    generate_fig6_practical_guide(k, min_eff_n)
+    generate_fig7_practical_guide(k, min_eff_n)
     generate_practical_table(k, min_eff_n)
 
     # Print quick reference
@@ -264,7 +250,7 @@ def main():
     print("\n" + "=" * 70)
     print("OUTPUTS")
     print("=" * 70)
-    print(f"  1. {FIGURES_DIR / 'fig6_practical_guide.pdf'}")
+    print(f"  1. {FIGURES_DIR / 'fig7_practical_guide.pdf'}")
     print(f"  2. {TABLES_DIR / 'tab3_practical_lookup.tex'}")
 
     return 0

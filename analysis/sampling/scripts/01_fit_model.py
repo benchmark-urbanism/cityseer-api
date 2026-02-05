@@ -150,25 +150,29 @@ def fit_proportional_k(df: pd.DataFrame, target_rho: float = 0.95) -> dict:
 
     results_df = pd.DataFrame(results)
 
-    # Take maximum k across all configurations (conservative)
+    # Compute k statistics across all configurations
     k_max = results_df["k_implied"].max()
     k_mean = results_df["k_implied"].mean()
+    k_p75 = results_df["k_implied"].quantile(0.75)  # Upper quartile
     k_p95 = results_df["k_implied"].quantile(0.95)
 
-    # Add 10% safety margin
-    k_with_margin = k_max * 1.1
+    # Use upper quartile (75th percentile) for less conservative model
+    # This allows ~25% of edge cases to potentially fall slightly below target
+    # but provides meaningful speedup gains
+    k_selected = k_p75
 
     print(f"\nProportional k fitting results:")
     print(f"  Target rho: {target_rho}")
-    print(f"  k values across configs: mean={k_mean:.2f}, max={k_max:.2f}, 95th={k_p95:.2f}")
-    print(f"  Fitted k (max): {k_max:.2f}")
-    print(f"  Fitted k (with 10% margin): {k_with_margin:.2f}")
+    print(f"  k values across configs:")
+    print(f"    mean={k_mean:.2f}, 75th={k_p75:.2f}, 95th={k_p95:.2f}, max={k_max:.2f}")
+    print(f"  Selected k (75th percentile): {k_selected:.2f}")
 
     return {
-        "k": round(k_max, 2),
-        "k_with_margin": round(k_with_margin, 2),
+        "k": round(k_selected, 2),
+        "k_max": round(k_max, 2),
         "target_rho": target_rho,
         "k_mean": round(k_mean, 2),
+        "k_p75": round(k_p75, 2),
         "k_p95": round(k_p95, 2),
         "n_configs": len(results_df),
         "fitting_details": results_df.to_dict(orient="records"),
@@ -383,11 +387,12 @@ def main():
         "model": {
             "formula": "eff_n = k × sqrt(reach)",
             "k": model_fit["k"],
-            "k_with_margin": model_fit["k_with_margin"],
+            "k_max": model_fit["k_max"],
             "target_rho": model_fit["target_rho"],
         },
         "fitting_stats": {
             "k_mean": model_fit["k_mean"],
+            "k_p75": model_fit["k_p75"],
             "k_p95": model_fit["k_p95"],
             "n_configs": model_fit["n_configs"],
         },
@@ -405,8 +410,8 @@ def main():
     print("\n" + "=" * 70)
     print("SUMMARY")
     print("=" * 70)
-    print(f"\nFitted proportional constant: k = {model_fit['k']}")
-    print(f"With 10% safety margin: k = {model_fit['k_with_margin']}")
+    print(f"\nFitted proportional constant: k = {model_fit['k']} (75th percentile)")
+    print(f"Conservative alternative (max): k = {model_fit['k_max']}")
     print(f"\nModel: eff_n = {model_fit['k']} × sqrt(reach)")
     print(f"       p = eff_n / reach = {model_fit['k']} / sqrt(reach)")
 

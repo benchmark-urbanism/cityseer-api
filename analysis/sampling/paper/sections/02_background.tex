@@ -4,13 +4,13 @@
 
 \subsection{Network Centrality in Urban Analysis}
 
-Network centrality measures have become essential tools for urban morphology and spatial analysis. Originally developed in social network analysis \citep{freeman1977set, freeman1978centrality}, these measures were adapted for urban street networks by \citet{hillier1984social} and subsequently formalised in the space syntax tradition.
+Network centrality measures have become essential tools for urban morphology and spatial analysis. Originally developed in social network analysis \citep{Freeman1977, Freeman1979}, these measures were adapted for urban street networks by \citet{Hillier1984} and subsequently formalised in the space syntax tradition.
 
 \textbf{Closeness centrality} measures how efficiently a node can reach all others. The harmonic variant, which we use throughout this paper, is defined as:
 \begin{equation}
 C_H(v) = \sum_{u \neq v} \frac{1}{d(v, u)}
 \end{equation}
-where $d(v, u)$ is the shortest path distance from $v$ to $u$. The harmonic formulation handles disconnected graphs naturally and is preferred for distance-weighted urban analysis \citep{porta2006network}.
+where $d(v, u)$ is the shortest path distance from $v$ to $u$. The harmonic formulation handles disconnected graphs naturally and is preferred for distance-weighted urban analysis \citep{Porta2006}.
 
 \textbf{Betweenness centrality} measures the extent to which a node lies on shortest paths between other pairs:
 \begin{equation}
@@ -22,13 +22,13 @@ For urban applications, these measures are typically computed with a distance th
 
 \subsection{Computational Complexity}
 
-The computational cost of centrality measures scales poorly with network size. Brandes' algorithm \citep{brandes2001faster} computes both betweenness and harmonic closeness in $O(NM + N^2 \log N)$ time for weighted graphs, where $N$ is nodes and $M$ is edges. For a network of \glaNnodes{} nodes with average degree 3, this translates to billions of operations per distance threshold.
+The computational cost of centrality measures scales poorly with network size. Brandes' algorithm \citep{Brandes2001} computes both betweenness and harmonic closeness in $O(NM + N^2 \log N)$ time for weighted graphs, where $N$ is nodes and $M$ is edges. For a network of \glaNnodes{} nodes with average degree 3, this translates to billions of operations per distance threshold.
 
 When analysis requires multiple distance thresholds---as is common in urban morphology studies---the computational burden multiplies. A typical multi-scale analysis with 12 distance thresholds on a large network can require days of computation.
 
 \subsection{Sampling Approximation}
 
-Sampling-based approximation of centrality has been studied extensively. \citet{brandes2007centrality} showed that betweenness can be approximated by computing from a random subset of source nodes and scaling appropriately. Subsequent work established theoretical bounds on approximation quality \citep{geisberger2008better, riondato2016fast}.
+Sampling-based approximation of centrality has been studied extensively. \citet{Brandes2007} showed that betweenness can be approximated by computing from a random subset of source nodes and scaling appropriately. Subsequent work established theoretical bounds on approximation quality \citep{Bader2007, Riondato2016}.
 
 The key insight is that centrality computed from $k$ random sources produces estimates with standard error proportional to $1/\sqrt{k}$. This suggests that effective sample size---the product of reach and sampling probability---should be the key determinant of accuracy.
 

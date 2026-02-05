@@ -1,5 +1,5 @@
 {
-  "generated": "2026-02-05T13:11:58",
+  "generated": "2026-02-05T14:40:10",
   "script": "02_fit_floor.py",
   "description": "Minimum effective sample size floor fitted from synthetic data",
   "model": {
