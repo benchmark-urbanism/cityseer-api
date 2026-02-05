@@ -23,6 +23,7 @@ from datetime import datetime
 from pathlib import Path
 
 import matplotlib
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
@@ -44,24 +45,27 @@ FIGURES_DIR.mkdir(parents=True, exist_ok=True)
 SYNTHETIC_CACHE = CACHE_DIR / "sampling_analysis_v17.pkl"
 
 # Matplotlib style
-plt.rcParams.update({
-    "font.family": "sans-serif",
-    "font.size": 11,
-    "axes.titlesize": 12,
-    "axes.labelsize": 11,
-    "xtick.labelsize": 10,
-    "ytick.labelsize": 10,
-    "legend.fontsize": 10,
-    "figure.dpi": 150,
-    "savefig.dpi": 300,
-    "axes.spines.top": False,
-    "axes.spines.right": False,
-})
+plt.rcParams.update(
+    {
+        "font.family": "sans-serif",
+        "font.size": 11,
+        "axes.titlesize": 12,
+        "axes.labelsize": 11,
+        "xtick.labelsize": 10,
+        "ytick.labelsize": 10,
+        "legend.fontsize": 10,
+        "figure.dpi": 150,
+        "savefig.dpi": 300,
+        "axes.spines.top": False,
+        "axes.spines.right": False,
+    }
+)
 
 
 # =============================================================================
 # DATA LOADING
 # =============================================================================
+
 
 def load_synthetic_data() -> pd.DataFrame:
     """Load cached synthetic network sampling results."""
@@ -80,10 +84,7 @@ def load_model_fit() -> dict:
     """Load the fitted k value from 01_fit_model.py."""
     model_path = OUTPUT_DIR / "model_fit.json"
     if not model_path.exists():
-        raise FileNotFoundError(
-            f"Model fit not found at {model_path}\n"
-            "Run 01_fit_model.py first."
-        )
+        raise FileNotFoundError(f"Model fit not found at {model_path}\nRun 01_fit_model.py first.")
 
     with open(model_path) as f:
         return json.load(f)
@@ -92,6 +93,7 @@ def load_model_fit() -> dict:
 # =============================================================================
 # FLOOR FITTING
 # =============================================================================
+
 
 def fit_min_eff_n(df: pd.DataFrame, target_success_rate: float = 0.95) -> dict:
     """
@@ -118,8 +120,17 @@ def fit_min_eff_n(df: pd.DataFrame, target_success_rate: float = 0.95) -> dict:
 
     # Analyze by eff_n bins - use the LOWER bound of the first bin that achieves target
     bins = [
-        (0, 50), (50, 100), (100, 150), (150, 200), (200, 250), (250, 300),
-        (300, 350), (350, 400), (400, 500), (500, 750), (750, 1000)
+        (0, 50),
+        (50, 100),
+        (100, 150),
+        (150, 200),
+        (200, 250),
+        (250, 300),
+        (300, 350),
+        (350, 400),
+        (400, 500),
+        (500, 750),
+        (750, 1000),
     ]
     bin_results = []
 
@@ -132,14 +143,16 @@ def fit_min_eff_n(df: pd.DataFrame, target_success_rate: float = 0.95) -> dict:
         n_total = len(subset)
         success_rate = n_success / n_total
 
-        bin_results.append({
-            "bin": f"{low}-{high}",
-            "low": low,
-            "high": high,
-            "n_total": n_total,
-            "n_success": n_success,
-            "success_rate": success_rate,
-        })
+        bin_results.append(
+            {
+                "bin": f"{low}-{high}",
+                "low": low,
+                "high": high,
+                "n_total": n_total,
+                "n_success": n_success,
+                "success_rate": success_rate,
+            }
+        )
 
     bin_results_df = pd.DataFrame(bin_results)
 
@@ -157,11 +170,11 @@ def fit_min_eff_n(df: pd.DataFrame, target_success_rate: float = 0.95) -> dict:
         achieved_rate = bin_results_df.iloc[-1]["success_rate"]
         achieving_bin = bin_results_df.iloc[-1]["bin"]
 
-    print(f"\nFloor fitting results:")
+    print("\nFloor fitting results:")
     print(f"  Target success rate: {target_success_rate:.0%}")
     print(f"  First achieving bin: {achieving_bin} (success rate: {achieved_rate:.1%})")
     print(f"  Fitted min_eff_n: {min_eff_n} (lower bound of achieving bin)")
-    print(f"\n  Success rate by eff_n bin:")
+    print("\n  Success rate by eff_n bin:")
     for _, row in bin_results_df.iterrows():
         print(f"    {row['bin']:>10}: {row['success_rate']:.1%} (n={row['n_total']})")
 
@@ -194,22 +207,21 @@ def analyze_proportional_breakdown(df: pd.DataFrame, k: float) -> pd.DataFrame:
         # Find observations near this eff_n
         tolerance = 0.2  # +/- 20%
         subset = df_b[
-            (df_b["effective_n"] >= eff_n_prop * (1 - tolerance)) &
-            (df_b["effective_n"] <= eff_n_prop * (1 + tolerance))
+            (df_b["effective_n"] >= eff_n_prop * (1 - tolerance))
+            & (df_b["effective_n"] <= eff_n_prop * (1 + tolerance))
         ]
 
-        if len(subset) > 0:
-            success_rate = (subset["spearman"] >= 0.95).sum() / len(subset)
-        else:
-            success_rate = np.nan
+        success_rate = (subset["spearman"] >= 0.95).sum() / len(subset) if len(subset) > 0 else np.nan
 
-        results.append({
-            "reach": reach,
-            "p_proportional": p_prop,
-            "eff_n_proportional": eff_n_prop,
-            "n_observations": len(subset),
-            "success_rate": success_rate,
-        })
+        results.append(
+            {
+                "reach": reach,
+                "p_proportional": p_prop,
+                "eff_n_proportional": eff_n_prop,
+                "n_observations": len(subset),
+                "success_rate": success_rate,
+            }
+        )
 
     return pd.DataFrame(results)
 
@@ -217,6 +229,7 @@ def analyze_proportional_breakdown(df: pd.DataFrame, k: float) -> pd.DataFrame:
 # =============================================================================
 # FIGURE GENERATION
 # =============================================================================
+
 
 def generate_fig3_floor_justification(df: pd.DataFrame, k: float, min_eff_n: int, bin_analysis: list):
     """
@@ -226,8 +239,6 @@ def generate_fig3_floor_justification(df: pd.DataFrame, k: float, min_eff_n: int
     justifying the need for a minimum eff_n floor.
     """
     print("\nGenerating Figure 3: Floor justification...")
-
-    df_b = df[df["metric"] == "betweenness"].copy()
 
     fig, axes = plt.subplots(1, 2, figsize=(12, 5))
 
@@ -252,8 +263,9 @@ def generate_fig3_floor_justification(df: pd.DataFrame, k: float, min_eff_n: int
 
     if floor_idx is not None:
         ax.axvline(floor_idx - 0.5, color="red", linestyle="-", linewidth=2, alpha=0.7)
-        ax.annotate(f"min_eff_n={min_eff_n}", xy=(floor_idx - 0.3, 50),
-                    fontsize=10, color="red", rotation=90, va="bottom")
+        ax.annotate(
+            f"min_eff_n={min_eff_n}", xy=(floor_idx - 0.3, 50), fontsize=10, color="red", rotation=90, va="bottom"
+        )
 
     ax.set_xticks(x)
     ax.set_xticklabels(bin_df["bin"], rotation=45, ha="right")
@@ -270,11 +282,11 @@ def generate_fig3_floor_justification(df: pd.DataFrame, k: float, min_eff_n: int
     breakdown = analyze_proportional_breakdown(df, k)
 
     x = range(len(breakdown))
-    success_colors = ["#d62728" if rate < 0.90 else "#ff7f0e" if rate < 0.95 else "#2ca02c"
-                      for rate in breakdown["success_rate"]]
+    success_colors = [
+        "#d62728" if rate < 0.90 else "#ff7f0e" if rate < 0.95 else "#2ca02c" for rate in breakdown["success_rate"]
+    ]
 
-    bars = ax.bar(x, breakdown["success_rate"] * 100, color=success_colors, alpha=0.7,
-                  edgecolor="black", linewidth=0.5)
+    ax.bar(x, breakdown["success_rate"] * 100, color=success_colors, alpha=0.7, edgecolor="black", linewidth=0.5)
 
     ax.axhline(95, color="green", linestyle="--", linewidth=1.5)
     ax.axhline(90, color="orange", linestyle=":", linewidth=1.5)
@@ -305,6 +317,7 @@ def generate_fig3_floor_justification(df: pd.DataFrame, k: float, min_eff_n: int
 # MAIN
 # =============================================================================
 
+
 def main():
     print("=" * 70)
     print("02_fit_floor.py - Fitting minimum effective sample size floor")
@@ -332,9 +345,16 @@ def main():
             "achieved_success_rate": float(floor_fit["achieved_success_rate"]),
         },
         "bin_analysis": [
-            {k: (float(v) if isinstance(v, (np.floating, float)) else
-                 int(v) if isinstance(v, (np.integer, int)) else v)
-             for k, v in item.items()}
+            {
+                k: (
+                    float(v)
+                    if isinstance(v, (np.floating, float))
+                    else int(v)
+                    if isinstance(v, (np.integer, int))
+                    else v
+                )
+                for k, v in item.items()
+            }
             for item in floor_fit["bin_analysis"]
         ],
     }
@@ -354,7 +374,7 @@ def main():
     print(f"Success rate at this threshold: {floor_fit['achieved_success_rate']:.1%}")
     print(f"\nCombined with k = {k}:")
     print(f"  eff_n = max({k} × sqrt(reach), {floor_fit['min_eff_n']})")
-    print(f"  p = eff_n / reach")
+    print("  p = eff_n / reach")
 
     print("\n" + "=" * 70)
     print("OUTPUTS")

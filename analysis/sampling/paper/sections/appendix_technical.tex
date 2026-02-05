@@ -16,72 +16,6 @@ Synthetic networks are generated using tile-based templates. Each template defin
 
 Networks are tiled 24$\times$24 to achieve approximately 12km extent, then the largest connected component is extracted. Node positions are perturbed slightly to avoid perfectly regular spacing.
 
-\subsection{Live Node Buffer Implementation}
-
-Edge artifacts arise when nodes near network boundaries have truncated catchments. We eliminate these by computing an inward buffer from the convex hull of all nodes.
-
-Algorithm:
-\begin{enumerate}
-\item Compute the convex hull of all node positions
-\item Apply a negative (inward) buffer equal to the maximum analysis distance
-\item Mark nodes inside the buffered polygon as ``live''
-\item Compute accuracy metrics using only live nodes
-\end{enumerate}
-
-For synthetic networks, the buffer is \syntheticBuffer{}km (matching the maximum 4km analysis distance). For GLA validation, the buffer is \glaBuffer{}km (matching the maximum 20km analysis distance).
-
-\subsection{Centrality Implementation}
-
-Centrality measures are computed using the \cityseer{} library, which implements distance-weighted local centrality with efficient shortest-path algorithms.
-
-\textbf{Harmonic closeness}:
-\begin{equation}
-C_H(v; d_{\max}) = \sum_{u: d(v,u) \leq d_{\max}} \frac{1}{d(v, u)}
-\end{equation}
-
-\textbf{Betweenness}:
-\begin{equation}
-C_B(v; d_{\max}) = \sum_{\substack{s, t: s \neq v \neq t \\ d(s,t) \leq d_{\max}}} \frac{\sigma_{st}(v)}{\sigma_{st}}
-\end{equation}
-
-Both measures are computed using Dijkstra's algorithm with early termination at $d_{\max}$.
-
-\subsection{Sampling Implementation}
-
-Source nodes are sampled using uniform random selection with a specified probability $p$. For reproducibility, random seeds are fixed for each configuration.
-
-Sampled centrality is computed by:
-\begin{enumerate}
-\item Selecting a random subset $S$ of source nodes with probability $p$
-\item Computing centrality contributions from sources in $S$ only
-\item Scaling results by $1/p$ to produce unbiased estimates
-\end{enumerate}
-
-The scaling is exact for betweenness (each source contributes independently to path counts). For harmonic closeness, the scaling is approximate but accurate for our parameter range.
-
-\subsection{Model Fitting Procedure}
-
-\subsubsection{Fitting $k$}
-
-For each (topology, distance) configuration:
-\begin{enumerate}
-\item Sort by sampling probability
-\item Find minimum $p^*$ where $\rho \geq \targetRho$
-\item Compute $k_{\text{implied}} = p^* \cdot \sqrt{r}$
-\end{enumerate}
-
-The final $k$ is the maximum $k_{\text{implied}}$ across all \nConfigs{} configurations, plus a 10\% safety margin: $k = 1.1 \times \max(k_{\text{implied}}) = \kProp$.
-
-\subsubsection{Fitting $\minEffN$}
-
-Effective sample sizes are binned: $[0, 50), [50, 100), \ldots, [750, 1000)$.
-
-For each bin, we compute the \emph{local} success rate: the fraction of observations in that bin achieving $\rho \geq \targetRho$.
-
-The floor $\minEffN$ is the lower bound of the first bin achieving $\geq 95\%$ local success rate. This avoids the issue where cumulative success rates are inflated by high-$\effn$ observations.
-
-The fitted value is $\minEffN = \minEffN$, corresponding to the $[350, 400)$ bin which achieves \floorSuccessRate{}\% success rate.
-
 \subsection{GLA Network Preprocessing}
 
 The Greater London Authority road network is sourced from Ordnance Survey Open Roads data (GeoPackage format).
@@ -99,23 +33,26 @@ Preprocessing steps:
 
 Final network: $\approx$ \glaNnodes{} nodes.
 
+\subsection{Implementation in \cityseer{}}
+\label{sec:appendix_cityseer_impl}
+
+The sampling model is implemented in the \cityseer{} Python library (version 4.23+). The adaptive function automatically probes reachability, computes sampling probabilities from the fitted model, and scales results:
+
+\begin{verbatim}
+from cityseer.metrics import networks
+
+gdf = networks.node_centrality_shortest_adaptive(
+    network_structure,
+    nodes_gdf,
+    distances=[500, 1000, 2000, 5000, 10000],
+    compute_closeness=True,
+    compute_betweenness=True,
+    target_rho=0.95
+)
+\end{verbatim}
+
+For manual control, a fixed sampling probability can be specified via the \texttt{sample\_probability} parameter of \texttt{node\_centrality\_shortest}. Helper functions for custom workflows (\texttt{compute\_required\_p}, \texttt{probe\_reachability}, \texttt{spatial\_sample}) are available in the \texttt{cityseer.config} module; see the library documentation for details.
+
 \subsection{Reproducibility}
 
-All analysis scripts and data are available at:
-\begin{center}
-\texttt{https://github.com/benchmark-urbanism/cityseer-api/tree/master/analysis/sampling}
-\end{center}
-
-Key files (in \texttt{scripts/} subdirectory):
-\begin{itemize}
-\item \texttt{00\_generate\_cache.py}: Regenerate cached data
-\item \texttt{01\_fit\_model.py}: Fit proportional constant $k$
-\item \texttt{02\_fit\_floor.py}: Fit minimum floor $\minEffN$
-\item \texttt{03\_combined\_model.py}: Combine model parameters
-\item \texttt{04\_validate\_gla.py}: Validate on GLA network
-\item \texttt{05\_practical\_guide.py}: Generate practical guidance
-\item \texttt{06\_sync\_config.py}: Sync parameters to library
-\item \texttt{07\_generate\_macros.py}: Generate LaTeX macros from JSON
-\end{itemize}
-
-Model parameters are stored in \texttt{output/sampling\_model.json} and synced to \texttt{pysrc/cityseer/config.py} for library integration. LaTeX macros are auto-generated by \texttt{07\_generate\_macros.py} into \texttt{paper/tables/model\_macros.tex}.
+All analysis scripts, fitting data, and validation results are available at \texttt{https://github.com/benchmark-urbanism/cityseer-api/tree/master/analysis/sampling}. Model parameters are stored in \texttt{output/sampling\_model.json} and synced to \texttt{pysrc/cityseer/config.py} for library integration.

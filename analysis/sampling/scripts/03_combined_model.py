@@ -22,6 +22,7 @@ from datetime import datetime
 from pathlib import Path
 
 import matplotlib
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
@@ -41,24 +42,27 @@ FIGURES_DIR.mkdir(parents=True, exist_ok=True)
 TABLES_DIR.mkdir(parents=True, exist_ok=True)
 
 # Matplotlib style
-plt.rcParams.update({
-    "font.family": "sans-serif",
-    "font.size": 11,
-    "axes.titlesize": 12,
-    "axes.labelsize": 11,
-    "xtick.labelsize": 10,
-    "ytick.labelsize": 10,
-    "legend.fontsize": 10,
-    "figure.dpi": 150,
-    "savefig.dpi": 300,
-    "axes.spines.top": False,
-    "axes.spines.right": False,
-})
+plt.rcParams.update(
+    {
+        "font.family": "sans-serif",
+        "font.size": 11,
+        "axes.titlesize": 12,
+        "axes.labelsize": 11,
+        "xtick.labelsize": 10,
+        "ytick.labelsize": 10,
+        "legend.fontsize": 10,
+        "figure.dpi": 150,
+        "savefig.dpi": 300,
+        "axes.spines.top": False,
+        "axes.spines.right": False,
+    }
+)
 
 
 # =============================================================================
 # DATA LOADING
 # =============================================================================
+
 
 def load_fitted_parameters() -> tuple[float, int]:
     """Load k and min_eff_n from previous scripts."""
@@ -87,6 +91,7 @@ def load_fitted_parameters() -> tuple[float, int]:
 # MODEL FUNCTIONS
 # =============================================================================
 
+
 def compute_eff_n(reach: float, k: float, min_eff_n: float) -> float:
     """Compute effective sample size from the model."""
     return max(k * math.sqrt(reach), min_eff_n)
@@ -112,6 +117,7 @@ def crossover_reach(k: float, min_eff_n: float) -> float:
 # FIGURE GENERATION
 # =============================================================================
 
+
 def generate_fig4_combined_model(k: float, min_eff_n: int):
     """
     Figure 4: The complete sampling model.
@@ -132,29 +138,46 @@ def generate_fig4_combined_model(k: float, min_eff_n: int):
     p_values = [compute_p(r, k, min_eff_n) * 100 for r in reach_range]
 
     # Plot the model
-    ax.plot(reach_range, p_values, color="#0072B2", linewidth=2.5,
-            label=f"Model: p = max({k}/sqrt(r), {min_eff_n}/r)")
+    ax.plot(reach_range, p_values, color="#0072B2", linewidth=2.5, label=f"Model: p = max({k}/sqrt(r), {min_eff_n}/r)")
 
     # Show the two components
     p_proportional = [min(100, k / math.sqrt(r) * 100) for r in reach_range]
     p_floor = [min(100, min_eff_n / r * 100) for r in reach_range]
 
-    ax.plot(reach_range, p_proportional, color="gray", linewidth=1, linestyle=":",
-            alpha=0.7, label=f"Proportional: {k}/sqrt(r)")
-    ax.plot(reach_range, p_floor, color="gray", linewidth=1, linestyle="--",
-            alpha=0.7, label=f"Floor: {min_eff_n}/r")
+    ax.plot(
+        reach_range,
+        p_proportional,
+        color="gray",
+        linewidth=1,
+        linestyle=":",
+        alpha=0.7,
+        label=f"Proportional: {k}/sqrt(r)",
+    )
+    ax.plot(reach_range, p_floor, color="gray", linewidth=1, linestyle="--", alpha=0.7, label=f"Floor: {min_eff_n}/r")
 
     # Mark crossover point
     ax.axvline(crossover, color="red", linestyle="-", linewidth=1.5, alpha=0.5)
-    ax.annotate(f"crossover\nreach={crossover:.0f}",
-                xy=(crossover, compute_p(crossover, k, min_eff_n) * 100 + 5),
-                fontsize=9, color="red", ha="center")
+    ax.annotate(
+        f"crossover\nreach={crossover:.0f}",
+        xy=(crossover, compute_p(crossover, k, min_eff_n) * 100 + 5),
+        fontsize=9,
+        color="red",
+        ha="center",
+    )
 
     # Shade regimes
-    ax.fill_between(reach_range, 0, 100, where=[r < crossover for r in reach_range],
-                    alpha=0.1, color="red", label="Floor-dominated")
-    ax.fill_between(reach_range, 0, 100, where=[r >= crossover for r in reach_range],
-                    alpha=0.1, color="blue", label="Proportional-dominated")
+    ax.fill_between(
+        reach_range, 0, 100, where=[r < crossover for r in reach_range], alpha=0.1, color="red", label="Floor-dominated"
+    )
+    ax.fill_between(
+        reach_range,
+        0,
+        100,
+        where=[r >= crossover for r in reach_range],
+        alpha=0.1,
+        color="blue",
+        label="Proportional-dominated",
+    )
 
     ax.set_xscale("log")
     ax.set_xlabel("Network Reach (nodes within distance)")
@@ -170,17 +193,24 @@ def generate_fig4_combined_model(k: float, min_eff_n: int):
 
     eff_n_values = [compute_eff_n(r, k, min_eff_n) for r in reach_range]
 
-    ax.plot(reach_range, eff_n_values, color="#0072B2", linewidth=2.5,
-            label=f"Model: eff_n = max({k}×sqrt(r), {min_eff_n})")
+    ax.plot(
+        reach_range, eff_n_values, color="#0072B2", linewidth=2.5, label=f"Model: eff_n = max({k}×sqrt(r), {min_eff_n})"
+    )
 
     # Show components
     eff_n_proportional = [k * math.sqrt(r) for r in reach_range]
     eff_n_floor = [min_eff_n for _ in reach_range]
 
-    ax.plot(reach_range, eff_n_proportional, color="gray", linewidth=1, linestyle=":",
-            alpha=0.7, label=f"Proportional: {k}×sqrt(r)")
-    ax.plot(reach_range, eff_n_floor, color="gray", linewidth=1, linestyle="--",
-            alpha=0.7, label=f"Floor: {min_eff_n}")
+    ax.plot(
+        reach_range,
+        eff_n_proportional,
+        color="gray",
+        linewidth=1,
+        linestyle=":",
+        alpha=0.7,
+        label=f"Proportional: {k}×sqrt(r)",
+    )
+    ax.plot(reach_range, eff_n_floor, color="gray", linewidth=1, linestyle="--", alpha=0.7, label=f"Floor: {min_eff_n}")
 
     # Mark crossover
     ax.axvline(crossover, color="red", linestyle="-", linewidth=1.5, alpha=0.5)
@@ -196,8 +226,7 @@ def generate_fig4_combined_model(k: float, min_eff_n: int):
     ax.grid(True, alpha=0.3, which="both")
 
     fig.suptitle(
-        f"The Sampling Model: eff_n = max({k} × sqrt(reach), {min_eff_n})",
-        fontsize=13, fontweight="bold", y=1.02
+        f"The Sampling Model: eff_n = max({k} × sqrt(reach), {min_eff_n})", fontsize=13, fontweight="bold", y=1.02
     )
     plt.tight_layout()
 
@@ -208,31 +237,87 @@ def generate_fig4_combined_model(k: float, min_eff_n: int):
 
 
 def generate_parameters_table(k: float, min_eff_n: int):
-    """Generate LaTeX table of model parameters."""
+    """Generate LaTeX table of model parameters with CIs if available."""
     print("\nGenerating Table 1: Parameters...")
 
     crossover = crossover_reach(k, min_eff_n)
 
-    latex = r"""\begin{table}[htbp]
+    # Try to load CI data from 08_validate_power_exponent.py output
+    ci_path = OUTPUT_DIR / "power_exponent_analysis.json"
+    k_ci_str = "--"
+    floor_ci_str = "--"
+    alpha_str = "0.5"
+    alpha_ci_str = "--"
+    alpha_p_str = "--"
+
+    if ci_path.exists():
+        with open(ci_path) as f:
+            ci_data = json.load(f)
+
+        pe = ci_data.get("power_exponent", {})
+        fl = ci_data.get("floor_logistic", {})
+
+        if pe.get("boot_ci_lower") is not None:
+            alpha_str = f"{pe.get('alpha_hat', 0.5)}"
+            alpha_ci_str = f"[{pe['boot_ci_lower']}, {pe['boot_ci_upper']}]"
+            alpha_p_str = f"{pe.get('p_value_vs_half', 0.38):.2f}"
+
+        if fl.get("recommended_floor_ci_lower") is not None:
+            floor_ci_str = f"[{fl['recommended_floor_ci_lower']}, {fl['recommended_floor_ci_upper']}]"
+
+    # k CI from fitting stats
+    model_fit_path = OUTPUT_DIR / "model_fit.json"
+    if model_fit_path.exists():
+        with open(model_fit_path) as mf:
+            mf_data = json.load(mf)
+        k_mean = mf_data["fitting_stats"]["k_mean"]
+        k_p95 = mf_data["fitting_stats"]["k_p95"]
+        k_ci_str = f"[{k_mean}, {k_p95}]"
+
+    latex = (
+        r"""\begin{table}[htbp]
 \centering
-\caption{Fitted Sampling Model Parameters}
+\caption{Fitted sampling model parameters.}
 \label{tab:parameters}
-\begin{tabular}{lrl}
+\begin{tabular}{lrll}
 \toprule
-\textbf{Parameter} & \textbf{Value} & \textbf{Description} \\
+\textbf{Parameter} & \textbf{Value} & \textbf{Range} & \textbf{Description} \\
 \midrule
-$k$ & """ + f"{k:.1f}" + r""" & Proportional scaling constant \\
-$n_{\min}$ & """ + f"{min_eff_n}" + r""" & Minimum effective sample size \\
-Crossover reach & """ + f"{crossover:.0f}" + r""" & Where $k\sqrt{r} = n_{\min}$ \\
+$k$ & """
+        + f"{k:.2f}"
+        + r""" & """
+        + k_ci_str
+        + r""" & Proportional scaling constant \\
+$n_{\min}$ & """
+        + f"{min_eff_n}"
+        + r""" & """
+        + floor_ci_str
+        + r""" & Minimum effective sample size \\
+Crossover reach & """
+        + f"{crossover:.0f}"
+        + r""" & -- & Where $k\sqrt{r} = n_{\min}$ \\
+\midrule
+$\hat{\alpha}$ & """
+        + alpha_str
+        + r""" & """
+        + alpha_ci_str
+        + r""" & Estimated power exponent \\
 \bottomrule
 \end{tabular}
 
 \vspace{0.5em}
 \footnotesize
-\textbf{Model:} $n_{\mathrm{eff}} = \max(k \cdot \sqrt{r}, n_{\min})$, where $r$ is the network reach.\\
-Sampling probability: $p = n_{\mathrm{eff}} / r$ (capped at 1.0).
+\textbf{Model:} $n_{\mathrm{eff}} = \max(k \cdot \sqrt{r},\; n_{\min})$, where $r$ is the network reach.
+Sampling probability: $p = \min(1,\; n_{\mathrm{eff}} / r)$.\\
+$k$: 75th percentile of implied values across configurations; range shows [mean, 95th percentile].\\
+$n_{\min}$: logistic regression inversion at 95\% success rate; range shows 95\% CI.\\
+$\hat{\alpha}$: estimated from general power model $n_{\mathrm{eff}} = k \cdot r^{\alpha}$; \\
+not significantly different from 0.5 ($p = """
+        + alpha_p_str
+        + r"""$), supporting the fixed $\sqrt{r}$ specification.
 \end{table}
 """
+    )
 
     output_path = TABLES_DIR / "tab1_parameters.tex"
     with open(output_path, "w") as f:
@@ -244,6 +329,7 @@ Sampling probability: $p = n_{\mathrm{eff}} / r$ (capped at 1.0).
 # MAIN
 # =============================================================================
 
+
 def main():
     print("=" * 70)
     print("03_combined_model.py - Combining into final sampling model")
@@ -251,7 +337,7 @@ def main():
 
     # Load fitted parameters
     k, min_eff_n = load_fitted_parameters()
-    print(f"\nLoaded parameters:")
+    print("\nLoaded parameters:")
     print(f"  k = {k}")
     print(f"  min_eff_n = {min_eff_n}")
 

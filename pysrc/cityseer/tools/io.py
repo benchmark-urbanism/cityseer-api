@@ -1109,10 +1109,9 @@ def network_structure_from_nx(
                         aligned_line_geom.wkt,
                         float(edge_data.get("imp_factor", 1.0)),
                     )
-                except Exception as e:
+                except Exception:
                     logger.error(
-                        f"Edge failed: {start_node_key} -> {end_node_key}, "
-                        f"coords={list(aligned_line_geom.coords)}"
+                        f"Edge failed: {start_node_key} -> {end_node_key}, coords={list(aligned_line_geom.coords)}"
                     )
                     raise
                 # add to edge data

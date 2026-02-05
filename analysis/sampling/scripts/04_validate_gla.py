@@ -89,8 +89,7 @@ def load_validation_data() -> pd.DataFrame:
     validation_path = OUTPUT_DIR / "model_validation.csv"
     if not validation_path.exists():
         raise FileNotFoundError(
-            f"Validation CSV not found at {validation_path}\n"
-            "Run: python 00_generate_cache.py --gla"
+            f"Validation CSV not found at {validation_path}\nRun: python 00_generate_cache.py --gla"
         )
 
     print(f"Loading validation data from {validation_path}")
@@ -254,7 +253,8 @@ def generate_validation_table(df: pd.DataFrame, k: float, min_eff_n: int):
 \label{tab:validation}
 \begin{tabular}{rrrrrr}
 \toprule
-\textbf{Distance} & \textbf{Reach} & \textbf{Model $p$} & \textbf{Observed $\rho$} & \textbf{Speedup} & \textbf{$\rho \geq 0.95$?} \\
+\textbf{Distance} & \textbf{Reach} & \textbf{Model $p$} &
+\textbf{Observed $\rho$} & \textbf{Speedup} & \textbf{$\rho \geq 0.95$?} \\
 \midrule
 """
 

@@ -8,7 +8,7 @@ Figure~\ref{fig:headline} illustrates why sampling-based centrality is attractiv
 
 Panel B quantifies the speedup potential at each distance threshold when targeting $\rho \geq \targetRho$. Speedup increases with distance because larger reach allows more aggressive sampling. At short distances (250m), little speedup is possible; at 4000m, speedups exceed 5$\times$.
 
-\begin{figure}[H]
+\begin{figure}[htbp]
 \centering
 \includegraphics[width=\textwidth]{figures/fig1_headline.pdf}
 \caption{\textbf{The sampling opportunity.} (A) Accuracy vs.\ sampling probability for different analysis distances. The green dashed line marks the $\rho = \targetRho$ target. (B) Potential speedup at each distance while maintaining $\rho \geq \targetRho$.}
@@ -21,7 +21,7 @@ To derive our sampling model, we first observe that accuracy depends on \emph{ef
 
 This observation simplifies our task: rather than modelling accuracy as a function of both reach and probability, we need only determine the required $\effn$ as a function of reach. The question becomes: how does required $\effn$ scale with network size?
 
-\begin{figure}[H]
+\begin{figure}[htbp]
 \centering
 \includegraphics[width=\textwidth]{figures/fig2_model_derivation.pdf}
 \caption{\textbf{Deriving the sampling model.} (A) Accuracy collapses to effective sample size: all observations fall on a common curve regardless of topology. (B) Required $\effn$ for $\rho \geq \targetRho$ scales as $\sqrt{r}$, motivating the proportional model.}
@@ -35,9 +35,9 @@ Figure~\ref{fig:derivation}B shows the minimum $\effn$ required to achieve $\rho
 \effn = k \cdot \sqrt{r}
 \end{equation}
 
-This scaling emerges from sampling theory. If we want to maintain consistent \emph{relative} precision in our centrality estimates as reach grows, we need sample size proportional to $\sqrt{r}$. The intuition is that larger networks have more ``averaging out'' of local variation, so fewer relative samples are needed.
+This scaling is consistent with sampling theory: maintaining consistent relative precision as reach grows requires sample size proportional to $\sqrt{r}$, since larger networks exhibit more averaging of local variation. To validate this empirically, we fit the general power model $\effn = k \cdot r^{\alpha}$ via OLS on log-transformed data ($R^2 = \alphaRSquared$). The estimated exponent $\hat{\alpha} = \alphaHat$ (bootstrap 95\% CI: $[\alphaCILower, \alphaCIUpper]$) does not differ significantly from 0.5 ($p = \alphaTestPValue$), supporting the square root specification (Figure~S1).
 
-Fitting $k$ to achieve $\rho \geq \targetRho$ across all synthetic configurations yields $k = \kProp$. This conservative value ensures the model works for the most demanding topology-distance combinations.
+Fitting $k$ as the 75th percentile of implied $k$ values across all \nConfigs{} synthetic configurations yields $k = \kProp$.
 
 \subsection{The Floor: Reliability at Low Reach}
 
@@ -47,7 +47,9 @@ Figure~\ref{fig:floor} demonstrates the problem. Panel A shows success rates (fr
 
 Panel B shows where the proportional-only model fails. At low reach values, the implied $\effn$ from $k \cdot \sqrt{r}$ produces success rates well below the \targetRho{} target.
 
-\begin{figure}[H]
+We determine the floor more rigorously using logistic regression: fitting $P(\rho \geq \targetRho) = \text{logistic}(\beta_0 + \beta_1 \cdot \effn)$ and inverting to find the $\effn$ where predicted success probability reaches 95\%. This yields $n_{\min} = \floorLogistic$ (95\% CI: $[\floorCILower, \floorCIUpper]$), confirming the binned analysis while providing uncertainty quantification (Table~\ref{tab:parameters}).
+
+\begin{figure}[htbp]
 \centering
 \includegraphics[width=\textwidth]{figures/fig3_floor_justification.pdf}
 \caption{\textbf{Justifying the minimum floor.} (A) Success rate by $\effn$ bin. Red bars indicate bins below \targetRho{} success; the vertical line marks the fitted floor at $\minEffN$. (B) The proportional model alone fails at low reach, justifying the floor constraint.}
@@ -68,7 +70,7 @@ p = \min\left(1, \frac{\effn}{r}\right)
 
 Figure~\ref{fig:combined} shows the complete model. Panel A displays how the required $\effn$ transitions from the floor regime (flat at $\minEffN$) to the proportional regime (scaling as $\sqrt{r}$) at the crossover point $r = \crossoverReach$. Panel B shows the corresponding sampling probability, which decreases as $1/\sqrt{r}$ once past the crossover.
 
-\begin{figure}[H]
+\begin{figure}[htbp]
 \centering
 \includegraphics[width=\textwidth]{figures/fig4_combined_model.pdf}
 \caption{\textbf{The complete sampling model.} (A) Required effective sample size: floor regime (flat, $\effn = \minEffN$) transitions to proportional regime ($\effn = \kProp \cdot \sqrt{r}$) at reach $\approx \crossoverReach$. (B) Required sampling probability: decreases as reach increases, enabling greater speedup for large-scale analysis.}
@@ -78,3 +80,11 @@ Figure~\ref{fig:combined} shows the complete model. Panel A displays how the req
 Table~\ref{tab:parameters} summarises the fitted model parameters.
 
 \input{tables/tab1_parameters}
+
+\subsection{Model Selection}
+
+To justify the proposed $\sqrt{r}$ + floor specification against alternatives, we compare \nModelsCompared{} candidate models: plain $\sqrt{r}$, $\sqrt{r}$ + floor (proposed), general power $r^{\alpha}$, general power + floor, and logarithmic. Models are fitted by maximum likelihood using a logistic observation model and evaluated by AIC and leave-one-topology-out cross-validated Brier score (Table~\ref{tab:model_comparison}).
+
+The \bestModelName{} model ($\effn = k \cdot r^{\alpha}$, with $\hat{\alpha} = \alphaHat$) achieves the lowest AIC (\bestModelAIC), while the proposed $\sqrt{r}$ + floor model has $\Delta$AIC = \proposedDeltaAIC. However, cross-validated Brier scores are similar across all models (\bestModelBrier{} vs.\ \proposedModelBrier{}), indicating that differences in out-of-sample prediction are modest---the AIC advantage does not translate into meaningfully better generalisation to held-out topologies. We retain the $\sqrt{r}$ specification for three reasons: (1) the hypothesis test does not reject $\alpha = 0.5$ ($p = \alphaTestPValue$), so the data are consistent with square root scaling; (2) fixing $\alpha = 0.5$ provides a direct connection to sampling theory ($\text{SE} \propto 1/\sqrt{n}$), making the model interpretable rather than purely empirical; and (3) the floor component addresses a qualitatively distinct failure mode at low reach that no single power law can capture, even though the floor's contribution to in-sample fit is small. This is a modelling choice driven by interpretability and robustness rather than in-sample fit.
+
+\input{tables/tab_model_comparison}

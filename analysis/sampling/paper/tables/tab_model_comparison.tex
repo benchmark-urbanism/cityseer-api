@@ -1,0 +1,21 @@
+\begin{table}[htbp]
+\centering
+\caption{Model comparison for effective sample size prediction. Models ranked by AIC; $\Delta$AIC $< 2$ indicates substantial support.}
+\label{tab:model_comparison}
+\begin{tabular}{llrrrr}
+\toprule
+\textbf{Model} & \textbf{Formula} & $n_p$ & \textbf{AIC} & $\Delta$\textbf{AIC} & \textbf{CV Brier} \\
+\midrule
+General power & $k \, r^{\alpha}$ & 2 & 850.0 & 0.0 & 0.2123 \\
+Power + floor & $\max(k \, r^{\alpha}, m)$ & 3 & 853.2 & 3.2 & 0.2145 \\
+Square root & $k \sqrt{r}$ & 1 & 859.0 & 9.0 & 0.2195 \\
+Logarithmic & $k_1 + k_2 \log r$ & 2 & 861.0 & 11.0 & 0.2156 \\
+Sqrt + floor (proposed) & $\max(k\sqrt{r}, m)$ & 2 & 861.6 & 11.6 & 0.2180 \\
+\bottomrule
+\end{tabular}
+
+\vspace{0.5em}
+\footnotesize
+$n_p$: number of fitted parameters. CV Brier: leave-one-topology-out cross-validated Brier score (lower is better).\\
+$\Delta$AIC $< 2$: substantial support; $2$--$10$: some support; $> 10$: essentially no support.
+\end{table}

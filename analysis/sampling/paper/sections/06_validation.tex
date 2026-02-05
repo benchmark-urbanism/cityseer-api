@@ -2,88 +2,34 @@
 % Section 6: Validation
 % =============================================================================
 
-\subsection{Validation Network}
-
-We validate our sampling model on the Greater London Authority (GLA) road network, sourced from Ordnance Survey Open Roads data. After preprocessing (removing filler nodes, consolidating nearby nodes, removing dangles), the network comprises approximately \glaNnodes{} nodes.
-
-To eliminate edge artifacts, we apply a \glaBuffer{}km inward buffer from the convex hull of all nodes. This ensures that all ``live'' nodes included in accuracy calculations have complete catchments at all tested distances (up to 20km).
-
-The GLA network is ideal for validation because:
-\begin{enumerate}
-\item Its scale (\glaNnodes{} nodes) far exceeds our synthetic training data
-\item It contains diverse topology: grid-like central areas, tree-like suburbs, and mixed intermediate zones
-\item Reach values at tested distances (5km, 10km, 20km) extend well beyond synthetic data ranges
-\end{enumerate}
-
 \subsection{Experimental Protocol}
 
-For each distance threshold, we:
-\begin{enumerate}
-\item Compute ground-truth centrality (full computation, $p = 1.0$)
-\item Compute sampled centrality at multiple probabilities (1\%, 2\%, 5\%, 10\%, 15\%, 20\%, 30\%, 50\%, 75\%, 100\%)
-\item Measure Spearman correlation $\rho$ between sampled and ground-truth values
-\item Repeat with 3 random seeds and report mean $\pm$ standard deviation
-\end{enumerate}
+We validate the model on the GLA and Greater Madrid networks described in Section~\ref{sec:methods}. For each distance threshold, we compute ground-truth centrality ($p = 1.0$) and sampled centrality at probabilities from 1\% to 100\%, measuring Spearman $\rho$ between the two. Each configuration is repeated with 3 random seeds; we report the mean $\pm$ standard deviation.
 
-We compare observed accuracy against model predictions at the model-recommended sampling probability.
+\subsection{GLA Results}
 
-\subsection{Results}
+Figure~\ref{fig:validation} shows validation results for the Greater London network. At all three distances, the model-recommended probability achieves $\rho > \glaMinRho$, exceeding the \targetRho{} target. Observed $\rho$ consistently exceeds model predictions, demonstrating appropriate conservatism.
 
-Figure~\ref{fig:validation} shows validation results. Panel A plots observed accuracy ($\rho$) against sampling probability for each distance threshold, with the model-recommended probability marked. At all three distances, the model recommendation achieves $\rho > \glaMinRho$, exceeding the \targetRho{} target.
-
-Panel B compares model predictions with observed outcomes. At the recommended sampling probability, observed $\rho$ consistently exceeds model predictions, demonstrating that the model is appropriately conservative.
-
-\begin{figure}[H]
+\begin{figure}[htbp]
 \centering
 \includegraphics[width=\textwidth]{figures/fig5_gla_validation.pdf}
 \caption{\textbf{GLA network validation.} (A) Accuracy vs.\ sampling probability at 5km, 10km, and 20km distances. Markers indicate the model-recommended probability; all exceed the \targetRho{} target. (B) Model conservatism: observed $\rho$ exceeds predictions at all distances.}
 \label{fig:validation}
 \end{figure}
 
-Table~\ref{tab:validation} presents detailed validation results.
+Table~\ref{tab:validation} presents detailed results. At 5km (reach = \glaFiveKmReach{}), observed $\rho = \glaFiveKmRho{}$ with \glaFiveKmSpeedup{}$\times$ speedup. At 10km (reach = \glaTenKmReach{}), $\rho = \glaTenKmRho{}$ with \glaTenKmSpeedup{}$\times$ speedup. At 20km (reach = \glaTwentyKmReach{}), $\rho = \glaTwentyKmRho{}$ with \glaTwentyKmSpeedup{}$\times$ speedup. Standard deviations across replications are small ($< 0.005$ in $\rho$), indicating that a single sampled computation is sufficient for most purposes.
 
 \input{tables/tab2_validation}
 
-Key findings:
-\begin{itemize}
-\item \textbf{5km distance}: Reach = \glaFiveKmReach{}. Model recommends $p \approx 27\%$. At 25\% sampling, observed $\rho = \glaFiveKmRho{}$, achieving \glaFiveKmSpeedup{}$\times$ speedup.
-
-\item \textbf{10km distance}: Reach = \glaTenKmReach{}. Model recommends $p \approx 13\%$. At 15\% sampling, observed $\rho = \glaTenKmRho{}$, achieving \glaTenKmSpeedup{}$\times$ speedup.
-
-\item \textbf{20km distance}: Reach = \glaTwentyKmReach{}. Model recommends $p \approx 7\%$. At 5\% sampling (slightly below recommendation), observed $\rho = \glaTwentyKmRho{}$, achieving \glaTwentyKmSpeedup{}$\times$ speedup.
-\end{itemize}
-
-\subsection{Extrapolation Performance}
-
-The validation demonstrates successful extrapolation beyond synthetic training data:
-
-\begin{itemize}
-\item \textbf{Network scale}: Training used networks of $\approx 2000$ nodes; validation uses \glaNnodes{} nodes
-\item \textbf{Reach range}: Training reached up to $\approx 2600$; validation reaches \glaTwentyKmReach{} (16$\times$ higher)
-\item \textbf{Topology diversity}: Training used controlled synthetic topologies; validation uses real-world heterogeneous structure
-\end{itemize}
-
-Despite these extrapolations, the model's predictions remain conservative. This suggests that the $\effn$-accuracy relationship identified in synthetic data is a robust property of network centrality, not an artifact of specific network configurations.
-
-\subsection{Variance Across Random Seeds}
-
-Sampling introduces variance: different random seeds produce slightly different centrality estimates. Table~\ref{tab:validation} includes standard deviations across 3 replications.
-
-At recommended sampling probabilities, standard deviations are small ($< 0.005$ in $\rho$). This indicates that:
-\begin{enumerate}
-\item A single sampled computation is sufficient for most purposes
-\item When higher precision is needed, averaging 2--3 replications provides excellent stability
-\end{enumerate}
-
-The low variance arises because our floor constraint ensures $\effn \geq \minEffN$, guaranteeing a minimum sample size that provides statistical stability.
+The validation demonstrates successful extrapolation well beyond synthetic training data: from $\approx 2{,}000$-node training networks to \glaNnodes{} nodes, from maximum training reach of $\approx 2{,}600$ to \glaTwentyKmReach{}, and from controlled synthetic topologies to heterogeneous real-world structure. Despite these extrapolations, predictions remain conservative, suggesting that the $\effn$-accuracy relationship is a robust property of network centrality rather than an artifact of specific configurations.
 
 \subsection{External Validation: Madrid}
 
-We perform external validation on the Madrid metropolitan street network to verify cross-city generalization. Following the same protocol as GLA (20km inward buffer, testing distances from 500m to 20km), the model achieves $\rho > 0.95$ for both closeness and betweenness at all distances (Figure~\ref{fig:madrid_validation}).
+To test generalisability beyond London, we applied the identical protocol to the Greater Madrid metropolitan street network. The model achieves $\rho > \targetRho$ for both closeness and betweenness at all tested distances (Figure~\ref{fig:madrid_validation}), confirming that the fitted parameters generalise across morphologically distinct European cities.
 
-\begin{figure}[H]
+\begin{figure}[htbp]
 \centering
 \includegraphics[width=\textwidth]{figures/fig6_madrid_validation.pdf}
-\caption{\textbf{Madrid validation.} (a) Accuracy vs.\ distance for closeness and betweenness. (b) Speedup at each distance.}
+\caption{\textbf{Madrid external validation.} (A) Accuracy vs.\ distance for closeness and betweenness centrality. (B) Speedup at each distance.}
 \label{fig:madrid_validation}
 \end{figure}

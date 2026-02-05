@@ -1,0 +1,59 @@
+{
+  "generated": "2026-02-05T18:18:20",
+  "script": "08_validate_power_exponent.py",
+  "power_exponent": {
+    "alpha_hat": 0.5529,
+    "alpha_se": 0.0591,
+    "alpha_ci_lower": 0.4371,
+    "alpha_ci_upper": 0.6687,
+    "k_hat": 4.32,
+    "log_k_hat": 1.4638,
+    "r_squared": 0.7264,
+    "t_stat_vs_half": 0.8953,
+    "p_value_vs_half": 0.3771,
+    "reject_h0": false,
+    "n_obs": 35,
+    "boot_alpha_mean": 0.5448,
+    "boot_alpha_std": 0.067,
+    "boot_ci_lower": 0.4029,
+    "boot_ci_upper": 0.6609,
+    "ci_contains_half": true,
+    "n_bootstrap": 2000,
+    "decision": "Use alpha = 0.5 (sqrt model) for parsimony",
+    "final_alpha": 0.5
+  },
+  "floor_logistic": {
+    "method": "logistic_regression",
+    "beta0": -2.1851,
+    "beta1": 0.014303,
+    "n_obs": 770,
+    "log_likelihood": -258.5,
+    "pseudo_r_squared": 0.5129,
+    "results_by_target": {
+      "target_90": {
+        "target_success_rate": 0.9,
+        "floor_point": 306.4,
+        "floor_ci_lower": 276.0,
+        "floor_ci_upper": 347.2,
+        "floor_se": 17.8
+      },
+      "target_95": {
+        "target_success_rate": 0.95,
+        "floor_point": 358.6,
+        "floor_ci_lower": 321.6,
+        "floor_ci_upper": 408.4,
+        "floor_se": 21.8
+      },
+      "target_99": {
+        "target_success_rate": 0.99,
+        "floor_point": 474.1,
+        "floor_ci_lower": 421.6,
+        "floor_ci_upper": 544.9,
+        "floor_se": 30.9
+      }
+    },
+    "recommended_floor": 359,
+    "recommended_floor_ci_lower": 322,
+    "recommended_floor_ci_upper": 408
+  }
+}

@@ -2,28 +2,14 @@
 % Section 1: Introduction
 % =============================================================================
 
-Network centrality measures are fundamental tools for understanding urban street networks, revealing patterns of accessibility, connectivity, and flow that shape how cities function. Harmonic closeness centrality quantifies how effectively a location can reach all others, while betweenness centrality captures the extent to which a location lies on shortest paths between other pairs of nodes. These measures have proven invaluable for urban planning, retail location analysis, and understanding pedestrian movement patterns.
+Network centrality measures are fundamental tools for understanding urban street networks, revealing patterns of accessibility, connectivity, and flow that shape how cities function. Closeness centrality quantifies how effectively a location can reach all others, while betweenness centrality captures the extent to which a location lies on shortest paths between other pairs of nodes. These measures have proven invaluable for urban planning, retail location analysis, and understanding pedestrian movement patterns.
 
-However, computing network centrality at scale presents a significant computational challenge. Standard algorithms have time complexity $O(N \cdot M + N^2 \log N)$ for weighted graphs, where $N$ is the number of nodes and $M$ is the number of edges. For large urban networks---which routinely contain hundreds of thousands of nodes---these computations become prohibitively expensive, particularly when analysis must be repeated across multiple distance thresholds or network configurations.
+However, computing network centrality at scale presents a significant computational challenge. For large urban networks---which routinely contain hundreds of thousands of nodes---exact computation becomes prohibitively expensive, particularly when analysis must be repeated across multiple distance thresholds or network configurations.
 
 Sampling-based approximation offers a natural solution: rather than computing exact centrality from all source nodes, we compute from a random subset and scale the results accordingly. This approach can dramatically reduce computation time while preserving the essential ranking information that practitioners need. The critical question is: \emph{how much sampling is enough?}
 
-This paper presents a principled answer to that question. We introduce a simple, empirically-validated model for determining the appropriate sampling probability:
-\begin{equation}
-  \label{eq:model}
-  \effn = \max\left( \kProp \cdot \sqrt{r}, \minEffN \right), \quad p = \min\left(1, \frac{\effn}{r}\right)
-\end{equation}
-where $r$ is the network reach (mean number of nodes within the analysis distance), $\effn$ is the effective sample size, $p$ is the sampling probability, $k = \kProp$ is a fitted proportional constant, and $\minEffN$ is a minimum floor ensuring reliability at low reach.
+This paper presents a practical, empirically-validated answer to that question. We derive a two-parameter model that determines the required effective sample size $\effn$ as a function of network reach $r$---the mean number of nodes within the analysis distance. The model combines a proportional scaling term ($\effn \propto \sqrt{r}$), grounded in sampling theory, with a minimum floor that ensures reliability at low reach. The resulting sampling probability $p = \effn / r$ decreases as networks grow, delivering the largest speedups precisely where computational cost is highest.
 
-The model has two regimes. When reach exceeds $\crossoverReach$, the proportional term dominates: the required effective sample size is $\kProp \cdot \sqrt{r}$, yielding sampling probability $p = \kProp / \sqrt{r}$ that decreases as networks grow larger. When reach is below $\crossoverReach$, the floor dominates: we require an effective sample size of at least $\minEffN$ to ensure statistical reliability.
+We fit the model on synthetic networks spanning three topologies and validate it on real-world street networks in Greater London (\glaNnodes{} nodes) and Madrid, achieving Spearman $\rho > \glaMinRho$ at distances from 5--20km with speedups of \glaFiveKmSpeedup{}--\glaTwentyKmSpeedup{}$\times$. Formal model comparison across five candidate functional forms and a bootstrap hypothesis test on the scaling exponent support the proposed specification. The model is implemented in the open-source \cityseer{} Python library.
 
-Our contributions are:
-\begin{enumerate}
-  \item \textbf{A practical sampling model}: We derive and fit a two-parameter model that guarantees ranking accuracy $\rho \geq \targetRho$ across diverse network topologies and analysis distances. The model uses proportional scaling ($k \cdot \sqrt{r}$) with a minimum floor ($\minEffN$) to handle low-reach edge cases.
-
-  \item \textbf{Real-world validation}: We validate the model on a \glaNnodes{}-node Greater London street network at distances from 5km to 20km, achieving speedups of \glaFiveKmSpeedup{}--\glaTwentyKmSpeedup{}$\times$ while maintaining $\rho > \glaMinRho$.
-
-  \item \textbf{Open-source implementation}: The model is implemented in the \cityseer{} Python library, enabling automatic per-distance sampling calibration with a single parameter.
-\end{enumerate}
-
-The remainder of this paper is organised as follows. Section~\ref{sec:background} reviews related work on network centrality and sampling approximation. Section~\ref{sec:methods} describes our experimental methodology. Sections~\ref{sec:models} and \ref{sec:algorithm} present the empirical models and adaptive sampling algorithm. Section~\ref{sec:validation} validates the approach on real-world networks. Section~\ref{sec:guidelines} provides practical guidance for practitioners. Section~\ref{sec:discussion} discusses limitations, and Section~\ref{sec:conclusion} concludes.
+The remainder of this paper is organised as follows. Section~\ref{sec:background} reviews related work. Section~\ref{sec:methods} describes our experimental methodology. Section~\ref{sec:models} derives and selects the empirical model. Section~\ref{sec:algorithm} presents the adaptive sampling algorithm. Section~\ref{sec:validation} validates the approach on real-world networks. Section~\ref{sec:guidelines} provides practical guidance. Sections~\ref{sec:discussion} and \ref{sec:conclusion} discuss limitations and conclude.

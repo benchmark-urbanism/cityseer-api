@@ -1,5 +1,5 @@
 {
-  "generated": "2026-02-05T14:40:11",
+  "generated": "2026-02-05T19:02:34",
   "script": "03_combined_model.py",
   "description": "Complete sampling model combining k and min_eff_n",
   "model": {

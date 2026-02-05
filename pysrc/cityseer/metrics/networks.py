@@ -136,12 +136,16 @@ def node_centrality_shortest(
         heuristic, the jitter will represent angular change in degrees.
     sample_probability: float
         Probability of sampling a node as a source for centrality calculations. When used alone, provides uniform
-        random sampling. When combined with `sampling_weights`, the final probability for each node is
-        `sample_probability * sampling_weights[node_idx]`.
+        random sampling across all nodes. When combined with `sampling_weights`, the final probability for each
+        node is `sample_probability * sampling_weights[node_idx]`. For automatic per-distance sampling calibration,
+        use [`node_centrality_shortest_adaptive`](#node-centrality-shortest-adaptive) instead.
     sampling_weights: list[float]
-        Optional array of per-node sampling weights. Must have length equal to the number of nodes, with values
-        in the range [0.0, 1.0]. Use this to bias sampling toward certain nodes (e.g., by normalized population).
-        When provided, the sampling probability for each node becomes `sample_probability * sampling_weights[node_idx]`.
+        Optional array of per-node sampling weights for manual (non-adaptive) sampling control. Must have length
+        equal to the number of nodes, with values in the range [0.0, 1.0]. Use this to bias which nodes are
+        selected as source nodes for centrality calculations (e.g., to oversample high-population areas). When
+        provided, the sampling probability for each node becomes `sample_probability * sampling_weights[node_idx]`.
+        This parameter is not available in the adaptive variants, which automatically calibrate sampling
+        probabilities per distance threshold.
     random_seed: int
         Optional seed for deterministic sampling and random cost jitter.
 
@@ -318,12 +322,16 @@ def node_centrality_simplest(
         heuristic, the jitter will represent angular change in degrees.
     sample_probability: float
         Probability of sampling a node as a source for centrality calculations. When used alone, provides uniform
-        random sampling. When combined with `sampling_weights`, the final probability for each node is
-        `sample_probability * sampling_weights[node_idx]`.
+        random sampling across all nodes. When combined with `sampling_weights`, the final probability for each
+        node is `sample_probability * sampling_weights[node_idx]`. For automatic per-distance sampling calibration,
+        use [`node_centrality_simplest_adaptive`](#node-centrality-simplest-adaptive) instead.
     sampling_weights: list[float]
-        Optional array of per-node sampling weights. Must have length equal to the number of nodes, with values
-        in the range [0.0, 1.0]. Use this to bias sampling toward certain nodes (e.g., by normalized population).
-        When provided, the sampling probability for each node becomes `sample_probability * sampling_weights[node_idx]`.
+        Optional array of per-node sampling weights for manual (non-adaptive) sampling control. Must have length
+        equal to the number of nodes, with values in the range [0.0, 1.0]. Use this to bias which nodes are
+        selected as source nodes for centrality calculations (e.g., to oversample high-population areas). When
+        provided, the sampling probability for each node becomes `sample_probability * sampling_weights[node_idx]`.
+        This parameter is not available in the adaptive variants, which automatically calibrate sampling
+        probabilities per distance threshold.
     random_seed: int
         Optional seed for deterministic sampling and random cost jitter.
 
@@ -561,7 +569,9 @@ def segment_centrality(
 def _run_adaptive_centrality(
     network_structure: rustalgos.graph.NetworkStructure,
     nodes_gdf: gpd.GeoDataFrame,
-    distances: list[int],
+    distances: list[int] | None,
+    betas: list[float] | None,
+    minutes: list[float] | None,
     target_rho: float,
     centrality_func: str,  # "shortest" or "simplest"
     compute_closeness: bool,
@@ -581,6 +591,10 @@ def _run_adaptive_centrality(
     This function handles the shared logic for both shortest and simplest
     path adaptive centrality computation.
     """
+    # Resolve distances from whichever of distances/betas/minutes was provided
+    distances, _betas, _seconds = rustalgos.pair_distances_betas_time(
+        speed_m_s, distances, betas, minutes, min_threshold_wt=min_threshold_wt
+    )
     # Determine which metric model to use for sampling calibration
     # Use the more conservative model when computing both metrics
     if compute_closeness and compute_betweenness:
@@ -714,7 +728,9 @@ def _run_adaptive_centrality(
 def node_centrality_shortest_adaptive(
     network_structure: rustalgos.graph.NetworkStructure,
     nodes_gdf: gpd.GeoDataFrame,
-    distances: list[int],
+    distances: list[int] | None = None,
+    betas: list[float] | None = None,
+    minutes: list[float] | None = None,
     target_rho: float = 0.95,
     compute_closeness: bool = True,
     compute_betweenness: bool = True,
@@ -741,9 +757,19 @@ def node_centrality_shortest_adaptive(
         A NetworkStructure. Best generated with io.network_structure_from_nx.
     nodes_gdf
         A GeoDataFrame representing nodes. Results are written to this GeoDataFrame.
-    distances
-        Distance thresholds in metres. Unlike the standard function, only distances
-        (not betas or minutes) are supported for adaptive sampling.
+    distances: list[int]
+        Distances corresponding to the local $d_{max}$ thresholds to be used for calculations. The $\\beta$
+        for distance-weighted metrics will be determined implicitly using `min_threshold_wt`. If the `distances`
+        parameter is not provided, then the `betas` or `minutes` parameters must be provided instead.
+    betas: list[float]
+        A list of $\\beta$ to be used for the exponential decay function for weighted metrics. The $d_{max}$
+        thresholds for unweighted metrics will be determined implicitly. If the `betas` parameter is not
+        provided, then the `distances` or `minutes` parameter must be provided instead.
+    minutes: list[float]
+        A list of walking times in minutes to be used for calculations. The $d_{max}$ thresholds for unweighted
+        metrics and $\\beta$ for distance-weighted metrics will be determined implicitly using the `speed_m_s`
+        and `min_threshold_wt` parameters. If the `minutes` parameter is not provided, then the `distances` or
+        `betas` parameters must be provided instead.
     target_rho
         Target Spearman ρ correlation for ranking accuracy. Default 0.95.
         Higher values (e.g., 0.97) provide better accuracy but less speedup.
@@ -790,6 +816,8 @@ def node_centrality_shortest_adaptive(
         network_structure=network_structure,
         nodes_gdf=nodes_gdf,
         distances=distances,
+        betas=betas,
+        minutes=minutes,
         target_rho=target_rho,
         centrality_func="shortest",
         compute_closeness=compute_closeness,
@@ -805,7 +833,9 @@ def node_centrality_shortest_adaptive(
 def node_centrality_simplest_adaptive(
     network_structure: rustalgos.graph.NetworkStructure,
     nodes_gdf: gpd.GeoDataFrame,
-    distances: list[int],
+    distances: list[int] | None = None,
+    betas: list[float] | None = None,
+    minutes: list[float] | None = None,
     target_rho: float = 0.95,
     compute_closeness: bool = True,
     compute_betweenness: bool = True,
@@ -831,8 +861,19 @@ def node_centrality_simplest_adaptive(
         A NetworkStructure. Best generated with io.network_structure_from_nx.
     nodes_gdf
         A GeoDataFrame representing nodes. Results are written to this GeoDataFrame.
-    distances
-        Distance thresholds in metres.
+    distances: list[int]
+        Distances corresponding to the local $d_{max}$ thresholds to be used for calculations. The $\\beta$
+        for distance-weighted metrics will be determined implicitly using `min_threshold_wt`. If the `distances`
+        parameter is not provided, then the `betas` or `minutes` parameters must be provided instead.
+    betas: list[float]
+        A list of $\\beta$ to be used for the exponential decay function for weighted metrics. The $d_{max}$
+        thresholds for unweighted metrics will be determined implicitly. If the `betas` parameter is not
+        provided, then the `distances` or `minutes` parameter must be provided instead.
+    minutes: list[float]
+        A list of walking times in minutes to be used for calculations. The $d_{max}$ thresholds for unweighted
+        metrics and $\\beta$ for distance-weighted metrics will be determined implicitly using the `speed_m_s`
+        and `min_threshold_wt` parameters. If the `minutes` parameter is not provided, then the `distances` or
+        `betas` parameters must be provided instead.
     target_rho
         Target Spearman ρ correlation for ranking accuracy. Default 0.95.
     compute_closeness
@@ -868,6 +909,8 @@ def node_centrality_simplest_adaptive(
         network_structure=network_structure,
         nodes_gdf=nodes_gdf,
         distances=distances,
+        betas=betas,
+        minutes=minutes,
         target_rho=target_rho,
         centrality_func="simplest",
         compute_closeness=compute_closeness,

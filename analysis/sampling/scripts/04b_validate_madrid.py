@@ -6,7 +6,8 @@ Loads pre-computed validation results from 00_generate_cache.py and generates
 the validation figure for the paper.
 
 Outputs:
-    - paper/figures/fig_madrid_validation.pdf: Accuracy and speedup plots
+    - paper/figures/fig6_madrid_validation.pdf: Accuracy and speedup plots
+    - output/madrid_validation.csv: Validation results
 """
 
 import json
@@ -72,8 +73,7 @@ def load_validation_data() -> pd.DataFrame:
     validation_path = OUTPUT_DIR / "madrid_validation.csv"
     if not validation_path.exists():
         raise FileNotFoundError(
-            f"Madrid validation data not found at {validation_path}\n"
-            "Run: python 00_generate_cache.py --madrid"
+            f"Madrid validation data not found at {validation_path}\nRun: python 00_generate_cache.py --madrid"
         )
 
     print(f"Loading validation data from {validation_path}")
@@ -173,7 +173,7 @@ def generate_validation_figure(df: pd.DataFrame):
     )
 
     # Add speedup labels on bars
-    for i, (spd, dist) in enumerate(zip(df["speedup"], df["distance"])):
+    for i, (spd, _dist) in enumerate(zip(df["speedup"], df["distance"], strict=True)):
         ax2.text(i, spd + 0.1, f"{spd:.1f}x", ha="center", va="bottom", fontsize=9)
 
     ax2.set_xlabel("Distance (km)")
@@ -230,7 +230,8 @@ def main():
     print("=" * 70)
 
     print(
-        f"\n{'Distance':>10} | {'Reach':>10} | {'Model p':>10} | {'ρ close':>10} | {'ρ between':>10} | {'Speedup':>10} | {'Pass?':>6}"
+        f"\n{'Distance':>10} | {'Reach':>10} | {'Model p':>10}"
+        f" | {'ρ close':>10} | {'ρ between':>10} | {'Speedup':>10} | {'Pass?':>6}"
     )
     print("-" * 85)
 

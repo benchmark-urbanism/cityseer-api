@@ -15,6 +15,7 @@ import math
 from pathlib import Path
 
 import matplotlib
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
@@ -33,24 +34,27 @@ FIGURES_DIR.mkdir(parents=True, exist_ok=True)
 TABLES_DIR.mkdir(parents=True, exist_ok=True)
 
 # Matplotlib style
-plt.rcParams.update({
-    "font.family": "sans-serif",
-    "font.size": 11,
-    "axes.titlesize": 12,
-    "axes.labelsize": 11,
-    "xtick.labelsize": 10,
-    "ytick.labelsize": 10,
-    "legend.fontsize": 10,
-    "figure.dpi": 150,
-    "savefig.dpi": 300,
-    "axes.spines.top": False,
-    "axes.spines.right": False,
-})
+plt.rcParams.update(
+    {
+        "font.family": "sans-serif",
+        "font.size": 11,
+        "axes.titlesize": 12,
+        "axes.labelsize": 11,
+        "xtick.labelsize": 10,
+        "ytick.labelsize": 10,
+        "legend.fontsize": 10,
+        "figure.dpi": 150,
+        "savefig.dpi": 300,
+        "axes.spines.top": False,
+        "axes.spines.right": False,
+    }
+)
 
 
 # =============================================================================
 # DATA LOADING
 # =============================================================================
+
 
 def load_model() -> tuple[float, int]:
     """Load the fitted model parameters."""
@@ -70,6 +74,7 @@ def load_model() -> tuple[float, int]:
 # MODEL FUNCTIONS
 # =============================================================================
 
+
 def compute_p(reach: float, k: float, min_eff_n: int) -> float:
     """Compute sampling probability from the model."""
     eff_n = max(k * math.sqrt(reach), min_eff_n)
@@ -79,6 +84,7 @@ def compute_p(reach: float, k: float, min_eff_n: int) -> float:
 # =============================================================================
 # FIGURE GENERATION
 # =============================================================================
+
 
 def generate_fig7_practical_guide(k: float, min_eff_n: int):
     """
@@ -113,8 +119,7 @@ def generate_fig7_practical_guide(k: float, min_eff_n: int):
     for reach, label in scenarios:
         p = compute_p(reach, k, min_eff_n) * 100
         ax.plot(reach, p, "o", color="#D55E00", markersize=8, zorder=5)
-        ax.annotate(f"{label}\n{p:.0f}%", xy=(reach, p + 3),
-                    fontsize=8, ha="center", va="bottom")
+        ax.annotate(f"{label}\n{p:.0f}%", xy=(reach, p + 3), fontsize=8, ha="center", va="bottom")
 
     ax.set_xscale("log")
     ax.set_xlabel("Network Reach (nodes within distance)")
@@ -125,9 +130,15 @@ def generate_fig7_practical_guide(k: float, min_eff_n: int):
     ax.grid(True, alpha=0.3)
 
     # Add helpful text
-    ax.text(0.05, 0.95, f"Model: eff_n = max({k}×√reach, {min_eff_n})",
-            transform=ax.transAxes, fontsize=9, verticalalignment="top",
-            bbox=dict(boxstyle="round", facecolor="wheat", alpha=0.5))
+    ax.text(
+        0.05,
+        0.95,
+        f"Model: eff_n = max({k}×√reach, {min_eff_n})",
+        transform=ax.transAxes,
+        fontsize=9,
+        verticalalignment="top",
+        bbox=dict(boxstyle="round", facecolor="wheat", alpha=0.5),
+    )
 
     # Panel B: Speedup potential
     ax = axes[1]
@@ -136,12 +147,11 @@ def generate_fig7_practical_guide(k: float, min_eff_n: int):
     ax.plot(reach_range, speedups, color="#2ca02c", linewidth=2.5)
 
     # Annotate scenarios
-    for reach, label in scenarios:
+    for reach, _label in scenarios:
         p = compute_p(reach, k, min_eff_n)
         speedup = 1 / p
         ax.plot(reach, speedup, "o", color="#D55E00", markersize=8, zorder=5)
-        ax.annotate(f"{speedup:.1f}x", xy=(reach, speedup * 1.1),
-                    fontsize=9, ha="center", va="bottom")
+        ax.annotate(f"{speedup:.1f}x", xy=(reach, speedup * 1.1), fontsize=9, ha="center", va="bottom")
 
     ax.set_xscale("log")
     ax.set_yscale("log")
@@ -158,8 +168,7 @@ def generate_fig7_practical_guide(k: float, min_eff_n: int):
     ax.axhspan(10, 100, alpha=0.1, color="green", label=">10x (significant)")
     ax.legend(loc="lower right", fontsize=8)
 
-    fig.suptitle("Practical Guide: Sampling for Network Centrality",
-                 fontsize=13, fontweight="bold", y=1.02)
+    fig.suptitle("Practical Guide: Sampling for Network Centrality", fontsize=13, fontweight="bold", y=1.02)
     plt.tight_layout()
 
     output_path = FIGURES_DIR / "fig7_practical_guide.pdf"
@@ -190,17 +199,23 @@ def generate_practical_table(k: float, min_eff_n: int):
         p = min(1.0, eff_n / reach)
         speedup = 1 / p
 
-        latex += f"{reach:,} & {eff_n:.0f} & {p*100:.1f} & {speedup:.1f}$\\times$ \\\\\n"
+        latex += f"{reach:,} & {eff_n:.0f} & {p * 100:.1f} & {speedup:.1f}$\\times$ \\\\\n"
 
-    latex += r"""\bottomrule
+    latex += (
+        r"""\bottomrule
 \end{tabular}
 
 \vspace{0.5em}
 \footnotesize
 \textbf{Usage:} Find your network reach (nodes within analysis distance), read off the required sampling probability.\\
-\textbf{Model:} $n_{\mathrm{eff}} = \max(""" + f"{k}" + r""" \cdot \sqrt{r}, """ + f"{min_eff_n}" + r""")$, $p = n_{\mathrm{eff}} / r$.
+\textbf{Model:} $n_{\mathrm{eff}} = \max("""
+        + f"{k}"
+        + r""" \cdot \sqrt{r}, """
+        + f"{min_eff_n}"
+        + r""")$, $p = n_{\mathrm{eff}} / r$.
 \end{table}
 """
+    )
 
     output_path = TABLES_DIR / "tab3_practical_lookup.tex"
     with open(output_path, "w") as f:
@@ -211,6 +226,7 @@ def generate_practical_table(k: float, min_eff_n: int):
 # =============================================================================
 # MAIN
 # =============================================================================
+
 
 def main():
     print("=" * 70)
@@ -244,8 +260,8 @@ def main():
     print("=" * 70)
     print(f"\n1. Never sample fewer than {min_eff_n} nodes (the floor)")
     print(f"2. For large networks, sample {k} × sqrt(reach) nodes")
-    print(f"3. At reach > {(min_eff_n/k)**2:.0f}, you can achieve >2x speedup")
-    print(f"4. At reach > 10,000, expect 10x+ speedup while maintaining rho >= 0.95")
+    print(f"3. At reach > {(min_eff_n / k) ** 2:.0f}, you can achieve >2x speedup")
+    print("4. At reach > 10,000, expect 10x+ speedup while maintaining rho >= 0.95")
 
     print("\n" + "=" * 70)
     print("OUTPUTS")

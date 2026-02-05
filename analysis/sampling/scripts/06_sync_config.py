@@ -30,6 +30,7 @@ CONFIG_PATH = SAMPLING_DIR.parent.parent / "pysrc" / "cityseer" / "config.py"
 # LOADING
 # =============================================================================
 
+
 def load_model() -> dict:
     """Load the fitted model parameters."""
     model_path = OUTPUT_DIR / "sampling_model.json"
@@ -52,6 +53,7 @@ def load_config() -> str:
 # =============================================================================
 # UPDATING
 # =============================================================================
+
 
 def update_constant(content: str, name: str, value: float, comment: str = "") -> str:
     """
@@ -108,9 +110,9 @@ def sync_to_config(model: dict, dry_run: bool = False) -> bool:
     if "SAMPLING_MIN_EFF_N" in content:
         content = update_constant(content, "SAMPLING_MIN_EFF_N", float(min_eff_n))
     else:
-        print(f"\n  NOTE: SAMPLING_MIN_EFF_N not found in config.py")
-        print(f"        This is a new constant for the inverted model.")
-        print(f"        Please add it manually after SAMPLING_PROPORTIONAL_K:")
+        print("\n  NOTE: SAMPLING_MIN_EFF_N not found in config.py")
+        print("        This is a new constant for the inverted model.")
+        print("        Please add it manually after SAMPLING_PROPORTIONAL_K:")
         print(f"        SAMPLING_MIN_EFF_N: float = {float(min_eff_n)}")
 
     if dry_run:
@@ -118,9 +120,9 @@ def sync_to_config(model: dict, dry_run: bool = False) -> bool:
         if content != original_content:
             print("\n  Changes that would be made:")
             # Show diff
-            for i, (old, new) in enumerate(zip(original_content.split("\n"), content.split("\n"))):
+            for i, (old, new) in enumerate(zip(original_content.split("\n"), content.split("\n"), strict=False)):
                 if old != new:
-                    print(f"    Line {i+1}:")
+                    print(f"    Line {i + 1}:")
                     print(f"      - {old}")
                     print(f"      + {new}")
         return True
@@ -141,6 +143,7 @@ def sync_to_config(model: dict, dry_run: bool = False) -> bool:
 # MAIN
 # =============================================================================
 
+
 def main():
     print("=" * 70)
     print("06_sync_config.py - Syncing model to cityseer config")
@@ -148,7 +151,7 @@ def main():
 
     # Load model
     model = load_model()
-    print(f"\nLoaded model:")
+    print("\nLoaded model:")
     print(f"  k = {model['model']['k']}")
     print(f"  min_eff_n = {model['model']['min_eff_n']}")
 
@@ -160,7 +163,7 @@ def main():
         print("SUMMARY")
         print("=" * 70)
         print(f"\nUpdated: {CONFIG_PATH}")
-        print(f"\nThe cityseer library now uses:")
+        print("\nThe cityseer library now uses:")
         print(f"  SAMPLING_PROPORTIONAL_K = {model['model']['k']}")
         print(f"  (SAMPLING_MIN_EFF_N = {model['model']['min_eff_n']} - add manually if new)")
 
@@ -173,7 +176,7 @@ def main():
 # samples for reliable estimates. This floor ensures we always sample
 # at least min_eff_n nodes.
 # Fitted on synthetic networks (01_fit_model.py, 02_fit_floor.py)
-SAMPLING_MIN_EFF_N: float = {float(model['model']['min_eff_n'])}
+SAMPLING_MIN_EFF_N: float = {float(model["model"]["min_eff_n"])}
 """)
 
     return 0 if success else 1

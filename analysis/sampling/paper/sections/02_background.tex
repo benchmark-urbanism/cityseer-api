@@ -32,23 +32,20 @@ Sampling-based approximation of centrality has been studied extensively. \citet{
 
 The key insight is that centrality computed from $k$ random sources produces estimates with standard error proportional to $1/\sqrt{k}$. This suggests that effective sample size---the product of reach and sampling probability---should be the key determinant of accuracy.
 
-However, prior work has focused on theoretical worst-case bounds rather than empirical calibration for practical use. The question of \emph{how many samples are sufficient for urban network analysis} has not been systematically addressed. Our work fills this gap by:
-\begin{enumerate}
-\item Empirically validating that effective sample size determines accuracy across topologies
-\item Fitting practical thresholds for achieving target accuracy ($\rho \geq \targetRho$)
-\item Deriving a simple model that practitioners can apply directly
-\end{enumerate}
+More recently, adaptive algorithms have been developed that adjust sampling online. KADABRA \citep{Borassi2019} uses progressive sampling with stopping rules based on confidence intervals, providing tighter approximation guarantees for individual queries. Our approach differs in providing \emph{a priori} sampling probabilities based on network reach, enabling practitioners to predict computational cost before execution. The two approaches are complementary: KADABRA provides tighter bounds for specific queries, while our model enables efficient batch computation across multiple distances.
 
-\subsection{Distance-Weighted Centrality}
+Despite these advances, prior work has focused on theoretical worst-case bounds or online adaptation rather than empirical calibration for practical urban network analysis. The question of \emph{how many samples are sufficient} for typical urban networks has not been systematically addressed. Our work fills this gap by empirically validating that effective sample size determines accuracy across topologies, fitting practical thresholds for a target accuracy of $\rho \geq \targetRho$, and deriving a simple model that analysts can apply directly.
 
-Urban network analysis typically uses \emph{local} centrality measures with distance thresholds. For a threshold $d_{\max}$, we compute:
+\subsection{Localised Centrality}
+
+Urban network analysis typically uses \emph{localised} centrality measures with a distance cutoff. For a cutoff $d_{\max}$, we compute:
 \begin{equation}
 C_H(v; d_{\max}) = \sum_{u: d(v,u) \leq d_{\max}} \frac{1}{d(v, u)}
 \end{equation}
 
-The \emph{reach} $r$ at distance $d_{\max}$ is the mean number of nodes within that distance:
+The \emph{reach} $r$ at cutoff $d_{\max}$ is the mean number of nodes within that distance:
 \begin{equation}
 r = \frac{1}{N} \sum_{v} \left| \{u : d(v, u) \leq d_{\max}\} \right|
 \end{equation}
 
-Reach varies dramatically with distance threshold. In our Greater London validation network, reach ranges from \glaFiveKmReach{} at 5km to \glaTwentyKmReach{} at 20km---a 15-fold increase. This variation is central to our sampling model: larger reach allows more aggressive sampling while maintaining accuracy.
+Reach varies dramatically with distance threshold. In our Greater London validation network, reach ranges from \glaFiveKmReach{} at 5km to \glaTwentyKmReach{} at 20km---more than an order of magnitude. This variation is central to our sampling model: larger reach allows more aggressive sampling while maintaining accuracy.

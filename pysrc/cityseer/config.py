@@ -212,7 +212,6 @@ def get_expected_bias(effective_n: float, distance_type: str = "shortest") -> fl
     return 1.0 - expected_scale
 
 
-
 def get_required_effective_n(
     target_spearman: float,
     metric: str = "betweenness",

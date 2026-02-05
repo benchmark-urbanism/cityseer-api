@@ -24,11 +24,11 @@ from datetime import datetime
 from pathlib import Path
 
 import matplotlib
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from scipy import stats as scipy_stats
 
 # =============================================================================
 # CONFIGURATION
@@ -47,24 +47,27 @@ FIGURES_DIR.mkdir(parents=True, exist_ok=True)
 SYNTHETIC_CACHE = CACHE_DIR / "sampling_analysis_v17.pkl"
 
 # Matplotlib style
-plt.rcParams.update({
-    "font.family": "sans-serif",
-    "font.size": 11,
-    "axes.titlesize": 12,
-    "axes.labelsize": 11,
-    "xtick.labelsize": 10,
-    "ytick.labelsize": 10,
-    "legend.fontsize": 10,
-    "figure.dpi": 150,
-    "savefig.dpi": 300,
-    "axes.spines.top": False,
-    "axes.spines.right": False,
-})
+plt.rcParams.update(
+    {
+        "font.family": "sans-serif",
+        "font.size": 11,
+        "axes.titlesize": 12,
+        "axes.labelsize": 11,
+        "xtick.labelsize": 10,
+        "ytick.labelsize": 10,
+        "legend.fontsize": 10,
+        "figure.dpi": 150,
+        "savefig.dpi": 300,
+        "axes.spines.top": False,
+        "axes.spines.right": False,
+    }
+)
 
 
 # =============================================================================
 # DATA LOADING
 # =============================================================================
+
 
 def load_synthetic_data() -> pd.DataFrame:
     """Load cached synthetic network sampling results."""
@@ -88,6 +91,7 @@ def load_synthetic_data() -> pd.DataFrame:
 # =============================================================================
 # MODEL FITTING
 # =============================================================================
+
 
 def fit_proportional_k(df: pd.DataFrame, target_rho: float = 0.95) -> dict:
     """
@@ -138,15 +142,17 @@ def fit_proportional_k(df: pd.DataFrame, target_rho: float = 0.95) -> dict:
             k_implied = min_p * math.sqrt(reach)
             eff_n_at_target = reach * min_p
 
-            results.append({
-                "topology": topology,
-                "distance": distance,
-                "reach": reach,
-                "min_p_for_target": min_p,
-                "achieved_rho": achieved_rho,
-                "k_implied": k_implied,
-                "eff_n_at_target": eff_n_at_target,
-            })
+            results.append(
+                {
+                    "topology": topology,
+                    "distance": distance,
+                    "reach": reach,
+                    "min_p_for_target": min_p,
+                    "achieved_rho": achieved_rho,
+                    "k_implied": k_implied,
+                    "eff_n_at_target": eff_n_at_target,
+                }
+            )
 
     results_df = pd.DataFrame(results)
 
@@ -161,9 +167,9 @@ def fit_proportional_k(df: pd.DataFrame, target_rho: float = 0.95) -> dict:
     # but provides meaningful speedup gains
     k_selected = k_p75
 
-    print(f"\nProportional k fitting results:")
+    print("\nProportional k fitting results:")
     print(f"  Target rho: {target_rho}")
-    print(f"  k values across configs:")
+    print("  k values across configs:")
     print(f"    mean={k_mean:.2f}, 75th={k_p75:.2f}, 95th={k_p95:.2f}, max={k_max:.2f}")
     print(f"  Selected k (75th percentile): {k_selected:.2f}")
 
@@ -182,6 +188,7 @@ def fit_proportional_k(df: pd.DataFrame, target_rho: float = 0.95) -> dict:
 # =============================================================================
 # FIGURE GENERATION
 # =============================================================================
+
 
 def generate_fig1_headline(df: pd.DataFrame):
     """
@@ -203,21 +210,33 @@ def generate_fig1_headline(df: pd.DataFrame):
     distances = [500, 1000, 2000, 4000]
     colors = ["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728"]
 
-    for dist, color in zip(distances, colors):
+    for dist, color in zip(distances, colors, strict=True):
         subset = df_b[df_b["distance"] == dist]
         if len(subset) == 0:
             continue
 
         # Average across topologies
-        grouped = subset.groupby("sample_prob").agg({
-            "spearman": "mean",
-            "mean_reach": "mean",
-        }).reset_index()
+        grouped = (
+            subset.groupby("sample_prob")
+            .agg(
+                {
+                    "spearman": "mean",
+                    "mean_reach": "mean",
+                }
+            )
+            .reset_index()
+        )
 
         reach = grouped["mean_reach"].iloc[0]
-        ax.plot(grouped["sample_prob"] * 100, grouped["spearman"],
-                "o-", color=color, markersize=4, linewidth=1.5,
-                label=f"{dist}m (reach={reach:.0f})")
+        ax.plot(
+            grouped["sample_prob"] * 100,
+            grouped["spearman"],
+            "o-",
+            color=color,
+            markersize=4,
+            linewidth=1.5,
+            label=f"{dist}m (reach={reach:.0f})",
+        )
 
     ax.axhline(0.95, color="green", linestyle="--", linewidth=1.5, alpha=0.7)
     ax.text(95, 0.955, "target: rho=0.95", fontsize=9, color="green", ha="right")
@@ -290,9 +309,14 @@ def generate_fig2_model_derivation(df: pd.DataFrame, k: float):
 
     for topology in topologies:
         subset = df_b[df_b["topology"] == topology]
-        ax.scatter(subset["effective_n"], subset["spearman"],
-                   alpha=0.3, s=15, color=colors.get(topology, "gray"),
-                   label=topology)
+        ax.scatter(
+            subset["effective_n"],
+            subset["spearman"],
+            alpha=0.3,
+            s=15,
+            color=colors.get(topology, "gray"),
+            label=topology,
+        )
 
     ax.axhline(0.95, color="green", linestyle="--", linewidth=1.5, alpha=0.7)
     ax.text(4500, 0.955, "target: rho=0.95", fontsize=9, color="green", ha="right", va="bottom")
@@ -322,25 +346,26 @@ def generate_fig2_model_derivation(df: pd.DataFrame, k: float):
 
             if len(achieving) > 0:
                 min_eff_n = achieving["effective_n"].iloc[0]
-                points.append({
-                    "topology": topology,
-                    "reach": reach,
-                    "min_eff_n": min_eff_n,
-                })
+                points.append(
+                    {
+                        "topology": topology,
+                        "reach": reach,
+                        "min_eff_n": min_eff_n,
+                    }
+                )
 
     points_df = pd.DataFrame(points)
 
     for topology in topologies:
         subset = points_df[points_df["topology"] == topology]
-        ax.scatter(subset["reach"], subset["min_eff_n"],
-                   s=40, color=colors.get(topology, "gray"),
-                   label=topology, alpha=0.7)
+        ax.scatter(
+            subset["reach"], subset["min_eff_n"], s=40, color=colors.get(topology, "gray"), label=topology, alpha=0.7
+        )
 
     # Plot the fitted model: eff_n = k × sqrt(reach)
     reach_range = np.logspace(1, 4, 100)
     model_eff_n = k * np.sqrt(reach_range)
-    ax.plot(reach_range, model_eff_n, "k-", linewidth=2,
-            label=f"Model: eff_n = {k:.1f} × sqrt(reach)")
+    ax.plot(reach_range, model_eff_n, "k-", linewidth=2, label=f"Model: eff_n = {k:.1f} × sqrt(reach)")
 
     # Note: floor line not shown here - it's fitted in 02_fit_floor.py
     # and properly introduced in fig3_floor_justification.pdf
@@ -367,6 +392,7 @@ def generate_fig2_model_derivation(df: pd.DataFrame, k: float):
 # =============================================================================
 # MAIN
 # =============================================================================
+
 
 def main():
     print("=" * 70)

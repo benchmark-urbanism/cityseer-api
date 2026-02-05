@@ -190,7 +190,7 @@ def test_node_centrality_shortest_adaptive(primal_graph):
         compute_closeness=True,
         compute_betweenness=True,
         random_seed=42,
-        n_probes=20,  # Smaller for test speed
+        probe_density=20.0,
     )
 
     # Run full computation for comparison
@@ -222,6 +222,25 @@ def test_node_centrality_shortest_adaptive(primal_graph):
             assert rho >= 0.85, f"Correlation too low at {dist}m: {rho:.3f}"
 
 
+def test_node_centrality_shortest_adaptive_minutes(primal_graph):
+    """Test adaptive shortest-path centrality using minutes instead of distances."""
+    nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(primal_graph)
+    # 5 minutes at default 1.33 m/s ≈ 400m
+    nodes_gdf_adaptive = networks.node_centrality_shortest_adaptive(
+        network_structure=network_structure,
+        nodes_gdf=nodes_gdf.copy(),
+        minutes=[5.0, 10.0],
+        target_rho=0.95,
+        random_seed=42,
+        probe_density=20.0,
+    )
+    # Verify columns were created using resolved distances
+    distances, _betas, _seconds = rustalgos.pair_distances_betas_time(config.SPEED_M_S, minutes=[5.0, 10.0])
+    for dist in distances:
+        assert config.prep_gdf_key("harmonic", dist) in nodes_gdf_adaptive.columns
+        assert config.prep_gdf_key("betweenness", dist) in nodes_gdf_adaptive.columns
+
+
 def test_node_centrality_simplest_adaptive(primal_graph):
     """
     Test adaptive simplest-path (angular) centrality with per-distance sampling.
@@ -240,7 +259,7 @@ def test_node_centrality_simplest_adaptive(primal_graph):
         compute_closeness=True,
         compute_betweenness=True,
         random_seed=42,
-        n_probes=20,
+        probe_density=20.0,
     )
 
     # Run full computation for comparison
@@ -267,3 +286,20 @@ def test_node_centrality_simplest_adaptive(primal_graph):
         if mask.sum() > 5:
             rho, _ = spearmanr(full_vals[mask], adaptive_vals[mask])
             assert rho >= 0.85, f"Correlation too low at {dist}m: {rho:.3f}"
+
+
+def test_node_centrality_simplest_adaptive_minutes(primal_graph):
+    """Test adaptive simplest-path centrality using minutes instead of distances."""
+    nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(primal_graph)
+    nodes_gdf_adaptive = networks.node_centrality_simplest_adaptive(
+        network_structure=network_structure,
+        nodes_gdf=nodes_gdf.copy(),
+        minutes=[5.0, 10.0],
+        target_rho=0.95,
+        random_seed=42,
+        probe_density=20.0,
+    )
+    distances, _betas, _seconds = rustalgos.pair_distances_betas_time(config.SPEED_M_S, minutes=[5.0, 10.0])
+    for dist in distances:
+        assert config.prep_gdf_key("harmonic", dist, angular=True) in nodes_gdf_adaptive.columns
+        assert config.prep_gdf_key("betweenness", dist, angular=True) in nodes_gdf_adaptive.columns

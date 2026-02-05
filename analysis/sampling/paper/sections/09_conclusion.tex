@@ -2,42 +2,8 @@
 % Section 9: Conclusion
 % =============================================================================
 
-We have presented a simple, empirically-validated model for sampling-based approximation of network centrality measures. The model,
-\begin{equation*}
-\effn = \max\left( \kProp \cdot \sqrt{r}, \minEffN \right), \quad p = \min\left(1, \frac{\effn}{r}\right)
-\end{equation*}
-determines the appropriate sampling probability from network reach, achieving Spearman correlation $\rho \geq \targetRho$ across diverse network topologies and analysis distances.
+We have presented a two-parameter model that determines the sampling probability for network centrality approximation from network reach alone. Formal testing confirms the square root scaling assumption, and model comparison across five candidate functional forms supports the proposed specification. Validation on the Greater London (\glaNnodes{} nodes) and Madrid street networks achieves Spearman $\rho > \glaMinRho$ at all tested distances (5--20km), with speedups of \glaFiveKmSpeedup{}--\glaTwentyKmSpeedup{}$\times$---demonstrating that the model extrapolates well beyond the synthetic networks on which it was trained.
 
-\subsection{Key Findings}
+The practical value lies in providing analysts with a calibrated way to trade computation time for approximation error, with confidence that sampled results preserve ranking accuracy. The largest benefits accrue at long distances on large networks---precisely where computational cost is highest. More broadly, our results suggest that the effective sample size--accuracy relationship is a consistent property of real-world network centrality rather than an artifact of specific configurations, though further validation on non-European cities would strengthen this claim.
 
-\begin{enumerate}
-\item \textbf{Proportional sampling works}. Sampling $k \cdot \sqrt{r}$ nodes is sufficient to achieve $\rho \geq \targetRho$ for network centrality approximation. The fitted constant $k = \kProp$ ensures this holds across diverse network topologies and analysis distances.
-
-\item \textbf{A minimum floor handles edge cases}. Below reach $\approx \crossoverReach$, the proportional model yields too few samples. Enforcing a minimum of $\minEffN$ samples ensures reliability even for small networks or short analysis distances.
-
-\item \textbf{The model validates on real networks}. On a \glaNnodes{}-node Greater London network, the model achieves $\rho > \glaMinRho$ at all tested distances (5km--20km), with speedups of \glaFiveKmSpeedup{}--\glaTwentyKmSpeedup{}$\times$.
-\end{enumerate}
-
-\subsection{Practical Impact}
-
-For practitioners, our model provides:
-\begin{itemize}
-\item A principled way to trade computation time for approximation error
-\item Confidence that sampled results preserve ranking accuracy
-\item Guidance for when sampling is beneficial versus when full computation is preferred
-\end{itemize}
-
-The largest benefits accrue at long analysis distances on large networks---precisely the scenario where computational cost is highest. A 20km analysis on a \glaNnodes{}-node network can be completed in $\approx 7\%$ of full computation time while maintaining $\rho > \glaMinRho$.
-
-\subsection{Broader Implications}
-
-Beyond the specific application to urban street networks, our work demonstrates that:
-\begin{itemize}
-\item Empirical calibration can provide practical sampling thresholds that substantially outperform theoretical worst-case bounds
-\item The statistical regularity of real-world networks enables sampling strategies that would fail on adversarial constructions
-\item Simple models (two parameters: $k$ and $\minEffN$) can capture complex accuracy relationships across diverse configurations
-\end{itemize}
-
-\subsection{Availability}
-
-The sampling model is available in the \cityseer{} Python library (\texttt{https://github.com/benchmark-urbanism/cityseer-api}). Model parameters, fitting scripts, and validation data are available in the repository's \texttt{analysis/sampling/} directory.
+The model is implemented in the open-source \cityseer{} Python library.\footnote{\texttt{https://github.com/benchmark-urbanism/cityseer-api}} Fitting scripts, validation data, and model comparison analyses are available in the repository's \texttt{analysis/sampling/} directory.
