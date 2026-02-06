@@ -74,7 +74,7 @@ def load_synthetic_data() -> pd.DataFrame:
     if not SYNTHETIC_CACHE.exists():
         raise FileNotFoundError(
             f"Synthetic data cache not found at {SYNTHETIC_CACHE}\n"
-            "Run the deprecated/old_01_fit_models.py first to generate this cache."
+            "Run scripts/00_generate_cache.py first to generate this cache."
         )
 
     with open(SYNTHETIC_CACHE, "rb") as f:
