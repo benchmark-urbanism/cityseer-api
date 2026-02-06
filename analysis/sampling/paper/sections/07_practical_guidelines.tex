@@ -22,5 +22,3 @@ Figure~\ref{fig:guide} provides visual lookup charts for common scenarios, and T
 As a rough guide: at reach below $\crossoverReach$, use full computation---sampling overhead outweighs savings. At reach 1,000--10,000, sample 10--30\% (3--10$\times$ speedup). At reach above 10,000, sample 5--15\% (7--20$\times$ speedup). For applications requiring higher accuracy than $\rho \geq \targetRho$, increase $\effn$ by a factor of 1.5--2$\times$ or average 2--3 replications with different random seeds.
 
 Sampling is not appropriate when exact centrality values (not approximations) are required, when centrality is needed for specific nodes rather than the full network, or when the network is small enough ($< 1{,}000$ nodes) that full computation is already fast.
-
-\label{sec:cityseer_impl}

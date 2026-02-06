@@ -121,12 +121,6 @@ Key macros:
 | 9 | `sections/09_conclusion.tex` | ✓ Complete |
 | A | `sections/appendix_technical.tex` | ✓ Complete |
 
-## Supplementary Material
-
-- `supplementary.tex` - Standalone document (incomplete, not required for main paper)
-
----
-
 ## Deprecated Content
 
 All old scripts, figures, and sections moved to `deprecated/`:

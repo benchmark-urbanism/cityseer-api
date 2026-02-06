@@ -17,7 +17,7 @@ Panel B quantifies the speedup potential at each distance threshold when targeti
 
 \subsection{Effective Sample Size: A Unifying Quantity}
 
-To derive our sampling model, we first observe that accuracy depends on \emph{effective sample size} $\effn = r \times p$, not on reach or probability individually. Figure~\ref{fig:derivation}A demonstrates this: when we plot all observations (across topologies and distances) as $\rho$ vs.\ $\effn$, they collapse onto a single relationship.
+To derive our sampling model, we first observe that accuracy depends on \emph{effective sample size} $\effn = r \times p$, where $r$ is the mean reachability (average number of nodes reachable per source within the distance threshold) and $p$ is the sampling probability, not on reach or probability individually. Figure~\ref{fig:derivation}A demonstrates this: when we plot all observations (across topologies and distances) as $\rho$ vs.\ $\effn$, they collapse onto a single relationship.
 
 This observation simplifies our task: rather than modelling accuracy as a function of both reach and probability, we need only determine the required $\effn$ as a function of reach. The question becomes: how does required $\effn$ scale with network size?
 
@@ -35,13 +35,13 @@ Figure~\ref{fig:derivation}B shows the minimum $\effn$ required to achieve $\rho
 \effn = k \cdot \sqrt{r}
 \end{equation}
 
-This scaling is consistent with sampling theory: maintaining consistent relative precision as reach grows requires sample size proportional to $\sqrt{r}$, since larger networks exhibit more averaging of local variation. To validate this empirically, we fit the general power model $\effn = k \cdot r^{\alpha}$ via OLS on log-transformed data ($R^2 = \alphaRSquared$). The estimated exponent $\hat{\alpha} = \alphaHat$ (bootstrap 95\% CI: $[\alphaCILower, \alphaCIUpper]$) does not differ significantly from 0.5 ($p = \alphaTestPValue$), supporting the square root specification (Figure~S1).
+This scaling is consistent with sampling theory: maintaining consistent relative precision as reach grows requires sample size proportional to $\sqrt{r}$, since larger networks exhibit more averaging of local variation. To validate this empirically, we fit the general power model $\effn = k \cdot r^{\alpha}$ via OLS on log-transformed data ($R^2 = \alphaRSquared$). The estimated exponent $\hat{\alpha} = \alphaHat$ (bootstrap 95\% CI: $[\alphaCILower, \alphaCIUpper]$) does not differ significantly from 0.5 ($p = \alphaTestPValue$), supporting the square root specification (Figure~\ref{fig:power_diagnostics}).
 
 Fitting $k$ as the 75th percentile of implied $k$ values across all \nConfigs{} synthetic configurations yields $k = \kProp$.
 
 \subsection{The Floor: Reliability at Low Reach}
 
-The proportional model $\effn = k \cdot \sqrt{r}$ breaks down at low reach. When $r = 100$, it implies $\effn = \kProp \times 10 = 142$, which our data shows is insufficient for reliable estimates.
+The proportional model $\effn = k \cdot \sqrt{r}$ breaks down at low reach. When $r = 100$, it implies $\effn = \kProp \times 10 \approx 99$, which our data shows is insufficient for reliable estimates.
 
 Figure~\ref{fig:floor} demonstrates the problem. Panel A shows success rates (fraction of configurations achieving $\rho \geq \targetRho$) binned by effective sample size. Below $\effn = \minEffN$, success rates are erratic; above this threshold, they stabilise at 100\%.
 

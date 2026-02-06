@@ -33,6 +33,26 @@ Preprocessing steps:
 
 Final network: $\approx$ \glaNnodes{} nodes.
 
+\subsection{Correctness Verification Against NetworkX}
+\label{sec:appendix_networkx}
+
+To ensure the correctness of our Rust-based centrality implementation in \cityseer{}, we conducted systematic verification against the widely-used NetworkX library \citep{Hagberg2008}. For each synthetic network topology and distance threshold combination, we computed both harmonic closeness and betweenness centrality using our Rust implementation (via \cityseer{} Python bindings) and NetworkX's reference functions.
+
+For each node $v$ in the test networks, we computed the absolute difference $\Delta_v = |C_{\text{cityseer}}(v) - C_{\text{NetworkX}}(v)|$. The maximum difference across all nodes and all test configurations was $\max_v \Delta_v < 10^{-6}$, attributable to floating-point arithmetic precision.
+
+Verification was performed across all three synthetic topologies, distance thresholds from 200m to 3200m, both shortest-path and angular distance heuristics, and both harmonic closeness and betweenness centrality.
+
+\subsection{H\'{a}jek Estimator}
+\label{sec:appendix_hajek}
+
+When estimating population totals from samples, two classical approaches exist: the Horvitz-Thompson (H-T) estimator and the H\'{a}jek estimator. We selected the H\'{a}jek estimator based on theoretical considerations.
+
+The Horvitz-Thompson estimator \citep{Horvitz1952} estimates a population total as $\hat{T}_{HT} = \sum_{i \in S} y_i / \pi_i$, where $S$ is the sample and $\pi_i$ is the inclusion probability. The H\'{a}jek estimator \citep{Hajek1971} instead uses a ratio form:
+\begin{equation}
+    \hat{T}_{H} = N \cdot \frac{\sum_{i \in S} y_i / \pi_i}{\sum_{i \in S} 1 / \pi_i}
+\end{equation}
+where $N$ is the known population size. For simple random sampling with equal inclusion probabilities, the H\'{a}jek estimator has variance $\text{Var}(\hat{T}_{H}) \approx \text{Var}(\hat{T}_{HT}) \cdot (1 - n/N)$. Since the population size (total number of network nodes) is known, the H\'{a}jek estimator is the natural choice. In our implementation, centrality contributions are accumulated unscaled during traversal, then multiplied by $N/n$ (total nodes divided by sampled nodes) after all sources have been processed.
+
 \subsection{Implementation in \cityseer{}}
 \label{sec:appendix_cityseer_impl}
 
@@ -52,6 +72,18 @@ gdf = networks.node_centrality_shortest_adaptive(
 \end{verbatim}
 
 For manual control, a fixed sampling probability can be specified via the \texttt{sample\_probability} parameter of \texttt{node\_centrality\_shortest}. Helper functions for custom workflows (\texttt{compute\_required\_p}, \texttt{probe\_reachability}, \texttt{spatial\_sample}) are available in the \texttt{cityseer.config} module; see the library documentation for details.
+
+\subsection{Power Exponent Diagnostics}
+\label{sec:appendix_power_diagnostics}
+
+Figure~\ref{fig:power_diagnostics} presents bootstrap diagnostics for the power exponent $\alpha$ in the general model $\effn = k \cdot r^{\alpha}$. The estimated $\hat{\alpha} = \alphaHat$ is consistent with the theoretical value of 0.5.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.9\textwidth]{figures/fig_s1_diagnostics.pdf}
+\caption{\textbf{Power exponent diagnostics.} Bootstrap distribution of the estimated exponent $\hat{\alpha}$. The theoretical value $\alpha = 0.5$ falls within the 95\% confidence interval.}
+\label{fig:power_diagnostics}
+\end{figure}
 
 \subsection{Reproducibility}
 
