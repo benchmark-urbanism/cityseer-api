@@ -30,22 +30,13 @@ import numpy as np
 import pandas as pd
 from scipy.optimize import differential_evolution
 from scipy.special import expit
+from utilities import CACHE_DIR, CACHE_VERSION, OUTPUT_DIR, TABLES_DIR
 
 # =============================================================================
 # CONFIGURATION
 # =============================================================================
 
-SCRIPT_DIR = Path(__file__).parent
-SAMPLING_DIR = SCRIPT_DIR.parent  # analysis/sampling
-OUTPUT_DIR = SAMPLING_DIR / "output"
-FIGURES_DIR = SAMPLING_DIR / "paper" / "figures"
-TABLES_DIR = SAMPLING_DIR / "paper" / "tables"
-CACHE_DIR = SAMPLING_DIR.parent.parent / "temp" / "sampling_cache"
-
-OUTPUT_DIR.mkdir(exist_ok=True)
-TABLES_DIR.mkdir(parents=True, exist_ok=True)
-
-SYNTHETIC_CACHE = CACHE_DIR / "sampling_analysis_v17.pkl"
+SYNTHETIC_CACHE = CACHE_DIR / f"sampling_analysis_{CACHE_VERSION}.pkl"
 
 TARGET_RHO = 0.95
 

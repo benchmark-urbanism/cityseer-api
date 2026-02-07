@@ -25,21 +25,13 @@ import numpy as np
 import pandas as pd
 import statsmodels.api as sm
 from scipy import stats as scipy_stats
+from utilities import CACHE_DIR, CACHE_VERSION, FIGURES_DIR, OUTPUT_DIR
 
 # =============================================================================
 # CONFIGURATION
 # =============================================================================
 
-SCRIPT_DIR = Path(__file__).parent
-SAMPLING_DIR = SCRIPT_DIR.parent  # analysis/sampling
-OUTPUT_DIR = SAMPLING_DIR / "output"
-FIGURES_DIR = SAMPLING_DIR / "paper" / "figures"
-CACHE_DIR = SAMPLING_DIR.parent.parent / "temp" / "sampling_cache"
-
-OUTPUT_DIR.mkdir(exist_ok=True)
-FIGURES_DIR.mkdir(parents=True, exist_ok=True)
-
-SYNTHETIC_CACHE = CACHE_DIR / "sampling_analysis_v17.pkl"
+SYNTHETIC_CACHE = CACHE_DIR / f"sampling_analysis_{CACHE_VERSION}.pkl"
 
 TARGET_RHO = 0.95
 N_BOOTSTRAP = 2000

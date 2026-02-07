@@ -1,16 +1,16 @@
 {
-  "generated": "2026-02-05T19:02:34",
-  "script": "03_combined_model.py",
+  "generated": "2026-02-07T17:38:16",
+  "script": "01_fit_rank_model.py",
   "description": "Complete sampling model combining k and min_eff_n",
   "model": {
     "formula_eff_n": "eff_n = max(k \u00d7 sqrt(reach), min_eff_n)",
     "formula_p": "p = min(1.0, eff_n / reach)",
-    "k": 9.91,
-    "min_eff_n": 350,
-    "crossover_reach": 1247.0
+    "k": 10.16,
+    "min_eff_n": 300,
+    "crossover_reach": 872.0
   },
   "interpretation": {
-    "proportional_regime": "When reach > 1247, eff_n scales as 9.91 \u00d7 sqrt(reach)",
-    "floor_regime": "When reach < 1247, eff_n is fixed at 350"
+    "proportional_regime": "When reach > 872, eff_n scales as 10.16 \u00d7 sqrt(reach)",
+    "floor_regime": "When reach < 872, eff_n is fixed at 300"
   }
 }

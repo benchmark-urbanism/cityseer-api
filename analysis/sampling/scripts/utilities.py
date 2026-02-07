@@ -16,9 +16,12 @@ import warnings
 from pathlib import Path
 
 import geopandas as gpd
+import networkx as nx
 import numpy as np
 from scipy import stats as scipy_stats
 from scipy.spatial import KDTree
+from shapely.geometry import Point
+from shapely.ops import unary_union
 
 warnings.filterwarnings("ignore")
 
@@ -38,8 +41,10 @@ TABLES_DIR = PAPER_DIR / "tables"
 for d in [CACHE_DIR, OUTPUT_DIR, FIGURES_DIR, TABLES_DIR]:
     d.mkdir(parents=True, exist_ok=True)
 
-# Cache version for invalidation
-CACHE_VERSION = "v2"
+# Cache version for invalidation — bump this to force all caches to regenerate
+# Versioned filenames (synthetic pkl, validation CSVs) auto-regenerate on bump.
+# Network graphs (gla_graph.pkl, ground_truth_*.pkl) are unversioned and persist.
+CACHE_VERSION = "v19"
 
 # City configurations for OSM downloads
 CITIES = {
@@ -296,9 +301,9 @@ def compute_accuracy(true_vals: np.ndarray, est_vals: np.ndarray) -> float:
     return rho
 
 
-def compute_accuracy_metrics(true_vals: np.ndarray, est_vals: np.ndarray) -> tuple[float, float]:
+def compute_accuracy_metrics(true_vals: np.ndarray, est_vals: np.ndarray) -> tuple:
     """
-    Compute ranking accuracy metrics (Spearman rho and scale ratio).
+    Compute ranking and magnitude accuracy metrics.
 
     Parameters
     ----------
@@ -309,21 +314,65 @@ def compute_accuracy_metrics(true_vals: np.ndarray, est_vals: np.ndarray) -> tup
 
     Returns
     -------
-    tuple[float, float]
-        (spearman_rho, scale_ratio) where scale_ratio = median(est/true)
+    tuple
+        (spearman, top_k_precision, scale_ratio, scale_iqr, max_abs_error)
     """
     mask = (true_vals > 0) & np.isfinite(true_vals) & np.isfinite(est_vals)
     if mask.sum() < 10:
-        return np.nan, np.nan
+        return np.nan, np.nan, np.nan, np.nan, np.nan
 
     true_masked = true_vals[mask]
     est_masked = est_vals[mask]
 
     spearman, _ = scipy_stats.spearmanr(true_masked, est_masked)
+
+    k = max(1, int(len(true_masked) * 0.1))
+    true_top_k = set(np.argsort(true_masked)[-k:])
+    est_top_k = set(np.argsort(est_masked)[-k:])
+    top_k_precision = len(true_top_k & est_top_k) / k
+
     ratios = est_masked / true_masked
     scale_ratio = float(np.median(ratios))
+    scale_iqr = float(np.percentile(ratios, 75) - np.percentile(ratios, 25))
 
-    return spearman, scale_ratio
+    max_abs_error = float(np.max(np.abs(true_masked - est_masked)))
+
+    return spearman, top_k_precision, scale_ratio, scale_iqr, max_abs_error
+
+
+def apply_live_buffer_nx(G: nx.MultiGraph, buffer_dist: float) -> nx.MultiGraph:
+    """
+    Mark only interior nodes as live on NetworkX graph.
+
+    Applies an inward buffer from the convex hull of all nodes.
+    Nodes inside the buffered zone are marked as live=True,
+    nodes in the buffer zone are marked as live=False.
+
+    Parameters
+    ----------
+    G : nx.MultiGraph
+        NetworkX graph with 'x' and 'y' node attributes
+    buffer_dist : float
+        Inward buffer distance in metres
+
+    Returns
+    -------
+    nx.MultiGraph
+        Graph with 'live' attribute set on each node
+    """
+    coords = [(G.nodes[n]["x"], G.nodes[n]["y"]) for n in G.nodes()]
+    all_points = [Point(x, y) for x, y in coords]
+    hull = unary_union(all_points).convex_hull
+    live_zone = hull.buffer(-buffer_dist)
+
+    for n in G.nodes():
+        pt = Point(G.nodes[n]["x"], G.nodes[n]["y"])
+        G.nodes[n]["live"] = live_zone.contains(pt)
+
+    n_live = sum(1 for n in G.nodes() if G.nodes[n]["live"])
+    print(f"  Live nodes: {n_live}/{G.number_of_nodes()} ({100 * n_live / G.number_of_nodes():.1f}%)")
+
+    return G
 
 
 def compute_morans_i(values: np.ndarray, coords: np.ndarray, k: int = 8) -> tuple[float, float]:

@@ -1,9 +1,9 @@
 {
-  "generated": "2026-02-05T14:40:10",
-  "script": "02_fit_floor.py",
+  "generated": "2026-02-07T17:38:16",
+  "script": "01_fit_rank_model.py",
   "description": "Minimum effective sample size floor fitted from synthetic data",
   "model": {
-    "min_eff_n": 350,
+    "min_eff_n": 300,
     "target_success_rate": 0.95,
     "achieved_success_rate": 1.0
   },
@@ -12,88 +12,88 @@
       "bin": "0-50",
       "low": 0,
       "high": 50,
-      "n_total": 241,
-      "n_success": 31,
-      "success_rate": 0.12863070539419086
+      "n_total": 98,
+      "n_success": 9,
+      "success_rate": 0.09183673469387756
     },
     {
       "bin": "50-100",
       "low": 50,
       "high": 100,
-      "n_total": 91,
-      "n_success": 27,
-      "success_rate": 0.2967032967032967
+      "n_total": 22,
+      "n_success": 5,
+      "success_rate": 0.22727272727272727
     },
     {
       "bin": "100-150",
       "low": 100,
       "high": 150,
-      "n_total": 59,
-      "n_success": 22,
-      "success_rate": 0.3728813559322034
+      "n_total": 21,
+      "n_success": 7,
+      "success_rate": 0.3333333333333333
     },
     {
       "bin": "150-200",
       "low": 150,
       "high": 200,
-      "n_total": 44,
-      "n_success": 20,
-      "success_rate": 0.45454545454545453
+      "n_total": 10,
+      "n_success": 5,
+      "success_rate": 0.5
     },
     {
       "bin": "200-250",
       "low": 200,
       "high": 250,
-      "n_total": 36,
-      "n_success": 27,
-      "success_rate": 0.75
+      "n_total": 10,
+      "n_success": 8,
+      "success_rate": 0.8
     },
     {
       "bin": "250-300",
       "low": 250,
       "high": 300,
-      "n_total": 29,
-      "n_success": 24,
-      "success_rate": 0.8275862068965517
+      "n_total": 7,
+      "n_success": 6,
+      "success_rate": 0.8571428571428571
     },
     {
       "bin": "300-350",
       "low": 300,
       "high": 350,
-      "n_total": 27,
-      "n_success": 25,
-      "success_rate": 0.9259259259259259
+      "n_total": 7,
+      "n_success": 7,
+      "success_rate": 1.0
     },
     {
       "bin": "350-400",
       "low": 350,
       "high": 400,
-      "n_total": 23,
-      "n_success": 23,
+      "n_total": 5,
+      "n_success": 5,
       "success_rate": 1.0
     },
     {
       "bin": "400-500",
       "low": 400,
       "high": 500,
-      "n_total": 32,
-      "n_success": 32,
+      "n_total": 9,
+      "n_success": 9,
       "success_rate": 1.0
     },
     {
       "bin": "500-750",
       "low": 500,
       "high": 750,
-      "n_total": 59,
-      "n_success": 59,
+      "n_total": 14,
+      "n_success": 14,
       "success_rate": 1.0
     },
     {
       "bin": "750-1000",
       "low": 750,
       "high": 1000,
-      "n_total": 37,
-      "n_success": 37,
+      "n_total": 9,
+      "n_success": 9,
       "success_rate": 1.0
     }
   ]

@@ -2,11 +2,29 @@
 % Section 3: Methods
 % =============================================================================
 
+\subsection{Centrality Measures}
+
+We consider two centrality measures, both computed with a distance cutoff $d_{\max}$ as is standard in urban network analysis. \textbf{Harmonic closeness} \citep{Rochat2009, Freeman1979} sums inverse distances to all nodes within the threshold:
+\begin{equation}
+  C_H(v;\, d_{\max}) = \sum_{u:\, d(v,u) \leq d_{\max}} \frac{1}{d(v, u)}
+\end{equation}
+\textbf{Betweenness} \citep{Freeman1977} counts the fraction of shortest paths (with total length at most $d_{\max}$) that pass through each node:
+\begin{equation}
+  C_B(v;\, d_{\max}) = \sum_{\substack{s \neq v \neq t \\ d(s,t) \leq d_{\max}}} \frac{\sigma_{st}(v)}{\sigma_{st}}
+\end{equation}
+where $\sigma_{st}$ is the number of shortest paths from $s$ to $t$, and $\sigma_{st}(v)$ is the number passing through $v$. Common distance thresholds range from 400\,m to 20\,km.
+
+A quantity central to the sampling analysis is \emph{reach}: the mean number of nodes within $d_{\max}$,
+\begin{equation}
+  r = \frac{1}{N} \sum_{v} \left| \{u : d(v, u) \leq d_{\max}\} \right|
+\end{equation}
+In the Greater London network, reach ranges from \glaFiveKmReach{} at 5\,km to \glaTwentyKmReach{} at 20\,km. This order-of-magnitude variation across distance thresholds directly governs the relationship between sample size and accuracy.
+
 \subsection{Experimental Design}
 
-Our analysis proceeds in two stages: (1) model fitting on synthetic networks with controlled topology, and (2) validation on large real-world street networks.
+Our analysis proceeds in three stages: (1) model fitting on synthetic networks with controlled topology, (2) evaluation of the localised Eppstein--Wang error bound on the same synthetic data, assessing whether the rank model's recommended sample sizes also provide formal additive-error guarantees, and (3) validation on large real-world street networks.
 
-We generate synthetic networks using \nTopologies{} topology templates---trellis (high connectivity, representing planned urban cores), tree (low connectivity, representing suburban sprawl), and linear (intermediate connectivity)---that span the range of urban street network structure. Each topology is tiled to create networks of approximately 12km extent. We test \nDistances{} distance thresholds from 250m to \syntheticMaxDist{}m, and \nProbs{} sampling probabilities from 2.5\% to 100\%.
+We generate synthetic networks using \nTopologies{} topology templates: trellis (high connectivity, representing planned urban cores), tree (low connectivity, representing suburban sprawl), and linear (intermediate connectivity). These span the range of urban street network structure. Each topology is tiled to create networks of approximately 12km extent, of which we use the inner 4 square. We test \nDistances{} distance thresholds from 250m to \syntheticMaxDist{}m, and \nProbs{} sampling probabilities from 2.5\% to 100\%.
 
 A critical methodological consideration is the treatment of boundary effects. Nodes near network edges have artificially lower centrality because their catchments are truncated. We address this by applying an inward buffer from the convex hull of all nodes, equal to the maximum analysis distance (\syntheticBuffer{}km for synthetic networks, \glaBuffer{}km for validation). Only nodes inside this buffered zone are marked as ``live'' and included in accuracy calculations, ensuring all live nodes have complete catchments at all tested distances. This approach concurs with best practice for localised network analysis \citep{Gil2017}.
 
@@ -14,16 +32,12 @@ A critical methodological consideration is the treatment of boundary effects. No
 
 We measure sampling accuracy using Spearman rank correlation ($\rho$) between sampled and ground-truth centrality values:
 \begin{equation}
-\rho = 1 - \frac{6 \sum_i (R_i^{\text{sampled}} - R_i^{\text{true}})^2}{N(N^2 - 1)}
+  \rho = 1 - \frac{6 \sum_i (R_i^{\text{sampled}} - R_i^{\text{true}})^2}{N(N^2 - 1)}
 \end{equation}
 where $R_i$ denotes the rank of node $i$. Spearman correlation is appropriate because urban applications typically care about \emph{relative} rankings rather than absolute values, it is robust to the systematic scaling that sampling introduces, and values near 1.0 indicate preserved rankings even if magnitudes differ. We fit the model using a target of $\rho \geq \targetRho$: the target accuracy determines which sampling probabilities are deemed sufficient at each configuration, and thus drives the fitted values of $k$ and $n_{\min}$ (Section~\ref{sec:models}). A stricter target produces larger $k$ (more conservative sampling); a more relaxed target produces smaller $k$ (more aggressive sampling). The methodology generalises to other tolerances, which would yield different model parameters.
 
-\subsection{Model Fitting}
-
-For each (topology, distance) combination, we identify the minimum sampling probability $p^*$ that achieves $\rho \geq \targetRho$ and compute the implied proportional constant $k_{\text{implied}} = p^* \cdot \sqrt{r}$. This formulation arises from sampling theory: standard error scales as $1/\sqrt{n}$, so maintaining consistent precision as reach grows requires $\effn \propto \sqrt{r}$, giving $p = k/\sqrt{r}$. We take the 75th percentile of $k_{\text{implied}}$ across all configurations, balancing coverage against practical speedup.
-
-The proportional model breaks down at low reach, where the implied $\effn$ may be too few samples for reliable estimation. We determine a minimum floor $n_{\min}$ using logistic regression of success probability on effective sample size, inverting the fitted function to find the $\effn$ where predicted success probability reaches 95\%. Full fitting details and parameter uncertainty are presented in Section~\ref{sec:models}.
+We additionally record the maximum absolute error $\varepsilon_{\text{raw}} = \max_v |C^{\text{sampled}}(v) - C^{\text{true}}(v)|$, which enables comparison with the additive $\varepsilon$-approximation bounds used in the theoretical sampling literature \citep{Riondato2016, Bader2007}. To apply the Hoeffding concentration inequality \citep{Hoeffding1963} (Section~\ref{sec:bounds}), we normalise this error by the theoretical maximum contribution of each source: $r(r-1)$ for betweenness (the maximum number of pair-paths through any node) and $r$ for harmonic closeness (the maximum sum of inverse distances from $r$ sources). The resulting normalised error $\varepsilon \in [0, 1]$ is directly comparable to the $\varepsilon$ parameter in the Eppstein--Wang bound and serves as the accuracy measure for the error-bound.
 
 \subsection{Validation Networks}
 
-We validate the fitted model on two real-world street networks. The primary validation uses the Greater London Authority (GLA) road network, sourced from Ordnance Survey Open Roads data. After preprocessing---removing filler nodes, consolidating nearby nodes, and removing dangles---the network comprises approximately \glaNnodes{} nodes. Its scale far exceeds our synthetic training data, it contains diverse topology (grid-like central areas, tree-like suburbs, and mixed intermediate zones), and reach values at tested distances (5km, 10km, 20km) extend well beyond synthetic data ranges. We apply a \glaBuffer{}km inward buffer to eliminate edge artifacts. As an external validation, we also test the model on the Greater Madrid metropolitan street network following the same protocol.
+We validate the fitted model on two real-world street networks. The primary validation uses the Greater London Authority (GLA) road network, sourced from Ordnance Survey Open Roads data. After preprocessing (removing filler nodes, consolidating nearby nodes, and removing dangles), the network comprises approximately \glaNnodes{} nodes. Its scale far exceeds our synthetic training data, it contains diverse topology (grid-like central areas, tree-like suburbs, and mixed intermediate zones), and reach values at tested distances (5km, 10km, 20km) extend well beyond synthetic data ranges. We apply a \glaBuffer{}km inward buffer to eliminate edge artifacts. As an external validation, we also test the model on the Greater Madrid metropolitan street network following the same protocol.

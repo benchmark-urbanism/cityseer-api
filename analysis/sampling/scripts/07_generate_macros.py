@@ -15,17 +15,7 @@ from datetime import datetime
 from pathlib import Path
 
 import pandas as pd
-
-# =============================================================================
-# CONFIGURATION
-# =============================================================================
-
-SCRIPT_DIR = Path(__file__).parent
-SAMPLING_DIR = SCRIPT_DIR.parent  # analysis/sampling
-OUTPUT_DIR = SAMPLING_DIR / "output"
-TABLES_DIR = SAMPLING_DIR / "paper" / "tables"
-
-TABLES_DIR.mkdir(parents=True, exist_ok=True)
+from utilities import OUTPUT_DIR, TABLES_DIR
 
 
 # =============================================================================
@@ -37,7 +27,7 @@ def load_model_fit() -> dict:
     """Load the fitted k value."""
     path = OUTPUT_DIR / "model_fit.json"
     if not path.exists():
-        raise FileNotFoundError(f"Model fit not found: {path}. Run 01_fit_model.py first.")
+        raise FileNotFoundError(f"Model fit not found: {path}. Run 01_fit_rank_model.py first.")
     with open(path) as f:
         return json.load(f)
 
@@ -46,7 +36,7 @@ def load_floor_fit() -> dict:
     """Load the fitted min_eff_n value."""
     path = OUTPUT_DIR / "floor_fit.json"
     if not path.exists():
-        raise FileNotFoundError(f"Floor fit not found: {path}. Run 02_fit_floor.py first.")
+        raise FileNotFoundError(f"Floor fit not found: {path}. Run 01_fit_rank_model.py first.")
     with open(path) as f:
         return json.load(f)
 
@@ -55,7 +45,7 @@ def load_sampling_model() -> dict:
     """Load the combined sampling model."""
     path = OUTPUT_DIR / "sampling_model.json"
     if not path.exists():
-        raise FileNotFoundError(f"Sampling model not found: {path}. Run 03_combined_model.py first.")
+        raise FileNotFoundError(f"Sampling model not found: {path}. Run 01_fit_rank_model.py first.")
     with open(path) as f:
         return json.load(f)
 
@@ -64,7 +54,7 @@ def load_gla_validation() -> pd.DataFrame:
     """Load GLA validation results."""
     path = OUTPUT_DIR / "gla_validation_summary.csv"
     if not path.exists():
-        raise FileNotFoundError(f"GLA validation not found: {path}. Run 04_validate_gla.py first.")
+        raise FileNotFoundError(f"GLA validation not found: {path}. Run 03_validate_gla.py first.")
     return pd.read_csv(path)
 
 
@@ -216,10 +206,10 @@ def generate_macros() -> str:
 \\newcommand{{\\nTopologies}}{{3}}
 
 % Number of distances tested
-\\newcommand{{\\nDistances}}{{12}}
+\\newcommand{{\\nDistances}}{{7}}
 
 % Number of sampling probabilities tested
-\\newcommand{{\\nProbs}}{{22}}
+\\newcommand{{\\nProbs}}{{12}}
 
 % Maximum analysis distance for synthetic networks
 \\newcommand{{\\syntheticMaxDist}}{{4{{,}}000}}
@@ -304,10 +294,9 @@ def main():
     except FileNotFoundError as e:
         print(f"\nERROR: {e}")
         print("\nRun the pipeline scripts first:")
-        print("  python scripts/01_fit_model.py")
-        print("  python scripts/02_fit_floor.py")
-        print("  python scripts/03_combined_model.py")
-        print("  python scripts/04_validate_gla.py")
+        print("  python scripts/01_fit_rank_model.py")
+        print("  python scripts/02_fit_error_model.py")
+        print("  python scripts/03_validate_gla.py")
         return 1
 
     # Write macros file

@@ -23,9 +23,11 @@ Table~\ref{tab:validation} presents detailed results. At 5km (reach = \glaFiveKm
 
 The validation demonstrates successful extrapolation well beyond synthetic training data: from $\approx 2{,}000$-node training networks to \glaNnodes{} nodes, from maximum training reach of $\approx 2{,}600$ to \glaTwentyKmReach{}, and from controlled synthetic topologies to heterogeneous real-world structure. Despite these extrapolations, predictions remain conservative, suggesting that the $\effn$-accuracy relationship is a robust property of network centrality rather than an artifact of specific configurations.
 
+We also evaluate the localised Eppstein--Wang bound (Section~\ref{sec:bounds}) on the GLA network. At each distance, the observed normalised error falls within the Hoeffding-style predicted bound for both closeness and betweenness, consistent with the synthetic validation (Appendix~\ref{sec:appendix_ew}). The theoretical bounds require one to two orders of magnitude more samples than our model to achieve the same $\varepsilon$, confirming that the rank-based approach provides substantial computational savings for applications that require rank preservation rather than additive accuracy.
+
 \subsection{External Validation: Madrid}
 
-To test generalisability beyond London, we applied the identical protocol to the Greater Madrid metropolitan street network. The model achieves $\rho > \targetRho$ for both closeness and betweenness at all tested distances (Figure~\ref{fig:madrid_validation}), confirming that the fitted parameters generalise across morphologically distinct European cities.
+To test generalisability beyond London, we applied the identical protocol to the Greater Madrid metropolitan street network. The model achieves $\rho > \targetRho$ for both closeness and betweenness at all tested distances (Figure~\ref{fig:madrid_validation}), confirming that the fitted parameters generalise across morphologically distinct European cities. The localised EW bound likewise holds at all tested distances on the Madrid network, providing independent confirmation that the rank model's sample sizes satisfy the Hoeffding-style error guarantee on real-world networks with different morphological characteristics.
 
 \begin{figure}[htbp]
 \centering

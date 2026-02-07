@@ -2,50 +2,30 @@
 % Section 2: Background and Related Work
 % =============================================================================
 
-\subsection{Network Centrality in Urban Analysis}
+\subsection{Computational Cost of Network Centrality}
 
-Network centrality measures have become essential tools for urban morphology and spatial analysis. Originally developed in social network analysis \citep{Freeman1977, Freeman1979}, these measures were adapted for urban street networks by \citet{Hillier1984} and subsequently formalised in the space syntax tradition.
+Standard algorithms for localised centrality are built on repeated single-source shortest path computations, but the precise complexity depends on the metric and whether edges are weighted. For distance-based (weighted) closeness variants, one typically runs Dijkstra from every source: each run is $O(M \log N)$ with a binary heap, yielding $O(NM \log N)$ overall. For betweenness, Brandes' algorithm also performs a shortest-path computation from each source followed by a dependency-accumulation pass; the classic bounds are $O(NM)$ for unweighted graphs (BFS per source) and $O(NM + N^2 \log N)$ for weighted graphs \citep{Brandes2001}. In sparse street graphs where $M=O(N)$, these costs are commonly superlinear and often effectively quadratic in practice.
 
-\textbf{Closeness centrality} measures how efficiently a node can reach all others. The harmonic variant, which we use throughout this paper, is defined as:
-\begin{equation}
-C_H(v) = \sum_{u \neq v} \frac{1}{d(v, u)}
-\end{equation}
-where $d(v, u)$ is the shortest path distance from $v$ to $u$. The harmonic formulation handles disconnected graphs naturally and is preferred for distance-weighted urban analysis \citep{Porta2006}.
+The practical consequence is straightforward. A network of \glaNnodes{} nodes requires \glaNnodes{} Dijkstra runs. Even with distance cutoffs that limit individual traversals, the per-source cost grows with the analysis distance: at a 20\,km threshold in a dense urban network, each run may visit tens of thousands of nodes. A single centrality computation at one distance can take hours. Urban morphology studies routinely require multiple distance thresholds, typically spanning two orders of magnitude from pedestrian to metropolitan scales, multiplying the total cost accordingly.
 
-\textbf{Betweenness centrality} measures the extent to which a node lies on shortest paths between other pairs:
-\begin{equation}
-C_B(v) = \sum_{s \neq v \neq t} \frac{\sigma_{st}(v)}{\sigma_{st}}
-\end{equation}
-where $\sigma_{st}$ is the number of shortest paths from $s$ to $t$, and $\sigma_{st}(v)$ is the number passing through $v$. High betweenness indicates locations that control flow through the network.
+\subsection{Sampling-Based Approximation}
 
-For urban applications, these measures are typically computed with a distance threshold $d_{\max}$, considering only nodes within a specified radius. This reflects the reality that pedestrian accessibility is local rather than global. Common thresholds range from 400m (5-minute walk) to 20km (regional connectivity).
+Both closeness and betweenness can be expressed as sums over contributions from individual source nodes: each source launches a shortest-path computation that contributes to the centrality of every node it reaches. This additive structure makes sampling straightforward --- rather than computing from every source, one can compute from a random subset and rescale to estimate the full sum. Under uniform source sampling, Horvitz--Thompson-style rescaling (dividing by the inclusion probability) yields an unbiased estimator of the population sum; ratio estimators such as H\'{a}jek are generally consistent and often lower-variance but can be slightly biased in finite samples \citep{Cochran1977, Sarndal2003}. In either case, sampling error decreases at an approximate $1/\sqrt{k}$ rate with the number of sampled sources, up to finite-population corrections.
 
-\subsection{Computational Complexity}
+\citet{Brandes2007} introduced this idea for both closeness and betweenness, showing that random pivot selection from a small fraction of source nodes produces useful centrality estimates on networks of tens of thousands of nodes. However, their work did not provide formal error bounds or guidance on choosing the number of sources.
 
-The computational cost of centrality measures scales poorly with network size. Brandes' algorithm \citep{Brandes2001} computes both betweenness and harmonic closeness in $O(NM + N^2 \log N)$ time for weighted graphs, where $N$ is nodes and $M$ is edges. For a network of \glaNnodes{} nodes with average degree 3, this translates to billions of operations per distance threshold.
+\citet{Eppstein2004} gave the first formal bound for source-sampled closeness centrality, showing that $O(\log n / \varepsilon^2)$ single-source shortest path computations suffice to approximate the closeness of all vertices to within additive error $\varepsilon \cdot \Delta_G$ with high probability, where $\Delta_G$ is the graph diameter. Their approach (sampling source nodes uniformly and averaging the resulting distance estimates) is the most directly comparable to ours, as both methods reduce computation by selecting a random subset of sources. The $\log n$ factor in their bound depends on the total number of nodes, regardless of the analysis distance.
 
-When analysis requires multiple distance thresholds---as is common in urban morphology studies---the computational burden multiplies. A typical multi-scale analysis with 12 distance thresholds on a large network can require days of computation.
+\citet{Bader2007} gave the first probabilistic error bound for sampled betweenness, showing that $O(1/\varepsilon^2)$ samples suffice to approximate the betweenness of a single vertex to within additive error $\varepsilon$ with high probability. Their adaptive algorithm doubles the sample count until the confidence interval contracts below a user-specified threshold. The bound applies per vertex and does not directly provide uniform approximation across all vertices simultaneously.
 
-\subsection{Sampling Approximation}
+\citet{Riondato2016} addressed the uniform approximation problem using Vapnik--Chervonenkis (VC) dimension theory \citep{Vapnik1971}. They showed that the number of samples required for a uniform additive $\varepsilon$-approximation of all betweenness values depends on the VC-dimension of the set of shortest paths, which is bounded by $\lfloor \log_2 (\text{VD} - 2) \rfloor + 1$, where VD is the vertex-diameter of the graph. This yields sample complexity logarithmic in the vertex-diameter rather than the number of nodes. The resulting bounds are worst-case, however, and can be conservative for well-structured networks such as urban street grids.
 
-Sampling-based approximation of centrality has been studied extensively. \citet{Brandes2007} showed that betweenness can be approximated by computing from a random subset of source nodes and scaling appropriately. Subsequent work established theoretical bounds on approximation quality \citep{Bader2007, Riondato2016}.
+For closeness centrality specifically, \citet{Cohen2014} proposed an approximation framework that exploits the structure of closeness (a sum of inverse distances) to achieve tighter bounds than generic betweenness methods. Their approach uses random sampling of target nodes rather than source nodes and provides per-vertex confidence intervals.
 
-The key insight is that centrality computed from $k$ random sources produces estimates with standard error proportional to $1/\sqrt{k}$. This suggests that effective sample size---the product of reach and sampling probability---should be the key determinant of accuracy.
+\citet{Borassi2019} introduced KADABRA, an adaptive algorithm for betweenness that adjusts the number of samples online. KADABRA maintains running confidence intervals for each vertex's betweenness and terminates when all intervals are sufficiently narrow, eliminating the need to specify the number of samples in advance. \citet{Bergamini2019} provided a comparative evaluation of these and related approaches, finding that adaptive methods generally outperform fixed-sample methods in terms of accuracy per sample, though the overhead of online monitoring can offset some of the savings.
 
-More recently, adaptive algorithms have been developed that adjust sampling online. KADABRA \citep{Borassi2019} uses progressive sampling with stopping rules based on confidence intervals, providing tighter approximation guarantees for individual queries. Our approach differs in providing \emph{a priori} sampling probabilities based on network reach, enabling practitioners to predict computational cost before execution. The two approaches are complementary: KADABRA provides tighter bounds for specific queries, while our model enables efficient batch computation across multiple distances.
+Most recently, \citet{Pellegrina2023} introduced SILVAN, which replaces VC-dimension bounds with Monte Carlo Rademacher averages to obtain tighter, \emph{variance-dependent} sample complexity bounds for betweenness. Because SILVAN's bounds depend on the actual variance of the betweenness estimator rather than worst-case combinatorial quantities, they can be substantially tighter on well-structured graphs, an observation consistent with our empirical finding that urban street networks require far fewer samples than worst-case theory predicts. However, SILVAN still targets global betweenness with additive $\varepsilon$-guarantees.
 
-Despite these advances, prior work has focused on theoretical worst-case bounds or online adaptation rather than empirical calibration for practical urban network analysis. The question of \emph{how many samples are sufficient} for typical urban networks has not been systematically addressed. Our work fills this gap by empirically validating that effective sample size determines accuracy across topologies, fitting practical thresholds for a target accuracy of $\rho \geq \targetRho$, and deriving a simple model that analysts can apply directly.
+These methods divide into two fundamentally different sampling strategies. \emph{Source-sampling} (Brandes, Eppstein--Wang, Bader) selects a random subset of source nodes and runs a full shortest-path tree from each; every node reachable from a sampled source receives a centrality contribution. \emph{Path-sampling} (Riondato--Kornaropoulos, KADABRA, SILVAN) instead draws random source--target pairs and computes a single shortest path between them, counting betweenness contributions along that path. Cohen's approach is a third variant, \emph{target-sampling}, which samples destination nodes and propagates distance information backward. The distinction matters because standard centrality algorithms, including localised implementations with distance cutoffs, are inherently source-based: each source launches a Dijkstra traversal that is naturally bounded by the distance threshold $d_{\max}$, producing contributions to every node within reach. Source-sampling bounds therefore analyse the same computational primitive that localised centrality uses, whereas path-sampling bounds analyse a different primitive whose relationship to distance-bounded computation is less straightforward.
 
-\subsection{Localised Centrality}
-
-Urban network analysis typically uses \emph{localised} centrality measures with a distance cutoff. For a cutoff $d_{\max}$, we compute:
-\begin{equation}
-C_H(v; d_{\max}) = \sum_{u: d(v,u) \leq d_{\max}} \frac{1}{d(v, u)}
-\end{equation}
-
-The \emph{reach} $r$ at cutoff $d_{\max}$ is the mean number of nodes within that distance:
-\begin{equation}
-r = \frac{1}{N} \sum_{v} \left| \{u : d(v, u) \leq d_{\max}\} \right|
-\end{equation}
-
-Reach varies dramatically with distance threshold. In our Greater London validation network, reach ranges from \glaFiveKmReach{} at 5km to \glaTwentyKmReach{} at 20km---more than an order of magnitude. This variation is central to our sampling model: larger reach allows more aggressive sampling while maintaining accuracy.
+A common feature of this body of work is that it targets \emph{global} centrality, computed over the entire graph without distance cutoffs, on general (non-spatial) networks. Urban network analysis, by contrast, uses \emph{localised} centrality with distance thresholds that range from hundreds of metres to tens of kilometres. The reachable subgraph at each threshold varies by orders of magnitude, from hundreds of nodes at pedestrian scales to tens of thousands at metropolitan scales. The theoretical bounds reviewed above, expressed in terms of graph diameter, VC-dimension, or total node count, do not directly account for this distance-dependent structure. Whether a single model can bridge this gap, determining sample size from reachability alone across multiple distance scales, is the question we address.

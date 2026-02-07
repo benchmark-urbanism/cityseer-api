@@ -35,7 +35,7 @@ def load_model() -> dict:
     """Load the fitted model parameters."""
     model_path = OUTPUT_DIR / "sampling_model.json"
     if not model_path.exists():
-        raise FileNotFoundError(f"Model not found at {model_path}. Run 03_combined_model.py first.")
+        raise FileNotFoundError(f"Model not found at {model_path}. Run 01_fit_rank_model.py first.")
 
     with open(model_path) as f:
         return json.load(f)
@@ -175,7 +175,7 @@ def main():
 # When reach is low, proportional sampling (k/sqrt(reach)) gives too few
 # samples for reliable estimates. This floor ensures we always sample
 # at least min_eff_n nodes.
-# Fitted on synthetic networks (01_fit_model.py, 02_fit_floor.py)
+# Fitted on synthetic networks (01_fit_rank_model.py)
 SAMPLING_MIN_EFF_N: float = {float(model["model"]["min_eff_n"])}
 """)
 

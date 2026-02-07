@@ -60,7 +60,7 @@ def load_model() -> tuple[float, int]:
     """Load the fitted model parameters."""
     model_path = OUTPUT_DIR / "sampling_model.json"
     if not model_path.exists():
-        raise FileNotFoundError(f"Model not found at {model_path}. Run 03_combined_model.py first.")
+        raise FileNotFoundError(f"Model not found at {model_path}. Run 01_fit_rank_model.py first.")
 
     with open(model_path) as f:
         model = json.load(f)

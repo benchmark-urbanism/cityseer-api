@@ -36,7 +36,7 @@
 \maketitle
 
 \begin{abstract}
-  Computing network centrality at scale is expensive. Sampling can help, but how much is enough? We present a practical model: maintain an effective sample size of $\effn = \max(k \cdot \sqrt{r}, n_{\min})$, where $r$ is network reach, to achieve ranking accuracy $\rho \geq \targetRho$. The proportional term ($k = \kProp$) handles large networks; the floor ($n_{\min} = \minEffN$) ensures reliability at low reach. The model validates on a \glaNnodes{}-node Greater London street network, achieving $\rho > \glaMinRho$ at distances from 5--20km with speedups of \glaFiveKmSpeedup{}--\glaTwentyKmSpeedup{}$\times$. The implementation is available in the open-source \cityseer{} Python library.
+  Computing localised network centrality across multiple distance thresholds is a core task in urban morphology, but for large sparse street graphs it is often effectively quadratic (or worse) in network size, making large-scale and multi-scale analysis prohibitive. Sampling-based approximation can reduce this cost, yet most existing sample-complexity results target global centrality on general graphs and do not directly answer how many samples suffice for distance-bounded analysis on real street networks. We develop two complementary approaches. First, using a variance-scaling argument for source-sampled (summation-based) centrality grounded in the H\'{a}jek estimator, we hypothesise that the effective sample size required for rank stability scales as $\sqrt{r}$, where $r$ is the mean number of reachable nodes within the analysis distance; we then fit and validate a two-parameter adaptive model, $\effn = \max(k \cdot \sqrt{r},\; n_{\min})$, on synthetic networks spanning three topologies ($k = \kProp$, $n_{\min} = \minEffN$). Second, we adapt the Eppstein--Wang source-sampling bound to the localised setting by replacing the global node count with distance-bounded reach, and empirically evaluate the resulting Hoeffding-style error bound on the same synthetic suite: the bound holds in over 93\% of configurations, with most violations confined to a low-reach regime where concentration guarantees are weak and sampling offers limited computational benefit. For high reach, the two perspectives become numerically consistent in the sense that the rank model's recommended sample sizes correspond to an implied normalised additive error on the order of $\varepsilon \approx 0.1$ under the localised Eppstein--Wang analysis. We validate the rank model on the Greater London (\glaNnodes{}-node) and Greater Madrid street networks at distances from 1--20\,km, achieving Spearman $\rho > \glaMinRho$ for both harmonic closeness and betweenness centrality with speedups of \glaFiveKmSpeedup{}--\glaTwentyKmSpeedup{}$\times$. The approach is implemented in the open-source \cityseer{} Python package.
 \end{abstract}
 
 \textbf{Keywords:} network centrality, sampling, urban morphology, betweenness, harmonic closeness, computational efficiency
@@ -63,18 +63,12 @@
 \input{sections/03_methodology}
 
 %==============================================================================
-\section{Empirical Accuracy Models}
+\section{Empirical Model and Adaptive Algorithm}
 \label{sec:models}
-%==============================================================================
-
-\input{sections/04_empirical_models}
-
-%==============================================================================
-\section{Adaptive Sampling Algorithm}
 \label{sec:algorithm}
 %==============================================================================
 
-\input{sections/05_algorithm}
+\input{sections/04_empirical_models}
 
 %==============================================================================
 \section{Validation}
@@ -84,15 +78,9 @@
 \input{sections/06_validation}
 
 %==============================================================================
-\section{Practical Guidelines}
-\label{sec:guidelines}
-%==============================================================================
-
-\input{sections/07_practical_guidelines}
-
-%==============================================================================
 \section{Discussion}
 \label{sec:discussion}
+\label{sec:guidelines}
 %==============================================================================
 
 \input{sections/08_discussion}

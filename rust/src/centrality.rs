@@ -653,6 +653,12 @@ impl NetworkStructure {
             distances.iter().map(|_| AtomicU32::new(0)).collect();
         let sampled_source_count = AtomicU32::new(0);
 
+        // Count live nodes: only live nodes are eligible as sampling sources,
+        // so the Hájek correction must use live count, not total count.
+        let live_node_count = (0..self.node_count())
+            .filter(|i| self.is_node_live(*i))
+            .count();
+
         let result = py.detach(move || {
             node_indices.par_iter().for_each(|src_idx| {
                 if !pbar_disabled {
@@ -754,14 +760,16 @@ impl NetworkStructure {
                 }
             });
 
-            // Apply Hájek scaling: N/n instead of per-contribution 1/p (Horvitz-Thompson)
-            // This reduces variance by using actual sample count rather than expected
+            // Apply Hájek scaling: N_live/n instead of per-contribution 1/p (Horvitz-Thompson)
+            // This reduces variance by using actual sample count rather than expected.
+            // Uses live_node_count (not total node_count) because only live nodes are
+            // eligible sampling sources - dead boundary nodes are always skipped.
             if sample_probability.is_some() {
                 res.sampled_source_count = sampled_source_count.load(AtomicOrdering::Relaxed);
                 let n_sampled = res.sampled_source_count as f32;
                 if n_sampled > 0.0 {
-                    let n_total = self.node_count() as f32;
-                    let hajek_scale = n_total / n_sampled;
+                    let n_live = live_node_count as f32;
+                    let hajek_scale = n_live / n_sampled;
                     // Scale all metric vectors (load, multiply, store for AtomicF32)
                     for i in 0..distances.len() {
                         for j in 0..self.node_count() {
@@ -900,6 +908,12 @@ impl NetworkStructure {
             seconds.iter().map(|_| AtomicU32::new(0)).collect();
         let sampled_source_count = AtomicU32::new(0);
 
+        // Count live nodes: only live nodes are eligible as sampling sources,
+        // so the Hájek correction must use live count, not total count.
+        let live_node_count = (0..self.node_count())
+            .filter(|i| self.is_node_live(*i))
+            .count();
+
         let result = py.detach(move || {
             node_indices.par_iter().for_each(|src_idx| {
                 if !pbar_disabled {
@@ -987,14 +1001,16 @@ impl NetworkStructure {
                 }
             });
 
-            // Apply Hájek scaling: N/n instead of per-contribution 1/p (Horvitz-Thompson)
-            // This reduces variance by using actual sample count rather than expected
+            // Apply Hájek scaling: N_live/n instead of per-contribution 1/p (Horvitz-Thompson)
+            // This reduces variance by using actual sample count rather than expected.
+            // Uses live_node_count (not total node_count) because only live nodes are
+            // eligible sampling sources - dead boundary nodes are always skipped.
             if sample_probability.is_some() {
                 res.sampled_source_count = sampled_source_count.load(AtomicOrdering::Relaxed);
                 let n_sampled = res.sampled_source_count as f32;
                 if n_sampled > 0.0 {
-                    let n_total = self.node_count() as f32;
-                    let hajek_scale = n_total / n_sampled;
+                    let n_live = live_node_count as f32;
+                    let hajek_scale = n_live / n_sampled;
                     // Scale all metric vectors (load, multiply, store for AtomicF32)
                     for i in 0..seconds.len() {
                         for j in 0..self.node_count() {

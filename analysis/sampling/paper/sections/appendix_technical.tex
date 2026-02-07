@@ -85,6 +85,24 @@ Figure~\ref{fig:power_diagnostics} presents bootstrap diagnostics for the power 
 \label{fig:power_diagnostics}
 \end{figure}
 
+\subsection{Localised Eppstein--Wang Bound: Detailed Validation}
+\label{sec:appendix_ew}
+
+We evaluate the localised Hoeffding-based error guarantee at the rank model's recommended sample sizes across all 440 synthetic configurations. At each configuration, the observed normalised error $\varepsilon_{\text{obs}}$ (maximum absolute error divided by the theoretical maximum) is compared against the predicted bound $\varepsilon_{\text{pred}} = \sqrt{\log(2r/\delta) / (2 \cdot \effn)}$ with $\delta = 0.1$.
+
+Overall, 412 of 440 configurations (93.6\%) satisfy the bound, exceeding the nominal 90\% guarantee. Harmonic closeness achieves 100\% success (220/220), while betweenness achieves 87.3\% (192/220). The betweenness shortfall is not statistically significant: under the null hypothesis that the true success rate is 90\%, the observed count falls within 1.4 standard deviations of the expectation ($n = 220$, $\sigma = 4.4$). Violations concentrate at low reach ($r < 100$, corresponding to analysis distances $\leq 500$\,m), where $\effn < 10$ and the Hoeffding inequality is in its degenerate small-sample regime. Conditional on reach $\geq 100$, the success rate rises to 99.7\% overall (307/308) and 99.4\% for betweenness (153/154).
+
+The bound is conservative: median predicted-to-observed epsilon ratios are $3.8\times$ for betweenness and $260\times$ for harmonic closeness (Figure~\ref{fig:ew_synthetic}A). This gap reflects two factors: the Hoeffding inequality assumes worst-case bounded summands, whereas per-source contributions on planar networks have substantially lower variance; and worst-case uniform bounds do not exploit the spatial correlation of errors across neighbouring nodes.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\textwidth]{figures/fig_ew_synthetic.pdf}
+\caption{\textbf{Localised Eppstein--Wang bound on synthetic data.} (A) Predicted vs observed normalised error. Points below the diagonal satisfy the bound. Filled markers indicate high-reach configurations ($r \geq 100$); open markers indicate low-reach ($r < 100$) where concentration bounds are degenerate. (B) Required sampling probability by reach for the EW bound at various error tolerances compared with the rank model; the two converge at $\varepsilon \approx 0.1$ for large reach.}
+\label{fig:ew_synthetic}
+\end{figure}
+
+\input{tables/tab_ew_comparison}
+
 \subsection{Reproducibility}
 
 All analysis scripts, fitting data, and validation results are available at \texttt{https://github.com/benchmark-urbanism/cityseer-api/tree/master/analysis/sampling}. Model parameters are stored in \texttt{output/sampling\_model.json} and synced to \texttt{pysrc/cityseer/config.py} for library integration.
