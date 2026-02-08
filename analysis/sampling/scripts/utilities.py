@@ -43,8 +43,11 @@ for d in [CACHE_DIR, OUTPUT_DIR, FIGURES_DIR, TABLES_DIR]:
 
 # Cache version for invalidation — bump this to force all caches to regenerate
 # Versioned filenames (synthetic pkl, validation CSVs) auto-regenerate on bump.
-# Network graphs (gla_graph.pkl, ground_truth_*.pkl) are unversioned and persist.
-CACHE_VERSION = "v19"
+# Network graphs (gla_graph.pkl, gla_ground_truth_*.pkl) are unversioned and persist.
+CACHE_VERSION = "v20"
+
+# Canonical per-quartile key prefixes — single source of truth for fallback/perfect blocks
+QUARTILE_KEYS = ("spearman", "mae", "max_error", "reach")
 
 # City configurations for OSM downloads
 CITIES = {
@@ -338,6 +341,77 @@ def compute_accuracy_metrics(true_vals: np.ndarray, est_vals: np.ndarray) -> tup
     max_abs_error = float(np.max(np.abs(true_masked - est_masked)))
 
     return spearman, top_k_precision, scale_ratio, scale_iqr, max_abs_error
+
+
+def compute_quartile_accuracy(
+    true_vals: np.ndarray,
+    est_vals: np.ndarray,
+    node_reach: np.ndarray,
+) -> dict:
+    """
+    Compute accuracy metrics within reachability quartiles.
+
+    Splits nodes into quartiles by their individual reachability and computes
+    Spearman correlation and error metrics within each quartile, testing whether
+    low-reachability nodes have systematically worse accuracy.
+
+    Parameters
+    ----------
+    true_vals : np.ndarray
+        Ground truth centrality values (per node)
+    est_vals : np.ndarray
+        Estimated centrality values (per node)
+    node_reach : np.ndarray
+        Per-node reachability (node density at this distance)
+
+    Returns
+    -------
+    dict
+        Keys per quartile (q1-q4):
+          spearman_q{i}    - Spearman rho
+          mae_q{i}         - median absolute error
+          max_error_q{i}   - max absolute error
+          reach_q{i}       - median reach in quartile
+    """
+    nan_result = {}
+    for q in range(1, 5):
+        nan_result[f"spearman_q{q}"] = np.nan
+        nan_result[f"mae_q{q}"] = np.nan
+        nan_result[f"max_error_q{q}"] = np.nan
+        nan_result[f"reach_q{q}"] = np.nan
+
+    mask = (true_vals > 0) & np.isfinite(true_vals) & np.isfinite(est_vals) & np.isfinite(node_reach)
+    if mask.sum() < 40:
+        return nan_result
+
+    true_m = true_vals[mask]
+    est_m = est_vals[mask]
+    reach_m = node_reach[mask]
+
+    quartile_edges = np.percentile(reach_m, [0, 25, 50, 75, 100])
+    result = {}
+
+    for q in range(4):
+        lo, hi = quartile_edges[q], quartile_edges[q + 1]
+        if q < 3:
+            q_mask = (reach_m >= lo) & (reach_m < hi)
+        else:
+            q_mask = (reach_m >= lo) & (reach_m <= hi)
+
+        if q_mask.sum() < 10:
+            result[f"spearman_q{q + 1}"] = np.nan
+            result[f"mae_q{q + 1}"] = np.nan
+            result[f"max_error_q{q + 1}"] = np.nan
+            result[f"reach_q{q + 1}"] = np.nan
+        else:
+            abs_errors = np.abs(true_m[q_mask] - est_m[q_mask])
+            rho, _ = scipy_stats.spearmanr(true_m[q_mask], est_m[q_mask])
+            result[f"spearman_q{q + 1}"] = rho
+            result[f"mae_q{q + 1}"] = float(np.median(abs_errors))
+            result[f"max_error_q{q + 1}"] = float(np.max(abs_errors))
+            result[f"reach_q{q + 1}"] = float(np.median(reach_m[q_mask]))
+
+    return result
 
 
 def apply_live_buffer_nx(G: nx.MultiGraph, buffer_dist: float) -> nx.MultiGraph:

@@ -6,7 +6,7 @@ Creates visual and tabular guidance for users to quickly determine
 the appropriate sampling probability for their analysis.
 
 Outputs:
-    - paper/figures/fig7_practical_guide.pdf: Visual lookup chart
+    - paper/figures/fig8_practical_guide.pdf: Visual lookup chart
     - paper/tables/tab3_practical_lookup.tex: Lookup table
 """
 
@@ -86,7 +86,7 @@ def compute_p(reach: float, k: float, min_eff_n: int) -> float:
 # =============================================================================
 
 
-def generate_fig7_practical_guide(k: float, min_eff_n: int):
+def generate_fig8_practical_guide(k: float, min_eff_n: int):
     """
     Figure 6: Practical guidance chart.
 
@@ -171,7 +171,7 @@ def generate_fig7_practical_guide(k: float, min_eff_n: int):
     fig.suptitle("Practical Guide: Sampling for Network Centrality", fontsize=13, fontweight="bold", y=1.02)
     plt.tight_layout()
 
-    output_path = FIGURES_DIR / "fig7_practical_guide.pdf"
+    output_path = FIGURES_DIR / "fig8_practical_guide.pdf"
     fig.savefig(output_path, dpi=300, bbox_inches="tight")
     print(f"  Saved: {output_path}")
     plt.close()
@@ -238,7 +238,7 @@ def main():
     print(f"\nModel: eff_n = max({k} × sqrt(reach), {min_eff_n})")
 
     # Generate outputs
-    generate_fig7_practical_guide(k, min_eff_n)
+    generate_fig8_practical_guide(k, min_eff_n)
     generate_practical_table(k, min_eff_n)
 
     # Print quick reference
@@ -266,7 +266,7 @@ def main():
     print("\n" + "=" * 70)
     print("OUTPUTS")
     print("=" * 70)
-    print(f"  1. {FIGURES_DIR / 'fig7_practical_guide.pdf'}")
+    print(f"  1. {FIGURES_DIR / 'fig8_practical_guide.pdf'}")
     print(f"  2. {TABLES_DIR / 'tab3_practical_lookup.tex'}")
 
     return 0

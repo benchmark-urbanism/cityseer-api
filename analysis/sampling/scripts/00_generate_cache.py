@@ -23,7 +23,14 @@ import numpy as np
 from cityseer.tools import io
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
-from utilities import CACHE_DIR, CACHE_VERSION, apply_live_buffer_nx, compute_accuracy_metrics
+from utilities import (
+    CACHE_DIR,
+    CACHE_VERSION,
+    QUARTILE_KEYS,
+    apply_live_buffer_nx,
+    compute_accuracy_metrics,
+    compute_quartile_accuracy,
+)
 from utils.substrates import generate_keyed_template
 
 warnings.filterwarnings("ignore")
@@ -32,7 +39,7 @@ warnings.filterwarnings("ignore")
 # CONFIGURATION
 # =============================================================================
 
-N_RUNS = 3  # Multiple runs for variance estimation
+N_RUNS = 5  # Multiple runs for variance estimation
 TEMPLATE_NAMES = ["trellis", "tree", "linear"]
 SUBSTRATE_TILES = 24  # ~12km network extent
 DISTANCES = [250, 500, 1000, 1500, 2000, 3000, 4000]
@@ -97,8 +104,8 @@ def generate_synthetic_cache(force: bool = False):
 
             true_harmonic = np.array(true_result.node_harmonic[dist])
             true_betweenness = np.array(true_result.node_betweenness[dist])
-            reach = np.array(true_result.node_density[dist])
-            mean_reach = float(np.mean(reach))
+            node_reach = np.array(true_result.node_density[dist])
+            mean_reach = float(np.mean(node_reach))
 
             if mean_reach < 5:
                 continue
@@ -108,27 +115,38 @@ def generate_synthetic_cache(force: bool = False):
             for p in PROBS:
                 if p == 1.0:
                     # Perfect accuracy at p=1.0
+                    q_perfect = {}
+                    for prefix in QUARTILE_KEYS:
+                        for q in range(1, 5):
+                            if prefix == "spearman":
+                                q_perfect[f"{prefix}_q{q}"] = 1.0
+                            elif prefix == "reach":
+                                q_perfect[f"{prefix}_q{q}"] = np.nan
+                            else:  # mae, max_error
+                                q_perfect[f"{prefix}_q{q}"] = 0.0
                     for metric in ["harmonic", "betweenness"]:
-                        results.append(
-                            {
-                                "topology": topo,
-                                "distance": dist,
-                                "n_nodes": n_nodes,
-                                "mean_reach": mean_reach,
-                                "sample_prob": p,
-                                "effective_n": mean_reach,
-                                "metric": metric,
-                                "spearman": 1.0,
-                                "top_k_precision": 1.0,
-                                "scale_ratio": 1.0,
-                                "scale_iqr": 0.0,
-                                "max_abs_error": 0.0,
-                            }
-                        )
+                        row = {
+                            "topology": topo,
+                            "distance": dist,
+                            "n_nodes": n_nodes,
+                            "mean_reach": mean_reach,
+                            "node_reach": node_reach,
+                            "sample_prob": p,
+                            "effective_n": mean_reach,
+                            "metric": metric,
+                            "spearman": 1.0,
+                            "top_k_precision": 1.0,
+                            "scale_ratio": 1.0,
+                            "scale_iqr": 0.0,
+                            "max_abs_error": 0.0,
+                        }
+                        row.update(q_perfect)
+                        results.append(row)
                     continue
 
                 # Multiple runs
                 spearmans_h, spearmans_b = [], []
+                quartiles_h, quartiles_b = [], []
 
                 for seed in range(N_RUNS):
                     r = net.local_node_centrality_shortest(
@@ -151,43 +169,66 @@ def generate_synthetic_cache(force: bool = False):
                     if not np.isnan(sp_b):
                         spearmans_b.append((sp_b, prec_b, scale_b, iqr_b, mae_b))
 
+                    # Per-reachability-quartile accuracy
+                    quartiles_h.append(compute_quartile_accuracy(true_harmonic, est_harmonic, node_reach))
+                    quartiles_b.append(compute_quartile_accuracy(true_betweenness, est_betweenness, node_reach))
+
                 effective_n = mean_reach * p
 
+                # Average quartile results across runs
+                def _mean_quartiles(quartile_list):
+                    if not quartile_list:
+                        result = {}
+                        for prefix in QUARTILE_KEYS:
+                            for q in range(1, 5):
+                                result[f"{prefix}_q{q}"] = np.nan
+                        return result
+                    result = {}
+                    for key in quartile_list[0]:
+                        vals = [q[key] for q in quartile_list if not np.isnan(q[key])]
+                        result[key] = float(np.mean(vals)) if vals else np.nan
+                    return result
+
+                q_h = _mean_quartiles(quartiles_h)
+                q_b = _mean_quartiles(quartiles_b)
+
                 if spearmans_h:
-                    results.append(
-                        {
-                            "topology": topo,
-                            "distance": dist,
-                            "n_nodes": n_nodes,
-                            "mean_reach": mean_reach,
-                            "sample_prob": p,
-                            "effective_n": effective_n,
-                            "metric": "harmonic",
-                            "spearman": np.mean([x[0] for x in spearmans_h]),
-                            "top_k_precision": np.mean([x[1] for x in spearmans_h]),
-                            "scale_ratio": np.mean([x[2] for x in spearmans_h]),
-                            "scale_iqr": np.mean([x[3] for x in spearmans_h]),
-                            "max_abs_error": np.mean([x[4] for x in spearmans_h]),
-                        }
-                    )
+                    row_h = {
+                        "topology": topo,
+                        "distance": dist,
+                        "n_nodes": n_nodes,
+                        "mean_reach": mean_reach,
+                        "node_reach": node_reach,
+                        "sample_prob": p,
+                        "effective_n": effective_n,
+                        "metric": "harmonic",
+                        "spearman": np.mean([x[0] for x in spearmans_h]),
+                        "top_k_precision": np.mean([x[1] for x in spearmans_h]),
+                        "scale_ratio": np.mean([x[2] for x in spearmans_h]),
+                        "scale_iqr": np.mean([x[3] for x in spearmans_h]),
+                        "max_abs_error": np.mean([x[4] for x in spearmans_h]),
+                    }
+                    row_h.update(q_h)
+                    results.append(row_h)
 
                 if spearmans_b:
-                    results.append(
-                        {
-                            "topology": topo,
-                            "distance": dist,
-                            "n_nodes": n_nodes,
-                            "mean_reach": mean_reach,
-                            "sample_prob": p,
-                            "effective_n": effective_n,
-                            "metric": "betweenness",
-                            "spearman": np.mean([x[0] for x in spearmans_b]),
-                            "top_k_precision": np.mean([x[1] for x in spearmans_b]),
-                            "scale_ratio": np.mean([x[2] for x in spearmans_b]),
-                            "scale_iqr": np.mean([x[3] for x in spearmans_b]),
-                            "max_abs_error": np.mean([x[4] for x in spearmans_b]),
-                        }
-                    )
+                    row_b = {
+                        "topology": topo,
+                        "distance": dist,
+                        "n_nodes": n_nodes,
+                        "mean_reach": mean_reach,
+                        "node_reach": node_reach,
+                        "sample_prob": p,
+                        "effective_n": effective_n,
+                        "metric": "betweenness",
+                        "spearman": np.mean([x[0] for x in spearmans_b]),
+                        "top_k_precision": np.mean([x[1] for x in spearmans_b]),
+                        "scale_ratio": np.mean([x[2] for x in spearmans_b]),
+                        "scale_iqr": np.mean([x[3] for x in spearmans_b]),
+                        "max_abs_error": np.mean([x[4] for x in spearmans_b]),
+                    }
+                    row_b.update(q_b)
+                    results.append(row_b)
 
                 print(".", end="", flush=True)
             print()

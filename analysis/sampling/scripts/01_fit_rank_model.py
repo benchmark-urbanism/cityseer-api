@@ -31,7 +31,6 @@ import json
 import math
 import pickle
 from datetime import datetime
-from pathlib import Path
 
 import matplotlib
 
@@ -39,7 +38,6 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-
 from utilities import CACHE_DIR, CACHE_VERSION, FIGURES_DIR, OUTPUT_DIR, TABLES_DIR
 
 # =============================================================================
@@ -120,7 +118,12 @@ def fit_proportional_k(df: pd.DataFrame, target_rho: float = 0.95) -> dict:
     """
     Fit the proportional constant k from synthetic data.
 
-    For each (topology, distance) combination, find the minimum p where rho >= target_rho.
+    For each (topology, distance) combination, find the minimum p where the
+    aggregate Spearman rho achieves >= target_rho. Aggregate rho is used because
+    within-quartile rho suffers from range restriction attenuation (Thorndike 1949):
+    restricted variance within quartiles deflates correlation even when absolute
+    errors are small.
+
     Then compute k = p × sqrt(reach) and take the 75th percentile across all combinations.
     """
     df_b = df[df["metric"] == "betweenness"].copy()
@@ -167,8 +170,8 @@ def fit_proportional_k(df: pd.DataFrame, target_rho: float = 0.95) -> dict:
     k_p95 = results_df["k_implied"].quantile(0.95)
     k_selected = k_p75
 
-    print("\nStage 1: Proportional k fitting")
-    print(f"  Target rho: {target_rho}")
+    print("\nStage 1: Proportional k fitting (aggregate Spearman target)")
+    print(f"  Target: aggregate rho >= {target_rho}")
     print(f"  k values: mean={k_mean:.2f}, 75th={k_p75:.2f}, 95th={k_p95:.2f}, max={k_max:.2f}")
     print(f"  Selected k (75th percentile): {k_selected:.2f}")
 
@@ -194,7 +197,8 @@ def fit_min_eff_n(df: pd.DataFrame, target_success_rate: float = 0.95) -> dict:
     Fit the minimum effective sample size floor.
 
     Uses bin-based analysis to find the minimum eff_n where the local success
-    rate (within that bin) achieves the target.
+    rate (within that bin) achieves the target. Success is defined as aggregate
+    Spearman rho >= 0.95.
     """
     df_b = df[df["metric"] == "betweenness"].copy()
 
@@ -262,52 +266,114 @@ def fit_min_eff_n(df: pd.DataFrame, target_success_rate: float = 0.95) -> dict:
     }
 
 
-def analyze_proportional_breakdown(df: pd.DataFrame, k: float) -> pd.DataFrame:
-    """Analyze where the pure proportional model breaks down.
+# =============================================================================
+# QUARTILE ACCURACY ASSESSMENT
+# =============================================================================
 
-    For each (topology, distance) combination where the proportional model
-    recommends p < 1.0 (i.e., actual sampling occurs), find the closest
-    available sample_prob and record the achieved rho.
+
+def evaluate_quartile_accuracy(df: pd.DataFrame, k: float, min_eff_n: int) -> pd.DataFrame:
+    """Evaluate per-quartile accuracy at the combined model's recommended p.
+
+    For each (topology, distance, metric) configuration, finds the closest
+    available sample_prob to the model's recommendation and extracts all
+    per-quartile metrics (rho, MAE, max_error, reach).
     """
-    df_b = df[df["metric"] == "betweenness"].copy()
+    available_probs = sorted(p for p in df["sample_prob"].unique() if p < 1.0)
+    rows = []
 
-    # Exclude p=1.0: we only test configs where sampling actually occurs
-    available_probs = sorted(p for p in df_b["sample_prob"].unique() if p < 1.0)
-    config_results = []
+    for metric in ["harmonic", "betweenness"]:
+        df_m = df[df["metric"] == metric]
+        for topology in df_m["topology"].unique():
+            for distance in sorted(df_m["distance"].unique()):
+                subset = df_m[(df_m["topology"] == topology) & (df_m["distance"] == distance)]
+                if len(subset) == 0:
+                    continue
 
-    for topology in df_b["topology"].unique():
-        for distance in sorted(df_b["distance"].unique()):
-            subset = df_b[(df_b["topology"] == topology) & (df_b["distance"] == distance)]
-            if len(subset) == 0:
+                reach = subset["mean_reach"].iloc[0]
+                model_p = compute_p(reach, k, min_eff_n)
+
+                if model_p >= 1.0:
+                    continue
+
+                closest_p = min(available_probs, key=lambda p: abs(p - model_p))
+                row_data = subset[subset["sample_prob"] == closest_p]
+                if len(row_data) == 0:
+                    continue
+
+                r = row_data.iloc[0]
+                for q in range(1, 5):
+                    mae_val = r[f"mae_q{q}"]
+                    q_reach = r[f"reach_q{q}"]
+                    if metric == "harmonic":
+                        nrmse = mae_val / q_reach if q_reach > 1 else float("nan")
+                    elif metric == "betweenness":
+                        nrmse = mae_val / (q_reach * (q_reach - 1)) if q_reach > 1 else float("nan")
+                    else:
+                        nrmse = float("nan")
+                    rows.append(
+                        {
+                            "topology": topology,
+                            "distance": distance,
+                            "metric": metric,
+                            "mean_reach": reach,
+                            "model_p": model_p,
+                            "used_p": closest_p,
+                            "quartile": f"Q{q}",
+                            "quartile_reach": q_reach,
+                            "rho": r[f"spearman_q{q}"],
+                            "mae": mae_val,
+                            "nrmse": nrmse,
+                            "max_error": r[f"max_error_q{q}"],
+                            "agg_rho": r["spearman"],
+                        }
+                    )
+
+    return pd.DataFrame(rows)
+
+
+def print_quartile_summary(qa: pd.DataFrame):
+    """Print per-quartile error diagnostics at the model's recommended p.
+
+    Within-quartile Spearman rho is not reported because it suffers from
+    range restriction attenuation (Thorndike 1949): restricted variance within
+    quartiles deflates correlation even when absolute errors are small.
+    Error-based metrics (MAE, NRMSE) are used instead.
+    """
+    print("\n" + "=" * 70)
+    print("QUARTILE ERROR DIAGNOSTICS AT MODEL-RECOMMENDED p")
+    print("=" * 70)
+    print("  Note: within-quartile rho omitted due to range restriction")
+    print("  attenuation (Thorndike 1949). Error metrics used instead.")
+
+    for metric in ["betweenness", "harmonic"]:
+        subset = qa[qa["metric"] == metric]
+        if len(subset) == 0:
+            continue
+
+        print(f"\n  {metric.upper()}")
+        print(
+            f"  {'Quartile':<12} {'Med Reach':>10} {'Med MAE':>12} "
+            f"{'Med NRMSE':>12} {'Med MaxErr':>12}"
+        )
+        print("  " + "-" * 60)
+
+        for q in ["Q1", "Q2", "Q3", "Q4"]:
+            qs = subset[subset["quartile"] == q]
+            if len(qs) == 0:
                 continue
-
-            reach = subset["mean_reach"].iloc[0]
-            p_prop = min(1.0, k / math.sqrt(reach))
-
-            # Skip configs where proportional model gives p=1.0 (full computation)
-            if p_prop >= 1.0:
-                continue
-
-            # Find closest available sample_prob (excluding p=1.0)
-            closest_p = min(available_probs, key=lambda p: abs(p - p_prop))
-            row = subset[subset["sample_prob"] == closest_p]
-            if len(row) == 0:
-                continue
-
-            config_results.append(
-                {
-                    "topology": topology,
-                    "distance": distance,
-                    "reach": reach,
-                    "p_recommended": p_prop,
-                    "p_used": closest_p,
-                    "eff_n": reach * closest_p,
-                    "spearman": row["spearman"].iloc[0],
-                    "success": row["spearman"].iloc[0] >= 0.95,
-                }
+            med_reach = qs["quartile_reach"].median()
+            med_mae = qs["mae"].median()
+            med_nrmse = qs["nrmse"].median()
+            med_maxerr = qs["max_error"].median()
+            label = f"{q} (low)" if q == "Q1" else f"{q} (high)" if q == "Q4" else q
+            print(
+                f"  {label:<12} {med_reach:>10.0f} {med_mae:>12.2f} "
+                f"{med_nrmse:>12.4f} {med_maxerr:>12.2f}"
             )
 
-    return pd.DataFrame(config_results)
+    print("\n  Crossover insight: absolute MAE increases Q1->Q4 (larger errors")
+    print("  at high-reach nodes), but normalised NRMSE decreases Q1->Q4")
+    print("  (precision scales with importance).")
 
 
 # =============================================================================
@@ -411,7 +477,7 @@ def generate_fig2_model_derivation(df: pd.DataFrame, k: float):
 
     fig, axes = plt.subplots(1, 2, figsize=(12, 5))
 
-    # Panel A: All data points - eff_n vs rho
+    # Panel A: All data points - eff_n vs aggregate rho
     ax = axes[0]
 
     topologies = df_b["topology"].unique()
@@ -422,9 +488,10 @@ def generate_fig2_model_derivation(df: pd.DataFrame, k: float):
         ax.scatter(
             subset["effective_n"],
             subset["spearman"],
-            alpha=0.3,
-            s=15,
+            alpha=0.4,
+            s=20,
             color=colors.get(topology, "gray"),
+            marker="o",
             label=topology,
         )
 
@@ -541,7 +608,7 @@ def generate_fig3_floor_justification(df: pd.DataFrame, k: float, min_eff_n: int
     prop_eff_n = k * np.sqrt(reach_range)
 
     # Proportional model curve
-    ax.plot(reach_range, prop_eff_n, color="#0072B2", linewidth=2.5, label=f"Proportional: $k\\sqrt{{r}}$")
+    ax.plot(reach_range, prop_eff_n, color="#0072B2", linewidth=2.5, label="Proportional: $k\\sqrt{r}$")
 
     # Floor line
     ax.axhline(min_eff_n, color="#d62728", linestyle="--", linewidth=2, label=f"Floor: $n_{{\\min}}$ = {min_eff_n}")
@@ -688,6 +755,138 @@ def generate_fig4_combined_model(k: float, min_eff_n: int):
     plt.tight_layout()
 
     output_path = FIGURES_DIR / "fig4_combined_model.pdf"
+    fig.savefig(output_path, dpi=300, bbox_inches="tight")
+    print(f"  Saved: {output_path}")
+    plt.close()
+
+
+def evaluate_topk_at_model_p(df: pd.DataFrame, k: float, min_eff_n: int) -> pd.DataFrame:
+    """Extract top-k precision (top 10% overlap) at the model's recommended p.
+
+    Returns one row per (topology, distance, metric) configuration with the
+    aggregate top_k_precision alongside Spearman rho and reach.
+    """
+    available_probs = sorted(p for p in df["sample_prob"].unique() if p < 1.0)
+    rows = []
+
+    for metric in ["harmonic", "betweenness"]:
+        df_m = df[df["metric"] == metric]
+        for topology in df_m["topology"].unique():
+            for distance in sorted(df_m["distance"].unique()):
+                subset = df_m[(df_m["topology"] == topology) & (df_m["distance"] == distance)]
+                if len(subset) == 0:
+                    continue
+
+                reach = subset["mean_reach"].iloc[0]
+                model_p = compute_p(reach, k, min_eff_n)
+
+                if model_p >= 1.0:
+                    continue
+
+                closest_p = min(available_probs, key=lambda p: abs(p - model_p))
+                row_data = subset[subset["sample_prob"] == closest_p]
+                if len(row_data) == 0:
+                    continue
+
+                r = row_data.iloc[0]
+                rows.append(
+                    {
+                        "topology": topology,
+                        "distance": distance,
+                        "metric": metric,
+                        "mean_reach": reach,
+                        "model_p": model_p,
+                        "used_p": closest_p,
+                        "spearman": r["spearman"],
+                        "top_k_precision": r["top_k_precision"],
+                    }
+                )
+
+    return pd.DataFrame(rows)
+
+
+def print_topk_summary(tk: pd.DataFrame):
+    """Print top-k precision diagnostics at the model's recommended p."""
+    print("\n" + "=" * 70)
+    print("TOP-K PRECISION (TOP 10% OVERLAP) AT MODEL-RECOMMENDED p")
+    print("=" * 70)
+
+    for metric in ["betweenness", "harmonic"]:
+        subset = tk[tk["metric"] == metric]
+        if len(subset) == 0:
+            continue
+
+        print(f"\n  {metric.upper()}")
+        print(f"  {'Topology':<12} {'Distance':>10} {'Reach':>10} {'Spearman':>10} {'Top-10%':>10}")
+        print("  " + "-" * 55)
+
+        for _, row in subset.sort_values(["topology", "distance"]).iterrows():
+            print(
+                f"  {row['topology']:<12} {row['distance']:>10.0f} {row['mean_reach']:>10.0f} "
+                f"{row['spearman']:>10.3f} {row['top_k_precision']:>10.3f}"
+            )
+
+        med_rho = subset["spearman"].median()
+        med_topk = subset["top_k_precision"].median()
+        min_topk = subset["top_k_precision"].min()
+        print(f"\n  Median Spearman: {med_rho:.3f}  |  Median top-10%: {med_topk:.3f}  |  Min top-10%: {min_topk:.3f}")
+
+
+def generate_fig5_error_crossover(qa: pd.DataFrame):
+    """Figure 5: Error crossover — absolute error grows with reach, normalised error shrinks.
+
+    2×2 layout: betweenness (top row), harmonic closeness (bottom row).
+    Left column: absolute MAE. Right column: normalised MAE.
+    The harmonic normalised panel (D) is near-flat, which is itself informative:
+    closeness estimation is well-behaved at all reachability levels.
+    """
+    print("\nGenerating Figure 5: Error crossover...")
+
+    q_colours = {"Q1": "#d73027", "Q2": "#fc8d59", "Q3": "#91bfdb", "Q4": "#4575b4"}
+
+    fig, axes = plt.subplots(2, 2, figsize=(12, 9))
+
+    panels = [
+        (0, 0, "betweenness", "mae", "Absolute MAE", "A) Betweenness: Absolute Error", "lower right"),
+        (0, 1, "betweenness", "nrmse", "Normalised MAE", "B) Betweenness: Normalised Error", "upper right"),
+        (1, 0, "harmonic", "mae", "Absolute MAE", "C) Harmonic: Absolute Error", "lower right"),
+        (1, 1, "harmonic", "nrmse", "Normalised MAE", "D) Harmonic: Normalised Error", "upper right"),
+    ]
+
+    for row, col_idx, metric, val_col, ylabel, title, legend_loc in panels:
+        ax = axes[row, col_idx]
+        qa_m = qa[qa["metric"] == metric]
+        for q in ["Q1", "Q2", "Q3", "Q4"]:
+            subset = qa_m[qa_m["quartile"] == q]
+            if val_col == "nrmse":
+                subset = subset[subset["nrmse"].notna() & (subset["nrmse"] > 0)]
+            else:
+                subset = subset[subset["mae"] > 0]
+            if len(subset) == 0:
+                continue
+            ax.scatter(
+                subset["quartile_reach"],
+                subset[val_col],
+                c=q_colours[q],
+                marker="s",
+                s=30,
+                alpha=0.6,
+                label=q,
+                edgecolors="none",
+            )
+
+        ax.set_xscale("log")
+        ax.set_yscale("log")
+        ax.set_xlabel("Quartile Mean Reach")
+        ax.set_ylabel(ylabel)
+        ax.set_title(title)
+        ax.legend(loc=legend_loc, fontsize=8, title="Quartile")
+        ax.grid(True, alpha=0.3, which="both")
+
+    fig.suptitle("Error Crossover: Precision Scales with Importance", fontsize=13, fontweight="bold", y=1.02)
+    plt.tight_layout()
+
+    output_path = FIGURES_DIR / "fig5_error_crossover.pdf"
     fig.savefig(output_path, dpi=300, bbox_inches="tight")
     print(f"  Saved: {output_path}")
     plt.close()
@@ -911,6 +1110,15 @@ def main():
     save_floor_fit_json(floor_fit)
     save_combined_model_json(k, min_eff_n)
 
+    # Stage 4: Quartile accuracy assessment
+    print("\n" + "-" * 50)
+    qa = evaluate_quartile_accuracy(df, k, min_eff_n)
+    print_quartile_summary(qa)
+
+    # Stage 5: Top-k precision assessment
+    tk = evaluate_topk_at_model_p(df, k, min_eff_n)
+    print_topk_summary(tk)
+
     # Generate all figures
     print("\n" + "-" * 50)
     print("Generating figures...")
@@ -918,6 +1126,7 @@ def main():
     generate_fig2_model_derivation(df, k)
     generate_fig3_floor_justification(df, k, min_eff_n, floor_fit["bin_analysis"])
     generate_fig4_combined_model(k, min_eff_n)
+    generate_fig5_error_crossover(qa)
     generate_parameters_table(k, min_eff_n)
 
     # Example calculations
@@ -943,7 +1152,8 @@ def main():
     print(f"  5. {FIGURES_DIR / 'fig2_model_derivation.pdf'}")
     print(f"  6. {FIGURES_DIR / 'fig3_floor_justification.pdf'}")
     print(f"  7. {FIGURES_DIR / 'fig4_combined_model.pdf'}")
-    print(f"  8. {TABLES_DIR / 'tab1_parameters.tex'}")
+    print(f"  8. {FIGURES_DIR / 'fig5_error_crossover.pdf'}")
+    print(f"  9. {TABLES_DIR / 'tab1_parameters.tex'}")
 
     return 0
 

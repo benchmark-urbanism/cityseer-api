@@ -11,7 +11,7 @@ Usage:
 
 Outputs:
     - output/madrid_validation_{CACHE_VERSION}.csv
-    - paper/figures/fig6_madrid_validation.pdf
+    - paper/figures/fig7_madrid_validation.pdf
 """
 
 import argparse
@@ -36,8 +36,10 @@ from utilities import (
     FIGURES_DIR,
     MADRID_GPKG_URL,
     OUTPUT_DIR,
+    QUARTILE_KEYS,
     apply_live_buffer_nx,
     compute_accuracy_metrics,
+    compute_quartile_accuracy,
 )
 
 # =============================================================================
@@ -49,7 +51,7 @@ SCRIPT_DIR = Path(__file__).parent
 # Validation parameters
 LIVE_INWARD_BUFFER = 20000  # 20km buffer
 MADRID_DISTANCES = [1000, 2000, 5000, 10000, 20000]
-N_RUNS = 3
+N_RUNS = 5
 
 # Matplotlib style
 plt.rcParams.update(
@@ -188,6 +190,7 @@ def generate_validation_data(k: float, min_eff_n: int, force: bool = False) -> p
             true_harmonic = gt_data["harmonic"]
             true_betweenness = gt_data["betweenness"]
             mean_reach = gt_data["mean_reach"]
+            node_reach = gt_data.get("node_reach", None)
             baseline_time = gt_data.get("baseline_time", None)
         else:
             print("  Computing ground truth (this may take a while)...")
@@ -202,14 +205,15 @@ def generate_validation_data(k: float, min_eff_n: int, force: bool = False) -> p
 
             true_harmonic = np.array(true_result.node_harmonic[dist])
             true_betweenness = np.array(true_result.node_betweenness[dist])
-            reach = np.array(true_result.node_density[dist])
-            mean_reach = float(np.mean(reach))
+            node_reach = np.array(true_result.node_density[dist])
+            mean_reach = float(np.mean(node_reach))
 
             with open(gt_cache, "wb") as f:
                 pickle.dump(
                     {
                         "harmonic": true_harmonic,
                         "betweenness": true_betweenness,
+                        "node_reach": node_reach,
                         "mean_reach": mean_reach,
                         "baseline_time": baseline_time,
                     },
@@ -231,6 +235,7 @@ def generate_validation_data(k: float, min_eff_n: int, force: bool = False) -> p
         maes_h, maes_b = [], []
         precs_h, precs_b = [], []
         scales_h, scales_b = [], []
+        quartiles_h, quartiles_b = [], []
         sampled_times = []
 
         print(f"  Running {N_RUNS} sampled runs: ", end="", flush=True)
@@ -264,37 +269,63 @@ def generate_validation_data(k: float, min_eff_n: int, force: bool = False) -> p
                 precs_b.append(prec_b)
                 scales_b.append(scale_b)
 
+            # Per-reachability-quartile accuracy
+            if node_reach is not None:
+                quartiles_h.append(compute_quartile_accuracy(true_harmonic, est_harmonic, node_reach))
+                quartiles_b.append(compute_quartile_accuracy(true_betweenness, est_betweenness, node_reach))
+
             print(".", end="", flush=True)
 
         mean_sampled_time = np.mean(sampled_times)
         speedup = baseline_time / mean_sampled_time if baseline_time and mean_sampled_time > 0 else float("nan")
+
+        # Average quartile results across runs
+        def _mean_quartiles(quartile_list):
+            if not quartile_list:
+                result = {}
+                for prefix in QUARTILE_KEYS:
+                    for q in range(1, 5):
+                        result[f"{prefix}_q{q}"] = np.nan
+                return result
+            result = {}
+            for key in quartile_list[0]:
+                vals = [q[key] for q in quartile_list if not np.isnan(q[key])]
+                result[key] = float(np.mean(vals)) if vals else np.nan
+            return result
+
+        q_h = _mean_quartiles(quartiles_h)
+        q_b = _mean_quartiles(quartiles_b)
 
         print(
             f" rho_h={np.mean(spearmans_h):.3f}, rho_b={np.mean(spearmans_b):.3f}, "
             f"speedup={speedup:.1f}x"
         )
 
-        results.append(
-            {
-                "distance": dist,
-                "mean_reach": mean_reach,
-                "sample_prob": model_p,
-                "effective_n": effective_n,
-                "rho_closeness": np.mean(spearmans_h),
-                "rho_closeness_std": np.std(spearmans_h),
-                "rho_betweenness": np.mean(spearmans_b),
-                "rho_betweenness_std": np.std(spearmans_b),
-                "max_abs_error_h": np.mean(maes_h) if maes_h else float("nan"),
-                "max_abs_error_b": np.mean(maes_b) if maes_b else float("nan"),
-                "top_k_precision_h": np.mean(precs_h) if precs_h else float("nan"),
-                "top_k_precision_b": np.mean(precs_b) if precs_b else float("nan"),
-                "scale_ratio_h": np.mean(scales_h) if scales_h else float("nan"),
-                "scale_ratio_b": np.mean(scales_b) if scales_b else float("nan"),
-                "baseline_time": baseline_time if baseline_time else float("nan"),
-                "sampled_time": mean_sampled_time,
-                "speedup": speedup,
-            }
-        )
+        row = {
+            "distance": dist,
+            "mean_reach": mean_reach,
+            "sample_prob": model_p,
+            "effective_n": effective_n,
+            "rho_closeness": np.mean(spearmans_h),
+            "rho_closeness_std": np.std(spearmans_h),
+            "rho_betweenness": np.mean(spearmans_b),
+            "rho_betweenness_std": np.std(spearmans_b),
+            "max_abs_error_h": np.mean(maes_h) if maes_h else float("nan"),
+            "max_abs_error_b": np.mean(maes_b) if maes_b else float("nan"),
+            "top_k_precision_h": np.mean(precs_h) if precs_h else float("nan"),
+            "top_k_precision_b": np.mean(precs_b) if precs_b else float("nan"),
+            "scale_ratio_h": np.mean(scales_h) if scales_h else float("nan"),
+            "scale_ratio_b": np.mean(scales_b) if scales_b else float("nan"),
+            "baseline_time": baseline_time if baseline_time else float("nan"),
+            "sampled_time": mean_sampled_time,
+            "speedup": speedup,
+        }
+        # Add per-quartile columns (prefixed by metric)
+        for k_q, v_q in q_h.items():
+            row[f"h_{k_q}"] = v_q
+        for k_q, v_q in q_b.items():
+            row[f"b_{k_q}"] = v_q
+        results.append(row)
 
     df = pd.DataFrame(results)
     df.to_csv(validation_csv, index=False)
@@ -402,7 +433,7 @@ def generate_validation_figure(df: pd.DataFrame):
 
     plt.tight_layout()
 
-    output_path = FIGURES_DIR / "fig6_madrid_validation.pdf"
+    output_path = FIGURES_DIR / "fig7_madrid_validation.pdf"
     fig.savefig(output_path, dpi=300, bbox_inches="tight")
     print(f"  Saved: {output_path}")
     plt.close()

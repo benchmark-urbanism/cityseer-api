@@ -31,7 +31,9 @@ where $\sigma^2_v$ is the variance of per-source contributions to $C(v)$ and $p 
 
 If we further assume that ranking stability is controlled primarily by a roughly constant coefficient of variation $\text{CV} = \sigma_v / C(v)$ across distances, then to keep CV approximately constant as $r$ increases we need the sampling-induced variance inflation factor $\left(\tfrac{1}{p} - 1\right)$ to shrink accordingly. This leads to an effective sample size requirement that grows sublinearly with reach, and in the linear-variance idealisation above yields $n \propto \sqrt{r}$, i.e.\ $\effn = k \cdot \sqrt{r}$ for some constant $k$. We treat this as a theoretically motivated hypothesis and test it empirically below.
 
-To validate this prediction empirically, we fit the general power model $\effn = k \cdot r^{\alpha}$ via OLS on log-transformed data ($R^2 = \alphaRSquared$). The estimated exponent $\hat{\alpha} = \alphaHat$ (bootstrap 95\% CI: $[\alphaCILower, \alphaCIUpper]$) does not differ significantly from 0.5 ($p = \alphaTestPValue$), confirming the theoretical prediction (Figure~\ref{fig:power_diagnostics}).
+The argument applies more cleanly to closeness than to betweenness. For harmonic closeness, each source contributes $1/d(s,v)$ to the target: these contributions are smooth, bounded, and positive for every reachable source, so the linear-variance assumption is plausible. For betweenness, each source contributes $\sum_t \sigma_{st}(v)/\sigma_{st}$, which is sparse and heavy-tailed: most sources route zero shortest paths through~$v$, while a few (notably sources on the far side of a bridge or bottleneck) contribute heavily. This higher per-source variance explains the empirical observation that betweenness requires approximately $1.5\times$ more samples than closeness to achieve the same rank accuracy. Our model accommodates this by fitting to betweenness, the more demanding metric, making it conservative for closeness.
+
+To validate this prediction empirically, we fit the general power model $\effn = k \cdot r^{\alpha}$ via OLS on log-transformed data ($R^2 = \alphaRSquared$). The estimated exponent $\hat{\alpha} = \alphaHat$ (bootstrap 95\% CI: $[\alphaCILower, \alphaCIUpper]$) does not differ significantly from 0.5 ($p = \alphaTestPValue$), consistent with the theoretical prediction (Figure~\ref{fig:power_diagnostics}).
 
 For each synthetic configuration that achieves $\rho \geq \targetRho$, we compute the implied $k = p \cdot \sqrt{r}$. We take the 75th percentile across all \nConfigs{} configurations rather than the mean or median: this ensures that the model is conservative, providing sufficient samples for the majority of topology--distance combinations rather than only the average case. This yields $k = \kProp$.
 
@@ -83,6 +85,19 @@ Figure~\ref{fig:combined} shows the complete model. Panel A displays how the req
 Table~\ref{tab:parameters} summarises the fitted model parameters.
 
 \input{tables/tab1_parameters}
+
+\subsection{Error Structure Across Reachability}
+
+Although the model is calibrated on aggregate Spearman $\rho$ (which is valid over the full value range), it is natural to ask how accuracy varies across the reachability distribution. Within-quartile rank correlation is not a suitable diagnostic here: range restriction attenuation \citep{Thorndike1949} deflates correlation within subsets where true values are tightly clustered, even when absolute errors are small. We therefore use error-based metrics: mean absolute error (MAE) and normalised MAE (NRMSE), where the normaliser reflects metric-appropriate scaling (reach $r$ for closeness, $r(r-1)$ for betweenness).
+
+Figure~\ref{fig:error_crossover} reveals a crossover: absolute MAE increases from low-reach to high-reach quartiles, while normalised NRMSE decreases. This pattern has a natural interpretation. High-reach nodes sit at the centres of large local subgraphs; their centrality values are large sums over many source contributions, so absolute estimation errors accumulate. But these same nodes enjoy high effective sample sizes ($\effn = p \cdot r$), so the errors are small relative to the centrality magnitude. Conversely, low-reach peripheral nodes have small absolute errors but larger relative errors. In practical terms, the nodes that matter most for urban analysis (high-centrality arterials and junctions) receive the highest precision, a property we term \emph{precision scales with importance}.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\textwidth]{figures/fig5_error_crossover.pdf}
+  \caption{\textbf{Error crossover: precision scales with importance.} Top row: betweenness. (A) Absolute MAE increases with quartile reach. (B) Normalised MAE decreases: relative error shrinks because high-reach nodes enjoy higher effective sample sizes. Bottom row: harmonic closeness. (C) Absolute MAE shows the same upward trend. (D) Normalised MAE is uniformly negligible ($\sim 2$--$4 \times 10^{-5}$): closeness contributions scale as $1/d$, so centrality magnitude grows proportionally with reach and the normaliser tracks the same scale. Normalisers are $r$ for closeness and $r(r-1)$ for betweenness, matching the theoretical maximum per-source contribution used in the Hoeffding bound (Section~\ref{sec:bounds}). Colours indicate reachability quartile (Q1 red, low reach; Q4 blue, high reach).}
+  \label{fig:error_crossover}
+\end{figure}
 
 \subsection{Model Selection}
 

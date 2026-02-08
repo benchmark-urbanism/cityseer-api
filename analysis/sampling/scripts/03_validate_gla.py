@@ -10,10 +10,10 @@ Usage:
     python 03_validate_gla.py --force   # Force regeneration of validation data
 
 Outputs:
-    - output/model_validation_{CACHE_VERSION}.csv
+    - output/gla_validation_{CACHE_VERSION}.csv
     - output/gla_validation_summary.csv
-    - output/theoretical_bounds_comparison.csv
-    - paper/figures/fig5_gla_validation.pdf
+    - output/gla_theoretical_bounds_comparison.csv
+    - paper/figures/fig6_gla_validation.pdf
     - paper/tables/tab2_validation.tex
 """
 
@@ -37,9 +37,11 @@ from utilities import (
     CACHE_VERSION,
     FIGURES_DIR,
     OUTPUT_DIR,
+    QUARTILE_KEYS,
     TABLES_DIR,
     apply_live_buffer_nx,
     compute_accuracy_metrics,
+    compute_quartile_accuracy,
 )
 
 # =============================================================================
@@ -53,9 +55,9 @@ GLA_GPKG_FILE = SCRIPT_DIR.parent.parent.parent / "temp" / "os_open_roads" / "gl
 
 # Validation parameters
 LIVE_INWARD_BUFFER = 20000  # 20km buffer
-GLA_DISTANCES = [5000, 10000, 20000]
-GLA_PROBS = [0.025, 0.05, 0.1, 0.2, 0.3, 0.5]
-N_RUNS = 3
+GLA_DISTANCES = [1000, 2000, 5000, 10000, 20000]
+GLA_PROBS = [0.01, 0.025, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
+N_RUNS = 1
 
 # Matplotlib style
 plt.rcParams.update(
@@ -128,7 +130,7 @@ def load_model() -> tuple[float, int]:
 
 def generate_validation_data(force: bool = False) -> pd.DataFrame:
     """Generate GLA validation data, or load from cache."""
-    validation_csv = OUTPUT_DIR / f"model_validation_{CACHE_VERSION}.csv"
+    validation_csv = OUTPUT_DIR / f"gla_validation_{CACHE_VERSION}.csv"
 
     if validation_csv.exists() and not force:
         print(f"Loading cached validation data from {validation_csv}")
@@ -184,7 +186,7 @@ def generate_validation_data(force: bool = False) -> pd.DataFrame:
         print(f"{'=' * 50}")
 
         # Check for cached ground truth
-        gt_cache = CACHE_DIR / f"ground_truth_{dist}m.pkl"
+        gt_cache = CACHE_DIR / f"gla_ground_truth_{dist}m.pkl"
         if gt_cache.exists() and not force:
             print(f"  Loading cached ground truth from {gt_cache}")
             with open(gt_cache, "rb") as f:
@@ -192,6 +194,7 @@ def generate_validation_data(force: bool = False) -> pd.DataFrame:
             true_harmonic = gt_data["harmonic"]
             true_betweenness = gt_data["betweenness"]
             mean_reach = gt_data["mean_reach"]
+            node_reach = gt_data.get("node_reach", None)
             baseline_time = gt_data.get("baseline_time", None)
         else:
             print("  Computing ground truth (this may take a while)...")
@@ -205,14 +208,15 @@ def generate_validation_data(force: bool = False) -> pd.DataFrame:
             baseline_time = time.time() - t0
             true_harmonic = np.array(true_result.node_harmonic[dist])
             true_betweenness = np.array(true_result.node_betweenness[dist])
-            reach = np.array(true_result.node_density[dist])
-            mean_reach = float(np.mean(reach))
+            node_reach = np.array(true_result.node_density[dist])
+            mean_reach = float(np.mean(node_reach))
 
             with open(gt_cache, "wb") as f:
                 pickle.dump(
                     {
                         "harmonic": true_harmonic,
                         "betweenness": true_betweenness,
+                        "node_reach": node_reach,
                         "mean_reach": mean_reach,
                         "baseline_time": baseline_time,
                     },
@@ -230,6 +234,7 @@ def generate_validation_data(force: bool = False) -> pd.DataFrame:
             maes_h, maes_b = [], []
             precs_h, precs_b = [], []
             scales_h, scales_b = [], []
+            quartiles_h, quartiles_b = [], []
             sampled_times = []
 
             for seed in range(N_RUNS):
@@ -261,55 +266,77 @@ def generate_validation_data(force: bool = False) -> pd.DataFrame:
                     precs_b.append(prec_b)
                     scales_b.append(scale_b)
 
+                # Per-reachability-quartile accuracy
+                if node_reach is not None:
+                    quartiles_h.append(compute_quartile_accuracy(true_harmonic, est_harmonic, node_reach))
+                    quartiles_b.append(compute_quartile_accuracy(true_betweenness, est_betweenness, node_reach))
+
                 print(".", end="", flush=True)
 
             mean_sampled_time = np.mean(sampled_times) if sampled_times else float("nan")
 
+            # Average quartile results across runs
+            def _mean_quartiles(quartile_list):
+                if not quartile_list:
+                    result = {}
+                    for prefix in QUARTILE_KEYS:
+                        for q in range(1, 5):
+                            result[f"{prefix}_q{q}"] = np.nan
+                    return result
+                result = {}
+                for key in quartile_list[0]:
+                    vals = [q[key] for q in quartile_list if not np.isnan(q[key])]
+                    result[key] = float(np.mean(vals)) if vals else np.nan
+                return result
+
+            q_h = _mean_quartiles(quartiles_h)
+            q_b = _mean_quartiles(quartiles_b)
+
             if spearmans_h:
-                results.append(
-                    {
-                        "distance": dist,
-                        "mean_reach": mean_reach,
-                        "sample_prob": p,
-                        "effective_n": effective_n,
-                        "metric": "harmonic",
-                        "spearman": np.mean(spearmans_h),
-                        "spearman_std": np.std(spearmans_h),
-                        "max_abs_error": np.mean(maes_h),
-                        "max_abs_error_std": np.std(maes_h),
-                        "top_k_precision": np.mean(precs_h),
-                        "scale_ratio": np.mean(scales_h),
-                        "baseline_time": baseline_time if baseline_time is not None else float("nan"),
-                        "sampled_time": mean_sampled_time,
-                        "speedup": (
-                            baseline_time / mean_sampled_time
-                            if baseline_time and mean_sampled_time > 0
-                            else float("nan")
-                        ),
-                    }
-                )
+                row_h = {
+                    "distance": dist,
+                    "mean_reach": mean_reach,
+                    "sample_prob": p,
+                    "effective_n": effective_n,
+                    "metric": "harmonic",
+                    "spearman": np.mean(spearmans_h),
+                    "spearman_std": np.std(spearmans_h),
+                    "max_abs_error": np.mean(maes_h),
+                    "max_abs_error_std": np.std(maes_h),
+                    "top_k_precision": np.mean(precs_h),
+                    "scale_ratio": np.mean(scales_h),
+                    "baseline_time": baseline_time if baseline_time is not None else float("nan"),
+                    "sampled_time": mean_sampled_time,
+                    "speedup": (
+                        baseline_time / mean_sampled_time
+                        if baseline_time and mean_sampled_time > 0
+                        else float("nan")
+                    ),
+                }
+                row_h.update(q_h)
+                results.append(row_h)
 
             if spearmans_b:
-                results.append(
-                    {
-                        "distance": dist,
-                        "mean_reach": mean_reach,
-                        "sample_prob": p,
-                        "effective_n": effective_n,
-                        "metric": "betweenness",
-                        "spearman": np.mean(spearmans_b),
-                        "spearman_std": np.std(spearmans_b),
-                        "max_abs_error": np.mean(maes_b),
-                        "max_abs_error_std": np.std(maes_b),
-                        "top_k_precision": np.mean(precs_b),
-                        "scale_ratio": np.mean(scales_b),
-                        "baseline_time": baseline_time if baseline_time is not None else float("nan"),
-                        "sampled_time": mean_sampled_time,
-                        "speedup": baseline_time / mean_sampled_time
-                        if baseline_time and mean_sampled_time > 0
-                        else float("nan"),
-                    }
-                )
+                row_b = {
+                    "distance": dist,
+                    "mean_reach": mean_reach,
+                    "sample_prob": p,
+                    "effective_n": effective_n,
+                    "metric": "betweenness",
+                    "spearman": np.mean(spearmans_b),
+                    "spearman_std": np.std(spearmans_b),
+                    "max_abs_error": np.mean(maes_b),
+                    "max_abs_error_std": np.std(maes_b),
+                    "top_k_precision": np.mean(precs_b),
+                    "scale_ratio": np.mean(scales_b),
+                    "baseline_time": baseline_time if baseline_time is not None else float("nan"),
+                    "sampled_time": mean_sampled_time,
+                    "speedup": baseline_time / mean_sampled_time
+                    if baseline_time and mean_sampled_time > 0
+                    else float("nan"),
+                }
+                row_b.update(q_b)
+                results.append(row_b)
 
             print(f" rho_h={np.mean(spearmans_h):.3f}, rho_b={np.mean(spearmans_b):.3f}")
 
@@ -378,7 +405,8 @@ def generate_fig5_validation(df: pd.DataFrame, k: float, min_eff_n: int):
     if n_distances == 1:
         axes = [axes]
 
-    colors = {5000: "#009E73", 10000: "#D55E00", 20000: "#CC79A7"}
+    color_b = "#B2182B"  # red for betweenness
+    color_h = "#2166AC"  # blue for closeness
 
     for i, dist in enumerate(distances):
         ax = axes[i]
@@ -391,10 +419,19 @@ def generate_fig5_validation(df: pd.DataFrame, k: float, min_eff_n: int):
             subset["sample_prob"] * 100,
             subset["obs_rho_b"],
             "o-",
-            color=colors.get(dist, "gray"),
+            color=color_b,
             linewidth=2,
-            markersize=6,
-            label="Observed rho (betweenness)",
+            markersize=5,
+            label="Betweenness",
+        )
+        ax.plot(
+            subset["sample_prob"] * 100,
+            subset["obs_rho_h"],
+            "s-",
+            color=color_h,
+            linewidth=2,
+            markersize=5,
+            label="Closeness",
         )
 
         ax.axhline(0.95, color="green", linestyle="--", linewidth=1.5, alpha=0.7)
@@ -406,8 +443,8 @@ def generate_fig5_validation(df: pd.DataFrame, k: float, min_eff_n: int):
         )
 
         closest_idx = (subset["sample_prob"] * 100 - model_p).abs().argmin()
-        model_rho = subset.iloc[closest_idx]["obs_rho_b"]
-        ax.plot(model_p, model_rho, "s", color="#0072B2", markersize=10, zorder=5)
+        model_rho_b = subset.iloc[closest_idx]["obs_rho_b"]
+        ax.plot(model_p, model_rho_b, "s", color="#0072B2", markersize=10, zorder=5)
 
         ax.set_xlabel("Sampling Probability (%)")
         if i == 0:
@@ -423,7 +460,7 @@ def generate_fig5_validation(df: pd.DataFrame, k: float, min_eff_n: int):
     fig.suptitle("Model Validation on Greater London Network (294k nodes)", fontsize=13, fontweight="bold", y=1.02)
     plt.tight_layout()
 
-    output_path = FIGURES_DIR / "fig5_gla_validation.pdf"
+    output_path = FIGURES_DIR / "fig6_gla_validation.pdf"
     fig.savefig(output_path, dpi=300, bbox_inches="tight")
     print(f"  Saved: {output_path}")
     plt.close()
@@ -443,11 +480,8 @@ def generate_validation_table(df: pd.DataFrame, k: float, min_eff_n: int):
 
         closest_idx = (subset["sample_prob"] - model_p).abs().argmin()
         actual_p = subset.iloc[closest_idx]["sample_prob"]
-        observed_rho = subset.iloc[closest_idx]["obs_rho_b"]
-
-        max_abs_error_b = None
-        if "max_abs_error_b" in subset.columns:
-            max_abs_error_b = subset.iloc[closest_idx]["max_abs_error_b"]
+        observed_rho_b = subset.iloc[closest_idx]["obs_rho_b"]
+        observed_rho_h = subset.iloc[closest_idx]["obs_rho_h"]
 
         speedup = 1 / model_p if model_p > 0 else float("inf")
 
@@ -457,12 +491,11 @@ def generate_validation_table(df: pd.DataFrame, k: float, min_eff_n: int):
             "model_p": model_p,
             "model_eff_n": model_eff_n,
             "actual_p": actual_p,
-            "observed_rho": observed_rho,
+            "observed_rho_h": observed_rho_h,
+            "observed_rho_b": observed_rho_b,
             "speedup": speedup,
-            "meets_target": observed_rho >= 0.95,
+            "meets_target": observed_rho_b >= 0.95 and observed_rho_h >= 0.95,
         }
-        if max_abs_error_b is not None:
-            row_data["max_abs_error"] = max_abs_error_b
         rows.append(row_data)
 
     results_df = pd.DataFrame(rows)
@@ -472,27 +505,14 @@ def generate_validation_table(df: pd.DataFrame, k: float, min_eff_n: int):
     print(f"  Saved: {csv_path}")
 
     # Generate LaTeX
-    has_mae = "max_abs_error" in results_df.columns
-    if has_mae:
-        latex = r"""\begin{table}[htbp]
+    latex = r"""\begin{table}[htbp]
 \centering
 \caption{Model Validation on Greater London Network}
 \label{tab:validation}
-\begin{tabular}{rrrrrrr}
+\begin{tabular}{rrrrrrrr}
 \toprule
 \textbf{Distance} & \textbf{Reach} & \textbf{Model $p$} &
-\textbf{Observed $\rho$} & \textbf{Max $|\varepsilon|$} & \textbf{Speedup} & \textbf{$\rho \geq 0.95$?} \\
-\midrule
-"""
-    else:
-        latex = r"""\begin{table}[htbp]
-\centering
-\caption{Model Validation on Greater London Network}
-\label{tab:validation}
-\begin{tabular}{rrrrrr}
-\toprule
-\textbf{Distance} & \textbf{Reach} & \textbf{Model $p$} &
-\textbf{Observed $\rho$} & \textbf{Speedup} & \textbf{$\rho \geq 0.95$?} \\
+\textbf{$\rho_\text{close}$} & \textbf{$\rho_\text{betw}$} & \textbf{Speedup} & \textbf{$\rho \geq 0.95$?} \\
 \midrule
 """
 
@@ -500,9 +520,7 @@ def generate_validation_table(df: pd.DataFrame, k: float, min_eff_n: int):
         check = r"\checkmark" if row["meets_target"] else r"\texttimes"
         model_p_pct = f"{row['model_p'] * 100:.1f}\\%"
         latex += f"{row['distance'] // 1000}km & {row['reach']:,.0f} & {model_p_pct} & "
-        latex += f"{row['observed_rho']:.4f} & "
-        if has_mae:
-            latex += f"{row['max_abs_error']:,.0f} & "
+        latex += f"{row['observed_rho_h']:.4f} & {row['observed_rho_b']:.4f} & "
         latex += f"{row['speedup']:.1f}$\\times$ & {check} \\\\\n"
 
     latex += r"""\bottomrule
@@ -601,7 +619,7 @@ def compute_theoretical_bounds(results_df: pd.DataFrame, n_nodes: int):
 
     bounds_df = pd.DataFrame(rows)
 
-    csv_path = OUTPUT_DIR / "theoretical_bounds_comparison.csv"
+    csv_path = OUTPUT_DIR / "gla_theoretical_bounds_comparison.csv"
     bounds_df.to_csv(csv_path, index=False)
     print(f"  Saved: {csv_path}")
 
@@ -768,8 +786,8 @@ def main():
     print("VALIDATION SUMMARY")
     print("=" * 70)
 
-    print(f"\n{'Distance':>10} | {'Reach':>10} | {'Model p':>10} | {'Obs rho':>10} | {'Target?':>10}")
-    print("-" * 60)
+    print(f"\n{'Distance':>10} | {'Reach':>10} | {'Model p':>10} | {'rho_close':>10} | {'rho_betw':>10} | {'Target?':>10}")
+    print("-" * 75)
 
     all_pass = True
     for _, row in results_df.iterrows():
@@ -778,24 +796,24 @@ def main():
             all_pass = False
         print(
             f"{row['distance'] // 1000}km       | {row['reach']:>10,.0f} | {row['model_p']:>9.1%} | "
-            f"{row['observed_rho']:>10.4f} | {status:>10}"
+            f"{row['observed_rho_h']:>10.4f} | {row['observed_rho_b']:>10.4f} | {status:>10}"
         )
 
-    print("\n" + "-" * 60)
+    print("\n" + "-" * 75)
     if all_pass:
-        print("ALL DISTANCES PASS: Model achieves rho >= 0.95 at all tested distances.")
+        print("ALL DISTANCES PASS: Model achieves rho >= 0.95 for both metrics at all distances.")
     else:
         print("WARNING: Some distances do not meet the rho >= 0.95 target.")
 
     print("\n" + "=" * 70)
     print("OUTPUTS")
     print("=" * 70)
-    print(f"  1. {OUTPUT_DIR / f'model_validation_{CACHE_VERSION}.csv'}")
+    print(f"  1. {OUTPUT_DIR / f'gla_validation_{CACHE_VERSION}.csv'}")
     print(f"  2. {OUTPUT_DIR / 'gla_validation_summary.csv'}")
-    print(f"  3. {FIGURES_DIR / 'fig5_gla_validation.pdf'}")
+    print(f"  3. {FIGURES_DIR / 'fig6_gla_validation.pdf'}")
     print(f"  4. {TABLES_DIR / 'tab2_validation.tex'}")
     if bounds_df is not None:
-        print(f"  5. {OUTPUT_DIR / 'theoretical_bounds_comparison.csv'}")
+        print(f"  5. {OUTPUT_DIR / 'gla_theoretical_bounds_comparison.csv'}")
     if ew_df is not None:
         print(f"  6. {OUTPUT_DIR / 'gla_ew_analysis.csv'}")
 
