@@ -267,19 +267,21 @@ def fit_min_eff_n(df: pd.DataFrame, target_success_rate: float = 0.95) -> dict:
 
 
 # =============================================================================
-# QUARTILE ACCURACY ASSESSMENT
+# NODE-LEVEL ACCURACY ASSESSMENT
 # =============================================================================
 
 
-def evaluate_quartile_accuracy(df: pd.DataFrame, k: float, min_eff_n: int) -> pd.DataFrame:
-    """Evaluate per-quartile accuracy at the combined model's recommended p.
+def evaluate_node_level_accuracy(df: pd.DataFrame, k: float, min_eff_n: int) -> pd.DataFrame:
+    """Evaluate per-node accuracy at the combined model's recommended p.
 
-    For each (topology, distance, metric) configuration, finds the closest
-    available sample_prob to the model's recommendation and extracts all
-    per-quartile metrics (rho, MAE, max_error, reach).
+    Pools all nodes across all (topology, distance) configs at the model-
+    recommended sampling probability, then bins by absolute per-node reach.
+    This avoids the within-config quartile pre-aggregation that confounds
+    boundary nodes from high-reach configs with all nodes from low-reach configs.
     """
     available_probs = sorted(p for p in df["sample_prob"].unique() if p < 1.0)
-    rows = []
+    reach_pool = {"harmonic": [], "betweenness": []}
+    error_pool = {"harmonic": [], "betweenness": []}
 
     for metric in ["harmonic", "betweenness"]:
         df_m = df[df["metric"] == metric]
@@ -291,7 +293,6 @@ def evaluate_quartile_accuracy(df: pd.DataFrame, k: float, min_eff_n: int) -> pd
 
                 reach = subset["mean_reach"].iloc[0]
                 model_p = compute_p(reach, k, min_eff_n)
-
                 if model_p >= 1.0:
                     continue
 
@@ -301,78 +302,97 @@ def evaluate_quartile_accuracy(df: pd.DataFrame, k: float, min_eff_n: int) -> pd
                     continue
 
                 r = row_data.iloc[0]
-                for q in range(1, 5):
-                    mae_val = r[f"mae_q{q}"]
-                    q_reach = r[f"reach_q{q}"]
-                    if metric == "harmonic":
-                        nrmse = mae_val / q_reach if q_reach > 1 else float("nan")
-                    elif metric == "betweenness":
-                        nrmse = mae_val / (q_reach * (q_reach - 1)) if q_reach > 1 else float("nan")
-                    else:
-                        nrmse = float("nan")
-                    rows.append(
-                        {
-                            "topology": topology,
-                            "distance": distance,
-                            "metric": metric,
-                            "mean_reach": reach,
-                            "model_p": model_p,
-                            "used_p": closest_p,
-                            "quartile": f"Q{q}",
-                            "quartile_reach": q_reach,
-                            "rho": r[f"spearman_q{q}"],
-                            "mae": mae_val,
-                            "nrmse": nrmse,
-                            "max_error": r[f"max_error_q{q}"],
-                            "agg_rho": r["spearman"],
-                        }
-                    )
+                node_reach = np.asarray(r["node_reach"])
+                node_true = np.asarray(r["node_true_vals"])
+                node_est = np.asarray(r["node_est_vals"])
+                abs_error = np.abs(node_true - node_est)
+
+                # Filter to valid nodes
+                mask = (node_true > 0) & np.isfinite(node_true) & np.isfinite(node_est) & (node_reach > 0)
+                reach_pool[metric].append(node_reach[mask])
+                error_pool[metric].append(abs_error[mask])
+
+    # Bin by absolute reach
+    bin_edges = np.array([10, 50, 100, 200, 500, 1000, 2000, 5000, 10000])
+    rows = []
+
+    for metric in ["harmonic", "betweenness"]:
+        if not reach_pool[metric]:
+            continue
+        all_reach = np.concatenate(reach_pool[metric])
+        all_error = np.concatenate(error_pool[metric])
+
+        for i in range(len(bin_edges) - 1):
+            lo, hi = bin_edges[i], bin_edges[i + 1]
+            mask = (all_reach >= lo) & (all_reach < hi)
+            n = mask.sum()
+            if n < 10:
+                continue
+
+            errors = all_error[mask]
+            reaches = all_reach[mask]
+            med_error = float(np.median(errors))
+            q25_error = float(np.percentile(errors, 25))
+            q75_error = float(np.percentile(errors, 75))
+
+            # Normalised error per node, then take median
+            if metric == "harmonic":
+                norm_errors = errors / reaches
+            else:
+                norm_errors = errors / (reaches * (reaches - 1))
+
+            valid_norm = norm_errors[np.isfinite(norm_errors)]
+            med_nrmse = float(np.median(valid_norm)) if len(valid_norm) > 0 else np.nan
+            q25_nrmse = float(np.percentile(valid_norm, 25)) if len(valid_norm) > 0 else np.nan
+            q75_nrmse = float(np.percentile(valid_norm, 75)) if len(valid_norm) > 0 else np.nan
+
+            rows.append({
+                "metric": metric,
+                "reach_lo": lo,
+                "reach_hi": hi,
+                "reach_center": np.sqrt(lo * hi),  # geometric mean
+                "median_reach": float(np.median(reaches)),
+                "median_mae": med_error,
+                "mae_q25": q25_error,
+                "mae_q75": q75_error,
+                "median_nrmse": med_nrmse,
+                "nrmse_q25": q25_nrmse,
+                "nrmse_q75": q75_nrmse,
+                "n_nodes": int(n),
+            })
 
     return pd.DataFrame(rows)
 
 
-def print_quartile_summary(qa: pd.DataFrame):
-    """Print per-quartile error diagnostics at the model's recommended p.
-
-    Within-quartile Spearman rho is not reported because it suffers from
-    range restriction attenuation (Thorndike 1949): restricted variance within
-    quartiles deflates correlation even when absolute errors are small.
-    Error-based metrics (MAE, NRMSE) are used instead.
-    """
+def print_reach_bin_summary(node_acc: pd.DataFrame):
+    """Print per-reach-bin error diagnostics at the model's recommended p."""
     print("\n" + "=" * 70)
-    print("QUARTILE ERROR DIAGNOSTICS AT MODEL-RECOMMENDED p")
+    print("NODE-LEVEL ERROR DIAGNOSTICS BY ABSOLUTE REACH")
     print("=" * 70)
-    print("  Note: within-quartile rho omitted due to range restriction")
-    print("  attenuation (Thorndike 1949). Error metrics used instead.")
+    print("  Nodes pooled across all configs at model-recommended p,")
+    print("  binned by absolute per-node reach.")
 
     for metric in ["betweenness", "harmonic"]:
-        subset = qa[qa["metric"] == metric]
+        subset = node_acc[node_acc["metric"] == metric]
         if len(subset) == 0:
             continue
 
         print(f"\n  {metric.upper()}")
         print(
-            f"  {'Quartile':<12} {'Med Reach':>10} {'Med MAE':>12} "
-            f"{'Med NRMSE':>12} {'Med MaxErr':>12}"
+            f"  {'Reach bin':<16} {'N nodes':>10} {'Med MAE':>12} "
+            f"{'Med NRMSE':>12}"
         )
-        print("  " + "-" * 60)
+        print("  " + "-" * 52)
 
-        for q in ["Q1", "Q2", "Q3", "Q4"]:
-            qs = subset[subset["quartile"] == q]
-            if len(qs) == 0:
-                continue
-            med_reach = qs["quartile_reach"].median()
-            med_mae = qs["mae"].median()
-            med_nrmse = qs["nrmse"].median()
-            med_maxerr = qs["max_error"].median()
-            label = f"{q} (low)" if q == "Q1" else f"{q} (high)" if q == "Q4" else q
+        for _, row in subset.iterrows():
+            label = f"{int(row['reach_lo'])}-{int(row['reach_hi'])}"
             print(
-                f"  {label:<12} {med_reach:>10.0f} {med_mae:>12.2f} "
-                f"{med_nrmse:>12.4f} {med_maxerr:>12.2f}"
+                f"  {label:<16} {row['n_nodes']:>10,} {row['median_mae']:>12.2f} "
+                f"{row['median_nrmse']:>12.6f}"
             )
 
-    print("\n  Crossover insight: absolute MAE increases Q1->Q4 (larger errors")
-    print("  at high-reach nodes), but normalised NRMSE decreases Q1->Q4")
+    print("\n  Crossover: absolute MAE increases with reach (larger errors")
+    print("  at high-reach nodes), but normalised error decreases")
     print("  (precision scales with importance).")
 
 
@@ -832,58 +852,82 @@ def print_topk_summary(tk: pd.DataFrame):
         print(f"\n  Median Spearman: {med_rho:.3f}  |  Median top-10%: {med_topk:.3f}  |  Min top-10%: {min_topk:.3f}")
 
 
-def generate_fig5_error_crossover(qa: pd.DataFrame):
+def generate_fig5_error_crossover(node_acc: pd.DataFrame, k: float, min_eff_n: int):
     """Figure 5: Error crossover — absolute error grows with reach, normalised error shrinks.
 
-    2×2 layout: betweenness (top row), harmonic closeness (bottom row).
-    Left column: absolute MAE. Right column: normalised MAE.
-    The harmonic normalised panel (D) is near-flat, which is itself informative:
-    closeness estimation is well-behaved at all reachability levels.
+    1×2 layout with continuous log-scale reach axis.  Nodes are pooled across
+    all (topology, distance) configs and binned by absolute per-node reach.
+    Left: absolute MAE trending up with reach.
+    Right: normalised MAE trending down with reach, with localised EW bound overlay.
+    Both metrics shown (betweenness red squares, harmonic blue circles).
     """
     print("\nGenerating Figure 5: Error crossover...")
 
-    q_colours = {"Q1": "#d73027", "Q2": "#fc8d59", "Q3": "#91bfdb", "Q4": "#4575b4"}
+    colour_bet = "#B2182B"
+    colour_har = "#2166AC"
 
-    fig, axes = plt.subplots(2, 2, figsize=(12, 9))
+    fig, axes = plt.subplots(1, 2, figsize=(11, 5))
 
-    panels = [
-        (0, 0, "betweenness", "mae", "Absolute MAE", "A) Betweenness: Absolute Error", "lower right"),
-        (0, 1, "betweenness", "nrmse", "Normalised MAE", "B) Betweenness: Normalised Error", "upper right"),
-        (1, 0, "harmonic", "mae", "Absolute MAE", "C) Harmonic: Absolute Error", "lower right"),
-        (1, 1, "harmonic", "nrmse", "Normalised MAE", "D) Harmonic: Normalised Error", "upper right"),
-    ]
+    for col_idx, (med_col, lo_col, hi_col, ylabel, title) in enumerate([
+        ("median_mae", "mae_q25", "mae_q75",
+         "Median Absolute Error", "A) Absolute Error"),
+        ("median_nrmse", "nrmse_q25", "nrmse_q75",
+         "Median Normalised Error", "B) Normalised Error"),
+    ]):
+        ax = axes[col_idx]
 
-    for row, col_idx, metric, val_col, ylabel, title, legend_loc in panels:
-        ax = axes[row, col_idx]
-        qa_m = qa[qa["metric"] == metric]
-        for q in ["Q1", "Q2", "Q3", "Q4"]:
-            subset = qa_m[qa_m["quartile"] == q]
-            if val_col == "nrmse":
-                subset = subset[subset["nrmse"].notna() & (subset["nrmse"] > 0)]
-            else:
-                subset = subset[subset["mae"] > 0]
-            if len(subset) == 0:
+        for metric, colour, marker, label in [
+            ("betweenness", colour_bet, "s", "Betweenness"),
+            ("harmonic", colour_har, "o", "Harmonic closeness"),
+        ]:
+            sub = node_acc[node_acc["metric"] == metric].copy()
+            sub = sub[sub[med_col].notna() & (sub[med_col] > 0)]
+            if len(sub) == 0:
                 continue
-            ax.scatter(
-                subset["quartile_reach"],
-                subset[val_col],
-                c=q_colours[q],
-                marker="s",
-                s=30,
-                alpha=0.6,
-                label=q,
-                edgecolors="none",
+
+            x = sub["reach_center"].values
+            y = sub[med_col].values
+            lo_err = y - sub[lo_col].values
+            hi_err = sub[hi_col].values - y
+            # Clamp negative error bars (can happen at boundaries)
+            lo_err = np.maximum(lo_err, 0)
+            hi_err = np.maximum(hi_err, 0)
+
+            ax.errorbar(
+                x, y,
+                yerr=[lo_err, hi_err],
+                fmt=marker,
+                color=colour,
+                markersize=8,
+                capsize=4,
+                capthick=1.5,
+                linewidth=1.5,
+                label=label,
+                zorder=3,
+            )
+            ax.plot(x, y, color=colour, linewidth=1.5, alpha=0.5, zorder=2)
+
+        # Overlay localised EW bound on normalised error panel
+        if col_idx == 1:
+            delta = 0.1
+            r_line = np.logspace(1, 4.2, 200)
+            eff_n_line = np.maximum(k * np.sqrt(r_line), min_eff_n)
+            eps_line = np.sqrt(np.log(2 * r_line / delta) / (2 * eff_n_line))
+            ax.plot(
+                r_line, eps_line,
+                color="grey", linewidth=2, linestyle="--",
+                label=r"Localised EW bound ($\delta=0.1$)",
+                zorder=1,
             )
 
         ax.set_xscale("log")
         ax.set_yscale("log")
-        ax.set_xlabel("Quartile Mean Reach")
+        ax.set_xlabel("Per-Node Reach")
         ax.set_ylabel(ylabel)
-        ax.set_title(title)
-        ax.legend(loc=legend_loc, fontsize=8, title="Quartile")
+        ax.set_title(title, fontweight="bold")
+        ax.legend(loc="best", fontsize=9)
         ax.grid(True, alpha=0.3, which="both")
 
-    fig.suptitle("Error Crossover: Precision Scales with Importance", fontsize=13, fontweight="bold", y=1.02)
     plt.tight_layout()
 
     output_path = FIGURES_DIR / "fig5_error_crossover.pdf"
@@ -898,7 +942,7 @@ def generate_parameters_table(k: float, min_eff_n: int):
 
     crossover = crossover_reach(k, min_eff_n)
 
-    # Try to load CI data from 08_validate_power_exponent.py output
+    # Try to load CI data from 07_validate_power_exponent.py output
     ci_path = OUTPUT_DIR / "power_exponent_analysis.json"
     k_ci_str = "--"
     floor_ci_str = "--"
@@ -1110,10 +1154,10 @@ def main():
     save_floor_fit_json(floor_fit)
     save_combined_model_json(k, min_eff_n)
 
-    # Stage 4: Quartile accuracy assessment
+    # Stage 4: Node-level accuracy assessment
     print("\n" + "-" * 50)
-    qa = evaluate_quartile_accuracy(df, k, min_eff_n)
-    print_quartile_summary(qa)
+    node_acc = evaluate_node_level_accuracy(df, k, min_eff_n)
+    print_reach_bin_summary(node_acc)
 
     # Stage 5: Top-k precision assessment
     tk = evaluate_topk_at_model_p(df, k, min_eff_n)
@@ -1126,7 +1170,7 @@ def main():
     generate_fig2_model_derivation(df, k)
     generate_fig3_floor_justification(df, k, min_eff_n, floor_fit["bin_analysis"])
     generate_fig4_combined_model(k, min_eff_n)
-    generate_fig5_error_crossover(qa)
+    generate_fig5_error_crossover(node_acc, k, min_eff_n)
     generate_parameters_table(k, min_eff_n)
 
     # Example calculations

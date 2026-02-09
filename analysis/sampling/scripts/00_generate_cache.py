@@ -124,7 +124,10 @@ def generate_synthetic_cache(force: bool = False):
                                 q_perfect[f"{prefix}_q{q}"] = np.nan
                             else:  # mae, max_error
                                 q_perfect[f"{prefix}_q{q}"] = 0.0
+                    true_h_f32 = true_harmonic.astype(np.float32)
+                    true_b_f32 = true_betweenness.astype(np.float32)
                     for metric in ["harmonic", "betweenness"]:
+                        true_f32 = true_h_f32 if metric == "harmonic" else true_b_f32
                         row = {
                             "topology": topo,
                             "distance": dist,
@@ -139,6 +142,8 @@ def generate_synthetic_cache(force: bool = False):
                             "scale_ratio": 1.0,
                             "scale_iqr": 0.0,
                             "max_abs_error": 0.0,
+                            "node_true_vals": true_f32,
+                            "node_est_vals": true_f32,  # same reference: zero error
                         }
                         row.update(q_perfect)
                         results.append(row)
@@ -147,6 +152,8 @@ def generate_synthetic_cache(force: bool = False):
                 # Multiple runs
                 spearmans_h, spearmans_b = [], []
                 quartiles_h, quartiles_b = [], []
+                est_h_sum = np.zeros_like(true_harmonic, dtype=np.float64)
+                est_b_sum = np.zeros_like(true_betweenness, dtype=np.float64)
 
                 for seed in range(N_RUNS):
                     r = net.local_node_centrality_shortest(
@@ -160,6 +167,8 @@ def generate_synthetic_cache(force: bool = False):
 
                     est_harmonic = np.array(r.node_harmonic[dist])
                     est_betweenness = np.array(r.node_betweenness[dist])
+                    est_h_sum += est_harmonic
+                    est_b_sum += est_betweenness
 
                     sp_h, prec_h, scale_h, iqr_h, mae_h = compute_accuracy_metrics(true_harmonic, est_harmonic)
                     sp_b, prec_b, scale_b, iqr_b, mae_b = compute_accuracy_metrics(true_betweenness, est_betweenness)
@@ -174,6 +183,10 @@ def generate_synthetic_cache(force: bool = False):
                     quartiles_b.append(compute_quartile_accuracy(true_betweenness, est_betweenness, node_reach))
 
                 effective_n = mean_reach * p
+                est_h_avg = (est_h_sum / N_RUNS).astype(np.float32)
+                est_b_avg = (est_b_sum / N_RUNS).astype(np.float32)
+                true_h_f32 = true_harmonic.astype(np.float32)
+                true_b_f32 = true_betweenness.astype(np.float32)
 
                 # Average quartile results across runs
                 def _mean_quartiles(quartile_list):
@@ -207,6 +220,8 @@ def generate_synthetic_cache(force: bool = False):
                         "scale_ratio": np.mean([x[2] for x in spearmans_h]),
                         "scale_iqr": np.mean([x[3] for x in spearmans_h]),
                         "max_abs_error": np.mean([x[4] for x in spearmans_h]),
+                        "node_true_vals": true_h_f32,
+                        "node_est_vals": est_h_avg,
                     }
                     row_h.update(q_h)
                     results.append(row_h)
@@ -226,6 +241,8 @@ def generate_synthetic_cache(force: bool = False):
                         "scale_ratio": np.mean([x[2] for x in spearmans_b]),
                         "scale_iqr": np.mean([x[3] for x in spearmans_b]),
                         "max_abs_error": np.mean([x[4] for x in spearmans_b]),
+                        "node_true_vals": true_b_f32,
+                        "node_est_vals": est_b_avg,
                     }
                     row_b.update(q_b)
                     results.append(row_b)

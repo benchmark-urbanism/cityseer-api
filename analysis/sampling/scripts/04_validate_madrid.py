@@ -10,7 +10,7 @@ Usage:
     python 04_validate_madrid.py --force   # Force regeneration of validation data
 
 Outputs:
-    - output/madrid_validation_{CACHE_VERSION}.csv
+    - output/madrid_validation.csv
     - paper/figures/fig7_madrid_validation.pdf
 """
 
@@ -32,7 +32,6 @@ import pandas as pd
 from cityseer.tools import graphs, io
 from utilities import (
     CACHE_DIR,
-    CACHE_VERSION,
     FIGURES_DIR,
     MADRID_GPKG_URL,
     OUTPUT_DIR,
@@ -130,7 +129,7 @@ def compute_model_p(reach: float, k: float, min_eff_n: int) -> float:
 
 def generate_validation_data(k: float, min_eff_n: int, force: bool = False) -> pd.DataFrame:
     """Generate Madrid validation data, or load from cache."""
-    validation_csv = OUTPUT_DIR / f"madrid_validation_{CACHE_VERSION}.csv"
+    validation_csv = OUTPUT_DIR / "madrid_validation.csv"
 
     if validation_csv.exists() and not force:
         print(f"Loading cached validation data from {validation_csv}")
@@ -448,6 +447,10 @@ def generate_validation_figure(df: pd.DataFrame):
 
 def get_n_nodes(force: bool = False) -> int | None:
     """Get total node count from cached Madrid graph."""
+    n_nodes_cache = CACHE_DIR / "madrid_n_nodes.json"
+    if n_nodes_cache.exists() and not force:
+        with open(n_nodes_cache) as f:
+            return json.load(f)["n_nodes"]
     madrid_cache = CACHE_DIR / "madrid_graph.pkl"
     if not madrid_cache.exists():
         return None
@@ -455,7 +458,10 @@ def get_n_nodes(force: bool = False) -> int | None:
         G = pickle.load(f)
     # Apply same buffer as validation to get live node count
     G = apply_live_buffer_nx(G, LIVE_INWARD_BUFFER)
-    return G.number_of_nodes()
+    n_nodes = G.number_of_nodes()
+    with open(n_nodes_cache, "w") as f:
+        json.dump({"n_nodes": n_nodes}, f)
+    return n_nodes
 
 
 def compute_theoretical_bounds(df: pd.DataFrame, n_nodes: int):
@@ -719,7 +725,7 @@ def main():
     print("\n" + "=" * 70)
     print("OUTPUTS")
     print("=" * 70)
-    print(f"  1. {OUTPUT_DIR / f'madrid_validation_{CACHE_VERSION}.csv'}")
+    print(f"  1. {OUTPUT_DIR / 'madrid_validation.csv'}")
     print(f"  2. {fig_path}")
     if bounds_df is not None:
         print(f"  3. {OUTPUT_DIR / 'madrid_theoretical_bounds_comparison.csv'}")

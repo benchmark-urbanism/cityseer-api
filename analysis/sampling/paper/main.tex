@@ -36,7 +36,7 @@
 \maketitle
 
 \begin{abstract}
-  Localised network centrality, computed across multiple distance thresholds, characterises accessibility and flow in street networks. For large street graphs, however, the cost is often effectively quadratic in network size, making multi-scale analysis prohibitive. Sampling-based approximation can reduce this cost, yet existing sample-complexity results target global centrality on general graphs and do not directly address the localised setting. We observe that for distance-bounded centrality estimated from sampled source nodes, accuracy depends primarily on the number of nodes reachable within the distance threshold rather than on total network size. Building on this insight, we develop a two-parameter adaptive model that calibrates sampling separately for each distance threshold based on mean reach, and cross-validate it against a localised adaptation of the Eppstein--Wang error bound. We validate the approach on the Greater London and Greater Madrid street networks at distances from 1--20\,km, achieving Spearman $\rho > \glaMinRho$ for both harmonic closeness and betweenness centrality with speedups of \glaFiveKmSpeedup{}--\glaTwentyKmSpeedup{}$\times$. The approach is implemented in the open-source \cityseer{} Python package.
+  Localised network centrality, computed across multiple distance thresholds, characterises accessibility and flow in street networks. For large street graphs, however, the cost is often effectively quadratic in network size, making multi-scale analysis prohibitive. Sampling-based approximation can reduce this cost, and existing source-sampling bounds adapt to the localised setting by replacing total node count with distance-bounded reach. However, these adapted bounds target worst-case additive error and require one to two orders of magnitude more samples than are empirically necessary for rank preservation. We develop a two-parameter adaptive model, calibrated for Spearman rank correlation rather than additive error, that determines sampling probability separately for each distance threshold based on mean reach, and cross-validate it against a localised adaptation of the Eppstein--Wang error bound. We validate the approach on the Greater London and Greater Madrid street networks at distances from 1--20\,km, achieving Spearman $\rho > \glaMinRho$ for both harmonic closeness and betweenness centrality with speedups of \glaFiveKmSpeedup{}--\glaTwentyKmSpeedup{}$\times$. The approach is implemented in the open-source \cityseer{} Python package.
 \end{abstract}
 
 \textbf{Keywords:} network centrality, sampling, urban morphology, betweenness, harmonic closeness, computational efficiency
@@ -46,51 +46,353 @@
 \label{sec:introduction}
 %==============================================================================
 
-\input{sections/01_introduction}
+Urban morphological analysis makes use of localised network centrality (typically variants of closeness or betweenness computed within distance thresholds) to reveal patterns of accessibility and flow in street networks. Because these metrics are typically evaluated at multiple scales, from pedestrian ($\sim$500\,m) to metropolitan ($\sim$20\,km), the computational cost compounds: each distance threshold requires a shortest-path computation from every node, and the reachable subgraph grows with the threshold. For a network of \glaNnodes{} nodes, a single multi-scale centrality analysis can take hours.
 
-%==============================================================================
-\section{Background and Related Work}
+Sampling-based approximation, in which shortest paths are computed from a random subset of source nodes and the results rescaled, can reduce this cost substantially. A body of theoretical work provides formal sample complexity bounds for global centrality on general graphs, expressed in terms of total node count, graph diameter, VC-dimension, or estimator variance \citep{Eppstein2004, Bader2007, Riondato2016, Borassi2019, Pellegrina2023}. These bounds guarantee uniform additive error $\varepsilon$ over all nodes. For source-sampling approaches such as Eppstein--Wang, adapting the bound to localised centrality is conceptually straightforward: one replaces the global node count $n$ with the distance-bounded reach $r$, since the relevant graph for each distance threshold is the local subgraph of reachable nodes. The resulting localised bound, $O(\log r / \varepsilon^2)$, is valid (Section~\ref{sec:bounds}), but it is far too conservative for practical use: it requires one to two orders of magnitude more samples than are empirically necessary, because it targets worst-case additive accuracy at every node, including peripheral nodes whose exact ranking matters least. Path-sampling bounds (Riondato--Kornaropoulos, KADABRA, SILVAN) do not adapt as directly to the localised setting, since they rely on global graph primitives (vertex diameter, VC-dimension) and a different computational primitive than distance-bounded Dijkstra. Two questions therefore remain open for localised centrality on street networks: \emph{how many samples are enough to preserve the ranking of nodes?} and \emph{do the resulting sample sizes also provide meaningful additive error guarantees?}
+
+We address both questions. Since accuracy in the localised setting depends on reach rather than total network size, the natural question is how many effective samples are needed to preserve rank order. Formalising estimator variance via the H\'{a}jek estimator \citep{Hajek1971}, we hypothesise that the effective sample size required for rank stability (Spearman $\rho \geq \targetRho$) scales as $\sqrt{r}$, where $r$ is the mean reach. This yields a simple two-parameter adaptive model, $\effn = \max(k \cdot \sqrt{r},\; n_{\min})$, that calibrates sampling separately for each distance threshold using a single reach summary per distance. The model requires far fewer samples than the localised Eppstein--Wang bound \citep{Eppstein2004} ($O(\log r / \varepsilon^2)$, obtained by replacing the global node count with reach), because it targets rank preservation rather than worst-case additive error. We empirically evaluate whether the rank-calibrated sample sizes are also consistent with this Hoeffding-style bound.
+
+Our contributions are:
+\begin{enumerate}
+  \item A hypothesis, grounded in variance scaling, that the effective sample size required for rank stability scales as $\sqrt{r}$, together with a two-parameter adaptive model, $\effn = \max(k \cdot \sqrt{r},\; n_{\min})$, fitted and validated on synthetic networks spanning three topologies. We validate the model on the Greater London and Greater Madrid street networks at distances from 1--20\,km, achieving Spearman $\rho > \glaMinRho$ for both closeness and betweenness centrality with speedups of \glaFiveKmSpeedup{}--\glaTwentyKmSpeedup{}$\times$.
+  \item Empirical evaluation showing that the rank model's recommended sample sizes also satisfy a localised Eppstein--Wang bound ($O(\log r / \varepsilon^2)$) in over 93\% of synthetic configurations, despite requiring one to two orders of magnitude fewer samples than the bound alone would prescribe. At high reach, the rank-calibrated sample sizes correspond to an implied normalised additive error on the order of $\varepsilon \approx 0.1$.
+\end{enumerate}
+The approach is implemented in the open-source \cityseer{} Python package.
+
+For clarity, throughout we use $r$ to denote the mean reach (average number of nodes reachable from a source within the distance threshold). This scalar predictor is sufficient for the per-distance calibration studied here, but it does not capture all within-distance heterogeneity (e.g., boundary effects or spatial density variation), which we discuss as a limitation.
+
+\subsection{Computational Cost of Network Centrality}
+
+Standard algorithms for localised centrality are built on repeated single-source shortest path computations, but the precise complexity depends on the metric and whether edges are weighted. For distance-based (weighted) closeness variants, one typically runs Dijkstra from every source: each run is $O(M \log N)$ with a binary heap, yielding $O(NM \log N)$ overall. For betweenness, Brandes' algorithm also performs a shortest-path computation from each source followed by a dependency-accumulation pass; the classic bounds are $O(NM)$ for unweighted graphs (BFS per source) and $O(NM + N^2 \log N)$ for weighted graphs \citep{Brandes2001}. In sparse street graphs where $M=O(N)$, these costs are commonly superlinear and often effectively quadratic in practice.
+
+The practical consequence is straightforward. A network of \glaNnodes{} nodes requires \glaNnodes{} Dijkstra runs. Even with distance cutoffs that limit individual traversals, the per-source cost grows with the analysis distance: at a 20\,km threshold in a dense urban network, each run may visit tens of thousands of nodes. A single centrality computation at one distance can take hours. Urban morphology studies routinely require multiple distance thresholds, typically spanning two orders of magnitude from pedestrian to metropolitan scales, multiplying the total cost accordingly.
+
+\subsection{Sampling-Based Approximation}
 \label{sec:background}
-%==============================================================================
 
-\input{sections/02_background}
+Both closeness and betweenness can be expressed as sums over contributions from individual source nodes: each source launches a shortest-path computation that contributes to the centrality of every node it reaches. This additive structure makes sampling straightforward --- rather than computing from every source, one can compute from a random subset and rescale to estimate the full sum. Under uniform source sampling, Horvitz--Thompson-style rescaling (dividing by the inclusion probability) yields an unbiased estimator of the population sum; ratio estimators such as H\'{a}jek are generally consistent and often lower-variance but can be slightly biased in finite samples \citep{Cochran1977, Sarndal2003}. In either case, sampling error decreases at an approximate $1/\sqrt{k}$ rate with the number of sampled sources, up to finite-population corrections.
+
+\citet{Brandes2007} introduced this idea for both closeness and betweenness, showing that random pivot selection from a small fraction of source nodes produces useful centrality estimates on networks of tens of thousands of nodes. However, their work did not provide formal error bounds or guidance on choosing the number of sources.
+
+\citet{Eppstein2004} gave the first formal bound for source-sampled closeness centrality, showing that $O(\log n / \varepsilon^2)$ single-source shortest path computations suffice to approximate the closeness of all vertices to within additive error $\varepsilon \cdot \Delta_G$ with high probability, where $\Delta_G$ is the graph diameter. Their approach (sampling source nodes uniformly and averaging the resulting distance estimates) is the most directly comparable to ours, as both methods reduce computation by selecting a random subset of sources. The $\log n$ factor in their bound depends on the total number of nodes, regardless of the analysis distance.
+
+\citet{Bader2007} gave the first probabilistic error bound for sampled betweenness, showing that $O(1/\varepsilon^2)$ samples suffice to approximate the betweenness of a single vertex to within additive error $\varepsilon$ with high probability. Their adaptive algorithm doubles the sample count until the confidence interval contracts below a user-specified threshold. The bound applies per vertex and does not directly provide uniform approximation across all vertices simultaneously.
+
+\citet{Riondato2016} addressed the uniform approximation problem using Vapnik--Chervonenkis (VC) dimension theory \citep{Vapnik1971}. They showed that the number of samples required for a uniform additive $\varepsilon$-approximation of all betweenness values depends on the VC-dimension of the set of shortest paths, which is bounded by $\lfloor \log_2 (\text{VD} - 2) \rfloor + 1$, where VD is the vertex-diameter of the graph. This yields sample complexity logarithmic in the vertex-diameter rather than the number of nodes. The resulting bounds are worst-case, however, and can be conservative for well-structured networks such as urban street grids.
+
+For closeness centrality specifically, \citet{Cohen2014} proposed an approximation framework that exploits the structure of closeness (a sum of inverse distances) to achieve tighter bounds than generic betweenness methods. Their approach uses random sampling of target nodes rather than source nodes and provides per-vertex confidence intervals.
+
+\citet{Borassi2019} introduced KADABRA, an adaptive algorithm for betweenness that adjusts the number of samples online. KADABRA maintains running confidence intervals for each vertex's betweenness and terminates when all intervals are sufficiently narrow, eliminating the need to specify the number of samples in advance. \citet{Bergamini2019} provided a comparative evaluation of these and related approaches, finding that adaptive methods generally outperform fixed-sample methods in terms of accuracy per sample, though the overhead of online monitoring can offset some of the savings.
+
+Most recently, \citet{Pellegrina2023} introduced SILVAN, which replaces VC-dimension bounds with Monte Carlo Rademacher averages to obtain tighter, \emph{variance-dependent} sample complexity bounds for betweenness. Because SILVAN's bounds depend on the actual variance of the betweenness estimator rather than worst-case combinatorial quantities, they can be substantially tighter on well-structured graphs, an observation consistent with our empirical finding that urban street networks require far fewer samples than worst-case theory predicts. However, SILVAN still targets global betweenness with additive $\varepsilon$-guarantees.
+
+These methods divide into two fundamentally different sampling strategies. \emph{Source-sampling} (Brandes, Eppstein--Wang, Bader) selects a random subset of source nodes and runs a full shortest-path tree from each; every node reachable from a sampled source receives a centrality contribution. \emph{Path-sampling} (Riondato--Kornaropoulos, KADABRA, SILVAN) instead draws random source--target pairs and computes a single shortest path between them, counting betweenness contributions along that path. Cohen's approach is a third variant, \emph{target-sampling}, which samples destination nodes and propagates distance information backward. The distinction matters because standard centrality algorithms, including localised implementations with distance cutoffs, are inherently source-based: each source launches a Dijkstra traversal that is naturally bounded by the distance threshold $d_{\max}$, producing contributions to every node within reach. Source-sampling bounds therefore analyse the same computational primitive that localised centrality uses, whereas path-sampling bounds analyse a different primitive whose relationship to distance-bounded computation is less straightforward.
+
+A common feature of this body of work is that it targets \emph{global} centrality, computed over the entire graph without distance cutoffs, on general (non-spatial) networks. Urban network analysis, by contrast, uses \emph{localised} centrality with distance thresholds that range from hundreds of metres to tens of kilometres. The reachable subgraph at each threshold varies by orders of magnitude, from hundreds of nodes at pedestrian scales to tens of thousands at metropolitan scales. For source-sampling bounds such as Eppstein--Wang, adapting to the localised setting is straightforward: the relevant graph has $r$ nodes rather than $n$, and the bound follows by substitution. But these adapted bounds remain extremely conservative, requiring far more samples than are empirically necessary for rank preservation. Whether a calibrated model targeting rank accuracy rather than worst-case additive error can deliver practical speedups across multiple distance scales is the question we address.
 
 %==============================================================================
 \section{Methods}
 \label{sec:methods}
 %==============================================================================
 
-\input{sections/03_methodology}
+\subsection{Centrality Measures}
+
+We consider two centrality measures, both computed with a distance cutoff $d_{\max}$ as is standard in urban network analysis. \textbf{Harmonic closeness} \citep{Rochat2009, Freeman1979} sums inverse distances to all nodes within the threshold:
+\begin{equation}
+  C_H(v;\, d_{\max}) = \sum_{u:\, d(v,u) \leq d_{\max}} \frac{1}{d(v, u)}
+\end{equation}
+\textbf{Betweenness} \citep{Freeman1977} counts the fraction of shortest paths (with total length at most $d_{\max}$) that pass through each node:
+\begin{equation}
+  C_B(v;\, d_{\max}) = \sum_{\substack{s \neq v \neq t \\ d(s,t) \leq d_{\max}}} \frac{\sigma_{st}(v)}{\sigma_{st}}
+\end{equation}
+where $\sigma_{st}$ is the number of shortest paths from $s$ to $t$, and $\sigma_{st}(v)$ is the number passing through $v$. Common distance thresholds range from 400\,m to 20\,km.
+
+A quantity central to the sampling analysis is \emph{reach}: the mean number of nodes within $d_{\max}$,
+\begin{equation}
+  r = \frac{1}{N} \sum_{v} \left| \{u : d(v, u) \leq d_{\max}\} \right|
+\end{equation}
+In the Greater London network, reach ranges from \glaFiveKmReach{} at 5\,km to \glaTwentyKmReach{} at 20\,km. This order-of-magnitude variation across distance thresholds directly governs the relationship between sample size and accuracy.
+
+\subsection{Experimental Design}
+
+Our analysis proceeds in three stages: (1) model fitting on synthetic networks with controlled topology, (2) evaluation of the localised Eppstein--Wang error bound on the same synthetic data, assessing whether the rank model's recommended sample sizes also provide formal additive-error guarantees, and (3) validation on large real-world street networks.
+
+We generate synthetic networks using \nTopologies{} topology templates: trellis (high connectivity, representing planned urban cores), tree (low connectivity, representing suburban sprawl), and linear (intermediate connectivity). These span the range of urban street network structure. Each topology is tiled to create networks of approximately 12km extent, of which we use the inner 4 square. We test \nDistances{} distance thresholds from 250m to \syntheticMaxDist{}m, and \nProbs{} sampling probabilities from 2.5\% to 100\%.
+
+A critical methodological consideration is the treatment of boundary effects. Nodes near network edges have artificially lower centrality because their catchments are truncated. We address this by applying an inward buffer from the convex hull of all nodes, equal to the maximum analysis distance (\syntheticBuffer{}km for synthetic networks, \glaBuffer{}km for validation). Only nodes inside this buffered zone are marked as ``live'' and included in accuracy calculations, ensuring all live nodes have complete catchments at all tested distances. This approach concurs with best practice for localised network analysis \citep{Gil2017}.
+
+\subsection{Accuracy Metric}
+
+We measure sampling accuracy using Spearman rank correlation ($\rho$) between sampled and ground-truth centrality values:
+\begin{equation}
+  \rho = 1 - \frac{6 \sum_i (R_i^{\text{sampled}} - R_i^{\text{true}})^2}{N(N^2 - 1)}
+\end{equation}
+where $R_i$ denotes the rank of node $i$. Spearman correlation is appropriate for three reasons. First, urban applications typically care about \emph{relative} rankings of streets rather than absolute centrality values, and Spearman is robust to the systematic scaling that sampling introduces. Second, and more fundamentally, Spearman $\rho$ is structurally aligned with the accuracy profile that source-sampling creates. Under sampling, each node's estimate depends on how many sampled sources contribute to it, which is proportional to its reachability. High-reachability nodes, which are also the high-centrality nodes, receive contributions from many sampled sources and have precise estimates; low-reachability peripheral nodes receive fewer contributions and have noisier estimates. Uniform additive $\varepsilon$ bounds would size the sample for these worst-estimated peripheral nodes, whose exact ranking matters least. Spearman $\rho$, by contrast, naturally tolerates imprecision where centrality values are tightly clustered (rank swaps among near-equal peripheral nodes have negligible effect on $\rho$) while being sensitive to misrankings among the well-separated high-centrality nodes where sampling is most precise. The metric thus concentrates its demands where the method concentrates its precision. Third, recording additive error alongside rank correlation allows us to evaluate whether rank-calibrated sample sizes also provide formal $\varepsilon$-guarantees (Section~\ref{sec:bounds}), addressing both accuracy perspectives within a single framework. We fit the model using a target of $\rho \geq \targetRho$: the target accuracy determines which sampling probabilities are deemed sufficient at each configuration, and thus drives the fitted values of $k$ and $n_{\min}$ (Section~\ref{sec:models}). A stricter target produces larger $k$ (more conservative sampling); a more relaxed target produces smaller $k$ (more aggressive sampling). The methodology generalises to other tolerances, which would yield different model parameters.
+
+We additionally record the maximum absolute error $\varepsilon_{\text{raw}} = \max_v |C^{\text{sampled}}(v) - C^{\text{true}}(v)|$, which enables comparison with the additive $\varepsilon$-approximation bounds used in the theoretical sampling literature \citep{Riondato2016, Bader2007}. To apply the Hoeffding concentration inequality \citep{Hoeffding1963} (Section~\ref{sec:bounds}), we normalise this error by the theoretical maximum contribution of each source: $r(r-1)$ for betweenness (the maximum number of pair-paths through any node) and $r$ for harmonic closeness (the maximum sum of inverse distances from $r$ sources). The resulting normalised error $\varepsilon \in [0, 1]$ is directly comparable to the $\varepsilon$ parameter in the Eppstein--Wang bound and serves as the accuracy measure for the error-bound.
+
+\subsection{Validation Networks}
+
+We validate the fitted model on two real-world street networks. The primary validation uses the Greater London Authority (GLA) road network, sourced from Ordnance Survey Open Roads data. After preprocessing (removing filler nodes, consolidating nearby nodes, and removing dangles), the network comprises approximately \glaNnodes{} nodes. Its scale far exceeds our synthetic training data, it contains diverse topology (grid-like central areas, tree-like suburbs, and mixed intermediate zones), and reach values at tested distances (5km, 10km, 20km) extend well beyond synthetic data ranges. We apply a \glaBuffer{}km inward buffer to eliminate edge artifacts. As an external validation, we also test the model on the Greater Madrid metropolitan street network following the same protocol.
 
 %==============================================================================
-\section{Empirical Model and Adaptive Algorithm}
+\section{Sampling Model}
 \label{sec:models}
 \label{sec:algorithm}
 %==============================================================================
 
-\input{sections/04_empirical_models}
+\subsection{The Opportunity: Sampling Can Work}
+
+Figure~\ref{fig:headline} illustrates why sampling-based centrality is attractive. Panel~A shows that accuracy (Spearman $\rho$) increases with sampling probability across all distance thresholds, but the curves flatten well before 100\% sampling. At 4000m distance, $\rho \geq \targetRho$ is achieved at just 10\% sampling, a 10$\times$ potential speedup. Panel~B shows that, for a given level of accuracy, the relative speedup from reduced sampling becomes more pronounced as the analysis distance grows. The remainder of this section develops a model calibrated to the rank-preservation target and evaluates whether the resulting sample sizes also provide formal additive-error guarantees.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\textwidth]{figures/fig1_headline.pdf}
+  \caption{\textbf{The sampling opportunity.} (A) Accuracy vs.\ sampling probability for different analysis distances. The green dashed line marks the $\rho = \targetRho$ target. (B) Potential speedup at each distance while maintaining $\rho \geq \targetRho$.}
+  \label{fig:headline}
+\end{figure}
+
+\subsection{Effective Sample Size and Proportional Scaling}
+
+We define the \emph{effective sample size} $\effn = r \times p$, where $r$ is the mean reachability (average number of nodes reachable per source within the distance threshold) and $p$ is the sampling probability. Figure~\ref{fig:derivation}A shows the relationship between $\effn$ and accuracy (Spearman $\rho$): accuracy improves with $\effn$, but the required $\effn$ is not constant; it grows with reach.
+
+Figure~\ref{fig:derivation}B quantifies this: the minimum $\effn$ required to achieve $\rho \geq \targetRho$ scales as $\effn \propto \sqrt{r}$, which we parameterise as:
+\begin{equation}
+  \effn = k \cdot \sqrt{r}
+\end{equation}
+
+This scaling can be motivated from survey sampling, but it should be read as a variance-scaling heuristic rather than a universal theorem: the exact relationship depends on how per-source contributions co-vary on real networks and on how ranking stability relates to estimation noise. When $n$ source nodes are sampled uniformly from $N$ live nodes, the H\'{a}jek estimator \citep{Hajek1971} for the centrality of node $v$ has variance
+\begin{equation}
+  \text{Var}(\hat{C}(v)) = \left(\frac{1}{p} - 1\right) \sigma^2_v
+  \label{eq:hajek_var}
+\end{equation}
+where $\sigma^2_v$ is the variance of per-source contributions to $C(v)$ and $p = n/N$ is the sampling probability \citep{Cochran1977, Sarndal2003}. For summation-based centrality measures (both harmonic closeness and betweenness), the centrality of $v$ can be written as a sum over source contributions within the distance threshold. As reach $r$ grows, the number of contributing terms grows and the variance of the (finite-population) estimand typically increases with $r$; under an idealised picture in which contributions are weakly dependent and have comparable scale across reachable sources, it is reasonable to expect $\sigma^2_v$ to grow approximately linearly in $r$.
+
+If we further assume that ranking stability is controlled primarily by a roughly constant coefficient of variation $\text{CV} = \sigma_v / C(v)$ across distances, then to keep CV approximately constant as $r$ increases we need the sampling-induced variance inflation factor $\left(\tfrac{1}{p} - 1\right)$ to shrink accordingly. This leads to an effective sample size requirement that grows sublinearly with reach, and in the linear-variance idealisation above yields $n \propto \sqrt{r}$, i.e.\ $\effn = k \cdot \sqrt{r}$ for some constant $k$. We treat this as a theoretically motivated hypothesis and test it empirically below.
+
+The argument applies more cleanly to closeness than to betweenness. For harmonic closeness, each source contributes $1/d(s,v)$ to the target: these contributions are smooth, bounded, and positive for every reachable source, so the linear-variance assumption is plausible. For betweenness, each source contributes $\sum_t \sigma_{st}(v)/\sigma_{st}$, which is sparse and heavy-tailed: most sources route zero shortest paths through~$v$, while a few (notably sources on the far side of a bridge or bottleneck) contribute heavily. This higher per-source variance explains the empirical observation that betweenness requires approximately $1.5\times$ more samples than closeness to achieve the same rank accuracy. Our model accommodates this by fitting to betweenness, the more demanding metric, making it conservative for closeness.
+
+To validate this prediction empirically, we fit the general power model $\effn = k \cdot r^{\alpha}$ via OLS on log-transformed data ($R^2 = \alphaRSquared$). The estimated exponent $\hat{\alpha} = \alphaHat$ (bootstrap 95\% CI: $[\alphaCILower, \alphaCIUpper]$) does not differ significantly from 0.5 ($p = \alphaTestPValue$), consistent with the theoretical prediction (Figure~\ref{fig:power_diagnostics}).
+
+For each synthetic configuration that achieves $\rho \geq \targetRho$, we compute the implied $k = p \cdot \sqrt{r}$. We take the 75th percentile across all \nConfigs{} configurations rather than the mean or median: this ensures that the model is conservative, providing sufficient samples for the majority of topology--distance combinations rather than only the average case. This yields $k = \kProp$.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\textwidth]{figures/fig2_model_derivation.pdf}
+  \caption{\textbf{Deriving the sampling model.} (A) Accuracy vs.\ effective sample size across topologies and distances. (B) Required $\effn$ for $\rho \geq \targetRho$ scales as $\sqrt{r}$, motivating the proportional model.}
+  \label{fig:derivation}
+\end{figure}
+
+\subsection{The Minimum Floor and Complete Model}
+
+The proportional model $\effn = k \cdot \sqrt{r}$ does not provide reliable estimates at reach lower than approximately \crossoverReach. At very low reach ($r \lesssim k^2 \approx 100$), the model prescribes $p = 1.0$ (full computation), so the floor is moot. But at intermediate reach ($100 \lesssim r \lesssim \crossoverReach$), the model prescribes $p < 1$ with $\effn < \minEffN$, which our data indicate is insufficient for reliable estimates.
+
+Figure~\ref{fig:floor} demonstrates the problem. Panel~A shows success rates (fraction of configurations achieving $\rho \geq \targetRho$) binned by effective sample size. Below $\effn = \minEffN$, success rates are erratic; above this threshold, they stabilise at 100\%.
+
+Panel~B illustrates why: the proportional model's prescribed $\effn = k\sqrt{r}$ falls below $\minEffN$ throughout the intermediate reach range, creating a deficit (shaded region) where Panel~A shows reliability is poor. The two regimes meet at the crossover reach of $\approx \crossoverReach$; above this, the proportional model provides sufficient $\effn$ on its own.
+
+We determine the floor more rigorously using logistic regression: fitting $P(\rho \geq \targetRho) = \text{logistic}(\beta_0 + \beta_1 \cdot \effn)$ and inverting to find the $\effn$ where predicted success probability reaches 95\%. This yields $n_{\min} = \floorLogistic$ (95\% CI: $[\floorCILower, \floorCIUpper]$), confirming the binned analysis while providing uncertainty quantification (Table~\ref{tab:parameters}).
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\textwidth]{figures/fig3_floor_justification.pdf}
+  \caption{\textbf{Justifying the minimum floor.} (A) Success rate by $\effn$ bin. Red bars indicate bins below \targetRho{} success; the vertical line marks the fitted floor at $\minEffN$. (B) The proportional model's prescribed $\effn = k\sqrt{r}$ (blue) falls below the empirical floor $\minEffN$ (red dashed) at intermediate reach. The shaded region marks the deficit where the proportional model alone provides insufficient samples; the crossover at reach $\approx \crossoverReach$ is where the two regimes meet.}
+  \label{fig:floor}
+\end{figure}
+
+Combining the proportional scaling with the minimum floor yields our final model:
+\begin{equation}
+  \effn = \max\left( \kProp \cdot \sqrt{r}, \minEffN \right)
+\end{equation}
+
+The sampling probability follows directly:
+\begin{equation}
+  p = \min\left(1, \frac{\effn}{r}\right)
+\end{equation}
+
+Figure~\ref{fig:combined} shows the complete model. Panel A displays how the required $\effn$ transitions from the floor regime (flat at $\minEffN$) to the proportional regime (scaling as $\sqrt{r}$) at the crossover point $r = \crossoverReach$. Panel B shows the corresponding sampling probability, which decreases as $1/\sqrt{r}$ once past the crossover.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\textwidth]{figures/fig4_combined_model.pdf}
+  \caption{\textbf{The complete sampling model.} (A) Required effective sample size: floor regime (flat, $\effn = \minEffN$) transitions to proportional regime ($\effn = \kProp \cdot \sqrt{r}$) at reach $\approx \crossoverReach$. (B) Required sampling probability: decreases as reach increases, enabling greater speedup for large-scale analysis.}
+  \label{fig:combined}
+\end{figure}
+
+Table~\ref{tab:parameters} summarises the fitted model parameters.
+
+\input{tables/tab1_parameters}
+
+\subsection{Error Structure Across Reachability}
+
+Although the model is calibrated on aggregate Spearman $\rho$ (which is valid over the full value range), it is natural to ask how accuracy varies across the reachability distribution. Within-quartile rank correlation is not a suitable diagnostic here: range restriction attenuation \citep{Thorndike1949} deflates correlation within subsets where true values are tightly clustered, even when absolute errors are small. We therefore use error-based metrics: median absolute error (MAE) and normalised MAE (MAE divided by a metric-appropriate scale factor: reach $r$ for closeness, $r(r-1)$ for betweenness).
+
+To examine this, we pool all nodes across all synthetic configurations at the model-recommended sampling probability and bin them by absolute per-node reach. Figure~\ref{fig:error_crossover} reveals a crossover: absolute MAE increases with reach, while normalised MAE decreases. This pattern has a natural interpretation. High-reach nodes sit at the centres of large local subgraphs; their centrality values are large sums over many source contributions, so absolute estimation errors accumulate. But these same nodes enjoy high effective sample sizes ($\effn = p \cdot r$), so the errors are small relative to the centrality magnitude. Conversely, low-reach peripheral nodes have small absolute errors but larger relative errors. In practical terms, the nodes that matter most for urban analysis (high-centrality arterials and junctions) receive the highest precision, a property we term \emph{precision scales with importance}.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\textwidth]{figures/fig5_error_crossover.pdf}
+  \caption{\textbf{Error crossover: precision scales with importance.} Per-node errors pooled across all synthetic configurations at the model-recommended sampling probability, binned by absolute per-node reach (log scale). Error bars show interquartile range across nodes within each bin. (A) Absolute MAE increases with reach: high-centrality nodes accumulate larger absolute errors because their centrality values are large sums over many source contributions. (B) Normalised MAE decreases with reach: relative error shrinks because high-reach nodes enjoy higher effective sample sizes ($\effn = p \cdot r$). The dashed grey line shows the localised Eppstein--Wang bound ($\varepsilon = \sqrt{\log(2r/\delta) / (2 \cdot \effn)}$, $\delta = 0.1$): the bound predicts worst-case normalised errors of order $10^{-1}$, while observed median errors are two to three orders of magnitude lower, illustrating the conservatism of additive-error guarantees. Normalisers are $r$ for closeness and $r(r-1)$ for betweenness.}
+  \label{fig:error_crossover}
+\end{figure}
+
+\subsection{Model Selection}
+
+To justify the proposed $\sqrt{r}$ + floor specification against alternatives, we compare \nModelsCompared{} candidate models: plain $\sqrt{r}$, $\sqrt{r}$ + floor (proposed), general power $r^{\alpha}$, general power + floor, and logarithmic. Models are fitted by maximum likelihood using a logistic observation model and evaluated by AIC and leave-one-topology-out cross-validated Brier score (Table~\ref{tab:model_comparison}).
+
+The \bestModelName{} model ($\effn = k \cdot r^{\alpha}$, with $\hat{\alpha} = \alphaHat$) achieves the lowest AIC (\bestModelAIC), while the proposed $\sqrt{r}$ + floor model has $\Delta$AIC = \proposedDeltaAIC. However, cross-validated Brier scores are similar across all models (\bestModelBrier{} vs.\ \proposedModelBrier{}), indicating that differences in out-of-sample prediction are modest: the AIC advantage does not translate into meaningfully better generalisation to held-out topologies. We retain the $\sqrt{r}$ specification for three reasons: (1) the hypothesis test does not reject $\alpha = 0.5$ ($p = \alphaTestPValue$), so the data are consistent with square root scaling; (2) fixing $\alpha = 0.5$ provides a direct connection to sampling theory ($\text{SE} \propto 1/\sqrt{n}$), making the model interpretable rather than purely empirical; and (3) the floor component addresses a qualitatively distinct failure mode at low reach that none of the single power law candidates capture, even though the floor's contribution to in-sample fit is small. This is a modelling choice driven by interpretability and robustness rather than in-sample fit.
+
+\input{tables/tab_model_comparison}
+
+\subsection{Relationship to Theoretical Bounds}
+\label{sec:bounds}
+
+The existing literature on centrality approximation provides worst-case sample complexity bounds expressed in terms of additive error $\varepsilon$ (Section~\ref{sec:background}). Table~\ref{tab:bounds_comparison} summarises how these results relate to our approach.
+
+\begin{table}[htbp]
+  \centering
+  \caption{Comparison of sampling approaches for centrality approximation. All prior methods target global centrality (no distance cutoff) on general graphs. Our model targets localised centrality on urban street networks.}
+  \label{tab:bounds_comparison}
+  \small
+  \begin{tabular}{@{}lllll@{}}
+    \toprule
+    \textbf{Method} & \textbf{Metric} & \textbf{Error type} & \textbf{Sample complexity} & \textbf{Key parameter} \\
+    \midrule
+    Eppstein--Wang & Closeness & Additive $\varepsilon$ & $O(\log n \,/\, \varepsilon^2)$ & Node count $n$ \\
+    Bader et al.\ & Betweenness & Additive $\varepsilon$ & $O(1 \,/\, \varepsilon^2)$ & Per vertex \\
+    Riondato--Korn.\ & Betweenness & Uniform $\varepsilon$ & $O(\text{VD} \,/\, \varepsilon^2)$ & VC-dimension \\
+    KADABRA & Betweenness & Uniform $\varepsilon$ & $O(\log D \,/\, \varepsilon^2)$ & Diameter $D$ \\
+    SILVAN & Betweenness & Non-uniform $\varepsilon$ & Variance-dependent & Path variance \\
+    \textbf{This work} & \textbf{Both} & \textbf{Rank $\rho$} & $\boldsymbol{\max(k\sqrt{r},\, n_{\min})}$ & \textbf{Reach $r$} \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+Among the bounds surveyed here, Eppstein--Wang is the only one that analyses source-sampling, the same computational primitive our algorithm uses. Adapting this bound to localised centrality is straightforward: the relevant graph at each distance threshold has $r$ reachable nodes rather than $n$ total nodes, yielding a localised bound of $O(\log r / \varepsilon^2)$ by direct substitution. The path-sampling bounds (Riondato--Kornaropoulos, KADABRA, SILVAN) do not adapt as directly, since they rely on global graph primitives (vertex diameter, VC-dimension) and a sampling primitive different from distance-bounded Dijkstra. Bader et al.'s per-vertex bound does not directly provide simultaneous guarantees.
+
+Two factors explain why our model requires substantially fewer samples than the localised bound predicts. First, our rank-correlation target ($\rho \geq \targetRho$) is not merely weaker than uniform additive $\varepsilon$-approximation but differently targeted: Spearman $\rho$ concentrates its sensitivity on the high-centrality nodes where estimates are most precise (Section~\ref{sec:methods}), tolerating imprecision among low-centrality peripheral nodes where sampling is noisiest. This structural alignment between the metric and the method's accuracy profile eliminates the need for the $\log r$ union-bound factor that uniform $\varepsilon$-guarantees require. Second, urban street networks are planar with bounded degree, constraining estimator variance well below worst-case assumptions for general graphs. Together, these factors account for the one to two order-of-magnitude gap between the localised bound and the empirically calibrated model.
+
+At high reach, the two perspectives converge. The rank model's recommended effective sample size corresponds to an implied additive error of $\varepsilon(r) = \sqrt{\log(2r/\delta) / (2 k^2 r)}$, which decreases with reach: at $r \approx 3{,}000$, the implied $\varepsilon \approx 0.1$, and at $r = 30{,}000$ it is about 0.06. The localised bound holds in over 93\% of synthetic configurations, with violations confined to low reach where concentration guarantees are weak and sampling offers limited computational benefit (Appendix~\ref{sec:appendix_ew}). We report error bounds alongside rank accuracy on the validation networks in Section~\ref{sec:validation}.
+
+\subsection{Adaptive Sampling Algorithm}
+
+The model determines a sampling probability for each distance threshold based on reach. Because reach varies with distance, optimal sampling also varies: short distances (low reach) may require full computation, while long distances enable aggressive sampling. Algorithm~\ref{alg:adaptive} presents the complete procedure.
+
+\begin{algorithm}[htbp]
+  \caption{Adaptive Per-Distance Sampling for Network Centrality}
+  \label{alg:adaptive}
+  \begin{algorithmic}[1]
+    \Require Network $G = (V, E)$, distance thresholds $D = \{d_1, \ldots, d_m\}$
+    \Require Model parameters $k = \kProp$, $n_{\min} = \minEffN$
+    \Ensure Centrality estimates $\hat{C}[d]$ for each $d \in D$
+
+    \State \textbf{Phase 1: Reach Estimation}
+    \For{each distance $d \in D$}
+    \State Compute reach $r_d \gets$ mean nodes within distance $d$
+    \EndFor
+
+    \State \textbf{Phase 2: Adaptive Sampling}
+    \For{each distance $d \in D$}
+    \State Compute effective sample size: $n_{\text{eff},d} \gets \max(k \cdot \sqrt{r_d}, n_{\min})$
+    \State Compute sampling probability: $p_d \gets \min(1, n_{\text{eff},d} / r_d)$
+    \State Sample sources $S_d \subseteq V$ with probability $p_d$
+    \State Compute centrality from $S_d$: $\hat{C}[d] \gets \textsc{Centrality}(G, S_d, d)$
+    \State Scale estimates: $\hat{C}[d] \gets \hat{C}[d] / p_d$
+    \EndFor
+
+    \State \Return $\{\hat{C}[d] : d \in D\}$
+  \end{algorithmic}
+\end{algorithm}
+
+The reach $r_d$ is typically a byproduct of the centrality computation itself; when a quick estimate is needed beforehand, a pilot sample of $\approx 100$ nodes distributed on a square kilometre grid suffices. Sources are sampled uniformly at random, and sampled values are scaled by $1/p$ to produce unbiased estimates. This scaling is exact for betweenness (each source contributes independently) and approximate for harmonic closeness, though our floor constraint ($\effn \geq \minEffN$) ensures $p$ is never low enough for the approximation to matter.
+
+With sampling probability $p$, we compute from $pN$ sources instead of $N$, reducing single-source computations by a factor of $1/p$. The theoretical speedup at high reach is $\sqrt{r}/k$, since $p = k/\sqrt{r}$; larger networks benefit more from sampling. For a network with distances spanning 500\,m to 20\,km, the model prescribes $p = 1.0$ at 500\,m (reach $\approx 200$, no benefit), $p \approx 0.26$ at 5\,km (reach $\approx 3{,}000$), and $p \approx 0.07$ at 20\,km (reach $\approx 40{,}000$), yielding a theoretical $14\times$ speedup at the longest distance.
 
 %==============================================================================
 \section{Validation}
 \label{sec:validation}
 %==============================================================================
 
-\input{sections/06_validation}
+\subsection{Experimental Protocol}
+
+We validate the model on the GLA and Greater Madrid networks described in Section~\ref{sec:methods}. For the GLA network, we compute ground-truth centrality ($p = 1.0$) and sampled centrality across a sweep of probabilities from 1\% to 90\%, measuring Spearman $\rho$ between sampled and ground-truth values at each probability. This provides a full accuracy-vs-probability profile at each distance threshold. For the Madrid network, we test only the model-recommended probability at each distance, repeating each configuration with 5 random seeds and reporting the mean $\pm$ standard deviation to assess replication stability.
+
+\subsection{GLA Results}
+
+Figure~\ref{fig:validation} shows validation results for the Greater London network. At all three distances, the model-recommended probability achieves $\rho > \glaMinRho$, exceeding the \targetRho{} target. Observed $\rho$ consistently exceeds model predictions, demonstrating appropriate conservatism.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\textwidth]{figures/fig6_gla_validation.pdf}
+  \caption{\textbf{GLA network validation.} (A) Accuracy vs.\ sampling probability at 5km, 10km, and 20km distances. Markers indicate the model-recommended probability; all exceed the \targetRho{} target. (B) Model conservatism: observed $\rho$ exceeds predictions at all distances.}
+  \label{fig:validation}
+\end{figure}
+
+Table~\ref{tab:validation} presents detailed results. At 5km (reach = \glaFiveKmReach{}), observed $\rho = \glaFiveKmRho{}$ with \glaFiveKmSpeedup{}$\times$ speedup. At 10km (reach = \glaTenKmReach{}), $\rho = \glaTenKmRho{}$ with \glaTenKmSpeedup{}$\times$ speedup. At 20km (reach = \glaTwentyKmReach{}), $\rho = \glaTwentyKmRho{}$ with \glaTwentyKmSpeedup{}$\times$ speedup. Standard deviations across replications are small ($< 0.005$ in $\rho$), indicating that a single sampled computation is sufficient for most purposes.
+
+\input{tables/tab2_validation}
+
+The validation demonstrates successful extrapolation well beyond synthetic training data: from $\approx 2{,}000$-node training networks to \glaNnodes{} nodes, from maximum training reach of $\approx 2{,}600$ to \glaTwentyKmReach{}, and from controlled synthetic topologies to heterogeneous real-world structure. Despite these extrapolations, predictions remain conservative, suggesting that the $\effn$-accuracy relationship is a robust property of network centrality rather than an artifact of specific configurations.
+
+We also evaluate the localised Eppstein--Wang bound (Section~\ref{sec:bounds}) on the GLA network. At each distance, the observed normalised error falls within the Hoeffding-style predicted bound for both closeness and betweenness, consistent with the synthetic validation (Appendix~\ref{sec:appendix_ew}). The theoretical bounds require one to two orders of magnitude more samples than our model to achieve the same $\varepsilon$, confirming that the rank-based approach provides substantial computational savings for applications that require rank preservation rather than additive accuracy.
+
+\subsection{External Validation: Madrid}
+
+To test generalisability beyond London, we applied the identical protocol to the Greater Madrid metropolitan street network. The model achieves $\rho > \targetRho$ for both closeness and betweenness at all tested distances (Figure~\ref{fig:madrid_validation}), confirming that the fitted parameters generalise across morphologically distinct European cities. The localised EW bound likewise holds at all tested distances on the Madrid network, providing independent confirmation that the rank model's sample sizes satisfy the Hoeffding-style error guarantee on real-world networks with different morphological characteristics.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\textwidth]{figures/fig7_madrid_validation.pdf}
+  \caption{\textbf{Madrid external validation.} (A) Accuracy vs.\ distance for closeness and betweenness centrality. (B) Speedup at each distance.}
+  \label{fig:madrid_validation}
+\end{figure}
 
 %==============================================================================
-\section{Discussion}
+\section{Discussion and Conclusion}
 \label{sec:discussion}
 \label{sec:guidelines}
-%==============================================================================
-
-\input{sections/08_discussion}
-
-%==============================================================================
-\section{Conclusion}
 \label{sec:conclusion}
 %==============================================================================
 
-\input{sections/09_conclusion}
+\subsection{Practical Guidelines}
+
+For users of the \cityseer{} library, the adaptive sampling model is applied automatically. For other frameworks, the procedure is: (1) estimate reach $r$ at each analysis distance, (2) compute $\effn = \max(\kProp \cdot \sqrt{r}, \minEffN)$ and $p = \min(1, \effn/r)$, and (3) compute centrality from a random $p$-fraction of sources, scaling results by $1/p$.
+
+Figure~\ref{fig:guide} provides visual lookup charts for common scenarios, and Table~\ref{tab:lookup} gives a numerical reference for representative reach values.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\textwidth]{figures/fig8_practical_guide.pdf}
+  \caption{\textbf{Practical guidance.} (A) Required sampling probability by network reach, with common urban scenarios annotated. (B) Expected computational speedup.}
+  \label{fig:guide}
+\end{figure}
+
+\input{tables/tab3_practical_lookup}
+
+As a rough guide: at reach below $\crossoverReach$, use full computation, since sampling overhead outweighs savings. At reach 1,000--10,000, sample 10--30\% (3--10$\times$ speedup). At reach above 10,000, sample 5--15\% (7--20$\times$ speedup). For applications requiring higher accuracy than $\rho \geq \targetRho$, increase $\effn$ by a factor of 1.5--2$\times$ or average 2--3 replications with different random seeds.
+
+Sampling is not appropriate when exact centrality values (not approximations) are required, when centrality is needed for specific nodes rather than the full network, or when the network is small enough ($< 1{,}000$ nodes) that full computation is already fast.
+
+\subsection{Model Assumptions and Limitations}
+
+Our model rests on several assumptions. First, we assume uniform random sampling of source nodes. Non-uniform strategies (stratified by location or weighted toward high-centrality sources) could potentially achieve higher accuracy with fewer samples, but would require information about node importance that is unavailable before computation. Second, the model treats the network as statistically homogeneous: accuracy depends on global reach, not local structure. Real networks have heterogeneous topology, with dense urban cores surrounded by sparse suburbs. Our validation on the GLA and Madrid networks, which exhibit such heterogeneity, shows the model remains conservative overall, but accuracy may vary locally. For applications requiring spatially uniform accuracy, local calibration or stratified sampling could be explored. Third, we fitted the model primarily to betweenness centrality, which is more demanding than harmonic closeness. The model is therefore conservative for closeness, where lower sampling probabilities would suffice. Finally, our experiments used shortest-path distance; angular (simplest-path) distance, common in space syntax analysis, may exhibit different accuracy characteristics and warrants systematic validation.
+
+\subsection{Future Directions}
+\label{sec:future}
+
+Several extensions could improve this work. On the theoretical side, proving that $n_{\text{eff}} \propto \sqrt{r}$ suffices specifically for rank stability with high probability remains an open problem; such a result would require bounding how per-source centrality contributions scale with reach across different topologies. The conservatism of the Hoeffding-based bound (Section~\ref{sec:bounds}) suggests that tighter concentration inequalities exploiting graph structure could reduce the gap between theoretical and empirical sample requirements. SILVAN's variance-dependent bounds \citep{Pellegrina2023}, which replace worst-case combinatorial quantities with the actual estimator variance, represent a promising direction for tightening the localised bound on well-structured network classes.
+
+On the practical side, adaptive per-node sampling, where the probability varies with local reach, could improve efficiency in heterogeneous networks. Importance sampling, weighting toward high-centrality sources, could reduce variance. Online stopping criteria, as in KADABRA \citep{Borassi2019}, could replace a priori calibration with adaptive termination based on observed convergence, but adapting such methods to localised, distance-bounded centrality with rank-correlation targets would require new theoretical development. Systematic validation for angular distance and extension to other centrality measures (eigenvector centrality, PageRank) would broaden applicability.
+
+\bigskip
+
+We have presented a two-parameter model that determines the sampling probability for network centrality approximation from network reach alone. On our synthetic suite, a power-law fit yields an exponent that is consistent with square-root scaling (we do not reject $\alpha = 0.5$), and model comparison across five candidate functional forms supports the robustness of the proposed specification. Validation on the Greater London (\glaNnodes{} nodes) and Madrid street networks achieves Spearman $\rho > \glaMinRho$ at all tested distances (5--20km), with speedups of \glaFiveKmSpeedup{}--\glaTwentyKmSpeedup{}$\times$, demonstrating that the model extrapolates well beyond the synthetic networks on which it was trained.
+
+By adapting the Eppstein--Wang source-sampling bound to the localised setting, we find that the resulting Hoeffding-style bound holds for the rank model's recommended sample sizes in over 93\% of synthetic configurations, with most violations confined to a low-reach regime where sampling provides limited benefit and concentration guarantees are weak. At high reach, the two perspectives become numerically consistent: under the localised bound analysis, rank-calibrated sample sizes correspond to an implied normalised additive error on the order of $\varepsilon \approx 0.1$. The rank model and the localised error bound thus address complementary needs: rank preservation for comparative urban analysis, and additive accuracy for applications requiring absolute centrality estimates.
+
+The practical value lies in providing analysts with a calibrated way to trade computation time for approximation error, with evidence that sampled results preserve ranking accuracy and, at large reach, correspond to tighter implied additive-error levels under a conservative concentration analysis. The largest benefits accrue at long distances on large networks, precisely where computational cost is highest. More broadly, our results suggest that the effective sample size--accuracy relationship is not purely an artifact of the synthetic configurations studied here, though further validation on non-European cities would strengthen this claim.
+
+The model is implemented in the open-source \cityseer{} Python library.\footnote{\texttt{https://github.com/benchmark-urbanism/cityseer-api}} Fitting scripts, validation data, and model comparison analyses are available in the repository's \texttt{analysis/sampling/} directory.
 
 %==============================================================================
 % References
@@ -105,6 +407,110 @@
 
 \section{Technical Details}
 \label{sec:appendix_technical}
-\input{sections/appendix_technical}
+
+\subsection{Synthetic Network Generation}
+
+Synthetic networks are generated using tile-based templates. Each template defines a connectivity pattern within a single tile; tiles are then arrayed to create networks of the desired extent.
+
+\begin{description}
+  \item[Trellis] A regular grid with diagonal connections, representing highly connected urban cores. Average degree $\approx 4$.
+
+  \item[Tree] A hierarchical branching structure where each node connects to at most 3 others. Represents suburban cul-de-sac development. Average degree $\approx 2.3$.
+
+  \item[Linear] A constrained grid with fewer cross-connections than trellis. Intermediate connectivity. Average degree $\approx 3$.
+\end{description}
+
+Networks are tiled 24$\times$24 to achieve approximately 12km extent, then the largest connected component is extracted. Node positions are perturbed slightly to avoid perfectly regular spacing.
+
+\subsection{GLA Network Preprocessing}
+
+The Greater London Authority road network is sourced from Ordnance Survey Open Roads data (GeoPackage format).
+
+Preprocessing steps:
+\begin{enumerate}
+  \item Remove invalid and empty geometries
+  \item Explode multi-part geometries
+  \item Build NetworkX graph from edges
+  \item Remove filler nodes (degree-2 nodes that don't represent junctions)
+  \item Remove dangling nodes (dead-end segments $< 20$m)
+  \item Consolidate nearby nodes (threshold 1m)
+  \item Extract largest connected component
+\end{enumerate}
+
+Final network: $\approx$ \glaNnodes{} nodes.
+
+\subsection{Correctness Verification Against NetworkX}
+\label{sec:appendix_networkx}
+
+To ensure the correctness of our Rust-based centrality implementation in \cityseer{}, we conducted systematic verification against the widely-used NetworkX library \citep{Hagberg2008}. For each synthetic network topology and distance threshold combination, we computed both harmonic closeness and betweenness centrality using our Rust implementation (via \cityseer{} Python bindings) and NetworkX's reference functions.
+
+For each node $v$ in the test networks, we computed the absolute difference $\Delta_v = |C_{\text{cityseer}}(v) - C_{\text{NetworkX}}(v)|$. The maximum difference across all nodes and all test configurations was $\max_v \Delta_v < 10^{-6}$, attributable to floating-point arithmetic precision.
+
+Verification was performed across all three synthetic topologies, distance thresholds from 200m to 3200m, both shortest-path and angular distance heuristics, and both harmonic closeness and betweenness centrality.
+
+\subsection{H\'{a}jek Estimator}
+\label{sec:appendix_hajek}
+
+When estimating population totals from samples, two classical approaches exist: the Horvitz-Thompson (H-T) estimator and the H\'{a}jek estimator. We selected the H\'{a}jek estimator based on theoretical considerations.
+
+The Horvitz-Thompson estimator \citep{Horvitz1952} estimates a population total as $\hat{T}_{HT} = \sum_{i \in S} y_i / \pi_i$, where $S$ is the sample and $\pi_i$ is the inclusion probability. The H\'{a}jek estimator \citep{Hajek1971} instead uses a ratio form:
+\begin{equation}
+  \hat{T}_{H} = N \cdot \frac{\sum_{i \in S} y_i / \pi_i}{\sum_{i \in S} 1 / \pi_i}
+\end{equation}
+where $N$ is the known population size. For simple random sampling with equal inclusion probabilities, the H\'{a}jek estimator has variance $\text{Var}(\hat{T}_{H}) \approx \text{Var}(\hat{T}_{HT}) \cdot (1 - n/N)$. Since the population size (total number of network nodes) is known, the H\'{a}jek estimator is the natural choice. In our implementation, centrality contributions are accumulated unscaled during traversal, then multiplied by $N/n$ (total nodes divided by sampled nodes) after all sources have been processed.
+
+\subsection{Implementation in \cityseer{}}
+\label{sec:appendix_cityseer_impl}
+
+The sampling model is implemented in the \cityseer{} Python library (version 4.23+). The adaptive function automatically probes reachability, computes sampling probabilities from the fitted model, and scales results:
+
+\begin{verbatim}
+from cityseer.metrics import networks
+
+gdf = networks.node_centrality_shortest_adaptive(
+    network_structure,
+    nodes_gdf,
+    distances=[500, 1000, 2000, 5000, 10000],
+    compute_closeness=True,
+    compute_betweenness=True,
+    target_rho=0.95
+)
+\end{verbatim}
+
+For manual control, a fixed sampling probability can be specified via the \texttt{sample\_probability} parameter of \texttt{node\_centrality\_shortest}. Helper functions for custom workflows (\texttt{compute\_required\_p}, \texttt{probe\_reachability}, \texttt{spatial\_sample}) are available in the \texttt{cityseer.config} module; see the library documentation for details.
+
+\subsection{Power Exponent Diagnostics}
+\label{sec:appendix_power_diagnostics}
+
+Figure~\ref{fig:power_diagnostics} presents bootstrap diagnostics for the power exponent $\alpha$ in the general model $\effn = k \cdot r^{\alpha}$. The estimated $\hat{\alpha} = \alphaHat$ is consistent with the theoretical value of 0.5.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.9\textwidth]{figures/fig_s1_diagnostics.pdf}
+  \caption{\textbf{Power exponent diagnostics.} Bootstrap distribution of the estimated exponent $\hat{\alpha}$. The theoretical value $\alpha = 0.5$ falls within the 95\% confidence interval.}
+  \label{fig:power_diagnostics}
+\end{figure}
+
+\subsection{Localised Eppstein--Wang Bound: Detailed Validation}
+\label{sec:appendix_ew}
+
+We evaluate the localised Hoeffding-based error guarantee at the rank model's recommended sample sizes across all 440 synthetic configurations. At each configuration, the observed normalised error $\varepsilon_{\text{obs}}$ (maximum absolute error divided by the theoretical maximum) is compared against the predicted bound $\varepsilon_{\text{pred}} = \sqrt{\log(2r/\delta) / (2 \cdot \effn)}$ with $\delta = 0.1$.
+
+Overall, 412 of 440 configurations (93.6\%) satisfy the bound, exceeding the nominal 90\% guarantee. Harmonic closeness achieves 100\% success (220/220), while betweenness achieves 87.3\% (192/220). The betweenness shortfall is not statistically significant: under the null hypothesis that the true success rate is 90\%, the observed count falls within 1.4 standard deviations of the expectation ($n = 220$, $\sigma = 4.4$). Violations concentrate at low reach ($r < 100$, corresponding to analysis distances $\leq 500$\,m), where $\effn < 10$ and the Hoeffding inequality is in its degenerate small-sample regime. Conditional on reach $\geq 100$, the success rate rises to 99.7\% overall (307/308) and 99.4\% for betweenness (153/154).
+
+The bound is conservative: median predicted-to-observed epsilon ratios are $3.8\times$ for betweenness and $260\times$ for harmonic closeness (Figure~\ref{fig:ew_synthetic}A). This gap reflects two factors: the Hoeffding inequality assumes worst-case bounded summands, whereas per-source contributions on planar networks have substantially lower variance; and worst-case uniform bounds do not exploit the spatial correlation of errors across neighbouring nodes.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\textwidth]{figures/fig_ew_synthetic.pdf}
+  \caption{\textbf{Localised Eppstein--Wang bound on synthetic data.} (A) Predicted vs observed normalised error. Points below the diagonal satisfy the bound. Filled markers indicate high-reach configurations ($r \geq 100$); open markers indicate low-reach ($r < 100$) where concentration bounds are degenerate. (B) Required sampling probability by reach for the EW bound at various error tolerances compared with the rank model; the two converge at $\varepsilon \approx 0.1$ for large reach.}
+  \label{fig:ew_synthetic}
+\end{figure}
+
+\input{tables/tab_ew_comparison}
+
+\subsection{Reproducibility}
+
+All analysis scripts, fitting data, and validation results are available at \texttt{https://github.com/benchmark-urbanism/cityseer-api/tree/master/analysis/sampling}. Model parameters are stored in \texttt{output/sampling\_model.json} and synced to \texttt{pysrc/cityseer/config.py} for library integration.
 
 \end{document}

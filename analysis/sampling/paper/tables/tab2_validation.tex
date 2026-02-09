@@ -2,13 +2,16 @@
 \centering
 \caption{Model Validation on Greater London Network}
 \label{tab:validation}
-\begin{tabular}{rrrrrr}
+\begin{tabular}{rrrrrrrr}
 \toprule
-\textbf{Distance} & \textbf{Reach} & \textbf{Model $p$} & \textbf{Observed $\rho$} & \textbf{Speedup} & \textbf{$\rho \geq 0.95$?} \\
+\textbf{Distance} & \textbf{Reach} & \textbf{Model $p$} &
+\textbf{$\rho_\text{close}$} & \textbf{$\rho_\text{betw}$} & \textbf{Speedup} & \textbf{$\rho \geq 0.95$?} \\
 \midrule
-5km & 2,783 & 18.8\% & 0.9912 & 5.3$\times$ & \checkmark \\
-10km & 11,590 & 9.2\% & 0.9885 & 10.9$\times$ & \checkmark \\
-20km & 43,165 & 4.8\% & 0.9864 & 21.0$\times$ & \checkmark \\
+1km & 100 & 100.0\% & 0.9948 & 0.9983 & 1.0$\times$ & \checkmark \\
+2km & 411 & 73.0\% & 0.9925 & 0.9976 & 1.4$\times$ & \checkmark \\
+5km & 2,783 & 19.3\% & 0.9875 & 0.9912 & 5.2$\times$ & \checkmark \\
+10km & 11,590 & 9.4\% & 0.9957 & 0.9885 & 10.6$\times$ & \checkmark \\
+20km & 43,165 & 4.9\% & 0.9988 & 0.9864 & 20.4$\times$ & \checkmark \\
 \bottomrule
 \end{tabular}
 

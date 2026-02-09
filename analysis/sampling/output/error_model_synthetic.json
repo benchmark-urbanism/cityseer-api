@@ -1,5 +1,5 @@
 {
-  "generated": "2026-02-08T18:37:54",
+  "generated": "2026-02-09T11:51:19",
   "script": "02_fit_error_model.py",
   "description": "Localised EW bound analysis on synthetic data",
   "parameters": {
@@ -11,7 +11,7 @@
       0.2
     ],
     "reach_threshold": 100,
-    "cache_version": "v20"
+    "cache_version": "v21"
   },
   "overall": {
     "total_configs": 440,
@@ -32,7 +32,7 @@
       "conditional_total": 154,
       "conditional_holds": 154,
       "conditional_rate": 1.0,
-      "median_eps_observed": 0.0008805001744539951,
+      "median_eps_observed": 0.0008804991098198555,
       "median_eps_predicted": 0.23329897005607103
     },
     "betweenness": {

@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-09_model_comparison.py - Compare candidate models for eff_n prediction.
+08_model_comparison.py - Compare candidate models for eff_n prediction.
 
 Compares 5 candidate functional forms using AIC, BIC, and cross-validation
 to justify (or revise) the sqrt(reach) + floor model.
@@ -418,7 +418,7 @@ $\Delta$AIC $< 2$: substantial support; $2$--$10$: some support; $> 10$: essenti
 
 def main():
     print("=" * 70)
-    print("09_model_comparison.py - Comparing candidate sampling models")
+    print("08_model_comparison.py - Comparing candidate sampling models")
     print("=" * 70)
 
     # Load data
@@ -497,7 +497,7 @@ def main():
 
     output = {
         "generated": datetime.now().isoformat(timespec="seconds"),
-        "script": "09_model_comparison.py",
+        "script": "08_model_comparison.py",
         "best_model": best_key,
         "proposed_model_support": "substantial"
         if proposed["delta_AIC"] < 2

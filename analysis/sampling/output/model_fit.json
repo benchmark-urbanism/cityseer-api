@@ -1,5 +1,5 @@
 {
-  "generated": "2026-02-08T18:37:32",
+  "generated": "2026-02-09T11:51:03",
   "script": "01_fit_rank_model.py",
   "description": "Proportional sampling constant k fitted from synthetic data",
   "model": {

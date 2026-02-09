@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-08_validate_power_exponent.py - Validate sqrt(reach) assumption and fit floor with uncertainty.
+07_validate_power_exponent.py - Validate sqrt(reach) assumption and fit floor with uncertainty.
 
 This script formally tests whether the power exponent in the sampling model
 is consistent with 0.5 (square root scaling), and replaces the binned floor
@@ -477,7 +477,7 @@ def generate_diagnostics(df_thresh: pd.DataFrame, df: pd.DataFrame, alpha_result
 
 def main():
     print("=" * 70)
-    print("08_validate_power_exponent.py")
+    print("07_validate_power_exponent.py")
     print("Power exponent validation and logistic floor fitting")
     print("=" * 70)
 
@@ -513,7 +513,7 @@ def main():
     # Save combined results
     output = {
         "generated": datetime.now().isoformat(timespec="seconds"),
-        "script": "08_validate_power_exponent.py",
+        "script": "07_validate_power_exponent.py",
         "power_exponent": {k: v for k, v in alpha_results.items() if k != "ols_summary"},
         "floor_logistic": floor_results,
     }

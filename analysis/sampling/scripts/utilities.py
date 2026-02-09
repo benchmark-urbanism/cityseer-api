@@ -44,7 +44,7 @@ for d in [CACHE_DIR, OUTPUT_DIR, FIGURES_DIR, TABLES_DIR]:
 # Cache version for invalidation — bump this to force all caches to regenerate
 # Versioned filenames (synthetic pkl, validation CSVs) auto-regenerate on bump.
 # Network graphs (gla_graph.pkl, gla_ground_truth_*.pkl) are unversioned and persist.
-CACHE_VERSION = "v20"
+CACHE_VERSION = "v21"
 
 # Canonical per-quartile key prefixes — single source of truth for fallback/perfect blocks
 QUARTILE_KEYS = ("spearman", "mae", "max_error", "reach")

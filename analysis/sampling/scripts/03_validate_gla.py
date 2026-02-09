@@ -10,7 +10,7 @@ Usage:
     python 03_validate_gla.py --force   # Force regeneration of validation data
 
 Outputs:
-    - output/gla_validation_{CACHE_VERSION}.csv
+    - output/gla_validation.csv
     - output/gla_validation_summary.csv
     - output/gla_theoretical_bounds_comparison.csv
     - paper/figures/fig6_gla_validation.pdf
@@ -34,7 +34,6 @@ import pandas as pd
 from cityseer.tools import graphs, io
 from utilities import (
     CACHE_DIR,
-    CACHE_VERSION,
     FIGURES_DIR,
     OUTPUT_DIR,
     QUARTILE_KEYS,
@@ -130,7 +129,7 @@ def load_model() -> tuple[float, int]:
 
 def generate_validation_data(force: bool = False) -> pd.DataFrame:
     """Generate GLA validation data, or load from cache."""
-    validation_csv = OUTPUT_DIR / f"gla_validation_{CACHE_VERSION}.csv"
+    validation_csv = OUTPUT_DIR / "gla_validation.csv"
 
     if validation_csv.exists() and not force:
         print(f"Loading cached validation data from {validation_csv}")
@@ -547,6 +546,10 @@ Network: Greater London Area, 294,486 nodes, 20km live node buffer.
 
 def get_n_nodes(force: bool = False) -> int | None:
     """Get total node count from cached GLA graph."""
+    n_nodes_cache = CACHE_DIR / "gla_n_nodes.json"
+    if n_nodes_cache.exists() and not force:
+        with open(n_nodes_cache) as f:
+            return json.load(f)["n_nodes"]
     gla_cache = CACHE_DIR / "gla_graph.pkl"
     if not gla_cache.exists():
         return None
@@ -554,7 +557,10 @@ def get_n_nodes(force: bool = False) -> int | None:
         G = pickle.load(f)
     # Apply same buffer as validation to get live node count
     G = apply_live_buffer_nx(G, LIVE_INWARD_BUFFER)
-    return G.number_of_nodes()
+    n_nodes = G.number_of_nodes()
+    with open(n_nodes_cache, "w") as f:
+        json.dump({"n_nodes": n_nodes}, f)
+    return n_nodes
 
 
 def compute_theoretical_bounds(results_df: pd.DataFrame, n_nodes: int):
@@ -808,7 +814,7 @@ def main():
     print("\n" + "=" * 70)
     print("OUTPUTS")
     print("=" * 70)
-    print(f"  1. {OUTPUT_DIR / f'gla_validation_{CACHE_VERSION}.csv'}")
+    print(f"  1. {OUTPUT_DIR / 'gla_validation.csv'}")
     print(f"  2. {OUTPUT_DIR / 'gla_validation_summary.csv'}")
     print(f"  3. {FIGURES_DIR / 'fig6_gla_validation.pdf'}")
     print(f"  4. {TABLES_DIR / 'tab2_validation.tex'}")
