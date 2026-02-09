@@ -577,6 +577,7 @@ def _run_adaptive_centrality(
     min_threshold_wt: float,
     speed_m_s: float,
     jitter_scale: float,
+    sampling_weights: list[float] | None,
     random_seed: int | None,
     probe_density: float,
     epsilon: float,
@@ -637,6 +638,7 @@ def _run_adaptive_centrality(
                 speed_m_s=speed_m_s,
                 jitter_scale=jitter_scale,
                 sample_probability=effective_p,
+                sampling_weights=sampling_weights,
                 random_seed=random_seed,
                 pbar_disabled=True,  # Disable per-distance progress bars
             )
@@ -651,6 +653,7 @@ def _run_adaptive_centrality(
                 farness_scaling_offset=farness_scaling_offset,
                 jitter_scale=jitter_scale,
                 sample_probability=effective_p,
+                sampling_weights=sampling_weights,
                 random_seed=random_seed,
                 pbar_disabled=True,
             )
@@ -720,6 +723,7 @@ def node_centrality_shortest_adaptive(
     min_threshold_wt: float = MIN_THRESH_WT,
     speed_m_s: float = SPEED_M_S,
     jitter_scale: float = 0.0,
+    sampling_weights: list[float] | None = None,
     random_seed: int | None = None,
     probe_density: float = config.DEFAULT_PROBE_DENSITY,
 ) -> gpd.GeoDataFrame:
@@ -767,6 +771,9 @@ def node_centrality_shortest_adaptive(
         Walking speed in m/s for distance-to-time conversion.
     jitter_scale
         Scale of random jitter for path calculations.
+    sampling_weights
+        Optional per-node sampling weights in [0.0, 1.0]. When provided, the per-distance
+        sampling probability is multiplied by each node's weight.
     random_seed
         Optional seed for reproducible sampling.
     probe_density
@@ -807,6 +814,7 @@ def node_centrality_shortest_adaptive(
         min_threshold_wt=min_threshold_wt,
         speed_m_s=speed_m_s,
         jitter_scale=jitter_scale,
+        sampling_weights=sampling_weights,
         random_seed=random_seed,
         probe_density=probe_density,
         epsilon=epsilon,
@@ -829,6 +837,7 @@ def node_centrality_simplest_adaptive(
     angular_scaling_unit: float = 90,
     farness_scaling_offset: float = 1,
     jitter_scale: float = 0.0,
+    sampling_weights: list[float] | None = None,
     random_seed: int | None = None,
     probe_density: float = config.DEFAULT_PROBE_DENSITY,
 ) -> gpd.GeoDataFrame:
@@ -877,6 +886,9 @@ def node_centrality_simplest_adaptive(
         Offset for farness calculation. Default 1.
     jitter_scale
         Scale of random jitter for path calculations.
+    sampling_weights
+        Optional per-node sampling weights in [0.0, 1.0]. When provided, the per-distance
+        sampling probability is multiplied by each node's weight.
     random_seed
         Optional seed for reproducible sampling.
     probe_density
@@ -904,6 +916,7 @@ def node_centrality_simplest_adaptive(
         min_threshold_wt=min_threshold_wt,
         speed_m_s=speed_m_s,
         jitter_scale=jitter_scale,
+        sampling_weights=sampling_weights,
         random_seed=random_seed,
         probe_density=probe_density,
         epsilon=epsilon,
