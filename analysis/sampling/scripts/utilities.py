@@ -11,6 +11,7 @@ Sections:
 4. Statistical utilities (accuracy metrics, Moran's I)
 """
 
+import math
 import pickle
 import warnings
 from pathlib import Path
@@ -393,10 +394,7 @@ def compute_quartile_accuracy(
 
     for q in range(4):
         lo, hi = quartile_edges[q], quartile_edges[q + 1]
-        if q < 3:
-            q_mask = (reach_m >= lo) & (reach_m < hi)
-        else:
-            q_mask = (reach_m >= lo) & (reach_m <= hi)
+        q_mask = (reach_m >= lo) & (reach_m < hi) if q < 3 else (reach_m >= lo) & (reach_m <= hi)
 
         if q_mask.sum() < 10:
             result[f"spearman_q{q + 1}"] = np.nan
@@ -623,26 +621,157 @@ def rho_model(eff_n: float, a: float, b: float) -> float:
     return 1 - a / (b + eff_n)
 
 
-def required_eff_n_for_rho(target_rho: float, a: float, b: float) -> float:
+def mean_quartiles(quartile_list: list[dict], quartile_keys: tuple = QUARTILE_KEYS) -> dict:
     """
-    Compute the effective_n required to achieve target rho.
-
-    Inverts the model: eff_n = A / (1 - rho) - B
+    Average quartile accuracy results across multiple runs.
 
     Parameters
     ----------
-    target_rho : float
-        Target accuracy (Spearman rho)
-    a : float
-        Model parameter A
-    b : float
-        Model parameter B
+    quartile_list : list[dict]
+        List of quartile dicts from compute_quartile_accuracy
+    quartile_keys : tuple
+        Quartile key prefixes (default: QUARTILE_KEYS)
+
+    Returns
+    -------
+    dict
+        Averaged quartile results
+    """
+    if not quartile_list:
+        result = {}
+        for prefix in quartile_keys:
+            for q in range(1, 5):
+                result[f"{prefix}_q{q}"] = np.nan
+        return result
+    result = {}
+    for key in quartile_list[0]:
+        vals = [q[key] for q in quartile_list if not np.isnan(q[key])]
+        result[key] = float(np.mean(vals)) if vals else np.nan
+    return result
+
+
+# =============================================================================
+# SECTION 6: Hoeffding / EW Bound Utilities
+# =============================================================================
+
+# Default parameters for the Hoeffding/EW bound
+HOEFFDING_EPSILON = 0.1  # Normalised additive error tolerance
+HOEFFDING_DELTA = 0.1  # Failure probability (90% confidence)
+
+
+def compute_hoeffding_p(
+    reach: float,
+    epsilon: float = HOEFFDING_EPSILON,
+    delta: float = HOEFFDING_DELTA,
+) -> float:
+    """
+    Compute sampling probability from the Hoeffding/EW bound.
+
+    k = log(2r / delta) / (2 * epsilon^2)
+    p = min(1, k / r)
+
+    Parameters
+    ----------
+    reach : float
+        Mean network reach (nodes within distance)
+    epsilon : float
+        Normalised additive error tolerance
+    delta : float
+        Failure probability
+
+    Returns
+    -------
+    float
+        Recommended sampling probability in [0, 1]
+    """
+    if reach <= 0 or epsilon <= 0:
+        return 1.0
+    k = math.log(2 * reach / delta) / (2 * epsilon**2)
+    return min(1.0, k / reach)
+
+
+def compute_hoeffding_eff_n(
+    reach: float,
+    epsilon: float = HOEFFDING_EPSILON,
+    delta: float = HOEFFDING_DELTA,
+) -> float:
+    """
+    Compute effective sample size from the Hoeffding/EW bound.
+
+    k = log(2r / delta) / (2 * epsilon^2)
+
+    Parameters
+    ----------
+    reach : float
+        Mean network reach (nodes within distance)
+    epsilon : float
+        Normalised additive error tolerance
+    delta : float
+        Failure probability
 
     Returns
     -------
     float
         Required effective sample size
     """
-    if target_rho >= 1.0:
+    if reach <= 0 or epsilon <= 0:
+        return reach
+    return math.log(2 * reach / delta) / (2 * epsilon**2)
+
+
+def ew_predicted_epsilon(
+    n_eff: float,
+    reach: float,
+    delta: float = HOEFFDING_DELTA,
+) -> float:
+    """
+    Compute the EW-predicted maximum normalised epsilon.
+
+    eps = sqrt(log(2r / delta) / (2 * n_eff))
+
+    Parameters
+    ----------
+    n_eff : float
+        Effective sample size
+    reach : float
+        Mean network reach
+    delta : float
+        Failure probability
+
+    Returns
+    -------
+    float
+        Predicted maximum additive error
+    """
+    if n_eff <= 0 or reach <= 0:
         return float("inf")
-    return a / (1 - target_rho) - b
+    return math.sqrt(math.log(2 * reach / delta) / (2 * n_eff))
+
+
+def normalise_error(max_abs_error: float, reach: float, metric: str) -> float:
+    """
+    Normalise raw absolute error by theoretical maximum.
+
+    Betweenness: bounded by r*(r-1) pair-paths.
+    Harmonic closeness: bounded by r (sum of 1/d for r nodes).
+
+    Parameters
+    ----------
+    max_abs_error : float
+        Raw absolute error
+    reach : float
+        Network reach
+    metric : str
+        'betweenness' or 'harmonic'
+
+    Returns
+    -------
+    float
+        Normalised error
+    """
+    if reach <= 1:
+        return float("inf")
+    if metric == "betweenness":
+        return max_abs_error / (reach * (reach - 1))
+    else:  # harmonic closeness
+        return max_abs_error / reach

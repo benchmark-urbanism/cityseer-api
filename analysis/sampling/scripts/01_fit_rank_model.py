@@ -1,36 +1,24 @@
 #!/usr/bin/env python
 """
-01_fit_rank_model.py - Fit the rank-based adaptive sampling model.
+01_fit_rank_model.py - Analyse synthetic sampling data and generate figures.
 
-Fits the complete model: eff_n = max(k × sqrt(reach), min_eff_n)
+Loads the synthetic sampling cache and generates:
+  1. Figure 1 (headline): Problem illustration — why sampling is needed
+  2. Figure 3 (error crossover): Precision scales with importance
+  3. Node-level and top-k precision diagnostics
 
-This script combines three stages:
-  1. Fit the proportional constant k from the sqrt(reach) scaling
-  2. Fit the minimum effective sample size floor (min_eff_n)
-  3. Combine into the final model with crossover analysis
-
-The sqrt(reach) scaling has a theoretical basis in the Hajek estimator:
-per-source variance grows linearly with reach, so maintaining constant
-CV requires eff_n proportional to sqrt(reach).
+All sampling probabilities are computed from the Hoeffding/EW model:
+    k = log(2r / delta) / (2 * epsilon^2),  p = min(1, k / r)
 
 Requires:
     - .cache/sampling_analysis_{CACHE_VERSION}.pkl (from 00_generate_cache.py)
 
 Outputs:
-    - output/model_fit.json: Fitted k value with metadata
-    - output/floor_fit.json: Fitted min_eff_n value with metadata
-    - output/sampling_model.json: Final combined model parameters
-    - paper/figures/fig1_headline.pdf: Problem illustration
-    - paper/figures/fig2_model_derivation.pdf: eff_n vs rho relationship
-    - paper/figures/fig3_floor_justification.pdf: Floor justification
-    - paper/figures/fig4_combined_model.pdf: Final model visualization
-    - paper/tables/tab1_parameters.tex: LaTeX parameter table
+    - paper/figures/fig1_headline.pdf: Problem illustration (main body)
+    - paper/figures/fig3_error_crossover.pdf: Precision scales with importance (main body)
 """
 
-import json
-import math
 import pickle
-from datetime import datetime
 
 import matplotlib
 
@@ -38,7 +26,15 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from utilities import CACHE_DIR, CACHE_VERSION, FIGURES_DIR, OUTPUT_DIR, TABLES_DIR
+from utilities import (
+    CACHE_DIR,
+    CACHE_VERSION,
+    FIGURES_DIR,
+    HOEFFDING_DELTA,
+    HOEFFDING_EPSILON,
+    compute_hoeffding_p,
+    ew_predicted_epsilon,
+)
 
 # =============================================================================
 # CONFIGURATION
@@ -89,190 +85,12 @@ def load_synthetic_data() -> pd.DataFrame:
 
 
 # =============================================================================
-# MODEL FUNCTIONS
-# =============================================================================
-
-
-def compute_eff_n(reach: float, k: float, min_eff_n: float) -> float:
-    """Compute effective sample size from the model."""
-    return max(k * math.sqrt(reach), min_eff_n)
-
-
-def compute_p(reach: float, k: float, min_eff_n: float) -> float:
-    """Compute sampling probability from the model."""
-    eff_n = compute_eff_n(reach, k, min_eff_n)
-    return min(1.0, eff_n / reach)
-
-
-def crossover_reach(k: float, min_eff_n: float) -> float:
-    """Find the reach where k × sqrt(reach) = min_eff_n."""
-    return (min_eff_n / k) ** 2
-
-
-# =============================================================================
-# STAGE 1: FIT PROPORTIONAL CONSTANT k
-# =============================================================================
-
-
-def fit_proportional_k(df: pd.DataFrame, target_rho: float = 0.95) -> dict:
-    """
-    Fit the proportional constant k from synthetic data.
-
-    For each (topology, distance) combination, find the minimum p where the
-    aggregate Spearman rho achieves >= target_rho. Aggregate rho is used because
-    within-quartile rho suffers from range restriction attenuation (Thorndike 1949):
-    restricted variance within quartiles deflates correlation even when absolute
-    errors are small.
-
-    Then compute k = p × sqrt(reach) and take the 75th percentile across all combinations.
-    """
-    df_b = df[df["metric"] == "betweenness"].copy()
-
-    results = []
-
-    for topology in df_b["topology"].unique():
-        for distance in sorted(df_b["distance"].unique()):
-            subset = df_b[(df_b["topology"] == topology) & (df_b["distance"] == distance)]
-            if len(subset) == 0:
-                continue
-
-            reach = subset["mean_reach"].iloc[0]
-            subset_sorted = subset.sort_values("sample_prob")
-
-            achieving = subset_sorted[subset_sorted["spearman"] >= target_rho]
-            if len(achieving) == 0:
-                min_p = 1.0
-                achieved_rho = subset_sorted["spearman"].max()
-            else:
-                min_p = achieving["sample_prob"].iloc[0]
-                achieved_rho = achieving["spearman"].iloc[0]
-
-            k_implied = min_p * math.sqrt(reach)
-            eff_n_at_target = reach * min_p
-
-            results.append(
-                {
-                    "topology": topology,
-                    "distance": distance,
-                    "reach": reach,
-                    "min_p_for_target": min_p,
-                    "achieved_rho": achieved_rho,
-                    "k_implied": k_implied,
-                    "eff_n_at_target": eff_n_at_target,
-                }
-            )
-
-    results_df = pd.DataFrame(results)
-
-    k_max = results_df["k_implied"].max()
-    k_mean = results_df["k_implied"].mean()
-    k_p75 = results_df["k_implied"].quantile(0.75)
-    k_p95 = results_df["k_implied"].quantile(0.95)
-    k_selected = k_p75
-
-    print("\nStage 1: Proportional k fitting (aggregate Spearman target)")
-    print(f"  Target: aggregate rho >= {target_rho}")
-    print(f"  k values: mean={k_mean:.2f}, 75th={k_p75:.2f}, 95th={k_p95:.2f}, max={k_max:.2f}")
-    print(f"  Selected k (75th percentile): {k_selected:.2f}")
-
-    return {
-        "k": round(k_selected, 2),
-        "k_max": round(k_max, 2),
-        "target_rho": target_rho,
-        "k_mean": round(k_mean, 2),
-        "k_p75": round(k_p75, 2),
-        "k_p95": round(k_p95, 2),
-        "n_configs": len(results_df),
-        "fitting_details": results_df.to_dict(orient="records"),
-    }
-
-
-# =============================================================================
-# STAGE 2: FIT MINIMUM FLOOR
-# =============================================================================
-
-
-def fit_min_eff_n(df: pd.DataFrame, target_success_rate: float = 0.95) -> dict:
-    """
-    Fit the minimum effective sample size floor.
-
-    Uses bin-based analysis to find the minimum eff_n where the local success
-    rate (within that bin) achieves the target. Success is defined as aggregate
-    Spearman rho >= 0.95.
-    """
-    df_b = df[df["metric"] == "betweenness"].copy()
-
-    bins = [
-        (0, 50),
-        (50, 100),
-        (100, 150),
-        (150, 200),
-        (200, 250),
-        (250, 300),
-        (300, 350),
-        (350, 400),
-        (400, 500),
-        (500, 750),
-        (750, 1000),
-    ]
-    bin_results = []
-
-    for low, high in bins:
-        subset = df_b[(df_b["effective_n"] > low) & (df_b["effective_n"] <= high)]
-        if len(subset) == 0:
-            continue
-
-        n_success = (subset["spearman"] >= 0.95).sum()
-        n_total = len(subset)
-        success_rate = n_success / n_total
-
-        bin_results.append(
-            {
-                "bin": f"{low}-{high}",
-                "low": low,
-                "high": high,
-                "n_total": n_total,
-                "n_success": n_success,
-                "success_rate": success_rate,
-            }
-        )
-
-    bin_results_df = pd.DataFrame(bin_results)
-
-    achieving_bins = bin_results_df[bin_results_df["success_rate"] >= target_success_rate]
-    if len(achieving_bins) > 0:
-        min_eff_n = int(achieving_bins.iloc[0]["low"])
-        achieved_rate = achieving_bins.iloc[0]["success_rate"]
-        achieving_bin = achieving_bins.iloc[0]["bin"]
-    else:
-        min_eff_n = int(bin_results_df.iloc[-1]["high"])
-        achieved_rate = bin_results_df.iloc[-1]["success_rate"]
-        achieving_bin = bin_results_df.iloc[-1]["bin"]
-
-    print("\nStage 2: Floor fitting")
-    print(f"  Target success rate: {target_success_rate:.0%}")
-    print(f"  First achieving bin: {achieving_bin} (rate: {achieved_rate:.1%})")
-    print(f"  Fitted min_eff_n: {min_eff_n}")
-    print("\n  Success rate by eff_n bin:")
-    for _, row in bin_results_df.iterrows():
-        print(f"    {row['bin']:>10}: {row['success_rate']:.1%} (n={row['n_total']})")
-
-    return {
-        "min_eff_n": min_eff_n,
-        "target_success_rate": target_success_rate,
-        "achieved_success_rate": round(float(achieved_rate), 4),
-        "achieving_bin": achieving_bin,
-        "bin_analysis": bin_results_df.to_dict(orient="records"),
-    }
-
-
-# =============================================================================
 # NODE-LEVEL ACCURACY ASSESSMENT
 # =============================================================================
 
 
-def evaluate_node_level_accuracy(df: pd.DataFrame, k: float, min_eff_n: int) -> pd.DataFrame:
-    """Evaluate per-node accuracy at the combined model's recommended p.
+def evaluate_node_level_accuracy(df: pd.DataFrame) -> pd.DataFrame:
+    """Evaluate per-node accuracy at the Hoeffding model's recommended p.
 
     Pools all nodes across all (topology, distance) configs at the model-
     recommended sampling probability, then bins by absolute per-node reach.
@@ -292,7 +110,7 @@ def evaluate_node_level_accuracy(df: pd.DataFrame, k: float, min_eff_n: int) -> 
                     continue
 
                 reach = subset["mean_reach"].iloc[0]
-                model_p = compute_p(reach, k, min_eff_n)
+                model_p = compute_hoeffding_p(reach)
                 if model_p >= 1.0:
                     continue
 
@@ -336,30 +154,29 @@ def evaluate_node_level_accuracy(df: pd.DataFrame, k: float, min_eff_n: int) -> 
             q75_error = float(np.percentile(errors, 75))
 
             # Normalised error per node, then take median
-            if metric == "harmonic":
-                norm_errors = errors / reaches
-            else:
-                norm_errors = errors / (reaches * (reaches - 1))
+            norm_errors = errors / reaches if metric == "harmonic" else errors / (reaches * (reaches - 1))
 
             valid_norm = norm_errors[np.isfinite(norm_errors)]
             med_nrmse = float(np.median(valid_norm)) if len(valid_norm) > 0 else np.nan
             q25_nrmse = float(np.percentile(valid_norm, 25)) if len(valid_norm) > 0 else np.nan
             q75_nrmse = float(np.percentile(valid_norm, 75)) if len(valid_norm) > 0 else np.nan
 
-            rows.append({
-                "metric": metric,
-                "reach_lo": lo,
-                "reach_hi": hi,
-                "reach_center": np.sqrt(lo * hi),  # geometric mean
-                "median_reach": float(np.median(reaches)),
-                "median_mae": med_error,
-                "mae_q25": q25_error,
-                "mae_q75": q75_error,
-                "median_nrmse": med_nrmse,
-                "nrmse_q25": q25_nrmse,
-                "nrmse_q75": q75_nrmse,
-                "n_nodes": int(n),
-            })
+            rows.append(
+                {
+                    "metric": metric,
+                    "reach_lo": lo,
+                    "reach_hi": hi,
+                    "reach_center": np.sqrt(lo * hi),  # geometric mean
+                    "median_reach": float(np.median(reaches)),
+                    "median_mae": med_error,
+                    "mae_q25": q25_error,
+                    "mae_q75": q75_error,
+                    "median_nrmse": med_nrmse,
+                    "nrmse_q25": q25_nrmse,
+                    "nrmse_q75": q75_nrmse,
+                    "n_nodes": int(n),
+                }
+            )
 
     return pd.DataFrame(rows)
 
@@ -378,18 +195,12 @@ def print_reach_bin_summary(node_acc: pd.DataFrame):
             continue
 
         print(f"\n  {metric.upper()}")
-        print(
-            f"  {'Reach bin':<16} {'N nodes':>10} {'Med MAE':>12} "
-            f"{'Med NRMSE':>12}"
-        )
+        print(f"  {'Reach bin':<16} {'N nodes':>10} {'Med MAE':>12} {'Med NRMSE':>12}")
         print("  " + "-" * 52)
 
         for _, row in subset.iterrows():
             label = f"{int(row['reach_lo'])}-{int(row['reach_hi'])}"
-            print(
-                f"  {label:<16} {row['n_nodes']:>10,} {row['median_mae']:>12.2f} "
-                f"{row['median_nrmse']:>12.6f}"
-            )
+            print(f"  {label:<16} {row['n_nodes']:>10,} {row['median_mae']:>12.2f} {row['median_nrmse']:>12.6f}")
 
     print("\n  Crossover: absolute MAE increases with reach (larger errors")
     print("  at high-reach nodes), but normalised error decreases")
@@ -489,299 +300,8 @@ def generate_fig1_headline(df: pd.DataFrame):
     plt.close()
 
 
-def generate_fig2_model_derivation(df: pd.DataFrame, k: float):
-    """Figure 2: Model derivation - eff_n predicts rho."""
-    print("\nGenerating Figure 2: Model derivation...")
-
-    df_b = df[df["metric"] == "betweenness"].copy()
-
-    fig, axes = plt.subplots(1, 2, figsize=(12, 5))
-
-    # Panel A: All data points - eff_n vs aggregate rho
-    ax = axes[0]
-
-    topologies = df_b["topology"].unique()
-    colors = {"trellis": "#1f77b4", "tree": "#ff7f0e", "linear": "#2ca02c"}
-
-    for topology in topologies:
-        subset = df_b[df_b["topology"] == topology]
-        ax.scatter(
-            subset["effective_n"],
-            subset["spearman"],
-            alpha=0.4,
-            s=20,
-            color=colors.get(topology, "gray"),
-            marker="o",
-            label=topology,
-        )
-
-    ax.axhline(0.95, color="green", linestyle="--", linewidth=1.5, alpha=0.7)
-    ax.text(4500, 0.955, "target: rho=0.95", fontsize=9, color="green", ha="right", va="bottom")
-
-    ax.set_xscale("log")
-    ax.set_xlabel("Effective Sample Size (eff_n = reach × p)")
-    ax.set_ylabel("Spearman rho")
-    ax.set_title("A) Accuracy Collapses to eff_n")
-    ax.set_xlim(1, 5000)
-    ax.set_ylim(0, 1.02)
-    ax.legend(loc="lower right", fontsize=9)
-    ax.grid(True, alpha=0.3, which="both")
-
-    # Panel B: Required eff_n for rho >= 0.95 vs reach
-    ax = axes[1]
-
-    points = []
-    for topology in topologies:
-        for distance in sorted(df_b["distance"].unique()):
-            subset = df_b[(df_b["topology"] == topology) & (df_b["distance"] == distance)]
-            if len(subset) == 0:
-                continue
-
-            reach = subset["mean_reach"].iloc[0]
-            achieving = subset[subset["spearman"] >= 0.95].sort_values("effective_n")
-
-            if len(achieving) > 0:
-                min_eff_n = achieving["effective_n"].iloc[0]
-                points.append(
-                    {
-                        "topology": topology,
-                        "reach": reach,
-                        "min_eff_n": min_eff_n,
-                    }
-                )
-
-    points_df = pd.DataFrame(points)
-
-    for topology in topologies:
-        subset = points_df[points_df["topology"] == topology]
-        ax.scatter(
-            subset["reach"], subset["min_eff_n"], s=40, color=colors.get(topology, "gray"), label=topology, alpha=0.7
-        )
-
-    reach_range = np.logspace(1, 4, 100)
-    model_eff_n = k * np.sqrt(reach_range)
-    ax.plot(reach_range, model_eff_n, "k-", linewidth=2, label=f"Model: eff_n = {k:.1f} × sqrt(reach)")
-
-    ax.set_xscale("log")
-    ax.set_yscale("log")
-    ax.set_xlabel("Network Reach (nodes within distance)")
-    ax.set_ylabel("Required eff_n for rho >= 0.95")
-    ax.set_title("B) Proportional Scaling Emerges")
-    ax.set_xlim(10, 5000)
-    ax.set_ylim(10, 2000)
-    ax.legend(loc="lower right", fontsize=9)
-    ax.grid(True, alpha=0.3, which="both")
-
-    fig.suptitle("Deriving the Sampling Model", fontsize=13, fontweight="bold", y=1.02)
-    plt.tight_layout()
-
-    output_path = FIGURES_DIR / "fig2_model_derivation.pdf"
-    fig.savefig(output_path, dpi=300, bbox_inches="tight")
-    print(f"  Saved: {output_path}")
-    plt.close()
-
-
-def generate_fig3_floor_justification(df: pd.DataFrame, k: float, min_eff_n: int, bin_analysis: list):
-    """Figure 3: Why the floor is needed."""
-    print("\nGenerating Figure 3: Floor justification...")
-
-    fig, axes = plt.subplots(1, 2, figsize=(12, 5))
-
-    # Panel A: Success rate by eff_n bin
-    ax = axes[0]
-
-    bin_df = pd.DataFrame(bin_analysis)
-    x = range(len(bin_df))
-    colors_bar = ["#d62728" if rate < 0.95 else "#2ca02c" for rate in bin_df["success_rate"]]
-
-    ax.bar(x, bin_df["success_rate"] * 100, color=colors_bar, alpha=0.7, edgecolor="black", linewidth=0.5)
-    ax.axhline(95, color="green", linestyle="--", linewidth=1.5, label="95% target")
-    ax.axhline(90, color="orange", linestyle=":", linewidth=1.5, label="90% threshold")
-
-    floor_idx = None
-    for i, row in bin_df.iterrows():
-        low = int(row["bin"].split("-")[0])
-        if low >= min_eff_n:
-            floor_idx = i
-            break
-
-    if floor_idx is not None:
-        ax.axvline(floor_idx - 0.5, color="red", linestyle="-", linewidth=2, alpha=0.7)
-        ax.annotate(
-            f"min_eff_n={min_eff_n}", xy=(floor_idx - 0.3, 50), fontsize=10, color="red", rotation=90, va="bottom"
-        )
-
-    ax.set_xticks(x)
-    ax.set_xticklabels(bin_df["bin"], rotation=45, ha="right")
-    ax.set_xlabel("Effective Sample Size (eff_n) Range")
-    ax.set_ylabel("Success Rate (% achieving rho >= 0.95)")
-    ax.set_title("A) Reliability Requires Sufficient eff_n")
-    ax.set_ylim(0, 105)
-    ax.legend(loc="lower right", fontsize=9)
-    ax.grid(True, alpha=0.3, axis="y")
-
-    # Panel B: Analytical view - proportional model's eff_n vs the floor
-    ax = axes[1]
-
-    crossover = crossover_reach(k, min_eff_n)
-    reach_range = np.logspace(np.log10(50), np.log10(5000), 200)
-    prop_eff_n = k * np.sqrt(reach_range)
-
-    # Proportional model curve
-    ax.plot(reach_range, prop_eff_n, color="#0072B2", linewidth=2.5, label="Proportional: $k\\sqrt{r}$")
-
-    # Floor line
-    ax.axhline(min_eff_n, color="#d62728", linestyle="--", linewidth=2, label=f"Floor: $n_{{\\min}}$ = {min_eff_n}")
-
-    # Shade the deficit region where proportional < floor
-    ax.fill_between(
-        reach_range,
-        prop_eff_n,
-        min_eff_n,
-        where=prop_eff_n < min_eff_n,
-        alpha=0.2,
-        color="#d62728",
-        label="Insufficient $n_{\\mathrm{eff}}$",
-    )
-
-    # Crossover point
-    ax.plot(crossover, min_eff_n, "ko", markersize=8, zorder=5)
-    ax.annotate(
-        f"crossover\nreach $\\approx$ {crossover:.0f}",
-        xy=(crossover, min_eff_n),
-        xytext=(crossover * 2.5, min_eff_n * 0.6),
-        fontsize=9,
-        arrowprops=dict(arrowstyle="->", color="black", lw=1.2),
-        ha="center",
-    )
-
-    ax.set_xscale("log")
-    ax.set_xlabel("Network Reach")
-    ax.set_ylabel("Effective Sample Size ($n_{\\mathrm{eff}}$)")
-    ax.set_title("B) Proportional Model Deficit at Intermediate Reach")
-    ax.set_ylim(0, min_eff_n * 2.5)
-    ax.set_xlim(50, 5000)
-    ax.legend(loc="upper left", fontsize=9)
-    ax.grid(True, alpha=0.3, which="both")
-
-    fig.suptitle("Empirical Justification for min_eff_n Floor", fontsize=13, fontweight="bold", y=1.02)
-    plt.tight_layout()
-
-    output_path = FIGURES_DIR / "fig3_floor_justification.pdf"
-    fig.savefig(output_path, dpi=300, bbox_inches="tight")
-    print(f"  Saved: {output_path}")
-    plt.close()
-
-
-def generate_fig4_combined_model(k: float, min_eff_n: int):
-    """Figure 4: The complete sampling model."""
-    print("\nGenerating Figure 4: Combined model...")
-
-    fig, axes = plt.subplots(1, 2, figsize=(12, 5))
-
-    reach_range = np.logspace(1, 5.5, 200)
-    crossover = crossover_reach(k, min_eff_n)
-
-    # Panel A: Required p vs reach
-    ax = axes[0]
-
-    p_values = [compute_p(r, k, min_eff_n) * 100 for r in reach_range]
-
-    ax.plot(reach_range, p_values, color="#0072B2", linewidth=2.5, label=f"Model: p = max({k}/sqrt(r), {min_eff_n}/r)")
-
-    p_proportional = [min(100, k / math.sqrt(r) * 100) for r in reach_range]
-    p_floor = [min(100, min_eff_n / r * 100) for r in reach_range]
-
-    ax.plot(
-        reach_range,
-        p_proportional,
-        color="gray",
-        linewidth=1,
-        linestyle=":",
-        alpha=0.7,
-        label=f"Proportional: {k}/sqrt(r)",
-    )
-    ax.plot(reach_range, p_floor, color="gray", linewidth=1, linestyle="--", alpha=0.7, label=f"Floor: {min_eff_n}/r")
-
-    ax.axvline(crossover, color="red", linestyle="-", linewidth=1.5, alpha=0.5)
-    ax.annotate(
-        f"crossover\nreach={crossover:.0f}",
-        xy=(crossover, compute_p(crossover, k, min_eff_n) * 100 + 5),
-        fontsize=9,
-        color="red",
-        ha="center",
-    )
-
-    ax.fill_between(
-        reach_range, 0, 100, where=[r < crossover for r in reach_range], alpha=0.1, color="red", label="Floor-dominated"
-    )
-    ax.fill_between(
-        reach_range,
-        0,
-        100,
-        where=[r >= crossover for r in reach_range],
-        alpha=0.1,
-        color="blue",
-        label="Proportional-dominated",
-    )
-
-    ax.set_xscale("log")
-    ax.set_xlabel("Network Reach (nodes within distance)")
-    ax.set_ylabel("Required Sampling Probability (%)")
-    ax.set_title("A) Required Sampling Probability vs Reach")
-    ax.set_xlim(50, 300000)
-    ax.set_ylim(0, 100)
-    ax.legend(loc="upper right", fontsize=8)
-    ax.grid(True, alpha=0.3)
-
-    # Panel B: Effective sample size vs reach
-    ax = axes[1]
-
-    eff_n_values = [compute_eff_n(r, k, min_eff_n) for r in reach_range]
-
-    ax.plot(
-        reach_range, eff_n_values, color="#0072B2", linewidth=2.5, label=f"Model: eff_n = max({k}×sqrt(r), {min_eff_n})"
-    )
-
-    eff_n_proportional = [k * math.sqrt(r) for r in reach_range]
-    eff_n_floor = [min_eff_n for _ in reach_range]
-
-    ax.plot(
-        reach_range,
-        eff_n_proportional,
-        color="gray",
-        linewidth=1,
-        linestyle=":",
-        alpha=0.7,
-        label=f"Proportional: {k}×sqrt(r)",
-    )
-    ax.plot(reach_range, eff_n_floor, color="gray", linewidth=1, linestyle="--", alpha=0.7, label=f"Floor: {min_eff_n}")
-
-    ax.axvline(crossover, color="red", linestyle="-", linewidth=1.5, alpha=0.5)
-
-    ax.set_xscale("log")
-    ax.set_yscale("log")
-    ax.set_xlabel("Network Reach")
-    ax.set_ylabel("Effective Sample Size (eff_n)")
-    ax.set_title("B) Effective Sample Size vs Reach")
-    ax.set_xlim(50, 300000)
-    ax.set_ylim(50, 10000)
-    ax.legend(loc="lower right", fontsize=8)
-    ax.grid(True, alpha=0.3, which="both")
-
-    fig.suptitle(
-        f"The Sampling Model: eff_n = max({k} × sqrt(reach), {min_eff_n})", fontsize=13, fontweight="bold", y=1.02
-    )
-    plt.tight_layout()
-
-    output_path = FIGURES_DIR / "fig4_combined_model.pdf"
-    fig.savefig(output_path, dpi=300, bbox_inches="tight")
-    print(f"  Saved: {output_path}")
-    plt.close()
-
-
-def evaluate_topk_at_model_p(df: pd.DataFrame, k: float, min_eff_n: int) -> pd.DataFrame:
-    """Extract top-k precision (top 10% overlap) at the model's recommended p.
+def evaluate_topk_at_model_p(df: pd.DataFrame) -> pd.DataFrame:
+    """Extract top-k precision (top 10% overlap) at the Hoeffding model's recommended p.
 
     Returns one row per (topology, distance, metric) configuration with the
     aggregate top_k_precision alongside Spearman rho and reach.
@@ -798,7 +318,7 @@ def evaluate_topk_at_model_p(df: pd.DataFrame, k: float, min_eff_n: int) -> pd.D
                     continue
 
                 reach = subset["mean_reach"].iloc[0]
-                model_p = compute_p(reach, k, min_eff_n)
+                model_p = compute_hoeffding_p(reach)
 
                 if model_p >= 1.0:
                     continue
@@ -852,8 +372,8 @@ def print_topk_summary(tk: pd.DataFrame):
         print(f"\n  Median Spearman: {med_rho:.3f}  |  Median top-10%: {med_topk:.3f}  |  Min top-10%: {min_topk:.3f}")
 
 
-def generate_fig5_error_crossover(node_acc: pd.DataFrame, k: float, min_eff_n: int):
-    """Figure 5: Error crossover — absolute error grows with reach, normalised error shrinks.
+def generate_fig3_error_crossover(node_acc: pd.DataFrame):
+    """Figure 3: Error crossover — absolute error grows with reach, normalised error shrinks.
 
     1×2 layout with continuous log-scale reach axis.  Nodes are pooled across
     all (topology, distance) configs and binned by absolute per-node reach.
@@ -861,19 +381,19 @@ def generate_fig5_error_crossover(node_acc: pd.DataFrame, k: float, min_eff_n: i
     Right: normalised MAE trending down with reach, with localised EW bound overlay.
     Both metrics shown (betweenness red squares, harmonic blue circles).
     """
-    print("\nGenerating Figure 5: Error crossover...")
+    print("\nGenerating Figure 3: Error crossover...")
 
     colour_bet = "#B2182B"
     colour_har = "#2166AC"
 
     fig, axes = plt.subplots(1, 2, figsize=(11, 5))
 
-    for col_idx, (med_col, lo_col, hi_col, ylabel, title) in enumerate([
-        ("median_mae", "mae_q25", "mae_q75",
-         "Median Absolute Error", "A) Absolute Error"),
-        ("median_nrmse", "nrmse_q25", "nrmse_q75",
-         "Median Normalised Error", "B) Normalised Error"),
-    ]):
+    for col_idx, (med_col, lo_col, hi_col, ylabel, title) in enumerate(
+        [
+            ("median_mae", "mae_q25", "mae_q75", "Median Absolute Error", "A) Absolute Error"),
+            ("median_nrmse", "nrmse_q25", "nrmse_q75", "Median Normalised Error", "B) Normalised Error"),
+        ]
+    ):
         ax = axes[col_idx]
 
         for metric, colour, marker, label in [
@@ -894,7 +414,8 @@ def generate_fig5_error_crossover(node_acc: pd.DataFrame, k: float, min_eff_n: i
             hi_err = np.maximum(hi_err, 0)
 
             ax.errorbar(
-                x, y,
+                x,
+                y,
                 yerr=[lo_err, hi_err],
                 fmt=marker,
                 color=colour,
@@ -909,14 +430,15 @@ def generate_fig5_error_crossover(node_acc: pd.DataFrame, k: float, min_eff_n: i
 
         # Overlay localised EW bound on normalised error panel
         if col_idx == 1:
-            delta = 0.1
             r_line = np.logspace(1, 4.2, 200)
-            eff_n_line = np.maximum(k * np.sqrt(r_line), min_eff_n)
-            eps_line = np.sqrt(np.log(2 * r_line / delta) / (2 * eff_n_line))
+            eps_line = np.array([ew_predicted_epsilon(compute_hoeffding_p(r) * r, r) for r in r_line])
             ax.plot(
-                r_line, eps_line,
-                color="grey", linewidth=2, linestyle="--",
-                label=r"Localised EW bound ($\delta=0.1$)",
+                r_line,
+                eps_line,
+                color="grey",
+                linewidth=2,
+                linestyle="--",
+                label="Hoeffding bound",
                 zorder=1,
             )
 
@@ -925,194 +447,18 @@ def generate_fig5_error_crossover(node_acc: pd.DataFrame, k: float, min_eff_n: i
         ax.set_xlabel("Per-Node Reach")
         ax.set_ylabel(ylabel)
         ax.set_title(title, fontweight="bold")
-        ax.legend(loc="best", fontsize=9)
+        if col_idx == 0:
+            ax.legend(loc="lower right", fontsize=9)
+        else:
+            ax.legend(loc="center right", fontsize=8)
         ax.grid(True, alpha=0.3, which="both")
 
     plt.tight_layout()
 
-    output_path = FIGURES_DIR / "fig5_error_crossover.pdf"
+    output_path = FIGURES_DIR / "fig3_error_crossover.pdf"
     fig.savefig(output_path, dpi=300, bbox_inches="tight")
     print(f"  Saved: {output_path}")
     plt.close()
-
-
-def generate_parameters_table(k: float, min_eff_n: int):
-    """Generate LaTeX table of model parameters with CIs if available."""
-    print("\nGenerating Table 1: Parameters...")
-
-    crossover = crossover_reach(k, min_eff_n)
-
-    # Try to load CI data from 07_validate_power_exponent.py output
-    ci_path = OUTPUT_DIR / "power_exponent_analysis.json"
-    k_ci_str = "--"
-    floor_ci_str = "--"
-    alpha_str = "0.5"
-    alpha_ci_str = "--"
-    alpha_p_str = "--"
-
-    if ci_path.exists():
-        with open(ci_path) as f:
-            ci_data = json.load(f)
-
-        pe = ci_data.get("power_exponent", {})
-        fl = ci_data.get("floor_logistic", {})
-
-        if pe.get("boot_ci_lower") is not None:
-            alpha_str = f"{pe.get('alpha_hat', 0.5)}"
-            alpha_ci_str = f"[{pe['boot_ci_lower']}, {pe['boot_ci_upper']}]"
-            alpha_p_str = f"{pe.get('p_value_vs_half', 0.38):.2f}"
-
-        if fl.get("recommended_floor_ci_lower") is not None:
-            floor_ci_str = f"[{fl['recommended_floor_ci_lower']}, {fl['recommended_floor_ci_upper']}]"
-
-    # k CI from fitting stats
-    model_fit_path = OUTPUT_DIR / "model_fit.json"
-    if model_fit_path.exists():
-        with open(model_fit_path) as mf:
-            mf_data = json.load(mf)
-        k_mean = mf_data["fitting_stats"]["k_mean"]
-        k_p95 = mf_data["fitting_stats"]["k_p95"]
-        k_ci_str = f"[{k_mean}, {k_p95}]"
-
-    latex = (
-        r"""\begin{table}[htbp]
-\centering
-\caption{Fitted sampling model parameters.}
-\label{tab:parameters}
-\begin{tabular}{lrll}
-\toprule
-\textbf{Parameter} & \textbf{Value} & \textbf{Range} & \textbf{Description} \\
-\midrule
-$k$ & """
-        + f"{k:.2f}"
-        + r""" & """
-        + k_ci_str
-        + r""" & Proportional scaling constant \\
-$n_{\min}$ & """
-        + f"{min_eff_n}"
-        + r""" & """
-        + floor_ci_str
-        + r""" & Minimum effective sample size \\
-Crossover reach & """
-        + f"{crossover:.0f}"
-        + r""" & -- & Where $k\sqrt{r} = n_{\min}$ \\
-\midrule
-$\hat{\alpha}$ & """
-        + alpha_str
-        + r""" & """
-        + alpha_ci_str
-        + r""" & Estimated power exponent \\
-\bottomrule
-\end{tabular}
-
-\vspace{0.5em}
-\footnotesize
-\textbf{Model:} $n_{\mathrm{eff}} = \max(k \cdot \sqrt{r},\; n_{\min})$, where $r$ is the network reach.
-Sampling probability: $p = \min(1,\; n_{\mathrm{eff}} / r)$.\\
-$k$: 75th percentile of implied values across configurations; range shows [mean, 95th percentile].\\
-$n_{\min}$: logistic regression inversion at 95\% success rate; range shows 95\% CI.\\
-$\hat{\alpha}$: estimated from general power model $n_{\mathrm{eff}} = k \cdot r^{\alpha}$; \\
-not significantly different from 0.5 ($p = """
-        + alpha_p_str
-        + r"""$), supporting the fixed $\sqrt{r}$ specification.
-\end{table}
-"""
-    )
-
-    output_path = TABLES_DIR / "tab1_parameters.tex"
-    with open(output_path, "w") as f:
-        f.write(latex)
-    print(f"  Saved: {output_path}")
-
-
-# =============================================================================
-# JSON OUTPUT
-# =============================================================================
-
-
-def save_model_fit_json(model_fit: dict):
-    """Save model_fit.json for backward compatibility."""
-    output = {
-        "generated": datetime.now().isoformat(timespec="seconds"),
-        "script": "01_fit_rank_model.py",
-        "description": "Proportional sampling constant k fitted from synthetic data",
-        "model": {
-            "formula": "eff_n = k × sqrt(reach)",
-            "k": model_fit["k"],
-            "k_max": model_fit["k_max"],
-            "target_rho": model_fit["target_rho"],
-        },
-        "fitting_stats": {
-            "k_mean": model_fit["k_mean"],
-            "k_p75": model_fit["k_p75"],
-            "k_p95": model_fit["k_p95"],
-            "n_configs": model_fit["n_configs"],
-        },
-    }
-
-    output_path = OUTPUT_DIR / "model_fit.json"
-    with open(output_path, "w") as f:
-        json.dump(output, f, indent=2)
-    print(f"\n  Saved: {output_path}")
-
-
-def save_floor_fit_json(floor_fit: dict):
-    """Save floor_fit.json for backward compatibility."""
-    output = {
-        "generated": datetime.now().isoformat(timespec="seconds"),
-        "script": "01_fit_rank_model.py",
-        "description": "Minimum effective sample size floor fitted from synthetic data",
-        "model": {
-            "min_eff_n": int(floor_fit["min_eff_n"]),
-            "target_success_rate": float(floor_fit["target_success_rate"]),
-            "achieved_success_rate": float(floor_fit["achieved_success_rate"]),
-        },
-        "bin_analysis": [
-            {
-                k_: (
-                    float(v)
-                    if isinstance(v, (np.floating, float))
-                    else int(v)
-                    if isinstance(v, (np.integer, int))
-                    else v
-                )
-                for k_, v in item.items()
-            }
-            for item in floor_fit["bin_analysis"]
-        ],
-    }
-
-    output_path = OUTPUT_DIR / "floor_fit.json"
-    with open(output_path, "w") as f:
-        json.dump(output, f, indent=2)
-    print(f"  Saved: {output_path}")
-
-
-def save_combined_model_json(k: float, min_eff_n: int):
-    """Save sampling_model.json (the primary output used by downstream scripts)."""
-    crossover = crossover_reach(k, min_eff_n)
-
-    output = {
-        "generated": datetime.now().isoformat(timespec="seconds"),
-        "script": "01_fit_rank_model.py",
-        "description": "Complete sampling model combining k and min_eff_n",
-        "model": {
-            "formula_eff_n": "eff_n = max(k × sqrt(reach), min_eff_n)",
-            "formula_p": "p = min(1.0, eff_n / reach)",
-            "k": k,
-            "min_eff_n": min_eff_n,
-            "crossover_reach": round(crossover, 0),
-        },
-        "interpretation": {
-            "proportional_regime": f"When reach > {crossover:.0f}, eff_n scales as {k} × sqrt(reach)",
-            "floor_regime": f"When reach < {crossover:.0f}, eff_n is fixed at {min_eff_n}",
-        },
-    }
-
-    output_path = OUTPUT_DIR / "sampling_model.json"
-    with open(output_path, "w") as f:
-        json.dump(output, f, indent=2)
-    print(f"  Saved: {output_path}")
 
 
 # =============================================================================
@@ -1121,83 +467,51 @@ def save_combined_model_json(k: float, min_eff_n: int):
 
 
 def main():
+    import math
+
     print("=" * 70)
-    print("01_fit_rank_model.py - Fitting the Rank-Based Sampling Model")
+    print("01_fit_rank_model.py - Synthetic Data Analysis & Figure Generation")
     print("=" * 70)
 
-    # Load data once
+    print("\nModel: k = log(2r/δ) / (2ε²), p = min(1, k/r)")
+    print(f"  ε = {HOEFFDING_EPSILON}, δ = {HOEFFDING_DELTA}")
+
+    # Load data
     df = load_synthetic_data()
 
-    # Stage 1: Fit proportional constant k
+    # Node-level accuracy assessment
     print("\n" + "-" * 50)
-    model_fit = fit_proportional_k(df, target_rho=0.95)
-    k = model_fit["k"]
-
-    # Stage 2: Fit floor
-    print("\n" + "-" * 50)
-    floor_fit = fit_min_eff_n(df, target_success_rate=0.95)
-    min_eff_n = floor_fit["min_eff_n"]
-
-    # Stage 3: Combined model
-    crossover = crossover_reach(k, min_eff_n)
-    print("\n" + "-" * 50)
-    print("Stage 3: Combined model")
-    print(f"  eff_n = max({k} × sqrt(reach), {min_eff_n})")
-    print(f"  Crossover reach: {crossover:.0f}")
-    print(f"  Below {crossover:.0f}: floor dominates (eff_n = {min_eff_n})")
-    print(f"  Above {crossover:.0f}: proportional dominates (eff_n = {k} × sqrt(reach))")
-
-    # Save all JSON outputs
-    print("\n" + "-" * 50)
-    print("Saving JSON outputs...")
-    save_model_fit_json(model_fit)
-    save_floor_fit_json(floor_fit)
-    save_combined_model_json(k, min_eff_n)
-
-    # Stage 4: Node-level accuracy assessment
-    print("\n" + "-" * 50)
-    node_acc = evaluate_node_level_accuracy(df, k, min_eff_n)
+    node_acc = evaluate_node_level_accuracy(df)
     print_reach_bin_summary(node_acc)
 
-    # Stage 5: Top-k precision assessment
-    tk = evaluate_topk_at_model_p(df, k, min_eff_n)
+    # Top-k precision assessment
+    tk = evaluate_topk_at_model_p(df)
     print_topk_summary(tk)
 
-    # Generate all figures
+    # Generate figures
     print("\n" + "-" * 50)
     print("Generating figures...")
     generate_fig1_headline(df)
-    generate_fig2_model_derivation(df, k)
-    generate_fig3_floor_justification(df, k, min_eff_n, floor_fit["bin_analysis"])
-    generate_fig4_combined_model(k, min_eff_n)
-    generate_fig5_error_crossover(node_acc, k, min_eff_n)
-    generate_parameters_table(k, min_eff_n)
+    generate_fig3_error_crossover(node_acc)
 
     # Example calculations
     print("\n" + "=" * 70)
-    print("EXAMPLE CALCULATIONS")
+    print("HOEFFDING MODEL — KEY VALUES")
     print("=" * 70)
-    print(f"\n{'Reach':>10} | {'eff_n':>10} | {'p':>10} | {'Speedup':>10}")
+    print(f"\n{'Reach':>10} | {'k':>10} | {'p':>10} | {'Speedup':>10}")
     print("-" * 50)
 
     for reach in [100, 300, 500, 1000, 2000, 5000, 10000, 50000]:
-        eff_n = compute_eff_n(reach, k, min_eff_n)
-        p = compute_p(reach, k, min_eff_n)
+        k_val = math.log(2 * reach / HOEFFDING_DELTA) / (2 * HOEFFDING_EPSILON**2)
+        p = compute_hoeffding_p(reach)
         speedup = 1 / p if p > 0 else float("inf")
-        print(f"{reach:>10} | {eff_n:>10.0f} | {p:>9.1%} | {speedup:>9.1f}x")
+        print(f"{reach:>10} | {k_val:>10.0f} | {p:>9.1%} | {speedup:>9.1f}x")
 
     print("\n" + "=" * 70)
     print("ALL OUTPUTS")
     print("=" * 70)
-    print(f"  1. {OUTPUT_DIR / 'model_fit.json'}")
-    print(f"  2. {OUTPUT_DIR / 'floor_fit.json'}")
-    print(f"  3. {OUTPUT_DIR / 'sampling_model.json'}")
-    print(f"  4. {FIGURES_DIR / 'fig1_headline.pdf'}")
-    print(f"  5. {FIGURES_DIR / 'fig2_model_derivation.pdf'}")
-    print(f"  6. {FIGURES_DIR / 'fig3_floor_justification.pdf'}")
-    print(f"  7. {FIGURES_DIR / 'fig4_combined_model.pdf'}")
-    print(f"  8. {FIGURES_DIR / 'fig5_error_crossover.pdf'}")
-    print(f"  9. {TABLES_DIR / 'tab1_parameters.tex'}")
+    print(f"  1. {FIGURES_DIR / 'fig1_headline.pdf'}")
+    print(f"  2. {FIGURES_DIR / 'fig3_error_crossover.pdf'}")
 
     return 0
 

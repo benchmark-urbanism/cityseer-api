@@ -242,7 +242,7 @@ def node_centrality_shortest(
                 temp_data[data_key] = getattr(result, attr_key)[distance]
 
     temp_df = pd.DataFrame(temp_data, index=result.node_keys_py)
-    nodes_gdf.loc[gdf_idx, temp_df.columns] = temp_df.loc[gdf_idx, temp_df.columns]
+    nodes_gdf.loc[gdf_idx, temp_df.columns] = temp_df.loc[gdf_idx, temp_df.columns]  # type: ignore
 
     return nodes_gdf
 
@@ -419,7 +419,7 @@ def node_centrality_simplest(
             temp_data[data_key] = result.node_betweenness[distance]  # type: ignore
 
     temp_df = pd.DataFrame(temp_data, index=result.node_keys_py)
-    nodes_gdf.loc[gdf_idx, temp_df.columns] = temp_df.loc[gdf_idx, temp_df.columns]
+    nodes_gdf.loc[gdf_idx, temp_df.columns] = temp_df.loc[gdf_idx, temp_df.columns]  # type: ignore
 
     return nodes_gdf
 
@@ -552,12 +552,11 @@ def segment_centrality(
             temp_data[data_key] = result.segment_betweenness[distance]  # type: ignore
 
     temp_df = pd.DataFrame(temp_data, index=result.node_keys_py)
-    nodes_gdf.loc[gdf_idx, temp_df.columns] = temp_df.loc[gdf_idx, temp_df.columns]
+    nodes_gdf.loc[gdf_idx, temp_df.columns] = temp_df.loc[gdf_idx, temp_df.columns]  # type: ignore
 
     return nodes_gdf
 
 
-# =============================================================================
 # Adaptive Sampling Functions
 # =============================================================================
 # These functions run centrality with per-distance adaptive sampling, where
@@ -572,7 +571,6 @@ def _run_adaptive_centrality(
     distances: list[int] | None,
     betas: list[float] | None,
     minutes: list[float] | None,
-    target_rho: float,
     centrality_func: str,  # "shortest" or "simplest"
     compute_closeness: bool,
     compute_betweenness: bool,
@@ -581,6 +579,8 @@ def _run_adaptive_centrality(
     jitter_scale: float,
     random_seed: int | None,
     probe_density: float,
+    epsilon: float,
+    delta: float,
     # simplest-only params
     angular_scaling_unit: float | None = None,
     farness_scaling_offset: float | None = None,
@@ -595,32 +595,22 @@ def _run_adaptive_centrality(
     distances, _betas, _seconds = rustalgos.pair_distances_betas_time(
         speed_m_s, distances, betas, minutes, min_threshold_wt=min_threshold_wt
     )
-    # Determine which metric model to use for sampling calibration
-    # Use the more conservative model when computing both metrics
-    if compute_closeness and compute_betweenness:
-        metric = "both"
-    elif compute_betweenness:
-        metric = "betweenness"
-    else:
-        metric = "harmonic"
-
-    # Determine distance type for model selection
-    distance_type = "angular" if centrality_func == "simplest" else "shortest"
-
     # 1. Probe reachability
     logger.info(f"Probing reachability ({probe_density} probes/km²)...")
     reach_estimates = config.probe_reachability(
         network_structure, distances, probe_density=probe_density, speed_m_s=speed_m_s
     )
 
-    # 2. Compute sampling probabilities using appropriate metric model
-    sample_probs = config.compute_sample_probs_for_target_rho(
-        reach_estimates, target_rho, metric=metric, distance_type=distance_type
-    )
+    # 2. Compute per-distance sampling probabilities (Hoeffding/EW bound)
+    sample_probs = config.compute_sample_probs(reach_estimates, epsilon=epsilon, delta=delta)
 
     # 3. Log the plan
     config.log_adaptive_sampling_plan(
-        distances, reach_estimates, sample_probs, target_rho, metric=metric, distance_type=distance_type
+        distances,
+        reach_estimates,
+        sample_probs,
+        epsilon=epsilon,
+        delta=delta,
     )
 
     # 4. Run per-distance
@@ -667,14 +657,6 @@ def _run_adaptive_centrality(
 
         all_results[d] = result
 
-        # Log actual accuracy achieved
-        if effective_p is not None and result.sampled_source_count > 0:
-            total_reach = result.reachability_totals[0] if result.reachability_totals else 0
-            mean_reach = total_reach / result.sampled_source_count
-            eff_n = mean_reach * effective_p
-            exp_rho, _ = config.get_expected_spearman(eff_n, metric=metric, distance_type=distance_type)
-            logger.info(f"    actual: reach={mean_reach:.0f}, eff_n={eff_n:.0f}, expected ρ={exp_rho:.2f}")
-
     # 5. Merge results into GeoDataFrame
     # Get reference result for node keys
     ref_result = next(iter(all_results.values()))
@@ -719,7 +701,7 @@ def _run_adaptive_centrality(
                 temp_data[config.prep_gdf_key("betweenness", d, angular=True)] = res.node_betweenness[d]
 
     temp_df = pd.DataFrame(temp_data, index=ref_result.node_keys_py)
-    nodes_gdf.loc[gdf_idx, temp_df.columns] = temp_df.loc[gdf_idx, temp_df.columns]
+    nodes_gdf.loc[gdf_idx, temp_df.columns] = temp_df.loc[gdf_idx, temp_df.columns]  # type: ignore
 
     logger.info("Adaptive centrality complete.")
     return nodes_gdf
@@ -731,7 +713,8 @@ def node_centrality_shortest_adaptive(
     distances: list[int] | None = None,
     betas: list[float] | None = None,
     minutes: list[float] | None = None,
-    target_rho: float = 0.95,
+    epsilon: float = config.HOEFFDING_EPSILON,
+    delta: float = config.HOEFFDING_DELTA,
     compute_closeness: bool = True,
     compute_betweenness: bool = True,
     min_threshold_wt: float = MIN_THRESH_WT,
@@ -744,9 +727,9 @@ def node_centrality_shortest_adaptive(
     Compute shortest-path node centrality with per-distance adaptive sampling.
 
     This function automatically calibrates sampling probability for each distance
-    threshold to achieve a target accuracy level (Spearman ρ). Short distances
-    use full or near-full computation (where reach is low), while long distances
-    use aggressive sampling (where high reach provides statistical power).
+    threshold using the Hoeffding/Eppstein–Wang bound as described in the paper.
+    Short distances use full or near-full computation (where reach is low), while
+    long distances use aggressive sampling (where high reach provides statistical power).
 
     This can provide substantial speedups for analyses spanning multiple scales
     (e.g., 500m to 20km) while maintaining consistent accuracy across all distances.
@@ -770,11 +753,10 @@ def node_centrality_shortest_adaptive(
         metrics and $\\beta$ for distance-weighted metrics will be determined implicitly using the `speed_m_s`
         and `min_threshold_wt` parameters. If the `minutes` parameter is not provided, then the `distances` or
         `betas` parameters must be provided instead.
-    target_rho
-        Target Spearman ρ correlation for ranking accuracy. Default 0.95.
-        Higher values (e.g., 0.97) provide better accuracy but less speedup.
-        Separate models are fitted for closeness and betweenness; when computing
-        both metrics, the more conservative betweenness model is used.
+    epsilon
+        Normalised additive error tolerance (ε). Default is `cityseer.config.HOEFFDING_EPSILON`.
+    delta
+        Failure probability (δ). Default is `cityseer.config.HOEFFDING_DELTA`.
     compute_closeness
         Compute closeness centralities. True by default.
     compute_betweenness
@@ -807,7 +789,8 @@ def node_centrality_shortest_adaptive(
         network_structure,
         nodes_gdf,
         distances=[500, 2000, 5000, 20000],
-        target_rho=0.95,
+        epsilon=0.1,
+        delta=0.1,
     )
     ```
     """
@@ -818,7 +801,6 @@ def node_centrality_shortest_adaptive(
         distances=distances,
         betas=betas,
         minutes=minutes,
-        target_rho=target_rho,
         centrality_func="shortest",
         compute_closeness=compute_closeness,
         compute_betweenness=compute_betweenness,
@@ -827,6 +809,8 @@ def node_centrality_shortest_adaptive(
         jitter_scale=jitter_scale,
         random_seed=random_seed,
         probe_density=probe_density,
+        epsilon=epsilon,
+        delta=delta,
     )
 
 
@@ -836,7 +820,8 @@ def node_centrality_simplest_adaptive(
     distances: list[int] | None = None,
     betas: list[float] | None = None,
     minutes: list[float] | None = None,
-    target_rho: float = 0.95,
+    epsilon: float = config.HOEFFDING_EPSILON,
+    delta: float = config.HOEFFDING_DELTA,
     compute_closeness: bool = True,
     compute_betweenness: bool = True,
     min_threshold_wt: float = MIN_THRESH_WT,
@@ -851,9 +836,9 @@ def node_centrality_simplest_adaptive(
     Compute simplest-path (angular) node centrality with per-distance adaptive sampling.
 
     This function automatically calibrates sampling probability for each distance
-    threshold to achieve a target accuracy level (Spearman ρ). Short distances
-    use full or near-full computation (where reach is low), while long distances
-    use aggressive sampling (where high reach provides statistical power).
+    threshold using the Hoeffding/Eppstein–Wang bound as described in the paper.
+    Short distances use full or near-full computation (where reach is low), while
+    long distances use aggressive sampling (where high reach provides statistical power).
 
     Parameters
     ----------
@@ -874,8 +859,10 @@ def node_centrality_simplest_adaptive(
         metrics and $\\beta$ for distance-weighted metrics will be determined implicitly using the `speed_m_s`
         and `min_threshold_wt` parameters. If the `minutes` parameter is not provided, then the `distances` or
         `betas` parameters must be provided instead.
-    target_rho
-        Target Spearman ρ correlation for ranking accuracy. Default 0.95.
+    epsilon
+        Normalised additive error tolerance (ε). Default is `cityseer.config.HOEFFDING_EPSILON`.
+    delta
+        Failure probability (δ). Default is `cityseer.config.HOEFFDING_DELTA`.
     compute_closeness
         Compute closeness centralities. True by default.
     compute_betweenness
@@ -911,7 +898,6 @@ def node_centrality_simplest_adaptive(
         distances=distances,
         betas=betas,
         minutes=minutes,
-        target_rho=target_rho,
         centrality_func="simplest",
         compute_closeness=compute_closeness,
         compute_betweenness=compute_betweenness,
@@ -920,6 +906,8 @@ def node_centrality_simplest_adaptive(
         jitter_scale=jitter_scale,
         random_seed=random_seed,
         probe_density=probe_density,
+        epsilon=epsilon,
+        delta=delta,
         angular_scaling_unit=angular_scaling_unit,
         farness_scaling_offset=farness_scaling_offset,
     )

@@ -1,68 +1,61 @@
 # Content Manifest
 
-**Last updated:** 2026-02-06
-**Status:** COMPLETE - Inverted sampling model with full script pipeline and paper
+**Last updated:** 2026-02-09
+**Status:** COMPLETE - Hoeffding/EW sampling model with reproducible pipeline
 
 ---
 
 ## The Model
 
-The paper presents the **inverted sampling model**:
+The paper presents the **Hoeffding/Eppstein--Wang (EW) reach-based sampling model**:
 
 ```text
-eff_n = max(k × sqrt(reach), min_eff_n)
-p = min(1.0, eff_n / reach)
+k = log(2r / δ) / (2ε²)
+p = min(1.0, k / r)
 ```
 
-Parameters are dynamically loaded from JSON files - see `output/sampling_model.json`.
+Where reach `r` is the mean number of reachable nodes at a given distance threshold, and `ε, δ` are user-chosen error / failure-probability conventions (defaults used throughout the paper: `ε = 0.1`, `δ = 0.1`).
 
 ---
 
 ## Script Pipeline
 
-All scripts in `analysis/sampling/scripts/`:
+All scripts live in `analysis/sampling/scripts/`:
 
-| # | Script | Purpose | Outputs |
-|---|--------|---------|---------|
-| 0 | `00_generate_cache.py` | Generate cached data | synthetic cache, GLA cache, Madrid cache |
-| 1 | `01_fit_model.py` | Fit k from synthetic data | `output/model_fit.json`, fig1, fig2 |
-| 2 | `02_fit_floor.py` | Fit min_eff_n floor | `output/floor_fit.json`, fig3 |
-| 3 | `03_combined_model.py` | Combine into final model | `output/sampling_model.json`, fig4, tab1 |
-| 4a | `04_validate_gla.py` | Validate on GLA network | `output/gla_validation_summary.csv`, fig5, tab2 |
-| 4b | `04b_validate_madrid.py` | External validation on Madrid | fig6 |
-| 5 | `05_practical_guide.py` | Practical guidance | fig7, tab3 |
-| 6 | `06_sync_config.py` | Sync to config.py | Modified `pysrc/cityseer/config.py` |
-| 7 | `07_generate_macros.py` | Generate LaTeX macros | `paper/tables/model_macros.tex` |
-| 8 | `08_validate_power_exponent.py` | Bootstrap test on √r exponent | `output/power_exponent_analysis.json`, fig_s1 |
-| 9 | `09_model_comparison.py` | Compare 5 candidate models | `output/model_comparison.json`, tab_model_comparison |
-| - | `utilities.py` | Shared utilities | (imported by other scripts) |
+| #   | Script                         | Purpose                                              | Outputs                                                                                                                                                       |
+| --- | ------------------------------ | ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 0   | `00_generate_cache.py`         | Generate cached data                                 | caches under `analysis/sampling/.cache/`                                                                                                                      |
+| 1   | `01_fit_rank_model.py`         | Synthetic rank/accuracy analysis and headline figure | `paper/figures/fig1_headline.pdf`                                                                                                                             |
+| 2   | `02_fit_error_model.py`        | Synthetic error model vs Hoeffding/EW bound          | `output/error_model_synthetic.csv`, `output/error_model_synthetic.json`                                                                                       |
+| 3   | `03_validate_gla.py`           | Validate Hoeffding model on Greater London network   | `output/gla_validation.csv`, `output/gla_validation_summary.csv`, `output/gla_ew_analysis.csv`, `paper/tables/tab2_validation.tex`                            |
+| 4   | `04_validate_madrid.py`        | External validation on Greater Madrid network        | `output/madrid_validation.csv`, `output/madrid_ew_analysis.csv`, `output/madrid_theoretical_bounds_comparison.csv`, `paper/tables/tab4_madrid_validation.tex` |
+| 5   | `05_practical_guide.py`        | Practitioner-facing guidance                         | `paper/figures/fig4_practical_guide.pdf`, `paper/tables/tab3_practical_lookup.tex`                                                                            |
+| 6   | `06_generate_macros.py`        | Generate LaTeX macros from outputs                   | `paper/tables/model_macros.tex`                                                                                                                               |
+| 7   | `07_hoeffding_model_figure.py` | Hoeffding model derivation figure                    | `paper/figures/fig2_hoeffding_model.pdf`                                                                                                                      |
+| -   | `utilities.py`                 | Shared utilities/constants                           | (imported by other scripts)                                                                                                                                   |
 
 ---
 
 ## Main Paper Figures
 
-| Figure | File | Generated By | Purpose | Status |
-|--------|------|--------------|---------|--------|
-| 1 | `fig1_headline.pdf` | `01_fit_model.py` | Problem: why sampling is needed | ✓ |
-| 2 | `fig2_model_derivation.pdf` | `01_fit_model.py` | eff_n predicts rho, derive model | ✓ |
-| 3 | `fig3_floor_justification.pdf` | `02_fit_floor.py` | Why min_eff_n floor is needed | ✓ |
-| 4 | `fig4_combined_model.pdf` | `03_combined_model.py` | Final model curve | ✓ |
-| 5 | `fig5_gla_validation.pdf` | `04_validate_gla.py` | GLA real-world validation | ✓ |
-| 6 | `fig6_madrid_validation.pdf` | `04b_validate_madrid.py` | Madrid external validation | ✓ |
-| 7 | `fig7_practical_guide.pdf` | `05_practical_guide.py` | Practitioner lookup chart | ✓ |
-| S1 | `fig_s1_diagnostics.pdf` | `08_validate_power_exponent.py` | Power exponent diagnostics | ✓ |
+| Figure | File                       | Generated By                   | Purpose                           | Status |
+| ------ | -------------------------- | ------------------------------ | --------------------------------- | ------ |
+| 1      | `fig1_headline.pdf`        | `01_fit_rank_model.py`         | Sampling opportunity / motivation | ✓      |
+| 2      | `fig2_hoeffding_model.pdf` | `07_hoeffding_model_figure.py` | Hoeffding/EW model derivation     | ✓      |
+| 3      | `fig3_error_crossover.pdf` | `01_fit_rank_model.py`         | Error structure / crossover       | ✓      |
+| 4      | `fig4_practical_guide.pdf` | `05_practical_guide.py`        | Practitioner lookup chart         | ✓      |
 
 ---
 
 ## Main Paper Tables
 
-| Table | File | Generated By | Purpose | Status |
-|-------|------|--------------|---------|--------|
-| 1 | `tab1_parameters.tex` | `03_combined_model.py` | Fitted k, min_eff_n | ✓ |
-| 2 | `tab2_validation.tex` | `04_validate_gla.py` | GLA validation results | ✓ |
-| 3 | `tab3_practical_lookup.tex` | `05_practical_guide.py` | Reach -> p lookup | ✓ |
-| - | `tab_model_comparison.tex` | `09_model_comparison.py` | AIC/BIC model comparison | ✓ |
-| - | `model_macros.tex` | `07_generate_macros.py` | LaTeX macros from JSON | ✓ |
+| Table | File                         | Generated By              | Purpose                                        | Status |
+| ----- | ---------------------------- | ------------------------- | ---------------------------------------------- | ------ |
+| 1     | `tab1_ew_comparison.tex`     | (hand-maintained in repo) | Compact comparison table for bounds/approaches | ✓      |
+| 2     | `tab2_validation.tex`        | `03_validate_gla.py`      | Greater London validation results              | ✓      |
+| 3     | `tab3_practical_lookup.tex`  | `05_practical_guide.py`   | Reach $\to$ sampling probability lookup        | ✓      |
+| 4     | `tab4_madrid_validation.tex` | `04_validate_madrid.py`   | Greater Madrid validation results              | ✓      |
+| -     | `model_macros.tex`           | `06_generate_macros.py`   | LaTeX macros from CSV outputs                  | ✓      |
 
 ---
 
@@ -70,15 +63,14 @@ All scripts in `analysis/sampling/scripts/`:
 
 All values in the paper are derived from data via LaTeX macros in `tables/model_macros.tex`.
 
-**IMPORTANT**: Do not hardcode values. Run `07_generate_macros.py` to regenerate macros from JSON.
+**IMPORTANT**: Do not hardcode values. Run `09_generate_macros.py` to regenerate macros from JSON.
 
-Key macros:
-- `\kProp` - Proportional constant k
-- `\minEffN` - Minimum effective sample size
-- `\targetRho` - Target Spearman correlation
-- `\crossoverReach` - Where floor and proportional regimes meet
-- `\glaMinRho` - Minimum observed rho in GLA validation
-- `\glaFiveKmRho`, `\glaTenKmRho`, `\glaTwentyKmRho` - Per-distance validation results
+Key macros (see `paper/tables/model_macros.tex`):
+
+- `\hoeffdingEpsilon`, `\hoeffdingDelta` - model conventions used in the paper
+- `\targetRho` - target Spearman correlation reported in figures/tables
+- `\hoeffdingKTenK`, `\hoeffdingPTenK`, `\hoeffdingSpeedupTenK` - illustrative reach scenarios
+- `\glaMinRho` and `\gla*` - Greater London validation summary
 
 ---
 
@@ -106,39 +98,22 @@ Key macros:
 
 ---
 
-## Paper Sections
+## Paper Sources
 
-| Section | File | Status |
-|---------|------|--------|
-| 1 | `sections/01_introduction.tex` | ✓ Complete |
-| 2 | `sections/02_background.tex` | ✓ Complete |
-| 3 | `sections/03_methodology.tex` | ✓ Complete |
-| 4 | `sections/04_empirical_models.tex` | ✓ Complete |
-| 5 | `sections/05_algorithm.tex` | ✓ Complete |
-| 6 | `sections/06_validation.tex` | ✓ Complete |
-| 7 | `sections/07_practical_guidelines.tex` | ✓ Complete |
-| 8 | `sections/08_discussion.tex` | ✓ Complete |
-| 9 | `sections/09_conclusion.tex` | ✓ Complete |
-| A | `sections/appendix_technical.tex` | ✓ Complete |
+The paper is a single LaTeX file:
 
-## Deprecated Content
-
-All old scripts, figures, and sections moved to `deprecated/`:
-
-- `deprecated/old_*.py` - Old analysis scripts
-- `deprecated/figures/` - Old figure files
-- `deprecated/tables/` - Old table files
-- `deprecated/sections/` - Old paper sections
+- `paper/main.tex`
+- `paper/tables/*.tex`
+- `paper/figures/*.pdf`
 
 ---
 
 ## Verification Checklist
 
-- [x] All 12 scripts in `scripts/` folder
-- [x] All 7 main figures + 1 supplementary generated in `paper/figures/`
-- [x] All 3 tables + model comparison + macros generated in `paper/tables/`
-- [x] `config.py` updated with new constants
-- [x] Paper sections written (all 10)
+- [x] Script pipeline matches `analysis/sampling/scripts/`
+- [x] Figures generated in `paper/figures/`
+- [x] Tables generated/maintained in `paper/tables/`
+- [x] No hardcoded values where macros exist
 - [x] No hardcoded values - all via macros
 - [x] Paper compiles with `pdflatex`
 
@@ -152,23 +127,15 @@ cd analysis/sampling
 # Generate caches (if needed)
 python scripts/00_generate_cache.py
 
-# Fit model and generate figures/tables
-python scripts/01_fit_model.py
-python scripts/02_fit_floor.py
-python scripts/03_combined_model.py
-python scripts/04_validate_gla.py
-python scripts/04b_validate_madrid.py
+# Generate figures/tables
+python scripts/01_fit_rank_model.py
+python scripts/07_hoeffding_model_figure.py
+python scripts/03_validate_gla.py
+python scripts/04_validate_madrid.py
 python scripts/05_practical_guide.py
 
-# Model diagnostics (optional, for appendix)
-python scripts/08_validate_power_exponent.py
-python scripts/09_model_comparison.py
-
-# Sync to library
-python scripts/06_sync_config.py
-
-# Generate LaTeX macros
-python scripts/07_generate_macros.py
+# Generate LaTeX macros (depends on validation outputs)
+python scripts/06_generate_macros.py
 
 # Compile paper
 cd paper && pdflatex main.tex && bibtex main && pdflatex main.tex && pdflatex main.tex

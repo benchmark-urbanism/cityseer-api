@@ -30,6 +30,7 @@ from utilities import (
     apply_live_buffer_nx,
     compute_accuracy_metrics,
     compute_quartile_accuracy,
+    mean_quartiles,
 )
 from utils.substrates import generate_keyed_template
 
@@ -189,21 +190,8 @@ def generate_synthetic_cache(force: bool = False):
                 true_b_f32 = true_betweenness.astype(np.float32)
 
                 # Average quartile results across runs
-                def _mean_quartiles(quartile_list):
-                    if not quartile_list:
-                        result = {}
-                        for prefix in QUARTILE_KEYS:
-                            for q in range(1, 5):
-                                result[f"{prefix}_q{q}"] = np.nan
-                        return result
-                    result = {}
-                    for key in quartile_list[0]:
-                        vals = [q[key] for q in quartile_list if not np.isnan(q[key])]
-                        result[key] = float(np.mean(vals)) if vals else np.nan
-                    return result
-
-                q_h = _mean_quartiles(quartiles_h)
-                q_b = _mean_quartiles(quartiles_b)
+                q_h = mean_quartiles(quartiles_h)
+                q_b = mean_quartiles(quartiles_b)
 
                 if spearmans_h:
                     row_h = {

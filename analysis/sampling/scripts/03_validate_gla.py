@@ -1,9 +1,8 @@
 #!/usr/bin/env python
 """
-03_validate_gla.py - Validate the sampling model on Greater London network.
+03_validate_gla.py - Validate the Hoeffding sampling model on Greater London network.
 
-Generates validation data (if not cached) and produces figures/tables.
-Requires sampling_model.json from 01_fit_rank_model.py.
+Generates validation data (if not cached) and produces tables.
 
 Usage:
     python 03_validate_gla.py           # Run (skips cache if exists)
@@ -13,34 +12,32 @@ Outputs:
     - output/gla_validation.csv
     - output/gla_validation_summary.csv
     - output/gla_theoretical_bounds_comparison.csv
-    - paper/figures/fig6_gla_validation.pdf
     - paper/tables/tab2_validation.tex
 """
 
 import argparse
 import json
-import math
 import pickle
 import time
 from pathlib import Path
 
 import geopandas as gpd
-import matplotlib
 import numpy as np
-
-matplotlib.use("Agg")
-import matplotlib.pyplot as plt
 import pandas as pd
 from cityseer.tools import graphs, io
 from utilities import (
     CACHE_DIR,
-    FIGURES_DIR,
+    HOEFFDING_DELTA,
+    HOEFFDING_EPSILON,
     OUTPUT_DIR,
-    QUARTILE_KEYS,
     TABLES_DIR,
     apply_live_buffer_nx,
     compute_accuracy_metrics,
+    compute_hoeffding_p,
     compute_quartile_accuracy,
+    ew_predicted_epsilon,
+    mean_quartiles,
+    normalise_error,
 )
 
 # =============================================================================
@@ -58,73 +55,7 @@ GLA_DISTANCES = [1000, 2000, 5000, 10000, 20000]
 GLA_PROBS = [0.01, 0.025, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
 N_RUNS = 1
 
-# Matplotlib style
-plt.rcParams.update(
-    {
-        "font.family": "sans-serif",
-        "font.size": 11,
-        "axes.titlesize": 12,
-        "axes.labelsize": 11,
-        "xtick.labelsize": 10,
-        "ytick.labelsize": 10,
-        "legend.fontsize": 10,
-        "figure.dpi": 150,
-        "savefig.dpi": 300,
-        "axes.spines.top": False,
-        "axes.spines.right": False,
-    }
-)
-
-
-# =============================================================================
-# EW BOUND FUNCTIONS
-# =============================================================================
-
-DELTA = 0.1  # Failure probability (90% confidence)
-
-
-def ew_predicted_epsilon(n_eff: float, reach: float, delta: float = DELTA) -> float:
-    """EW-predicted maximum normalised epsilon (Hoeffding form)."""
-    if n_eff <= 0 or reach <= 0:
-        return float("inf")
-    return math.sqrt(math.log(2 * reach / delta) / (2 * n_eff))
-
-
-def normalise_error(max_abs_error: float, reach: float, metric: str) -> float:
-    """Normalise raw absolute error by theoretical maximum."""
-    if reach <= 1:
-        return float("inf")
-    if metric == "betweenness":
-        return max_abs_error / (reach * (reach - 1))
-    else:  # harmonic closeness
-        return max_abs_error / reach
-
-
-def implied_epsilon_from_rank_model(reach: float, k: float, min_eff_n: float, delta: float = DELTA) -> float:
-    """Additive error the rank model implicitly guarantees at this reach."""
-    n_eff = max(k * math.sqrt(reach), min_eff_n)
-    if n_eff <= 0 or reach <= 0:
-        return float("inf")
-    return math.sqrt(math.log(2 * reach / delta) / (2 * n_eff))
-
-
-# =============================================================================
-# DATA GENERATION
-# =============================================================================
-
-
-def load_model() -> tuple[float, int]:
-    """Load the fitted model parameters."""
-    model_path = OUTPUT_DIR / "sampling_model.json"
-    if not model_path.exists():
-        raise FileNotFoundError(f"Model not found at {model_path}. Run 01_fit_rank_model.py first.")
-
-    with open(model_path) as f:
-        model = json.load(f)
-
-    k = model["model"]["k"]
-    min_eff_n = model["model"]["min_eff_n"]
-    return k, min_eff_n
+DELTA = HOEFFDING_DELTA
 
 
 def generate_validation_data(force: bool = False) -> pd.DataFrame:
@@ -275,21 +206,8 @@ def generate_validation_data(force: bool = False) -> pd.DataFrame:
             mean_sampled_time = np.mean(sampled_times) if sampled_times else float("nan")
 
             # Average quartile results across runs
-            def _mean_quartiles(quartile_list):
-                if not quartile_list:
-                    result = {}
-                    for prefix in QUARTILE_KEYS:
-                        for q in range(1, 5):
-                            result[f"{prefix}_q{q}"] = np.nan
-                    return result
-                result = {}
-                for key in quartile_list[0]:
-                    vals = [q[key] for q in quartile_list if not np.isnan(q[key])]
-                    result[key] = float(np.mean(vals)) if vals else np.nan
-                return result
-
-            q_h = _mean_quartiles(quartiles_h)
-            q_b = _mean_quartiles(quartiles_b)
+            q_h = mean_quartiles(quartiles_h)
+            q_b = mean_quartiles(quartiles_b)
 
             if spearmans_h:
                 row_h = {
@@ -307,9 +225,7 @@ def generate_validation_data(force: bool = False) -> pd.DataFrame:
                     "baseline_time": baseline_time if baseline_time is not None else float("nan"),
                     "sampled_time": mean_sampled_time,
                     "speedup": (
-                        baseline_time / mean_sampled_time
-                        if baseline_time and mean_sampled_time > 0
-                        else float("nan")
+                        baseline_time / mean_sampled_time if baseline_time and mean_sampled_time > 0 else float("nan")
                     ),
                 }
                 row_h.update(q_h)
@@ -378,95 +294,12 @@ def pivot_validation_data(df: pd.DataFrame) -> pd.DataFrame:
 
 
 # =============================================================================
-# MODEL FUNCTIONS
+# TABLE GENERATION
 # =============================================================================
 
 
-def compute_model_p(reach: float, k: float, min_eff_n: int) -> float:
-    """Compute the model's recommended sampling probability."""
-    eff_n = max(k * math.sqrt(reach), min_eff_n)
-    return min(1.0, eff_n / reach)
-
-
-# =============================================================================
-# FIGURE GENERATION
-# =============================================================================
-
-
-def generate_fig5_validation(df: pd.DataFrame, k: float, min_eff_n: int):
-    """Figure 5: GLA validation results."""
-    print("\nGenerating Figure 5: GLA validation...")
-
-    distances = sorted(df["distance"].unique())
-    n_distances = len(distances)
-
-    fig, axes = plt.subplots(1, n_distances, figsize=(4 * n_distances, 5), sharey=True)
-    if n_distances == 1:
-        axes = [axes]
-
-    color_b = "#B2182B"  # red for betweenness
-    color_h = "#2166AC"  # blue for closeness
-
-    for i, dist in enumerate(distances):
-        ax = axes[i]
-        subset = df[df["distance"] == dist].sort_values("sample_prob")
-
-        reach = subset["reach"].iloc[0]
-        model_p = compute_model_p(reach, k, min_eff_n) * 100
-
-        ax.plot(
-            subset["sample_prob"] * 100,
-            subset["obs_rho_b"],
-            "o-",
-            color=color_b,
-            linewidth=2,
-            markersize=5,
-            label="Betweenness",
-        )
-        ax.plot(
-            subset["sample_prob"] * 100,
-            subset["obs_rho_h"],
-            "s-",
-            color=color_h,
-            linewidth=2,
-            markersize=5,
-            label="Closeness",
-        )
-
-        ax.axhline(0.95, color="green", linestyle="--", linewidth=1.5, alpha=0.7)
-        ax.text(95, 0.952, "target", fontsize=8, color="green", ha="right", va="bottom")
-
-        ax.axvline(model_p, color="#0072B2", linestyle="-", linewidth=2, alpha=0.8)
-        ax.annotate(
-            f"Model: {model_p:.1f}%", xy=(model_p + 2, 0.96), fontsize=9, color="#0072B2", rotation=90, va="bottom"
-        )
-
-        closest_idx = (subset["sample_prob"] * 100 - model_p).abs().argmin()
-        model_rho_b = subset.iloc[closest_idx]["obs_rho_b"]
-        ax.plot(model_p, model_rho_b, "s", color="#0072B2", markersize=10, zorder=5)
-
-        ax.set_xlabel("Sampling Probability (%)")
-        if i == 0:
-            ax.set_ylabel("Spearman rho (ranking accuracy)")
-        ax.set_title(f"{dist // 1000}km (reach={reach:,.0f})")
-        ax.set_xlim(0, 100)
-        ax.set_ylim(0.95, 1.005)
-        ax.grid(True, alpha=0.3)
-
-        if i == n_distances - 1:
-            ax.legend(loc="lower right", fontsize=9)
-
-    fig.suptitle("Model Validation on Greater London Network (294k nodes)", fontsize=13, fontweight="bold", y=1.02)
-    plt.tight_layout()
-
-    output_path = FIGURES_DIR / "fig6_gla_validation.pdf"
-    fig.savefig(output_path, dpi=300, bbox_inches="tight")
-    print(f"  Saved: {output_path}")
-    plt.close()
-
-
-def generate_validation_table(df: pd.DataFrame, k: float, min_eff_n: int):
-    """Generate LaTeX table of validation results."""
+def generate_validation_table(df: pd.DataFrame):
+    """Generate LaTeX table of validation results with Hoeffding as primary."""
     print("\nGenerating Table 2: Validation results...")
 
     rows = []
@@ -474,21 +307,21 @@ def generate_validation_table(df: pd.DataFrame, k: float, min_eff_n: int):
         subset = df[df["distance"] == dist]
         reach = subset["reach"].iloc[0]
 
-        model_p = compute_model_p(reach, k, min_eff_n)
-        model_eff_n = reach * model_p
+        hoeff_p = compute_hoeffding_p(reach)
 
-        closest_idx = (subset["sample_prob"] - model_p).abs().argmin()
+        # Use Hoeffding p
+        closest_idx = (subset["sample_prob"] - hoeff_p).abs().argmin()
         actual_p = subset.iloc[closest_idx]["sample_prob"]
         observed_rho_b = subset.iloc[closest_idx]["obs_rho_b"]
         observed_rho_h = subset.iloc[closest_idx]["obs_rho_h"]
 
-        speedup = 1 / model_p if model_p > 0 else float("inf")
+        speedup = 1 / hoeff_p if hoeff_p > 0 else float("inf")
 
         row_data = {
             "distance": dist,
             "reach": reach,
-            "model_p": model_p,
-            "model_eff_n": model_eff_n,
+            "hoeff_p": hoeff_p,
+            "hoeff_eff_n": reach * hoeff_p,
             "actual_p": actual_p,
             "observed_rho_h": observed_rho_h,
             "observed_rho_b": observed_rho_b,
@@ -506,19 +339,19 @@ def generate_validation_table(df: pd.DataFrame, k: float, min_eff_n: int):
     # Generate LaTeX
     latex = r"""\begin{table}[htbp]
 \centering
-\caption{Model Validation on Greater London Network}
+\caption{Hoeffding model validation on Greater London network ($\varepsilon = 0.1$, $\delta = 0.1$).}
 \label{tab:validation}
-\begin{tabular}{rrrrrrrr}
+\begin{tabular}{rrrrrrr}
 \toprule
-\textbf{Distance} & \textbf{Reach} & \textbf{Model $p$} &
+\textbf{Distance} & \textbf{Reach} & \textbf{Hoeff.\ $p$} &
 \textbf{$\rho_\text{close}$} & \textbf{$\rho_\text{betw}$} & \textbf{Speedup} & \textbf{$\rho \geq 0.95$?} \\
 \midrule
 """
 
     for _, row in results_df.iterrows():
         check = r"\checkmark" if row["meets_target"] else r"\texttimes"
-        model_p_pct = f"{row['model_p'] * 100:.1f}\\%"
-        latex += f"{row['distance'] // 1000}km & {row['reach']:,.0f} & {model_p_pct} & "
+        hoeff_p_pct = f"{row['hoeff_p'] * 100:.1f}\\%"
+        latex += f"{row['distance'] // 1000}km & {row['reach']:,.0f} & {hoeff_p_pct} & "
         latex += f"{row['observed_rho_h']:.4f} & {row['observed_rho_b']:.4f} & "
         latex += f"{row['speedup']:.1f}$\\times$ & {check} \\\\\n"
 
@@ -528,6 +361,7 @@ def generate_validation_table(df: pd.DataFrame, k: float, min_eff_n: int):
 \vspace{0.5em}
 \footnotesize
 Network: Greater London Area, 294,486 nodes, 20km live node buffer.
+Hoeffding model: $k = \log(2r/\delta) / (2\varepsilon^2)$, $p = \min(1, k/r)$.
 \end{table}
 """
 
@@ -576,7 +410,7 @@ def compute_theoretical_bounds(results_df: pd.DataFrame, n_nodes: int):
 
     for _, row in results_df.iterrows():
         reach = row["reach"]
-        our_eff_n = row["model_eff_n"]
+        our_eff_n = row["hoeff_eff_n"]
         raw_eps = row["max_abs_error"]
 
         eps_normalised = raw_eps / (reach * (reach - 1)) if reach > 1 else float("inf")
@@ -656,7 +490,7 @@ def compute_theoretical_bounds(results_df: pd.DataFrame, n_nodes: int):
 # =============================================================================
 
 
-def compute_ew_analysis(raw_df: pd.DataFrame, k: float, min_eff_n: int):
+def compute_ew_analysis(raw_df: pd.DataFrame):
     """Evaluate the localised EW bound on all GLA validation configurations."""
     print("\n" + "=" * 70)
     print("LOCALISED EW BOUND ANALYSIS")
@@ -720,16 +554,6 @@ def compute_ew_analysis(raw_df: pd.DataFrame, k: float, min_eff_n: int):
         t = len(subset)
         print(f"  {dist:<15} {h:>8} {t:>8} {100 * h / t:>7.1f}%")
 
-    # Implied epsilon from rank model
-    print("\n  Implied epsilon from rank model:")
-    print(f"  {'Distance':>10} {'Reach':>10} {'Rank n_eff':>12} {'Implied eps':>12}")
-    print("  " + "-" * 50)
-    for dist in sorted(ew_df["distance"].unique()):
-        reach = ew_df[ew_df["distance"] == dist]["reach"].iloc[0]
-        impl_eps = implied_epsilon_from_rank_model(reach, k, min_eff_n)
-        rank_eff_n = max(k * math.sqrt(reach), min_eff_n)
-        print(f"  {dist // 1000}km       {reach:>10,.0f} {rank_eff_n:>12,.0f} {impl_eps:>12.4f}")
-
     # Conservatism: median predicted/observed ratio
     for metric in sorted(ew_df["metric"].unique()):
         subset = ew_df[(ew_df["metric"] == metric) & (ew_df["eps_observed"] > 0)]
@@ -756,12 +580,11 @@ def main():
     args = parser.parse_args()
 
     print("=" * 70)
-    print("03_validate_gla.py - Validating model on Greater London network")
+    print("03_validate_gla.py - Validating Hoeffding model on Greater London network")
     print("=" * 70)
 
-    # Load model
-    k, min_eff_n = load_model()
-    print(f"\nModel: eff_n = max({k} × sqrt(reach), {min_eff_n})")
+    print("\nModel: k = log(2r/δ) / (2ε²), p = min(1, k/r)")
+    print(f"  ε = {HOEFFDING_EPSILON}, δ = {HOEFFDING_DELTA}")
 
     # Generate or load validation data
     raw_df = generate_validation_data(force=args.force)
@@ -772,8 +595,7 @@ def main():
     print(f"Distances: {sorted(df['distance'].unique())}")
 
     # Generate outputs
-    generate_fig5_validation(df, k, min_eff_n)
-    results_df = generate_validation_table(df, k, min_eff_n)
+    results_df = generate_validation_table(df)
 
     # Theoretical bounds comparison
     n_nodes = get_n_nodes(force=args.force)
@@ -785,14 +607,16 @@ def main():
         print("\n  Skipping theoretical bounds comparison (graph cache not found)")
 
     # EW bound analysis
-    ew_df = compute_ew_analysis(raw_df, k, min_eff_n)
+    ew_df = compute_ew_analysis(raw_df)
 
     # Summary
     print("\n" + "=" * 70)
     print("VALIDATION SUMMARY")
     print("=" * 70)
 
-    print(f"\n{'Distance':>10} | {'Reach':>10} | {'Model p':>10} | {'rho_close':>10} | {'rho_betw':>10} | {'Target?':>10}")
+    print(
+        f"\n{'Distance':>10} | {'Reach':>10} | {'Hoeff p':>10} | {'rho_close':>10} | {'rho_betw':>10} | {'Target?':>10}"
+    )
     print("-" * 75)
 
     all_pass = True
@@ -801,7 +625,7 @@ def main():
         if not row["meets_target"]:
             all_pass = False
         print(
-            f"{row['distance'] // 1000}km       | {row['reach']:>10,.0f} | {row['model_p']:>9.1%} | "
+            f"{row['distance'] // 1000}km       | {row['reach']:>10,.0f} | {row['hoeff_p']:>9.1%} | "
             f"{row['observed_rho_h']:>10.4f} | {row['observed_rho_b']:>10.4f} | {status:>10}"
         )
 
@@ -816,12 +640,11 @@ def main():
     print("=" * 70)
     print(f"  1. {OUTPUT_DIR / 'gla_validation.csv'}")
     print(f"  2. {OUTPUT_DIR / 'gla_validation_summary.csv'}")
-    print(f"  3. {FIGURES_DIR / 'fig6_gla_validation.pdf'}")
-    print(f"  4. {TABLES_DIR / 'tab2_validation.tex'}")
+    print(f"  3. {TABLES_DIR / 'tab2_validation.tex'}")
     if bounds_df is not None:
-        print(f"  5. {OUTPUT_DIR / 'gla_theoretical_bounds_comparison.csv'}")
+        print(f"  4. {OUTPUT_DIR / 'gla_theoretical_bounds_comparison.csv'}")
     if ew_df is not None:
-        print(f"  6. {OUTPUT_DIR / 'gla_ew_analysis.csv'}")
+        print(f"  5. {OUTPUT_DIR / 'gla_ew_analysis.csv'}")
 
     return 0
 

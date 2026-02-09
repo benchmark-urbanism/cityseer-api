@@ -1,0 +1,20 @@
+\begin{table}[htbp]
+\centering
+\caption{Hoeffding model validation on Greater Madrid network ($\varepsilon = 0.1$, $\delta = 0.1$).}
+\label{tab:madrid_validation}
+\begin{tabular}{rrrrrrr}
+\toprule
+\textbf{Distance} & \textbf{Reach} & \textbf{Hoeff.\ $p$} &
+\textbf{$\rho_\text{close}$} & \textbf{$\rho_\text{betw}$} & \textbf{Speedup} & \textbf{$\rho \geq 0.95$?} \\
+\midrule
+5km & 1,451 & 35.4\% & 0.9969 & 0.9949 & 2.8$\times$ & \checkmark \\
+10km & 5,219 & 11.1\% & 0.9974 & 0.9872 & 9.0$\times$ & \checkmark \\
+20km & 15,300 & 4.1\% & 0.9976 & 0.9794 & 24.2$\times$ & \checkmark \\
+\bottomrule
+\end{tabular}
+
+\vspace{0.5em}
+\footnotesize
+Network: Greater Madrid, 99,166 nodes, 20km live node buffer.
+Hoeffding model: $k = \log(2r/\delta) / (2\varepsilon^2)$, $p = \min(1, k/r)$.
+\end{table}

@@ -1,0 +1,23 @@
+\begin{table}[htbp]
+\centering
+\caption{Required effective sample sizes and sampling probabilities under the localised Eppstein--Wang bound at different additive error tolerances ($\delta = 0.1$).}
+\label{tab:ew_comparison}
+\small
+\begin{tabular}{@{}rrrrrrr@{}}
+\toprule
+\textbf{Reach} & \textbf{EW $\varepsilon{=}0.05$} & \textbf{$p$} & \textbf{EW $\varepsilon{=}0.1$} & \textbf{$p$} & \textbf{EW $\varepsilon{=}0.2$} & \textbf{$p$} \\
+\midrule
+100 & 1{,}520 & 100.0\% & 380 & 100.0\% & 95 & 95.0\% \\
+500 & 1{,}842 & 100.0\% & 460 & 92.1\% & 115 & 23.0\% \\
+1{,}000 & 1{,}980 & 100.0\% & 495 & 49.5\% & 123 & 12.4\% \\
+3{,}000 & 2{,}200 & 73.3\% & 550 & 18.3\% & 137 & 4.6\% \\
+10{,}000 & 2{,}441 & 24.4\% & 610 & 6.1\% & 152 & 1.5\% \\
+30{,}000 & 2{,}660 & 8.9\% & 665 & 2.2\% & 166 & 0.6\% \\
+\bottomrule
+\end{tabular}
+
+\vspace{0.5em}
+\footnotesize
+The Hoeffding model prescribes $k = \log(2r/\delta) / (2\varepsilon^2)$, $p = \min(1, k/r)$.
+At the default $\varepsilon = 0.1$, $\delta = 0.1$, the model has zero fitted parameters.
+\end{table}

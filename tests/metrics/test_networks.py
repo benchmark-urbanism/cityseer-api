@@ -181,12 +181,13 @@ def test_node_centrality_shortest_adaptive(primal_graph):
     distances = [200, 400, 800]
     nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(primal_graph)
 
-    # Run adaptive version with high target accuracy
+    # Run adaptive version (small epsilon drives p close to full)
     nodes_gdf_adaptive = networks.node_centrality_shortest_adaptive(
         network_structure=network_structure,
         nodes_gdf=nodes_gdf.copy(),
         distances=distances,
-        target_rho=0.95,
+        epsilon=0.05,
+        delta=0.1,
         compute_closeness=True,
         compute_betweenness=True,
         random_seed=42,
@@ -230,7 +231,8 @@ def test_node_centrality_shortest_adaptive_minutes(primal_graph):
         network_structure=network_structure,
         nodes_gdf=nodes_gdf.copy(),
         minutes=[5.0, 10.0],
-        target_rho=0.95,
+        epsilon=0.05,
+        delta=0.1,
         random_seed=42,
         probe_density=20.0,
     )
@@ -255,7 +257,8 @@ def test_node_centrality_simplest_adaptive(primal_graph):
         network_structure=network_structure,
         nodes_gdf=nodes_gdf.copy(),
         distances=distances,
-        target_rho=0.95,
+        epsilon=0.05,
+        delta=0.1,
         compute_closeness=True,
         compute_betweenness=True,
         random_seed=42,
@@ -295,7 +298,8 @@ def test_node_centrality_simplest_adaptive_minutes(primal_graph):
         network_structure=network_structure,
         nodes_gdf=nodes_gdf.copy(),
         minutes=[5.0, 10.0],
-        target_rho=0.95,
+        epsilon=0.05,
+        delta=0.1,
         random_seed=42,
         probe_density=20.0,
     )

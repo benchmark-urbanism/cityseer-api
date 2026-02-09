@@ -63,255 +63,58 @@ SPEED_M_S = 1.33333
 ATOL: float = 0.01
 RTOL: float = 0.0001
 
-# === SAMPLING MODEL CONSTANTS ===
-# All constants are fitted via analysis/sampling/ scripts and synced via 03_sync_constants.py
+# === SAMPLING MODEL: Hoeffding / Eppstein-Wang Bound ===
+# Zero-parameter model based on Hoeffding's inequality adapted from the
+# Eppstein-Wang (2004) source-sampling framework for closeness estimation.
 #
-# Two-factor model for computing required sampling probability:
-#   Factor 1: Baseline model predicts ρ from eff_n = reach × p
-#             ρ = 1 - A / (B + eff_n)
-#   Factor 2: Proportional coverage floor p_min = k / √reach
+# Given reach r (nodes within distance threshold), the required effective
+# sample size k and sampling probability p are:
+#   k = log(2r / δ) / (2ε²)
+#   p = min(1, k / r)
 #
-# Model for standard deviation: std = C / sqrt(D + eff_n)
-# Model for expected scale (magnitude bias): scale = 1 - E / (F + eff_n)
-
-# === SAMPLING MODEL CONSTANTS ===
-# The inverted sampling model: eff_n = max(k × √reach, min_eff_n)
-#   - k: Proportional constant for scaling with √reach
-#   - min_eff_n: Minimum effective sample size floor
-# Then: p = min(1.0, eff_n / reach)
+# Default parameters:
+#   ε = 0.1  (normalised additive error tolerance)
+#   δ = 0.1  (failure probability → 90% confidence)
 #
-# Fitted via analysis/sampling/ scripts:
-#   - k fitted on synthetic networks (01_fit_model.py)
-#   - min_eff_n fitted on synthetic networks (02_fit_floor.py)
-#   - Validated on GLA network (04_validate_gla.py)
-#   - Synced via 06_sync_config.py
-SAMPLING_PROPORTIONAL_K: float = 10.16
-SAMPLING_MIN_EFF_N: float = 300.0
-
-# === SHORTEST (metric) distance models ===
-# A, B fitted on synthetic networks (01_fit_models.py) and synced via 03_sync_constants.py
-SAMPLING_MODEL_SHORTEST_HARMONIC_A: float = 4.96
-SAMPLING_MODEL_SHORTEST_HARMONIC_B: float = 9.09
-
-SAMPLING_MODEL_SHORTEST_BETWEENNESS_A: float = 8.76
-SAMPLING_MODEL_SHORTEST_BETWEENNESS_B: float = 13.77
-
-# Std deviation and bias models (fitted on synthetic networks, synced via 03_sync_constants.py)
-SAMPLING_MODEL_SHORTEST_STD_C: float = 0.646
-SAMPLING_MODEL_SHORTEST_STD_D: float = 0.97
-SAMPLING_MODEL_SHORTEST_BIAS_E: float = -149899443193.53
-SAMPLING_MODEL_SHORTEST_BIAS_F: float = 119020320586.78
-
-# === ANGULAR (simplest) distance models ===
-# A, B fitted on synthetic networks (01_fit_models.py) and synced via 03_sync_constants.py
-SAMPLING_MODEL_ANGULAR_HARMONIC_A: float = 2.57
-SAMPLING_MODEL_ANGULAR_HARMONIC_B: float = 3.89
-
-SAMPLING_MODEL_ANGULAR_BETWEENNESS_A: float = 9.98
-SAMPLING_MODEL_ANGULAR_BETWEENNESS_B: float = 14.32
-
-SAMPLING_MODEL_ANGULAR_STD_C: float = 0.889
-SAMPLING_MODEL_ANGULAR_STD_D: float = 5.29
-SAMPLING_MODEL_ANGULAR_BIAS_E: float = -77311674160.16
-SAMPLING_MODEL_ANGULAR_BIAS_F: float = 61318369747.42
+# At ε = 0.1, this delivers Spearman ρ ≥ 0.98 on real street networks
+# with speedups of 5–63× depending on distance threshold.
+# Validated on GLA (294k nodes) and Madrid (99k nodes) networks.
+HOEFFDING_EPSILON: float = 0.1
+HOEFFDING_DELTA: float = 0.1
 
 
-def get_expected_spearman(
-    effective_n: float,
-    metric: str = "betweenness",
-    distance_type: str = "shortest",
-) -> tuple[float, float]:
-    """
-    Get expected Spearman ρ and standard deviation for given effective sample size.
-
-    Uses baseline model: Expected ρ = 1 - A / (B + eff_n)
-    Std dev model: C_std / sqrt(D_std + eff_n)
-
-    Parameters
-    ----------
-    effective_n : float
-        The effective sample size (reach × p)
-    metric : str
-        Which metric model to use: "harmonic", "betweenness", or "both".
-        Use "both" when computing both metrics together (uses betweenness/conservative).
-        Default "betweenness" for backward compatibility.
-    distance_type : str
-        Which distance type model to use: "shortest" (metric) or "angular" (simplest).
-        Default "shortest" for backward compatibility.
-
-    Returns
-    -------
-    tuple[float, float]
-        (expected_spearman, std_dev)
-    """
-    # Ensure minimum effective_n of 1 to avoid edge cases
-    eff_n = max(1.0, effective_n)
-
-    # Select model parameters based on distance_type and metric
-    if distance_type == "angular":
-        if metric == "harmonic":
-            a = SAMPLING_MODEL_ANGULAR_HARMONIC_A
-            b = SAMPLING_MODEL_ANGULAR_HARMONIC_B
-        else:
-            # "betweenness" or "both" - use conservative model
-            a = SAMPLING_MODEL_ANGULAR_BETWEENNESS_A
-            b = SAMPLING_MODEL_ANGULAR_BETWEENNESS_B
-        std_c, std_d = SAMPLING_MODEL_ANGULAR_STD_C, SAMPLING_MODEL_ANGULAR_STD_D
-    else:  # shortest (default)
-        if metric == "harmonic":
-            a = SAMPLING_MODEL_SHORTEST_HARMONIC_A
-            b = SAMPLING_MODEL_SHORTEST_HARMONIC_B
-        else:
-            # "betweenness" or "both" - use conservative model
-            a = SAMPLING_MODEL_SHORTEST_BETWEENNESS_A
-            b = SAMPLING_MODEL_SHORTEST_BETWEENNESS_B
-        std_c, std_d = SAMPLING_MODEL_SHORTEST_STD_C, SAMPLING_MODEL_SHORTEST_STD_D
-
-    # Expected Spearman ρ from baseline model
-    expected_rho = 1.0 - a / (b + eff_n)
-    expected_rho = max(0.0, min(1.0, expected_rho))  # Clamp to [0, 1]
-
-    # Standard deviation
-    std_dev = std_c / (std_d + eff_n) ** 0.5
-    std_dev = max(0.001, std_dev)  # Minimum std
-
-    return expected_rho, std_dev
-
-
-def get_expected_bias(effective_n: float, distance_type: str = "shortest") -> float:
-    """
-    Get expected magnitude bias for given effective sample size.
-
-    Uses fitted empirical model: scale = 1 - E / (F + eff_n)
-    Bias is reported as (1 - scale), i.e., the fraction by which
-    magnitudes are expected to be underestimated.
-
-    Parameters
-    ----------
-    effective_n : float
-        The effective sample size (reach × p)
-    distance_type : str
-        Which distance type model to use: "shortest" (metric) or "angular" (simplest).
-        Default "shortest" for backward compatibility.
-
-    Returns
-    -------
-    float
-        Expected bias as a fraction (e.g., 0.05 means ~5% underestimate)
-    """
-    eff_n = max(1.0, effective_n)
-
-    # Select model parameters based on distance_type
-    if distance_type == "angular":
-        bias_e, bias_f = SAMPLING_MODEL_ANGULAR_BIAS_E, SAMPLING_MODEL_ANGULAR_BIAS_F
-    else:  # shortest (default)
-        bias_e, bias_f = SAMPLING_MODEL_SHORTEST_BIAS_E, SAMPLING_MODEL_SHORTEST_BIAS_F
-
-    expected_scale = 1.0 - bias_e / (bias_f + eff_n)
-    expected_scale = max(0.0, min(1.0, expected_scale))  # Clamp to [0, 1]
-    return 1.0 - expected_scale
-
-
-def get_required_effective_n(
-    target_spearman: float,
-    metric: str = "betweenness",
-    distance_type: str = "shortest",
-) -> float | None:
-    """
-    Get the minimum effective_n required to achieve a target Spearman ρ.
-
-    Inverts the model: eff_n = A / (1 - target) - B
-
-    Parameters
-    ----------
-    target_spearman : float
-        Target Spearman ρ (e.g., 0.95)
-    metric : str
-        Which metric model to use: "harmonic", "betweenness", or "both".
-        Use "both" when computing both metrics together (uses betweenness/conservative).
-        Default "betweenness" for backward compatibility.
-    distance_type : str
-        Which distance type model to use: "shortest" (metric) or "angular" (simplest).
-        Default "shortest" for backward compatibility.
-
-    Returns
-    -------
-    float | None
-        Required effective_n, or None if target is impossible (≥1.0)
-    """
-    if target_spearman >= 1.0:
-        return None
-    if target_spearman <= 0.0:
-        return 0.0
-
-    # Select model parameters based on distance_type and metric
-    if distance_type == "angular":
-        if metric == "harmonic":
-            a, b = SAMPLING_MODEL_ANGULAR_HARMONIC_A, SAMPLING_MODEL_ANGULAR_HARMONIC_B
-        else:
-            # "betweenness" or "both" - use conservative model
-            a, b = SAMPLING_MODEL_ANGULAR_BETWEENNESS_A, SAMPLING_MODEL_ANGULAR_BETWEENNESS_B
-    else:  # shortest (default)
-        if metric == "harmonic":
-            a, b = SAMPLING_MODEL_SHORTEST_HARMONIC_A, SAMPLING_MODEL_SHORTEST_HARMONIC_B
-        else:
-            # "betweenness" or "both" - use conservative model
-            a, b = SAMPLING_MODEL_SHORTEST_BETWEENNESS_A, SAMPLING_MODEL_SHORTEST_BETWEENNESS_B
-
-    # Invert: rho = 1 - A / (B + n) => n = A / (1 - rho) - B
-    required_n = a / (1.0 - target_spearman) - b
-    return max(1.0, required_n)
-
-
-def compute_required_p(
+def compute_hoeffding_p(
     mean_reachability: float,
-    target_spearman: float = 0.95,
-    metric: str = "betweenness",
-    distance_type: str = "shortest",
+    epsilon: float = HOEFFDING_EPSILON,
+    delta: float = HOEFFDING_DELTA,
 ) -> float | None:
     """
-    Compute the sampling probability required to achieve target accuracy.
+    Compute sampling probability from the Hoeffding/Eppstein-Wang bound.
 
-    Uses the inverted sampling model:
-      eff_n = max(k × √reach, min_eff_n)
-      p = min(1.0, eff_n / reach)
-
-    Where:
-      - k = SAMPLING_PROPORTIONAL_K (fitted constant for √reach scaling)
-      - min_eff_n = SAMPLING_MIN_EFF_N (floor for low-reach networks)
-
-    This model guarantees ρ ≥ 0.95 across diverse network topologies.
-    The target_spearman parameter is retained for API compatibility but
-    the model is calibrated for ρ ≥ 0.95.
+    k = log(2r / δ) / (2ε²)
+    p = min(1, k / r)
 
     Parameters
     ----------
     mean_reachability : float
-        Average number of nodes reachable within distance threshold
-    target_spearman : float
-        Target Spearman ρ (default 0.95). Note: model is calibrated for 0.95.
-    metric : str
-        Retained for API compatibility. The inverted model applies to both metrics.
-    distance_type : str
-        Retained for API compatibility. The inverted model applies to both distance types.
+        Average number of nodes reachable within distance threshold.
+    epsilon : float
+        Normalised additive error tolerance. Default 0.1.
+    delta : float
+        Failure probability (1 - confidence). Default 0.1.
 
     Returns
     -------
     float | None
-        Required sampling probability, or None if reach is invalid
+        Required sampling probability in [0, 1], or None if reach is invalid.
     """
     if mean_reachability <= 0:
         return None
 
     import math
 
-    # Inverted sampling model: eff_n = max(k × √reach, min_eff_n)
-    eff_n = max(SAMPLING_PROPORTIONAL_K * math.sqrt(mean_reachability), SAMPLING_MIN_EFF_N)
-
-    # Sampling probability: p = min(1.0, eff_n / reach)
-    p = min(1.0, eff_n / mean_reachability)
-
-    return max(0.01, p)
+    k = math.log(2 * mean_reachability / delta) / (2 * epsilon**2)
+    return min(1.0, k / mean_reachability)
 
 
 def log_thresholds(
@@ -341,29 +144,22 @@ def log_sampling(
     """
     Log sampling statistics when sampling is enabled.
 
-    Provides users with:
-    - Expected ranking accuracy (Spearman ρ) based on effective sample size
-    - Recommendations for achieving target accuracy levels where applicable
-    - Warnings when effective sample size is very low
-
-    The effective sample size (eff_n = reachability × p) determines accuracy:
-    - eff_n ≥ 260: Expected ρ ≥ 0.95
-    - eff_n ≥ 120: Expected ρ ≥ 0.90
-    - eff_n < 50:  High variance expected
+    Reports the Hoeffding bound epsilon for each distance threshold,
+    showing the theoretical additive error guarantee.
     """
     if sample_probability is None:
         return
+
+    import math
 
     # Log sampling overview
     logger.info("")  # Visual separator
     speedup = 1 / sample_probability
     logger.info(f"Sampling enabled: p={sample_probability:.0%}, theoretical speedup ~{speedup:.1f}x")
-    logger.info("  Spearman ρ measures ranking preservation (0=uncorrelated, 1=identical)")
-    logger.info("  Bias shows expected magnitude underestimate (0%=unbiased)")
 
-    # If we have actual reachability data, log effective_n and expected accuracy
+    # If we have actual reachability data, log effective_n and epsilon bound
     if reachability_totals and sampled_source_count and sampled_source_count > 0 and distances:
-        logger.info("  Per-distance accuracy estimates:")
+        logger.info("  Per-distance Hoeffding bound (ε = normalised additive error):")
 
         for dist, total_reach in zip(distances, reachability_totals, strict=True):
             mean_reach = total_reach / sampled_source_count
@@ -371,39 +167,22 @@ def log_sampling(
                 continue
 
             effective_n = mean_reach * sample_probability
-            expected_rho, std_rho = get_expected_spearman(effective_n)
-
-            # Compute required p for different accuracy targets
-            p_for_90 = compute_required_p(mean_reach, 0.90)
-            p_for_95 = compute_required_p(mean_reach, 0.95)
-
-            # Build recommendation based on achievable targets
-            # Check if targets are achievable (p < 1.0 means sampling still provides speedup)
-            can_reach_95 = p_for_95 is not None and p_for_95 < 1.0
-            can_reach_90 = p_for_90 is not None and p_for_90 < 1.0
-
-            if expected_rho >= 0.95:
-                # Already at ρ≥0.95
-                recommendation = ""
-            elif can_reach_95:
-                # Can achieve ρ≥0.95 with higher p
-                recommendation = f" → p≥{p_for_95:.0%} for ρ≥0.95"
-            elif can_reach_90:
-                # Can achieve ρ≥0.90 with higher p, but ρ≥0.95 requires full computation
-                recommendation = f" → p≥{p_for_90:.0%} for ρ≥0.90"
+            # Compute the Hoeffding epsilon achieved at this eff_n
+            if effective_n > 0 and mean_reach > 0:
+                eps = math.sqrt(math.log(2 * mean_reach / HOEFFDING_DELTA) / (2 * effective_n))
             else:
-                # Neither target achievable with sampling - reach is too low
-                recommendation = " (reach too low for ρ≥0.90 with sampling)"
+                eps = float("inf")
 
-            # Get expected bias
-            expected_bias = get_expected_bias(effective_n)
-            bias_str = f", bias={expected_bias:.0%}" if expected_bias >= 0.01 else ""
+            # Compute what the Hoeffding model would recommend
+            p_hoeffding = compute_hoeffding_p(mean_reach)
+            recommendation = ""
+            if p_hoeffding is not None and eps > HOEFFDING_EPSILON:
+                if p_hoeffding < 1.0:
+                    recommendation = f" → p≥{p_hoeffding:.0%} for ε≤{HOEFFDING_EPSILON}"
+                else:
+                    recommendation = " (full computation needed for ε≤0.1)"
 
-            # Log the main info line
-            logger.info(
-                f"    {dist}m: reach={mean_reach:.0f}, eff_n={effective_n:.0f}, "
-                f"expected ρ={expected_rho:.2f}±{std_rho:.2f}{bias_str}{recommendation}"
-            )
+            logger.info(f"    {dist}m: reach={mean_reach:.0f}, eff_n={effective_n:.0f}, ε={eps:.3f}{recommendation}")
 
 
 # =============================================================================
@@ -564,56 +343,38 @@ def probe_reachability(
     return {d: float(np.percentile(counts, 50)) if counts else 0.0 for d, counts in reach_counts.items()}
 
 
-def compute_sample_probs_for_target_rho(
+def compute_sample_probs(
     reach_estimates: dict[int, float],
-    target_rho: float = 0.95,
-    metric: str = "both",
-    distance_type: str = "shortest",
+    epsilon: float = HOEFFDING_EPSILON,
+    delta: float = HOEFFDING_DELTA,
 ) -> dict[int, float | None]:
     """
-    Compute the sampling probability required at each distance to achieve target accuracy.
-
-    Uses a two-factor model:
-      Factor 1: Baseline model requires minimum eff_n for target ρ
-      Factor 2: Proportional coverage floor p_min = k / √reach
+    Compute sampling probability for each distance using the Hoeffding/EW bound.
 
     Parameters
     ----------
     reach_estimates
         Reachability per distance (from probe_reachability, median).
-    target_rho
-        Target Spearman ρ correlation. Default 0.95.
-    metric
-        Which metric model to use: "harmonic", "betweenness", or "both".
-        - "harmonic": Use closeness model (less conservative, more speedup)
-        - "betweenness": Use betweenness model (more conservative)
-        - "both": Use betweenness model to ensure both metrics meet target
-    distance_type
-        Which distance type model to use: "shortest" (metric) or "angular" (simplest).
-        Default "shortest" for backward compatibility.
+    epsilon
+        Normalised additive error tolerance. Default 0.1.
+    delta
+        Failure probability. Default 0.1.
 
     Returns
     -------
     dict[int, float | None]
         Sampling probability for each distance.
-        Returns None for distances where reach is too low to achieve target with any p ≤ 1.0.
+        Returns None for distances where reach is zero or negative.
     """
-    result = {}
-    for d, reach in reach_estimates.items():
-        p = compute_required_p(reach, target_rho, metric=metric, distance_type=distance_type)
-        result[d] = p
-
-    return result
+    return {d: compute_hoeffding_p(reach, epsilon, delta) for d, reach in reach_estimates.items()}
 
 
 def log_adaptive_sampling_plan(
     distances: list[int],
     reach_estimates: dict[int, float],
     sample_probs: dict[int, float | None],
-    target_rho: float,
-    metric: str = "both",
-    safety_margin: float = 0.02,
-    distance_type: str = "shortest",
+    epsilon: float = HOEFFDING_EPSILON,
+    delta: float = HOEFFDING_DELTA,
 ) -> None:
     """
     Log the adaptive sampling plan before execution.
@@ -626,27 +387,15 @@ def log_adaptive_sampling_plan(
         Estimated reachability per distance.
     sample_probs
         Computed sampling probabilities per distance.
-    target_rho
-        Target accuracy level.
-    metric
-        Which metric model is being used: "harmonic", "betweenness", or "both".
-    safety_margin
-        Safety margin applied to target_rho internally.
-    distance_type
-        Which distance type model to use: "shortest" (metric) or "angular" (simplest).
+    epsilon
+        Normalised additive error tolerance.
+    delta
+        Failure probability.
     """
     logger.info("")  # Visual separator
-    metric_label = {"harmonic": "closeness", "betweenness": "betweenness", "both": "both metrics"}.get(
-        metric, "both metrics"
-    )
-    dist_label = "angular" if distance_type == "angular" else "shortest"
-    effective_target = min(0.99, target_rho + safety_margin)
-    logger.info(
-        f"Adaptive sampling plan ({dist_label}, target ρ ≥ {target_rho:.2f}, "
-        f"internal target {effective_target:.2f} for {metric_label}):"
-    )
-    logger.info("  Distance │  Reach │ Sample p │ Expected ρ")
-    logger.info("  ─────────┼────────┼──────────┼───────────")
+    logger.info(f"Adaptive sampling plan (Hoeffding bound: ε={epsilon}, δ={delta}):")
+    logger.info("  Distance │  Reach │ Sample p │ Speedup")
+    logger.info("  ─────────┼────────┼──────────┼────────")
 
     for d in sorted(distances):
         reach = reach_estimates.get(d, 0)
@@ -654,11 +403,10 @@ def log_adaptive_sampling_plan(
 
         # Full computation (p >= 1.0 or None) means exact results
         if p is None or p >= 1.0:
-            logger.info(f"  {d:>7}m │ {reach:>6.0f} │     full │ 1.00 (exact)")
+            logger.info(f"  {d:>7}m │ {reach:>6.0f} │     full │    1.0x")
         else:
-            eff_n = reach * p
-            exp_rho, _ = get_expected_spearman(eff_n, metric=metric, distance_type=distance_type)
-            logger.info(f"  {d:>7}m │ {reach:>6.0f} │ {p:>7.0%} │ {exp_rho:.2f} (eff_n={eff_n:.0f})")
+            speedup = 1.0 / p
+            logger.info(f"  {d:>7}m │ {reach:>6.0f} │ {p:>7.0%} │ {speedup:>5.1f}x")
 
 
 RustResults = (

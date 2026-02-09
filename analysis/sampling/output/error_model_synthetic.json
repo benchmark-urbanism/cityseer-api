@@ -1,5 +1,5 @@
 {
-  "generated": "2026-02-09T11:51:19",
+  "generated": "2026-02-09T18:03:12",
   "script": "02_fit_error_model.py",
   "description": "Localised EW bound analysis on synthetic data",
   "parameters": {
@@ -45,17 +45,5 @@
       "median_eps_observed": 0.06161651246289429,
       "median_eps_predicted": 0.23329897005607103
     }
-  },
-  "rank_model": {
-    "k": 10.16,
-    "min_eff_n": 300
-  },
-  "implied_epsilon_from_rank_model": {
-    "100": 0.1126,
-    "500": 0.1239,
-    "1000": 0.1241,
-    "3000": 0.0994,
-    "10000": 0.0775,
-    "30000": 0.0615
   }
 }

@@ -7,7 +7,7 @@ random subset of source nodes. Key properties:
 2. Unbiasedness: IPW-corrected samples converge to true values
 3. Coverage: Target aggregation ensures all nodes receive results
 4. Validation: Invalid inputs are rejected
-5. Model: compute_required_p implements the inverted sampling model correctly
+5. Model: Hoeffding/Eppstein–Wang reach → p is implemented correctly
 """
 
 from __future__ import annotations
@@ -328,86 +328,48 @@ class TestSimplestCentrality:
 
 
 class TestSamplingModel:
-    """Tests for the inverted sampling model: eff_n = max(k * sqrt(reach), min_eff_n)."""
+    """Tests for the Hoeffding/Eppstein–Wang reach → p sampling model."""
 
     def test_constants_match_paper(self):
-        """Model constants match the paper values."""
-        assert config.SAMPLING_PROPORTIONAL_K == 9.91
-        assert config.SAMPLING_MIN_EFF_N == 350.0
+        """Default Hoeffding parameters match the paper defaults."""
+        assert config.HOEFFDING_EPSILON == 0.1
+        assert config.HOEFFDING_DELTA == 0.1
 
-    def test_high_reach_proportional_regime(self):
-        """At high reach, eff_n = k * sqrt(reach) and p decreases."""
-        reach = 40000
-        p = config.compute_required_p(reach)
-        expected_eff_n = config.SAMPLING_PROPORTIONAL_K * math.sqrt(reach)
-        expected_p = expected_eff_n / reach
-        assert p == pytest.approx(expected_p, rel=1e-6)
-        assert p < 0.1  # aggressive sampling at high reach
-
-    def test_low_reach_floor_regime(self):
-        """At low reach, eff_n is clamped to min_eff_n."""
-        reach = 100
-        p = config.compute_required_p(reach)
-        # Floor: eff_n = 350, so p = 350/100 = 3.5, clamped to 1.0
-        assert p == 1.0
-
-    def test_crossover_reach(self):
-        """At the crossover point, both regimes give the same eff_n."""
-        k = config.SAMPLING_PROPORTIONAL_K
-        min_n = config.SAMPLING_MIN_EFF_N
-        crossover = (min_n / k) ** 2
-        # Just above crossover: proportional regime dominates
-        p_above = config.compute_required_p(crossover * 1.5)
-        eff_n_above = p_above * crossover * 1.5
-        assert eff_n_above > min_n
-        # Just below crossover: floor dominates
-        p_below = config.compute_required_p(crossover * 0.5)
-        eff_n_below = p_below * crossover * 0.5
-        assert eff_n_below == pytest.approx(min_n, rel=0.01)
-
-    def test_p_clamped_to_one(self):
-        """Sampling probability never exceeds 1.0."""
-        for reach in [10, 50, 100, 200, 350]:
-            p = config.compute_required_p(reach)
-            assert p <= 1.0
-
-    def test_p_has_minimum_floor(self):
-        """Sampling probability has a 1% minimum floor."""
-        p = config.compute_required_p(1e9)
-        assert p >= 0.01
-
-    def test_zero_reach_returns_none(self):
-        """Zero reach returns None."""
-        assert config.compute_required_p(0) is None
-
-    def test_negative_reach_returns_none(self):
-        """Negative reach returns None."""
-        assert config.compute_required_p(-100) is None
+    def test_compute_hoeffding_p_matches_formula(self):
+        """compute_hoeffding_p implements k=log(2r/δ)/(2ε²), p=min(1,k/r)."""
+        reach = 1000.0
+        epsilon = 0.1
+        delta = 0.1
+        p = config.compute_hoeffding_p(reach, epsilon=epsilon, delta=delta)
+        assert p is not None
+        expected_k = math.log(2 * reach / delta) / (2 * epsilon**2)
+        expected_p = min(1.0, expected_k / reach)
+        assert p == pytest.approx(expected_p, rel=1e-10)
 
     def test_p_decreases_with_reach(self):
         """Sampling probability decreases as reach increases."""
-        reaches = [500, 1000, 5000, 10000, 50000]
-        probs = [config.compute_required_p(r) for r in reaches]
+        reaches = [200.0, 500.0, 1000.0, 5000.0, 10000.0]
+        probs = [config.compute_hoeffding_p(r) for r in reaches]
+        assert all(p is not None for p in probs)
         for i in range(len(probs) - 1):
             assert probs[i] >= probs[i + 1], f"p should decrease: {probs[i]} < {probs[i + 1]}"
 
-    def test_paper_example_values(self):
-        """Spot-check values from paper Section 5 (Computational Complexity)."""
-        # 500m: reach ≈ 200, p = 1.0
-        p_500m = config.compute_required_p(200)
-        assert p_500m == 1.0
-        # 5km: reach ≈ 3000, p ≈ 0.26
-        p_5km = config.compute_required_p(3000)
-        assert 0.15 < p_5km < 0.35
-        # 20km: reach ≈ 40000, p ≈ 0.07
-        p_20km = config.compute_required_p(40000)
-        assert 0.03 < p_20km < 0.10
+    def test_low_reach_clamps_to_one(self):
+        """At low reach the bound requests full computation (p=1)."""
+        assert config.compute_hoeffding_p(50.0) == 1.0
 
-    def test_metric_and_distance_type_ignored(self):
-        """Inverted model gives same p regardless of metric/distance_type args."""
-        reach = 5000
-        p_default = config.compute_required_p(reach)
-        p_harmonic = config.compute_required_p(reach, metric="harmonic")
-        p_betw = config.compute_required_p(reach, metric="betweenness")
-        p_angular = config.compute_required_p(reach, distance_type="angular")
-        assert p_default == p_harmonic == p_betw == p_angular
+    def test_compute_sample_probs_vectorises(self):
+        """compute_sample_probs returns a p for each distance."""
+        reach_estimates = {200: 100.0, 400: 1000.0}
+        probs = config.compute_sample_probs(reach_estimates, epsilon=0.1, delta=0.1)
+        assert set(probs.keys()) == {200, 400}
+        assert probs[200] is not None and 0.0 < probs[200] <= 1.0
+        assert probs[400] is not None and 0.0 < probs[400] <= 1.0
+
+    def test_zero_reach_returns_none(self):
+        """Zero reach returns None."""
+        assert config.compute_hoeffding_p(0) is None
+
+    def test_negative_reach_returns_none(self):
+        """Negative reach returns None."""
+        assert config.compute_hoeffding_p(-100) is None

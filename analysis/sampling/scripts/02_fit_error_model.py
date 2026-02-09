@@ -1,131 +1,70 @@
 #!/usr/bin/env python
 """
-02_fit_error_model.py - Analyse localised Eppstein-Wang error bound on synthetic data.
+02_fit_error_model.py - Validate localised Hoeffding/EW bound on synthetic data.
 
-Complements the rank-based model (01_fit_rank_model.py) with an error-based analysis.
-While the rank model targets rank preservation (Spearman rho >= 0.95), the localised
-EW bound targets absolute accuracy (additive epsilon guarantee).
+This is the PRIMARY calibration script for the Hoeffding-based sampling model.
+The localised Hoeffding bound (adapting Eppstein & Wang 2004) prescribes:
+    k = log(2r / delta) / (2 * epsilon^2)
+    p = min(1, k / r)
+where r is network reach, epsilon is normalised error tolerance, delta is failure
+probability. This model has ZERO fitted parameters for conventional (epsilon=0.1,
+delta=0.1).
 
 For each (topology, distance, sample_prob, metric) configuration in the synthetic
 cache, this script:
   1. Computes the observed normalised epsilon from max_abs_error
-  2. Computes the EW-predicted epsilon from the Hoeffding concentration bound
+  2. Computes the Hoeffding-predicted epsilon upper bound
   3. Checks whether the bound holds (observed <= predicted)
-  4. Computes the implied epsilon from the rank model at each reach
-  5. Reports success rates, comparison tables, and figures
-
-The localised EW bound adapts Eppstein & Wang (2004) to distance-bounded centrality:
-    n_eff = log(2r / delta) / (2 * epsilon^2)
-where r is the network reach and delta is the failure probability.
+  4. Reports success rates, comparison tables, and figures
 
 Requires:
     - .cache/sampling_analysis_{CACHE_VERSION}.pkl (from 00_generate_cache.py)
-    - output/sampling_model.json (from 01_fit_rank_model.py)
 
 Outputs:
     - output/error_model_synthetic.json
     - output/error_model_synthetic.csv
-    - paper/figures/fig_ew_synthetic.pdf
-    - paper/tables/tab_ew_comparison.tex
+    - paper/tables/tab1_ew_comparison.tex (main body Tab 1)
 """
 
 import json
-import math
 import pickle
 from datetime import datetime
-from pathlib import Path
 
-import matplotlib
-
-matplotlib.use("Agg")
-import matplotlib.pyplot as plt
-import numpy as np
 import pandas as pd
-
-from utilities import CACHE_DIR, CACHE_VERSION, FIGURES_DIR, OUTPUT_DIR, TABLES_DIR
+from utilities import (
+    CACHE_DIR,
+    CACHE_VERSION,
+    HOEFFDING_DELTA,
+    OUTPUT_DIR,
+    TABLES_DIR,
+    compute_hoeffding_eff_n,
+    compute_hoeffding_p,
+    ew_predicted_epsilon,
+    normalise_error,
+)
 
 # =============================================================================
 # CONFIGURATION
 # =============================================================================
 
-DELTA = 0.1  # Failure probability (90% confidence)
+DELTA = HOEFFDING_DELTA  # Failure probability (90% confidence)
 EPSILON_TARGETS = [0.01, 0.05, 0.1, 0.2]  # Tolerance levels to evaluate
 REACH_THRESHOLD = 100  # Minimum reach for meaningful concentration bounds
 
-# Matplotlib style
-plt.rcParams.update(
-    {
-        "font.family": "sans-serif",
-        "font.size": 11,
-        "axes.titlesize": 12,
-        "axes.labelsize": 11,
-        "xtick.labelsize": 10,
-        "ytick.labelsize": 10,
-        "legend.fontsize": 10,
-        "figure.dpi": 150,
-        "savefig.dpi": 300,
-        "axes.spines.top": False,
-        "axes.spines.right": False,
-    }
-)
-
 
 # =============================================================================
-# EW BOUND FUNCTIONS
+# EW BOUND FUNCTIONS (local wrappers for convenience)
 # =============================================================================
-
-
-def ew_predicted_epsilon(n_eff: float, reach: float, delta: float = DELTA) -> float:
-    """Compute the EW-predicted maximum epsilon (Hoeffding form).
-
-    eps = sqrt(log(2r / delta) / (2 * n_eff))
-    """
-    if n_eff <= 0 or reach <= 0:
-        return float("inf")
-    return math.sqrt(math.log(2 * reach / delta) / (2 * n_eff))
 
 
 def ew_required_n_eff(epsilon: float, reach: float, delta: float = DELTA) -> float:
-    """Compute the n_eff required by the EW bound for a given epsilon tolerance.
-
-    n_eff = log(2r / delta) / (2 * epsilon^2)
-    """
-    if epsilon <= 0:
-        return float("inf")
-    return math.log(2 * reach / delta) / (2 * epsilon**2)
+    """Compute the n_eff required by the EW bound for a given epsilon tolerance."""
+    return compute_hoeffding_eff_n(reach, epsilon, delta)
 
 
 def ew_required_p(epsilon: float, reach: float, delta: float = DELTA) -> float:
     """Compute the sampling probability required by the EW bound."""
-    n_eff = ew_required_n_eff(epsilon, reach, delta)
-    return min(1.0, n_eff / reach)
-
-
-def implied_epsilon_from_rank_model(reach: float, k: float, min_eff_n: float, delta: float = DELTA) -> float:
-    """Compute the additive error the rank model implicitly guarantees.
-
-    Given the rank model's n_eff = max(k*sqrt(r), min_eff_n), invert the
-    Hoeffding bound to find what epsilon this n_eff would guarantee:
-        eps = sqrt(log(2r/delta) / (2 * n_eff))
-    """
-    n_eff = max(k * math.sqrt(reach), min_eff_n)
-    if n_eff <= 0 or reach <= 0:
-        return float("inf")
-    return math.sqrt(math.log(2 * reach / delta) / (2 * n_eff))
-
-
-def normalise_error(max_abs_error: float, reach: float, metric: str) -> float:
-    """Normalise raw absolute error by theoretical maximum.
-
-    Betweenness: bounded by r*(r-1) pair-paths.
-    Harmonic closeness: bounded by r (sum of 1/d for r nodes).
-    """
-    if reach <= 1:
-        return float("inf")
-    if metric == "betweenness":
-        return max_abs_error / (reach * (reach - 1))
-    else:  # harmonic closeness
-        return max_abs_error / reach
+    return compute_hoeffding_p(reach, epsilon, delta)
 
 
 # =============================================================================
@@ -148,20 +87,6 @@ def load_synthetic_cache() -> pd.DataFrame:
     print(f"  Distances: {sorted(df['distance'].unique())}")
     print(f"  Metrics: {sorted(df['metric'].unique())}")
     return df
-
-
-def load_rank_model() -> tuple[float, float]:
-    """Load the fitted rank-based model parameters."""
-    model_path = OUTPUT_DIR / "sampling_model.json"
-    if not model_path.exists():
-        raise FileNotFoundError(f"Model not found at {model_path}. Run 01_fit_rank_model.py first.")
-
-    with open(model_path) as f:
-        model = json.load(f)
-
-    k = model["model"]["k"]
-    min_eff_n = model["model"]["min_eff_n"]
-    return k, min_eff_n
 
 
 # =============================================================================
@@ -269,16 +194,16 @@ def print_success_rates(results: pd.DataFrame):
         print(f"  {dist:<15} {h:>8} {t:>8} {100 * h / t:>7.1f}%")
 
 
-def print_epsilon_comparison(results: pd.DataFrame, k: float, min_eff_n: float):
-    """Print comparison of EW required samples vs rank-based model, with implied epsilon."""
+def print_epsilon_comparison(results: pd.DataFrame):
+    """Print EW bound required samples at different epsilon tolerances."""
     print("\n" + "=" * 70)
-    print("COMPARISON: EW BOUND vs RANK-BASED MODEL")
+    print("EW BOUND: REQUIRED SAMPLES BY EPSILON")
     print("=" * 70)
 
     configs = results.groupby(["topology", "distance"])["reach"].first().reset_index()
     configs = configs.sort_values(["topology", "distance"])
 
-    header = f"  {'Topology':<10} {'Dist':>5} {'Reach':>8} | {'Rank n_eff':>10} | {'Implied eps':>11} |"
+    header = f"  {'Topology':<10} {'Dist':>5} {'Reach':>8} |"
     for eps in EPSILON_TARGETS:
         header += f" {'EW@' + str(eps):>10}"
     header += " |"
@@ -290,10 +215,8 @@ def print_epsilon_comparison(results: pd.DataFrame, k: float, min_eff_n: float):
 
     for _, cfg in configs.iterrows():
         reach = cfg["reach"]
-        rank_eff_n = max(k * math.sqrt(reach), min_eff_n)
-        impl_eps = implied_epsilon_from_rank_model(reach, k, min_eff_n)
 
-        line = f"  {cfg['topology']:<10} {cfg['distance']:>5} {reach:>8.0f} | {rank_eff_n:>10.0f} | {impl_eps:>11.4f} |"
+        line = f"  {cfg['topology']:<10} {cfg['distance']:>5} {reach:>8.0f} |"
         for eps in EPSILON_TARGETS:
             ew_n = ew_required_n_eff(eps, reach)
             line += f" {ew_n:>10.0f}"
@@ -316,7 +239,7 @@ def print_observed_epsilon_summary(results: pd.DataFrame):
         print("  No betweenness data")
         return
 
-    print(f"\n  Betweenness:")
+    print("\n  Betweenness:")
     print(f"  {'Topology':<10} {'Dist':>5} {'Reach':>8} | ", end="")
     probs = sorted(betw["sample_prob"].unique())
     for p in probs:
@@ -342,7 +265,7 @@ def print_observed_epsilon_summary(results: pd.DataFrame):
 
     harm = results[results["metric"] == "harmonic"]
     if len(harm) > 0:
-        print(f"\n  Harmonic closeness:")
+        print("\n  Harmonic closeness:")
         print(f"  {'Topology':<10} {'Dist':>5} {'Reach':>8} | ", end="")
         for p in probs:
             print(f"{'p=' + f'{p:.0%}':>10}", end="")
@@ -367,150 +290,51 @@ def print_observed_epsilon_summary(results: pd.DataFrame):
 
 
 # =============================================================================
-# FIGURES
-# =============================================================================
-
-
-def generate_figure(results: pd.DataFrame, k: float, min_eff_n: float):
-    """Generate the EW analysis figure with low/high reach distinction."""
-    print("\nGenerating figure...")
-
-    fig, axes = plt.subplots(1, 2, figsize=(13, 5.5))
-
-    # --- Panel A: Predicted vs Observed epsilon ---
-    ax = axes[0]
-
-    colours = {"betweenness": "#B2182B", "harmonic": "#2166AC"}
-
-    for metric in ["betweenness", "harmonic"]:
-        subset = results[results["metric"] == metric]
-        valid = subset[(subset["eps_observed"] > 0) & (subset["eps_predicted"] > 0)]
-        valid = valid[np.isfinite(valid["eps_observed"]) & np.isfinite(valid["eps_predicted"])]
-
-        # Split into high-reach (filled) and low-reach (open)
-        high = valid[valid["reach"] >= REACH_THRESHOLD]
-        low = valid[valid["reach"] < REACH_THRESHOLD]
-
-        if len(high) > 0:
-            ax.scatter(
-                high["eps_predicted"],
-                high["eps_observed"],
-                c=colours[metric],
-                marker="o",
-                s=20,
-                alpha=0.5,
-                label=f"{metric} (r >= {REACH_THRESHOLD})",
-                edgecolors="none",
-            )
-
-        if len(low) > 0:
-            ax.scatter(
-                low["eps_predicted"],
-                low["eps_observed"],
-                facecolors="none",
-                edgecolors=colours[metric],
-                marker="o",
-                s=20,
-                alpha=0.7,
-                label=f"{metric} (r < {REACH_THRESHOLD})",
-                linewidths=0.8,
-            )
-
-    # Identity line (bound boundary)
-    lims = [1e-8, 100]
-    ax.plot(lims, lims, "k--", linewidth=1, alpha=0.5, label="bound = observed")
-
-    ax.set_xscale("log")
-    ax.set_yscale("log")
-    ax.set_xlabel("EW predicted epsilon (upper bound)")
-    ax.set_ylabel("Observed epsilon")
-    ax.set_title("A) Bound validation: predicted vs observed")
-    ax.legend(loc="upper left", fontsize=8)
-    ax.grid(True, alpha=0.3, which="both")
-
-    ax.fill_between(lims, [1e-10, 1e-10], lims, alpha=0.05, color="green")
-    ax.text(
-        0.95,
-        0.05,
-        "bound holds",
-        transform=ax.transAxes,
-        ha="right",
-        va="bottom",
-        fontsize=9,
-        color="green",
-        alpha=0.7,
-    )
-
-    # --- Panel B: Required p by reach for various epsilon tolerances ---
-    ax = axes[1]
-
-    reach_range = np.logspace(1.5, 4.5, 200)
-
-    ew_colours = ["#d73027", "#fc8d59", "#fee090", "#91bfdb"]
-    for eps_target, colour in zip(EPSILON_TARGETS, ew_colours):
-        p_values = [ew_required_p(eps_target, r) * 100 for r in reach_range]
-        ax.plot(reach_range, p_values, linewidth=2, color=colour, label=f"EW eps={eps_target}")
-
-    # Overlay the rank-based model
-    rank_p = [min(1.0, max(k * math.sqrt(r), min_eff_n) / r) * 100 for r in reach_range]
-    ax.plot(reach_range, rank_p, "k-", linewidth=2.5, label="Rank model (rho>=0.95)")
-
-    ax.set_xscale("log")
-    ax.set_xlabel("Network reach (nodes)")
-    ax.set_ylabel("Required sampling probability (%)")
-    ax.set_title("B) Required p: EW bound vs rank model")
-    ax.set_ylim(0, 105)
-    ax.legend(loc="upper right", fontsize=8)
-    ax.grid(True, alpha=0.3)
-
-    plt.tight_layout()
-
-    output_path = FIGURES_DIR / "fig_ew_synthetic.pdf"
-    fig.savefig(output_path, dpi=300, bbox_inches="tight")
-    print(f"  Saved: {output_path}")
-    plt.close()
-
-
-# =============================================================================
 # TABLE GENERATION
 # =============================================================================
 
 
-def generate_comparison_table(k: float, min_eff_n: float):
-    """Generate LaTeX comparison table with implied epsilon from rank model."""
+def generate_comparison_table():
+    """Generate LaTeX table of EW bound required samples at different epsilon tolerances."""
     print("\nGenerating comparison table...")
 
     reach_values = [100, 500, 1000, 3000, 10000, 30000]
 
     rows = []
     for reach in reach_values:
-        rank_eff_n = max(k * math.sqrt(reach), min_eff_n)
-        impl_eps = implied_epsilon_from_rank_model(reach, k, min_eff_n)
-
-        row = {"reach": reach, "rank_eff_n": rank_eff_n, "implied_eps": impl_eps}
+        row = {"reach": reach}
         for eps in [0.05, 0.1, 0.2]:
             row[f"ew_{eps}"] = ew_required_n_eff(eps, reach)
+            row[f"p_{eps}"] = ew_required_p(eps, reach)
         rows.append(row)
 
     latex = r"""\begin{table}[htbp]
 \centering
-\caption{Required effective sample sizes under the rank-based model ($\rho \geq \targetRho$) and the localised Eppstein--Wang bound at different additive error tolerances ($\delta = 0.1$). The final column shows the normalised additive error that the rank model's sample size would guarantee under the EW bound.}
+\caption{Required effective sample sizes and sampling probabilities under the localised
+  Eppstein--Wang bound at different additive error tolerances ($\delta = 0.1$).}
 \label{tab:ew_comparison}
 \small
-\begin{tabular}{@{}rrrrrr@{}}
+\begin{tabular}{@{}rrrrrrr@{}}
 \toprule
-\textbf{Reach} & \textbf{Rank $\effn$} & \textbf{EW $\varepsilon{=}0.05$} & \textbf{EW $\varepsilon{=}0.1$} & \textbf{EW $\varepsilon{=}0.2$} & \textbf{Implied $\varepsilon$} \\
+\textbf{Reach} & \textbf{EW $\varepsilon{=}0.05$} & \textbf{$p$} & \textbf{EW $\varepsilon{=}0.1$} &
+  \textbf{$p$} & \textbf{EW $\varepsilon{=}0.2$} & \textbf{$p$} \\\\
 \midrule
 """
 
+    def fmt_int(n):
+        """Format integer with LaTeX-safe thousands separator."""
+        return f"{n:,}".replace(",", "{,}")
+
+    def fmt_pct(p):
+        """Format probability as percentage with escaped % sign."""
+        return f"{p * 100:.1f}\\%"
+
     for row in rows:
         latex += (
-            f"{row['reach']:,} & "
-            f"{row['rank_eff_n']:.0f} & "
-            f"{row['ew_0.05']:,.0f} & "
-            f"{row['ew_0.1']:,.0f} & "
-            f"{row['ew_0.2']:,.0f} & "
-            f"{row['implied_eps']:.3f} \\\\\n"
+            f"{fmt_int(row['reach'])} & "
+            f"{fmt_int(int(row['ew_0.05']))} & {fmt_pct(row['p_0.05'])} & "
+            f"{fmt_int(int(row['ew_0.1']))} & {fmt_pct(row['p_0.1'])} & "
+            f"{fmt_int(int(row['ew_0.2']))} & {fmt_pct(row['p_0.2'])} \\\\\n"
         )
 
     latex += r"""\bottomrule
@@ -518,11 +342,12 @@ def generate_comparison_table(k: float, min_eff_n: float):
 
 \vspace{0.5em}
 \footnotesize
-The rank model requires substantially fewer samples than the EW bound at tight tolerances ($\varepsilon \leq 0.05$), but the two converge at $\varepsilon \approx 0.1$ for large reach. At reach above 3{,}000, the rank model implicitly guarantees $\varepsilon < 0.1$.
+The Hoeffding model prescribes $k = \log(2r/\delta) / (2\varepsilon^2)$, $p = \min(1, k/r)$.
+At the default $\varepsilon = 0.1$, $\delta = 0.1$, the model has zero fitted parameters.
 \end{table}
 """
 
-    output_path = TABLES_DIR / "tab_ew_comparison.tex"
+    output_path = TABLES_DIR / "tab1_ew_comparison.tex"
     with open(output_path, "w") as f:
         f.write(latex)
     print(f"  Saved: {output_path}")
@@ -541,8 +366,6 @@ def main():
     # Load data
     print("\nLoading data...")
     df = load_synthetic_cache()
-    k, min_eff_n = load_rank_model()
-    print(f"  Rank model: k={k}, min_eff_n={min_eff_n}")
 
     # Analyse
     print("\nAnalysing EW bound...")
@@ -552,11 +375,10 @@ def main():
     # Console output
     print_success_rates(results)
     print_observed_epsilon_summary(results)
-    print_epsilon_comparison(results, k, min_eff_n)
+    print_epsilon_comparison(results)
 
-    # Figure and table
-    generate_figure(results, k, min_eff_n)
-    generate_comparison_table(k, min_eff_n)
+    # Table
+    generate_comparison_table()
 
     # Save CSV
     csv_path = OUTPUT_DIR / "error_model_synthetic.csv"
@@ -587,11 +409,6 @@ def main():
             "median_eps_predicted": float(subset["eps_predicted"].median()),
         }
 
-    # Implied epsilon at representative reach values
-    implied_eps_table = {}
-    for reach in [100, 500, 1000, 3000, 10000, 30000]:
-        implied_eps_table[str(reach)] = round(implied_epsilon_from_rank_model(reach, k, min_eff_n), 4)
-
     json_output = {
         "generated": datetime.now().isoformat(timespec="seconds"),
         "script": "02_fit_error_model.py",
@@ -614,8 +431,6 @@ def main():
             "success_rate": cond_holds / cond_total if cond_total > 0 else None,
         },
         "by_metric": by_metric,
-        "rank_model": {"k": k, "min_eff_n": min_eff_n},
-        "implied_epsilon_from_rank_model": implied_eps_table,
     }
 
     json_path = OUTPUT_DIR / "error_model_synthetic.json"
@@ -628,8 +443,7 @@ def main():
     print("=" * 70)
     print(f"  1. {csv_path}")
     print(f"  2. {json_path}")
-    print(f"  3. {FIGURES_DIR / 'fig_ew_synthetic.pdf'}")
-    print(f"  4. {TABLES_DIR / 'tab_ew_comparison.tex'}")
+    print(f"  3. {TABLES_DIR / 'tab1_ew_comparison.tex'}")
 
     return 0
 

@@ -2,8 +2,7 @@
 """
 04_validate_madrid.py - External validation on Madrid regional network.
 
-Generates validation data (if not cached) and produces figures.
-Requires sampling_model.json from 01_fit_rank_model.py.
+Validates the Hoeffding sampling model on an independent network.
 
 Usage:
     python 04_validate_madrid.py           # Run (skips cache if exists)
@@ -11,34 +10,33 @@ Usage:
 
 Outputs:
     - output/madrid_validation.csv
-    - paper/figures/fig7_madrid_validation.pdf
+    - paper/tables/tab4_madrid_validation.tex
 """
 
 import argparse
 import json
-import math
 import pickle
 import time
 from pathlib import Path
 
 import geopandas as gpd
 import numpy as np
-
-import matplotlib
-
-matplotlib.use("Agg")
-import matplotlib.pyplot as plt
 import pandas as pd
 from cityseer.tools import graphs, io
 from utilities import (
     CACHE_DIR,
-    FIGURES_DIR,
+    HOEFFDING_DELTA,
+    HOEFFDING_EPSILON,
     MADRID_GPKG_URL,
     OUTPUT_DIR,
-    QUARTILE_KEYS,
+    TABLES_DIR,
     apply_live_buffer_nx,
     compute_accuracy_metrics,
+    compute_hoeffding_p,
     compute_quartile_accuracy,
+    ew_predicted_epsilon,
+    mean_quartiles,
+    normalise_error,
 )
 
 # =============================================================================
@@ -52,82 +50,11 @@ LIVE_INWARD_BUFFER = 20000  # 20km buffer
 MADRID_DISTANCES = [1000, 2000, 5000, 10000, 20000]
 N_RUNS = 5
 
-# Matplotlib style
-plt.rcParams.update(
-    {
-        "font.family": "sans-serif",
-        "font.size": 11,
-        "axes.titlesize": 12,
-        "axes.labelsize": 11,
-        "xtick.labelsize": 10,
-        "ytick.labelsize": 10,
-        "legend.fontsize": 10,
-        "figure.dpi": 150,
-        "savefig.dpi": 300,
-        "axes.spines.top": False,
-        "axes.spines.right": False,
-    }
-)
+
+DELTA = HOEFFDING_DELTA
 
 
-# =============================================================================
-# EW BOUND FUNCTIONS
-# =============================================================================
-
-DELTA = 0.1  # Failure probability (90% confidence)
-
-
-def ew_predicted_epsilon(n_eff: float, reach: float, delta: float = DELTA) -> float:
-    """EW-predicted maximum normalised epsilon (Hoeffding form)."""
-    if n_eff <= 0 or reach <= 0:
-        return float("inf")
-    return math.sqrt(math.log(2 * reach / delta) / (2 * n_eff))
-
-
-def normalise_error(max_abs_error: float, reach: float, metric: str) -> float:
-    """Normalise raw absolute error by theoretical maximum."""
-    if reach <= 1:
-        return float("inf")
-    if metric == "betweenness":
-        return max_abs_error / (reach * (reach - 1))
-    else:  # harmonic closeness
-        return max_abs_error / reach
-
-
-def implied_epsilon_from_rank_model(reach: float, k: float, min_eff_n: float, delta: float = DELTA) -> float:
-    """Additive error the rank model implicitly guarantees at this reach."""
-    n_eff = max(k * math.sqrt(reach), min_eff_n)
-    if n_eff <= 0 or reach <= 0:
-        return float("inf")
-    return math.sqrt(math.log(2 * reach / delta) / (2 * n_eff))
-
-
-# =============================================================================
-# DATA GENERATION
-# =============================================================================
-
-
-def load_model() -> tuple[float, int]:
-    """Load the fitted model parameters."""
-    model_path = OUTPUT_DIR / "sampling_model.json"
-    if not model_path.exists():
-        raise FileNotFoundError(f"Model not found at {model_path}. Run 01_fit_rank_model.py first.")
-
-    with open(model_path) as f:
-        model = json.load(f)
-
-    k = model["model"]["k"]
-    min_eff_n = model["model"]["min_eff_n"]
-    return k, min_eff_n
-
-
-def compute_model_p(reach: float, k: float, min_eff_n: int) -> float:
-    """Compute the model's recommended sampling probability."""
-    eff_n = max(k * math.sqrt(reach), min_eff_n)
-    return min(1.0, eff_n / reach)
-
-
-def generate_validation_data(k: float, min_eff_n: int, force: bool = False) -> pd.DataFrame:
+def generate_validation_data(force: bool = False) -> pd.DataFrame:
     """Generate Madrid validation data, or load from cache."""
     validation_csv = OUTPUT_DIR / "madrid_validation.csv"
 
@@ -224,220 +151,101 @@ def generate_validation_data(k: float, min_eff_n: int, force: bool = False) -> p
         if baseline_time is not None:
             print(f"  Baseline time: {baseline_time:.1f}s")
 
-        # Compute model-recommended p
-        model_p = compute_model_p(mean_reach, k, min_eff_n)
-        effective_n = mean_reach * model_p
-        print(f"  Model p: {model_p:.3f} (eff_n={effective_n:.0f})")
+        # Compute Hoeffding model probability
+        hoeffding_p = compute_hoeffding_p(mean_reach, epsilon=0.1)
 
-        # Run sampled computations
-        spearmans_h, spearmans_b = [], []
-        maes_h, maes_b = [], []
-        precs_h, precs_b = [], []
-        scales_h, scales_b = [], []
-        quartiles_h, quartiles_b = [], []
-        sampled_times = []
+        probs_to_test = [("hoeffding_0.1", hoeffding_p)]
 
-        print(f"  Running {N_RUNS} sampled runs: ", end="", flush=True)
+        for label, test_p in probs_to_test:
+            effective_n = mean_reach * test_p
+            print(f"  {label}: p={test_p:.4f} (eff_n={effective_n:.0f})")
 
-        for seed in range(N_RUNS):
-            t0 = time.time()
-            r = net.local_node_centrality_shortest(
-                distances=[dist],
-                compute_closeness=True,
-                compute_betweenness=True,
-                sample_probability=model_p,
-                random_seed=seed,
-                pbar_disabled=True,
-            )
-            sampled_times.append(time.time() - t0)
+            # Run sampled computations
+            spearmans_h, spearmans_b = [], []
+            maes_h, maes_b = [], []
+            precs_h, precs_b = [], []
+            scales_h, scales_b = [], []
+            quartiles_h, quartiles_b = [], []
+            sampled_times = []
 
-            est_harmonic = np.array(r.node_harmonic[dist])
-            est_betweenness = np.array(r.node_betweenness[dist])
+            print(f"    Running {N_RUNS} sampled runs: ", end="", flush=True)
 
-            sp_h, prec_h, scale_h, _, mae_h = compute_accuracy_metrics(true_harmonic, est_harmonic)
-            sp_b, prec_b, scale_b, _, mae_b = compute_accuracy_metrics(true_betweenness, est_betweenness)
+            for seed in range(N_RUNS):
+                t0 = time.time()
+                r = net.local_node_centrality_shortest(
+                    distances=[dist],
+                    compute_closeness=True,
+                    compute_betweenness=True,
+                    sample_probability=test_p,
+                    random_seed=seed,
+                    pbar_disabled=True,
+                )
+                sampled_times.append(time.time() - t0)
 
-            if not np.isnan(sp_h):
-                spearmans_h.append(sp_h)
-                maes_h.append(mae_h)
-                precs_h.append(prec_h)
-                scales_h.append(scale_h)
-            if not np.isnan(sp_b):
-                spearmans_b.append(sp_b)
-                maes_b.append(mae_b)
-                precs_b.append(prec_b)
-                scales_b.append(scale_b)
+                est_harmonic = np.array(r.node_harmonic[dist])
+                est_betweenness = np.array(r.node_betweenness[dist])
 
-            # Per-reachability-quartile accuracy
-            if node_reach is not None:
-                quartiles_h.append(compute_quartile_accuracy(true_harmonic, est_harmonic, node_reach))
-                quartiles_b.append(compute_quartile_accuracy(true_betweenness, est_betweenness, node_reach))
+                sp_h, prec_h, scale_h, _, mae_h = compute_accuracy_metrics(true_harmonic, est_harmonic)
+                sp_b, prec_b, scale_b, _, mae_b = compute_accuracy_metrics(true_betweenness, est_betweenness)
 
-            print(".", end="", flush=True)
+                if not np.isnan(sp_h):
+                    spearmans_h.append(sp_h)
+                    maes_h.append(mae_h)
+                    precs_h.append(prec_h)
+                    scales_h.append(scale_h)
+                if not np.isnan(sp_b):
+                    spearmans_b.append(sp_b)
+                    maes_b.append(mae_b)
+                    precs_b.append(prec_b)
+                    scales_b.append(scale_b)
 
-        mean_sampled_time = np.mean(sampled_times)
-        speedup = baseline_time / mean_sampled_time if baseline_time and mean_sampled_time > 0 else float("nan")
+                # Per-reachability-quartile accuracy
+                if node_reach is not None:
+                    quartiles_h.append(compute_quartile_accuracy(true_harmonic, est_harmonic, node_reach))
+                    quartiles_b.append(compute_quartile_accuracy(true_betweenness, est_betweenness, node_reach))
 
-        # Average quartile results across runs
-        def _mean_quartiles(quartile_list):
-            if not quartile_list:
-                result = {}
-                for prefix in QUARTILE_KEYS:
-                    for q in range(1, 5):
-                        result[f"{prefix}_q{q}"] = np.nan
-                return result
-            result = {}
-            for key in quartile_list[0]:
-                vals = [q[key] for q in quartile_list if not np.isnan(q[key])]
-                result[key] = float(np.mean(vals)) if vals else np.nan
-            return result
+                print(".", end="", flush=True)
 
-        q_h = _mean_quartiles(quartiles_h)
-        q_b = _mean_quartiles(quartiles_b)
+            mean_sampled_time = np.mean(sampled_times)
+            speedup = baseline_time / mean_sampled_time if baseline_time and mean_sampled_time > 0 else float("nan")
 
-        print(
-            f" rho_h={np.mean(spearmans_h):.3f}, rho_b={np.mean(spearmans_b):.3f}, "
-            f"speedup={speedup:.1f}x"
-        )
+            # Average quartile results across runs
+            q_h = mean_quartiles(quartiles_h)
+            q_b = mean_quartiles(quartiles_b)
 
-        row = {
-            "distance": dist,
-            "mean_reach": mean_reach,
-            "sample_prob": model_p,
-            "effective_n": effective_n,
-            "rho_closeness": np.mean(spearmans_h),
-            "rho_closeness_std": np.std(spearmans_h),
-            "rho_betweenness": np.mean(spearmans_b),
-            "rho_betweenness_std": np.std(spearmans_b),
-            "max_abs_error_h": np.mean(maes_h) if maes_h else float("nan"),
-            "max_abs_error_b": np.mean(maes_b) if maes_b else float("nan"),
-            "top_k_precision_h": np.mean(precs_h) if precs_h else float("nan"),
-            "top_k_precision_b": np.mean(precs_b) if precs_b else float("nan"),
-            "scale_ratio_h": np.mean(scales_h) if scales_h else float("nan"),
-            "scale_ratio_b": np.mean(scales_b) if scales_b else float("nan"),
-            "baseline_time": baseline_time if baseline_time else float("nan"),
-            "sampled_time": mean_sampled_time,
-            "speedup": speedup,
-        }
-        # Add per-quartile columns (prefixed by metric)
-        for k_q, v_q in q_h.items():
-            row[f"h_{k_q}"] = v_q
-        for k_q, v_q in q_b.items():
-            row[f"b_{k_q}"] = v_q
-        results.append(row)
+            print(f" rho_h={np.mean(spearmans_h):.3f}, rho_b={np.mean(spearmans_b):.3f}, speedup={speedup:.1f}x")
+
+            row = {
+                "distance": dist,
+                "mean_reach": mean_reach,
+                "model": label,
+                "sample_prob": test_p,
+                "effective_n": effective_n,
+                "rho_closeness": np.mean(spearmans_h),
+                "rho_closeness_std": np.std(spearmans_h),
+                "rho_betweenness": np.mean(spearmans_b),
+                "rho_betweenness_std": np.std(spearmans_b),
+                "max_abs_error_h": np.mean(maes_h) if maes_h else float("nan"),
+                "max_abs_error_b": np.mean(maes_b) if maes_b else float("nan"),
+                "top_k_precision_h": np.mean(precs_h) if precs_h else float("nan"),
+                "top_k_precision_b": np.mean(precs_b) if precs_b else float("nan"),
+                "scale_ratio_h": np.mean(scales_h) if scales_h else float("nan"),
+                "scale_ratio_b": np.mean(scales_b) if scales_b else float("nan"),
+                "baseline_time": baseline_time if baseline_time else float("nan"),
+                "sampled_time": mean_sampled_time,
+                "speedup": speedup,
+            }
+            # Add per-quartile columns (prefixed by metric)
+            for k_q, v_q in q_h.items():
+                row[f"h_{k_q}"] = v_q
+            for k_q, v_q in q_b.items():
+                row[f"b_{k_q}"] = v_q
+            results.append(row)
 
     df = pd.DataFrame(results)
     df.to_csv(validation_csv, index=False)
     print(f"\nSaved validation results: {validation_csv}")
     return df
-
-
-# =============================================================================
-# FIGURE GENERATION
-# =============================================================================
-
-
-def generate_validation_figure(df: pd.DataFrame):
-    """
-    Generate validation figure showing accuracy and speedup across distances.
-
-    Two panels:
-    - Left: Accuracy (rho) vs distance for closeness and betweenness
-    - Right: Speedup vs distance
-    """
-    print("\nGenerating validation figure...")
-
-    fig, axes = plt.subplots(1, 2, figsize=(12, 5))
-
-    distances_km = df["distance"] / 1000
-
-    # -----------------------------------------------------------------
-    # Panel A: Accuracy
-    # -----------------------------------------------------------------
-    ax1 = axes[0]
-
-    # Closeness
-    ax1.errorbar(
-        distances_km,
-        df["rho_closeness"],
-        yerr=df["rho_closeness_std"],
-        fmt="o-",
-        color="#0072B2",
-        linewidth=2,
-        markersize=8,
-        capsize=4,
-        label="Closeness",
-    )
-
-    # Betweenness
-    ax1.errorbar(
-        distances_km,
-        df["rho_betweenness"],
-        yerr=df["rho_betweenness_std"],
-        fmt="s-",
-        color="#D55E00",
-        linewidth=2,
-        markersize=8,
-        capsize=4,
-        label="Betweenness",
-    )
-
-    # Target line
-    ax1.axhline(0.95, color="green", linestyle="--", linewidth=1.5, alpha=0.7, label="Target (ρ=0.95)")
-
-    ax1.set_xlabel("Distance (km)")
-    ax1.set_ylabel("Spearman ρ (ranking accuracy)")
-    ax1.set_title("(a) Accuracy vs Distance")
-    ax1.legend(loc="lower right")
-    ax1.set_ylim(0.90, 1.005)
-    ax1.grid(True, alpha=0.3)
-    ax1.set_xscale("log")
-    ax1.set_xticks([1, 2, 5, 10, 20])
-    ax1.set_xticklabels(["1", "2", "5", "10", "20"])
-
-    # -----------------------------------------------------------------
-    # Panel B: Speedup
-    # -----------------------------------------------------------------
-    ax2 = axes[1]
-
-    ax2.bar(
-        range(len(df)),
-        df["speedup"],
-        color="#009E73",
-        alpha=0.8,
-        edgecolor="black",
-        linewidth=0.5,
-    )
-
-    # Add speedup labels on bars
-    for i, (spd, _dist) in enumerate(zip(df["speedup"], df["distance"], strict=True)):
-        ax2.text(i, spd + 0.1, f"{spd:.1f}x", ha="center", va="bottom", fontsize=9)
-
-    ax2.set_xlabel("Distance (km)")
-    ax2.set_ylabel("Speedup (baseline / sampled)")
-    ax2.set_title("(b) Computational Speedup")
-    ax2.set_xticks(range(len(df)))
-    ax2.set_xticklabels([f"{d / 1000:.0f}" if d >= 1000 else f"{d / 1000:.1f}" for d in df["distance"]])
-    ax2.grid(True, alpha=0.3, axis="y")
-
-    # Reference line at 1x
-    ax2.axhline(1.0, color="gray", linestyle="--", linewidth=1, alpha=0.5)
-
-    fig.suptitle(
-        "Madrid Regional Network Validation",
-        fontsize=14,
-        fontweight="bold",
-        y=1.02,
-    )
-
-    plt.tight_layout()
-
-    output_path = FIGURES_DIR / "fig7_madrid_validation.pdf"
-    fig.savefig(output_path, dpi=300, bbox_inches="tight")
-    print(f"  Saved: {output_path}")
-    plt.close()
-
-    return output_path
 
 
 # =============================================================================
@@ -558,7 +366,7 @@ def compute_theoretical_bounds(df: pd.DataFrame, n_nodes: int):
 # =============================================================================
 
 
-def compute_ew_analysis(df: pd.DataFrame, k: float, min_eff_n: int):
+def compute_ew_analysis(df: pd.DataFrame):
     """Evaluate the localised EW bound on Madrid validation configurations."""
     print("\n" + "=" * 70)
     print("LOCALISED EW BOUND ANALYSIS")
@@ -620,22 +428,58 @@ def compute_ew_analysis(df: pd.DataFrame, k: float, min_eff_n: int):
         t = len(subset)
         print(f"  {dist:<15} {h:>8} {t:>8} {100 * h / t:>7.1f}%")
 
-    # Implied epsilon from rank model
-    print("\n  Implied epsilon from rank model:")
-    print(f"  {'Distance':>10} {'Reach':>10} {'Rank n_eff':>12} {'Implied eps':>12}")
-    print("  " + "-" * 50)
-    for dist in sorted(ew_df["distance"].unique()):
-        reach = ew_df[ew_df["distance"] == dist]["reach"].iloc[0]
-        impl_eps = implied_epsilon_from_rank_model(reach, k, min_eff_n)
-        rank_eff_n = max(k * math.sqrt(reach), min_eff_n)
-        print(f"  {dist // 1000}km       {reach:>10,.0f} {rank_eff_n:>12,.0f} {impl_eps:>12.4f}")
-
     # Save
     csv_path = OUTPUT_DIR / "madrid_ew_analysis.csv"
     ew_df.to_csv(csv_path, index=False)
     print(f"\n  Saved: {csv_path}")
 
     return ew_df
+
+
+def generate_validation_table(df: pd.DataFrame, n_nodes: int | None):
+    """Generate LaTeX table of Madrid validation results (Hoeffding rows only)."""
+    print("\nGenerating Table: Madrid validation results...")
+
+    # Filter to Hoeffding rows only
+    df_hoeff = df[df["model"] == "hoeffding_0.1"] if "model" in df.columns else df
+
+    latex = r"""\begin{table}[htbp]
+\centering
+\caption{Hoeffding model validation on Greater Madrid network ($\varepsilon = 0.1$, $\delta = 0.1$).}
+\label{tab:madrid_validation}
+\begin{tabular}{rrrrrrr}
+\toprule
+\textbf{Distance} & \textbf{Reach} & \textbf{Hoeff.\ $p$} &
+\textbf{$\rho_\text{close}$} & \textbf{$\rho_\text{betw}$} & \textbf{Speedup} & \textbf{$\rho \geq 0.95$?} \\
+\midrule
+"""
+
+    for _, row in df_hoeff.iterrows():
+        reach = row["mean_reach"]
+        hoeff_p = compute_hoeffding_p(reach)
+        speedup = 1 / hoeff_p if hoeff_p > 0 else float("inf")
+        meets = row["rho_closeness"] >= 0.95 and row["rho_betweenness"] >= 0.95
+        check = r"\checkmark" if meets else r"\texttimes"
+        hoeff_p_pct = f"{hoeff_p * 100:.1f}\\%"
+        latex += f"{row['distance'] // 1000}km & {reach:,.0f} & {hoeff_p_pct} & "
+        latex += f"{row['rho_closeness']:.4f} & {row['rho_betweenness']:.4f} & "
+        latex += f"{speedup:.1f}$\\times$ & {check} \\\\\n"
+
+    n_nodes_str = f"{n_nodes:,}" if n_nodes else "\\texttildelow 99,000"
+    latex += rf"""\bottomrule
+\end{{tabular}}
+
+\vspace{{0.5em}}
+\footnotesize
+Network: Greater Madrid, {n_nodes_str} nodes, 20km live node buffer.
+Hoeffding model: $k = \log(2r/\delta) / (2\varepsilon^2)$, $p = \min(1, k/r)$.
+\end{{table}}
+"""
+
+    output_path = TABLES_DIR / "tab4_madrid_validation.tex"
+    with open(output_path, "w") as f:
+        f.write(latex)
+    print(f"  Saved: {output_path}")
 
 
 # =============================================================================
@@ -652,32 +496,32 @@ def main():
     print("04_validate_madrid.py - External validation on Madrid network")
     print("=" * 70)
 
-    # Load model
-    k, min_eff_n = load_model()
-    print(f"\nModel: eff_n = max({k} × sqrt(reach), {min_eff_n})")
+    print("\nModel: k = log(2r/δ) / (2ε²), p = min(1, k/r)")
+    print(f"  ε = {HOEFFDING_EPSILON}, δ = {HOEFFDING_DELTA}")
 
     # Generate or load validation data
-    df = generate_validation_data(k, min_eff_n, force=args.force)
+    df = generate_validation_data(force=args.force)
     print(f"\nValidation data: {len(df)} rows")
 
     # Add target columns
     df["meets_target_close"] = df["rho_closeness"] >= 0.95
     df["meets_target_between"] = df["rho_betweenness"] >= 0.95
 
-    # Generate figure
-    fig_path = generate_validation_figure(df)
-
     # Theoretical bounds comparison
+    df_hoeff = df[df["model"] == "hoeffding_0.1"] if "model" in df.columns else df
     n_nodes = get_n_nodes(force=args.force)
     bounds_df = None
     if n_nodes is not None:
         print(f"\nMadrid network: {n_nodes} live nodes")
-        bounds_df = compute_theoretical_bounds(df, n_nodes)
+        bounds_df = compute_theoretical_bounds(df_hoeff, n_nodes)
     else:
         print("\n  Skipping theoretical bounds comparison (graph cache not found)")
 
+    # Generate validation table
+    generate_validation_table(df, n_nodes)
+
     # EW bound analysis
-    ew_df = compute_ew_analysis(df, k, min_eff_n)
+    ew_df = compute_ew_analysis(df)
 
     # Print summary
     print("\n" + "=" * 70)
@@ -685,10 +529,10 @@ def main():
     print("=" * 70)
 
     print(
-        f"\n{'Distance':>10} | {'Reach':>10} | {'Model p':>10}"
+        f"\n{'Distance':>10} | {'Model':>15} | {'Reach':>10} | {'p':>8}"
         f" | {'ρ close':>10} | {'ρ between':>10} | {'Speedup':>10} | {'Pass?':>6}"
     )
-    print("-" * 85)
+    print("-" * 100)
 
     all_pass = True
     for _, row in df.iterrows():
@@ -698,22 +542,24 @@ def main():
             all_pass = False
 
         dist_str = f"{row['distance'] // 1000}km"
+        model_str = row.get("model", "hoeffding_0.1")
         print(
             f"{dist_str:>10} | "
+            f"{model_str:>15} | "
             f"{row['mean_reach']:>10,.0f} | "
-            f"{row['sample_prob']:>9.1%} | "
+            f"{row['sample_prob']:>7.1%} | "
             f"{row['rho_closeness']:>10.4f} | "
             f"{row['rho_betweenness']:>10.4f} | "
             f"{row['speedup']:>9.1f}x | "
             f"{status:>6}"
         )
 
-    print("-" * 85)
+    print("-" * 100)
 
     if all_pass:
-        print("\nALL DISTANCES PASS: Model achieves ρ >= 0.95 for both metrics at all distances.")
+        print("\nALL CONFIGURATIONS PASS: Hoeffding model achieves ρ >= 0.95 for both metrics at all distances.")
     else:
-        print("\nWARNING: Some distances do not meet the ρ >= 0.95 target.")
+        print("\nWARNING: Some configurations do not meet the ρ >= 0.95 target.")
 
     # Overall statistics
     print("\nOverall Statistics:")
@@ -726,7 +572,7 @@ def main():
     print("OUTPUTS")
     print("=" * 70)
     print(f"  1. {OUTPUT_DIR / 'madrid_validation.csv'}")
-    print(f"  2. {fig_path}")
+    print(f"  2. {TABLES_DIR / 'tab4_madrid_validation.tex'}")
     if bounds_df is not None:
         print(f"  3. {OUTPUT_DIR / 'madrid_theoretical_bounds_comparison.csv'}")
     if ew_df is not None:

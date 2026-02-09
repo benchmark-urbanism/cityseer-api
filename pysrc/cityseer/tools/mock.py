@@ -605,7 +605,7 @@ def mock_barriers():
     # gather the WKT strings
     barrier_wkts: list[str] | None = None
     barrier_wkts = []
-    for _, row in barriers_gdf.iterrows():  # type: ignore
+    for _, row in barriers_gdf.iterrows():
         barrier_wkts.append(row.geometry.wkt)
 
     return barriers_gdf, barrier_wkts

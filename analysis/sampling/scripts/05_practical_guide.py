@@ -3,35 +3,31 @@
 05_practical_guide.py - Generate practical guidance for practitioners.
 
 Creates visual and tabular guidance for users to quickly determine
-the appropriate sampling probability for their analysis.
+the appropriate sampling probability for their analysis, using the
+Hoeffding/EW bound model with epsilon as the user-facing parameter.
+
+The model: k = log(2r / delta) / (2 * epsilon^2), p = min(1, k / r)
+Default: epsilon = 0.1, delta = 0.1 (zero fitted parameters).
 
 Outputs:
-    - paper/figures/fig8_practical_guide.pdf: Visual lookup chart
+    - paper/figures/fig4_practical_guide.pdf: Visual lookup chart
     - paper/tables/tab3_practical_lookup.tex: Lookup table
 """
 
-import json
 import math
-from pathlib import Path
 
 import matplotlib
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
-
-# =============================================================================
-# CONFIGURATION
-# =============================================================================
-
-SCRIPT_DIR = Path(__file__).parent
-SAMPLING_DIR = SCRIPT_DIR.parent  # analysis/sampling
-OUTPUT_DIR = SAMPLING_DIR / "output"
-FIGURES_DIR = SAMPLING_DIR / "paper" / "figures"
-TABLES_DIR = SAMPLING_DIR / "paper" / "tables"
-
-FIGURES_DIR.mkdir(parents=True, exist_ok=True)
-TABLES_DIR.mkdir(parents=True, exist_ok=True)
+from utilities import (
+    FIGURES_DIR,
+    HOEFFDING_DELTA,
+    HOEFFDING_EPSILON,
+    TABLES_DIR,
+    compute_hoeffding_p,
+)
 
 # Matplotlib style
 plt.rcParams.update(
@@ -52,170 +48,169 @@ plt.rcParams.update(
 
 
 # =============================================================================
-# DATA LOADING
-# =============================================================================
-
-
-def load_model() -> tuple[float, int]:
-    """Load the fitted model parameters."""
-    model_path = OUTPUT_DIR / "sampling_model.json"
-    if not model_path.exists():
-        raise FileNotFoundError(f"Model not found at {model_path}. Run 01_fit_rank_model.py first.")
-
-    with open(model_path) as f:
-        model = json.load(f)
-
-    k = model["model"]["k"]
-    min_eff_n = model["model"]["min_eff_n"]
-    return k, min_eff_n
-
-
-# =============================================================================
-# MODEL FUNCTIONS
-# =============================================================================
-
-
-def compute_p(reach: float, k: float, min_eff_n: int) -> float:
-    """Compute sampling probability from the model."""
-    eff_n = max(k * math.sqrt(reach), min_eff_n)
-    return min(1.0, eff_n / reach)
-
-
-# =============================================================================
 # FIGURE GENERATION
 # =============================================================================
 
 
-def generate_fig8_practical_guide(k: float, min_eff_n: int):
+def generate_practical_figure():
     """
-    Figure 6: Practical guidance chart.
+    Figure 4: Practical guidance chart.
 
     A visual lookup for practitioners showing:
-    - Required p for different reach values
-    - Expected speedup
-    - Common analysis scenarios
+    - Panel A: Required p vs reach for different epsilon values
+    - Panel B: Expected speedup vs reach at epsilon = 0.1
+    With annotated common analysis scenarios.
     """
-    print("\nGenerating Figure 6: Practical guide...")
+    print("\nGenerating Figure 4: Practical guide...")
 
     fig, axes = plt.subplots(1, 2, figsize=(12, 5))
 
     reach_range = np.logspace(2, 5.5, 200)
 
-    # Panel A: Required p with annotated scenarios
+    # Panel A: Required p for multiple epsilon values
     ax = axes[0]
 
-    p_values = [compute_p(r, k, min_eff_n) * 100 for r in reach_range]
-    ax.plot(reach_range, p_values, color="#0072B2", linewidth=2.5)
+    epsilon_values = [0.05, 0.1, 0.15, 0.2]
+    colours = ["#d73027", "#0072B2", "#fc8d59", "#91bfdb"]
+    linewidths = [1.5, 2.5, 1.5, 1.5]
 
-    # Annotate common scenarios
+    for eps, colour, lw in zip(epsilon_values, colours, linewidths, strict=True):
+        p_values = [compute_hoeffding_p(r, eps) * 100 for r in reach_range]
+        style = "-" if eps == HOEFFDING_EPSILON else "--"
+        ax.plot(
+            reach_range,
+            p_values,
+            linestyle=style,
+            color=colour,
+            linewidth=lw,
+            label=f"ε = {eps}",
+        )
+
+    # Annotate common scenarios at default epsilon
     scenarios = [
-        (500, "Local (500m)"),
-        (1000, "Neighborhood (1km)"),
-        (5000, "District (5km)"),
-        (10000, "City (10km)"),
-        (50000, "Metro (20km)"),
+        (500, "Local\n(500m)"),
+        (1000, "Neighbourhood\n(1km)"),
+        (5000, "District\n(5km)"),
+        (10000, "City\n(10km)"),
+        (50000, "Metro\n(20km)"),
     ]
 
     for reach, label in scenarios:
-        p = compute_p(reach, k, min_eff_n) * 100
-        ax.plot(reach, p, "o", color="#D55E00", markersize=8, zorder=5)
-        ax.annotate(f"{label}\n{p:.0f}%", xy=(reach, p + 3), fontsize=8, ha="center", va="bottom")
+        p = compute_hoeffding_p(reach) * 100
+        ax.plot(reach, p, "o", color="#D55E00", markersize=7, zorder=5)
+        # Place "Local (500m)" below the dot; all others above
+        if reach == 500:
+            y_off, va = -12, "top"
+        else:
+            y_off, va = 12, "bottom"
+        ax.annotate(
+            f"{label}\n{p:.0f}%",
+            xy=(reach, p),
+            xytext=(0, y_off),
+            textcoords="offset points",
+            fontsize=7,
+            ha="center",
+            va=va,
+            bbox=dict(boxstyle="round,pad=0.2", facecolor="white", alpha=0.8, edgecolor="none"),
+        )
 
     ax.set_xscale("log")
     ax.set_xlabel("Network Reach (nodes within distance)")
     ax.set_ylabel("Required Sampling Probability (%)")
-    ax.set_title("A) Quick Lookup: Required Sampling Probability")
+    ax.set_title("A) Required Sampling Probability")
     ax.set_xlim(100, 300000)
     ax.set_ylim(0, 100)
+    ax.legend(loc="center right", fontsize=9)
     ax.grid(True, alpha=0.3)
 
-    # Add helpful text
     ax.text(
-        0.05,
         0.95,
-        f"Model: eff_n = max({k}×√reach, {min_eff_n})",
+        0.95,
+        f"Model: k = log(2r/δ) / (2ε²)\nDefault: ε = {HOEFFDING_EPSILON}, δ = {HOEFFDING_DELTA}",
         transform=ax.transAxes,
-        fontsize=9,
+        fontsize=8,
+        horizontalalignment="right",
         verticalalignment="top",
         bbox=dict(boxstyle="round", facecolor="wheat", alpha=0.5),
     )
 
-    # Panel B: Speedup potential
+    # Panel B: Speedup potential at default epsilon
     ax = axes[1]
 
-    speedups = [1 / compute_p(r, k, min_eff_n) for r in reach_range]
-    ax.plot(reach_range, speedups, color="#2ca02c", linewidth=2.5)
+    speedups = [1 / compute_hoeffding_p(r) for r in reach_range]
+    ax.plot(reach_range, speedups, color="#0072B2", linewidth=2.5)
 
     # Annotate scenarios
     for reach, _label in scenarios:
-        p = compute_p(reach, k, min_eff_n)
+        p = compute_hoeffding_p(reach)
         speedup = 1 / p
-        ax.plot(reach, speedup, "o", color="#D55E00", markersize=8, zorder=5)
-        ax.annotate(f"{speedup:.1f}x", xy=(reach, speedup * 1.1), fontsize=9, ha="center", va="bottom")
+        ax.plot(reach, speedup, "o", color="#D55E00", markersize=7, zorder=5)
+        ax.annotate(f"{speedup:.1f}×", xy=(reach, speedup * 1.1), fontsize=9, ha="center", va="bottom")
 
     ax.set_xscale("log")
     ax.set_yscale("log")
     ax.set_xlabel("Network Reach")
     ax.set_ylabel("Speedup (1/p)")
-    ax.set_title("B) Expected Computational Speedup")
+    ax.set_title(f"B) Expected Speedup (ε = {HOEFFDING_EPSILON})")
     ax.set_xlim(100, 300000)
     ax.set_ylim(1, 100)
     ax.grid(True, alpha=0.3, which="both")
 
     # Add helpful regions
-    ax.axhspan(1, 2, alpha=0.1, color="red", label="<2x (limited benefit)")
-    ax.axhspan(2, 10, alpha=0.1, color="yellow", label="2-10x (moderate)")
-    ax.axhspan(10, 100, alpha=0.1, color="green", label=">10x (significant)")
+    ax.axhspan(1, 2, alpha=0.1, color="red", label="<2× (limited benefit)")
+    ax.axhspan(2, 10, alpha=0.1, color="yellow", label="2–10× (moderate)")
+    ax.axhspan(10, 100, alpha=0.1, color="green", label=">10× (significant)")
     ax.legend(loc="lower right", fontsize=8)
 
-    fig.suptitle("Practical Guide: Sampling for Network Centrality", fontsize=13, fontweight="bold", y=1.02)
+    fig.suptitle("Practical Guide: Hoeffding-Based Adaptive Sampling", fontsize=13, fontweight="bold", y=1.02)
     plt.tight_layout()
 
-    output_path = FIGURES_DIR / "fig8_practical_guide.pdf"
+    output_path = FIGURES_DIR / "fig4_practical_guide.pdf"
     fig.savefig(output_path, dpi=300, bbox_inches="tight")
     print(f"  Saved: {output_path}")
     plt.close()
 
 
-def generate_practical_table(k: float, min_eff_n: int):
-    """Generate LaTeX lookup table for practitioners."""
+def generate_practical_table():
+    """Generate LaTeX lookup table for practitioners using Hoeffding model."""
     print("\nGenerating Table 3: Practical lookup...")
 
-    # Representative reach values
     reaches = [100, 200, 500, 1000, 2000, 5000, 10000, 20000, 50000, 100000]
 
     latex = r"""\begin{table}[htbp]
 \centering
-\caption{Practical Sampling Lookup Table}
+\caption{Practical sampling lookup table ($\varepsilon = 0.1$, $\delta = 0.1$).}
 \label{tab:lookup}
 \begin{tabular}{rrrr}
 \toprule
-\textbf{Reach} & \textbf{eff\_n} & \textbf{$p$ (\%)} & \textbf{Speedup} \\
+\textbf{Reach} & \textbf{$k$} & \textbf{$p$ (\%)} & \textbf{Speedup} \\
 \midrule
 """
 
+    def fmt_int(n):
+        """Format integer with LaTeX-safe thousands separator."""
+        return f"{n:,}".replace(",", "{,}")
+
     for reach in reaches:
-        eff_n = max(k * math.sqrt(reach), min_eff_n)
-        p = min(1.0, eff_n / reach)
+        k = math.log(2 * reach / HOEFFDING_DELTA) / (2 * HOEFFDING_EPSILON**2)
+        p = compute_hoeffding_p(reach)
         speedup = 1 / p
 
-        latex += f"{reach:,} & {eff_n:.0f} & {p * 100:.1f} & {speedup:.1f}$\\times$ \\\\\n"
+        if p >= 1.0:
+            latex += f"{fmt_int(reach)} & {k:.0f} & 100.0 & 1.0$\\times$ \\\\\n"
+        else:
+            latex += f"{fmt_int(reach)} & {k:.0f} & {p * 100:.1f} & {speedup:.1f}$\\times$ \\\\\n"
 
-    latex += (
-        r"""\bottomrule
+    latex += r"""\bottomrule
 \end{tabular}
 
 \vspace{0.5em}
 \footnotesize
 \textbf{Usage:} Find your network reach (nodes within analysis distance), read off the required sampling probability.\\
-\textbf{Model:} $n_{\mathrm{eff}} = \max("""
-        + f"{k}"
-        + r""" \cdot \sqrt{r}, """
-        + f"{min_eff_n}"
-        + r""")$, $p = n_{\mathrm{eff}} / r$.
+\textbf{Model:} $k = \log(2r/\delta) / (2\varepsilon^2)$, $p = \min(1,\; k/r)$.
+At low reach, $k > r$ so $p = 1$ (exact computation).
 \end{table}
 """
-    )
 
     output_path = TABLES_DIR / "tab3_practical_lookup.tex"
     with open(output_path, "w") as f:
@@ -230,43 +225,43 @@ def generate_practical_table(k: float, min_eff_n: int):
 
 def main():
     print("=" * 70)
-    print("05_practical_guide.py - Generating practical guidance")
+    print("05_practical_guide.py - Generating practical guidance (Hoeffding model)")
     print("=" * 70)
 
-    # Load model
-    k, min_eff_n = load_model()
-    print(f"\nModel: eff_n = max({k} × sqrt(reach), {min_eff_n})")
+    print("\nModel: k = log(2r/δ) / (2ε²)")
+    print(f"  Default: ε = {HOEFFDING_EPSILON}, δ = {HOEFFDING_DELTA}")
 
     # Generate outputs
-    generate_fig8_practical_guide(k, min_eff_n)
-    generate_practical_table(k, min_eff_n)
+    generate_practical_figure()
+    generate_practical_table()
 
     # Print quick reference
     print("\n" + "=" * 70)
-    print("QUICK REFERENCE")
+    print("QUICK REFERENCE (ε = 0.1, δ = 0.1)")
     print("=" * 70)
 
-    print(f"\n{'Reach':>10} | {'eff_n':>10} | {'p':>10} | {'Speedup':>10}")
+    print(f"\n{'Reach':>10} | {'k':>10} | {'p':>10} | {'Speedup':>10}")
     print("-" * 50)
 
     for reach in [100, 500, 1000, 5000, 10000, 50000]:
-        eff_n = max(k * math.sqrt(reach), min_eff_n)
-        p = min(1.0, eff_n / reach)
+        k = math.log(2 * reach / HOEFFDING_DELTA) / (2 * HOEFFDING_EPSILON**2)
+        p = compute_hoeffding_p(reach)
         speedup = 1 / p
-        print(f"{reach:>10} | {eff_n:>10.0f} | {p:>9.1%} | {speedup:>9.1f}x")
+        print(f"{reach:>10} | {k:>10.0f} | {p:>9.1%} | {speedup:>9.1f}×")
 
     print("\n" + "=" * 70)
     print("KEY TAKEAWAYS")
     print("=" * 70)
-    print(f"\n1. Never sample fewer than {min_eff_n} nodes (the floor)")
-    print(f"2. For large networks, sample {k} × sqrt(reach) nodes")
-    print(f"3. At reach > {(min_eff_n / k) ** 2:.0f}, you can achieve >2x speedup")
-    print("4. At reach > 10,000, expect 10x+ speedup while maintaining rho >= 0.95")
+    print("\n1. No fitted parameters: ε and δ are user-chosen (default 0.1, 0.1)")
+    print("2. At low reach, p → 1.0 (floor emerges naturally from the bound)")
+    print("3. At reach > ~2,000, meaningful speedup begins")
+    print("4. At reach > 10,000, expect 10×+ speedup while maintaining ρ ≥ 0.95")
+    print("5. Tighter ε (e.g. 0.05) requires ~4× more samples")
 
     print("\n" + "=" * 70)
     print("OUTPUTS")
     print("=" * 70)
-    print(f"  1. {FIGURES_DIR / 'fig8_practical_guide.pdf'}")
+    print(f"  1. {FIGURES_DIR / 'fig4_practical_guide.pdf'}")
     print(f"  2. {TABLES_DIR / 'tab3_practical_lookup.tex'}")
 
     return 0
