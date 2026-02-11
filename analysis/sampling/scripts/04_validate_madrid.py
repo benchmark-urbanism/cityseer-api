@@ -152,7 +152,7 @@ def generate_validation_data(force: bool = False) -> pd.DataFrame:
             print(f"  Baseline time: {baseline_time:.1f}s")
 
         # Compute Hoeffding model probability
-        hoeffding_p = compute_hoeffding_p(mean_reach, epsilon=0.1)
+        hoeffding_p = compute_hoeffding_p(mean_reach, epsilon=HOEFFDING_EPSILON)
 
         probs_to_test = [("hoeffding_0.1", hoeffding_p)]
 

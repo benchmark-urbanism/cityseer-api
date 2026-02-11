@@ -2,7 +2,7 @@
 
 ## The argument in one sentence
 
-Adapting the Eppstein-Wang source-sampling bound to localised centrality gives a zero-parameter Hoeffding model, k = log(2r/delta)/(2eps^2), that at eps = 0.1 delivers both additive-error guarantees and rank preservation (rho >= 0.98) on real street networks, with speedups of 5-63x.
+Adapting the Eppstein-Wang source-sampling bound to localised centrality gives a zero-parameter Hoeffding model, k = log(2r/delta)/(2eps^2), that at eps = 0.1 delivers both additive-error guarantees and rank preservation (rho >= 0.979; minimum 0.9794 on Madrid betweenness at 20km) on real street networks, with speedups of up to 63x.
 
 ## The logical chain
 
@@ -11,13 +11,13 @@ Adapting the Eppstein-Wang source-sampling bound to localised centrality gives a
 3. This is a formal bound on additive normalised error at every node simultaneously. It has zero fitted parameters: eps and delta are user-chosen (default 0.1, 0.1).
 4. At low reach, k > r so p = 1 (exact computation). No separate floor parameter is needed.
 5. At high reach, p decreases as O(log r / r), giving speedups that grow with network size.
-6. On street networks, the bound also preserves rank order (Spearman rho >= 0.98). This is structural: high-reach nodes get high effective sample sizes and precise estimates; these are precisely the high-centrality nodes whose ranking matters. Low-reach peripheral nodes get near-exact computation (p -> 1).
+6. On street networks, the bound also preserves rank order (Spearman rho >= 0.979; all configurations pass rho >= 0.95). This is structural: high-reach nodes get high effective sample sizes and precise estimates; these are precisely the high-centrality nodes whose ranking matters. Low-reach peripheral nodes get near-exact computation (p -> 1).
 7. Validation on GLA (294k nodes) and Madrid (99k nodes) at 1-20km confirms this. Minimum rho = 0.9794 (Madrid betweenness, 20km). All distances pass rho >= 0.95.
 
 ## What is novel
 
 1. **The adaptation**: applying EW to distance-bounded centrality (r for n) and showing it works at eps = 0.1. The common assumption is that EW bounds are "too conservative" -- we show they are not, for localised centrality on street networks.
-2. **Rank preservation as a consequence**: additive eps = 0.1 implies rho >= 0.98. No separate rank-calibrated model is needed.
+2. **Rank preservation as a consequence**: additive eps = 0.1 implies rho >= 0.979 (minimum observed across both networks). No separate rank-calibrated model is needed.
 3. **Validation at scale**: from small synthetic networks to GLA and Madrid, the model generalises without fitting.
 
 ## What is obvious (do not oversell)
