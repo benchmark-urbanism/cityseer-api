@@ -236,31 +236,60 @@ struct NodeDistance {
     metric: f32,
 }
 
-// Implement PartialOrd and Ord focusing on distance for comparison
-impl PartialOrd for NodeDistance {
-    #[inline]
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        other.metric.partial_cmp(&self.metric)
-    }
-}
-
 impl Ord for NodeDistance {
     #[inline]
     fn cmp(&self, other: &Self) -> Ordering {
-        self.partial_cmp(other).unwrap_or(Ordering::Equal)
+        // Reversed for min-heap: smaller metric = higher priority.
+        // total_cmp provides a total ordering over all f32 values including NaN.
+        other.metric.total_cmp(&self.metric)
     }
 }
 
-// PartialEq to satisfy BinaryHeap requirements
+impl PartialOrd for NodeDistance {
+    #[inline]
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
 impl PartialEq for NodeDistance {
     #[inline]
     fn eq(&self, other: &Self) -> bool {
-        self.node_idx == other.node_idx && (self.metric - other.metric).abs() < f32::EPSILON
+        self.cmp(other) == Ordering::Equal
     }
 }
 
-// Implement Eq since we've provided a custom PartialEq
 impl Eq for NodeDistance {}
+
+impl NetworkStructure {
+    pub(crate) fn validate_dijkstra_inputs(
+        &self,
+        src_idx: usize,
+        speed_m_s: f32,
+        jitter_scale: f32,
+    ) -> PyResult<()> {
+        if src_idx >= self.node_count() {
+            return Err(exceptions::PyValueError::new_err(format!(
+                "src_idx {} out of range for network with {} nodes",
+                src_idx,
+                self.node_count()
+            )));
+        }
+        if !speed_m_s.is_finite() || speed_m_s <= 0.0 {
+            return Err(exceptions::PyValueError::new_err(format!(
+                "speed_m_s must be finite and positive, got {}",
+                speed_m_s
+            )));
+        }
+        if !jitter_scale.is_finite() || jitter_scale < 0.0 {
+            return Err(exceptions::PyValueError::new_err(format!(
+                "jitter_scale must be finite and non-negative, got {}",
+                jitter_scale
+            )));
+        }
+        Ok(())
+    }
+}
 
 #[pymethods]
 impl NetworkStructure {
@@ -272,8 +301,9 @@ impl NetworkStructure {
         speed_m_s: f32,
         jitter_scale: Option<f32>,
         random_seed: Option<u64>,
-    ) -> (Vec<usize>, Vec<NodeVisit>) {
+    ) -> PyResult<(Vec<usize>, Vec<NodeVisit>)> {
         let jitter_scale = jitter_scale.unwrap_or(0.0);
+        self.validate_dijkstra_inputs(src_idx, speed_m_s, jitter_scale)?;
         let mut tree_map = vec![NodeVisit::new(); self.node_count()];
         let mut visited_nodes = Vec::new();
         tree_map[src_idx].short_dist = 0.0;
@@ -290,6 +320,9 @@ impl NetworkStructure {
             StdRng::from_rng(&mut rand::rng())
         };
         while let Some(NodeDistance { node_idx, .. }) = active.pop() {
+            if tree_map[node_idx].visited {
+                continue;
+            }
             tree_map[node_idx].visited = true;
             visited_nodes.push(node_idx);
             let current_node_index = NodeIndex::new(node_idx);
@@ -335,13 +368,6 @@ impl NetworkStructure {
                 if total_seconds > max_seconds as f32 {
                     continue;
                 }
-                if !tree_map[nb_nd_idx.index()].discovered {
-                    tree_map[nb_nd_idx.index()].discovered = true;
-                    active.push(NodeDistance {
-                        node_idx: nb_nd_idx.index(),
-                        metric: total_seconds,
-                    });
-                }
                 let mut jitter = 0.0;
                 if jitter_scale > 0.0 {
                     jitter = rng.random::<f32>() * jitter_scale;
@@ -350,10 +376,15 @@ impl NetworkStructure {
                     tree_map[nb_nd_idx.index()].short_dist = total_seconds * speed_m_s;
                     tree_map[nb_nd_idx.index()].agg_seconds = total_seconds + jitter;
                     tree_map[nb_nd_idx.index()].pred = Some(node_idx);
+                    tree_map[nb_nd_idx.index()].discovered = true;
+                    active.push(NodeDistance {
+                        node_idx: nb_nd_idx.index(),
+                        metric: total_seconds + jitter,
+                    });
                 }
             }
         }
-        (visited_nodes, tree_map)
+        Ok((visited_nodes, tree_map))
     }
 
     #[pyo3(signature = (src_idx, max_seconds, speed_m_s, jitter_scale=None, random_seed=None))]
@@ -364,8 +395,9 @@ impl NetworkStructure {
         speed_m_s: f32,
         jitter_scale: Option<f32>,
         random_seed: Option<u64>,
-    ) -> (Vec<usize>, Vec<NodeVisit>) {
+    ) -> PyResult<(Vec<usize>, Vec<NodeVisit>)> {
         let jitter_scale = jitter_scale.unwrap_or(0.0);
+        self.validate_dijkstra_inputs(src_idx, speed_m_s, jitter_scale)?;
         let mut tree_map = vec![NodeVisit::new(); self.node_count()];
         let mut visited_nodes = Vec::new();
         tree_map[src_idx].simpl_dist = 0.0;
@@ -382,6 +414,9 @@ impl NetworkStructure {
             StdRng::from_rng(&mut rand::rng())
         };
         while let Some(NodeDistance { node_idx, .. }) = active.pop() {
+            if tree_map[node_idx].visited {
+                continue;
+            }
             tree_map[node_idx].visited = true;
             visited_nodes.push(node_idx);
             let current_node_index = NodeIndex::new(node_idx);
@@ -437,13 +472,6 @@ impl NetworkStructure {
                 if total_seconds > max_seconds as f32 {
                     continue;
                 }
-                if !tree_map[nb_nd_idx.index()].discovered {
-                    tree_map[nb_nd_idx.index()].discovered = true;
-                    active.push(NodeDistance {
-                        node_idx: nb_nd_idx.index(),
-                        metric: simpl_total_dist,
-                    });
-                }
                 let mut jitter = 0.0;
                 if jitter_scale > 0.0 {
                     jitter = rng.random::<f32>() * jitter_scale;
@@ -455,10 +483,15 @@ impl NetworkStructure {
                     // Store in_bearing for next turn calculation
                     // in_bearing on edge Y→X = inward bearing from future Z to Y
                     tree_map[nb_nd_idx.index()].prev_in_bearing = edge_payload.in_bearing;
+                    tree_map[nb_nd_idx.index()].discovered = true;
+                    active.push(NodeDistance {
+                        node_idx: nb_nd_idx.index(),
+                        metric: simpl_total_dist + jitter,
+                    });
                 }
             }
         }
-        (visited_nodes, tree_map)
+        Ok((visited_nodes, tree_map))
     }
 
     #[pyo3(signature = (src_idx, max_seconds, speed_m_s, jitter_scale=None, random_seed=None))]
@@ -469,8 +502,9 @@ impl NetworkStructure {
         speed_m_s: f32,
         jitter_scale: Option<f32>,
         random_seed: Option<u64>,
-    ) -> (Vec<usize>, Vec<usize>, Vec<NodeVisit>, Vec<EdgeVisit>) {
+    ) -> PyResult<(Vec<usize>, Vec<usize>, Vec<NodeVisit>, Vec<EdgeVisit>)> {
         let jitter_scale = jitter_scale.unwrap_or(0.0);
+        self.validate_dijkstra_inputs(src_idx, speed_m_s, jitter_scale)?;
         let mut tree_map = vec![NodeVisit::new(); self.node_count()];
         let mut edge_map = vec![EdgeVisit::new(); self.graph.edge_count()];
         let mut visited_nodes = Vec::new();
@@ -489,6 +523,9 @@ impl NetworkStructure {
             StdRng::from_rng(&mut rand::rng())
         };
         while let Some(NodeDistance { node_idx, .. }) = active.pop() {
+            if tree_map[node_idx].visited {
+                continue;
+            }
             tree_map[node_idx].visited = true;
             visited_nodes.push(node_idx);
             let current_node_index = NodeIndex::new(node_idx);
@@ -529,13 +566,6 @@ impl NetworkStructure {
                 if total_seconds > max_seconds as f32 {
                     continue;
                 }
-                if !tree_map[nb_nd_idx.index()].discovered {
-                    tree_map[nb_nd_idx.index()].discovered = true;
-                    active.push(NodeDistance {
-                        node_idx: nb_nd_idx.index(),
-                        metric: total_seconds,
-                    });
-                }
                 let mut jitter = 0.0;
                 if jitter_scale > 0.0 {
                     jitter = rng.random::<f32>() * jitter_scale;
@@ -553,10 +583,15 @@ impl NetworkStructure {
                     tree_map[nb_nd_idx.index()].pred = Some(node_idx);
                     tree_map[nb_nd_idx.index()].origin_seg = Some(origin_seg);
                     tree_map[nb_nd_idx.index()].last_seg = Some(edge_idx.index());
+                    tree_map[nb_nd_idx.index()].discovered = true;
+                    active.push(NodeDistance {
+                        node_idx: nb_nd_idx.index(),
+                        metric: total_seconds + jitter,
+                    });
                 }
             }
         }
-        (visited_nodes, visited_edges, tree_map, edge_map)
+        Ok((visited_nodes, visited_edges, tree_map, edge_map))
     }
 
     #[pyo3(signature = (
@@ -692,13 +727,15 @@ impl NetworkStructure {
                     wt /= p;
                 }
 
-                let (visited_nodes, tree_map) = self.dijkstra_tree_shortest(
-                    *src_idx,
-                    max_walk_seconds,
-                    speed_m_s,
-                    jitter_scale,
-                    random_seed.map(|s| derive_seed(s, *src_idx)),
-                );
+                let (visited_nodes, tree_map) = self
+                    .dijkstra_tree_shortest(
+                        *src_idx,
+                        max_walk_seconds,
+                        speed_m_s,
+                        jitter_scale,
+                        random_seed.map(|s| derive_seed(s, *src_idx)),
+                    )
+                    .expect("pre-validated Dijkstra inputs");
 
                 for to_idx in visited_nodes.iter() {
                     let node_visit = &tree_map[*to_idx];
@@ -924,13 +961,15 @@ impl NetworkStructure {
                     wt /= p;
                 }
 
-                let (visited_nodes, tree_map) = self.dijkstra_tree_simplest(
-                    *src_idx,
-                    max_walk_seconds,
-                    speed_m_s,
-                    jitter_scale,
-                    random_seed.map(|s| derive_seed(s, *src_idx)),
-                );
+                let (visited_nodes, tree_map) = self
+                    .dijkstra_tree_simplest(
+                        *src_idx,
+                        max_walk_seconds,
+                        speed_m_s,
+                        jitter_scale,
+                        random_seed.map(|s| derive_seed(s, *src_idx)),
+                    )
+                    .expect("pre-validated Dijkstra inputs");
 
                 for to_idx in visited_nodes.iter() {
                     let node_visit = &tree_map[*to_idx];
@@ -1076,7 +1115,8 @@ impl NetworkStructure {
                         speed_m_s,
                         jitter_scale,
                         random_seed.map(|s| derive_seed(s, *src_idx)),
-                    );
+                    )
+                    .expect("pre-validated Dijkstra inputs");
                 for edge_idx in visited_edges.iter() {
                     let edge_visit = &edge_map[*edge_idx];
                     let start_node_idx = edge_visit

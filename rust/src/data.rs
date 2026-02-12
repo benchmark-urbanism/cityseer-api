@@ -530,21 +530,25 @@ impl DataMap {
 
         // Perform Dijkstra search
         let (visited_nodes, tree_map) = if !angular {
-            network_structure.dijkstra_tree_shortest(
-                netw_src_idx,
-                max_walk_seconds,
-                speed_m_s,
-                Some(jitter_scale),
-                None,
-            )
+            network_structure
+                .dijkstra_tree_shortest(
+                    netw_src_idx,
+                    max_walk_seconds,
+                    speed_m_s,
+                    Some(jitter_scale),
+                    None,
+                )
+                .expect("pre-validated Dijkstra inputs")
         } else {
-            network_structure.dijkstra_tree_simplest(
-                netw_src_idx,
-                max_walk_seconds,
-                speed_m_s,
-                Some(jitter_scale),
-                None,
-            )
+            network_structure
+                .dijkstra_tree_simplest(
+                    netw_src_idx,
+                    max_walk_seconds,
+                    speed_m_s,
+                    Some(jitter_scale),
+                    None,
+                )
+                .expect("pre-validated Dijkstra inputs")
         };
 
         // Iterate through reachable nodes only
