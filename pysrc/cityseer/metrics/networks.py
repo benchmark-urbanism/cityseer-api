@@ -646,7 +646,6 @@ def _run_adaptive_centrality(
                 sample_probability=None,
                 sampling_weights=sampling_weights,
                 random_seed=random_seed,
-                pbar_disabled=True,
             )
         else:
             partial_func = partial(
@@ -662,7 +661,6 @@ def _run_adaptive_centrality(
                 sample_probability=None,
                 sampling_weights=sampling_weights,
                 random_seed=random_seed,
-                pbar_disabled=True,
             )
         result = config.wrap_progress(
             total=node_count,
@@ -688,7 +686,6 @@ def _run_adaptive_centrality(
                 sample_probability=p,
                 sampling_weights=sampling_weights,
                 random_seed=random_seed,
-                pbar_disabled=True,
             )
         else:
             partial_func = partial(
@@ -704,7 +701,6 @@ def _run_adaptive_centrality(
                 sample_probability=p,
                 sampling_weights=sampling_weights,
                 random_seed=random_seed,
-                pbar_disabled=True,
             )
         result = config.wrap_progress(
             total=node_count,

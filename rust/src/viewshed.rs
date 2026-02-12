@@ -42,7 +42,8 @@ fn line_of_sight_elevation(
     if dist_total_sq == 0.0 {
         return true; // Target is the same as start
     }
-    let slope_target = (end_elev - start_elev) / dist_total_sq;
+    let dist_total = dist_total_sq.sqrt();
+    let slope_target = (end_elev - start_elev) / dist_total;
     let mut max_slope = std::f32::MIN;
 
     let mut rel_x = 0;
@@ -70,7 +71,7 @@ fn line_of_sight_elevation(
         let current_elev = raster[(y as usize, x as usize)];
 
         if dist_sq > 0.0 {
-            let slope = (current_elev - start_elev) / dist_sq;
+            let slope = (current_elev - start_elev) / dist_sq.sqrt();
             if slope > max_slope {
                 max_slope = slope;
             }

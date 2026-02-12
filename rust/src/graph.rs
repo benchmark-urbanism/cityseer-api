@@ -52,7 +52,7 @@ impl NodePayload {
     #[inline]
     pub fn validate(&self, py: Python) -> PyResult<()> {
         if self.is_transport {
-            if self.live != false || self.weight != 0.0 {
+            if self.live || self.weight != 0.0 {
                 return Err(exceptions::PyValueError::new_err(format!(
                     "Invalid transport node payload: live must be false and weight must be 0.0. Node key: {:?}",
                     self.node_key.bind(py).repr().ok()
@@ -286,7 +286,7 @@ impl NodeVisit {
 
 /// Visit state for an edge during traversal.
 #[pyclass]
-#[derive(Clone)] // EdgeVisit cannot be Copy due to Option<usize>
+#[derive(Clone, Copy)]
 pub struct EdgeVisit {
     #[pyo3(get)]
     pub visited: bool,
@@ -565,13 +565,10 @@ impl NetworkStructure {
 
     /// Returns the count of non-transport (street) nodes.
     pub fn street_node_count(&self) -> usize {
-        let mut street_node_count = 0;
-        for payload in self.graph.node_weights() {
-            if !payload.is_transport {
-                street_node_count += 1;
-            }
-        }
-        street_node_count
+        self.graph
+            .node_weights()
+            .filter(|p| !p.is_transport)
+            .count()
     }
 
     /// Returns a list of indices for all nodes (street and transport).
@@ -589,15 +586,15 @@ impl NetworkStructure {
 
     /// Returns a list of indices for non-transport (street) nodes.
     pub fn street_node_indices(&self) -> Vec<usize> {
-        let mut street_node_indices = Vec::new();
-        for node_index in self.graph.node_indices() {
-            if let Some(payload) = self.graph.node_weight(node_index) {
-                if !payload.is_transport {
-                    street_node_indices.push(node_index.index());
-                }
-            }
-        }
-        street_node_indices
+        self.graph
+            .node_indices()
+            .filter(|&ni| {
+                self.graph
+                    .node_weight(ni)
+                    .map_or(false, |p| !p.is_transport)
+            })
+            .map(|ni| ni.index())
+            .collect()
     }
 
     /// Returns a list of `x` coordinates for all nodes (street and transport).
@@ -638,13 +635,11 @@ impl NetworkStructure {
     /// Returns a list of `live` status indicators for non-transport (street) nodes.
     #[getter]
     pub fn street_node_lives(&self) -> Vec<bool> {
-        let mut street_node_lives = Vec::new();
-        for payload in self.graph.node_weights() {
-            if !payload.is_transport {
-                street_node_lives.push(payload.live);
-            }
-        }
-        street_node_lives
+        self.graph
+            .node_weights()
+            .filter(|p| !p.is_transport)
+            .map(|p| p.live)
+            .collect()
     }
 
     #[getter]
@@ -1134,9 +1129,16 @@ impl NetworkStructure {
         let edge_rtree = self.edge_rtree.as_ref().expect("Edge R-tree should exist.");
 
         let is_point_geom = matches!(data_geom, Geometry::Point(_));
-        let data_cent = data_geom
-            .centroid()
-            .expect("Data geometry should have a centroid for assignment search.");
+        let data_cent = match data_geom.centroid() {
+            Some(c) => c,
+            None => {
+                log::warn!(
+                    "Data entry '{}' has no centroid (empty geometry?), skipping assignment.",
+                    data_key
+                );
+                return Vec::new();
+            }
+        };
         // Get candidates from the R-tree
         let candidate_edges_rtree = if is_point_geom {
             // if the data geometry is a point, use nearest neighbor search
@@ -1146,9 +1148,16 @@ impl NetworkStructure {
                 .collect::<Vec<_>>()
         } else {
             // otherwise, use envelope intersection
-            let data_rect = data_geom
-                .bounding_rect()
-                .expect("Data geometry should have a bounding rect.");
+            let data_rect = match data_geom.bounding_rect() {
+                Some(r) => r,
+                None => {
+                    log::warn!(
+                        "Data entry '{}' has no bounding rect (empty geometry?), skipping assignment.",
+                        data_key
+                    );
+                    return Vec::new();
+                }
+            };
             let query_aabb = AABB::from_corners(
                 [
                     data_rect.min().x - max_assignment_dist,
@@ -1192,13 +1201,17 @@ impl NetworkStructure {
                         data_cent
                     }
                 };
-                let assignment_line = Line::new(closest_point_on_data.0, node_point.0);
-                if self.line_intersects_barriers(&assignment_line)
-                    || self.line_intersects_streets(&assignment_line)
-                {
-                    return None;
-                }
                 let node_dist = Euclidean.distance(&closest_point_on_data, &node_point);
+                // Skip barrier/street intersection checks for near-zero-length assignment lines;
+                // degenerate lines can trigger assertion panics in geo's line_intersection.
+                if node_dist > 1e-6 {
+                    let assignment_line = Line::new(closest_point_on_data.0, node_point.0);
+                    if self.line_intersects_barriers(&assignment_line)
+                        || self.line_intersects_streets(&assignment_line)
+                    {
+                        return None;
+                    }
+                }
                 Some((node_idx, node_dist))
             };
 

@@ -64,7 +64,7 @@ impl CentralityShortestResult {
         let len = node_indices.len();
         CentralityShortestResult {
             distances: distances.clone(),
-            node_keys_py: node_keys_py,
+            node_keys_py,
             node_indices: node_indices.clone(),
             node_density_vec: MetricResult::new(&distances, len, init_val),
             node_farness_vec: MetricResult::new(&distances, len, init_val),
@@ -143,7 +143,7 @@ impl CentralitySimplestResult {
         let len = node_indices.len();
         CentralitySimplestResult {
             distances: distances.clone(),
-            node_keys_py: node_keys_py,
+            node_keys_py,
             node_indices: node_indices.clone(),
             node_density_vec: MetricResult::new(&distances, len, init_val),
             node_farness_vec: MetricResult::new(&distances, len, init_val),
@@ -200,7 +200,7 @@ impl CentralitySegmentResult {
         let len = node_indices.len();
         CentralitySegmentResult {
             distances: distances.clone(),
-            node_keys_py: node_keys_py,
+            node_keys_py,
             node_indices: node_indices.clone(),
             segment_density_vec: MetricResult::new(&distances, len, init_val),
             segment_harmonic_vec: MetricResult::new(&distances, len, init_val),
@@ -320,6 +320,11 @@ impl NetworkStructure {
                     } else {
                         tree_map[node_idx].cycles += 0.5;
                     }
+                }
+                // Skip already-visited nodes to prevent stale distance updates
+                // that cannot propagate (the node has already been explored).
+                if tree_map[nb_nd_idx.index()].visited {
+                    continue;
                 }
                 let edge_seconds = if edge_payload.seconds.is_nan() {
                     (edge_payload.length * edge_payload.imp_factor) / speed_m_s
@@ -1260,7 +1265,7 @@ impl NetworkStructure {
 
                                     if auc.is_finite() && auc >= 0.0 {
                                         res.segment_betweenness_vec.metric[i][inter_idx]
-                                            .fetch_add(auc, AtomicOrdering::Acquire);
+                                            .fetch_add(auc, AtomicOrdering::Relaxed);
                                     }
                                 }
                             }
