@@ -603,8 +603,7 @@ def mock_barriers():
     barriers_gdf = barriers_gdf.set_index("barrier_id")
     barriers_gdf = barriers_gdf.set_crs(32630)
     # gather the WKT strings
-    barrier_wkts: list[str] | None = None
-    barrier_wkts = []
+    barrier_wkts: list[str] = []
     for _, row in barriers_gdf.iterrows():
         barrier_wkts.append(row.geometry.wkt)
 

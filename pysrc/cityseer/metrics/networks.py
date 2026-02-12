@@ -242,7 +242,7 @@ def node_centrality_shortest(
                 temp_data[data_key] = getattr(result, attr_key)[distance]
 
     temp_df = pd.DataFrame(temp_data, index=result.node_keys_py)
-    nodes_gdf.loc[gdf_idx, temp_df.columns] = temp_df.loc[gdf_idx, temp_df.columns]  # ty: ignore[invalid-argument-type]
+    nodes_gdf.loc[gdf_idx, temp_df.columns] = temp_df.loc[gdf_idx, temp_df.columns]
 
     return nodes_gdf
 
@@ -419,7 +419,7 @@ def node_centrality_simplest(
             temp_data[data_key] = result.node_betweenness[distance]  # type: ignore
 
     temp_df = pd.DataFrame(temp_data, index=result.node_keys_py)
-    nodes_gdf.loc[gdf_idx, temp_df.columns] = temp_df.loc[gdf_idx, temp_df.columns]  # ty: ignore[invalid-argument-type]
+    nodes_gdf.loc[gdf_idx, temp_df.columns] = temp_df.loc[gdf_idx, temp_df.columns]
 
     return nodes_gdf
 
@@ -552,7 +552,7 @@ def segment_centrality(
             temp_data[data_key] = result.segment_betweenness[distance]  # type: ignore
 
     temp_df = pd.DataFrame(temp_data, index=result.node_keys_py)
-    nodes_gdf.loc[gdf_idx, temp_df.columns] = temp_df.loc[gdf_idx, temp_df.columns]  # ty: ignore[invalid-argument-type]
+    nodes_gdf.loc[gdf_idx, temp_df.columns] = temp_df.loc[gdf_idx, temp_df.columns]
 
     return nodes_gdf
 
@@ -704,7 +704,7 @@ def _run_adaptive_centrality(
                 temp_data[config.prep_gdf_key("betweenness", d, angular=True)] = res.node_betweenness[d]
 
     temp_df = pd.DataFrame(temp_data, index=ref_result.node_keys_py)
-    nodes_gdf.loc[gdf_idx, temp_df.columns] = temp_df.loc[gdf_idx, temp_df.columns]  # ty: ignore[invalid-argument-type]
+    nodes_gdf.loc[gdf_idx, temp_df.columns] = temp_df.loc[gdf_idx, temp_df.columns]
 
     logger.info("Adaptive centrality complete.")
     return nodes_gdf
