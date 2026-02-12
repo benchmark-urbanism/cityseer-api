@@ -283,7 +283,7 @@ def compute_accessibilities(
                 temp_data[ac_dist_data_key] = acc_result.result[acc_key].distance[dist_key]  # type: ignore
 
     temp_df = pd.DataFrame(temp_data, index=acc_result.node_keys_py)
-    nodes_gdf.loc[gdf_idx, temp_df.columns] = temp_df.loc[gdf_idx, temp_df.columns]  # type: ignore
+    nodes_gdf.loc[gdf_idx, temp_df.columns] = temp_df.loc[gdf_idx, temp_df.columns]  # ty: ignore[invalid-argument-type]
 
     return nodes_gdf, data_gdf
 
@@ -536,7 +536,7 @@ def compute_mixed_uses(
             temp_data[gini_data_key] = result.gini[dist_key]  # type: ignore
 
     temp_df = pd.DataFrame(temp_data, index=result.node_keys_py)
-    nodes_gdf.loc[gdf_idx, temp_df.columns] = temp_df.loc[gdf_idx, temp_df.columns]  # type: ignore
+    nodes_gdf.loc[gdf_idx, temp_df.columns] = temp_df.loc[gdf_idx, temp_df.columns]  # ty: ignore[invalid-argument-type]
 
     return nodes_gdf, data_gdf
 
@@ -761,6 +761,6 @@ def compute_stats(
             temp_data[k] = stats_result.result[idx].min[dist_key]  # type: ignore
 
     temp_df = pd.DataFrame(temp_data, index=stats_result.node_keys_py)
-    nodes_gdf.loc[gdf_idx, temp_df.columns] = temp_df.loc[gdf_idx, temp_df.columns]  # type: ignore
+    nodes_gdf.loc[gdf_idx, temp_df.columns] = temp_df.loc[gdf_idx, temp_df.columns]  # ty: ignore[invalid-argument-type]
 
     return nodes_gdf, data_gdf
