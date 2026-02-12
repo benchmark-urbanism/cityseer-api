@@ -197,9 +197,7 @@ def generate_macros() -> str:
     madrid_df = load_madrid_validation()
     madrid_min_rho = None
     if madrid_df is not None:
-        madrid_hoeff = (
-            madrid_df[madrid_df["model"] == "hoeffding_0.1"] if "model" in madrid_df.columns else madrid_df
-        )
+        madrid_hoeff = madrid_df[madrid_df["model"] == "hoeffding_0.1"] if "model" in madrid_df.columns else madrid_df
 
         all_rhos = []
         for _, row in madrid_hoeff.iterrows():
@@ -320,9 +318,7 @@ def main():
 
     madrid_df = load_madrid_validation()
     if madrid_df is not None:
-        madrid_hoeff = (
-            madrid_df[madrid_df["model"] == "hoeffding_0.1"] if "model" in madrid_df.columns else madrid_df
-        )
+        madrid_hoeff = madrid_df[madrid_df["model"] == "hoeffding_0.1"] if "model" in madrid_df.columns else madrid_df
         print("\nMadrid validation (Hoeffding p):")
         for _, row in madrid_hoeff.iterrows():
             rho_min = min(row["rho_closeness"], row["rho_betweenness"])
