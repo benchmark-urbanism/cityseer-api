@@ -302,7 +302,7 @@ def mock_data_gdf(nx_multigraph: MultiGraph, length: int = 50, random_seed: int 
             "data_id": np.arange(length),
         }
     )
-    data_gpd = data_gpd.set_index("uid")
+    data_gpd.set_index("uid", inplace=True)
     # last 5 datapoints are a cluster of nodes where the nodes share the same data_id for deduplication checks
     for idx, loc_idx in enumerate(range(length - 5, length)):
         data_gpd.loc[loc_idx, "data_id"] = length - 5
@@ -600,8 +600,8 @@ def mock_barriers():
             ],
         }
     )
-    barriers_gdf = barriers_gdf.set_index("barrier_id")
-    barriers_gdf = barriers_gdf.set_crs(32630)
+    barriers_gdf.set_index("barrier_id", inplace=True)
+    barriers_gdf.set_crs(32630, inplace=True)
     # gather the WKT strings
     barrier_wkts: list[str] = []
     for _, row in barriers_gdf.iterrows():
