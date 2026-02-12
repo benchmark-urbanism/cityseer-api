@@ -423,6 +423,7 @@ def wrap_progress(
     total: int,
     rust_struct: rustalgos.graph.NetworkStructure | rustalgos.data.DataMap | rustalgos.viewshed.Viewshed,
     partial_func: Callable,
+    desc: str | None = None,
 ) -> RustResults:
     """Wraps long running parallelised rust functions with a progress counter."""
 
@@ -438,6 +439,7 @@ def wrap_progress(
     pbar = tqdm(
         total=total,
         disable=QUIET_MODE,
+        desc=desc,
     )
     thread.start()
     while thread.is_alive():

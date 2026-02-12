@@ -614,36 +614,85 @@ def _run_adaptive_centrality(
         delta=delta,
     )
 
-    # 4. Run per-distance
-    logger.info("Running per-distance centrality...")
+    # 4. Separate full-probability vs sampled distances
+    full_distances: list[int] = []
+    sampled_distances: list[tuple[int, float]] = []
+    for d in sorted(distances):
+        p = sample_probs.get(d)
+        if p is None or p >= 1.0:
+            full_distances.append(d)
+        else:
+            sampled_distances.append((d, p))
 
     # Track all results to merge
     all_results: dict[
         int, rustalgos.centrality.CentralityShortestResult | rustalgos.centrality.CentralitySimplestResult
     ] = {}
+    node_count = network_structure.street_node_count()
 
-    for d in sorted(distances):
-        p = sample_probs.get(d)
-        # Use None (full computation) if p >= 1.0 or None
-        effective_p = p if (p is not None and p < 1.0) else None
-
-        logger.info(f"  {d}m: {'full' if effective_p is None else f'p={effective_p:.0%}'}...")
-
+    # 4a. Run all full-probability distances in one batch
+    if full_distances:
+        dist_label = ", ".join(f"{d}m" for d in full_distances)
+        logger.info(f"  Full: {dist_label}")
         if centrality_func == "shortest":
-            result = network_structure.local_node_centrality_shortest(
+            partial_func = partial(
+                network_structure.local_node_centrality_shortest,
+                distances=full_distances,
+                compute_closeness=compute_closeness,
+                compute_betweenness=compute_betweenness,
+                min_threshold_wt=min_threshold_wt,
+                speed_m_s=speed_m_s,
+                jitter_scale=jitter_scale,
+                sample_probability=None,
+                sampling_weights=sampling_weights,
+                random_seed=random_seed,
+                pbar_disabled=True,
+            )
+        else:
+            partial_func = partial(
+                network_structure.local_node_centrality_simplest,
+                distances=full_distances,
+                compute_closeness=compute_closeness,
+                compute_betweenness=compute_betweenness,
+                min_threshold_wt=min_threshold_wt,
+                speed_m_s=speed_m_s,
+                angular_scaling_unit=angular_scaling_unit,
+                farness_scaling_offset=farness_scaling_offset,
+                jitter_scale=jitter_scale,
+                sample_probability=None,
+                sampling_weights=sampling_weights,
+                random_seed=random_seed,
+                pbar_disabled=True,
+            )
+        result = config.wrap_progress(
+            total=node_count,
+            rust_struct=network_structure,
+            partial_func=partial_func,
+            desc=f"full: {dist_label}",
+        )
+        for d in full_distances:
+            all_results[d] = result  # type: ignore[assignment]
+
+    # 4b. Run each sampled distance individually
+    for d, p in sampled_distances:
+        logger.info(f"  {d}m: p={p:.0%}")
+        if centrality_func == "shortest":
+            partial_func = partial(
+                network_structure.local_node_centrality_shortest,
                 distances=[d],
                 compute_closeness=compute_closeness,
                 compute_betweenness=compute_betweenness,
                 min_threshold_wt=min_threshold_wt,
                 speed_m_s=speed_m_s,
                 jitter_scale=jitter_scale,
-                sample_probability=effective_p,
+                sample_probability=p,
                 sampling_weights=sampling_weights,
                 random_seed=random_seed,
-                pbar_disabled=True,  # Disable per-distance progress bars
+                pbar_disabled=True,
             )
-        else:  # simplest
-            result = network_structure.local_node_centrality_simplest(
+        else:
+            partial_func = partial(
+                network_structure.local_node_centrality_simplest,
                 distances=[d],
                 compute_closeness=compute_closeness,
                 compute_betweenness=compute_betweenness,
@@ -652,13 +701,18 @@ def _run_adaptive_centrality(
                 angular_scaling_unit=angular_scaling_unit,
                 farness_scaling_offset=farness_scaling_offset,
                 jitter_scale=jitter_scale,
-                sample_probability=effective_p,
+                sample_probability=p,
                 sampling_weights=sampling_weights,
                 random_seed=random_seed,
                 pbar_disabled=True,
             )
-
-        all_results[d] = result
+        result = config.wrap_progress(
+            total=node_count,
+            rust_struct=network_structure,
+            partial_func=partial_func,
+            desc=f"p={p:.0%}: {d}m",
+        )
+        all_results[d] = result  # type: ignore[assignment]
 
     # 5. Merge results into GeoDataFrame
     # Get reference result for node keys
