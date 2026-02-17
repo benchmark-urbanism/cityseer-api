@@ -721,7 +721,7 @@ impl NetworkStructure {
             // Fallback: use overall edge direction when first segment has duplicate coords
             measure_bearing(coords[0], coords[num_coords - 1]) as f32
         } else {
-            f32::NAN
+            0.0
         };
         // Compute out_bearing: use last segment, fallback to overall edge direction
         let out_bearing = if coords[num_coords - 2] != coords[num_coords - 1] {
@@ -730,7 +730,7 @@ impl NetworkStructure {
             // Fallback: use overall edge direction when last segment has duplicate coords
             measure_bearing(coords[0], coords[num_coords - 1]) as f32
         } else {
-            f32::NAN
+            0.0
         };
 
         let angle_sum = measure_cumulative_angle(coords) as f32;
