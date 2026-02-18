@@ -58,6 +58,7 @@ import logging
 from functools import partial
 
 import geopandas as gpd
+import numpy as np
 import pandas as pd
 
 from .. import config, rustalgos
@@ -244,6 +245,200 @@ def node_centrality_shortest(
     temp_df = pd.DataFrame(temp_data, index=result.node_keys_py)
     nodes_gdf.loc[gdf_idx, temp_df.columns] = temp_df.loc[gdf_idx, temp_df.columns]
 
+    return nodes_gdf
+
+
+def build_od_matrix(
+    od_df: pd.DataFrame,
+    zones_gdf: gpd.GeoDataFrame,
+    network_structure: rustalgos.graph.NetworkStructure,
+    origin_col: str,
+    destination_col: str,
+    weight_col: str,
+    zone_id_col: str | None = None,
+    max_snap_dist: float = 500.0,
+) -> rustalgos.centrality.OdMatrix:
+    """Build an OdMatrix from OD flow data and zone boundaries.
+
+    Computes zone centroids, snaps them to the nearest network nodes,
+    and constructs a sparse OD weight matrix for use with `node_betweenness_od`.
+
+    Parameters
+    ----------
+    od_df : pd.DataFrame
+        Origin-destination flow data with columns for origin zone, destination zone, and weight.
+    zones_gdf : gpd.GeoDataFrame
+        Zone boundaries (polygons) or centroids (points). Must be in a projected CRS
+        matching the network, or in EPSG:4326 (will be auto-reprojected).
+    network_structure : rustalgos.graph.NetworkStructure
+        The network to snap zone centroids to.
+    origin_col : str
+        Column in od_df containing origin zone identifiers.
+    destination_col : str
+        Column in od_df containing destination zone identifiers.
+    weight_col : str
+        Column in od_df containing trip weights (e.g., number of bicycle commuters).
+    zone_id_col : str | None
+        Column in zones_gdf containing zone identifiers matching origin_col/destination_col.
+        If None, uses the GeoDataFrame index.
+    max_snap_dist : float
+        Maximum distance (in CRS units, typically metres) for snapping a centroid to a network node.
+        Centroids beyond this distance are excluded with a warning.
+
+    Returns
+    -------
+    rustalgos.centrality.OdMatrix
+        Sparse OD matrix ready for use with `node_betweenness_od`.
+    """
+    from scipy.spatial import KDTree
+
+    geom_types = set(zones_gdf.geometry.geom_type)
+    centroids = zones_gdf.geometry.centroid if geom_types & {"Polygon", "MultiPolygon"} else zones_gdf.geometry
+
+    zones_work = zones_gdf.copy()
+    zones_work["_centroid"] = centroids
+    if zones_work.crs is not None and zones_work.crs.to_epsg() == 4326:
+        node_xys = network_structure.node_xys
+        mean_x = np.mean([xy[0] for xy in node_xys[:100]])
+        target_crs = 27700 if 100_000 < mean_x < 700_000 else 32630
+        logger.info(f"Reprojecting zone centroids from EPSG:4326 to EPSG:{target_crs}")
+        centroid_gdf = gpd.GeoDataFrame({"geometry": zones_work["_centroid"]}, crs=zones_work.crs)  # type: ignore[no-matching-overload]
+        centroid_gdf = centroid_gdf.to_crs(epsg=target_crs)
+        zones_work["_centroid"] = centroid_gdf.geometry
+
+    zone_ids = zones_work[zone_id_col].values if zone_id_col is not None else zones_work.index.values
+    centroid_coords = np.array([(g.x, g.y) for g in zones_work["_centroid"]])
+
+    # Snap centroids to nearest network nodes via KDTree
+    node_xys = network_structure.node_xys
+    tree = KDTree(node_xys)
+    distances_snap, indices = tree.query(centroid_coords)
+
+    zone_to_node: dict = {}
+    n_excluded = 0
+    for i, zone_id in enumerate(zone_ids):
+        if distances_snap[i] > max_snap_dist:
+            n_excluded += 1
+            continue
+        zone_to_node[zone_id] = int(indices[i])
+
+    if n_excluded > 0:
+        logger.warning(f"{n_excluded} zone centroids exceeded max_snap_dist={max_snap_dist}m and were excluded")
+    logger.info(
+        f"Snapped {len(zone_to_node)} zone centroids to network nodes "
+        f"(median distance: {np.median(distances_snap):.0f}m)"
+    )
+
+    # Build COO arrays
+    origins_arr: list[int] = []
+    dests_arr: list[int] = []
+    weights_arr: list[float] = []
+
+    for _, row in od_df.iterrows():
+        o_zone = row[origin_col]
+        d_zone = row[destination_col]
+        w = row[weight_col]
+
+        if pd.isna(w) or w <= 0:
+            continue
+        if o_zone not in zone_to_node or d_zone not in zone_to_node:
+            continue
+
+        origins_arr.append(zone_to_node[o_zone])
+        dests_arr.append(zone_to_node[d_zone])
+        weights_arr.append(float(w))
+
+    logger.info(f"Built OD matrix: {len(origins_arr)} pairs, {sum(weights_arr):.0f} total trips")
+
+    return rustalgos.centrality.OdMatrix(origins_arr, dests_arr, weights_arr)
+
+
+def node_betweenness_od(
+    network_structure: rustalgos.graph.NetworkStructure,
+    nodes_gdf: gpd.GeoDataFrame,
+    od_matrix: rustalgos.centrality.OdMatrix,
+    distances: list[int] | None = None,
+    betas: list[float] | None = None,
+    minutes: list[float] | None = None,
+    min_threshold_wt: float = MIN_THRESH_WT,
+    speed_m_s: float = SPEED_M_S,
+    jitter_scale: float = 0.0,
+    random_seed: int | None = None,
+) -> gpd.GeoDataFrame:
+    """Compute OD-weighted betweenness centrality using the shortest path heuristic.
+
+    Weights betweenness by origin-destination trip counts from a sparse OD matrix. Only source nodes with outbound
+    trips are traversed, and each shortest-path contribution is scaled by the corresponding OD weight. Closeness
+    metrics are not computed.
+
+    Parameters
+    ----------
+    network_structure
+        A [`rustalgos.graph.NetworkStructure`](/rustalgos/rustalgos#networkstructure).
+    nodes_gdf
+        A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe)
+        representing nodes. The outputs of calculations will be written to this `GeoDataFrame`.
+    od_matrix
+        An [`OdMatrix`](/rustalgos/centrality#odmatrix) mapping (origin, destination) node pairs to trip weights.
+        Build with [`config.build_od_matrix`](/config#build-od-matrix).
+    distances: list[int]
+        Distances corresponding to the local $d_{max}$ thresholds to be used for calculations.
+    betas: list[float]
+        A list of $\\beta$ to be used for the exponential decay function for weighted metrics.
+    minutes: list[float]
+        A list of walking times in minutes to be used for calculations.
+    min_threshold_wt: float
+        The default `min_threshold_wt` parameter can be overridden to generate custom mappings between the
+        `distance` and `beta` parameters.
+    speed_m_s: float
+        The default `speed_m_s` parameter can be configured to generate custom mappings between walking times and
+        distance thresholds $d_{max}$.
+    jitter_scale: float
+        The scale of random jitter to add to shortest path calculations.
+    random_seed: int
+        Optional seed for deterministic random cost jitter.
+
+    Returns
+    -------
+    nodes_gdf: GeoDataFrame
+        The input `nodes_gdf` parameter is returned with additional betweenness columns.
+
+    """
+    logger.info("Computing OD-weighted betweenness centrality.")
+    partial_func = partial(
+        network_structure.local_node_centrality_shortest,
+        distances=distances,
+        betas=betas,
+        minutes=minutes,
+        compute_closeness=False,
+        compute_betweenness=True,
+        min_threshold_wt=min_threshold_wt,
+        speed_m_s=speed_m_s,
+        jitter_scale=jitter_scale,
+        od_matrix=od_matrix,
+        random_seed=random_seed,
+    )
+    result = config.wrap_progress(
+        total=network_structure.street_node_count(), rust_struct=network_structure, partial_func=partial_func
+    )
+    distances = config.log_thresholds(
+        distances=distances,
+        betas=betas,
+        minutes=minutes,
+        min_threshold_wt=min_threshold_wt,
+        speed_m_s=speed_m_s,
+    )
+    gdf_idx = nodes_gdf.index.intersection(result.node_keys_py)
+    temp_data = {}
+    for measure_key, attr_key in [
+        ("betweenness", "node_betweenness"),
+        ("betweenness_beta", "node_betweenness_beta"),
+    ]:
+        for distance in distances:
+            data_key = config.prep_gdf_key(measure_key, distance)
+            temp_data[data_key] = getattr(result, attr_key)[distance]
+    temp_df = pd.DataFrame(temp_data, index=result.node_keys_py)
+    nodes_gdf.loc[gdf_idx, temp_df.columns] = temp_df.loc[gdf_idx, temp_df.columns]
     return nodes_gdf
 
 

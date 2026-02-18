@@ -29,6 +29,47 @@ fn derive_seed(base_seed: u64, index: usize) -> u64 {
     x ^ (x >> 31)
 }
 
+/// Sparse origin-destination weight matrix for OD-weighted centrality.
+///
+/// Stores per-pair trip weights in a nested HashMap for O(1) lookup.
+/// Constructed once and passed to centrality functions; can be reused across calls.
+#[pyclass]
+#[derive(Clone)]
+pub struct OdMatrix {
+    map: HashMap<usize, HashMap<usize, f32>>,
+}
+
+#[pymethods]
+impl OdMatrix {
+    #[new]
+    #[pyo3(signature = (origins, destinations, weights))]
+    fn new(origins: Vec<usize>, destinations: Vec<usize>, weights: Vec<f32>) -> PyResult<Self> {
+        if origins.len() != destinations.len() || origins.len() != weights.len() {
+            return Err(exceptions::PyValueError::new_err(format!(
+                "origins ({}), destinations ({}), and weights ({}) must have equal length",
+                origins.len(),
+                destinations.len(),
+                weights.len()
+            )));
+        }
+        let mut map: HashMap<usize, HashMap<usize, f32>> = HashMap::new();
+        for i in 0..origins.len() {
+            map.entry(origins[i]).or_default().insert(destinations[i], weights[i]);
+        }
+        Ok(OdMatrix { map })
+    }
+
+    /// Number of non-zero OD pairs.
+    fn len(&self) -> usize {
+        self.map.values().map(|d| d.len()).sum()
+    }
+
+    /// Number of unique origin nodes.
+    fn n_origins(&self) -> usize {
+        self.map.len()
+    }
+}
+
 #[pyclass]
 pub struct CentralityShortestResult {
     #[pyo3(get)]
@@ -605,6 +646,7 @@ impl NetworkStructure {
         jitter_scale=None,
         sample_probability=None,
         sampling_weights=None,
+        od_matrix=None,
         random_seed=None,
         pbar_disabled=None
     ))]
@@ -620,6 +662,7 @@ impl NetworkStructure {
         jitter_scale: Option<f32>,
         sample_probability: Option<f32>,
         sampling_weights: Option<Vec<f32>>,
+        od_matrix: Option<&OdMatrix>,
         random_seed: Option<u64>,
         pbar_disabled: Option<bool>,
         py: Python,
@@ -668,6 +711,9 @@ impl NetworkStructure {
             }
         }
 
+        // Extract OD map reference for use in the computation loop.
+        let od_map = od_matrix.map(|od| &od.map);
+
         let node_keys_py = self.node_keys_py(py);
         let node_indices = self.node_indices();
         let mut res = CentralityShortestResult::new(
@@ -709,9 +755,22 @@ impl NetworkStructure {
                     return;
                 }
 
+                // Skip sources with no outbound OD trips when OD matrix is active.
+                if let Some(ref od) = od_map {
+                    if !od.contains_key(src_idx) {
+                        return;
+                    }
+                }
+
                 // Source sampling: skip Dijkstra for unsampled sources.
                 // Horvitz–Thompson (IPW) estimator: scale contributions by 1/p_src.
-                let mut wt = self.get_node_weight(*src_idx);
+                // When OD weights are active, node weight is replaced by per-pair OD weight;
+                // wt here is just the IPW factor (1/p when sampling, 1.0 otherwise).
+                let mut wt = if od_map.is_some() {
+                    1.0_f32
+                } else {
+                    self.get_node_weight(*src_idx)
+                };
                 if let Some(prob) = sample_probability {
                     let mut p = prob;
                     if let Some(ref weights) = sampling_weights {
@@ -753,35 +812,49 @@ impl NetworkStructure {
                             }
                         }
                     }
+                    // When OD weights are active, compute per-destination weight.
+                    // OD weight replaces node weight; wt carries just the IPW factor.
+                    // When no OD matrix, dest_wt == wt (standard behaviour).
+                    let dest_wt = if let Some(ref od) = od_map {
+                        match od.get(src_idx).and_then(|dests| dests.get(to_idx)) {
+                            Some(&od_w) => od_w * wt,
+                            None => continue, // No OD flow for this pair
+                        }
+                    } else {
+                        wt
+                    };
                     // Flipped aggregation: accumulate to target (to_idx) not source.
-                    // Weight comes from the (possibly IPW-scaled) source node.
+                    // Weight comes from the (possibly IPW-scaled) source node,
+                    // or from OD weight * IPW factor when OD matrix is active.
                     if compute_closeness {
                         for i in 0..distances.len() {
                             let distance = distances[i];
                             let beta = betas[i];
                             if node_visit.short_dist <= distance as f32 {
                                 res.node_density_vec.metric[i][*to_idx]
-                                    .fetch_add(wt, AtomicOrdering::Relaxed);
+                                    .fetch_add(dest_wt, AtomicOrdering::Relaxed);
                                 res.node_farness_vec.metric[i][*to_idx]
-                                    .fetch_add(node_visit.short_dist * wt, AtomicOrdering::Relaxed);
+                                    .fetch_add(node_visit.short_dist * dest_wt, AtomicOrdering::Relaxed);
                                 // Cycles: accumulate to target (to_idx) for consistency with other metrics
                                 // and to ensure all nodes get cycle values with sampling.
                                 // node_visit.cycles represents cycles detected at the target node during traversal.
                                 res.node_cycles_vec.metric[i][*to_idx]
-                                    .fetch_add(node_visit.cycles * wt, AtomicOrdering::Relaxed);
+                                    .fetch_add(node_visit.cycles * dest_wt, AtomicOrdering::Relaxed);
                                 res.node_harmonic_vec.metric[i][*to_idx].fetch_add(
-                                    (1.0 / node_visit.short_dist) * wt,
+                                    (1.0 / node_visit.short_dist) * dest_wt,
                                     AtomicOrdering::Relaxed,
                                 );
                                 res.node_beta_vec.metric[i][*to_idx].fetch_add(
-                                    (-beta * node_visit.short_dist).exp() * wt,
+                                    (-beta * node_visit.short_dist).exp() * dest_wt,
                                     AtomicOrdering::Relaxed,
                                 );
                             }
                         }
                     }
                     if compute_betweenness {
-                        if to_idx < src_idx {
+                        // When OD weights are active, flows are directional (A→B ≠ B→A),
+                        // so skip the symmetry guard that avoids double-counting.
+                        if od_map.is_none() && to_idx < src_idx {
                             continue;
                         }
                         let mut current_pred = node_visit.pred;
@@ -795,10 +868,10 @@ impl NetworkStructure {
                                 let beta = betas[i];
                                 if node_visit_short_dist <= distance as f32 {
                                     res.node_betweenness_vec.metric[i][inter_idx]
-                                        .fetch_add(wt, AtomicOrdering::Relaxed);
+                                        .fetch_add(dest_wt, AtomicOrdering::Relaxed);
                                     let exp_val = (-beta * node_visit_short_dist).exp();
                                     res.node_betweenness_beta_vec.metric[i][inter_idx]
-                                        .fetch_add(exp_val * wt, AtomicOrdering::Relaxed);
+                                        .fetch_add(exp_val * dest_wt, AtomicOrdering::Relaxed);
                                 }
                             }
                             current_pred = tree_map[inter_idx].pred;
