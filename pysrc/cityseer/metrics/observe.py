@@ -172,15 +172,14 @@ def _recurse_edges(
     ]
     # recurse into neighbours
     for nested_a_nd_key, nested_b_nd_key in a_nb_pairs + b_nb_pairs:
-        nested_edge_idx: int
-        for nested_edge_idx in _nx_multigraph[nested_a_nd_key][nested_b_nd_key]:  # type: ignore
+        for nested_edge_idx in _nx_multigraph[nested_a_nd_key][nested_b_nd_key]:
             _recurse_edges(
                 _nx_multigraph,
                 _method,
                 _match_target,
                 nested_a_nd_key,
                 nested_b_nd_key,
-                nested_edge_idx,
+                int(nested_edge_idx),
                 _visited_edges,
                 _continuity_report,
                 _report_key,
