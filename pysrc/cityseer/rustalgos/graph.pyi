@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from .centrality import CentralitySegmentResult, CentralityShortestResult, CentralitySimplestResult
+from .centrality import CentralitySegmentResult, CentralityShortestResult, CentralitySimplestResult, OdMatrix
 
 __doc__: str
 
@@ -410,6 +410,7 @@ class NetworkStructure:
         jitter_scale: float | None = None,
         sample_probability: float | None = None,
         sampling_weights: list[float] | None = None,
+        od_matrix: OdMatrix | None = None,
         random_seed: int | None = None,
         pbar_disabled: bool | None = None,
     ) -> CentralityShortestResult:
@@ -442,6 +443,9 @@ class NetworkStructure:
         sampling_weights: list[float] | None
             Per-node sampling weights in range [0.0, 1.0]. When provided, sampling probability
             for each node becomes sample_probability * sampling_weights[node_idx].
+        od_matrix: OdMatrix | None
+            Sparse OD weight matrix for demand-weighted centrality. When provided, only
+            (origin, destination) pairs in the matrix contribute, weighted by trip count.
         random_seed: int | None
             Optional seed for reproducible sampling and jitter.
         pbar_disabled: bool | None

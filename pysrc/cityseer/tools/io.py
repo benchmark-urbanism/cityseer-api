@@ -1082,19 +1082,38 @@ def network_structure_from_nx(
         for end_node_key in g_multi_copy.neighbors(start_node_key):
             end_ns_node_idx, end_node_x, end_node_y, _, _, _ = agg_node_data[end_node_key]
             for edge_idx, edge_data in g_multi_copy[start_node_key][end_node_key].items():
+                # validate geometry exists
+                edge_geom = edge_data.get("geom")
+                if edge_geom is None:
+                    raise ValueError(
+                        f"Edge has no geometry: start_node={start_node_key}, "
+                        f"end_node={end_node_key}, edge_idx={edge_idx}"
+                    )
+                if not edge_geom.is_valid or edge_geom.is_empty or len(edge_geom.coords) < 2:
+                    raise ValueError(
+                        f"Invalid edge geometry: valid={edge_geom.is_valid}, empty={edge_geom.is_empty}, "
+                        f"coords={len(edge_geom.coords)}, start_node={start_node_key}, "
+                        f"end_node={end_node_key}, edge_idx={edge_idx}"
+                    )
                 # align coords
-                line_geom_coords = util.align_linestring_coords(edge_data["geom"].coords, (start_node_x, start_node_y))
+                line_geom_coords = util.align_linestring_coords(edge_geom.coords, (start_node_x, start_node_y))
                 aligned_line_geom = geometry.LineString(line_geom_coords)
-                # add edge - USE add_street_edge
-                ns_edge_idx = network_structure.add_street_edge(
-                    start_ns_node_idx,
-                    end_ns_node_idx,
-                    int(edge_idx),
-                    start_node_key,
-                    end_node_key,
-                    aligned_line_geom.wkt,  # geom_wkt is required
-                    float(edge_data.get("imp_factor", 1.0)),  # imp_factor
-                )
+                # add edge
+                try:
+                    ns_edge_idx = network_structure.add_street_edge(
+                        start_ns_node_idx,
+                        end_ns_node_idx,
+                        int(edge_idx),
+                        start_node_key,
+                        end_node_key,
+                        aligned_line_geom.wkt,
+                        float(edge_data.get("imp_factor", 1.0)),
+                    )
+                except Exception:
+                    logger.error(
+                        f"Edge failed: {start_node_key} -> {end_node_key}, coords={list(aligned_line_geom.coords)}"
+                    )
+                    raise
                 # add to edge data
                 agg_edge_data[f"{start_node_key}-{end_node_key}"] = (
                     ns_edge_idx,

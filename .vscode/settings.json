@@ -81,5 +81,9 @@
   "latex-workshop.latex.clean.subfolder.enabled": true,
   "latex-workshop.view.pdf.viewer": "tab",
   "latex-workshop.synctex.afterBuild.enabled": true,
-  "latex-workshop.formatting.latex": "tex-fmt"
+  "latex-workshop.formatting.latex": "tex-fmt",
+  "files.watcherExclude": {
+    "**/temp/**": true,
+    "**/.cache/**": true
+  }
 }

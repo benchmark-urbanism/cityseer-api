@@ -7,12 +7,16 @@ random subset of source nodes. Key properties:
 2. Unbiasedness: IPW-corrected samples converge to true values
 3. Coverage: Target aggregation ensures all nodes receive results
 4. Validation: Invalid inputs are rejected
+5. Model: Hoeffding/Eppstein–Wang reach → p is implemented correctly
 """
 
 from __future__ import annotations
 
+import math
+
 import numpy as np
 import pytest
+from cityseer import config
 from cityseer.tools import graphs, io, mock
 
 
@@ -321,3 +325,51 @@ class TestSimplestCentrality:
         if np.any(mask):
             error = np.mean(np.abs(avg[mask] - full_density[mask]) / full_density[mask])
             assert error < 0.20, f"Simplest error {error:.1%} exceeds 20%"
+
+
+class TestSamplingModel:
+    """Tests for the Hoeffding/Eppstein–Wang reach → p sampling model."""
+
+    def test_constants_match_paper(self):
+        """Default Hoeffding parameters match the paper defaults."""
+        assert config.HOEFFDING_EPSILON == 0.1
+        assert config.HOEFFDING_DELTA == 0.1
+
+    def test_compute_hoeffding_p_matches_formula(self):
+        """compute_hoeffding_p implements k=log(2r/δ)/(2ε²), p=min(1,k/r)."""
+        reach = 1000.0
+        epsilon = 0.1
+        delta = 0.1
+        p = config.compute_hoeffding_p(reach, epsilon=epsilon, delta=delta)
+        assert p is not None
+        expected_k = math.log(2 * reach / delta) / (2 * epsilon**2)
+        expected_p = min(1.0, expected_k / reach)
+        assert p == pytest.approx(expected_p, rel=1e-10)
+
+    def test_p_decreases_with_reach(self):
+        """Sampling probability decreases as reach increases."""
+        reaches = [200.0, 500.0, 1000.0, 5000.0, 10000.0]
+        probs = [config.compute_hoeffding_p(r) for r in reaches]
+        assert all(p is not None for p in probs)
+        for i in range(len(probs) - 1):
+            assert probs[i] >= probs[i + 1], f"p should decrease: {probs[i]} < {probs[i + 1]}"
+
+    def test_low_reach_clamps_to_one(self):
+        """At low reach the bound requests full computation (p=1)."""
+        assert config.compute_hoeffding_p(50.0) == 1.0
+
+    def test_compute_sample_probs_vectorises(self):
+        """compute_sample_probs returns a p for each distance."""
+        reach_estimates = {200: 100.0, 400: 1000.0}
+        probs = config.compute_sample_probs(reach_estimates, epsilon=0.1, delta=0.1)
+        assert set(probs.keys()) == {200, 400}
+        assert probs[200] is not None and 0.0 < probs[200] <= 1.0
+        assert probs[400] is not None and 0.0 < probs[400] <= 1.0
+
+    def test_zero_reach_returns_none(self):
+        """Zero reach returns None."""
+        assert config.compute_hoeffding_p(0) is None
+
+    def test_negative_reach_returns_none(self):
+        """Negative reach returns None."""
+        assert config.compute_hoeffding_p(-100) is None

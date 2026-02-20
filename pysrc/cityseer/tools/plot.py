@@ -213,7 +213,7 @@ def plot_nx_primal_or_dual(  # noqa
             node_list.append(node_key)
             # and add to the node colour list if node colours are a list or tuple
             if isinstance(_node_colour, np.ndarray):
-                colour_list.append(_node_colour[n_idx])
+                colour_list.append(_node_colour[n_idx])  # ty: ignore[invalid-argument-type]
         if not node_list:
             raise ValueError("All nodes have been filtered out by the x_lim / y_lim parameter: check your extents")
         # update the node colours to the filtered list of colours if necessary
@@ -527,7 +527,7 @@ def plot_assignment(
         x, y = data_geom.centroid.x, data_geom.centroid.y
         data_xs.append(x)
         data_ys.append(y)
-        plt.annotate(data_entry.data_key_py, xy=(x, y), size=8, color="white")
+        plt.annotate(str(data_entry.data_key_py), xy=(x, y), size=8, color="white")
     plt.scatter(
         x=data_xs,
         y=data_ys,

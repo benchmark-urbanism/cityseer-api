@@ -1,0 +1,49 @@
+{
+  "generated": "2026-02-11T07:48:07",
+  "script": "02_fit_error_model.py",
+  "description": "Localised EW bound analysis on synthetic data",
+  "parameters": {
+    "delta": 0.1,
+    "epsilon_targets": [
+      0.01,
+      0.05,
+      0.1,
+      0.2
+    ],
+    "reach_threshold": 100,
+    "cache_version": "v21"
+  },
+  "overall": {
+    "total_configs": 440,
+    "bound_holds": 412,
+    "success_rate": 0.9363636363636364
+  },
+  "conditional": {
+    "reach_threshold": 100,
+    "total_configs": 308,
+    "bound_holds": 307,
+    "success_rate": 0.9967532467532467
+  },
+  "by_metric": {
+    "harmonic": {
+      "total": 220,
+      "holds": 220,
+      "rate": 1.0,
+      "conditional_total": 154,
+      "conditional_holds": 154,
+      "conditional_rate": 1.0,
+      "median_eps_observed": 0.0008804991098198555,
+      "median_eps_predicted": 0.23329897005607103
+    },
+    "betweenness": {
+      "total": 220,
+      "holds": 192,
+      "rate": 0.8727272727272727,
+      "conditional_total": 154,
+      "conditional_holds": 153,
+      "conditional_rate": 0.9935064935064936,
+      "median_eps_observed": 0.06161651246289429,
+      "median_eps_predicted": 0.23329897005607103
+    }
+  }
+}

@@ -1,4 +1,4 @@
-"""Network centrality calculation results."""
+"""Network centrality calculation results and OD matrix."""
 
 from __future__ import annotations
 
@@ -6,6 +6,26 @@ from typing import Any
 
 import numpy as np  # For np.float32
 import numpy.typing as npt
+
+class OdMatrix:
+    """Sparse origin-destination weight matrix for OD-weighted centrality.
+
+    Constructed from parallel arrays of origin node indices, destination node indices,
+    and trip weights (COO sparse format). Can be reused across multiple centrality calls.
+    """
+
+    def __init__(
+        self,
+        origins: list[int],
+        destinations: list[int],
+        weights: list[float],
+    ) -> None: ...
+    def len(self) -> int:
+        """Number of non-zero OD pairs."""
+        ...
+    def n_origins(self) -> int:
+        """Number of unique origin nodes."""
+        ...
 
 class CentralityShortestResult:
     """Holds results for shortest path (metric distance) centrality calculations."""

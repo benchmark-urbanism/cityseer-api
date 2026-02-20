@@ -1,0 +1,22 @@
+\begin{table}[htbp]
+\centering
+\caption{Hoeffding model validation on Greater London network ($\varepsilon = 0.1$, $\delta = 0.1$).}
+\label{tab:validation}
+\begin{tabular}{rrrrrrr}
+\toprule
+\textbf{Distance} & \textbf{Reach} & \textbf{Hoeff.\ $p$} &
+\textbf{$\rho_\text{close}$} & \textbf{$\rho_\text{betw}$} & \textbf{Speedup} & \textbf{$\rho \geq 0.95$?} \\
+\midrule
+1km & 100 & 100.0\% & 0.9948 & 0.9983 & 1.0$\times$ & \checkmark \\
+2km & 411 & 100.0\% & 0.9979 & 0.9993 & 1.0$\times$ & \checkmark \\
+5km & 2,783 & 19.6\% & 0.9875 & 0.9912 & 5.1$\times$ & \checkmark \\
+10km & 11,590 & 5.3\% & 0.9930 & 0.9846 & 18.8$\times$ & \checkmark \\
+20km & 43,165 & 1.6\% & 0.9959 & 0.9824 & 63.2$\times$ & \checkmark \\
+\bottomrule
+\end{tabular}
+
+\vspace{0.5em}
+\footnotesize
+Network: Greater London Area, 294,486 nodes, 20km live node buffer.
+Hoeffding model: $k = \log(2r/\delta) / (2\varepsilon^2)$, $p = \min(1, k/r)$.
+\end{table}

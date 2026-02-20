@@ -21,13 +21,13 @@ pub struct MetricResult {
 impl MetricResult {
     /// Initializes a new `MetricResult` with given distances, size, and initial value.
     #[inline]
-    pub fn new(distances: &Vec<u32>, len: usize, init_val: f32) -> Self {
+    pub fn new(distances: &[u32], len: usize, init_val: f32) -> Self {
         let metric: Vec<Vec<AtomicF32>> = distances
             .iter()
             .map(|_| (0..len).map(|_| AtomicF32::new(init_val)).collect())
             .collect();
         Self {
-            distances: distances.clone(),
+            distances: distances.to_vec(),
             metric,
         }
     }
