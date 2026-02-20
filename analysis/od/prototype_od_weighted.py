@@ -30,7 +30,7 @@ SCRIPT_DIR = Path(__file__).parent
 PCT_OD_URL = "https://raw.githubusercontent.com/Robinlovelace/pct-data/master/london/l.csv"
 PCT_ZONES_URL = "https://raw.githubusercontent.com/Robinlovelace/pct-data/master/london/z.geojson"
 
-GLA_GPKG = SCRIPT_DIR.parent.parent.parent / "temp" / "os_open_roads" / "gla.gpkg"
+GLA_GPKG = SCRIPT_DIR.parent.parent / "temp" / "os_open_roads" / "gla.gpkg"
 
 DISTANCES = [5000, 10000]
 
