@@ -749,13 +749,17 @@ impl NetworkStructure {
                     break;
                 }
             }
-            if bearing.is_nan() && length > 1e-6 {
-                // Non-degenerate geometry but all coords identical? Log details for debugging
-                log::warn!(
-                    "Edge (idx {}) between nodes {} and {}: length={:.4}m but all {} coords are identical at ({:.4}, {:.4}). \
-                     This may indicate a closed ring or corrupt geometry.",
-                    edge_idx, start_nd_idx, end_nd_idx, length, num_coords, first.x, first.y
-                );
+            if bearing.is_nan() {
+                if length > 1e-6 {
+                    // Non-degenerate geometry but all coords identical? Log details for debugging
+                    log::warn!(
+                        "Edge (idx {}) between nodes {} and {}: length={:.4}m but all {} coords are identical at ({:.4}, {:.4}). \
+                         This may indicate a closed ring or corrupt geometry.",
+                        edge_idx, start_nd_idx, end_nd_idx, length, num_coords, first.x, first.y
+                    );
+                }
+                // Fallback to 0.0 for degenerate edges to pass finite validation
+                bearing = 0.0;
             }
             bearing
         };
@@ -776,12 +780,16 @@ impl NetworkStructure {
                     break;
                 }
             }
-            if bearing.is_nan() && length > 1e-6 {
-                log::warn!(
-                    "Edge (idx {}) between nodes {} and {}: length={:.4}m but all {} coords match last coord ({:.4}, {:.4}). \
-                     This may indicate a closed ring or corrupt geometry.",
-                    edge_idx, start_nd_idx, end_nd_idx, length, num_coords, last.x, last.y
-                );
+            if bearing.is_nan() {
+                if length > 1e-6 {
+                    log::warn!(
+                        "Edge (idx {}) between nodes {} and {}: length={:.4}m but all {} coords match last coord ({:.4}, {:.4}). \
+                         This may indicate a closed ring or corrupt geometry.",
+                        edge_idx, start_nd_idx, end_nd_idx, length, num_coords, last.x, last.y
+                    );
+                }
+                // Fallback to 0.0 for degenerate edges to pass finite validation
+                bearing = 0.0;
             }
             bearing
         };
