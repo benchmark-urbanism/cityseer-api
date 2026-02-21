@@ -1,5 +1,5 @@
 {
-  "generated": "2026-02-11T07:48:07",
+  "generated": "2026-02-20T23:11:25",
   "script": "02_fit_error_model.py",
   "description": "Localised EW bound analysis on synthetic data",
   "parameters": {

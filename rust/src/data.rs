@@ -708,18 +708,18 @@ impl DataMap {
                         {
                             if data_dist <= d as f32 {
                                 res.lu_map[lu_class].unweighted_vec.metric[i][*netw_src_idx]
-                                    .fetch_add(1.0, AtomicOrdering::Relaxed);
+                                    .fetch_add(1.0_f64, AtomicOrdering::Relaxed);
                                 let val_wt = clipped_beta_wt(b, mcw, data_dist).unwrap_or(0.0);
                                 res.lu_map[lu_class].weighted_vec.metric[i][*netw_src_idx]
-                                    .fetch_add(val_wt, AtomicOrdering::Relaxed);
+                                    .fetch_add(val_wt as f64, AtomicOrdering::Relaxed);
 
                                 if d == max_dist {
                                     let current_dist = res.lu_map[lu_class].distance_vec.metric[0]
                                         [*netw_src_idx]
                                         .load(AtomicOrdering::Relaxed);
-                                    if current_dist.is_nan() || data_dist < current_dist {
+                                    if current_dist.is_nan() || (data_dist as f64) < current_dist {
                                         res.lu_map[lu_class].distance_vec.metric[0][*netw_src_idx]
-                                            .store(data_dist, AtomicOrdering::Relaxed);
+                                            .store(data_dist as f64, AtomicOrdering::Relaxed);
                                     }
                                 }
                             }
@@ -871,15 +871,15 @@ impl DataMap {
                     let dist_nearest = &nearest[offset..offset + n_classes];
                     if compute_hill {
                         res.hill_vec[&0].metric[i][*netw_src_idx].fetch_add(
-                            diversity::hill_diversity_core(dist_counts, 0.0).unwrap_or(0.0),
+                            diversity::hill_diversity_core(dist_counts, 0.0).unwrap_or(0.0) as f64,
                             AtomicOrdering::Relaxed,
                         );
                         res.hill_vec[&1].metric[i][*netw_src_idx].fetch_add(
-                            diversity::hill_diversity_core(dist_counts, 1.0).unwrap_or(0.0),
+                            diversity::hill_diversity_core(dist_counts, 1.0).unwrap_or(0.0) as f64,
                             AtomicOrdering::Relaxed,
                         );
                         res.hill_vec[&2].metric[i][*netw_src_idx].fetch_add(
-                            diversity::hill_diversity_core(dist_counts, 2.0).unwrap_or(0.0),
+                            diversity::hill_diversity_core(dist_counts, 2.0).unwrap_or(0.0) as f64,
                             AtomicOrdering::Relaxed,
                         );
                     }
@@ -892,7 +892,7 @@ impl DataMap {
                                 b,
                                 mcw,
                             )
-                            .unwrap_or(0.0),
+                            .unwrap_or(0.0) as f64,
                             AtomicOrdering::Relaxed,
                         );
                         res.hill_weighted_vec[&1].metric[i][*netw_src_idx].fetch_add(
@@ -903,7 +903,7 @@ impl DataMap {
                                 b,
                                 mcw,
                             )
-                            .unwrap_or(0.0),
+                            .unwrap_or(0.0) as f64,
                             AtomicOrdering::Relaxed,
                         );
                         res.hill_weighted_vec[&2].metric[i][*netw_src_idx].fetch_add(
@@ -914,19 +914,19 @@ impl DataMap {
                                 b,
                                 mcw,
                             )
-                            .unwrap_or(0.0),
+                            .unwrap_or(0.0) as f64,
                             AtomicOrdering::Relaxed,
                         );
                     }
                     if compute_shannon {
                         res.shannon_vec.metric[i][*netw_src_idx].fetch_add(
-                            diversity::shannon_diversity_core(dist_counts).unwrap_or(0.0),
+                            diversity::shannon_diversity_core(dist_counts).unwrap_or(0.0) as f64,
                             AtomicOrdering::Relaxed,
                         );
                     }
                     if compute_gini {
                         res.gini_vec.metric[i][*netw_src_idx].fetch_add(
-                            diversity::gini_simpson_diversity_core(dist_counts).unwrap_or(0.0),
+                            diversity::gini_simpson_diversity_core(dist_counts).unwrap_or(0.0) as f64,
                             AtomicOrdering::Relaxed,
                         );
                     }
@@ -1132,20 +1132,20 @@ impl DataMap {
                         }
                         // Sums
                         res.stats_vec[map_idx].sum_vec.metric[i][*netw_src_idx]
-                            .store(sum_val, AtomicOrdering::Relaxed);
+                            .store(sum_val as f64, AtomicOrdering::Relaxed);
                         res.stats_vec[map_idx].sum_wt_vec.metric[i][*netw_src_idx]
-                            .store(sum_wt_val, AtomicOrdering::Relaxed);
+                            .store(sum_wt_val as f64, AtomicOrdering::Relaxed);
                         // Counts
                         res.stats_vec[map_idx].count_vec.metric[i][*netw_src_idx]
-                            .store(count_val, AtomicOrdering::Relaxed);
+                            .store(count_val as f64, AtomicOrdering::Relaxed);
                         res.stats_vec[map_idx].count_wt_vec.metric[i][*netw_src_idx]
-                            .store(count_wt_val, AtomicOrdering::Relaxed);
+                            .store(count_wt_val as f64, AtomicOrdering::Relaxed);
                         // Max
                         res.stats_vec[map_idx].max_vec.metric[i][*netw_src_idx]
-                            .store(max_val, AtomicOrdering::Relaxed);
+                            .store(max_val as f64, AtomicOrdering::Relaxed);
                         // Min
                         res.stats_vec[map_idx].min_vec.metric[i][*netw_src_idx]
-                            .store(min_val, AtomicOrdering::Relaxed);
+                            .store(min_val as f64, AtomicOrdering::Relaxed);
                         // Mean
                         let mean_val = if count_val > 0.0 {
                             sum_val / count_val
@@ -1153,7 +1153,7 @@ impl DataMap {
                             f32::NAN
                         };
                         res.stats_vec[map_idx].mean_vec.metric[i][*netw_src_idx]
-                            .store(mean_val, AtomicOrdering::Relaxed);
+                            .store(mean_val as f64, AtomicOrdering::Relaxed);
                         // Weighted Mean
                         let mean_wt_val = if count_wt_val > 0.0 {
                             sum_wt_val / count_wt_val
@@ -1161,7 +1161,7 @@ impl DataMap {
                             f32::NAN
                         };
                         res.stats_vec[map_idx].mean_wt_vec.metric[i][*netw_src_idx]
-                            .store(mean_wt_val, AtomicOrdering::Relaxed);
+                            .store(mean_wt_val as f64, AtomicOrdering::Relaxed);
                         // Calculate Variance (using Welford's online algorithm principle implicitly)
                         // Variance = E[X^2] - (E[X])^2
                         // Ensure non-negative due to potential float inaccuracies
@@ -1171,7 +1171,7 @@ impl DataMap {
                             f32::NAN
                         };
                         res.stats_vec[map_idx].variance_vec.metric[i][*netw_src_idx]
-                            .store(variance_val, AtomicOrdering::Relaxed);
+                            .store(variance_val as f64, AtomicOrdering::Relaxed);
                         // Weighted Variance
                         // Ensure non-negative due to potential float inaccuracies
                         let variance_wt_val = if count_wt_val > 0.0 {
@@ -1180,15 +1180,15 @@ impl DataMap {
                             f32::NAN
                         };
                         res.stats_vec[map_idx].variance_wt_vec.metric[i][*netw_src_idx]
-                            .store(variance_wt_val, AtomicOrdering::Relaxed);
+                            .store(variance_wt_val as f64, AtomicOrdering::Relaxed);
                         // Calculate Median
                         let median_val = median(&vals);
                         res.stats_vec[map_idx].median_vec.metric[i][*netw_src_idx]
-                            .store(median_val, AtomicOrdering::Relaxed);
+                            .store(median_val as f64, AtomicOrdering::Relaxed);
                         // Weighted Median
                         let median_wt_val = weighted_median(&vals_wts, count_wt_val);
                         res.stats_vec[map_idx].median_wt_vec.metric[i][*netw_src_idx]
-                            .store(median_wt_val, AtomicOrdering::Relaxed);
+                            .store(median_wt_val as f64, AtomicOrdering::Relaxed);
                         // Median Absolute Deviation (MAD)
                         let mad_val = if !vals.is_empty() && !median_val.is_nan() {
                             let abs_devs: Vec<f32> =
@@ -1198,7 +1198,7 @@ impl DataMap {
                             f32::NAN
                         };
                         res.stats_vec[map_idx].mad_vec.metric[i][*netw_src_idx]
-                            .store(mad_val, AtomicOrdering::Relaxed);
+                            .store(mad_val as f64, AtomicOrdering::Relaxed);
                         // Weighted MAD: build abs deviations with same weights; use weighted median
                         let mad_wt_val = if !vals_wts.is_empty()
                             && !median_wt_val.is_nan()
@@ -1213,7 +1213,7 @@ impl DataMap {
                             f32::NAN
                         };
                         res.stats_vec[map_idx].mad_wt_vec.metric[i][*netw_src_idx]
-                            .store(mad_wt_val, AtomicOrdering::Relaxed);
+                            .store(mad_wt_val as f64, AtomicOrdering::Relaxed);
                     }
                 }
             });

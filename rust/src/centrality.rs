@@ -832,20 +832,20 @@ impl NetworkStructure {
                             let beta = betas[i];
                             if node_visit.short_dist <= distance as f32 {
                                 res.node_density_vec.metric[i][*to_idx]
-                                    .fetch_add(dest_wt, AtomicOrdering::Relaxed);
+                                    .fetch_add(dest_wt as f64, AtomicOrdering::Relaxed);
                                 res.node_farness_vec.metric[i][*to_idx]
-                                    .fetch_add(node_visit.short_dist * dest_wt, AtomicOrdering::Relaxed);
+                                    .fetch_add((node_visit.short_dist * dest_wt) as f64, AtomicOrdering::Relaxed);
                                 // Cycles: accumulate to target (to_idx) for consistency with other metrics
                                 // and to ensure all nodes get cycle values with sampling.
                                 // node_visit.cycles represents cycles detected at the target node during traversal.
                                 res.node_cycles_vec.metric[i][*to_idx]
-                                    .fetch_add(node_visit.cycles * dest_wt, AtomicOrdering::Relaxed);
+                                    .fetch_add((node_visit.cycles * dest_wt) as f64, AtomicOrdering::Relaxed);
                                 res.node_harmonic_vec.metric[i][*to_idx].fetch_add(
-                                    (1.0 / node_visit.short_dist) * dest_wt,
+                                    ((1.0 / node_visit.short_dist) * dest_wt) as f64,
                                     AtomicOrdering::Relaxed,
                                 );
                                 res.node_beta_vec.metric[i][*to_idx].fetch_add(
-                                    (-beta * node_visit.short_dist).exp() * dest_wt,
+                                    ((-beta * node_visit.short_dist).exp() * dest_wt) as f64,
                                     AtomicOrdering::Relaxed,
                                 );
                             }
@@ -868,10 +868,10 @@ impl NetworkStructure {
                                 let beta = betas[i];
                                 if node_visit_short_dist <= distance as f32 {
                                     res.node_betweenness_vec.metric[i][inter_idx]
-                                        .fetch_add(dest_wt, AtomicOrdering::Relaxed);
+                                        .fetch_add(dest_wt as f64, AtomicOrdering::Relaxed);
                                     let exp_val = (-beta * node_visit_short_dist).exp();
                                     res.node_betweenness_beta_vec.metric[i][inter_idx]
-                                        .fetch_add(exp_val * dest_wt, AtomicOrdering::Relaxed);
+                                        .fetch_add((exp_val * dest_wt) as f64, AtomicOrdering::Relaxed);
                                 }
                             }
                             current_pred = tree_map[inter_idx].pred;
@@ -1067,14 +1067,14 @@ impl NetworkStructure {
                             let sec = seconds[i];
                             if node_visit.agg_seconds <= sec as f32 {
                                 res.node_density_vec.metric[i][*to_idx]
-                                    .fetch_add(wt, AtomicOrdering::Relaxed);
+                                    .fetch_add(wt as f64, AtomicOrdering::Relaxed);
                                 let far_ang = farness_scaling_offset
                                     + (node_visit.simpl_dist / angular_scaling_unit);
                                 res.node_farness_vec.metric[i][*to_idx]
-                                    .fetch_add(far_ang * wt, AtomicOrdering::Relaxed);
+                                    .fetch_add((far_ang * wt) as f64, AtomicOrdering::Relaxed);
                                 let harm_ang = 1.0 + (node_visit.simpl_dist / angular_scaling_unit);
                                 res.node_harmonic_vec.metric[i][*to_idx]
-                                    .fetch_add((1.0 / harm_ang) * wt, AtomicOrdering::Relaxed);
+                                    .fetch_add(((1.0 / harm_ang) * wt) as f64, AtomicOrdering::Relaxed);
                             }
                         }
                     }
@@ -1091,7 +1091,7 @@ impl NetworkStructure {
                                 let sec = seconds[i];
                                 if node_visit.agg_seconds <= sec as f32 {
                                     res.node_betweenness_vec.metric[i][inter_idx]
-                                        .fetch_add(wt, AtomicOrdering::Relaxed);
+                                        .fetch_add(wt as f64, AtomicOrdering::Relaxed);
                                 }
                             }
                             current_pred = tree_map[inter_idx].pred;
@@ -1247,7 +1247,7 @@ impl NetworkStructure {
                                     current_c_imp = a_imp + (distance_f32 - a) * imp_factor;
                                 }
                                 res.segment_density_vec.metric[i][*src_idx]
-                                    .fetch_add(current_c - a, AtomicOrdering::Relaxed);
+                                    .fetch_add((current_c - a) as f64, AtomicOrdering::Relaxed);
 
                                 let seg_harm = if a_imp < 1.0 {
                                     current_c_imp.ln()
@@ -1255,7 +1255,7 @@ impl NetworkStructure {
                                     (current_c_imp / a_imp).max(f32::EPSILON).ln()
                                 };
                                 res.segment_harmonic_vec.metric[i][*src_idx]
-                                    .fetch_add(seg_harm, AtomicOrdering::Relaxed);
+                                    .fetch_add(seg_harm as f64, AtomicOrdering::Relaxed);
 
                                 let bet = if beta == 0.0 {
                                     current_c_imp - a_imp
@@ -1264,7 +1264,7 @@ impl NetworkStructure {
                                         * inv_neg_beta
                                 };
                                 res.segment_beta_vec.metric[i][*src_idx]
-                                    .fetch_add(bet, AtomicOrdering::Relaxed);
+                                    .fetch_add(bet as f64, AtomicOrdering::Relaxed);
                             }
 
                             if b == d {
@@ -1279,7 +1279,7 @@ impl NetworkStructure {
                                     current_d_imp = b_imp + (distance_f32 - b) * imp_factor;
                                 }
                                 res.segment_density_vec.metric[i][*src_idx]
-                                    .fetch_add(current_d - b, AtomicOrdering::Relaxed);
+                                    .fetch_add((current_d - b) as f64, AtomicOrdering::Relaxed);
 
                                 let seg_harm = if b_imp < 1.0 {
                                     current_d_imp.ln()
@@ -1287,7 +1287,7 @@ impl NetworkStructure {
                                     (current_d_imp / b_imp).max(f32::EPSILON).ln()
                                 };
                                 res.segment_harmonic_vec.metric[i][*src_idx]
-                                    .fetch_add(seg_harm, AtomicOrdering::Relaxed);
+                                    .fetch_add(seg_harm as f64, AtomicOrdering::Relaxed);
 
                                 let bet = if beta == 0.0 {
                                     current_d_imp - b_imp
@@ -1296,7 +1296,7 @@ impl NetworkStructure {
                                         * inv_neg_beta
                                 };
                                 res.segment_beta_vec.metric[i][*src_idx]
-                                    .fetch_add(bet, AtomicOrdering::Relaxed);
+                                    .fetch_add(bet as f64, AtomicOrdering::Relaxed);
                             }
                         }
                     }
@@ -1378,7 +1378,7 @@ impl NetworkStructure {
 
                                     if auc.is_finite() && auc >= 0.0 {
                                         res.segment_betweenness_vec.metric[i][inter_idx]
-                                            .fetch_add(auc, AtomicOrdering::Relaxed);
+                                            .fetch_add(auc as f64, AtomicOrdering::Relaxed);
                                     }
                                 }
                             }

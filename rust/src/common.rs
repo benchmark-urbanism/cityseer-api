@@ -1,4 +1,4 @@
-use atomic_float::AtomicF32;
+use atomic_float::AtomicF64;
 use numpy::borrow::PyReadonlyArray2;
 use numpy::{PyArray1, ToPyArray};
 use pyo3::exceptions::PyValueError;
@@ -12,19 +12,21 @@ static MIN_THRESH_WT: f32 = 0.01831563888873418;
 pub static WALKING_SPEED: f32 = 1.33333;
 
 /// Holds metric results, including distances and a 2D matrix of atomic floats.
+/// Uses f64 internally for accumulation precision (f32 loses increments above 2^24),
+/// converting to f32 only at output.
 #[derive(Debug)]
 pub struct MetricResult {
     pub distances: Vec<u32>,
-    pub metric: Vec<Vec<AtomicF32>>,
+    pub metric: Vec<Vec<AtomicF64>>,
 }
 
 impl MetricResult {
     /// Initializes a new `MetricResult` with given distances, size, and initial value.
     #[inline]
     pub fn new(distances: &[u32], len: usize, init_val: f32) -> Self {
-        let metric: Vec<Vec<AtomicF32>> = distances
+        let metric: Vec<Vec<AtomicF64>> = distances
             .iter()
-            .map(|_| (0..len).map(|_| AtomicF32::new(init_val)).collect())
+            .map(|_| (0..len).map(|_| AtomicF64::new(init_val as f64)).collect())
             .collect();
         Self {
             distances: distances.to_vec(),
@@ -32,16 +34,17 @@ impl MetricResult {
         }
     }
 
-    /// Converts the atomic floats into a Python-compatible format (`PyArray1<f32>`),
-    /// filtering to include only results for specified street node indices.
+    /// Converts the atomic f64 accumulators to f32 for Python output.
     #[inline]
     pub fn load(&self) -> HashMap<u32, Py<PyArray1<f32>>> {
         self.distances
             .iter()
             .zip(&self.metric)
             .map(|(&dist, row)| {
-                let vec_f32: Vec<f32> = row.iter().map(|a| a.load(Ordering::Relaxed)).collect();
-                // Convert filtered vector to PyArray
+                let vec_f32: Vec<f32> = row
+                    .iter()
+                    .map(|a| a.load(Ordering::Relaxed) as f32)
+                    .collect();
                 let array = Python::attach(|py| vec_f32.to_pyarray(py).unbind());
                 (dist, array)
             })
@@ -59,7 +62,7 @@ impl Clone for MetricResult {
                 .iter()
                 .map(|row| {
                     row.iter()
-                        .map(|atomic_f32| AtomicF32::new(atomic_f32.load(Ordering::Relaxed)))
+                        .map(|a| AtomicF64::new(a.load(Ordering::Relaxed)))
                         .collect()
                 })
                 .collect(),
