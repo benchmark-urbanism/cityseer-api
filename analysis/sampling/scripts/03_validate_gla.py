@@ -108,6 +108,11 @@ def generate_validation_data(force: bool = False) -> pd.DataFrame:
     print("Converting to cityseer format...")
     nodes_gdf, edges_gdf_out, net = io.network_structure_from_nx(G)
 
+    # Build live-node mask: only evaluate live nodes (exclude buffer zone)
+    live_mask = np.array(net.node_lives, dtype=bool)
+    n_live = int(live_mask.sum())
+    print(f"Live nodes: {n_live}/{len(live_mask)}")
+
     results = []
 
     for dist in GLA_DISTANCES:
@@ -136,9 +141,10 @@ def generate_validation_data(force: bool = False) -> pd.DataFrame:
                 pbar_disabled=False,
             )
             baseline_time = time.time() - t0
-            true_harmonic = np.array(true_result.node_harmonic[dist])
-            true_betweenness = np.array(true_result.node_betweenness[dist])
-            node_reach = np.array(true_result.node_density[dist])
+            # Extract only live nodes for ground truth
+            true_harmonic = np.array(true_result.node_harmonic[dist])[live_mask]
+            true_betweenness = np.array(true_result.node_betweenness[dist])[live_mask]
+            node_reach = np.array(true_result.node_density[dist])[live_mask]
             mean_reach = float(np.mean(node_reach))
 
             with open(gt_cache, "wb") as f:
@@ -148,6 +154,7 @@ def generate_validation_data(force: bool = False) -> pd.DataFrame:
                         "betweenness": true_betweenness,
                         "node_reach": node_reach,
                         "mean_reach": mean_reach,
+                        "n_live": n_live,
                         "baseline_time": baseline_time,
                     },
                     f,
@@ -179,8 +186,8 @@ def generate_validation_data(force: bool = False) -> pd.DataFrame:
                 )
                 sampled_times.append(time.time() - t0)
 
-                est_harmonic = np.array(r.node_harmonic[dist])
-                est_betweenness = np.array(r.node_betweenness[dist])
+                est_harmonic = np.array(r.node_harmonic[dist])[live_mask]
+                est_betweenness = np.array(r.node_betweenness[dist])[live_mask]
 
                 sp_h, prec_h, scale_h, iqr_h, mae_h = compute_accuracy_metrics(true_harmonic, est_harmonic)
                 sp_b, prec_b, scale_b, iqr_b, mae_b = compute_accuracy_metrics(true_betweenness, est_betweenness)
@@ -217,8 +224,14 @@ def generate_validation_data(force: bool = False) -> pd.DataFrame:
                     "effective_n": effective_n,
                     "metric": "harmonic",
                     "spearman": np.mean(spearmans_h),
+                    "spearman_min": np.min(spearmans_h),
+                    "spearman_median": np.median(spearmans_h),
+                    "spearman_max": np.max(spearmans_h),
                     "spearman_std": np.std(spearmans_h),
-                    "max_abs_error": np.mean(maes_h),
+                    "max_abs_error": np.max(maes_h),
+                    "mean_abs_error": np.mean(maes_h),
+                    "median_abs_error": np.median(maes_h),
+                    "min_abs_error": np.min(maes_h),
                     "max_abs_error_std": np.std(maes_h),
                     "top_k_precision": np.mean(precs_h),
                     "scale_ratio": np.mean(scales_h),
@@ -239,8 +252,14 @@ def generate_validation_data(force: bool = False) -> pd.DataFrame:
                     "effective_n": effective_n,
                     "metric": "betweenness",
                     "spearman": np.mean(spearmans_b),
+                    "spearman_min": np.min(spearmans_b),
+                    "spearman_median": np.median(spearmans_b),
+                    "spearman_max": np.max(spearmans_b),
                     "spearman_std": np.std(spearmans_b),
-                    "max_abs_error": np.mean(maes_b),
+                    "max_abs_error": np.max(maes_b),
+                    "mean_abs_error": np.mean(maes_b),
+                    "median_abs_error": np.median(maes_b),
+                    "min_abs_error": np.min(maes_b),
                     "max_abs_error_std": np.std(maes_b),
                     "top_k_precision": np.mean(precs_b),
                     "scale_ratio": np.mean(scales_b),
@@ -328,6 +347,12 @@ def generate_validation_table(df: pd.DataFrame):
             "speedup": speedup,
             "meets_target": observed_rho_b >= 0.95 and observed_rho_h >= 0.95,
         }
+        # Carry forward error columns for theoretical bounds comparison
+        closest_row = subset.iloc[closest_idx]
+        if "max_abs_error_h" in closest_row.index:
+            row_data["max_abs_error_h"] = closest_row["max_abs_error_h"]
+        if "max_abs_error_b" in closest_row.index:
+            row_data["max_abs_error_b"] = closest_row["max_abs_error_b"]
         rows.append(row_data)
 
     results_df = pd.DataFrame(rows)
@@ -379,7 +404,7 @@ Hoeffding model: $k = \log(2r/\delta) / (2\varepsilon^2)$, $p = \min(1, k/r)$.
 
 
 def get_n_nodes(force: bool = False) -> int | None:
-    """Get total node count from cached GLA graph."""
+    """Get live node count from cached GLA graph."""
     n_nodes_cache = CACHE_DIR / "gla_n_nodes.json"
     if n_nodes_cache.exists() and not force:
         with open(n_nodes_cache) as f:
@@ -391,7 +416,7 @@ def get_n_nodes(force: bool = False) -> int | None:
         G = pickle.load(f)
     # Apply same buffer as validation to get live node count
     G = apply_live_buffer_nx(G, LIVE_INWARD_BUFFER)
-    n_nodes = G.number_of_nodes()
+    n_nodes = sum(1 for n in G.nodes() if G.nodes[n].get("live", True))
     with open(n_nodes_cache, "w") as f:
         json.dump({"n_nodes": n_nodes}, f)
     return n_nodes
@@ -399,10 +424,6 @@ def get_n_nodes(force: bool = False) -> int | None:
 
 def compute_theoretical_bounds(results_df: pd.DataFrame, n_nodes: int):
     """Compare empirical sample counts against Riondato, Bader, and Eppstein-Wang bounds."""
-    if "max_abs_error" not in results_df.columns:
-        print("\n  Skipping theoretical bounds comparison (no max_abs_error data)")
-        return None
-
     print("\nComputing theoretical bounds comparison...")
 
     delta = 0.1  # Failure probability (90% confidence)
@@ -411,48 +432,54 @@ def compute_theoretical_bounds(results_df: pd.DataFrame, n_nodes: int):
     for _, row in results_df.iterrows():
         reach = row["reach"]
         our_eff_n = row["hoeff_eff_n"]
-        raw_eps = row["max_abs_error"]
 
-        eps_normalised = raw_eps / (reach * (reach - 1)) if reach > 1 else float("inf")
+        for metric, mae_col in [("harmonic", "max_abs_error_h"), ("betweenness", "max_abs_error_b")]:
+            if mae_col not in row.index or np.isnan(row[mae_col]):
+                continue
 
-        if eps_normalised <= 0 or not np.isfinite(eps_normalised):
-            continue
+            raw_eps = row[mae_col]
+            if metric == "betweenness":
+                eps_normalised = raw_eps / (reach * (reach - 1)) if reach > 1 else float("inf")
+            else:
+                eps_normalised = raw_eps / reach if reach > 0 else float("inf")
 
-        # Riondato & Kornaropoulos (2016): VC-dimension bound for betweenness.
-        # VD estimate: for planar graphs, vertex-diameter is O(sqrt(n));
-        # we use sqrt(reach) as a heuristic for the distance-bounded subgraph.
-        vd = max(3, int(np.sqrt(reach)))
-        vc_dim = int(np.floor(np.log2(max(1, vd - 2)))) + 1
-        riondato_samples = (1 / (2 * eps_normalised**2)) * (vc_dim + np.log(1 / delta))
+            if eps_normalised <= 0 or not np.isfinite(eps_normalised):
+                continue
 
-        # Bader et al. (2007): per-vertex bound for betweenness.
-        bader_samples = 1 / eps_normalised**2
+            # Riondato & Kornaropoulos (2016): VC-dimension bound
+            vd = max(3, int(np.sqrt(reach)))
+            vc_dim = int(np.floor(np.log2(max(1, vd - 2)))) + 1
+            riondato_samples = (1 / (2 * eps_normalised**2)) * (vc_dim + np.log(1 / delta))
 
-        # Eppstein & Wang (2004): source-sampling bound for closeness.
-        # Global: O(log(n) / eps^2) using total node count.
-        eppstein_samples = np.log(n_nodes) / eps_normalised**2
-        # Localised adaptation: O(log(r) / eps^2) using reach instead of n.
-        eppstein_local_samples = np.log(reach) / eps_normalised**2
+            # Bader et al. (2007): per-vertex bound
+            bader_samples = 1 / eps_normalised**2
 
-        rows.append(
-            {
-                "distance": row["distance"],
-                "reach": reach,
-                "our_eff_n": our_eff_n,
-                "raw_eps": raw_eps,
-                "eps_normalised": eps_normalised,
-                "vd_estimate": vd,
-                "vc_dim": vc_dim,
-                "riondato_samples": riondato_samples,
-                "bader_samples": bader_samples,
-                "eppstein_samples": eppstein_samples,
-                "eppstein_local_samples": eppstein_local_samples,
-                "ratio_riondato": riondato_samples / our_eff_n if our_eff_n > 0 else float("inf"),
-                "ratio_bader": bader_samples / our_eff_n if our_eff_n > 0 else float("inf"),
-                "ratio_eppstein": eppstein_samples / our_eff_n if our_eff_n > 0 else float("inf"),
-                "ratio_eppstein_local": eppstein_local_samples / our_eff_n if our_eff_n > 0 else float("inf"),
-            }
-        )
+            # Eppstein & Wang (2004): source-sampling bound
+            # Global: O(log(n) / eps^2) using total node count
+            eppstein_samples = np.log(n_nodes) / eps_normalised**2
+            # Localised adaptation: O(log(r) / eps^2) using reach
+            eppstein_local_samples = np.log(reach) / eps_normalised**2
+
+            rows.append(
+                {
+                    "distance": row["distance"],
+                    "metric": metric,
+                    "reach": reach,
+                    "our_eff_n": our_eff_n,
+                    "raw_eps": raw_eps,
+                    "eps_normalised": eps_normalised,
+                    "vd_estimate": vd,
+                    "vc_dim": vc_dim,
+                    "riondato_samples": riondato_samples,
+                    "bader_samples": bader_samples,
+                    "eppstein_samples": eppstein_samples,
+                    "eppstein_local_samples": eppstein_local_samples,
+                    "ratio_riondato": riondato_samples / our_eff_n if our_eff_n > 0 else float("inf"),
+                    "ratio_bader": bader_samples / our_eff_n if our_eff_n > 0 else float("inf"),
+                    "ratio_eppstein": eppstein_samples / our_eff_n if our_eff_n > 0 else float("inf"),
+                    "ratio_eppstein_local": eppstein_local_samples / our_eff_n if our_eff_n > 0 else float("inf"),
+                }
+            )
 
     if not rows:
         return None
@@ -464,22 +491,21 @@ def compute_theoretical_bounds(results_df: pd.DataFrame, n_nodes: int):
     print(f"  Saved: {csv_path}")
 
     print(
-        f"\n  {'Distance':>10} | {'Our eff_n':>10} | {'EW global':>12} | {'EW local':>12} | "
-        f"{'Riondato':>12} | {'Bader':>12} | {'R(EWg)':>8} | {'R(EWl)':>8} | {'R(Rio)':>8} | {'R(Bad)':>8}"
+        f"\n  {'Distance':>10} | {'Metric':>12} | {'Our eff_n':>10} | {'EW global':>12} | {'EW local':>12} | "
+        f"{'Riondato':>12} | {'Bader':>12} | {'R(EWg)':>8} | {'R(EWl)':>8}"
     )
-    print("  " + "-" * 130)
+    print("  " + "-" * 120)
     for _, r in bounds_df.iterrows():
         print(
             f"  {r['distance'] // 1000}km       | "
+            f"{r['metric']:>12} | "
             f"{r['our_eff_n']:>10,.0f} | "
             f"{r['eppstein_samples']:>12,.0f} | "
             f"{r['eppstein_local_samples']:>12,.0f} | "
             f"{r['riondato_samples']:>12,.0f} | "
             f"{r['bader_samples']:>12,.0f} | "
             f"{r['ratio_eppstein']:>8.1f}x | "
-            f"{r['ratio_eppstein_local']:>8.1f}x | "
-            f"{r['ratio_riondato']:>8.1f}x | "
-            f"{r['ratio_bader']:>8.1f}x"
+            f"{r['ratio_eppstein_local']:>8.1f}x"
         )
 
     return bounds_df

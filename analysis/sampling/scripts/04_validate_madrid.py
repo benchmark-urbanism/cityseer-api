@@ -100,6 +100,11 @@ def generate_validation_data(force: bool = False) -> pd.DataFrame:
     print("Converting to cityseer format...")
     nodes_gdf, edges_gdf_out, net = io.network_structure_from_nx(G)
 
+    # Build live-node mask: only evaluate live nodes (exclude buffer zone)
+    live_mask = np.array(net.node_lives, dtype=bool)
+    n_live = int(live_mask.sum())
+    print(f"Live nodes: {n_live}/{len(live_mask)}")
+
     results = []
 
     for dist in MADRID_DISTANCES:
@@ -129,9 +134,10 @@ def generate_validation_data(force: bool = False) -> pd.DataFrame:
             )
             baseline_time = time.time() - t0
 
-            true_harmonic = np.array(true_result.node_harmonic[dist])
-            true_betweenness = np.array(true_result.node_betweenness[dist])
-            node_reach = np.array(true_result.node_density[dist])
+            # Extract only live nodes for ground truth
+            true_harmonic = np.array(true_result.node_harmonic[dist])[live_mask]
+            true_betweenness = np.array(true_result.node_betweenness[dist])[live_mask]
+            node_reach = np.array(true_result.node_density[dist])[live_mask]
             mean_reach = float(np.mean(node_reach))
 
             with open(gt_cache, "wb") as f:
@@ -141,6 +147,7 @@ def generate_validation_data(force: bool = False) -> pd.DataFrame:
                         "betweenness": true_betweenness,
                         "node_reach": node_reach,
                         "mean_reach": mean_reach,
+                        "n_live": n_live,
                         "baseline_time": baseline_time,
                     },
                     f,
@@ -182,8 +189,8 @@ def generate_validation_data(force: bool = False) -> pd.DataFrame:
                 )
                 sampled_times.append(time.time() - t0)
 
-                est_harmonic = np.array(r.node_harmonic[dist])
-                est_betweenness = np.array(r.node_betweenness[dist])
+                est_harmonic = np.array(r.node_harmonic[dist])[live_mask]
+                est_betweenness = np.array(r.node_betweenness[dist])[live_mask]
 
                 sp_h, prec_h, scale_h, _, mae_h = compute_accuracy_metrics(true_harmonic, est_harmonic)
                 sp_b, prec_b, scale_b, _, mae_b = compute_accuracy_metrics(true_betweenness, est_betweenness)
@@ -222,11 +229,23 @@ def generate_validation_data(force: bool = False) -> pd.DataFrame:
                 "sample_prob": test_p,
                 "effective_n": effective_n,
                 "rho_closeness": np.mean(spearmans_h),
+                "rho_closeness_min": np.min(spearmans_h) if spearmans_h else float("nan"),
+                "rho_closeness_median": np.median(spearmans_h) if spearmans_h else float("nan"),
+                "rho_closeness_max": np.max(spearmans_h) if spearmans_h else float("nan"),
                 "rho_closeness_std": np.std(spearmans_h),
                 "rho_betweenness": np.mean(spearmans_b),
+                "rho_betweenness_min": np.min(spearmans_b) if spearmans_b else float("nan"),
+                "rho_betweenness_median": np.median(spearmans_b) if spearmans_b else float("nan"),
+                "rho_betweenness_max": np.max(spearmans_b) if spearmans_b else float("nan"),
                 "rho_betweenness_std": np.std(spearmans_b),
-                "max_abs_error_h": np.mean(maes_h) if maes_h else float("nan"),
-                "max_abs_error_b": np.mean(maes_b) if maes_b else float("nan"),
+                "max_abs_error_h": np.max(maes_h) if maes_h else float("nan"),
+                "mean_abs_error_h": np.mean(maes_h) if maes_h else float("nan"),
+                "median_abs_error_h": np.median(maes_h) if maes_h else float("nan"),
+                "min_abs_error_h": np.min(maes_h) if maes_h else float("nan"),
+                "max_abs_error_b": np.max(maes_b) if maes_b else float("nan"),
+                "mean_abs_error_b": np.mean(maes_b) if maes_b else float("nan"),
+                "median_abs_error_b": np.median(maes_b) if maes_b else float("nan"),
+                "min_abs_error_b": np.min(maes_b) if maes_b else float("nan"),
                 "top_k_precision_h": np.mean(precs_h) if precs_h else float("nan"),
                 "top_k_precision_b": np.mean(precs_b) if precs_b else float("nan"),
                 "scale_ratio_h": np.mean(scales_h) if scales_h else float("nan"),
@@ -254,7 +273,7 @@ def generate_validation_data(force: bool = False) -> pd.DataFrame:
 
 
 def get_n_nodes(force: bool = False) -> int | None:
-    """Get total node count from cached Madrid graph."""
+    """Get live node count from cached Madrid graph."""
     n_nodes_cache = CACHE_DIR / "madrid_n_nodes.json"
     if n_nodes_cache.exists() and not force:
         with open(n_nodes_cache) as f:
@@ -266,7 +285,7 @@ def get_n_nodes(force: bool = False) -> int | None:
         G = pickle.load(f)
     # Apply same buffer as validation to get live node count
     G = apply_live_buffer_nx(G, LIVE_INWARD_BUFFER)
-    n_nodes = G.number_of_nodes()
+    n_nodes = sum(1 for n in G.nodes() if G.nodes[n].get("live", True))
     with open(n_nodes_cache, "w") as f:
         json.dump({"n_nodes": n_nodes}, f)
     return n_nodes
