@@ -1,5 +1,5 @@
 {
-  "generated": "2026-02-20T23:11:25",
+  "generated": "2026-02-22T23:28:46",
   "script": "02_fit_error_model.py",
   "description": "Localised EW bound analysis on synthetic data",
   "parameters": {
@@ -14,36 +14,36 @@
     "cache_version": "v21"
   },
   "overall": {
-    "total_configs": 440,
-    "bound_holds": 412,
-    "success_rate": 0.9363636363636364
+    "total_configs": 462,
+    "bound_holds": 455,
+    "success_rate": 0.9848484848484849
   },
   "conditional": {
     "reach_threshold": 100,
-    "total_configs": 308,
-    "bound_holds": 307,
-    "success_rate": 0.9967532467532467
+    "total_configs": 352,
+    "bound_holds": 352,
+    "success_rate": 1.0
   },
   "by_metric": {
     "harmonic": {
-      "total": 220,
-      "holds": 220,
+      "total": 231,
+      "holds": 231,
       "rate": 1.0,
-      "conditional_total": 154,
-      "conditional_holds": 154,
+      "conditional_total": 176,
+      "conditional_holds": 176,
       "conditional_rate": 1.0,
-      "median_eps_observed": 0.0008804991098198555,
-      "median_eps_predicted": 0.23329897005607103
+      "median_eps_observed": 0.0005661463042547345,
+      "median_eps_predicted": 0.18312133559472726
     },
     "betweenness": {
-      "total": 220,
-      "holds": 192,
-      "rate": 0.8727272727272727,
-      "conditional_total": 154,
-      "conditional_holds": 153,
-      "conditional_rate": 0.9935064935064936,
-      "median_eps_observed": 0.06161651246289429,
-      "median_eps_predicted": 0.23329897005607103
+      "total": 231,
+      "holds": 224,
+      "rate": 0.9696969696969697,
+      "conditional_total": 176,
+      "conditional_holds": 176,
+      "conditional_rate": 1.0,
+      "median_eps_observed": 0.01680969109922213,
+      "median_eps_predicted": 0.18312133559472726
     }
   }
 }

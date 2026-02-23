@@ -21,16 +21,17 @@ from pathlib import Path
 
 import geopandas as gpd
 import numpy as np
+import osmnx as ox
 import pandas as pd
+import shapely
 from cityseer.tools import graphs, io
+from shapely.geometry import Point
 from utilities import (
     CACHE_DIR,
     HOEFFDING_DELTA,
     HOEFFDING_EPSILON,
-    MADRID_GPKG_URL,
     OUTPUT_DIR,
     TABLES_DIR,
-    apply_live_buffer_nx,
     compute_accuracy_metrics,
     compute_hoeffding_p,
     compute_quartile_accuracy,
@@ -45,8 +46,10 @@ from utilities import (
 
 SCRIPT_DIR = Path(__file__).parent
 
+# Madrid network file
+MADRID_GPKG_FILE = SCRIPT_DIR.parent.parent.parent / "temp" / "RT_MADRID_gpkg" / "red_viaria.gpkg"
+
 # Validation parameters
-LIVE_INWARD_BUFFER = 20000  # 20km buffer
 MADRID_DISTANCES = [1000, 2000, 5000, 10000, 20000]
 N_RUNS = 5
 
@@ -54,17 +57,52 @@ N_RUNS = 5
 DELTA = HOEFFDING_DELTA
 
 
+def get_madrid_mask(force: bool = False):
+    """
+    Return Community of Madrid boundary and 20km buffered version in EPSG:25830, cached as GeoJSON.
+
+    Returns
+    -------
+    boundary : shapely geometry
+        Simplified Community of Madrid boundary — used to mark live nodes.
+    buffered : shapely geometry
+        Community of Madrid boundary buffered by 20km — used as spatial filter when loading roads.
+    """
+    boundary_cache = CACHE_DIR / "madrid_boundary.geojson"
+    buffered_cache = CACHE_DIR / "madrid_buffered.geojson"
+    if boundary_cache.exists() and buffered_cache.exists() and not force:
+        boundary = gpd.read_file(boundary_cache).geometry.iloc[0]
+        buffered = gpd.read_file(buffered_cache).geometry.iloc[0]
+        return boundary, buffered
+    print("Downloading Community of Madrid boundary from OSM...")
+    gdf = ox.geocode_to_gdf("Community of Madrid, Spain")
+    gdf = gdf.to_crs("EPSG:25830")
+    boundary = gdf.geometry.iloc[0].simplify(100)  # 100m tolerance
+    buffered = boundary.buffer(20_000)
+    gpd.GeoDataFrame(geometry=[boundary], crs="EPSG:25830").to_file(boundary_cache, driver="GeoJSON")
+    gpd.GeoDataFrame(geometry=[buffered], crs="EPSG:25830").to_file(buffered_cache, driver="GeoJSON")
+    print(f"  Cached Madrid boundary to {boundary_cache}")
+    print(f"  Cached Madrid buffered to {buffered_cache}")
+    return boundary, buffered
+
+
 def generate_validation_data(force: bool = False) -> pd.DataFrame:
     """Generate Madrid validation data, or load from cache."""
     validation_csv = OUTPUT_DIR / "madrid_validation.csv"
 
     if validation_csv.exists() and not force:
-        print(f"Loading cached validation data from {validation_csv}")
-        return pd.read_csv(validation_csv)
+        df = pd.read_csv(validation_csv)
+        if "rho_closeness" in df.columns and len(df) > 0:
+            print(f"Loading cached validation data from {validation_csv}")
+            return df
+        print(f"Stale/empty cache at {validation_csv}, regenerating...")
 
     print("\n" + "=" * 70)
     print("GENERATING MADRID VALIDATION DATA")
     print("=" * 70)
+
+    # Load Madrid boundary (cached after first download)
+    madrid_boundary, madrid_buffered = get_madrid_mask(force=force)
 
     # Load or build Madrid graph
     madrid_cache = CACHE_DIR / "madrid_graph.pkl"
@@ -73,16 +111,17 @@ def generate_validation_data(force: bool = False) -> pd.DataFrame:
         with open(madrid_cache, "rb") as f:
             G = pickle.load(f)
     else:
-        print(f"Downloading Madrid regional network from: {MADRID_GPKG_URL}")
-        print("  (This may take a minute...)")
-
-        edges_gdf = gpd.read_file(MADRID_GPKG_URL)
-        print(f"  Downloaded: {len(edges_gdf)} edges, CRS: {edges_gdf.crs}")
-
-        edges_gdf_singles = edges_gdf.explode(index_parts=False)
+        print(f"Loading Madrid network from {MADRID_GPKG_FILE}")
+        # Reproject buffered mask to file CRS (EPSG:4258) for spatial filtering
+        buffered_4258 = gpd.GeoDataFrame(geometry=[madrid_buffered], crs="EPSG:25830").to_crs("EPSG:4258").geometry.iloc[0]
+        edges_gdf = gpd.read_file(MADRID_GPKG_FILE, layer="rt_tramo_vial", mask=buffered_4258)
+        edges_gdf = edges_gdf[edges_gdf.geometry.is_valid & ~edges_gdf.geometry.is_empty]
+        edges_gdf = edges_gdf.to_crs("EPSG:25830").explode(index_parts=False)
+        edges_gdf.geometry = edges_gdf.geometry.map(shapely.force_2d)
+        print(f"  Loaded: {len(edges_gdf)} edges")
 
         print("  Building graph...")
-        G = io.nx_from_generic_geopandas(edges_gdf_singles)
+        G = io.nx_from_generic_geopandas(edges_gdf)
         G = graphs.nx_remove_filler_nodes(G)
         G = graphs.nx_remove_dangling_nodes(G)
 
@@ -92,16 +131,18 @@ def generate_validation_data(force: bool = False) -> pd.DataFrame:
 
     print(f"Madrid graph: {G.number_of_nodes()} nodes, {G.number_of_edges()} edges")
 
-    # Apply live buffer
-    print(f"Applying {LIVE_INWARD_BUFFER / 1000:.0f}km inward buffer...")
-    G = apply_live_buffer_nx(G, LIVE_INWARD_BUFFER)
+    # Mark live nodes: inside Madrid boundary = live, buffer zone = not live
+    print("Marking live nodes using Madrid boundary...")
+    n_live = 0
+    for _n, data in G.nodes(data=True):
+        data["live"] = madrid_boundary.contains(Point(data["x"], data["y"]))
+        n_live += data["live"]
+    print(f"  Live nodes: {n_live}/{G.number_of_nodes()} ({100 * n_live / G.number_of_nodes():.1f}%)")
 
     # Convert to cityseer
     print("Converting to cityseer format...")
-    nodes_gdf, edges_gdf_out, net = io.network_structure_from_nx(G)
-
-    # Build live-node mask: only evaluate live nodes (exclude buffer zone)
-    live_mask = np.array(net.node_lives, dtype=bool)
+    nodes_gdf, _, net = io.network_structure_from_nx(G)
+    live_mask = nodes_gdf["live"].values
     n_live = int(live_mask.sum())
     print(f"Live nodes: {n_live}/{len(live_mask)}")
 
@@ -283,9 +324,8 @@ def get_n_nodes(force: bool = False) -> int | None:
         return None
     with open(madrid_cache, "rb") as f:
         G = pickle.load(f)
-    # Apply same buffer as validation to get live node count
-    G = apply_live_buffer_nx(G, LIVE_INWARD_BUFFER)
-    n_nodes = sum(1 for n in G.nodes() if G.nodes[n].get("live", True))
+    madrid_boundary, _ = get_madrid_mask(force=force)
+    n_nodes = sum(1 for _n, d in G.nodes(data=True) if madrid_boundary.contains(Point(d["x"], d["y"])))
     with open(n_nodes_cache, "w") as f:
         json.dump({"n_nodes": n_nodes}, f)
     return n_nodes
@@ -490,7 +530,7 @@ def generate_validation_table(df: pd.DataFrame, n_nodes: int | None):
 
 \vspace{{0.5em}}
 \footnotesize
-Network: Greater Madrid, {n_nodes_str} nodes, 20km live node buffer.
+Network: Greater Madrid, {n_nodes_str} nodes, Community of Madrid boundary live node mask.
 Hoeffding model: $k = \log(2r/\delta) / (2\varepsilon^2)$, $p = \min(1, k/r)$.
 \end{{table}}
 """

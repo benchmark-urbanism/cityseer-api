@@ -93,6 +93,7 @@ def generate_synthetic_cache(force: bool = False):
 
         # Convert to cityseer format
         ndf, edf, net = io.network_structure_from_nx(G)
+        live_mask = ndf["live"].values
 
         for dist in DISTANCES:
             # Ground truth (full computation)
@@ -103,9 +104,9 @@ def generate_synthetic_cache(force: bool = False):
                 pbar_disabled=True,
             )
 
-            true_harmonic = np.array(true_result.node_harmonic[dist])
-            true_betweenness = np.array(true_result.node_betweenness[dist])
-            node_reach = np.array(true_result.node_density[dist])
+            true_harmonic = np.array(true_result.node_harmonic[dist])[live_mask]
+            true_betweenness = np.array(true_result.node_betweenness[dist])[live_mask]
+            node_reach = np.array(true_result.node_density[dist])[live_mask]
             mean_reach = float(np.mean(node_reach))
 
             if mean_reach < 5:
@@ -166,8 +167,8 @@ def generate_synthetic_cache(force: bool = False):
                         pbar_disabled=True,
                     )
 
-                    est_harmonic = np.array(r.node_harmonic[dist])
-                    est_betweenness = np.array(r.node_betweenness[dist])
+                    est_harmonic = np.array(r.node_harmonic[dist])[live_mask]
+                    est_betweenness = np.array(r.node_betweenness[dist])[live_mask]
                     est_h_sum += est_harmonic
                     est_b_sum += est_betweenness
 
@@ -207,7 +208,7 @@ def generate_synthetic_cache(force: bool = False):
                         "top_k_precision": np.mean([x[1] for x in spearmans_h]),
                         "scale_ratio": np.mean([x[2] for x in spearmans_h]),
                         "scale_iqr": np.mean([x[3] for x in spearmans_h]),
-                        "max_abs_error": np.mean([x[4] for x in spearmans_h]),
+                        "max_abs_error": np.max([x[4] for x in spearmans_h]),
                         "node_true_vals": true_h_f32,
                         "node_est_vals": est_h_avg,
                     }
@@ -228,7 +229,7 @@ def generate_synthetic_cache(force: bool = False):
                         "top_k_precision": np.mean([x[1] for x in spearmans_b]),
                         "scale_ratio": np.mean([x[2] for x in spearmans_b]),
                         "scale_iqr": np.mean([x[3] for x in spearmans_b]),
-                        "max_abs_error": np.mean([x[4] for x in spearmans_b]),
+                        "max_abs_error": np.max([x[4] for x in spearmans_b]),
                         "node_true_vals": true_b_f32,
                         "node_est_vals": est_b_avg,
                     }

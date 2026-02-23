@@ -7,16 +7,16 @@
 \textbf{Distance} & \textbf{Reach} & \textbf{Hoeff.\ $p$} &
 \textbf{$\rho_\text{close}$} & \textbf{$\rho_\text{betw}$} & \textbf{Speedup} & \textbf{$\rho \geq 0.95$?} \\
 \midrule
-1km & 100 & 100.0\% & 0.9948 & 0.9983 & 1.0$\times$ & \checkmark \\
-2km & 411 & 100.0\% & 0.9979 & 0.9993 & 1.0$\times$ & \checkmark \\
-5km & 2,783 & 19.6\% & 0.9875 & 0.9912 & 5.1$\times$ & \checkmark \\
-10km & 11,590 & 5.3\% & 0.9930 & 0.9846 & 18.8$\times$ & \checkmark \\
-20km & 43,165 & 1.6\% & 0.9959 & 0.9824 & 63.2$\times$ & \checkmark \\
+1km & 185 & 100.0\% & 0.9945 & 0.9980 & 1.0$\times$ & \checkmark \\
+2km & 765 & 63.0\% & 0.9856 & 0.9953 & 1.6$\times$ & \checkmark \\
+5km & 5,100 & 11.3\% & 0.9616 & 0.9777 & 8.8$\times$ & \checkmark \\
+10km & 20,394 & 3.2\% & 0.9735 & 0.9629 & 31.6$\times$ & \checkmark \\
+20km & 69,463 & 1.0\% & 0.9827 & 0.9510 & 98.2$\times$ & \checkmark \\
 \bottomrule
 \end{tabular}
 
 \vspace{0.5em}
 \footnotesize
-Network: Greater London Area, 294,486 nodes, 20km live node buffer.
+Network: Greater London Area, GLA boundary live node mask.
 Hoeffding model: $k = \log(2r/\delta) / (2\varepsilon^2)$, $p = \min(1, k/r)$.
 \end{table}

@@ -23,15 +23,16 @@ from pathlib import Path
 
 import geopandas as gpd
 import numpy as np
+import osmnx as ox
 import pandas as pd
 from cityseer.tools import graphs, io
+from shapely.geometry import Point
 from utilities import (
     CACHE_DIR,
     HOEFFDING_DELTA,
     HOEFFDING_EPSILON,
     OUTPUT_DIR,
     TABLES_DIR,
-    apply_live_buffer_nx,
     compute_accuracy_metrics,
     compute_hoeffding_p,
     compute_quartile_accuracy,
@@ -47,10 +48,9 @@ from utilities import (
 SCRIPT_DIR = Path(__file__).parent
 
 # GLA network file
-GLA_GPKG_FILE = SCRIPT_DIR.parent.parent.parent / "temp" / "os_open_roads" / "gla.gpkg"
+GLA_GPKG_FILE = SCRIPT_DIR.parent.parent.parent / "temp" / "os_open_roads" / "oproad_gb.gpkg"
 
 # Validation parameters
-LIVE_INWARD_BUFFER = 20000  # 20km buffer
 GLA_DISTANCES = [1000, 2000, 5000, 10000, 20000]
 GLA_PROBS = [0.01, 0.025, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
 N_RUNS = 1
@@ -58,13 +58,45 @@ N_RUNS = 1
 DELTA = HOEFFDING_DELTA
 
 
+def get_gla_mask(force: bool = False):
+    """
+    Return Greater London boundary and 20km buffered version in EPSG:27700, cached as GeoJSON.
+
+    Returns
+    -------
+    boundary : shapely geometry
+        Simplified GLA boundary polygon — used to mark live nodes.
+    buffered : shapely geometry
+        GLA boundary buffered by 20km — used as spatial filter when loading roads.
+    """
+    boundary_cache = CACHE_DIR / "gla_boundary.geojson"
+    buffered_cache = CACHE_DIR / "gla_buffered.geojson"
+    if boundary_cache.exists() and buffered_cache.exists() and not force:
+        boundary = gpd.read_file(boundary_cache).geometry.iloc[0]
+        buffered = gpd.read_file(buffered_cache).geometry.iloc[0]
+        return boundary, buffered
+    print("Downloading Greater London boundary from OSM...")
+    gdf = ox.geocode_to_gdf("Greater London, England")
+    gdf = gdf.to_crs("EPSG:27700")
+    boundary = gdf.geometry.iloc[0].simplify(100)  # 100m tolerance
+    buffered = boundary.buffer(20_000)
+    gpd.GeoDataFrame(geometry=[boundary], crs="EPSG:27700").to_file(boundary_cache, driver="GeoJSON")
+    gpd.GeoDataFrame(geometry=[buffered], crs="EPSG:27700").to_file(buffered_cache, driver="GeoJSON")
+    print(f"  Cached GLA boundary to {boundary_cache}")
+    print(f"  Cached GLA buffered to {buffered_cache}")
+    return boundary, buffered
+
+
 def generate_validation_data(force: bool = False) -> pd.DataFrame:
     """Generate GLA validation data, or load from cache."""
     validation_csv = OUTPUT_DIR / "gla_validation.csv"
 
     if validation_csv.exists() and not force:
-        print(f"Loading cached validation data from {validation_csv}")
-        return pd.read_csv(validation_csv)
+        df = pd.read_csv(validation_csv)
+        if "metric" in df.columns and len(df) > 0:
+            print(f"Loading cached validation data from {validation_csv}")
+            return df
+        print(f"Stale/empty cache at {validation_csv}, regenerating...")
 
     if not GLA_GPKG_FILE.exists():
         raise FileNotFoundError(
@@ -75,6 +107,9 @@ def generate_validation_data(force: bool = False) -> pd.DataFrame:
     print("GENERATING GLA VALIDATION DATA")
     print("=" * 70)
 
+    # Load GLA boundary (cached after first download)
+    gla_boundary, gla_buffered = get_gla_mask(force=force)
+
     # Load or build GLA graph
     gla_cache = CACHE_DIR / "gla_graph.pkl"
     if gla_cache.exists() and not force:
@@ -83,7 +118,7 @@ def generate_validation_data(force: bool = False) -> pd.DataFrame:
             G = pickle.load(f)
     else:
         print(f"Loading GLA network from {GLA_GPKG_FILE}")
-        edges_gdf = gpd.read_file(GLA_GPKG_FILE)
+        edges_gdf = gpd.read_file(GLA_GPKG_FILE, layer="road_link", mask=gla_buffered)
         edges_gdf = edges_gdf[edges_gdf.geometry.is_valid & ~edges_gdf.geometry.is_empty]
         edges_gdf = edges_gdf.explode(index_parts=False)
 
@@ -100,21 +135,20 @@ def generate_validation_data(force: bool = False) -> pd.DataFrame:
 
     print(f"GLA graph: {G.number_of_nodes()} nodes, {G.number_of_edges()} edges")
 
-    # Apply live buffer
-    print(f"Applying {LIVE_INWARD_BUFFER / 1000:.0f}km inward buffer...")
-    G = apply_live_buffer_nx(G, LIVE_INWARD_BUFFER)
+    # Mark live nodes: inside GLA boundary = live, buffer zone = not live
+    print("Marking live nodes using GLA boundary...")
+    n_live = 0
+    for _n, data in G.nodes(data=True):
+        data["live"] = gla_boundary.contains(Point(data["x"], data["y"]))
+        n_live += data["live"]
+    print(f"  Live nodes: {n_live}/{G.number_of_nodes()} ({100 * n_live / G.number_of_nodes():.1f}%)")
 
     # Convert to cityseer
     print("Converting to cityseer format...")
-    nodes_gdf, edges_gdf_out, net = io.network_structure_from_nx(G)
-
-    # Build live-node mask: only evaluate live nodes (exclude buffer zone)
-    live_mask = np.array(net.node_lives, dtype=bool)
-    n_live = int(live_mask.sum())
-    print(f"Live nodes: {n_live}/{len(live_mask)}")
+    nodes_gdf, _, net = io.network_structure_from_nx(G)
+    live_mask = nodes_gdf["live"].values
 
     results = []
-
     for dist in GLA_DISTANCES:
         print(f"\n{'=' * 50}")
         print(f"Distance: {dist}m")
@@ -385,7 +419,7 @@ def generate_validation_table(df: pd.DataFrame):
 
 \vspace{0.5em}
 \footnotesize
-Network: Greater London Area, 294,486 nodes, 20km live node buffer.
+Network: Greater London Area, GLA boundary live node mask.
 Hoeffding model: $k = \log(2r/\delta) / (2\varepsilon^2)$, $p = \min(1, k/r)$.
 \end{table}
 """
@@ -414,9 +448,8 @@ def get_n_nodes(force: bool = False) -> int | None:
         return None
     with open(gla_cache, "rb") as f:
         G = pickle.load(f)
-    # Apply same buffer as validation to get live node count
-    G = apply_live_buffer_nx(G, LIVE_INWARD_BUFFER)
-    n_nodes = sum(1 for n in G.nodes() if G.nodes[n].get("live", True))
+    gla_boundary, _ = get_gla_mask(force=force)
+    n_nodes = sum(1 for _n, d in G.nodes(data=True) if gla_boundary.contains(Point(d["x"], d["y"])))
     with open(n_nodes_cache, "w") as f:
         json.dump({"n_nodes": n_nodes}, f)
     return n_nodes

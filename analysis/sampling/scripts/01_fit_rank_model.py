@@ -430,7 +430,7 @@ def generate_fig3_error_crossover(node_acc: pd.DataFrame):
 
         # Overlay localised EW bound on normalised error panel
         if col_idx == 1:
-            r_line = np.logspace(1, 4.2, 200)
+            r_line = np.logspace(np.log10(200), 4, 200)
             eps_line = np.array([ew_predicted_epsilon(compute_hoeffding_p(r) * r, r) for r in r_line])
             ax.plot(
                 r_line,
