@@ -86,20 +86,20 @@ def generate_practical_figure():
             label=f"ε = {eps}",
         )
 
-    # Annotate common scenarios at default epsilon
+    # Annotate GLA network reaches at default epsilon
     scenarios = [
-        (500, "Local\n(500m)"),
-        (1000, "Neighbourhood\n(1km)"),
-        (5000, "District\n(5km)"),
-        (10000, "City\n(10km)"),
-        (50000, "Metro\n(20km)"),
+        (185, "1 km"),
+        (765, "2 km"),
+        (5100, "5 km"),
+        (20394, "10 km"),
+        (69463, "20 km"),
     ]
 
     for reach, label in scenarios:
         p = compute_hoeffding_p(reach) * 100
         ax.plot(reach, p, "o", color="#D55E00", markersize=7, zorder=5)
-        # Place "Local (500m)" below the dot; all others above
-        if reach == 500:
+        # Place saturated (100%) points below; others above
+        if p >= 99.5:
             y_off, va = -12, "top"
         else:
             y_off, va = 12, "bottom"
@@ -153,7 +153,7 @@ def generate_practical_figure():
     ax.set_ylabel("Speedup (1/p)")
     ax.set_title(f"B) Expected Speedup (ε = {HOEFFDING_EPSILON})")
     ax.set_xlim(100, 300000)
-    ax.set_ylim(1, 100)
+    ax.set_ylim(1, 150)
     ax.grid(True, alpha=0.3, which="both")
 
     # Add helpful regions

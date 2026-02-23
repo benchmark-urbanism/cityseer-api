@@ -655,7 +655,7 @@ def mean_quartiles(quartile_list: list[dict], quartile_keys: tuple = QUARTILE_KE
 # =============================================================================
 
 # Default parameters for the Hoeffding/EW bound
-HOEFFDING_EPSILON = 0.1  # Normalised additive error tolerance
+HOEFFDING_EPSILON = 0.05  # Normalised additive error tolerance
 HOEFFDING_DELTA = 0.1  # Failure probability (90% confidence)
 
 

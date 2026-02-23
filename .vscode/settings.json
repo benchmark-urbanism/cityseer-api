@@ -41,7 +41,7 @@
   "latex-workshop.latex.tools": [
     {
       "name": "pdflatex",
-      "command": "pdflatex",
+      "command": "/Library/TeX/texbin/pdflatex",
       "args": [
         "-synctex=1",
         "-interaction=nonstopmode",
@@ -51,18 +51,21 @@
     },
     {
       "name": "latexmk",
-      "command": "latexmk",
+      "command": "/Library/TeX/texbin/latexmk",
       "args": [
         "-pdf",
         "-synctex=1",
         "-interaction=nonstopmode",
         "-file-line-error",
         "%DOC%"
-      ]
+      ],
+      "env": {
+        "PATH": "/Library/TeX/texbin:/usr/local/bin:/usr/bin:/bin"
+      }
     },
     {
       "name": "bibtex",
-      "command": "bibtex",
+      "command": "/Library/TeX/texbin/bibtex",
       "args": ["%DOCFILE%"]
     }
   ],
