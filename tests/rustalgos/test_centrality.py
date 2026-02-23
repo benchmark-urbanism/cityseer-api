@@ -184,7 +184,7 @@ def test_shortest_path_trees(primal_graph, dual_graph):
     assert path_transpose == ["10_43_k0", "10_5_k0"]
 
 
-def test_local_node_centrality_shortest(primal_graph):
+def test_closeness_shortest(primal_graph):
     """
     Also tested indirectly via test_networks.test_compute_centrality
 
@@ -202,10 +202,8 @@ def test_local_node_centrality_shortest(primal_graph):
     betas = [0.02, 0.01, 0.005, 0.0008]
     distances = rustalgos.distances_from_betas(betas)
     # generate the measures
-    node_result_short = network_structure.local_node_centrality_shortest(
+    node_result_short = network_structure.closeness_shortest(
         distances=distances,
-        compute_closeness=True,
-        compute_betweenness=True,
     )
     # test node density
     # node density count doesn't include self-node
@@ -219,24 +217,9 @@ def test_local_node_centrality_shortest(primal_graph):
     nx_harm_cl = nx.harmonic_centrality(G_round_trip, distance="length")
     for src_idx in range(len(G_round_trip)):
         assert nx_harm_cl[str(src_idx)] - node_result_short.node_harmonic[5000][src_idx] < config.ATOL
-    # test betweenness vs NetworkX
-    # set endpoint counting to false and do not normalise
-    # nx node centrality NOT implemented for MultiGraph
-    G_non_multi = nx.Graph()  # don't change to MultiGraph!!!
-    G_non_multi.add_nodes_from(G_round_trip.nodes())
-    for s, e, k, d in G_round_trip.edges(keys=True, data=True):
-        assert k == 0
-        G_non_multi.add_edge(s, e, **d)
-    nx_betw = nx.betweenness_centrality(G_non_multi, weight="length", endpoints=False, normalized=False)
-    nx_betw = np.array([v for v in nx_betw.values()])
-    # nx betweenness gives 0.5 instead of 1 for all disconnected looping component nodes
-    # nx presumably takes equidistant routes into account, in which case only the fraction is aggregated
-    np.allclose(nx_betw[:52], node_result_short.node_betweenness[5000][:52], atol=config.ATOL, rtol=config.RTOL)
-    # do the comparisons array-wise so that betweenness can be aggregated
+    # do the comparisons array-wise so that closeness metrics can be verified
     d_n = len(distances)
     n_nodes: int = primal_graph.number_of_nodes()
-    betw: npt.NDArray[np.float32] = np.full((d_n, n_nodes), 0.0, dtype=np.float32)
-    betw_wt: npt.NDArray[np.float32] = np.full((d_n, n_nodes), 0.0, dtype=np.float32)
     dens: npt.NDArray[np.float32] = np.full((d_n, n_nodes), 0.0, dtype=np.float32)
     far_short_dist: npt.NDArray[np.float32] = np.full((d_n, n_nodes), 0.0, dtype=np.float32)
     harmonic_cl: npt.NDArray[np.float32] = np.full((d_n, n_nodes), 0.0, dtype=np.float32)
@@ -275,23 +258,6 @@ def test_local_node_centrality_shortest(primal_graph):
                     # Rust uses target aggregation; source aggregation verifies totals match
                     cyc_to[d_idx][to_idx] += n_cycles
                     cyc_src[d_idx][src_idx] += n_cycles
-                    # only process betweenness in one direction
-                    if to_idx < src_idx:
-                        continue
-                    # betweenness - only counting truly between vertices, not starting and ending verts
-                    inter_idx = tree_map[to_idx].pred
-                    # isolated nodes will have no predecessors
-                    if np.isnan(inter_idx):
-                        continue
-                    inter_idx = int(inter_idx)
-                    while True:
-                        # break out of while loop if the intermediary has reached the source node
-                        if inter_idx == src_idx:
-                            break
-                        betw[d_idx][inter_idx] += 1
-                        betw_wt[d_idx][inter_idx] += np.exp(-beta * to_short_dist)
-                        # follow
-                        inter_idx = int(tree_map[inter_idx].pred)
     for d_idx, dist in enumerate(distances):
         assert np.allclose(node_result_short.node_density[dist], dens[d_idx], atol=config.ATOL, rtol=config.RTOL)
         assert np.allclose(
@@ -307,10 +273,6 @@ def test_local_node_centrality_shortest(primal_graph):
             node_result_short.node_harmonic[dist], harmonic_cl[d_idx], atol=config.ATOL, rtol=config.RTOL
         )
         assert np.allclose(node_result_short.node_beta[dist], grav[d_idx], atol=config.ATOL, rtol=config.RTOL)
-        assert np.allclose(node_result_short.node_betweenness[dist], betw[d_idx], atol=config.ATOL, rtol=config.RTOL)
-        assert np.allclose(
-            node_result_short.node_betweenness_beta[dist], betw_wt[d_idx], atol=config.ATOL, rtol=config.RTOL
-        )
     # check weights
     for wt in [0.5, 2]:
         # create a weighted version fo the graph
@@ -321,28 +283,14 @@ def test_local_node_centrality_shortest(primal_graph):
         nodes_gdf_wt, edges_gdf_wt, network_structure_wt = io.network_structure_from_nx(primal_graph_wt)
         # weights should persists to the nodes GDF
         assert np.all(nodes_gdf_wt.weight == wt)
-        node_result_short_wt = network_structure_wt.local_node_centrality_shortest(
+        node_result_short_wt = network_structure_wt.closeness_shortest(
             distances=distances,
-            compute_closeness=True,
-            compute_betweenness=True,
         )
         # check that weighted versions behave as anticipated
         for dist in distances:
             assert np.allclose(
                 node_result_short.node_beta[dist] * wt,
                 node_result_short_wt.node_beta[dist],
-                rtol=config.RTOL,
-                atol=config.ATOL,
-            )
-            assert np.allclose(
-                node_result_short.node_betweenness[dist] * wt,
-                node_result_short_wt.node_betweenness[dist],
-                rtol=config.RTOL,
-                atol=config.ATOL,
-            )
-            assert np.allclose(
-                node_result_short.node_betweenness_beta[dist] * wt,
-                node_result_short_wt.node_betweenness_beta[dist],
                 rtol=config.RTOL,
                 atol=config.ATOL,
             )
@@ -386,10 +334,8 @@ def test_local_centrality_all(diamond_graph):
     distances = [50, 150, 250]
     rustalgos.betas_from_distances(distances)
     # NODE SHORTEST
-    node_result_short = network_structure.local_node_centrality_shortest(
+    node_result_short = network_structure.closeness_shortest(
         distances,
-        compute_closeness=True,
-        compute_betweenness=True,
     )
     # node density
     # additive nodes
@@ -433,40 +379,14 @@ def test_local_centrality_all(diamond_graph):
         atol=config.ATOL,
         rtol=config.RTOL,
     )
-    # node betweenness
-    # additive 1 per node en route
-    assert np.allclose(node_result_short.node_betweenness[50], [0, 0, 0, 0], atol=config.ATOL, rtol=config.RTOL)
-    assert np.allclose(node_result_short.node_betweenness[150], [0, 0, 0, 0], atol=config.ATOL, rtol=config.RTOL)
-    # takes first out of multiple options, so either of following is correct
-    assert np.allclose(
-        node_result_short.node_betweenness[250], [0, 0, 1, 0], atol=config.ATOL, rtol=config.RTOL
-    ) or np.allclose(node_result_short.node_betweenness[250], [0, 1, 0, 0], atol=config.ATOL, rtol=config.RTOL)
-    # node betweenness beta
-    # additive exp(-beta * dist) en route
-    assert np.allclose(
-        node_result_short.node_betweenness_beta[50], [0, 0, 0, 0], atol=config.ATOL, rtol=config.RTOL
-    )  # beta = 0.08
-    assert np.allclose(
-        node_result_short.node_betweenness_beta[150], [0, 0, 0, 0], atol=config.ATOL, rtol=config.RTOL
-    )  # beta = 0.02666667
-    # takes first out of multiple options, so either of following is correct
-    # beta evaluated over 200m distance from 3 to 0
-    # beta = 0.016
-    assert np.allclose(node_result_short.node_betweenness_beta[250], [0, 0.0407622, 0, 0]) or np.allclose(
-        node_result_short.node_betweenness_beta[250], [0, 0, 0.0407622, 0]
-    )
     # node shortest weights tested in previous function
 
     # NODE SIMPLEST
-    node_result_simplest = network_structure.local_node_centrality_simplest(
+    node_result_simplest = network_structure.closeness_simplest(
         distances,
-        compute_closeness=True,
-        compute_betweenness=True,
     )
-    node_result_simplest_0_180 = network_structure.local_node_centrality_simplest(
+    node_result_simplest_0_180 = network_structure.closeness_simplest(
         distances,
-        compute_closeness=True,
-        compute_betweenness=True,
         farness_scaling_offset=0,
         angular_scaling_unit=180,
     )
@@ -497,12 +417,6 @@ def test_local_centrality_all(diamond_graph):
         node_result_simplest_0_180.node_harmonic[250], [2.75, 3, 3, 2.75], atol=config.ATOL, rtol=config.RTOL
     )
     # node betweenness angular
-    # additive 1 per node en simplest route
-    assert np.allclose(node_result_simplest.node_betweenness[50], [0, 0, 0, 0], atol=config.ATOL, rtol=config.RTOL)
-    assert np.allclose(node_result_simplest.node_betweenness[150], [0, 0, 0, 0], atol=config.ATOL, rtol=config.RTOL)
-    assert np.allclose(
-        node_result_simplest.node_betweenness[250], [0, 1, 0, 0], atol=config.ATOL, rtol=config.RTOL
-    ) or np.allclose(node_result_simplest.node_betweenness[250], [0, 0, 1, 0], atol=config.ATOL, rtol=config.RTOL)
     # check weights
     for wt in [0.5, 2]:
         # for weighted checks
@@ -510,19 +424,11 @@ def test_local_centrality_all(diamond_graph):
         for nd_idx in diamond_graph_wt.nodes():
             diamond_graph_wt.nodes[nd_idx]["weight"] = wt
         _nodes_gdf_wt, _edges_gdf_wt, network_structure_wt = io.network_structure_from_nx(diamond_graph_wt)
-        node_result_simplest_wt = network_structure_wt.local_node_centrality_simplest(
+        node_result_simplest_wt = network_structure_wt.closeness_simplest(
             distances,
-            compute_closeness=True,
-            compute_betweenness=True,
         )
         # check that weighted versions behave as anticipated
         for dist in distances:
-            assert np.allclose(
-                node_result_simplest.node_betweenness[dist] * wt,
-                node_result_simplest_wt.node_betweenness[dist],
-                rtol=config.RTOL,
-                atol=config.ATOL,
-            )
             assert np.allclose(
                 node_result_simplest.node_harmonic[dist] * wt,
                 node_result_simplest_wt.node_harmonic[dist],
@@ -530,10 +436,8 @@ def test_local_centrality_all(diamond_graph):
                 atol=config.ATOL,
             )
     # NODE SIMPLEST ON DUAL network_structure_dual
-    node_result_simplest = network_structure_dual.local_node_centrality_simplest(
+    node_result_simplest = network_structure_dual.closeness_simplest(
         distances,
-        compute_closeness=True,
-        compute_betweenness=True,
     )
     # node_keys_dual = ('0_1', '0_2', '1_2', '1_3', '2_3')
     # node harmonic angular
@@ -546,13 +450,8 @@ def test_local_centrality_all(diamond_graph):
     assert np.allclose(
         node_result_simplest.node_harmonic[250], [2.45, 2.45, 2.4, 2.45, 2.45], atol=config.ATOL, rtol=config.RTOL
     )
-    # node betweenness angular
-    # additive 1 per node en simplest route
-    assert np.allclose(node_result_simplest.node_betweenness[50], [0, 0, 0, 0, 0], atol=config.ATOL, rtol=config.RTOL)
-    assert np.allclose(node_result_simplest.node_betweenness[150], [0, 0, 0, 0, 0], atol=config.ATOL, rtol=config.RTOL)
-    assert np.allclose(node_result_simplest.node_betweenness[250], [0, 0, 0, 1, 1], atol=config.ATOL, rtol=config.RTOL)
     # SEGMENT SHORTEST
-    segment_result = network_structure.local_segment_centrality(
+    segment_result = network_structure.segment_centrality(
         distances,
         compute_closeness=True,
         compute_betweenness=True,
@@ -649,12 +548,12 @@ def test_decomposed_local_centrality(primal_graph):
     # - node based measures will not match
     # - closeness segment measures will match - these measure to the cut endpoints per thresholds
     # - betweenness segment measures won't match - don't measure to cut endpoints
-    segment_result = network_structure.local_segment_centrality(
+    segment_result = network_structure.segment_centrality(
         distances,
         compute_closeness=True,
         compute_betweenness=True,
     )
-    segment_result_decomp = network_structure_decomp.local_segment_centrality(
+    segment_result_decomp = network_structure_decomp.segment_centrality(
         distances,
         compute_closeness=True,
         compute_betweenness=True,

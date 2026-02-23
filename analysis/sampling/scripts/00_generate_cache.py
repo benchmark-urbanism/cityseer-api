@@ -2,8 +2,9 @@
 """
 00_generate_cache.py - Generate synthetic network sampling data.
 
-Generates cached sampling results for 3 topologies × 7 distances × 12 probabilities.
-This is the first step in the pipeline; all subsequent scripts depend on this cache.
+Both closeness and betweenness are swept by epsilon (error tolerance).
+Closeness: Hoeffding bound → sample_probability from epsilon + reach.
+Betweenness: R-K budget from epsilon + reach → n_samples.
 
 Usage:
     python 00_generate_cache.py           # Generate cache (skips if exists)
@@ -26,10 +27,13 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 from utilities import (
     CACHE_DIR,
     CACHE_VERSION,
+    HOEFFDING_DELTA,
     QUARTILE_KEYS,
     apply_live_buffer_nx,
     compute_accuracy_metrics,
+    compute_hoeffding_p,
     compute_quartile_accuracy,
+    compute_rk_budget,
     mean_quartiles,
 )
 from utils.substrates import generate_keyed_template
@@ -45,7 +49,8 @@ TEMPLATE_NAMES = ["trellis", "tree", "linear"]
 SUBSTRATE_TILES = 24  # ~12km network extent
 DISTANCES = [250, 500, 1000, 1500, 2000, 3000, 4000]
 LIVE_INWARD_BUFFER = 4000  # 4km buffer for synthetic networks
-PROBS = [0.025, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+# Shared epsilon sweep: coarse → fine error tolerance
+EPSILONS = [0.5, 0.3, 0.2, 0.15, 0.1, 0.075, 0.05, 0.03, 0.02, 0.01]
 
 
 # =============================================================================
@@ -69,7 +74,7 @@ def generate_synthetic_cache(force: bool = False):
     print("=" * 70)
     print(f"Templates: {TEMPLATE_NAMES}")
     print(f"Distances: {DISTANCES}")
-    print(f"Probabilities: {len(PROBS)} values")
+    print(f"Epsilons: {EPSILONS}")
     print(f"Runs per config: {N_RUNS}")
 
     results = []
@@ -95,28 +100,34 @@ def generate_synthetic_cache(force: bool = False):
         ndf, edf, net = io.network_structure_from_nx(G)
         live_mask = ndf["live"].values
 
-        for dist in DISTANCES:
-            # Ground truth (full computation)
-            true_result = net.local_node_centrality_shortest(
-                distances=[dist],
-                compute_closeness=True,
-                compute_betweenness=True,
-                pbar_disabled=True,
-            )
+        # ---- Ground truth: compute all distances in one pass ----
+        true_closeness = net.closeness_shortest(
+            distances=DISTANCES,
+            pbar_disabled=True,
+        )
+        true_betw = net.betweenness_exact_shortest(
+            distances=DISTANCES,
+            pbar_disabled=True,
+        )
 
-            true_harmonic = np.array(true_result.node_harmonic[dist])[live_mask]
-            true_betweenness = np.array(true_result.node_betweenness[dist])[live_mask]
-            node_reach = np.array(true_result.node_density[dist])[live_mask]
+        for dist in DISTANCES:
+            true_harmonic = np.array(true_closeness.node_harmonic[dist])[live_mask]
+            node_reach = np.array(true_closeness.node_density[dist])[live_mask]
             mean_reach = float(np.mean(node_reach))
 
             if mean_reach < 5:
                 continue
 
-            print(f"  d={dist}m, reach={mean_reach:.0f}: ", end="", flush=True)
+            true_betweenness = np.array(true_betw.node_betweenness[dist])[live_mask]
 
-            for p in PROBS:
-                if p == 1.0:
-                    # Perfect accuracy at p=1.0
+            # ---- Closeness: Hoeffding auto-budget from epsilon ----
+            print(f"  d={dist}m, reach={mean_reach:.0f} closeness: ", end="", flush=True)
+
+            for eps in EPSILONS:
+                p = compute_hoeffding_p(mean_reach, epsilon=eps, delta=HOEFFDING_DELTA)
+
+                if p >= 1.0:
+                    # Full sampling — perfect accuracy
                     q_perfect = {}
                     for prefix in QUARTILE_KEYS:
                         for q in range(1, 5):
@@ -127,72 +138,50 @@ def generate_synthetic_cache(force: bool = False):
                             else:  # mae, max_error
                                 q_perfect[f"{prefix}_q{q}"] = 0.0
                     true_h_f32 = true_harmonic.astype(np.float32)
-                    true_b_f32 = true_betweenness.astype(np.float32)
-                    for metric in ["harmonic", "betweenness"]:
-                        true_f32 = true_h_f32 if metric == "harmonic" else true_b_f32
-                        row = {
-                            "topology": topo,
-                            "distance": dist,
-                            "n_nodes": n_nodes,
-                            "mean_reach": mean_reach,
-                            "node_reach": node_reach,
-                            "sample_prob": p,
-                            "effective_n": mean_reach,
-                            "metric": metric,
-                            "spearman": 1.0,
-                            "top_k_precision": 1.0,
-                            "scale_ratio": 1.0,
-                            "scale_iqr": 0.0,
-                            "max_abs_error": 0.0,
-                            "node_true_vals": true_f32,
-                            "node_est_vals": true_f32,  # same reference: zero error
-                        }
-                        row.update(q_perfect)
-                        results.append(row)
+                    row = {
+                        "topology": topo,
+                        "distance": dist,
+                        "n_nodes": n_nodes,
+                        "mean_reach": mean_reach,
+                        "node_reach": node_reach,
+                        "epsilon": eps,
+                        "sample_prob": p,
+                        "metric": "harmonic",
+                        "spearman": 1.0,
+                        "top_k_precision": 1.0,
+                        "scale_ratio": 1.0,
+                        "scale_iqr": 0.0,
+                        "max_abs_error": 0.0,
+                        "node_true_vals": true_h_f32,
+                        "node_est_vals": true_h_f32,
+                    }
+                    row.update(q_perfect)
+                    results.append(row)
+                    print(".", end="", flush=True)
                     continue
 
-                # Multiple runs
-                spearmans_h, spearmans_b = [], []
-                quartiles_h, quartiles_b = [], []
+                spearmans_h = []
+                quartiles_h = []
                 est_h_sum = np.zeros_like(true_harmonic, dtype=np.float64)
-                est_b_sum = np.zeros_like(true_betweenness, dtype=np.float64)
 
                 for seed in range(N_RUNS):
-                    r = net.local_node_centrality_shortest(
+                    r = net.closeness_shortest(
                         distances=[dist],
-                        compute_closeness=True,
-                        compute_betweenness=True,
                         sample_probability=p,
                         random_seed=seed,
                         pbar_disabled=True,
                     )
-
                     est_harmonic = np.array(r.node_harmonic[dist])[live_mask]
-                    est_betweenness = np.array(r.node_betweenness[dist])[live_mask]
                     est_h_sum += est_harmonic
-                    est_b_sum += est_betweenness
 
                     sp_h, prec_h, scale_h, iqr_h, mae_h = compute_accuracy_metrics(true_harmonic, est_harmonic)
-                    sp_b, prec_b, scale_b, iqr_b, mae_b = compute_accuracy_metrics(true_betweenness, est_betweenness)
-
                     if not np.isnan(sp_h):
                         spearmans_h.append((sp_h, prec_h, scale_h, iqr_h, mae_h))
-                    if not np.isnan(sp_b):
-                        spearmans_b.append((sp_b, prec_b, scale_b, iqr_b, mae_b))
-
-                    # Per-reachability-quartile accuracy
                     quartiles_h.append(compute_quartile_accuracy(true_harmonic, est_harmonic, node_reach))
-                    quartiles_b.append(compute_quartile_accuracy(true_betweenness, est_betweenness, node_reach))
 
-                effective_n = mean_reach * p
                 est_h_avg = (est_h_sum / N_RUNS).astype(np.float32)
-                est_b_avg = (est_b_sum / N_RUNS).astype(np.float32)
                 true_h_f32 = true_harmonic.astype(np.float32)
-                true_b_f32 = true_betweenness.astype(np.float32)
-
-                # Average quartile results across runs
                 q_h = mean_quartiles(quartiles_h)
-                q_b = mean_quartiles(quartiles_b)
 
                 if spearmans_h:
                     row_h = {
@@ -201,8 +190,8 @@ def generate_synthetic_cache(force: bool = False):
                         "n_nodes": n_nodes,
                         "mean_reach": mean_reach,
                         "node_reach": node_reach,
+                        "epsilon": eps,
                         "sample_prob": p,
-                        "effective_n": effective_n,
                         "metric": "harmonic",
                         "spearman": np.mean([x[0] for x in spearmans_h]),
                         "top_k_precision": np.mean([x[1] for x in spearmans_h]),
@@ -215,6 +204,40 @@ def generate_synthetic_cache(force: bool = False):
                     row_h.update(q_h)
                     results.append(row_h)
 
+                print(".", end="", flush=True)
+            print()
+
+            # ---- Betweenness: R-K path sampling with budget from epsilon + reach ----
+            print(f"  d={dist}m, reach={mean_reach:.0f} betweenness: ", end="", flush=True)
+
+            for eps in EPSILONS:
+                n_samples = compute_rk_budget(mean_reach, epsilon=eps, delta=HOEFFDING_DELTA)
+                if n_samples is None:
+                    continue
+
+                spearmans_b = []
+                quartiles_b = []
+                est_b_sum = np.zeros_like(true_betweenness, dtype=np.float64)
+
+                for seed in range(N_RUNS):
+                    rb = net.betweenness_shortest(
+                        distances=[dist],
+                        n_samples=n_samples,
+                        random_seed=seed,
+                        pbar_disabled=True,
+                    )
+                    est_betweenness = np.array(rb.node_betweenness[dist])[live_mask]
+                    est_b_sum += est_betweenness
+
+                    sp_b, prec_b, scale_b, iqr_b, mae_b = compute_accuracy_metrics(true_betweenness, est_betweenness)
+                    if not np.isnan(sp_b):
+                        spearmans_b.append((sp_b, prec_b, scale_b, iqr_b, mae_b))
+                    quartiles_b.append(compute_quartile_accuracy(true_betweenness, est_betweenness, node_reach))
+
+                est_b_avg = (est_b_sum / N_RUNS).astype(np.float32)
+                true_b_f32 = true_betweenness.astype(np.float32)
+                q_b = mean_quartiles(quartiles_b)
+
                 if spearmans_b:
                     row_b = {
                         "topology": topo,
@@ -222,8 +245,8 @@ def generate_synthetic_cache(force: bool = False):
                         "n_nodes": n_nodes,
                         "mean_reach": mean_reach,
                         "node_reach": node_reach,
-                        "sample_prob": p,
-                        "effective_n": effective_n,
+                        "epsilon": eps,
+                        "n_samples": n_samples,
                         "metric": "betweenness",
                         "spearman": np.mean([x[0] for x in spearmans_b]),
                         "top_k_precision": np.mean([x[1] for x in spearmans_b]),

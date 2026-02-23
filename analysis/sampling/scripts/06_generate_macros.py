@@ -6,8 +6,9 @@ Reads the JSON/CSV output files from the analysis pipeline and generates
 a LaTeX macros file that can be included in the paper. This ensures
 all values in the paper are derived from actual data, not hardcoded.
 
-All macros are for the Hoeffding/EW model (primary):
-    k = log(2r/δ) / (2ε²), p = min(1, k/r)
+Dual-model approach:
+    Hoeffding (closeness): k = log(2r/delta) / (2*epsilon^2), p = min(1, k/r)
+    R-K (betweenness):     VD = ceil(sqrt(r)), m = ceil((1/(2*eps^2)) * (floor(log2(VD-2)) + 1 + ln(1/delta)))
 
 Outputs:
     - paper/tables/model_macros.tex: LaTeX macro definitions
@@ -21,27 +22,30 @@ import pandas as pd
 from utilities import (
     CACHE_DIR,
     HOEFFDING_DELTA,
-    HOEFFDING_EPSILON,
     OUTPUT_DIR,
     TABLES_DIR,
     compute_hoeffding_p,
+    compute_rk_budget,
 )
+
+# Paper default epsilon (NOT the library default of 0.05)
+PAPER_EPSILON = 0.1
 
 # =============================================================================
 # DATA LOADING
 # =============================================================================
 
 
-def load_gla_validation() -> pd.DataFrame:
-    """Load GLA validation results."""
+def load_gla_summary() -> pd.DataFrame:
+    """Load GLA validation summary results (one row per distance at epsilon=0.1)."""
     path = OUTPUT_DIR / "gla_validation_summary.csv"
     if not path.exists():
-        raise FileNotFoundError(f"GLA validation not found: {path}. Run 03_validate_gla.py first.")
+        raise FileNotFoundError(f"GLA validation summary not found: {path}. Run 03_validate_gla.py first.")
     return pd.read_csv(path)
 
 
 def load_madrid_validation() -> pd.DataFrame | None:
-    """Load Madrid validation results (optional)."""
+    """Load Madrid validation results (optional, one row per distance)."""
     path = OUTPUT_DIR / "madrid_validation.csv"
     if not path.exists():
         return None
@@ -67,56 +71,66 @@ def format_number(n: float, decimals: int = 2) -> str:
 def generate_macros() -> str:
     """Generate all LaTeX macros from data files."""
 
-    gla_df = load_gla_validation()
+    gla_df = load_gla_summary()
 
-    # Compute Hoeffding-specific values for common reaches
+    # -------------------------------------------------------------------------
+    # Compute Hoeffding model values at common reaches (using paper epsilon=0.1)
+    # -------------------------------------------------------------------------
     hoeffding_scenarios = {}
     for reach in [1000, 2000, 5000, 10000, 20000, 50000, 100000]:
-        h_p = compute_hoeffding_p(reach)
-        h_k = math.log(2 * reach / HOEFFDING_DELTA) / (2 * HOEFFDING_EPSILON**2)
+        h_p = compute_hoeffding_p(reach, epsilon=PAPER_EPSILON, delta=HOEFFDING_DELTA)
+        h_k = math.log(2 * reach / HOEFFDING_DELTA) / (2 * PAPER_EPSILON**2)
         hoeffding_scenarios[reach] = {"p": h_p, "k": h_k, "speedup": 1.0 / h_p}
 
-    # GLA validation data
+    # -------------------------------------------------------------------------
+    # Compute R-K model values at common reaches (using paper epsilon=0.1)
+    # -------------------------------------------------------------------------
+    rk_scenarios = {}
+    for reach in [1000, 2000, 5000, 10000, 20000]:
+        budget = compute_rk_budget(reach, epsilon=PAPER_EPSILON, delta=HOEFFDING_DELTA)
+        rk_scenarios[reach] = budget
+
+    # -------------------------------------------------------------------------
+    # GLA validation data at key distances
+    # -------------------------------------------------------------------------
     gla_5km = gla_df[gla_df["distance"] == 5000].iloc[0]
     gla_10km = gla_df[gla_df["distance"] == 10000].iloc[0]
     gla_20km = gla_df[gla_df["distance"] == 20000].iloc[0]
 
     # Compute minimum rho across all distances and both metrics (conservative bound)
-    min_rho = min(
-        gla_5km["observed_rho_h"],
-        gla_5km["observed_rho_b"],
-        gla_10km["observed_rho_h"],
-        gla_10km["observed_rho_b"],
-        gla_20km["observed_rho_h"],
-        gla_20km["observed_rho_b"],
-    )
+    all_gla_rhos = []
+    for _, row in gla_df.iterrows():
+        all_gla_rhos.extend([row["rho_closeness"], row["rho_betweenness"]])
+    gla_min_rho = min(all_gla_rhos)
     # Round down to 2 decimal places for conservative claim
-    min_rho_conservative = int(min_rho * 100) / 100
+    gla_min_rho_conservative = int(gla_min_rho * 100) / 100
 
+    # -------------------------------------------------------------------------
     # Generate LaTeX content
+    # -------------------------------------------------------------------------
     macros = f"""% =============================================================================
 % Model Macros - AUTO-GENERATED from analysis pipeline
 % Generated: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
 % Source files:
 %   - output/gla_validation_summary.csv
-%   - output/gla_ew_analysis.csv (if available)
 %   - output/madrid_validation.csv (if available)
+%   - .cache/madrid_n_nodes.json (if available)
 %
 % DO NOT EDIT THIS FILE MANUALLY - regenerate with 06_generate_macros.py
 % =============================================================================
 
 % -----------------------------------------------------------------------------
-% HOEFFDING / EW BOUND MODEL
+% HOEFFDING / EW BOUND MODEL (closeness)
 % k = log(2r/delta) / (2*epsilon^2), p = min(1, k/r)
 % Zero fitted parameters: epsilon and delta are user-chosen conventions.
 % -----------------------------------------------------------------------------
 
 % Default parameters
-\\newcommand{{\\hoeffdingEpsilon}}{{{HOEFFDING_EPSILON}}}
+\\newcommand{{\\hoeffdingEpsilon}}{{{PAPER_EPSILON}}}
 \\newcommand{{\\hoeffdingDelta}}{{{HOEFFDING_DELTA}}}
 \\newcommand{{\\targetRho}}{{0.95}}
 
-% Hoeffding required k at common reaches (epsilon={HOEFFDING_EPSILON}, delta={HOEFFDING_DELTA})
+% Hoeffding required k at common reaches (epsilon={PAPER_EPSILON}, delta={HOEFFDING_DELTA})
 \\newcommand{{\\hoeffdingKFiveK}}{{{hoeffding_scenarios[5000]["k"]:.0f}}}
 \\newcommand{{\\hoeffdingKTenK}}{{{hoeffding_scenarios[10000]["k"]:.0f}}}
 \\newcommand{{\\hoeffdingKTwentyK}}{{{hoeffding_scenarios[20000]["k"]:.0f}}}
@@ -134,6 +148,18 @@ def generate_macros() -> str:
 \\newcommand{{\\hoeffdingSpeedupTwentyK}}{{{hoeffding_scenarios[20000]["speedup"]:.1f}}}
 
 % -----------------------------------------------------------------------------
+% RIONDATO-KORNAROPOULOS (R-K) BOUND MODEL (betweenness)
+% VD = ceil(sqrt(r)), m = ceil((1/(2*eps^2)) * (floor(log2(VD-2)) + 1 + ln(1/delta)))
+% -----------------------------------------------------------------------------
+
+% R-K path-sampling budget at common reaches (epsilon={PAPER_EPSILON}, delta={HOEFFDING_DELTA})
+\\newcommand{{\\rkBudgetOneK}}{{{format_number(rk_scenarios[1000], 0)}}}
+\\newcommand{{\\rkBudgetTwoK}}{{{format_number(rk_scenarios[2000], 0)}}}
+\\newcommand{{\\rkBudgetFiveK}}{{{format_number(rk_scenarios[5000], 0)}}}
+\\newcommand{{\\rkBudgetTenK}}{{{format_number(rk_scenarios[10000], 0)}}}
+\\newcommand{{\\rkBudgetTwentyK}}{{{format_number(rk_scenarios[20000], 0)}}}
+
+% -----------------------------------------------------------------------------
 % GLA VALIDATION RESULTS
 % -----------------------------------------------------------------------------
 
@@ -141,27 +167,27 @@ def generate_macros() -> str:
 \\newcommand{{\\glaNnodes}}{{294{{,}}000}}
 
 % Minimum observed rho across all GLA distances (conservative bound)
-\\newcommand{{\\glaMinRho}}{{{min_rho_conservative}}}
+\\newcommand{{\\glaMinRho}}{{{gla_min_rho_conservative}}}
 
 % 5km validation
 \\newcommand{{\\glaFiveKmReach}}{{{format_number(gla_5km["reach"], 0)}}}
-\\newcommand{{\\glaFiveKmRhoH}}{{{gla_5km["observed_rho_h"]:.3f}}}
-\\newcommand{{\\glaFiveKmRhoB}}{{{gla_5km["observed_rho_b"]:.3f}}}
-\\newcommand{{\\glaFiveKmRho}}{{{min(gla_5km["observed_rho_h"], gla_5km["observed_rho_b"]):.3f}}}
+\\newcommand{{\\glaFiveKmRhoH}}{{{gla_5km["rho_closeness"]:.3f}}}
+\\newcommand{{\\glaFiveKmRhoB}}{{{gla_5km["rho_betweenness"]:.3f}}}
+\\newcommand{{\\glaFiveKmRho}}{{{min(gla_5km["rho_closeness"], gla_5km["rho_betweenness"]):.3f}}}
 \\newcommand{{\\glaFiveKmSpeedup}}{{{gla_5km["speedup"]:.1f}}}
 
 % 10km validation
 \\newcommand{{\\glaTenKmReach}}{{{format_number(gla_10km["reach"], 0)}}}
-\\newcommand{{\\glaTenKmRhoH}}{{{gla_10km["observed_rho_h"]:.3f}}}
-\\newcommand{{\\glaTenKmRhoB}}{{{gla_10km["observed_rho_b"]:.3f}}}
-\\newcommand{{\\glaTenKmRho}}{{{min(gla_10km["observed_rho_h"], gla_10km["observed_rho_b"]):.3f}}}
+\\newcommand{{\\glaTenKmRhoH}}{{{gla_10km["rho_closeness"]:.3f}}}
+\\newcommand{{\\glaTenKmRhoB}}{{{gla_10km["rho_betweenness"]:.3f}}}
+\\newcommand{{\\glaTenKmRho}}{{{min(gla_10km["rho_closeness"], gla_10km["rho_betweenness"]):.3f}}}
 \\newcommand{{\\glaTenKmSpeedup}}{{{gla_10km["speedup"]:.1f}}}
 
 % 20km validation
 \\newcommand{{\\glaTwentyKmReach}}{{{format_number(gla_20km["reach"], 0)}}}
-\\newcommand{{\\glaTwentyKmRhoH}}{{{gla_20km["observed_rho_h"]:.3f}}}
-\\newcommand{{\\glaTwentyKmRhoB}}{{{gla_20km["observed_rho_b"]:.3f}}}
-\\newcommand{{\\glaTwentyKmRho}}{{{min(gla_20km["observed_rho_h"], gla_20km["observed_rho_b"]):.3f}}}
+\\newcommand{{\\glaTwentyKmRhoH}}{{{gla_20km["rho_closeness"]:.3f}}}
+\\newcommand{{\\glaTwentyKmRhoB}}{{{gla_20km["rho_betweenness"]:.3f}}}
+\\newcommand{{\\glaTwentyKmRho}}{{{min(gla_20km["rho_closeness"], gla_20km["rho_betweenness"]):.3f}}}
 \\newcommand{{\\glaTwentyKmSpeedup}}{{{gla_20km["speedup"]:.1f}}}
 
 % Live node buffer (km)
@@ -170,39 +196,30 @@ def generate_macros() -> str:
 % GLA Hoeffding validation (rho at Hoeffding-prescribed p)
 """
 
-    # Add GLA Hoeffding validation macros from EW analysis
-    ew_path = OUTPUT_DIR / "gla_ew_analysis.csv"
-    if ew_path.exists():
-        ew_df = pd.read_csv(ew_path)
-        for dist, label in [(5000, "FiveKm"), (10000, "TenKm"), (20000, "TwentyKm")]:
-            dist_data = ew_df[ew_df["distance"] == dist]
-            if dist_data.empty:
-                continue
-            reach = dist_data["reach"].iloc[0]
-            h_p = compute_hoeffding_p(reach)
-            # Find the closest sample_prob to Hoeffding p
-            dist_data = dist_data.copy()
-            dist_data["p_diff"] = abs(dist_data["sample_prob"] - h_p)
-            # Get best rho for each metric at nearest p
-            for metric, suffix in [("harmonic", "H"), ("betweenness", "B")]:
-                metric_data = dist_data[dist_data["metric"] == metric]
-                if metric_data.empty:
-                    continue
-                nearest = metric_data.loc[metric_data["p_diff"].idxmin()]
-                macros += f"\\newcommand{{\\glaHoeffding{label}Rho{suffix}}}{{{nearest['spearman']:.3f}}}\n"
-            macros += f"\\newcommand{{\\glaHoeffding{label}P}}{{{h_p * 100:.1f}}}\n"
-            macros += f"\\newcommand{{\\glaHoeffding{label}Speedup}}{{{1.0 / h_p:.1f}}}\n"
+    # Add GLA Hoeffding validation macros from summary CSV
+    for dist, label in [(5000, "FiveKm"), (10000, "TenKm"), (20000, "TwentyKm")]:
+        dist_row = gla_df[gla_df["distance"] == dist]
+        if dist_row.empty:
+            continue
+        dist_row = dist_row.iloc[0]
+        reach = dist_row["reach"]
+        h_p = compute_hoeffding_p(reach, epsilon=PAPER_EPSILON, delta=HOEFFDING_DELTA)
+        macros += f"\\newcommand{{\\glaHoeffding{label}RhoH}}{{{dist_row['rho_closeness']:.3f}}}\n"
+        macros += f"\\newcommand{{\\glaHoeffding{label}RhoB}}{{{dist_row['rho_betweenness']:.3f}}}\n"
+        macros += f"\\newcommand{{\\glaHoeffding{label}P}}{{{h_p * 100:.1f}}}\n"
+        macros += f"\\newcommand{{\\glaHoeffding{label}Speedup}}{{{1.0 / h_p:.1f}}}\n"
 
+    # -------------------------------------------------------------------------
     # Madrid validation macros (optional)
+    # -------------------------------------------------------------------------
     madrid_df = load_madrid_validation()
     madrid_min_rho = None
     if madrid_df is not None:
-        madrid_hoeff = madrid_df[madrid_df["model"] == "hoeffding_0.1"] if "model" in madrid_df.columns else madrid_df
-
-        all_rhos = []
-        for _, row in madrid_hoeff.iterrows():
-            all_rhos.extend([row["rho_closeness"], row["rho_betweenness"]])
-        madrid_min_rho = min(all_rhos)
+        # New format: one row per distance, no model column
+        all_madrid_rhos = []
+        for _, row in madrid_df.iterrows():
+            all_madrid_rhos.extend([row["rho_closeness"], row["rho_betweenness"]])
+        madrid_min_rho = min(all_madrid_rhos)
 
         madrid_n_nodes_path = CACHE_DIR / "madrid_n_nodes.json"
         madrid_n_nodes = None
@@ -221,22 +238,23 @@ def generate_macros() -> str:
         macros += f"\\newcommand{{\\madridMinRho}}{{{madrid_min_rho:.4f}}}\n\n"
 
         for dist, label in [(5000, "FiveKm"), (10000, "TenKm"), (20000, "TwentyKm")]:
-            dist_row = madrid_hoeff[madrid_hoeff["distance"] == dist]
+            dist_row = madrid_df[madrid_df["distance"] == dist]
             if dist_row.empty:
                 continue
             dist_row = dist_row.iloc[0]
             reach = dist_row["mean_reach"]
-            hoeff_p = compute_hoeffding_p(reach)
             macros += f"% {dist // 1000}km validation\n"
             macros += f"\\newcommand{{\\madrid{label}Reach}}{{{format_number(reach, 0)}}}\n"
             macros += f"\\newcommand{{\\madrid{label}RhoH}}{{{dist_row['rho_closeness']:.4f}}}\n"
             macros += f"\\newcommand{{\\madrid{label}RhoB}}{{{dist_row['rho_betweenness']:.4f}}}\n"
-            macros += f"\\newcommand{{\\madrid{label}Speedup}}{{{1.0 / hoeff_p:.1f}}}\n\n"
+            macros += f"\\newcommand{{\\madrid{label}Speedup}}{{{dist_row['speedup']:.1f}}}\n\n"
 
+    # -------------------------------------------------------------------------
     # Overall minimum rho across both validated networks
-    overall_min_rho = min_rho
+    # -------------------------------------------------------------------------
+    overall_min_rho = gla_min_rho
     if madrid_min_rho is not None:
-        overall_min_rho = min(min_rho, madrid_min_rho)
+        overall_min_rho = min(gla_min_rho, madrid_min_rho)
     overall_min_rho_conservative = int(overall_min_rho * 100) / 100
 
     macros += f"""
@@ -259,8 +277,11 @@ def generate_macros() -> str:
 % Number of distances tested
 \\newcommand{\\nDistances}{7}
 
-% Number of sampling probabilities tested
-\\newcommand{\\nProbs}{12}
+% Number of epsilon values tested
+\\newcommand{\\nEpsilons}{10}
+
+% Backward-compatible alias
+\\newcommand{\\nProbs}{\\nEpsilons}
 
 % Maximum analysis distance for synthetic networks
 \\newcommand{\\syntheticMaxDist}{4{,}000}
@@ -302,31 +323,33 @@ def main():
     print("MACRO SUMMARY")
     print("=" * 70)
 
-    print(f"\nHoeffding model: ε = {HOEFFDING_EPSILON}, δ = {HOEFFDING_DELTA}")
+    print(f"\nHoeffding model (closeness): epsilon = {PAPER_EPSILON}, delta = {HOEFFDING_DELTA}")
     for reach in [5000, 10000, 20000]:
-        h_p = compute_hoeffding_p(reach)
-        print(f"  reach={reach:,}: p={h_p:.3f}, speedup={1 / h_p:.1f}×")
+        h_p = compute_hoeffding_p(reach, epsilon=PAPER_EPSILON, delta=HOEFFDING_DELTA)
+        print(f"  reach={reach:,}: p={h_p:.3f}, speedup={1 / h_p:.1f}x")
 
-    gla_df = load_gla_validation()
-    print("\nGLA validation (Hoeffding p):")
+    print(f"\nR-K model (betweenness): epsilon = {PAPER_EPSILON}, delta = {HOEFFDING_DELTA}")
+    for reach in [1000, 2000, 5000, 10000, 20000]:
+        budget = compute_rk_budget(reach, epsilon=PAPER_EPSILON, delta=HOEFFDING_DELTA)
+        print(f"  reach={reach:,}: n_samples={budget:,}")
+
+    gla_df = load_gla_summary()
+    print("\nGLA validation:")
     for _, row in gla_df.iterrows():
-        rho_min = min(row["observed_rho_h"], row["observed_rho_b"])
+        rho_min = min(row["rho_closeness"], row["rho_betweenness"])
         print(
-            f"  {int(row['distance'] / 1000)}km: ρ_h={row['observed_rho_h']:.3f}, "
-            f"ρ_b={row['observed_rho_b']:.3f} (min={rho_min:.3f}), speedup={row['speedup']:.1f}×"
+            f"  {int(row['distance'] / 1000)}km: rho_h={row['rho_closeness']:.3f}, "
+            f"rho_b={row['rho_betweenness']:.3f} (min={rho_min:.3f}), speedup={row['speedup']:.1f}x"
         )
 
     madrid_df = load_madrid_validation()
     if madrid_df is not None:
-        madrid_hoeff = madrid_df[madrid_df["model"] == "hoeffding_0.1"] if "model" in madrid_df.columns else madrid_df
-        print("\nMadrid validation (Hoeffding p):")
-        for _, row in madrid_hoeff.iterrows():
+        print("\nMadrid validation:")
+        for _, row in madrid_df.iterrows():
             rho_min = min(row["rho_closeness"], row["rho_betweenness"])
-            reach = row["mean_reach"]
-            hoeff_p = compute_hoeffding_p(reach)
             print(
-                f"  {int(row['distance'] / 1000)}km: ρ_h={row['rho_closeness']:.3f}, "
-                f"ρ_b={row['rho_betweenness']:.3f} (min={rho_min:.3f}), speedup={1.0 / hoeff_p:.1f}×"
+                f"  {int(row['distance'] / 1000)}km: rho_h={row['rho_closeness']:.3f}, "
+                f"rho_b={row['rho_betweenness']:.3f} (min={rho_min:.3f}), speedup={row['speedup']:.1f}x"
             )
 
     print("\n" + "=" * 70)
@@ -335,8 +358,8 @@ def main():
     print("\nIn your LaTeX document, include:")
     print("  \\input{tables/model_macros}")
     print("\nThen use macros like:")
-    print("  \\hoeffdingEpsilon, \\hoeffdingPTenK\\%, \\hoeffdingSpeedupTenK×")
-    print("  \\glaMinRho, \\glaHoeffdingTenKmRhoH")
+    print("  \\hoeffdingEpsilon, \\hoeffdingPTenK\\%, \\hoeffdingSpeedupTenK x")
+    print("  \\rkBudgetTenK, \\glaMinRho, \\glaHoeffdingTenKmRhoH")
 
     return 0
 

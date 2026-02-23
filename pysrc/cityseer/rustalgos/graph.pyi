@@ -4,7 +4,14 @@ from __future__ import annotations
 
 from typing import Any
 
-from .centrality import CentralitySegmentResult, CentralityShortestResult, CentralitySimplestResult, OdMatrix
+from .centrality import (
+    BetweennessShortestResult,
+    BetweennessSimplestResult,
+    CentralitySegmentResult,
+    ClosenessShortestResult,
+    ClosenessSimplestResult,
+    OdMatrix,
+)
 
 __doc__: str
 
@@ -398,27 +405,21 @@ class NetworkStructure:
             (Reachable node indices, Visited edge indices, NodeVisit states, EdgeVisit states).
         """
         ...
-    def local_node_centrality_shortest(
+    def closeness_shortest(
         self,
         distances: list[int] | None = None,
         betas: list[float] | None = None,
         minutes: list[float] | None = None,
-        compute_closeness: bool | None = True,
-        compute_betweenness: bool | None = True,
         min_threshold_wt: float | None = None,
         speed_m_s: float | None = None,
         jitter_scale: float | None = None,
         sample_probability: float | None = None,
         sampling_weights: list[float] | None = None,
-        od_matrix: OdMatrix | None = None,
         random_seed: int | None = None,
         pbar_disabled: bool | None = None,
-    ) -> CentralityShortestResult:
+    ) -> ClosenessShortestResult:
         """
-        Calculate local node centrality metrics based on shortest paths (metric distance).
-
-        Computes closeness and/or betweenness centrality within specified catchment thresholds.
-        Requires exactly one of `distances`, `betas`, or `minutes`.
+        Compute closeness centrality using shortest paths (metric distance).
 
         Parameters
         ----------
@@ -428,10 +429,6 @@ class NetworkStructure:
             Decay parameters (beta).
         minutes: list[float] | None
             Time thresholds (minutes).
-        compute_closeness: bool | None
-            Compute closeness centrality if True.
-        compute_betweenness: bool | None
-            Compute betweenness centrality if True.
         min_threshold_wt: float | None
             Minimum weight for beta/distance conversion.
         speed_m_s: float | None
@@ -439,13 +436,9 @@ class NetworkStructure:
         jitter_scale: float | None
             Path cost jitter scale.
         sample_probability: float | None
-            Probability of sampling a node as a source for centrality calculations.
+            Probability of sampling a node as a source.
         sampling_weights: list[float] | None
-            Per-node sampling weights in range [0.0, 1.0]. When provided, sampling probability
-            for each node becomes sample_probability * sampling_weights[node_idx].
-        od_matrix: OdMatrix | None
-            Sparse OD weight matrix for demand-weighted centrality. When provided, only
-            (origin, destination) pairs in the matrix contribute, weighted by trip count.
+            Per-node sampling weights in range [0.0, 1.0].
         random_seed: int | None
             Optional seed for reproducible sampling and jitter.
         pbar_disabled: bool | None
@@ -453,17 +446,15 @@ class NetworkStructure:
 
         Returns
         -------
-        CentralityShortestResult
-            Object containing calculated centrality metrics.
+        ClosenessShortestResult
+            Object containing closeness centrality metrics.
         """
         ...
-    def local_node_centrality_simplest(
+    def closeness_simplest(
         self,
         distances: list[int] | None = None,
         betas: list[float] | None = None,
         minutes: list[float] | None = None,
-        compute_closeness: bool | None = True,
-        compute_betweenness: bool | None = True,
         min_threshold_wt: float | None = None,
         speed_m_s: float | None = None,
         angular_scaling_unit: float | None = None,
@@ -473,12 +464,9 @@ class NetworkStructure:
         sampling_weights: list[float] | None = None,
         random_seed: int | None = None,
         pbar_disabled: bool | None = None,
-    ) -> CentralitySimplestResult:
+    ) -> ClosenessSimplestResult:
         """
-        Calculate local node centrality metrics based on simplest paths (angular distance).
-
-        Computes closeness and/or betweenness centrality within specified catchment thresholds.
-        Requires exactly one of `distances`, `betas`, or `minutes`.
+        Compute closeness centrality using simplest paths (angular distance).
 
         Parameters
         ----------
@@ -488,25 +476,20 @@ class NetworkStructure:
             Decay parameters (beta).
         minutes: list[float] | None
             Time thresholds (minutes).
-        compute_closeness: bool | None
-            Compute closeness centrality if True.
-        compute_betweenness: bool | None
-            Compute betweenness centrality if True.
         min_threshold_wt: float | None
             Minimum weight for beta/distance conversion.
         speed_m_s: float | None
             Travel speed (m/s).
         angular_scaling_unit: float | None
-            Scaling unit for angular cost (default: 90 degrees).
+            Scaling unit for angular cost (default: 180 degrees).
         farness_scaling_offset: float | None
             Offset for farness calculation (default: 1.0).
         jitter_scale: float | None
             Path cost jitter scale.
         sample_probability: float | None
-            Probability of sampling a node as a source for centrality calculations.
+            Probability of sampling a node as a source.
         sampling_weights: list[float] | None
-            Per-node sampling weights in range [0.0, 1.0]. When provided, sampling probability
-            for each node becomes sample_probability * sampling_weights[node_idx].
+            Per-node sampling weights in range [0.0, 1.0].
         random_seed: int | None
             Optional seed for reproducible sampling and jitter.
         pbar_disabled: bool | None
@@ -514,11 +497,184 @@ class NetworkStructure:
 
         Returns
         -------
-        CentralitySimplestResult
-            Object containing calculated centrality metrics.
+        ClosenessSimplestResult
+            Object containing closeness centrality metrics.
         """
         ...
-    def local_segment_centrality(
+    def betweenness_shortest(
+        self,
+        distances: list[int] | None = None,
+        betas: list[float] | None = None,
+        minutes: list[float] | None = None,
+        min_threshold_wt: float | None = None,
+        speed_m_s: float | None = None,
+        jitter_scale: float | None = None,
+        n_samples: int | None = None,
+        random_seed: int | None = None,
+        pbar_disabled: bool | None = None,
+    ) -> BetweennessShortestResult:
+        """
+        Compute betweenness centrality using R-K path sampling (shortest paths).
+
+        Uses Brandes multi-predecessor Dijkstra with random (source, destination) pair
+        sampling. Sample budget (n_samples) should be computed externally via
+        config.compute_rk_budget() using probed reach estimates.
+
+        Parameters
+        ----------
+        distances: list[int] | None
+            Distance thresholds (meters).
+        betas: list[float] | None
+            Decay parameters (beta).
+        minutes: list[float] | None
+            Time thresholds (minutes).
+        min_threshold_wt: float | None
+            Minimum weight for beta/distance conversion.
+        speed_m_s: float | None
+            Travel speed (m/s).
+        jitter_scale: float | None
+            Path cost jitter scale.
+        n_samples: int | None
+            Number of (source, destination) pair samples. Default 100.
+        random_seed: int | None
+            Optional seed for reproducible sampling.
+        pbar_disabled: bool | None
+            Disable progress bar if True.
+
+        Returns
+        -------
+        BetweennessShortestResult
+            Object containing betweenness centrality metrics.
+        """
+        ...
+    def betweenness_simplest(
+        self,
+        distances: list[int] | None = None,
+        betas: list[float] | None = None,
+        minutes: list[float] | None = None,
+        min_threshold_wt: float | None = None,
+        speed_m_s: float | None = None,
+        jitter_scale: float | None = None,
+        n_samples: int | None = None,
+        random_seed: int | None = None,
+        pbar_disabled: bool | None = None,
+    ) -> BetweennessSimplestResult:
+        """
+        Compute betweenness centrality using R-K path sampling (simplest paths).
+
+        Uses Brandes multi-predecessor Dijkstra with angular distances and random
+        (source, destination) pair sampling. Sample budget (n_samples) should be
+        computed externally via config.compute_rk_budget().
+
+        Parameters
+        ----------
+        distances: list[int] | None
+            Distance thresholds (meters).
+        betas: list[float] | None
+            Decay parameters (beta).
+        minutes: list[float] | None
+            Time thresholds (minutes).
+        min_threshold_wt: float | None
+            Minimum weight for beta/distance conversion.
+        speed_m_s: float | None
+            Travel speed (m/s).
+        jitter_scale: float | None
+            Path cost jitter scale.
+        n_samples: int | None
+            Number of (source, destination) pair samples. Default 100.
+        random_seed: int | None
+            Optional seed for reproducible sampling.
+        pbar_disabled: bool | None
+            Disable progress bar if True.
+
+        Returns
+        -------
+        BetweennessSimplestResult
+            Object containing betweenness centrality metrics.
+        """
+        ...
+    def betweenness_exact_shortest(
+        self,
+        distances: list[int] | None = None,
+        betas: list[float] | None = None,
+        minutes: list[float] | None = None,
+        min_threshold_wt: float | None = None,
+        speed_m_s: float | None = None,
+        jitter_scale: float | None = None,
+        pbar_disabled: bool | None = None,
+    ) -> BetweennessShortestResult:
+        """
+        Compute exact Brandes betweenness centrality from all sources (no sampling).
+
+        Iterates all live source nodes with standard Brandes backpropagation using
+        multi-predecessor Dijkstra. Gives exact betweenness values for ground truth.
+
+        Parameters
+        ----------
+        distances: list[int] | None
+            Distance thresholds (meters).
+        betas: list[float] | None
+            Decay parameters (beta).
+        minutes: list[float] | None
+            Time thresholds (minutes).
+        min_threshold_wt: float | None
+            Minimum weight for beta/distance conversion.
+        speed_m_s: float | None
+            Travel speed (m/s).
+        jitter_scale: float | None
+            Path cost jitter scale.
+        pbar_disabled: bool | None
+            Disable progress bar if True.
+
+        Returns
+        -------
+        BetweennessShortestResult
+            Object containing exact betweenness centrality metrics.
+        """
+        ...
+    def betweenness_od_shortest(
+        self,
+        od_matrix: OdMatrix,
+        distances: list[int] | None = None,
+        betas: list[float] | None = None,
+        minutes: list[float] | None = None,
+        min_threshold_wt: float | None = None,
+        speed_m_s: float | None = None,
+        jitter_scale: float | None = None,
+        random_seed: int | None = None,
+        pbar_disabled: bool | None = None,
+    ) -> BetweennessShortestResult:
+        """
+        Compute OD-weighted betweenness centrality using shortest paths.
+
+        Parameters
+        ----------
+        od_matrix: OdMatrix
+            Sparse OD weight matrix mapping (origin, destination) pairs to trip weights.
+        distances: list[int] | None
+            Distance thresholds (meters).
+        betas: list[float] | None
+            Decay parameters (beta).
+        minutes: list[float] | None
+            Time thresholds (minutes).
+        min_threshold_wt: float | None
+            Minimum weight for beta/distance conversion.
+        speed_m_s: float | None
+            Travel speed (m/s).
+        jitter_scale: float | None
+            Path cost jitter scale.
+        random_seed: int | None
+            Optional seed for reproducible jitter.
+        pbar_disabled: bool | None
+            Disable progress bar if True.
+
+        Returns
+        -------
+        BetweennessShortestResult
+            Object containing betweenness centrality metrics.
+        """
+        ...
+    def segment_centrality(
         self,
         distances: list[int] | None = None,
         betas: list[float] | None = None,

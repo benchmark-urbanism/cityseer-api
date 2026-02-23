@@ -106,7 +106,7 @@ nodes_std = networks.node_centrality_shortest(
 
 # %% Run OD-weighted centrality
 
-nodes_od = networks.node_betweenness_od(
+nodes_od = networks.betweenness_od(
     net,
     nodes_gdf.copy(),
     od_matrix=od,

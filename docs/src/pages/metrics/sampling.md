@@ -39,20 +39,18 @@ This means:
 ```python
 from cityseer.metrics import networks
 
-# Standard approach (uniform sampling)
-nodes_gdf = networks.node_centrality_shortest(
+# Closeness with adaptive per-distance sampling
+nodes_gdf = networks.closeness_shortest(
     network_structure,
     nodes_gdf,
     distances=[500, 2000, 5000, 20000],
-    sample_probability=0.2,  # Same p for all distances
 )
 
-# Adaptive approach (per-distance calibration)
-nodes_gdf = networks.node_centrality_shortest_adaptive(
+# Betweenness with R-K path sampling
+nodes_gdf = networks.betweenness_shortest(
     network_structure,
     nodes_gdf,
     distances=[500, 2000, 5000, 20000],
-    target_rho=0.95,  # Target accuracy level
 )
 ```
 
@@ -83,8 +81,10 @@ Adaptive sampling achieves **consistent accuracy (ρ ≥ 0.95) across all distan
 
 ## API Reference
 
-- [`node_centrality_shortest_adaptive`](/metrics/networks#node-centrality-shortest-adaptive) - Adaptive shortest-path centrality
-- [`node_centrality_simplest_adaptive`](/metrics/networks#node-centrality-simplest-adaptive) - Adaptive simplest-path (angular) centrality
+- [`closeness_shortest`](/metrics/networks#closeness-shortest) - Closeness centrality (shortest paths, adaptive sampling)
+- [`closeness_simplest`](/metrics/networks#closeness-simplest) - Closeness centrality (simplest paths, adaptive sampling)
+- [`betweenness_shortest`](/metrics/networks#betweenness-shortest) - Betweenness centrality (shortest paths, R-K sampling)
+- [`betweenness_simplest`](/metrics/networks#betweenness-simplest) - Betweenness centrality (simplest paths, R-K sampling)
 
 ## Technical Details
 

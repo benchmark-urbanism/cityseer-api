@@ -118,8 +118,10 @@ fn register_centrality_module(py_module: &Bound<'_, PyModule>) -> PyResult<()> {
         "Centrality analysis utilities for network structures.",
     )?;
     submodule.add_class::<centrality::OdMatrix>()?;
-    submodule.add_class::<centrality::CentralityShortestResult>()?;
-    submodule.add_class::<centrality::CentralitySimplestResult>()?;
+    submodule.add_class::<centrality::ClosenessShortestResult>()?;
+    submodule.add_class::<centrality::ClosenessSimplestResult>()?;
+    submodule.add_class::<centrality::BetweennessShortestResult>()?;
+    submodule.add_class::<centrality::BetweennessSimplestResult>()?;
     submodule.add_class::<centrality::CentralitySegmentResult>()?;
     py_module.add_submodule(&submodule)?;
     Ok(())

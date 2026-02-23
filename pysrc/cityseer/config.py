@@ -117,6 +117,67 @@ def compute_hoeffding_p(
     return min(1.0, k / mean_reachability)
 
 
+def compute_rk_budget(
+    mean_reachability: float,
+    epsilon: float = HOEFFDING_EPSILON,
+    delta: float = HOEFFDING_DELTA,
+) -> int | None:
+    """
+    Compute R-K (Riondato-Kornaropoulos) path sample budget from reach + epsilon.
+
+    Estimates vertex diameter from local reach, then applies the R-K bound:
+    VD = ceil(sqrt(reach))
+    m = ceil((1 / (2ε²)) * (floor(log₂(VD-2)) + 1 + ln(1/δ)))
+
+    Parameters
+    ----------
+    mean_reachability : float
+        Average number of nodes reachable within distance threshold.
+    epsilon : float
+        Approximation error bound. Default 0.1.
+    delta : float
+        Failure probability. Default 0.1.
+
+    Returns
+    -------
+    int | None
+        Required number of random (source, dest) path samples, or None if reach is invalid.
+    """
+    if mean_reachability <= 0:
+        return None
+
+    import math
+
+    vd = max(3, int(math.ceil(math.sqrt(mean_reachability))))
+    vd_log = int(math.floor(math.log2(max(1, vd - 2)))) + 1
+    return int(math.ceil((1 / (2 * epsilon**2)) * (vd_log + math.log(1 / delta))))
+
+
+def compute_betweenness_budgets(
+    reach_estimates: dict[int, float],
+    epsilon: float = HOEFFDING_EPSILON,
+    delta: float = HOEFFDING_DELTA,
+) -> dict[int, int | None]:
+    """
+    Compute R-K path sample budget for each distance using reach estimates.
+
+    Parameters
+    ----------
+    reach_estimates
+        Reachability per distance (from probe_reachability).
+    epsilon
+        Approximation error bound. Default 0.1.
+    delta
+        Failure probability. Default 0.1.
+
+    Returns
+    -------
+    dict[int, int | None]
+        n_samples for each distance, or None for invalid reach.
+    """
+    return {d: compute_rk_budget(reach, epsilon, delta) for d, reach in reach_estimates.items()}
+
+
 def log_thresholds(
     distances: list[int] | None = None,
     betas: list[float] | None = None,
@@ -410,8 +471,10 @@ def log_adaptive_sampling_plan(
 
 
 RustResults = (
-    rustalgos.centrality.CentralityShortestResult
-    | rustalgos.centrality.CentralitySimplestResult
+    rustalgos.centrality.ClosenessShortestResult
+    | rustalgos.centrality.ClosenessSimplestResult
+    | rustalgos.centrality.BetweennessShortestResult
+    | rustalgos.centrality.BetweennessSimplestResult
     | rustalgos.centrality.CentralitySegmentResult
     | rustalgos.data.AccessibilityResult
     | rustalgos.data.MixedUsesResult

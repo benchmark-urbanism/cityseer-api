@@ -38,6 +38,18 @@
 \newcommand{\hoeffdingSpeedupTwentyK}{31.0}
 
 % -----------------------------------------------------------------------------
+% RIONDATO-KORNAROPOULOS (R-K) PATH SAMPLING MODEL FOR BETWEENNESS
+% VD = ceil(sqrt(r)), m = ceil((1/(2*eps^2)) * (floor(log2(VD-2)) + 1 + ln(1/delta)))
+% -----------------------------------------------------------------------------
+
+% R-K required path samples at common reaches (epsilon=0.1, delta=0.1)
+\newcommand{\rkBudgetOneK}{366}
+\newcommand{\rkBudgetTwoK}{416}
+\newcommand{\rkBudgetFiveK}{466}
+\newcommand{\rkBudgetTenK}{466}
+\newcommand{\rkBudgetTwentyK}{516}
+
+% -----------------------------------------------------------------------------
 % GLA VALIDATION RESULTS
 % -----------------------------------------------------------------------------
 
@@ -128,7 +140,10 @@
 % Number of distances tested
 \newcommand{\nDistances}{7}
 
-% Number of sampling probabilities tested
+% Number of error tolerances tested
+\newcommand{\nEpsilons}{10}
+
+% Number of sampling probabilities tested (legacy alias)
 \newcommand{\nProbs}{12}
 
 % Maximum analysis distance for synthetic networks

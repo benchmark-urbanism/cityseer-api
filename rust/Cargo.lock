@@ -63,6 +63,7 @@ dependencies = [
  "rand_distr",
  "rayon",
  "rstar",
+ "smallvec",
  "wkt",
 ]
 

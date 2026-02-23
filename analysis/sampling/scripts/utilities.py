@@ -45,7 +45,7 @@ for d in [CACHE_DIR, OUTPUT_DIR, FIGURES_DIR, TABLES_DIR]:
 # Cache version for invalidation — bump this to force all caches to regenerate
 # Versioned filenames (synthetic pkl, validation CSVs) auto-regenerate on bump.
 # Network graphs (gla_graph.pkl, gla_ground_truth_*.pkl) are unversioned and persist.
-CACHE_VERSION = "v21"
+CACHE_VERSION = "v23"
 
 # Canonical per-quartile key prefixes — single source of truth for fallback/perfect blocks
 QUARTILE_KEYS = ("spearman", "mae", "max_error", "reach")
@@ -746,6 +746,74 @@ def ew_predicted_epsilon(
     if n_eff <= 0 or reach <= 0:
         return float("inf")
     return math.sqrt(math.log(2 * reach / delta) / (2 * n_eff))
+
+
+# =============================================================================
+# SECTION 7: Riondato-Kornaropoulos (R-K) Bound Utilities
+# =============================================================================
+
+
+def compute_rk_budget(
+    mean_reachability: float,
+    epsilon: float = HOEFFDING_EPSILON,
+    delta: float = HOEFFDING_DELTA,
+) -> int | None:
+    """
+    Compute R-K path-sampling budget from reach + epsilon.
+
+    VD = ceil(sqrt(reach))
+    m = ceil((1/(2*eps^2)) * (floor(log2(VD-2)) + 1 + ln(1/delta)))
+
+    Parameters
+    ----------
+    mean_reachability : float
+        Mean network reach (nodes within distance)
+    epsilon : float
+        Normalised additive error tolerance
+    delta : float
+        Failure probability
+
+    Returns
+    -------
+    int or None
+        Required number of sampled paths, or None if reach <= 0
+    """
+    if mean_reachability <= 0:
+        return None
+    vd = max(3, int(math.ceil(math.sqrt(mean_reachability))))
+    vd_log = int(math.floor(math.log2(max(1, vd - 2)))) + 1
+    return int(math.ceil((1 / (2 * epsilon**2)) * (vd_log + math.log(1 / delta))))
+
+
+def rk_predicted_epsilon(
+    n_samples: int,
+    reach: float,
+    delta: float = HOEFFDING_DELTA,
+) -> float:
+    """
+    Compute the R-K-predicted maximum normalised epsilon.
+
+    eps = sqrt((floor(log2(VD-2)) + 1 + ln(1/delta)) / (2 * n_samples))
+
+    Parameters
+    ----------
+    n_samples : int
+        Number of sampled paths
+    reach : float
+        Mean network reach
+    delta : float
+        Failure probability
+
+    Returns
+    -------
+    float
+        Predicted maximum additive error
+    """
+    if n_samples <= 0 or reach <= 0:
+        return float("inf")
+    vd = max(3, int(math.ceil(math.sqrt(reach))))
+    vd_log = int(math.floor(math.log2(max(1, vd - 2)))) + 1
+    return math.sqrt((vd_log + math.log(1 / delta)) / (2 * n_samples))
 
 
 def normalise_error(max_abs_error: float, reach: float, metric: str) -> float:

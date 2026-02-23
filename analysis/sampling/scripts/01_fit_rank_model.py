@@ -3,18 +3,21 @@
 01_fit_rank_model.py - Analyse synthetic sampling data and generate figures.
 
 Loads the synthetic sampling cache and generates:
-  1. Figure 1 (headline): Problem illustration — why sampling is needed
-  2. Figure 3 (error crossover): Precision scales with importance
-  3. Node-level and top-k precision diagnostics
+  1. Figure 1 (headline): Sampling opportunity — accuracy vs epsilon for both
+     closeness (Hoeffding source sampling) and betweenness (R-K path sampling),
+     plus theoretical speedup at the paper's default epsilon.
+  2. Figure 3 (error crossover): Precision scales with importance — absolute
+     and normalised MAE by per-node reach bin, with theoretical bound overlays.
 
-All sampling probabilities are computed from the Hoeffding/EW model:
-    k = log(2r / delta) / (2 * epsilon^2),  p = min(1, k / r)
+The cache sweep variable is epsilon (error tolerance).
+  - Closeness rows contain `sample_prob` derived from Hoeffding.
+  - Betweenness rows contain `n_samples` derived from R-K.
 
 Requires:
     - .cache/sampling_analysis_{CACHE_VERSION}.pkl (from 00_generate_cache.py)
 
 Outputs:
-    - paper/figures/fig1_headline.pdf: Problem illustration (main body)
+    - paper/figures/fig1_headline.pdf: Sampling opportunity (main body)
     - paper/figures/fig3_error_crossover.pdf: Precision scales with importance (main body)
 """
 
@@ -31,9 +34,10 @@ from utilities import (
     CACHE_VERSION,
     FIGURES_DIR,
     HOEFFDING_DELTA,
-    HOEFFDING_EPSILON,
     compute_hoeffding_p,
+    compute_rk_budget,
     ew_predicted_epsilon,
+    rk_predicted_epsilon,
 )
 
 # =============================================================================
@@ -41,6 +45,9 @@ from utilities import (
 # =============================================================================
 
 SYNTHETIC_CACHE = CACHE_DIR / f"sampling_analysis_{CACHE_VERSION}.pkl"
+
+# Paper default epsilon (matches \hoeffdingEpsilon in model_macros.tex)
+PAPER_EPSILON = 0.1
 
 # Matplotlib style
 plt.rcParams.update(
@@ -81,6 +88,8 @@ def load_synthetic_data() -> pd.DataFrame:
     print(f"  Columns: {df.columns.tolist()}")
     print(f"  Topologies: {df['topology'].unique().tolist()}")
     print(f"  Distances: {sorted(df['distance'].unique())}")
+    print(f"  Metrics: {df['metric'].unique().tolist()}")
+    print(f"  Epsilons: {sorted(df['epsilon'].unique())}")
     return df
 
 
@@ -90,45 +99,28 @@ def load_synthetic_data() -> pd.DataFrame:
 
 
 def evaluate_node_level_accuracy(df: pd.DataFrame) -> pd.DataFrame:
-    """Evaluate per-node accuracy at the Hoeffding model's recommended p.
+    """Evaluate per-node accuracy at the paper's default epsilon.
 
-    Pools all nodes across all (topology, distance) configs at the model-
-    recommended sampling probability, then bins by absolute per-node reach.
-    This avoids the within-config quartile pre-aggregation that confounds
-    boundary nodes from high-reach configs with all nodes from low-reach configs.
+    Pools all nodes across all (topology, distance) configs at epsilon = PAPER_EPSILON,
+    then bins by absolute per-node reach. This avoids the within-config quartile
+    pre-aggregation that confounds boundary nodes from high-reach configs with all
+    nodes from low-reach configs.
     """
-    available_probs = sorted(p for p in df["sample_prob"].unique() if p < 1.0)
     reach_pool = {"harmonic": [], "betweenness": []}
     error_pool = {"harmonic": [], "betweenness": []}
 
     for metric in ["harmonic", "betweenness"]:
-        df_m = df[df["metric"] == metric]
-        for topology in df_m["topology"].unique():
-            for distance in sorted(df_m["distance"].unique()):
-                subset = df_m[(df_m["topology"] == topology) & (df_m["distance"] == distance)]
-                if len(subset) == 0:
-                    continue
+        df_m = df[(df["metric"] == metric) & (df["epsilon"] == PAPER_EPSILON)]
+        for _, row in df_m.iterrows():
+            node_reach = np.asarray(row["node_reach"])
+            node_true = np.asarray(row["node_true_vals"])
+            node_est = np.asarray(row["node_est_vals"])
+            abs_error = np.abs(node_true - node_est)
 
-                reach = subset["mean_reach"].iloc[0]
-                model_p = compute_hoeffding_p(reach)
-                if model_p >= 1.0:
-                    continue
-
-                closest_p = min(available_probs, key=lambda p: abs(p - model_p))
-                row_data = subset[subset["sample_prob"] == closest_p]
-                if len(row_data) == 0:
-                    continue
-
-                r = row_data.iloc[0]
-                node_reach = np.asarray(r["node_reach"])
-                node_true = np.asarray(r["node_true_vals"])
-                node_est = np.asarray(r["node_est_vals"])
-                abs_error = np.abs(node_true - node_est)
-
-                # Filter to valid nodes
-                mask = (node_true > 0) & np.isfinite(node_true) & np.isfinite(node_est) & (node_reach > 0)
-                reach_pool[metric].append(node_reach[mask])
-                error_pool[metric].append(abs_error[mask])
+            # Filter to valid nodes
+            mask = (node_true > 0) & np.isfinite(node_true) & np.isfinite(node_est) & (node_reach > 0)
+            reach_pool[metric].append(node_reach[mask])
+            error_pool[metric].append(abs_error[mask])
 
     # Bin by absolute reach
     bin_edges = np.array([10, 50, 100, 200, 500, 1000, 2000, 5000, 10000])
@@ -154,7 +146,10 @@ def evaluate_node_level_accuracy(df: pd.DataFrame) -> pd.DataFrame:
             q75_error = float(np.percentile(errors, 75))
 
             # Normalised error per node, then take median
-            norm_errors = errors / reaches if metric == "harmonic" else errors / (reaches * (reaches - 1))
+            if metric == "harmonic":
+                norm_errors = errors / reaches
+            else:
+                norm_errors = errors / (reaches * (reaches - 1))
 
             valid_norm = norm_errors[np.isfinite(norm_errors)]
             med_nrmse = float(np.median(valid_norm)) if len(valid_norm) > 0 else np.nan
@@ -182,11 +177,11 @@ def evaluate_node_level_accuracy(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def print_reach_bin_summary(node_acc: pd.DataFrame):
-    """Print per-reach-bin error diagnostics at the model's recommended p."""
+    """Print per-reach-bin error diagnostics at the paper's default epsilon."""
     print("\n" + "=" * 70)
-    print("NODE-LEVEL ERROR DIAGNOSTICS BY ABSOLUTE REACH")
+    print(f"NODE-LEVEL ERROR DIAGNOSTICS BY ABSOLUTE REACH (epsilon={PAPER_EPSILON})")
     print("=" * 70)
-    print("  Nodes pooled across all configs at model-recommended p,")
+    print("  Nodes pooled across all configs at paper epsilon,")
     print("  binned by absolute per-node reach.")
 
     for metric in ["betweenness", "harmonic"]:
@@ -213,83 +208,165 @@ def print_reach_bin_summary(node_acc: pd.DataFrame):
 
 
 def generate_fig1_headline(df: pd.DataFrame):
-    """Figure 1: Problem illustration - why sampling is needed."""
-    print("\nGenerating Figure 1: Headline comparison...")
+    """Figure 1: Sampling opportunity — accuracy vs epsilon and theoretical speedup.
 
-    df_b = df[df["metric"] == "betweenness"].copy()
+    Panel A: Spearman rho vs epsilon for both closeness and betweenness at
+    representative distances. Solid lines for closeness, dashed for betweenness.
+    X-axis reversed (small epsilon = high accuracy on right).
+
+    Panel B: Theoretical speedup vs distance at epsilon = PAPER_EPSILON.
+    Paired bars: closeness (1/p) and betweenness (n_live / n_samples).
+    """
+    print("\nGenerating Figure 1: Headline comparison...")
 
     fig, axes = plt.subplots(1, 2, figsize=(12, 5))
 
-    distances = [500, 1000, 2000, 4000]
+    representative_dists = [500, 1000, 2000, 4000]
     colors = ["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728"]
 
-    # Panel A: Accuracy vs sampling probability for different reaches
+    # ------------------------------------------------------------------
+    # Panel A: rho vs epsilon for both metrics
+    # ------------------------------------------------------------------
     ax = axes[0]
 
-    for dist, color in zip(distances, colors, strict=True):
-        subset = df_b[df_b["distance"] == dist]
-        if len(subset) == 0:
-            continue
-
-        grouped = (
-            subset.groupby("sample_prob")
-            .agg(
-                {
-                    "spearman": "mean",
-                    "mean_reach": "mean",
-                }
+    for dist, color in zip(representative_dists, colors, strict=True):
+        # Closeness (solid lines)
+        subset_h = df[(df["metric"] == "harmonic") & (df["distance"] == dist)]
+        if len(subset_h) > 0:
+            grouped_h = (
+                subset_h.groupby("epsilon")
+                .agg({"spearman": "mean", "mean_reach": "mean"})
+                .reset_index()
+                .sort_values("epsilon")
             )
-            .reset_index()
-        )
+            reach = grouped_h["mean_reach"].iloc[0]
+            ax.plot(
+                grouped_h["epsilon"],
+                grouped_h["spearman"],
+                "o-",
+                color=color,
+                markersize=4,
+                linewidth=1.5,
+                label=f"{dist}m closeness (r={reach:.0f})",
+            )
 
-        reach = grouped["mean_reach"].iloc[0]
-        ax.plot(
-            grouped["sample_prob"] * 100,
-            grouped["spearman"],
-            "o-",
-            color=color,
-            markersize=4,
-            linewidth=1.5,
-            label=f"{dist}m (reach={reach:.0f})",
-        )
+        # Betweenness (dashed lines)
+        subset_b = df[(df["metric"] == "betweenness") & (df["distance"] == dist)]
+        if len(subset_b) > 0:
+            grouped_b = (
+                subset_b.groupby("epsilon")
+                .agg({"spearman": "mean", "mean_reach": "mean"})
+                .reset_index()
+                .sort_values("epsilon")
+            )
+            ax.plot(
+                grouped_b["epsilon"],
+                grouped_b["spearman"],
+                "s--",
+                color=color,
+                markersize=4,
+                linewidth=1.5,
+                alpha=0.8,
+                label=f"{dist}m betweenness",
+            )
 
     ax.axhline(0.95, color="green", linestyle="--", linewidth=1.5, alpha=0.7)
-    ax.text(95, 0.955, "target: rho=0.95", fontsize=9, color="green", ha="right")
+    ax.text(0.02, 0.955, r"target: $\rho$=0.95", fontsize=9, color="green", ha="left")
 
-    ax.set_xlabel("Sampling Probability (%)")
-    ax.set_ylabel("Spearman rho (ranking accuracy)")
-    ax.set_title("A) Accuracy Increases with Sampling")
-    ax.set_xlim(0, 100)
-    ax.set_ylim(0.5, 1.0)
-    ax.legend(loc="lower right", fontsize=9)
+    ax.set_xlabel(r"$\varepsilon$ (error tolerance)")
+    ax.set_ylabel(r"Spearman $\rho$ (ranking accuracy)")
+    ax.set_title(r"A) Accuracy vs $\varepsilon$")
+    ax.set_xlim(0.55, 0.005)  # Reversed: large epsilon on left, small on right
+    ax.set_xscale("log")
+    ax.set_ylim(0.5, 1.02)
+    ax.legend(loc="lower right", fontsize=7, ncol=2)
     ax.grid(True, alpha=0.3)
 
-    # Panel B: Speedup potential
+    # ------------------------------------------------------------------
+    # Panel B: Theoretical speedup at PAPER_EPSILON
+    # ------------------------------------------------------------------
     ax = axes[1]
 
-    speedups = []
-    for dist in sorted(df_b["distance"].unique()):
-        subset = df_b[df_b["distance"] == dist]
-        grouped = subset.groupby("sample_prob")["spearman"].mean().reset_index()
-        achieving = grouped[grouped["spearman"] >= 0.95]
-        if len(achieving) > 0:
-            min_p = achieving["sample_prob"].iloc[0]
-            speedup = 1 / min_p if min_p > 0 else 1
-            reach = subset["mean_reach"].mean()
-            speedups.append({"distance": dist, "reach": reach, "min_p": min_p, "speedup": speedup})
+    all_distances = sorted(df["distance"].unique())
+    bar_data = []
 
-    speedups_df = pd.DataFrame(speedups)
+    for dist in all_distances:
+        # Closeness speedup: 1/p
+        subset_h = df[(df["metric"] == "harmonic") & (df["distance"] == dist) & (df["epsilon"] == PAPER_EPSILON)]
+        if len(subset_h) > 0:
+            mean_reach_h = subset_h["mean_reach"].mean()
+            p = compute_hoeffding_p(mean_reach_h, epsilon=PAPER_EPSILON, delta=HOEFFDING_DELTA)
+            speedup_h = 1.0 / p if p > 0 and p < 1.0 else 1.0
+        else:
+            speedup_h = None
 
-    ax.bar(range(len(speedups_df)), speedups_df["speedup"], color="#0072B2", alpha=0.7)
-    ax.set_xticks(range(len(speedups_df)))
-    ax.set_xticklabels([f"{d}m" for d in speedups_df["distance"]], rotation=45, ha="right")
+        # Betweenness speedup: n_live / n_samples
+        subset_b = df[(df["metric"] == "betweenness") & (df["distance"] == dist) & (df["epsilon"] == PAPER_EPSILON)]
+        if len(subset_b) > 0:
+            mean_reach_b = subset_b["mean_reach"].mean()
+            # n_live = number of live nodes (use n_nodes from data, which is the graph size)
+            # For betweenness, exact computation visits all live nodes as sources;
+            # sampled visits n_samples paths. Use mean n_nodes across topologies.
+            n_live = subset_b["n_nodes"].mean()
+            n_samples = compute_rk_budget(mean_reach_b, epsilon=PAPER_EPSILON, delta=HOEFFDING_DELTA)
+            if n_samples is not None and n_samples > 0:
+                speedup_b = n_live / n_samples
+            else:
+                speedup_b = 1.0
+        else:
+            speedup_b = None
+
+        if speedup_h is not None or speedup_b is not None:
+            bar_data.append(
+                {
+                    "distance": dist,
+                    "speedup_closeness": speedup_h if speedup_h is not None else 0,
+                    "speedup_betweenness": speedup_b if speedup_b is not None else 0,
+                }
+            )
+
+    bar_df = pd.DataFrame(bar_data)
+    n_dists = len(bar_df)
+    x = np.arange(n_dists)
+    width = 0.35
+
+    bars_h = ax.bar(
+        x - width / 2,
+        bar_df["speedup_closeness"],
+        width,
+        color="#2166AC",
+        alpha=0.8,
+        label="Closeness (1/p)",
+    )
+    bars_b = ax.bar(
+        x + width / 2,
+        bar_df["speedup_betweenness"],
+        width,
+        color="#B2182B",
+        alpha=0.8,
+        label=r"Betweenness ($n_{\mathrm{live}}/m$)",
+    )
+
+    ax.set_xticks(x)
+    ax.set_xticklabels([f"{d}m" for d in bar_df["distance"]], rotation=45, ha="right")
     ax.set_xlabel("Analysis Distance")
-    ax.set_ylabel("Potential Speedup (1/p)")
-    ax.set_title("B) Speedup While Maintaining rho >= 0.95")
+    ax.set_ylabel("Theoretical Speedup")
+    ax.set_title(rf"B) Speedup at $\varepsilon$={PAPER_EPSILON}")
+    ax.legend(loc="upper left", fontsize=9)
     ax.grid(True, alpha=0.3, axis="y")
 
-    for i, (_, row) in enumerate(speedups_df.iterrows()):
-        ax.text(i, row["speedup"] + 0.2, f"{row['speedup']:.1f}x", ha="center", fontsize=8)
+    # Add value labels on bars
+    for bar_set in [bars_h, bars_b]:
+        for bar in bar_set:
+            height = bar.get_height()
+            if height > 1.5:
+                ax.text(
+                    bar.get_x() + bar.get_width() / 2,
+                    height + 0.3,
+                    f"{height:.1f}x",
+                    ha="center",
+                    fontsize=7,
+                )
 
     fig.suptitle("Sampling-Based Centrality: The Opportunity", fontsize=13, fontweight="bold", y=1.02)
     plt.tight_layout()
@@ -300,85 +377,17 @@ def generate_fig1_headline(df: pd.DataFrame):
     plt.close()
 
 
-def evaluate_topk_at_model_p(df: pd.DataFrame) -> pd.DataFrame:
-    """Extract top-k precision (top 10% overlap) at the Hoeffding model's recommended p.
-
-    Returns one row per (topology, distance, metric) configuration with the
-    aggregate top_k_precision alongside Spearman rho and reach.
-    """
-    available_probs = sorted(p for p in df["sample_prob"].unique() if p < 1.0)
-    rows = []
-
-    for metric in ["harmonic", "betweenness"]:
-        df_m = df[df["metric"] == metric]
-        for topology in df_m["topology"].unique():
-            for distance in sorted(df_m["distance"].unique()):
-                subset = df_m[(df_m["topology"] == topology) & (df_m["distance"] == distance)]
-                if len(subset) == 0:
-                    continue
-
-                reach = subset["mean_reach"].iloc[0]
-                model_p = compute_hoeffding_p(reach)
-
-                if model_p >= 1.0:
-                    continue
-
-                closest_p = min(available_probs, key=lambda p: abs(p - model_p))
-                row_data = subset[subset["sample_prob"] == closest_p]
-                if len(row_data) == 0:
-                    continue
-
-                r = row_data.iloc[0]
-                rows.append(
-                    {
-                        "topology": topology,
-                        "distance": distance,
-                        "metric": metric,
-                        "mean_reach": reach,
-                        "model_p": model_p,
-                        "used_p": closest_p,
-                        "spearman": r["spearman"],
-                        "top_k_precision": r["top_k_precision"],
-                    }
-                )
-
-    return pd.DataFrame(rows)
-
-
-def print_topk_summary(tk: pd.DataFrame):
-    """Print top-k precision diagnostics at the model's recommended p."""
-    print("\n" + "=" * 70)
-    print("TOP-K PRECISION (TOP 10% OVERLAP) AT MODEL-RECOMMENDED p")
-    print("=" * 70)
-
-    for metric in ["betweenness", "harmonic"]:
-        subset = tk[tk["metric"] == metric]
-        if len(subset) == 0:
-            continue
-
-        print(f"\n  {metric.upper()}")
-        print(f"  {'Topology':<12} {'Distance':>10} {'Reach':>10} {'Spearman':>10} {'Top-10%':>10}")
-        print("  " + "-" * 55)
-
-        for _, row in subset.sort_values(["topology", "distance"]).iterrows():
-            print(
-                f"  {row['topology']:<12} {row['distance']:>10.0f} {row['mean_reach']:>10.0f} "
-                f"{row['spearman']:>10.3f} {row['top_k_precision']:>10.3f}"
-            )
-
-        med_rho = subset["spearman"].median()
-        med_topk = subset["top_k_precision"].median()
-        min_topk = subset["top_k_precision"].min()
-        print(f"\n  Median Spearman: {med_rho:.3f}  |  Median top-10%: {med_topk:.3f}  |  Min top-10%: {min_topk:.3f}")
-
-
-def generate_fig3_error_crossover(node_acc: pd.DataFrame):
+def generate_fig3_error_crossover(node_acc: pd.DataFrame, df: pd.DataFrame):
     """Figure 3: Error crossover — absolute error grows with reach, normalised error shrinks.
 
-    1×2 layout with continuous log-scale reach axis.  Nodes are pooled across
-    all (topology, distance) configs and binned by absolute per-node reach.
-    Left: absolute MAE trending up with reach.
-    Right: normalised MAE trending down with reach, with localised EW bound overlay.
+    1x2 layout with continuous log-scale reach axis. Nodes are pooled across
+    all (topology, distance) configs at epsilon = PAPER_EPSILON and binned
+    by absolute per-node reach.
+
+    Panel A: Absolute MAE trending up with reach.
+    Panel B: Normalised MAE trending down with reach, with Hoeffding bound
+             overlay for closeness and R-K bound overlay for betweenness.
+
     Both metrics shown (betweenness red squares, harmonic blue circles).
     """
     print("\nGenerating Figure 3: Error crossover...")
@@ -387,6 +396,19 @@ def generate_fig3_error_crossover(node_acc: pd.DataFrame):
     colour_har = "#2166AC"
 
     fig, axes = plt.subplots(1, 2, figsize=(11, 5))
+
+    # Compute the median sample_prob and n_samples at PAPER_EPSILON for bound overlays
+    df_at_eps = df[df["epsilon"] == PAPER_EPSILON]
+    median_p_h = None
+    median_n_samples_b = None
+
+    df_h_eps = df_at_eps[df_at_eps["metric"] == "harmonic"]
+    if len(df_h_eps) > 0 and "sample_prob" in df_h_eps.columns:
+        median_p_h = df_h_eps["sample_prob"].median()
+
+    df_b_eps = df_at_eps[df_at_eps["metric"] == "betweenness"]
+    if len(df_b_eps) > 0 and "n_samples" in df_b_eps.columns:
+        median_n_samples_b = df_b_eps["n_samples"].median()
 
     for col_idx, (med_col, lo_col, hi_col, ylabel, title) in enumerate(
         [
@@ -428,19 +450,42 @@ def generate_fig3_error_crossover(node_acc: pd.DataFrame):
             )
             ax.plot(x, y, color=colour, linewidth=1.5, alpha=0.5, zorder=2)
 
-        # Overlay localised EW bound on normalised error panel
+        # Overlay theoretical bounds on normalised error panel
         if col_idx == 1:
             r_line = np.logspace(np.log10(200), 4, 200)
-            eps_line = np.array([ew_predicted_epsilon(compute_hoeffding_p(r) * r, r) for r in r_line])
-            ax.plot(
-                r_line,
-                eps_line,
-                color="grey",
-                linewidth=2,
-                linestyle="--",
-                label="Hoeffding bound",
-                zorder=1,
-            )
+
+            # Hoeffding bound for closeness: eps = sqrt(log(2r/delta) / (2*n_eff))
+            # where n_eff = p * r_bin
+            if median_p_h is not None:
+                eps_hoeffding = np.array(
+                    [ew_predicted_epsilon(median_p_h * r, r) for r in r_line]
+                )
+                ax.plot(
+                    r_line,
+                    eps_hoeffding,
+                    color="grey",
+                    linewidth=2,
+                    linestyle="--",
+                    label="Hoeffding bound",
+                    zorder=1,
+                )
+
+            # R-K bound for betweenness: eps = sqrt((floor(log2(VD-2))+1 + ln(1/delta)) / (2*m))
+            # where VD = ceil(sqrt(r_bin)), m = median n_samples
+            if median_n_samples_b is not None:
+                eps_rk = np.array(
+                    [rk_predicted_epsilon(int(median_n_samples_b), r) for r in r_line]
+                )
+                ax.plot(
+                    r_line,
+                    eps_rk,
+                    color="#B2182B",
+                    linewidth=2,
+                    linestyle=":",
+                    alpha=0.7,
+                    label="R-K bound",
+                    zorder=1,
+                )
 
         ax.set_xscale("log")
         ax.set_yscale("log")
@@ -450,7 +495,7 @@ def generate_fig3_error_crossover(node_acc: pd.DataFrame):
         if col_idx == 0:
             ax.legend(loc="lower right", fontsize=9)
         else:
-            ax.legend(loc="center right", fontsize=8)
+            ax.legend(loc="upper right", fontsize=8)
         ax.grid(True, alpha=0.3, which="both")
 
     plt.tight_layout()
@@ -467,45 +512,47 @@ def generate_fig3_error_crossover(node_acc: pd.DataFrame):
 
 
 def main():
-    import math
-
     print("=" * 70)
     print("01_fit_rank_model.py - Synthetic Data Analysis & Figure Generation")
     print("=" * 70)
 
-    print("\nModel: k = log(2r/δ) / (2ε²), p = min(1, k/r)")
-    print(f"  ε = {HOEFFDING_EPSILON}, δ = {HOEFFDING_DELTA}")
+    print(f"\nPaper default: epsilon = {PAPER_EPSILON}, delta = {HOEFFDING_DELTA}")
+    print("  Closeness: Hoeffding source sampling  (p from epsilon + reach)")
+    print("  Betweenness: R-K path sampling         (m from epsilon + reach)")
 
     # Load data
     df = load_synthetic_data()
 
-    # Node-level accuracy assessment
+    # Node-level accuracy assessment at paper epsilon
     print("\n" + "-" * 50)
     node_acc = evaluate_node_level_accuracy(df)
     print_reach_bin_summary(node_acc)
-
-    # Top-k precision assessment
-    tk = evaluate_topk_at_model_p(df)
-    print_topk_summary(tk)
 
     # Generate figures
     print("\n" + "-" * 50)
     print("Generating figures...")
     generate_fig1_headline(df)
-    generate_fig3_error_crossover(node_acc)
+    generate_fig3_error_crossover(node_acc, df)
 
-    # Example calculations
+    # Summary of key values at paper epsilon
     print("\n" + "=" * 70)
-    print("HOEFFDING MODEL — KEY VALUES")
+    print(f"SAMPLING BUDGETS AT EPSILON={PAPER_EPSILON}")
     print("=" * 70)
-    print(f"\n{'Reach':>10} | {'k':>10} | {'p':>10} | {'Speedup':>10}")
-    print("-" * 50)
+    print(f"\n{'Reach':>10} | {'Hoeffding p':>12} | {'Speedup (1/p)':>14} | {'R-K m':>10} | {'R-K speedup*':>14}")
+    print("-" * 70)
 
     for reach in [100, 300, 500, 1000, 2000, 5000, 10000, 50000]:
-        k_val = math.log(2 * reach / HOEFFDING_DELTA) / (2 * HOEFFDING_EPSILON**2)
-        p = compute_hoeffding_p(reach)
-        speedup = 1 / p if p > 0 else float("inf")
-        print(f"{reach:>10} | {k_val:>10.0f} | {p:>9.1%} | {speedup:>9.1f}x")
+        p = compute_hoeffding_p(reach, epsilon=PAPER_EPSILON, delta=HOEFFDING_DELTA)
+        speedup_h = 1 / p if 0 < p < 1 else 1.0
+        m = compute_rk_budget(reach, epsilon=PAPER_EPSILON, delta=HOEFFDING_DELTA)
+        m_str = f"{m:,}" if m is not None else "N/A"
+        # R-K speedup uses reach as a rough proxy for n_live
+        speedup_b = reach / m if m is not None and m > 0 else float("inf")
+        print(
+            f"{reach:>10,} | {p:>11.1%} | {speedup_h:>13.1f}x | {m_str:>10} | {speedup_b:>13.1f}x"
+        )
+
+    print("\n  * R-K speedup = reach / m (approximate; actual depends on n_live)")
 
     print("\n" + "=" * 70)
     print("ALL OUTPUTS")

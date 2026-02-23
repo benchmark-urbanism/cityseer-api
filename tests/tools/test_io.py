@@ -725,6 +725,7 @@ def test_network_structure_from_gpd(primal_graph):
     assert network_structure_pruned.node_count() == 56
     assert network_structure_pruned.edge_count == 152
     # test robustness of centralities for pruned
+    seed = 42
     for netw_struct, nd_gdf in [(network_structure_round, nodes_gdf), (network_structure_pruned, nodes_pruned_gdf)]:
         nd_gdf = networks.node_centrality_shortest(
             network_structure=netw_struct,
@@ -732,10 +733,11 @@ def test_network_structure_from_gpd(primal_graph):
             distances=[400],
             compute_closeness=True,
             compute_betweenness=True,
+            random_seed=seed,
         )
-        # test against underlying method
-        node_result = netw_struct.local_node_centrality_shortest(
-            distances=[400], compute_closeness=True, compute_betweenness=True
+        # test closeness against underlying source-sampling method
+        node_result = netw_struct.closeness_shortest(
+            distances=[400],
         )
         for measure_key, attr_key in [
             ("beta", "node_beta"),
@@ -743,13 +745,26 @@ def test_network_structure_from_gpd(primal_graph):
             ("density", "node_density"),
             ("farness", "node_farness"),
             ("harmonic", "node_harmonic"),
+        ]:
+            data_key = config.prep_gdf_key(measure_key, 400)
+            assert np.allclose(
+                nd_gdf[data_key],
+                getattr(node_result, attr_key)[400],
+                atol=config.ATOL,
+                rtol=config.RTOL,
+            )
+        # test betweenness against R-K path sampling method
+        betweenness_result = netw_struct.betweenness_shortest(
+            distances=[400], random_seed=seed
+        )
+        for measure_key, attr_key in [
             ("betweenness", "node_betweenness"),
             ("betweenness_beta", "node_betweenness_beta"),
         ]:
             data_key = config.prep_gdf_key(measure_key, 400)
             assert np.allclose(
                 nd_gdf[data_key],
-                getattr(node_result, attr_key)[400],
+                getattr(betweenness_result, attr_key)[400],
                 atol=config.ATOL,
                 rtol=config.RTOL,
             )

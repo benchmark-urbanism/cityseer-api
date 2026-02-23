@@ -1,20 +1,21 @@
 #!/usr/bin/env python
 """
-07_hoeffding_model_figure.py - Generate the Hoeffding model derivation figure.
+07_hoeffding_model_figure.py - Generate the model derivation figure.
 
-Creates Figure 2 for the paper: a visual explanation of the localised Hoeffding
-bound model showing how the sampling probability p varies with network reach r,
-how the natural floor emerges at low reach (where k > r forces p = 1), and how
-different epsilon values shift the curve.
+Creates Figure 2 for the paper: a side-by-side comparison of the two sampling
+models used in the analysis.
 
-The model: k = log(2r / delta) / (2 * epsilon^2), p = min(1, k / r)
-Default: epsilon = 0.1, delta = 0.1 (zero fitted parameters).
+Closeness (source sampling, Hoeffding/EW bound):
+    k = log(2r / delta) / (2 * epsilon^2),  p = min(1, k / r),  speedup = 1/p
+
+Betweenness (R-K path sampling):
+    VD = ceil(sqrt(r)),  m = ceil((1/(2*eps^2)) * (floor(log2(VD-2)) + 1 + ln(1/delta)))
+
+Both models are parameterized by (epsilon, delta, reach).
 
 Outputs:
     - paper/figures/fig2_hoeffding_model.pdf
 """
-
-import math
 
 import matplotlib
 
@@ -25,7 +26,9 @@ from utilities import (
     FIGURES_DIR,
     HOEFFDING_DELTA,
     HOEFFDING_EPSILON,
+    compute_hoeffding_eff_n,
     compute_hoeffding_p,
+    compute_rk_budget,
 )
 
 # Matplotlib style
@@ -53,38 +56,60 @@ plt.rcParams.update(
 
 def generate_figure():
     """
-    Figure 2: Hoeffding model derivation.
+    Figure 2: Model derivation — Hoeffding (closeness) and R-K (betweenness).
 
     Two panels:
-      A) Required k (sample size) vs reach — shows log(2r/δ)/(2ε²) growth
-      B) Sampling probability p vs reach — shows how p decreases, with floor at p=1
+      A) Sample budget vs reach — Hoeffding k (solid) and R-K m (dashed)
+         at default eps=0.1 as primary lines, eps=0.05 and eps=0.2 as
+         lighter/thinner lines. Includes k=r diagonal. Log-log scale.
+      B) Closeness speedup (1/p) vs reach for multiple epsilon values.
     """
-    print("\nGenerating Figure 2: Hoeffding model derivation...")
+    print("\nGenerating Figure 2: Model derivation (Hoeffding + R-K)...")
 
     fig, axes = plt.subplots(1, 2, figsize=(11, 4.5))
 
     reach_range = np.logspace(1.5, 5.5, 500)
 
-    # ---- Panel A: Required k vs reach for different epsilon ----
-    ax = axes[0]
-
+    # Epsilon values and styling
+    # Primary: eps=0.1 (thick, solid), secondary: eps=0.05/0.15/0.2 (thinner, dashed)
+    PAPER_EPSILON = 0.1
     epsilon_values = [0.05, 0.1, 0.15, 0.2]
     colours = ["#d73027", "#0072B2", "#fc8d59", "#91bfdb"]
     linewidths = [1.5, 2.5, 1.5, 1.5]
 
+    # ---- Panel A: Sample budget vs reach ----
+    ax = axes[0]
+
     for eps, colour, lw in zip(epsilon_values, colours, linewidths, strict=True):
-        k_values = [math.log(2 * r / HOEFFDING_DELTA) / (2 * eps**2) for r in reach_range]
-        style = "-" if eps == HOEFFDING_EPSILON else "--"
+        # Hoeffding k (closeness) — solid lines
+        k_values = [compute_hoeffding_eff_n(r, eps) for r in reach_range]
+        style = "-" if eps == PAPER_EPSILON else "--"
         ax.plot(
             reach_range,
             k_values,
             linestyle=style,
             color=colour,
             linewidth=lw,
-            label=f"ε = {eps}",
+            label=f"Closeness k, ε = {eps}",
         )
 
-    # Add r = k line (where p transitions from 1 to < 1)
+        # R-K m (betweenness) — dashed lines with same colour
+        m_values = []
+        for r in reach_range:
+            m = compute_rk_budget(r, eps)
+            m_values.append(m if m is not None else np.nan)
+        rk_style = (0, (3, 1.5)) if eps == PAPER_EPSILON else (0, (3, 3))
+        ax.plot(
+            reach_range,
+            m_values,
+            linestyle=rk_style,
+            color=colour,
+            linewidth=max(1.0, lw - 0.5),
+            alpha=0.85,
+            label=f"Betweenness m, ε = {eps}",
+        )
+
+    # Add r = k line (where p transitions from 1 to < 1 for closeness)
     ax.plot(
         reach_range,
         reach_range,
@@ -97,17 +122,17 @@ def generate_figure():
     ax.set_xscale("log")
     ax.set_yscale("log")
     ax.set_xlabel("Network Reach (r)")
-    ax.set_ylabel("Required Sample Size (k)")
-    ax.set_title("A) Required Sample Size")
-    ax.legend(loc="upper left", fontsize=8)
+    ax.set_ylabel("Required Sample Budget")
+    ax.set_title("A) Sample Budget: Closeness k vs Betweenness m")
+    ax.legend(loc="upper left", fontsize=6.5, ncol=2, columnspacing=1.0)
     ax.grid(True, alpha=0.3, which="both")
 
-    # ---- Panel B: Speedup (1/p) vs reach ----
+    # ---- Panel B: Closeness speedup (1/p) vs reach ----
     ax = axes[1]
 
     for eps, colour, lw in zip(epsilon_values, colours, linewidths, strict=True):
         speedup_values = [1.0 / compute_hoeffding_p(r, eps) for r in reach_range]
-        style = "-" if eps == HOEFFDING_EPSILON else "--"
+        style = "-" if eps == PAPER_EPSILON else "--"
         ax.plot(
             reach_range,
             speedup_values,
@@ -121,7 +146,7 @@ def generate_figure():
     ax.set_yscale("log")
     ax.set_xlabel("Network Reach (r)")
     ax.set_ylabel("Speedup (1/p)")
-    ax.set_title("B) Computational Speedup")
+    ax.set_title("B) Closeness Computational Speedup")
     ax.set_xlim(reach_range[0], reach_range[-1])
     ax.legend(loc="upper left", fontsize=8)
     ax.grid(True, alpha=0.3, which="both")
@@ -141,22 +166,39 @@ def generate_figure():
 
 def main():
     print("=" * 70)
-    print("07_hoeffding_model_figure.py - Hoeffding model derivation (Fig 2)")
+    print("07_hoeffding_model_figure.py - Model derivation figure (Fig 2)")
     print("=" * 70)
 
-    print("\nModel: k = log(2r/δ) / (2ε²), p = min(1, k/r)")
+    print("\nCloseness model: k = log(2r/δ) / (2ε²), p = min(1, k/r)")
+    print("Betweenness model: VD = ceil(sqrt(r)), m = ceil((1/(2ε²)) × (floor(log₂(VD-2)) + 1 + ln(1/δ)))")
     print(f"  Default: ε = {HOEFFDING_EPSILON}, δ = {HOEFFDING_DELTA}")
 
     generate_figure()
 
-    # Print key values
+    # Print key values at representative reaches for both models
     print("\n" + "-" * 70)
-    print("KEY VALUES")
+    print("KEY VALUES — CLOSENESS (Hoeffding k) vs BETWEENNESS (R-K m)")
     print("-" * 70)
+    header = f"  {'r':>6}  |  {'k (close)':>10}  {'p':>7}  {'speedup':>8}  |  {'m (betw)':>10}"
+    print(header)
+    print("  " + "-" * len(header.strip()))
+
     for reach in [100, 500, 1000, 5000, 10000, 50000]:
-        k = math.log(2 * reach / HOEFFDING_DELTA) / (2 * HOEFFDING_EPSILON**2)
+        k = compute_hoeffding_eff_n(reach)
         p = compute_hoeffding_p(reach)
-        print(f"  r={reach:>6,}: k={k:>7.0f}, p={p:>6.3f}, speedup={1 / p:>6.1f}×")
+        m = compute_rk_budget(reach)
+        m_str = f"{m:>10,}" if m is not None else "       N/A"
+        print(f"  {reach:>6,}  |  {k:>10,.0f}  {p:>7.3f}  {1 / p:>7.1f}×  |  {m_str}")
+
+    # Also show for other epsilon values
+    for eps in [0.05, 0.1, 0.15, 0.2]:
+        print(f"\n  ε = {eps}:")
+        for reach in [100, 500, 1000, 5000, 10000, 50000]:
+            k = compute_hoeffding_eff_n(reach, eps)
+            p = compute_hoeffding_p(reach, eps)
+            m = compute_rk_budget(reach, eps)
+            m_str = f"{m:>8,}" if m is not None else "     N/A"
+            print(f"    r={reach:>6,}: k={k:>8,.0f}, p={p:.3f}, speedup={1 / p:>7.1f}×, m={m_str}")
 
     print(f"\n  Output: {FIGURES_DIR / 'fig2_hoeffding_model.pdf'}")
     return 0
