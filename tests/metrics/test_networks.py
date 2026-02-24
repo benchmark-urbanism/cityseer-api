@@ -56,9 +56,9 @@ def test_node_centrality_shortest(primal_graph):
                         rtol=config.RTOL,
                     )
                 if _betweenness is True:
-                    # test betweenness against underlying R-K path sampling method
+                    # test betweenness against underlying R-K path sampling method (single distance)
                     betweenness_result = network_structure.betweenness_shortest(
-                        betas=betas, random_seed=seed
+                        distance=dist_key, random_seed=seed
                     )
                     for measure_key, attr_key in [
                         ("betweenness", "node_betweenness"),
@@ -125,9 +125,9 @@ def test_node_centrality_simplest(primal_graph):
                             rtol=config.RTOL,
                         )
                     if _betweenness is True:
-                        # test betweenness against underlying R-K path sampling method
+                        # test betweenness against underlying R-K path sampling method (single distance)
                         betweenness_result = network_structure.betweenness_simplest(
-                            betas=betas, random_seed=seed
+                            distance=dist_key, random_seed=seed
                         )
                         assert np.allclose(
                             nodes_gdf[config.prep_gdf_key("betweenness", dist_key, angular=True)],

@@ -15,6 +15,7 @@ Outputs:
 """
 
 import argparse
+import math
 import sys
 import warnings
 from pathlib import Path
@@ -33,9 +34,21 @@ from utilities import (
     compute_accuracy_metrics,
     compute_hoeffding_p,
     compute_quartile_accuracy,
-    compute_rk_budget,
     mean_quartiles,
 )
+
+
+def compute_rk_budget_raw(
+    mean_reachability: float,
+    epsilon: float,
+    delta: float = HOEFFDING_DELTA,
+) -> int:
+    """Raw R-K budget without tipping point check, for analysis."""
+    vd = max(3, int(math.ceil(math.sqrt(mean_reachability))))
+    vd_log = int(math.floor(math.log2(max(1, vd - 2)))) + 1
+    return int(math.ceil((1 / (2 * epsilon**2)) * (vd_log + math.log(1 / delta))))
+
+
 from utils.substrates import generate_keyed_template
 
 warnings.filterwarnings("ignore")
@@ -44,13 +57,17 @@ warnings.filterwarnings("ignore")
 # CONFIGURATION
 # =============================================================================
 
-N_RUNS = 5  # Multiple runs for variance estimation
+N_RUNS = 2  # Sanity check on variance
 TEMPLATE_NAMES = ["trellis", "tree", "linear"]
 SUBSTRATE_TILES = 24  # ~12km network extent
 DISTANCES = [250, 500, 1000, 1500, 2000, 3000, 4000]
 LIVE_INWARD_BUFFER = 4000  # 4km buffer for synthetic networks
-# Shared epsilon sweep: coarse → fine error tolerance
-EPSILONS = [0.5, 0.3, 0.2, 0.15, 0.1, 0.075, 0.05, 0.03, 0.02, 0.01]
+# Closeness (source sampling): reliable at eps=0.1
+EPSILONS_CLOSENESS = [0.05, 0.1, 0.2]
+# Betweenness (R-K path sampling): sweep from conservative to relaxed
+# Lower ε values will hit the tipping point (m >= reach) at short distances,
+# where we fall back to exact Brandes.
+EPSILONS_BETWEENNESS = [0.005, 0.01, 0.02, 0.05, 0.1, 0.2]
 
 
 # =============================================================================
@@ -74,7 +91,8 @@ def generate_synthetic_cache(force: bool = False):
     print("=" * 70)
     print(f"Templates: {TEMPLATE_NAMES}")
     print(f"Distances: {DISTANCES}")
-    print(f"Epsilons: {EPSILONS}")
+    print(f"Epsilons closeness: {EPSILONS_CLOSENESS}")
+    print(f"Epsilons betweenness: {EPSILONS_BETWEENNESS}")
     print(f"Runs per config: {N_RUNS}")
 
     results = []
@@ -123,7 +141,7 @@ def generate_synthetic_cache(force: bool = False):
             # ---- Closeness: Hoeffding auto-budget from epsilon ----
             print(f"  d={dist}m, reach={mean_reach:.0f} closeness: ", end="", flush=True)
 
-            for eps in EPSILONS:
+            for eps in EPSILONS_CLOSENESS:
                 p = compute_hoeffding_p(mean_reach, epsilon=eps, delta=HOEFFDING_DELTA)
 
                 if p >= 1.0:
@@ -207,38 +225,27 @@ def generate_synthetic_cache(force: bool = False):
                 print(".", end="", flush=True)
             print()
 
-            # ---- Betweenness: R-K path sampling with budget from epsilon + reach ----
-            print(f"  d={dist}m, reach={mean_reach:.0f} betweenness: ", end="", flush=True)
+            # ---- Betweenness: R-K path sampling with Euclidean pair selection ----
+            t_network = int(np.sum(node_reach) / 2)
+            print(f"  d={dist}m, reach={mean_reach:.0f}, T_net={t_network:,} betweenness: ", end="", flush=True)
 
-            for eps in EPSILONS:
-                n_samples = compute_rk_budget(mean_reach, epsilon=eps, delta=HOEFFDING_DELTA)
-                if n_samples is None:
-                    continue
+            for eps in EPSILONS_BETWEENNESS:
+                n_samples = compute_rk_budget_raw(mean_reach, epsilon=eps, delta=HOEFFDING_DELTA)
+                tipping_point = n_samples >= mean_reach
 
-                spearmans_b = []
-                quartiles_b = []
-                est_b_sum = np.zeros_like(true_betweenness, dtype=np.float64)
-
-                for seed in range(N_RUNS):
-                    rb = net.betweenness_shortest(
-                        distances=[dist],
-                        n_samples=n_samples,
-                        random_seed=seed,
-                        pbar_disabled=True,
-                    )
-                    est_betweenness = np.array(rb.node_betweenness[dist])[live_mask]
-                    est_b_sum += est_betweenness
-
-                    sp_b, prec_b, scale_b, iqr_b, mae_b = compute_accuracy_metrics(true_betweenness, est_betweenness)
-                    if not np.isnan(sp_b):
-                        spearmans_b.append((sp_b, prec_b, scale_b, iqr_b, mae_b))
-                    quartiles_b.append(compute_quartile_accuracy(true_betweenness, est_betweenness, node_reach))
-
-                est_b_avg = (est_b_sum / N_RUNS).astype(np.float32)
                 true_b_f32 = true_betweenness.astype(np.float32)
-                q_b = mean_quartiles(quartiles_b)
 
-                if spearmans_b:
+                if tipping_point:
+                    # Exact Brandes fallback — perfect accuracy
+                    q_perfect = {}
+                    for prefix in QUARTILE_KEYS:
+                        for q in range(1, 5):
+                            if prefix == "spearman":
+                                q_perfect[f"{prefix}_q{q}"] = 1.0
+                            elif prefix == "reach":
+                                q_perfect[f"{prefix}_q{q}"] = np.nan
+                            else:
+                                q_perfect[f"{prefix}_q{q}"] = 0.0
                     row_b = {
                         "topology": topo,
                         "distance": dist,
@@ -247,19 +254,70 @@ def generate_synthetic_cache(force: bool = False):
                         "node_reach": node_reach,
                         "epsilon": eps,
                         "n_samples": n_samples,
+                        "t_network": t_network,
+                        "tipping_point": True,
                         "metric": "betweenness",
-                        "spearman": np.mean([x[0] for x in spearmans_b]),
-                        "top_k_precision": np.mean([x[1] for x in spearmans_b]),
-                        "scale_ratio": np.mean([x[2] for x in spearmans_b]),
-                        "scale_iqr": np.mean([x[3] for x in spearmans_b]),
-                        "max_abs_error": np.max([x[4] for x in spearmans_b]),
+                        "spearman": 1.0,
+                        "top_k_precision": 1.0,
+                        "scale_ratio": 1.0,
+                        "scale_iqr": 0.0,
+                        "max_abs_error": 0.0,
                         "node_true_vals": true_b_f32,
-                        "node_est_vals": est_b_avg,
+                        "node_est_vals": true_b_f32,
                     }
-                    row_b.update(q_b)
+                    row_b.update(q_perfect)
                     results.append(row_b)
+                    print("e", end="", flush=True)
+                else:
+                    # Path sampling regime
+                    spearmans_b = []
+                    quartiles_b = []
+                    est_b_sum = np.zeros_like(true_betweenness, dtype=np.float64)
 
-                print(".", end="", flush=True)
+                    for seed in range(N_RUNS):
+                        rb = net.betweenness_shortest(
+                            distance=dist,
+                            n_samples=n_samples,
+                            random_seed=seed,
+                            pbar_disabled=True,
+                        )
+                        est_betweenness = np.array(rb.node_betweenness[dist])[live_mask]
+                        est_b_sum += est_betweenness
+
+                        sp_b, prec_b, scale_b, iqr_b, mae_b = compute_accuracy_metrics(
+                            true_betweenness, est_betweenness
+                        )
+                        if not np.isnan(sp_b):
+                            spearmans_b.append((sp_b, prec_b, scale_b, iqr_b, mae_b))
+                        quartiles_b.append(compute_quartile_accuracy(true_betweenness, est_betweenness, node_reach))
+
+                    est_b_avg = (est_b_sum / N_RUNS).astype(np.float32)
+                    q_b = mean_quartiles(quartiles_b)
+
+                    if spearmans_b:
+                        row_b = {
+                            "topology": topo,
+                            "distance": dist,
+                            "n_nodes": n_nodes,
+                            "mean_reach": mean_reach,
+                            "node_reach": node_reach,
+                            "epsilon": eps,
+                            "n_samples": n_samples,
+                            "t_network": t_network,
+                            "tipping_point": False,
+                            "metric": "betweenness",
+                            "spearman": np.mean([x[0] for x in spearmans_b]),
+                            "top_k_precision": np.mean([x[1] for x in spearmans_b]),
+                            "scale_ratio": np.mean([x[2] for x in spearmans_b]),
+                            "scale_iqr": np.mean([x[3] for x in spearmans_b]),
+                            "max_abs_error": np.max([x[4] for x in spearmans_b]),
+                            "node_true_vals": true_b_f32,
+                            "node_est_vals": est_b_avg,
+                        }
+                        row_b.update(q_b)
+                        results.append(row_b)
+
+                    print(".", end="", flush=True)
             print()
 
     # Save cache

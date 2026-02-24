@@ -1,22 +1,24 @@
 \begin{table}[htbp]
 \centering
-\caption{Hoeffding model validation on Greater London network ($\varepsilon = 0.1$, $\delta = 0.1$).}
+\caption{Sampling model validation on Greater London network ($\varepsilon = 0.1$, $\delta = 0.1$).}
 \label{tab:validation}
-\begin{tabular}{rrrrrrr}
+\begin{tabular}{rrrrrrrr}
 \toprule
 \textbf{Distance} & \textbf{Reach} & \textbf{Hoeff.\ $p$} &
-\textbf{$\rho_\text{close}$} & \textbf{$\rho_\text{betw}$} & \textbf{Speedup} & \textbf{$\rho \geq 0.95$?} \\
+\textbf{$\rho_\text{close}$} & \textbf{R-K $m$} &
+\textbf{$\rho_\text{betw}$} & \textbf{Speedup} & \textbf{$\rho \geq 0.95$?} \\
 \midrule
-1km & 185 & 100.0\% & 0.9945 & 0.9980 & 1.0$\times$ & \checkmark \\
-2km & 765 & 63.0\% & 0.9856 & 0.9953 & 1.6$\times$ & \checkmark \\
-5km & 5,100 & 11.3\% & 0.9616 & 0.9777 & 8.8$\times$ & \checkmark \\
-10km & 20,394 & 3.2\% & 0.9735 & 0.9629 & 31.6$\times$ & \checkmark \\
-20km & 69,463 & 1.0\% & 0.9827 & 0.9510 & 98.2$\times$ & \checkmark \\
+1km & 185 & 100.0\% & 1.0000 & 316 & 0.0940 & 1.0$\times$ & \texttimes \\
+2km & 765 & 63.0\% & 0.9871 & 366 & 0.1747 & 1.6$\times$ & \texttimes \\
+5km & 5,100 & 11.3\% & 0.9645 & 466 & 0.3749 & 8.8$\times$ & \texttimes \\
+10km & 20,394 & 3.2\% & 0.9755 & 516 & 0.5647 & 31.6$\times$ & \texttimes \\
+20km & 69,463 & 1.0\% & 0.9828 & 566 & 0.7169 & 98.2$\times$ & \texttimes \\
 \bottomrule
 \end{tabular}
 
 \vspace{0.5em}
 \footnotesize
 Network: Greater London Area, GLA boundary live node mask.
-Hoeffding model: $k = \log(2r/\delta) / (2\varepsilon^2)$, $p = \min(1, k/r)$.
+Closeness: Hoeffding source sampling, $p = \min(1, k/r)$ where $k = \log(2r/\delta) / (2\varepsilon^2)$.
+Betweenness: R-K path sampling, $m = \lceil (1/(2\varepsilon^2))(\lfloor\log_2(\text{VD}-2)\rfloor + 1 + \ln(1/\delta)) \rceil$.
 \end{table}

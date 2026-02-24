@@ -320,8 +320,6 @@ class NetworkStructure:
         src_idx: int,
         max_seconds: int,
         speed_m_s: float,
-        jitter_scale: float | None = None,
-        random_seed: int | None = None,
     ) -> tuple[list[int], list[NodeVisit]]:
         """
         Compute shortest path tree (metric distance) from a source node using Dijkstra.
@@ -334,10 +332,6 @@ class NetworkStructure:
             Maximum travel time cutoff.
         speed_m_s: float
             Travel speed (m/s) to convert edge lengths to time.
-        jitter_scale: float | None
-            Optional scale for random cost jitter (tie-breaking).
-        random_seed: int | None
-            Optional seed for deterministic random cost jitter.
 
         Returns
         -------
@@ -350,8 +344,6 @@ class NetworkStructure:
         src_idx: int,
         max_seconds: int,
         speed_m_s: float,
-        jitter_scale: float | None = None,
-        random_seed: int | None = None,
     ) -> tuple[list[int], list[NodeVisit]]:
         """
         Compute simplest path tree (angular distance) from a source node using Dijkstra.
@@ -364,10 +356,6 @@ class NetworkStructure:
             Maximum travel time cutoff.
         speed_m_s: float
             Travel speed (m/s).
-        jitter_scale: float | None
-            Optional scale for random cost jitter.
-        random_seed: int | None
-            Optional seed for deterministic random cost jitter.
 
         Returns
         -------
@@ -380,8 +368,6 @@ class NetworkStructure:
         src_idx: int,
         max_seconds: int,
         speed_m_s: float,
-        jitter_scale: float | None = None,
-        random_seed: int | None = None,
     ) -> tuple[list[int], list[int], list[NodeVisit], list[EdgeVisit]]:
         """
         Compute shortest path tree for segment-based analysis.
@@ -394,10 +380,6 @@ class NetworkStructure:
             Maximum travel time cutoff.
         speed_m_s: float
             Travel speed (m/s).
-        jitter_scale: float | None
-            Optional scale for random cost jitter.
-        random_seed: int | None
-            Optional seed for deterministic random cost jitter.
 
         Returns
         -------
@@ -412,7 +394,6 @@ class NetworkStructure:
         minutes: list[float] | None = None,
         min_threshold_wt: float | None = None,
         speed_m_s: float | None = None,
-        jitter_scale: float | None = None,
         sample_probability: float | None = None,
         sampling_weights: list[float] | None = None,
         random_seed: int | None = None,
@@ -433,14 +414,12 @@ class NetworkStructure:
             Minimum weight for beta/distance conversion.
         speed_m_s: float | None
             Travel speed (m/s).
-        jitter_scale: float | None
-            Path cost jitter scale.
         sample_probability: float | None
             Probability of sampling a node as a source.
         sampling_weights: list[float] | None
             Per-node sampling weights in range [0.0, 1.0].
         random_seed: int | None
-            Optional seed for reproducible sampling and jitter.
+            Optional seed for reproducible sampling.
         pbar_disabled: bool | None
             Disable progress bar if True.
 
@@ -459,7 +438,6 @@ class NetworkStructure:
         speed_m_s: float | None = None,
         angular_scaling_unit: float | None = None,
         farness_scaling_offset: float | None = None,
-        jitter_scale: float | None = None,
         sample_probability: float | None = None,
         sampling_weights: list[float] | None = None,
         random_seed: int | None = None,
@@ -484,14 +462,12 @@ class NetworkStructure:
             Scaling unit for angular cost (default: 180 degrees).
         farness_scaling_offset: float | None
             Offset for farness calculation (default: 1.0).
-        jitter_scale: float | None
-            Path cost jitter scale.
         sample_probability: float | None
             Probability of sampling a node as a source.
         sampling_weights: list[float] | None
             Per-node sampling weights in range [0.0, 1.0].
         random_seed: int | None
-            Optional seed for reproducible sampling and jitter.
+            Optional seed for reproducible sampling.
         pbar_disabled: bool | None
             Disable progress bar if True.
 
@@ -503,12 +479,12 @@ class NetworkStructure:
         ...
     def betweenness_shortest(
         self,
-        distances: list[int] | None = None,
-        betas: list[float] | None = None,
-        minutes: list[float] | None = None,
+        distance: int | None = None,
+        beta: float | None = None,
+        minutes: float | None = None,
         min_threshold_wt: float | None = None,
         speed_m_s: float | None = None,
-        jitter_scale: float | None = None,
+        tolerance: float | None = None,
         n_samples: int | None = None,
         random_seed: int | None = None,
         pbar_disabled: bool | None = None,
@@ -516,26 +492,28 @@ class NetworkStructure:
         """
         Compute betweenness centrality using R-K path sampling (shortest paths).
 
-        Uses Brandes multi-predecessor Dijkstra with random (source, destination) pair
-        sampling. Sample budget (n_samples) should be computed externally via
-        config.compute_rk_budget() using probed reach estimates.
+        Uses Euclidean pair selection via R-tree and early-terminating targeted Dijkstra.
+        Budget is internally capped at T_euclidean (total Euclidean node pairs within distance).
+        At short distances this produces exact results (pair saturation).
+
+        Accepts exactly one of: distance (meters), beta (decay), or minutes.
 
         Parameters
         ----------
-        distances: list[int] | None
-            Distance thresholds (meters).
-        betas: list[float] | None
-            Decay parameters (beta).
-        minutes: list[float] | None
-            Time thresholds (minutes).
+        distance: int | None
+            Distance threshold (meters).
+        beta: float | None
+            Decay parameter (beta).
+        minutes: float | None
+            Time threshold (minutes).
         min_threshold_wt: float | None
             Minimum weight for beta/distance conversion.
         speed_m_s: float | None
             Travel speed (m/s).
-        jitter_scale: float | None
-            Path cost jitter scale.
+        tolerance: float | None
+            Relative tolerance for near-equal path detection in Brandes betweenness. 0.0 = exact shortest paths only.
         n_samples: int | None
-            Number of (source, destination) pair samples. Default 100.
+            R-K sample budget. Internally capped at T_euclidean. Default 100.
         random_seed: int | None
             Optional seed for reproducible sampling.
         pbar_disabled: bool | None
@@ -547,14 +525,61 @@ class NetworkStructure:
             Object containing betweenness centrality metrics.
         """
         ...
-    def betweenness_simplest(
+    def betweenness_sample_shortest(
         self,
         distances: list[int] | None = None,
         betas: list[float] | None = None,
         minutes: list[float] | None = None,
         min_threshold_wt: float | None = None,
         speed_m_s: float | None = None,
-        jitter_scale: float | None = None,
+        tolerance: float | None = None,
+        n_samples: int | None = None,
+        random_seed: int | None = None,
+        pbar_disabled: bool | None = None,
+    ) -> BetweennessShortestResult:
+        """
+        Compute betweenness centrality using global R-K path sampling with distance bucketing.
+
+        Samples random pairs globally (Euclidean pre-filter at max distance),
+        finds targeted shortest paths, and buckets betweenness credits by the
+        network distance between each sampled pair. All distance thresholds
+        are computed in a single pass.
+
+        Parameters
+        ----------
+        distances: list[int] | None
+            Distance thresholds (meters). Credits are bucketed by pair distance.
+        betas: list[float] | None
+            Decay parameters (beta), one per distance.
+        minutes: list[float] | None
+            Time thresholds (minutes).
+        min_threshold_wt: float | None
+            Minimum weight for beta/distance conversion.
+        speed_m_s: float | None
+            Travel speed (m/s).
+        tolerance: float | None
+            Relative tolerance for near-equal path detection. 0.0 = exact shortest paths only.
+        n_samples: int | None
+            R-K sample budget (anchored on reach). Default 100.
+        random_seed: int | None
+            Optional seed for reproducible sampling.
+        pbar_disabled: bool | None
+            Disable progress bar if True.
+
+        Returns
+        -------
+        BetweennessShortestResult
+            Object containing betweenness centrality metrics per distance bucket.
+        """
+        ...
+    def betweenness_simplest(
+        self,
+        distance: int | None = None,
+        beta: float | None = None,
+        minutes: float | None = None,
+        min_threshold_wt: float | None = None,
+        speed_m_s: float | None = None,
+        tolerance: float | None = None,
         n_samples: int | None = None,
         random_seed: int | None = None,
         pbar_disabled: bool | None = None,
@@ -566,20 +591,22 @@ class NetworkStructure:
         (source, destination) pair sampling. Sample budget (n_samples) should be
         computed externally via config.compute_rk_budget().
 
+        Accepts exactly one of: distance (meters), beta (decay), or minutes.
+
         Parameters
         ----------
-        distances: list[int] | None
-            Distance thresholds (meters).
-        betas: list[float] | None
-            Decay parameters (beta).
-        minutes: list[float] | None
-            Time thresholds (minutes).
+        distance: int | None
+            Distance threshold (meters).
+        beta: float | None
+            Decay parameter (beta).
+        minutes: float | None
+            Time threshold (minutes).
         min_threshold_wt: float | None
             Minimum weight for beta/distance conversion.
         speed_m_s: float | None
             Travel speed (m/s).
-        jitter_scale: float | None
-            Path cost jitter scale.
+        tolerance: float | None
+            Relative tolerance for near-equal path detection in Brandes betweenness. 0.0 = exact shortest paths only.
         n_samples: int | None
             Number of (source, destination) pair samples. Default 100.
         random_seed: int | None
@@ -600,14 +627,16 @@ class NetworkStructure:
         minutes: list[float] | None = None,
         min_threshold_wt: float | None = None,
         speed_m_s: float | None = None,
-        jitter_scale: float | None = None,
+        tolerance: float | None = None,
+        source_indices: list[int] | None = None,
         pbar_disabled: bool | None = None,
     ) -> BetweennessShortestResult:
         """
-        Compute exact Brandes betweenness centrality from all sources (no sampling).
+        Compute Brandes betweenness centrality from all sources or a specified subset.
 
-        Iterates all live source nodes with standard Brandes backpropagation using
-        multi-predecessor Dijkstra. Gives exact betweenness values for ground truth.
+        When source_indices is None, iterates all live source nodes (exact).
+        When source_indices is provided, iterates only those sources and scales
+        by n_live / (2 * n_sources) for an unbiased estimate.
 
         Parameters
         ----------
@@ -621,15 +650,18 @@ class NetworkStructure:
             Minimum weight for beta/distance conversion.
         speed_m_s: float | None
             Travel speed (m/s).
-        jitter_scale: float | None
-            Path cost jitter scale.
+        tolerance: float | None
+            Relative tolerance for near-equal path detection in Brandes betweenness. 0.0 = exact shortest paths only.
+        source_indices: list[int] | None
+            Subset of node indices to use as sources. When None, all live nodes are used (exact).
+            When provided, only these sources are iterated and results are scaled for an unbiased estimate.
         pbar_disabled: bool | None
             Disable progress bar if True.
 
         Returns
         -------
         BetweennessShortestResult
-            Object containing exact betweenness centrality metrics.
+            Object containing betweenness centrality metrics.
         """
         ...
     def betweenness_od_shortest(
@@ -640,8 +672,6 @@ class NetworkStructure:
         minutes: list[float] | None = None,
         min_threshold_wt: float | None = None,
         speed_m_s: float | None = None,
-        jitter_scale: float | None = None,
-        random_seed: int | None = None,
         pbar_disabled: bool | None = None,
     ) -> BetweennessShortestResult:
         """
@@ -661,10 +691,6 @@ class NetworkStructure:
             Minimum weight for beta/distance conversion.
         speed_m_s: float | None
             Travel speed (m/s).
-        jitter_scale: float | None
-            Path cost jitter scale.
-        random_seed: int | None
-            Optional seed for reproducible jitter.
         pbar_disabled: bool | None
             Disable progress bar if True.
 
@@ -683,8 +709,6 @@ class NetworkStructure:
         compute_betweenness: bool | None = True,
         min_threshold_wt: float | None = None,
         speed_m_s: float | None = None,
-        jitter_scale: float | None = None,
-        random_seed: int | None = None,
         pbar_disabled: bool | None = None,
     ) -> CentralitySegmentResult:
         """
@@ -709,10 +733,6 @@ class NetworkStructure:
             Minimum weight for beta/distance conversion.
         speed_m_s: float | None
             Travel speed (m/s).
-        jitter_scale: float | None
-            Path cost jitter scale.
-        random_seed: int | None
-            Optional seed for random cost jitter.
         pbar_disabled: bool | None
             Disable progress bar if True.
 

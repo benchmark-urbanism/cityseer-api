@@ -1,7 +1,7 @@
 {
-  "generated": "2026-02-23T14:53:25",
+  "generated": "2026-02-24T03:05:23",
   "script": "02_fit_error_model.py",
-  "description": "Localised EW bound analysis on synthetic data",
+  "description": "Concentration bound analysis on synthetic data (Hoeffding for closeness, R-K for betweenness)",
   "parameters": {
     "delta": 0.1,
     "epsilon_targets": [
@@ -11,39 +11,95 @@
       0.2
     ],
     "reach_threshold": 100,
-    "cache_version": "v21"
+    "cache_version": "v23"
   },
   "overall": {
-    "total_configs": 462,
-    "bound_holds": 455,
-    "success_rate": 0.9848484848484849
+    "total_configs": 302,
+    "bound_holds": 248,
+    "success_rate": 0.8211920529801324
   },
   "conditional": {
     "reach_threshold": 100,
-    "total_configs": 352,
-    "bound_holds": 352,
-    "success_rate": 1.0
+    "total_configs": 247,
+    "bound_holds": 220,
+    "success_rate": 0.8906882591093117
   },
   "by_metric": {
     "harmonic": {
-      "total": 231,
-      "holds": 231,
+      "bound_type": "hoeffding",
+      "total": 92,
+      "holds": 92,
       "rate": 1.0,
-      "conditional_total": 176,
-      "conditional_holds": 176,
+      "conditional_total": 87,
+      "conditional_holds": 87,
       "conditional_rate": 1.0,
-      "median_eps_observed": 0.0005661463042547345,
-      "median_eps_predicted": 0.18312133559472726
+      "median_eps_observed": 0.0005967017410322404,
+      "median_eps_predicted": 0.2
     },
     "betweenness": {
-      "total": 231,
-      "holds": 224,
-      "rate": 0.9696969696969697,
-      "conditional_total": 176,
-      "conditional_holds": 176,
-      "conditional_rate": 1.0,
-      "median_eps_observed": 0.01680969109922213,
-      "median_eps_predicted": 0.18312133559472726
+      "bound_type": "rk",
+      "total": 210,
+      "holds": 156,
+      "rate": 0.7428571428571429,
+      "conditional_total": 160,
+      "conditional_holds": 133,
+      "conditional_rate": 0.83125,
+      "median_eps_observed": 0.029617198642401983,
+      "median_eps_predicted": 0.08736634350244828
+    }
+  },
+  "by_topology": {
+    "trellis": {
+      "total": 103,
+      "holds": 99,
+      "rate": 0.9611650485436893
+    },
+    "tree": {
+      "total": 97,
+      "holds": 60,
+      "rate": 0.6185567010309279
+    },
+    "linear": {
+      "total": 102,
+      "holds": 89,
+      "rate": 0.8725490196078431
+    }
+  },
+  "by_distance": {
+    "250": {
+      "total": 32,
+      "holds": 17,
+      "rate": 0.53125
+    },
+    "500": {
+      "total": 36,
+      "holds": 23,
+      "rate": 0.6388888888888888
+    },
+    "1000": {
+      "total": 41,
+      "holds": 32,
+      "rate": 0.7804878048780488
+    },
+    "1500": {
+      "total": 44,
+      "holds": 38,
+      "rate": 0.8636363636363636
+    },
+    "2000": {
+      "total": 48,
+      "holds": 43,
+      "rate": 0.8958333333333334
+    },
+    "3000": {
+      "total": 50,
+      "holds": 46,
+      "rate": 0.92
+    },
+    "4000": {
+      "total": 51,
+      "holds": 49,
+      "rate": 0.9607843137254902
     }
   }
 }

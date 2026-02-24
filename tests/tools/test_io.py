@@ -755,7 +755,7 @@ def test_network_structure_from_gpd(primal_graph):
             )
         # test betweenness against R-K path sampling method
         betweenness_result = netw_struct.betweenness_shortest(
-            distances=[400], random_seed=seed
+            distance=400, random_seed=seed
         )
         for measure_key, attr_key in [
             ("betweenness", "node_betweenness"),

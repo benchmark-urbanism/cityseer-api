@@ -508,7 +508,6 @@ impl DataMap {
         network_structure,
         max_walk_seconds,
         speed_m_s,
-        jitter_scale=None,
         angular=None
     ))]
     fn aggregate_to_src_idx(
@@ -517,10 +516,8 @@ impl DataMap {
         network_structure: &NetworkStructure,
         max_walk_seconds: u32,
         speed_m_s: f32,
-        jitter_scale: Option<f32>,
         angular: Option<bool>,
     ) -> HashMap<String, f32> {
-        let jitter_scale = jitter_scale.unwrap_or(0.0);
         let angular = angular.unwrap_or(false);
         let mut entries_result: HashMap<String, f32> = HashMap::new();
         let mut nearest_ids: HashMap<String, (String, f32)> = HashMap::new();
@@ -535,8 +532,6 @@ impl DataMap {
                     netw_src_idx,
                     max_walk_seconds,
                     speed_m_s,
-                    Some(jitter_scale),
-                    None,
                 )
                 .expect("pre-validated Dijkstra inputs")
         } else {
@@ -545,8 +540,6 @@ impl DataMap {
                     netw_src_idx,
                     max_walk_seconds,
                     speed_m_s,
-                    Some(jitter_scale),
-                    None,
                 )
                 .expect("pre-validated Dijkstra inputs")
         };
@@ -617,7 +610,6 @@ impl DataMap {
         spatial_tolerance=None,
         min_threshold_wt=None,
         speed_m_s=None,
-        jitter_scale=None,
         pbar_disabled=None,
     ))]
     fn accessibility(
@@ -632,7 +624,6 @@ impl DataMap {
         spatial_tolerance: Option<u32>,
         min_threshold_wt: Option<f32>,
         speed_m_s: Option<f32>,
-        jitter_scale: Option<f32>,
         pbar_disabled: Option<bool>,
         py: Python,
     ) -> PyResult<AccessibilityResult> {
@@ -693,7 +684,6 @@ impl DataMap {
                     network_structure,
                     max_walk_seconds,
                     speed_m_s,
-                    jitter_scale,
                     angular,
                 );
                 for (data_key, data_dist) in reachable_entries {
@@ -746,7 +736,6 @@ impl DataMap {
         spatial_tolerance=None,
         min_threshold_wt=None,
         speed_m_s=None,
-        jitter_scale=None,
         pbar_disabled=None
     ))]
     fn mixed_uses(
@@ -764,7 +753,6 @@ impl DataMap {
         spatial_tolerance: Option<u32>,
         min_threshold_wt: Option<f32>,
         speed_m_s: Option<f32>,
-        jitter_scale: Option<f32>,
         pbar_disabled: Option<bool>,
         py: Python,
     ) -> PyResult<MixedUsesResult> {
@@ -841,7 +829,6 @@ impl DataMap {
                     network_structure,
                     max_walk_seconds,
                     speed_m_s,
-                    jitter_scale,
                     angular,
                 );
                 // Flat arrays: [dist_idx * n_classes + class_idx]
@@ -1002,7 +989,6 @@ impl DataMap {
         spatial_tolerance=None,
         min_threshold_wt=None,
         speed_m_s=None,
-        jitter_scale=None,
         pbar_disabled=None
     ))]
     fn stats(
@@ -1016,7 +1002,6 @@ impl DataMap {
         spatial_tolerance: Option<u32>,
         min_threshold_wt: Option<f32>,
         speed_m_s: Option<f32>,
-        jitter_scale: Option<f32>,
         pbar_disabled: Option<bool>,
         py: Python,
     ) -> PyResult<StatsResult> {
@@ -1077,7 +1062,6 @@ impl DataMap {
                     network_structure,
                     max_walk_seconds,
                     speed_m_s,
-                    jitter_scale,
                     angular,
                 );
                 for (map_idx, num_map) in num_maps.iter().enumerate() {

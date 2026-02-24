@@ -1,22 +1,24 @@
 \begin{table}[htbp]
 \centering
-\caption{Hoeffding model validation on Greater Madrid network ($\varepsilon = 0.1$, $\delta = 0.1$).}
+\caption{Sampling model validation on Greater Madrid network ($\varepsilon = 0.1$, $\delta = 0.1$).}
 \label{tab:madrid_validation}
-\begin{tabular}{rrrrrrr}
+\begin{tabular}{rrrrrrrr}
 \toprule
 \textbf{Distance} & \textbf{Reach} & \textbf{Hoeff.\ $p$} &
-\textbf{$\rho_\text{close}$} & \textbf{$\rho_\text{betw}$} & \textbf{Speedup} & \textbf{$\rho \geq 0.95$?} \\
+\textbf{$\rho_\text{close}$} & \textbf{R-K $m$} & \textbf{$\rho_\text{betw}$} &
+\textbf{Speedup} & \textbf{$\rho \geq 0.95$?} \\
 \midrule
-1km & 184 & 100.0\% & 1.0000 & 1.0000 & 1.0$\times$ & \checkmark \\
-2km & 553 & 84.2\% & 0.9976 & 0.9988 & 1.2$\times$ & \checkmark \\
-5km & 2,447 & 22.1\% & 0.9834 & 0.9858 & 4.5$\times$ & \checkmark \\
-10km & 8,802 & 6.9\% & 0.9784 & 0.9686 & 14.6$\times$ & \checkmark \\
-20km & 29,438 & 2.3\% & 0.9787 & 0.9508 & 44.3$\times$ & \checkmark \\
+1km & 184 & 100.0\% & 1.0000 & 316 & 0.0905 & 2.5$\times$ & \texttimes \\
+2km & 553 & 84.2\% & 0.9976 & 366 & 0.1428 & 3.0$\times$ & \texttimes \\
+5km & 2,447 & 22.1\% & 0.9834 & 416 & 0.2387 & 11.1$\times$ & \texttimes \\
+10km & 8,802 & 6.9\% & 0.9784 & 466 & 0.3591 & 32.4$\times$ & \texttimes \\
+20km & 29,438 & 2.3\% & 0.9787 & 516 & 0.4905 & 91.1$\times$ & \texttimes \\
 \bottomrule
 \end{tabular}
 
 \vspace{0.5em}
 \footnotesize
 Network: Greater Madrid, 181,176 nodes, Community of Madrid boundary live node mask.
-Hoeffding model: $k = \log(2r/\delta) / (2\varepsilon^2)$, $p = \min(1, k/r)$.
+Closeness: Hoeffding model $k = \log(2r/\delta) / (2\varepsilon^2)$, $p = \min(1, k/r)$.
+Betweenness: R-K model $m = \lceil (1/2\varepsilon^2)(\lfloor\log_2(\text{VD}-2)\rfloor + 1 + \ln(1/\delta))\rceil$.
 \end{table}

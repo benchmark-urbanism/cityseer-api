@@ -107,7 +107,6 @@ def compute_accessibilities(
     spatial_tolerance: int = 0,
     min_threshold_wt: float = MIN_THRESH_WT,
     speed_m_s: float = SPEED_M_S,
-    jitter_scale: float = 0.0,
 ) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
     r"""
     Compute land-use accessibilities for the specified land-use classification keys over the street network.
@@ -178,13 +177,6 @@ def compute_accessibilities(
     speed_m_s: float
         The default `speed_m_s` parameter can be configured to generate custom mappings between walking times and
         distance thresholds $d_{max}$.
-    jitter_scale: float
-        The scale of random jitter to add to shortest path calculations, useful for situations with highly
-        rectilinear grids or for smoothing metrics on messy network representations. A random sample is drawn from a
-        range of zero to one and is then multiplied by the specified `jitter_scale`. This random value is added to the
-        shortest path calculations to provide random variation to the paths traced through the network. When working
-        with shortest paths in metres, the random value represents distance in metres. When using a simplest path
-        heuristic, the jitter will represent angular change in degrees.
 
     Returns
     -------
@@ -253,7 +245,6 @@ def compute_accessibilities(
         spatial_tolerance=spatial_tolerance,
         min_threshold_wt=min_threshold_wt,
         speed_m_s=speed_m_s,
-        jitter_scale=jitter_scale,
     )
     # wraps progress bar
     acc_result = config.wrap_progress(
@@ -308,7 +299,6 @@ def compute_mixed_uses(
     spatial_tolerance: int = 0,
     min_threshold_wt: float = MIN_THRESH_WT,
     speed_m_s: float = SPEED_M_S,
-    jitter_scale: float = 0.0,
 ) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
     r"""
     Compute landuse metrics.
@@ -395,13 +385,6 @@ def compute_mixed_uses(
     speed_m_s: float
         The default `speed_m_s` parameter can be configured to generate custom mappings between walking times and
         distance thresholds $d_{max}$.
-    jitter_scale: float
-        The scale of random jitter to add to shortest path calculations, useful for situations with highly
-        rectilinear grids or for smoothing metrics on messy network representations. A random sample is drawn from a
-        range of zero to one and is then multiplied by the specified `jitter_scale`. This random value is added to the
-        shortest path calculations to provide random variation to the paths traced through the network. When working
-        with shortest paths in metres, the random value represents distance in metres. When using a simplest path
-        heuristic, the jitter will represent angular change in degrees.
 
     Returns
     -------
@@ -501,7 +484,6 @@ def compute_mixed_uses(
         spatial_tolerance=spatial_tolerance,
         min_threshold_wt=min_threshold_wt,
         speed_m_s=speed_m_s,
-        jitter_scale=jitter_scale,
     )
     # wraps progress bar
     result = config.wrap_progress(
@@ -557,7 +539,6 @@ def compute_stats(
     n_nearest_candidates: int = 50,
     min_threshold_wt: float = MIN_THRESH_WT,
     speed_m_s: float = SPEED_M_S,
-    jitter_scale: float = 0.0,
 ) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
     r"""
     Compute numerical statistics over the street network.
@@ -625,13 +606,6 @@ def compute_stats(
     speed_m_s: float
         The default `speed_m_s` parameter can be configured to generate custom mappings between walking times and
         distance thresholds $d_{max}$.
-    jitter_scale: float
-        The scale of random jitter to add to shortest path calculations, useful for situations with highly
-        rectilinear grids or for smoothing metrics on messy network representations. A random sample is drawn from a
-        range of zero to one and is then multiplied by the specified `jitter_scale`. This random value is added to the
-        shortest path calculations to provide random variation to the paths traced through the network. When working
-        with shortest paths in metres, the random value represents distance in metres. When using a simplest path
-        heuristic, the jitter will represent angular change in degrees.
 
     Returns
     -------
@@ -710,7 +684,6 @@ def compute_stats(
         spatial_tolerance=spatial_tolerance,
         min_threshold_wt=min_threshold_wt,
         speed_m_s=speed_m_s,
-        jitter_scale=jitter_scale,
     )
     # wraps progress bar
     stats_result = config.wrap_progress(

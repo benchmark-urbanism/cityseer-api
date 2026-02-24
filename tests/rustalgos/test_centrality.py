@@ -47,42 +47,12 @@ def test_shortest_path_trees(primal_graph, dual_graph):
             for j_node_key, j_nx_path in nx_path.items():
                 assert find_path(int(j_node_key), src_idx, tree_map) == [int(j) for j in j_nx_path]
                 assert tree_map[int(j_node_key)].short_dist - nx_dist[j_node_key] < config.ATOL
-    # check with jitter
-    nodes_gdf_j, edges_gdf_j, network_structure_j = io.network_structure_from_nx(primal_graph)
-    for max_dist in [2000]:
-        max_seconds = max_dist / config.SPEED_M_S
-        # use aggressive jitter and check that at least one shortest path is different to non-jitter
-        for jitter in [2]:
-            diffs = False
-            for src_idx in range(len(primal_graph)):
-                # don't calculate for isolated nodes
-                if src_idx >= 49:
-                    continue
-                # no jitter
-                _visited_nodes, tree_map = network_structure_p.dijkstra_tree_shortest(
-                    src_idx,
-                    int(max_seconds),
-                    config.SPEED_M_S,
-                )
-                # with jitter
-                _visited_nodes_j, tree_map_j = network_structure_j.dijkstra_tree_shortest(
-                    src_idx, int(max_seconds), config.SPEED_M_S, jitter_scale=jitter
-                )
-                for to_idx in range(len(primal_graph)):
-                    if to_idx >= 49:
-                        continue
-                    if find_path(int(to_idx), src_idx, tree_map) != find_path(int(to_idx), src_idx, tree_map_j):
-                        diffs = True
-                        break
-                if diffs is True:
-                    break
-            assert diffs is True
     # test all shortest distance calculations against networkX
     max_seconds_5000 = 5000 / config.SPEED_M_S
     for src_idx in range(len(G_round_trip)):
         shortest_dists = nx.shortest_path_length(G_round_trip, str(src_idx), weight="length")
         _visted_nodes, tree_map = network_structure_p.dijkstra_tree_shortest(
-            src_idx, int(max_seconds_5000), config.SPEED_M_S, jitter_scale=0.0
+            src_idx, int(max_seconds_5000), config.SPEED_M_S
         )
         for target_idx in range(len(G_round_trip)):
             if str(target_idx) not in shortest_dists:
@@ -318,6 +288,50 @@ def test_closeness_shortest(primal_graph):
                 rtol=config.RTOL,
                 atol=config.ATOL,
             )
+
+
+def test_betweenness_shortest(primal_graph):
+    """
+    Test exact betweenness against NetworkX betweenness_centrality,
+    and sampled betweenness (Euclidean pair selection) against exact.
+
+    Rust methods are kept separate: betweenness_exact_shortest (Brandes) and
+    betweenness_shortest (R-K sampling). Python decides which to call based on
+    T_euclidean, but here we test each directly.
+    """
+    nodes_gdf, edges_gdf, network_structure = io.network_structure_from_nx(primal_graph)
+    G_round_trip = io.nx_from_cityseer_geopandas(nodes_gdf, edges_gdf)
+    for start_nd_key, end_nd_key, edge_idx in G_round_trip.edges(keys=True):
+        geom = G_round_trip[start_nd_key][end_nd_key][edge_idx]["geom"]
+        G_round_trip[start_nd_key][end_nd_key][edge_idx]["length"] = geom.length
+    # use large distance to cover the whole graph
+    dist = 5000
+    # --- Exact betweenness vs NetworkX ---
+    exact_result = network_structure.betweenness_exact_shortest(
+        distances=[dist],
+        pbar_disabled=True,
+    )
+    nx_betw = nx.betweenness_centrality(G_round_trip, weight="length", normalized=False)
+    for src_idx in range(len(G_round_trip)):
+        assert abs(nx_betw[str(src_idx)] - exact_result.node_betweenness[dist][src_idx]) < config.ATOL
+    # --- Sampled betweenness with large n_samples vs exact ---
+    sampled_result = network_structure.betweenness_shortest(
+        distance=dist,
+        n_samples=1_000_000,
+        random_seed=42,
+        pbar_disabled=True,
+    )
+    exact_vals = np.array(exact_result.node_betweenness[dist])
+    sampled_vals = np.array(sampled_result.node_betweenness[dist])
+    # Pearson correlation should be very high even with random path trace variance
+    mask = exact_vals > 0
+    if mask.sum() > 2:
+        corr = np.corrcoef(exact_vals[mask], sampled_vals[mask])[0, 1]
+        assert corr > 0.95, f"Pearson correlation too low: {corr:.4f}"
+    # scale should be close to 1.0 (unbiased estimator)
+    if exact_vals.max() > 0:
+        scale = np.mean(sampled_vals[mask]) / np.mean(exact_vals[mask])
+        assert 0.8 < scale < 1.2, f"Scale ratio out of range: {scale:.4f}"
 
 
 def test_local_centrality_all(diamond_graph):

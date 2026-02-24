@@ -82,7 +82,7 @@ def node_centrality_shortest(
     compute_betweenness: bool | None = True,
     min_threshold_wt: float = MIN_THRESH_WT,
     speed_m_s: float = SPEED_M_S,
-    jitter_scale: float = 0.0,
+    tolerance: float = 0.0,
     sample_probability: float | None = None,
     sampling_weights: list[float] | None = None,
     random_seed: int | None = None,
@@ -131,13 +131,11 @@ def node_centrality_shortest(
     speed_m_s: float
         The default `speed_m_s` parameter can be configured to generate custom mappings between walking times and
         distance thresholds $d_{max}$.
-    jitter_scale: float
-        The scale of random jitter to add to shortest path calculations, useful for situations with highly
-        rectilinear grids or for smoothing metrics on messy network representations. A random sample is drawn from a
-        range of zero to one and is then multiplied by the specified `jitter_scale`. This random value is added to the
-        shortest path calculations to provide random variation to the paths traced through the network. When working
-        with shortest paths in metres, the random value represents distance in metres. When using a simplest path
-        heuristic, the jitter will represent angular change in degrees.
+    tolerance: float
+        Relative tolerance for betweenness path equality. Paths within `tolerance` fraction of the shortest are
+        treated as near-equal for multi-predecessor Brandes betweenness. Set to 0.0 for exact shortest paths only.
+        A value like 0.02 (2%) captures pedestrian indifference to near-equal routes. Only affects betweenness;
+        closeness always uses exact shortest paths.
     sample_probability: float
         Probability of sampling a node as a source for centrality calculations. When used alone, provides uniform
         random sampling across all nodes. When combined with `sampling_weights`, the final probability for each
@@ -150,7 +148,7 @@ def node_centrality_shortest(
         This parameter is not available in the adaptive variants, which automatically calibrate sampling
         probabilities per distance threshold.
     random_seed: int
-        Optional seed for deterministic sampling and random cost jitter.
+        Optional seed for deterministic sampling.
 
     Returns
     -------
@@ -208,7 +206,6 @@ def node_centrality_shortest(
             minutes=minutes,
             min_threshold_wt=min_threshold_wt,
             speed_m_s=speed_m_s,
-            jitter_scale=jitter_scale,
             sample_probability=sample_probability,
             sampling_weights=sampling_weights,
             random_seed=random_seed,
@@ -244,35 +241,33 @@ def node_centrality_shortest(
                 / closeness_result.node_farness[distance]  # type: ignore
             )
 
-    # Betweenness: use R-K path sampling via separate Brandes Dijkstra
+    # Betweenness: use R-K path sampling via separate Brandes Dijkstra (per distance)
     if compute_betweenness is True:
-        partial_func_b = partial(
-            network_structure.betweenness_shortest,
-            distances=distances,
-            betas=betas,
-            minutes=minutes,
-            min_threshold_wt=min_threshold_wt,
-            speed_m_s=speed_m_s,
-            jitter_scale=jitter_scale,
-            n_samples=n_betweenness_samples,
-            random_seed=random_seed,
-        )
-        betweenness_result = config.wrap_progress(
-            total=n_betweenness_samples or network_structure.street_node_count(),
-            rust_struct=network_structure,
-            partial_func=partial_func_b,
-            desc="betweenness",
-        )
-        if node_keys_py is None:
-            node_keys_py = betweenness_result.node_keys_py
-            gdf_idx = nodes_gdf.index.intersection(node_keys_py)
-        for measure_key, attr_key in [
-            ("betweenness", "node_betweenness"),
-            ("betweenness_beta", "node_betweenness_beta"),
-        ]:
-            for distance in resolved_distances:
-                data_key = config.prep_gdf_key(measure_key, distance)
-                temp_data[data_key] = getattr(betweenness_result, attr_key)[distance]
+        for d in resolved_distances:
+            partial_func_b = partial(
+                network_structure.betweenness_shortest,
+                distance=d,
+                min_threshold_wt=min_threshold_wt,
+                speed_m_s=speed_m_s,
+                tolerance=tolerance,
+                n_samples=n_betweenness_samples,
+                random_seed=random_seed,
+            )
+            betweenness_result = config.wrap_progress(
+                total=n_betweenness_samples or network_structure.street_node_count(),
+                rust_struct=network_structure,
+                partial_func=partial_func_b,
+                desc=f"betweenness: {d}m",
+            )
+            if node_keys_py is None:
+                node_keys_py = betweenness_result.node_keys_py
+                gdf_idx = nodes_gdf.index.intersection(node_keys_py)
+            for measure_key, attr_key in [
+                ("betweenness", "node_betweenness"),
+                ("betweenness_beta", "node_betweenness_beta"),
+            ]:
+                data_key = config.prep_gdf_key(measure_key, d)
+                temp_data[data_key] = getattr(betweenness_result, attr_key)[d]
 
     if temp_data and node_keys_py is not None and gdf_idx is not None:
         temp_df = pd.DataFrame(temp_data, index=node_keys_py)
@@ -395,8 +390,6 @@ def betweenness_od(
     minutes: list[float] | None = None,
     min_threshold_wt: float = MIN_THRESH_WT,
     speed_m_s: float = SPEED_M_S,
-    jitter_scale: float = 0.0,
-    random_seed: int | None = None,
 ) -> gpd.GeoDataFrame:
     """Compute OD-weighted betweenness centrality using the shortest path heuristic.
 
@@ -426,10 +419,6 @@ def betweenness_od(
     speed_m_s: float
         The default `speed_m_s` parameter can be configured to generate custom mappings between walking times and
         distance thresholds $d_{max}$.
-    jitter_scale: float
-        The scale of random jitter to add to shortest path calculations.
-    random_seed: int
-        Optional seed for deterministic random cost jitter.
 
     Returns
     -------
@@ -446,8 +435,6 @@ def betweenness_od(
         minutes=minutes,
         min_threshold_wt=min_threshold_wt,
         speed_m_s=speed_m_s,
-        jitter_scale=jitter_scale,
-        random_seed=random_seed,
     )
     result = config.wrap_progress(
         total=network_structure.street_node_count(), rust_struct=network_structure, partial_func=partial_func
@@ -485,7 +472,7 @@ def node_centrality_simplest(
     speed_m_s: float = SPEED_M_S,
     angular_scaling_unit: float = 90,
     farness_scaling_offset: float = 1,
-    jitter_scale: float = 0.0,
+    tolerance: float = 0.0,
     sample_probability: float | None = None,
     sampling_weights: list[float] | None = None,
     random_seed: int | None = None,
@@ -541,13 +528,10 @@ def node_centrality_simplest(
         A number by which to offset the scaled angular distance for computing farness. 1 by default. For example, if the
         scaled angular distance is 2, then an offset of 1 will be applied as 1 + 2 = 3. This offset is only applied when
         calculating farness. Harmonic closeness always uses an offset of 1 to prevent division by zero.
-    jitter_scale: float
-        The scale of random jitter to add to shortest path calculations, useful for situations with highly
-        rectilinear grids or for smoothing metrics on messy network representations. A random sample is drawn from a
-        range of zero to one and is then multiplied by the specified `jitter_scale`. This random value is added to the
-        shortest path calculations to provide random variation to the paths traced through the network. When working
-        with shortest paths in metres, the random value represents distance in metres. When using a simplest path
-        heuristic, the jitter will represent angular change in degrees.
+    tolerance: float
+        Relative tolerance for betweenness path equality. Paths within `tolerance` fraction of the shortest are
+        treated as near-equal for multi-predecessor Brandes betweenness. Set to 0.0 for exact shortest paths only.
+        A value like 0.02 (2%) captures pedestrian indifference to near-equal routes.
     sample_probability: float
         Probability of sampling a node as a source for centrality calculations. When used alone, provides uniform
         random sampling across all nodes. When combined with `sampling_weights`, the final probability for each
@@ -561,7 +545,7 @@ def node_centrality_simplest(
         This parameter is not available in the adaptive variants, which automatically calibrate sampling
         probabilities per distance threshold.
     random_seed: int
-        Optional seed for deterministic sampling and random cost jitter.
+        Optional seed for deterministic sampling.
 
     Returns
     -------
@@ -615,7 +599,6 @@ def node_centrality_simplest(
             speed_m_s=speed_m_s,
             angular_scaling_unit=angular_scaling_unit,
             farness_scaling_offset=farness_scaling_offset,
-            jitter_scale=jitter_scale,
             sample_probability=sample_probability,
             sampling_weights=sampling_weights,
             random_seed=random_seed,
@@ -652,31 +635,29 @@ def node_centrality_simplest(
                 closeness_result.node_farness[distance]  # type: ignore
             )
 
-    # Betweenness: use R-K path sampling via separate Brandes Dijkstra
+    # Betweenness: use R-K path sampling via separate Brandes Dijkstra (per distance)
     if compute_betweenness is True:
-        partial_func_b = partial(
-            network_structure.betweenness_simplest,
-            distances=distances,
-            betas=betas,
-            minutes=minutes,
-            min_threshold_wt=min_threshold_wt,
-            speed_m_s=speed_m_s,
-            jitter_scale=jitter_scale,
-            n_samples=n_betweenness_samples,
-            random_seed=random_seed,
-        )
-        betweenness_result = config.wrap_progress(
-            total=n_betweenness_samples or network_structure.street_node_count(),
-            rust_struct=network_structure,
-            partial_func=partial_func_b,
-            desc="betweenness",
-        )
-        if node_keys_py is None:
-            node_keys_py = betweenness_result.node_keys_py
-            gdf_idx = nodes_gdf.index.intersection(node_keys_py)
-        for distance in resolved_distances:
-            temp_data[config.prep_gdf_key("betweenness", distance, angular=True)] = (
-                betweenness_result.node_betweenness[distance]  # type: ignore
+        for d in resolved_distances:
+            partial_func_b = partial(
+                network_structure.betweenness_simplest,
+                distance=d,
+                min_threshold_wt=min_threshold_wt,
+                speed_m_s=speed_m_s,
+                tolerance=tolerance,
+                n_samples=n_betweenness_samples,
+                random_seed=random_seed,
+            )
+            betweenness_result = config.wrap_progress(
+                total=n_betweenness_samples or network_structure.street_node_count(),
+                rust_struct=network_structure,
+                partial_func=partial_func_b,
+                desc=f"betweenness: {d}m",
+            )
+            if node_keys_py is None:
+                node_keys_py = betweenness_result.node_keys_py
+                gdf_idx = nodes_gdf.index.intersection(node_keys_py)
+            temp_data[config.prep_gdf_key("betweenness", d, angular=True)] = (
+                betweenness_result.node_betweenness[d]  # type: ignore
             )
 
     if temp_data and node_keys_py is not None and gdf_idx is not None:
@@ -696,8 +677,6 @@ def segment_centrality(
     compute_betweenness: bool | None = True,
     min_threshold_wt: float = MIN_THRESH_WT,
     speed_m_s: float = SPEED_M_S,
-    jitter_scale: float = 0.0,
-    random_seed: int | None = None,
 ) -> gpd.GeoDataFrame:
     r"""
     Compute segment-based network centrality using the shortest path heuristic.
@@ -740,15 +719,6 @@ def segment_centrality(
     speed_m_s: float
         The default `speed_m_s` parameter can be configured to generate custom mappings between walking times and
         distance thresholds $d_{max}$.
-    jitter_scale: float
-        The scale of random jitter to add to shortest path calculations, useful for situations with highly
-        rectilinear grids or for smoothing metrics on messy network representations. A random sample is drawn from a
-        range of zero to one and is then multiplied by the specified `jitter_scale`. This random value is added to the
-        shortest path calculations to provide random variation to the paths traced through the network. When working
-        with shortest paths in metres, the random value represents distance in metres. When using a simplest path
-        heuristic, the jitter will represent angular change in degrees.
-    random_seed: int
-        Optional seed for random cost jitter.
 
     Returns
     -------
@@ -780,8 +750,6 @@ def segment_centrality(
         compute_betweenness=compute_betweenness,
         min_threshold_wt=min_threshold_wt,
         speed_m_s=speed_m_s,
-        jitter_scale=jitter_scale,
-        random_seed=random_seed,
     )
     # wraps progress bar
     result = config.wrap_progress(
@@ -832,7 +800,6 @@ def closeness_shortest(
     minutes: list[float] | None = None,
     min_threshold_wt: float = MIN_THRESH_WT,
     speed_m_s: float = SPEED_M_S,
-    jitter_scale: float = 0.0,
     random_seed: int | None = None,
     probe_density: float = config.DEFAULT_PROBE_DENSITY,
     epsilon: float = config.HOEFFDING_EPSILON,
@@ -856,10 +823,8 @@ def closeness_shortest(
         Minimum weight for beta/distance conversion.
     speed_m_s: float
         Travel speed (m/s).
-    jitter_scale: float
-        Path cost jitter scale.
     random_seed: int
-        Optional seed for reproducible sampling and jitter.
+        Optional seed for reproducible sampling.
     probe_density: float
         Probes per km² for reachability estimation.
     epsilon: float
@@ -905,7 +870,6 @@ def closeness_shortest(
             distances=full_distances,
             min_threshold_wt=min_threshold_wt,
             speed_m_s=speed_m_s,
-            jitter_scale=jitter_scale,
             random_seed=random_seed,
         )
         result = config.wrap_progress(
@@ -922,7 +886,6 @@ def closeness_shortest(
             distances=[d],
             min_threshold_wt=min_threshold_wt,
             speed_m_s=speed_m_s,
-            jitter_scale=jitter_scale,
             sample_probability=p,
             random_seed=random_seed,
         )
@@ -965,7 +928,6 @@ def closeness_simplest(
     speed_m_s: float = SPEED_M_S,
     angular_scaling_unit: float = 90,
     farness_scaling_offset: float = 1,
-    jitter_scale: float = 0.0,
     random_seed: int | None = None,
     probe_density: float = config.DEFAULT_PROBE_DENSITY,
     epsilon: float = config.HOEFFDING_EPSILON,
@@ -993,10 +955,8 @@ def closeness_simplest(
         Scaling unit for angular cost.
     farness_scaling_offset: float
         Offset for farness calculation.
-    jitter_scale: float
-        Path cost jitter scale.
     random_seed: int
-        Optional seed for reproducible sampling and jitter.
+        Optional seed for reproducible sampling.
     probe_density: float
         Probes per km² for reachability estimation.
     epsilon: float
@@ -1043,7 +1003,6 @@ def closeness_simplest(
             speed_m_s=speed_m_s,
             angular_scaling_unit=angular_scaling_unit,
             farness_scaling_offset=farness_scaling_offset,
-            jitter_scale=jitter_scale,
             random_seed=random_seed,
         )
         result = config.wrap_progress(
@@ -1062,7 +1021,6 @@ def closeness_simplest(
             speed_m_s=speed_m_s,
             angular_scaling_unit=angular_scaling_unit,
             farness_scaling_offset=farness_scaling_offset,
-            jitter_scale=jitter_scale,
             sample_probability=p,
             random_seed=random_seed,
         )
@@ -1097,7 +1055,7 @@ def betweenness_shortest(
     minutes: list[float] | None = None,
     min_threshold_wt: float = MIN_THRESH_WT,
     speed_m_s: float = SPEED_M_S,
-    jitter_scale: float = 0.0,
+    tolerance: float = 0.0,
     n_samples: int | None = None,
     random_seed: int | None = None,
     probe_density: float = config.DEFAULT_PROBE_DENSITY,
@@ -1125,8 +1083,10 @@ def betweenness_shortest(
         Minimum weight for beta/distance conversion.
     speed_m_s: float
         Travel speed (m/s).
-    jitter_scale: float
-        Path cost jitter scale.
+    tolerance: float
+        Relative tolerance for betweenness path equality. Paths within `tolerance` fraction of the shortest are
+        treated as near-equal for multi-predecessor Brandes betweenness. Set to 0.0 for exact shortest paths only.
+        A value like 0.02 (2%) captures pedestrian indifference to near-equal routes.
     n_samples: int
         Explicit number of samples (overrides adaptive budgeting if provided).
     random_seed: int
@@ -1151,33 +1111,49 @@ def betweenness_shortest(
     node_count = network_structure.street_node_count()
     temp_data: dict[str, object] = {}
 
-    # Compute per-distance sample budgets
+    # Probe reachability for budget computation and saturation check
+    reach_estimates = config.probe_reachability(
+        network_structure, resolved_distances, probe_density=probe_density, speed_m_s=speed_m_s
+    )
     if n_samples is not None:
         budgets = {d: n_samples for d in resolved_distances}
     else:
-        reach_estimates = config.probe_reachability(
-            network_structure, resolved_distances, probe_density=probe_density, speed_m_s=speed_m_s
-        )
         budgets = config.compute_betweenness_budgets(reach_estimates, epsilon=epsilon, delta=delta)
 
     betweenness_results: dict[int, rustalgos.centrality.BetweennessShortestResult] = {}
 
     for d in sorted(resolved_distances):
-        n = budgets.get(d) or 100
-        logger.info(f"  Betweenness {d}m: n_samples={n}")
-        partial_func = partial(
-            network_structure.betweenness_shortest,
-            distances=[d],
-            min_threshold_wt=min_threshold_wt,
-            speed_m_s=speed_m_s,
-            jitter_scale=jitter_scale,
-            n_samples=n,
-            random_seed=random_seed,
-        )
-        result = config.wrap_progress(
-            total=node_count, rust_struct=network_structure, partial_func=partial_func,
-            desc=f"betweenness n={n}: {d}m",
-        )
+        n = budgets.get(d)
+        if n is None:
+            # Tipping point: R-K budget >= reach, pair space too small for sampling to converge
+            logger.info(f"  Betweenness {d}m: reach={reach_estimates.get(d, 0):.0f} -> exact Brandes (tipping point)")
+            partial_func = partial(
+                network_structure.betweenness_exact_shortest,
+                distances=[d],
+                min_threshold_wt=min_threshold_wt,
+                speed_m_s=speed_m_s,
+                tolerance=tolerance,
+            )
+            result = config.wrap_progress(
+                total=node_count, rust_struct=network_structure, partial_func=partial_func,
+                desc=f"betweenness exact: {d}m",
+            )
+        else:
+            # Sampling regime: R-K path sampling with Euclidean pair selection
+            logger.info(f"  Betweenness {d}m: reach={reach_estimates.get(d, 0):.0f}, n_samples={n} -> sampling")
+            partial_func = partial(
+                network_structure.betweenness_shortest,
+                distance=d,
+                min_threshold_wt=min_threshold_wt,
+                speed_m_s=speed_m_s,
+                tolerance=tolerance,
+                n_samples=n,
+                random_seed=random_seed,
+            )
+            result = config.wrap_progress(
+                total=n, rust_struct=network_structure, partial_func=partial_func,
+                desc=f"betweenness n={n}: {d}m",
+            )
         betweenness_results[d] = result  # type: ignore[assignment]
 
     ref_result = next(iter(betweenness_results.values()))
@@ -1203,7 +1179,7 @@ def betweenness_simplest(
     minutes: list[float] | None = None,
     min_threshold_wt: float = MIN_THRESH_WT,
     speed_m_s: float = SPEED_M_S,
-    jitter_scale: float = 0.0,
+    tolerance: float = 0.0,
     n_samples: int | None = None,
     random_seed: int | None = None,
     probe_density: float = config.DEFAULT_PROBE_DENSITY,
@@ -1228,8 +1204,10 @@ def betweenness_simplest(
         Minimum weight for beta/distance conversion.
     speed_m_s: float
         Travel speed (m/s).
-    jitter_scale: float
-        Path cost jitter scale.
+    tolerance: float
+        Relative tolerance for betweenness path equality. Paths within `tolerance` fraction of the shortest are
+        treated as near-equal for multi-predecessor Brandes betweenness. Set to 0.0 for exact shortest paths only.
+        A value like 0.02 (2%) captures pedestrian indifference to near-equal routes.
     n_samples: int
         Explicit number of samples (overrides adaptive budgeting if provided).
     random_seed: int
@@ -1269,10 +1247,10 @@ def betweenness_simplest(
         logger.info(f"  Betweenness {d}m: n_samples={n}")
         partial_func = partial(
             network_structure.betweenness_simplest,
-            distances=[d],
+            distance=d,
             min_threshold_wt=min_threshold_wt,
             speed_m_s=speed_m_s,
-            jitter_scale=jitter_scale,
+            tolerance=tolerance,
             n_samples=n,
             random_seed=random_seed,
         )
@@ -1301,7 +1279,7 @@ def betweenness_exact_shortest(
     minutes: list[float] | None = None,
     min_threshold_wt: float = MIN_THRESH_WT,
     speed_m_s: float = SPEED_M_S,
-    jitter_scale: float = 0.0,
+    tolerance: float = 0.0,
 ) -> gpd.GeoDataFrame:
     """Compute exact Brandes betweenness centrality from all sources (no sampling).
 
@@ -1321,8 +1299,10 @@ def betweenness_exact_shortest(
         Minimum weight for beta/distance conversion.
     speed_m_s: float
         Travel speed (m/s).
-    jitter_scale: float
-        Path cost jitter scale.
+    tolerance: float
+        Relative tolerance for betweenness path equality. Paths within `tolerance` fraction of the shortest are
+        treated as near-equal for multi-predecessor Brandes betweenness. Set to 0.0 for exact shortest paths only.
+        A value like 0.02 (2%) captures pedestrian indifference to near-equal routes.
 
     Returns
     -------
@@ -1341,7 +1321,7 @@ def betweenness_exact_shortest(
         minutes=minutes,
         min_threshold_wt=min_threshold_wt,
         speed_m_s=speed_m_s,
-        jitter_scale=jitter_scale,
+        tolerance=tolerance,
     )
     result = config.wrap_progress(
         total=network_structure.street_node_count(),

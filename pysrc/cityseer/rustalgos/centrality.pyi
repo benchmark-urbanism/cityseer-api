@@ -94,6 +94,14 @@ class BetweennessShortestResult:
     def sampled_source_count(self) -> int:
         """Number of sources that were sampled."""
         ...
+    @property
+    def t_euclidean(self) -> int:
+        """Total Euclidean node pairs within distance threshold."""
+        ...
+    @property
+    def actual_budget(self) -> int:
+        """Actual budget used: min(n_samples, T_euclidean)."""
+        ...
 
 class BetweennessSimplestResult:
     """Holds results for simplest path (angular) betweenness centrality calculations."""

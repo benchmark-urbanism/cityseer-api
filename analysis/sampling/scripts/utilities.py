@@ -45,7 +45,7 @@ for d in [CACHE_DIR, OUTPUT_DIR, FIGURES_DIR, TABLES_DIR]:
 # Cache version for invalidation — bump this to force all caches to regenerate
 # Versioned filenames (synthetic pkl, validation CSVs) auto-regenerate on bump.
 # Network graphs (gla_graph.pkl, gla_ground_truth_*.pkl) are unversioned and persist.
-CACHE_VERSION = "v23"
+CACHE_VERSION = "v26"
 
 # Canonical per-quartile key prefixes — single source of truth for fallback/perfect blocks
 QUARTILE_KEYS = ("spearman", "mae", "max_error", "reach")
@@ -749,7 +749,49 @@ def ew_predicted_epsilon(
 
 
 # =============================================================================
-# SECTION 7: Riondato-Kornaropoulos (R-K) Bound Utilities
+# SECTION 6b: Hoeffding Bound for Betweenness (Path Sampling)
+# =============================================================================
+
+
+def compute_hoeffding_betw_budget(
+    reach: float,
+    epsilon: float = HOEFFDING_EPSILON,
+    delta: float = HOEFFDING_DELTA,
+) -> int | None:
+    """
+    Compute Hoeffding path-sampling budget for betweenness.
+
+    Uses the same Hoeffding/EW concentration inequality as closeness:
+        m = ceil(log(2r / delta) / (2 * epsilon^2))
+    capped at T = r(r-1)/2 total pairs (exact computation).
+
+    Each sampled path generates a bounded [0,1] indicator per node.
+    By Hoeffding + union bound over r nodes, m paths suffice for
+    additive epsilon at every node with probability >= 1 - delta.
+
+    Parameters
+    ----------
+    reach : float
+        Mean network reach (nodes within distance)
+    epsilon : float
+        Normalised additive error tolerance
+    delta : float
+        Failure probability
+
+    Returns
+    -------
+    int or None
+        Required number of sampled paths, or None if reach <= 1
+    """
+    if reach <= 1:
+        return None
+    total_pairs = int(reach * (reach - 1) / 2)
+    m = int(math.ceil(math.log(2 * reach / delta) / (2 * epsilon**2)))
+    return min(m, total_pairs)
+
+
+# =============================================================================
+# SECTION 7: Riondato-Kornaropoulos (R-K) Bound Utilities (legacy)
 # =============================================================================
 
 
@@ -764,6 +806,10 @@ def compute_rk_budget(
     VD = ceil(sqrt(reach))
     m = ceil((1/(2*eps^2)) * (floor(log2(VD-2)) + 1 + ln(1/delta)))
 
+    Returns None when m >= reach (tipping point): sampling can't converge
+    at this reach. The reach-based check keeps the decision graph-independent
+    for cross-network comparability.
+
     Parameters
     ----------
     mean_reachability : float
@@ -777,12 +823,20 @@ def compute_rk_budget(
     -------
     int or None
         Required number of sampled paths, or None if reach <= 0
+        or m >= reach (tipping point: use exact Brandes instead).
     """
     if mean_reachability <= 0:
         return None
     vd = max(3, int(math.ceil(math.sqrt(mean_reachability))))
     vd_log = int(math.floor(math.log2(max(1, vd - 2)))) + 1
-    return int(math.ceil((1 / (2 * epsilon**2)) * (vd_log + math.log(1 / delta))))
+    m = int(math.ceil((1 / (2 * epsilon**2)) * (vd_log + math.log(1 / delta))))
+    # Hard cap at total pair space
+    total_pairs = int(mean_reachability * (mean_reachability - 1) / 2)
+    m = min(m, total_pairs)
+    # Tipping point: sampling can't converge at this reach
+    if m >= mean_reachability:
+        return None
+    return m
 
 
 def rk_predicted_epsilon(

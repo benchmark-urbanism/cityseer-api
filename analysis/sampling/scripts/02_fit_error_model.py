@@ -2,19 +2,22 @@
 """
 02_fit_error_model.py - Validate concentration bounds on synthetic data.
 
-Validates two distinct concentration bounds on the synthetic sampling cache:
-  - **Closeness (harmonic):** Localised Hoeffding/EW bound (source sampling)
+Validates the Hoeffding/EW concentration bound on the synthetic sampling cache
+for both metrics:
+  - **Closeness (harmonic):** Hoeffding/EW bound (source sampling)
         k = log(2r / delta) / (2 * epsilon^2),  p = min(1, k/r)
-  - **Betweenness:** Riondato-Kornaropoulos (R-K) bound (path sampling)
-        VD = ceil(sqrt(r)),  m = ceil((floor(log2(VD-2)) + 1 + ln(1/delta)) / (2*eps^2))
+  - **Betweenness:** Hoeffding/EW bound (path sampling)
+        m = ceil(log(2r / delta) / (2 * epsilon^2)),  capped at r(r-1)/2
+
+Both metrics use the same concentration inequality (Hoeffding + union bound
+over r nodes), differing only in the sampling primitive (sources vs paths).
 
 For each (topology, distance, epsilon, metric) configuration in the synthetic
 cache, this script:
   1. Computes the observed normalised epsilon from max_abs_error
-  2. Computes the predicted epsilon upper bound (Hoeffding for closeness, R-K
-     for betweenness)
+  2. Computes the predicted epsilon upper bound (Hoeffding/EW for both)
   3. Checks whether the bound holds (observed <= predicted)
-  4. Reports success rates, comparison tables, and outputs
+  4. Reports success rates broken down by metric x epsilon x distance
 
 Requires:
     - .cache/sampling_analysis_{CACHE_VERSION}.pkl (from 00_generate_cache.py)
@@ -22,6 +25,8 @@ Requires:
 Outputs:
     - output/error_model_synthetic.json
     - output/error_model_synthetic.csv
+    - paper/figures/fig_bound_success.pdf
+    - paper/figures/fig_observed_vs_predicted.pdf
     - paper/tables/tab1_ew_comparison.tex (main body Tab 1)
 """
 
@@ -29,19 +34,24 @@ import json
 import pickle
 from datetime import datetime
 
+import matplotlib
+
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 from utilities import (
     CACHE_DIR,
     CACHE_VERSION,
+    FIGURES_DIR,
     HOEFFDING_DELTA,
     OUTPUT_DIR,
     TABLES_DIR,
+    compute_hoeffding_betw_budget,
     compute_hoeffding_eff_n,
     compute_hoeffding_p,
-    compute_rk_budget,
     ew_predicted_epsilon,
     normalise_error,
-    rk_predicted_epsilon,
 )
 
 # =============================================================================
@@ -49,8 +59,26 @@ from utilities import (
 # =============================================================================
 
 DELTA = HOEFFDING_DELTA  # Failure probability (90% confidence)
-EPSILON_TARGETS = [0.01, 0.05, 0.1, 0.2]  # Tolerance levels to evaluate
+EPSILON_TARGETS_CLOSENESS = [0.05, 0.1, 0.2]  # Closeness comparison
+EPSILON_TARGETS_BETWEENNESS = [0.001, 0.002, 0.003]  # Fine sweep for betweenness
 REACH_THRESHOLD = 100  # Minimum reach for meaningful concentration bounds
+
+# Matplotlib style
+plt.rcParams.update(
+    {
+        "font.family": "sans-serif",
+        "font.size": 11,
+        "axes.titlesize": 12,
+        "axes.labelsize": 11,
+        "xtick.labelsize": 10,
+        "ytick.labelsize": 10,
+        "legend.fontsize": 10,
+        "figure.dpi": 150,
+        "savefig.dpi": 300,
+        "axes.spines.top": False,
+        "axes.spines.right": False,
+    }
+)
 
 
 # =============================================================================
@@ -68,9 +96,9 @@ def ew_required_p(epsilon: float, reach: float, delta: float = DELTA) -> float:
     return compute_hoeffding_p(reach, epsilon, delta)
 
 
-def rk_required_m(epsilon: float, reach: float, delta: float = DELTA) -> int | None:
-    """Compute the R-K path-sampling budget for a given epsilon tolerance."""
-    return compute_rk_budget(reach, epsilon, delta)
+def hoeffding_required_m(epsilon: float, reach: float, delta: float = DELTA) -> int | None:
+    """Compute the Hoeffding path-sampling budget for a given epsilon tolerance."""
+    return compute_hoeffding_betw_budget(reach, epsilon, delta)
 
 
 # =============================================================================
@@ -105,7 +133,8 @@ def load_synthetic_cache() -> pd.DataFrame:
 def analyse_bounds(df: pd.DataFrame) -> pd.DataFrame:
     """Analyse concentration bounds on all synthetic configurations.
 
-    Uses Hoeffding/EW for closeness (harmonic) and R-K for betweenness.
+    Uses Hoeffding/EW for both closeness (source sampling) and betweenness
+    (path sampling). Same concentration inequality, different primitives.
     """
     rows = []
 
@@ -128,14 +157,14 @@ def analyse_bounds(df: pd.DataFrame) -> pd.DataFrame:
             bound_type = "hoeffding"
             n_samples = None
         elif metric == "betweenness":
-            # Betweenness: R-K bound via path sampling
+            # Betweenness: Hoeffding/EW bound via path sampling
             n_samples = row["n_samples"]
             if n_samples <= 0:
                 continue
             n_eff = None
             sample_prob = None
-            eps_pred = rk_predicted_epsilon(n_samples, reach)
-            bound_type = "rk"
+            eps_pred = ew_predicted_epsilon(n_samples, reach)
+            bound_type = "hoeffding"
         else:
             continue
 
@@ -170,143 +199,186 @@ def analyse_bounds(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def print_success_rates(results: pd.DataFrame):
-    """Print bound success rates, including conditional rates."""
+    """Print bound success rates broken down by metric x epsilon x distance."""
     print("\n" + "=" * 70)
-    print("BOUND SUCCESS RATES (Hoeffding for closeness, R-K for betweenness)")
+    print("BOUND SUCCESS RATES (Hoeffding/EW)")
     print("=" * 70)
 
-    total = len(results)
-    holds = results["bound_holds"].sum()
-    print(f"\n  Overall: {holds}/{total} ({100 * holds / total:.1f}%) — expected >= {100 * (1 - DELTA):.0f}%")
-
-    # By metric
-    print(f"\n  {'Metric':<15} {'Bound':<12} {'Holds':>8} {'Total':>8} {'Rate':>8}")
-    print("  " + "-" * 55)
-    for metric in sorted(results["metric"].unique()):
-        subset = results[results["metric"] == metric]
-        h = subset["bound_holds"].sum()
-        t = len(subset)
-        bt = subset["bound_type"].iloc[0] if len(subset) > 0 else "?"
-        print(f"  {metric:<15} {bt:<12} {h:>8} {t:>8} {100 * h / t:>7.1f}%")
-
-    # Conditional on reach >= threshold
-    print(f"\n  Conditional on reach >= {REACH_THRESHOLD}:")
-    high_reach = results[results["reach"] >= REACH_THRESHOLD]
-    if len(high_reach) > 0:
-        h = high_reach["bound_holds"].sum()
-        t = len(high_reach)
-        print(f"  Overall: {h}/{t} ({100 * h / t:.1f}%)")
-        for metric in sorted(high_reach["metric"].unique()):
-            subset = high_reach[high_reach["metric"] == metric]
-            h = subset["bound_holds"].sum()
-            t = len(subset)
-            print(f"    {metric:<15} {h:>8}/{t:<8} {100 * h / t:>7.1f}%")
-
-    # By topology
-    print(f"\n  {'Topology':<15} {'Holds':>8} {'Total':>8} {'Rate':>8}")
-    print("  " + "-" * 45)
-    for topo in sorted(results["topology"].unique()):
-        subset = results[results["topology"] == topo]
-        h = subset["bound_holds"].sum()
-        t = len(subset)
-        print(f"  {topo:<15} {h:>8} {t:>8} {100 * h / t:>7.1f}%")
-
-    # By distance
-    print(f"\n  {'Distance':<15} {'Holds':>8} {'Total':>8} {'Rate':>8}")
-    print("  " + "-" * 45)
-    for dist in sorted(results["distance"].unique()):
-        subset = results[results["distance"] == dist]
-        h = subset["bound_holds"].sum()
-        t = len(subset)
-        print(f"  {dist:<15} {h:>8} {t:>8} {100 * h / t:>7.1f}%")
-
-
-def print_epsilon_comparison(results: pd.DataFrame):
-    """Print required samples at different epsilon tolerances for both bounds."""
-    print("\n" + "=" * 70)
-    print("REQUIRED SAMPLES BY EPSILON (Hoeffding k/p + R-K m)")
-    print("=" * 70)
-
-    configs = results.groupby(["topology", "distance"])["reach"].first().reset_index()
-    configs = configs.sort_values(["topology", "distance"])
-
-    header = f"  {'Topology':<10} {'Dist':>5} {'Reach':>8} |"
-    for eps in EPSILON_TARGETS:
-        header += f" {'k@' + str(eps):>10} {'p@' + str(eps):>8} {'m@' + str(eps):>10}"
-    print(header)
-    print("  " + "-" * len(header))
-
-    for _, cfg in configs.iterrows():
-        reach = cfg["reach"]
-        line = f"  {cfg['topology']:<10} {cfg['distance']:>5} {reach:>8.0f} |"
-        for eps in EPSILON_TARGETS:
-            ew_n = ew_required_n_eff(eps, reach)
-            ew_p = ew_required_p(eps, reach)
-            rk_m = rk_required_m(eps, reach)
-            line += f" {ew_n:>10.0f} {ew_p:>7.1%}"
-            line += f" {rk_m:>10}" if rk_m is not None else f" {'N/A':>10}"
-        print(line)
-
-
-def print_observed_epsilon_summary(results: pd.DataFrame):
-    """Print summary of observed epsilon values at each configuration."""
-    print("\n" + "=" * 70)
-    print("OBSERVED NORMALISED EPSILON")
-    print("=" * 70)
-
-    # Betweenness (by n_samples)
-    betw = results[results["metric"] == "betweenness"]
-    if len(betw) > 0:
-        print("\n  Betweenness (R-K path sampling):")
-        epsilons = sorted(betw["epsilon"].dropna().unique())
-        print(f"  {'Topology':<10} {'Dist':>5} {'Reach':>8} | ", end="")
-        for eps in epsilons:
-            print(f"{'eps=' + f'{eps}':>10}", end="")
-        print()
-        print("  " + "-" * (35 + 10 * len(epsilons)))
-
-        for topo in sorted(betw["topology"].unique()):
-            for dist in sorted(betw["distance"].unique()):
-                subset = betw[(betw["topology"] == topo) & (betw["distance"] == dist)]
-                if len(subset) == 0:
-                    continue
-                reach = subset.iloc[0]["reach"]
-                line = f"  {topo:<10} {dist:>5} {reach:>8.0f} | "
-                for eps in epsilons:
-                    row = subset[subset["epsilon"] == eps]
-                    if len(row) > 0:
-                        eps_obs = row.iloc[0]["eps_observed"]
-                        line += f"{eps_obs:>10.4f}"
-                    else:
-                        line += f"{'--':>10}"
-                print(line)
-
-    # Harmonic closeness (by sample_prob)
+    # --- Closeness ---
     harm = results[results["metric"] == "harmonic"]
     if len(harm) > 0:
-        print("\n  Harmonic closeness (Hoeffding source sampling):")
-        epsilons = sorted(harm["epsilon"].dropna().unique())
-        print(f"  {'Topology':<10} {'Dist':>5} {'Reach':>8} | ", end="")
-        for eps in epsilons:
-            print(f"{'eps=' + f'{eps}':>10}", end="")
-        print()
-        print("  " + "-" * (35 + 10 * len(epsilons)))
+        print("\n  CLOSENESS (source sampling):")
+        for eps in sorted(harm["epsilon"].dropna().unique()):
+            subset = harm[harm["epsilon"] == eps]
+            h = subset["bound_holds"].sum()
+            t = len(subset)
+            print(f"\n    eps={eps}:  {h}/{t} ({100 * h / t:.1f}%)")
 
-        for topo in sorted(harm["topology"].unique()):
-            for dist in sorted(harm["distance"].unique()):
-                subset = harm[(harm["topology"] == topo) & (harm["distance"] == dist)]
-                if len(subset) == 0:
-                    continue
-                reach = subset.iloc[0]["reach"]
-                line = f"  {topo:<10} {dist:>5} {reach:>8.0f} | "
-                for eps in epsilons:
-                    row = subset[subset["epsilon"] == eps]
-                    if len(row) > 0:
-                        eps_obs = row.iloc[0]["eps_observed"]
-                        line += f"{eps_obs:>10.4f}"
-                    else:
-                        line += f"{'--':>10}"
-                print(line)
+            print(f"    {'Distance':<10} {'Reach':>8} {'Holds':>6} {'Total':>6} {'Rate':>7}  {'Med obs':>10} {'Predicted':>10}")
+            print("    " + "-" * 65)
+            for dist in sorted(subset["distance"].unique()):
+                ds = subset[subset["distance"] == dist]
+                dh = ds["bound_holds"].sum()
+                dt = len(ds)
+                med_obs = ds["eps_observed"].median()
+                med_pred = ds["eps_predicted"].median()
+                reach = ds["reach"].iloc[0]
+                print(f"    {dist:<10} {reach:>8.0f} {dh:>6} {dt:>6} {100 * dh / dt:>6.1f}%  {med_obs:>10.4f} {med_pred:>10.4f}")
+
+    # --- Betweenness ---
+    betw = results[results["metric"] == "betweenness"]
+    if len(betw) > 0:
+        print("\n  BETWEENNESS (path sampling):")
+        for eps in sorted(betw["epsilon"].dropna().unique()):
+            subset = betw[betw["epsilon"] == eps]
+            h = subset["bound_holds"].sum()
+            t = len(subset)
+            print(f"\n    eps={eps}:  {h}/{t} ({100 * h / t:.1f}%)")
+
+            print(f"    {'Distance':<10} {'Reach':>8} {'Holds':>6} {'Total':>6} {'Rate':>7}  {'Med obs':>10} {'Predicted':>10} {'Samples':>10}")
+            print("    " + "-" * 80)
+            for dist in sorted(subset["distance"].unique()):
+                ds = subset[subset["distance"] == dist]
+                dh = ds["bound_holds"].sum()
+                dt = len(ds)
+                med_obs = ds["eps_observed"].median()
+                med_pred = ds["eps_predicted"].median()
+                reach = ds["reach"].iloc[0]
+                med_samples = ds["n_samples"].median()
+                print(f"    {dist:<10} {reach:>8.0f} {dh:>6} {dt:>6} {100 * dh / dt:>6.1f}%  {med_obs:>10.4f} {med_pred:>10.4f} {med_samples:>10.0f}")
+
+    # --- By topology (betweenness only, per epsilon) ---
+    if len(betw) > 0:
+        print("\n  BETWEENNESS by topology:")
+        for eps in sorted(betw["epsilon"].dropna().unique()):
+            subset = betw[betw["epsilon"] == eps]
+            print(f"\n    eps={eps}:")
+            for topo in sorted(subset["topology"].unique()):
+                ts = subset[subset["topology"] == topo]
+                h = ts["bound_holds"].sum()
+                t = len(ts)
+                print(f"      {topo:<12} {h:>4}/{t:<4} ({100 * h / t:.1f}%)")
+
+
+# =============================================================================
+# PLOTTING
+# =============================================================================
+
+
+def plot_bound_success(results: pd.DataFrame):
+    """Plot bound success rate vs distance, separated by metric and epsilon."""
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(13, 5))
+
+    distances = sorted(results["distance"].unique())
+
+    # --- Left panel: Closeness ---
+    harm = results[results["metric"] == "harmonic"]
+    if len(harm) > 0:
+        for eps in sorted(harm["epsilon"].dropna().unique()):
+            subset = harm[harm["epsilon"] == eps]
+            rates = []
+            for dist in distances:
+                ds = subset[subset["distance"] == dist]
+                if len(ds) > 0:
+                    rates.append(100 * ds["bound_holds"].mean())
+                else:
+                    rates.append(np.nan)
+            ax1.plot(distances, rates, "o-", label=f"$\\varepsilon$={eps}", markersize=6)
+
+    ax1.axhline(90, color="grey", linestyle="--", linewidth=0.8, label=f"$1-\\delta$={100*(1-DELTA):.0f}%")
+    ax1.set_xlabel("Distance (m)")
+    ax1.set_ylabel("Bound success rate (%)")
+    ax1.set_title("Closeness (source sampling)")
+    ax1.set_ylim(-5, 105)
+    ax1.legend()
+    ax1.set_xticks(distances)
+    ax1.tick_params(axis="x", rotation=45)
+
+    # --- Right panel: Betweenness ---
+    betw = results[results["metric"] == "betweenness"]
+    colors = ["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728"]
+    if len(betw) > 0:
+        for i, eps in enumerate(sorted(betw["epsilon"].dropna().unique())):
+            subset = betw[betw["epsilon"] == eps]
+            rates = []
+            for dist in distances:
+                ds = subset[subset["distance"] == dist]
+                if len(ds) > 0:
+                    rates.append(100 * ds["bound_holds"].mean())
+                else:
+                    rates.append(np.nan)
+            color = colors[i % len(colors)]
+            ax2.plot(distances, rates, "o-", label=f"$\\varepsilon$={eps}", markersize=6, color=color)
+
+    ax2.axhline(90, color="grey", linestyle="--", linewidth=0.8, label=f"$1-\\delta$={100*(1-DELTA):.0f}%")
+    ax2.set_xlabel("Distance (m)")
+    ax2.set_ylabel("Bound success rate (%)")
+    ax2.set_title("Betweenness (path sampling)")
+    ax2.set_ylim(-5, 105)
+    ax2.legend()
+    ax2.set_xticks(distances)
+    ax2.tick_params(axis="x", rotation=45)
+
+    plt.tight_layout()
+    output_path = FIGURES_DIR / "fig_bound_success.pdf"
+    fig.savefig(output_path, dpi=300, bbox_inches="tight")
+    print(f"  Saved: {output_path}")
+    plt.close()
+
+
+def plot_observed_vs_predicted(results: pd.DataFrame):
+    """Plot observed epsilon vs distance for each betweenness epsilon, with predicted overlay."""
+    betw = results[results["metric"] == "betweenness"]
+    if len(betw) == 0:
+        return
+
+    epsilons = sorted(betw["epsilon"].dropna().unique())
+    n_eps = len(epsilons)
+    fig, axes = plt.subplots(1, n_eps, figsize=(5 * n_eps, 5), squeeze=False)
+    axes = axes[0]
+
+    distances = sorted(betw["distance"].unique())
+    topo_markers = {"trellis": "o", "linear": "s", "tree": "^"}
+    topo_colors = {"trellis": "#1f77b4", "linear": "#ff7f0e", "tree": "#2ca02c"}
+
+    for i, eps in enumerate(epsilons):
+        ax = axes[i]
+        subset = betw[betw["epsilon"] == eps]
+
+        for topo in sorted(subset["topology"].unique()):
+            ts = subset[subset["topology"] == topo]
+            ax.scatter(
+                ts["distance"],
+                ts["eps_observed"],
+                marker=topo_markers.get(topo, "o"),
+                color=topo_colors.get(topo, "grey"),
+                label=f"{topo} (obs)",
+                alpha=0.7,
+                s=40,
+            )
+
+        # Predicted line (median across topologies per distance)
+        pred_by_dist = []
+        for dist in distances:
+            ds = subset[subset["distance"] == dist]
+            if len(ds) > 0:
+                pred_by_dist.append(ds["eps_predicted"].median())
+            else:
+                pred_by_dist.append(np.nan)
+        ax.plot(distances, pred_by_dist, "k--", linewidth=1.5, label="predicted $\\varepsilon$")
+
+        ax.set_xlabel("Distance (m)")
+        ax.set_ylabel("Normalised $\\varepsilon$")
+        ax.set_title(f"Betweenness $\\varepsilon$={eps}")
+        ax.legend(fontsize=8)
+        ax.set_xticks(distances)
+        ax.tick_params(axis="x", rotation=45)
+
+    plt.tight_layout()
+    output_path = FIGURES_DIR / "fig_observed_vs_predicted.pdf"
+    fig.savefig(output_path, dpi=300, bbox_inches="tight")
+    print(f"  Saved: {output_path}")
+    plt.close()
 
 
 # =============================================================================
@@ -315,11 +387,12 @@ def print_observed_epsilon_summary(results: pd.DataFrame):
 
 
 def generate_comparison_table():
-    """Generate LaTeX table comparing Hoeffding and R-K bounds at different epsilon tolerances."""
+    """Generate LaTeX table comparing Hoeffding bounds for closeness and betweenness."""
     print("\nGenerating comparison table...")
 
     reach_values = [100, 500, 1000, 3000, 10000, 30000]
-    eps_values = [0.05, 0.1, 0.2]
+    eps_closeness = EPSILON_TARGETS_CLOSENESS
+    eps_betweenness = EPSILON_TARGETS_BETWEENNESS
 
     def fmt_int(n):
         """Format integer with LaTeX-safe thousands separator."""
@@ -333,58 +406,74 @@ def generate_comparison_table():
     rows = []
     for reach in reach_values:
         row = {"reach": reach}
-        for eps in eps_values:
+        for eps in eps_closeness:
             row[f"k_{eps}"] = ew_required_n_eff(eps, reach)
             row[f"p_{eps}"] = ew_required_p(eps, reach)
-            m = rk_required_m(eps, reach)
+        for eps in eps_betweenness:
+            m = hoeffding_required_m(eps, reach)
+            T = int(reach * (reach - 1) / 2)
             row[f"m_{eps}"] = m if m is not None else 0
+            row[f"frac_{eps}"] = (m / T) if m is not None and T > 0 else 0
         rows.append(row)
 
-    # LaTeX output — structure: Reach | for each eps: k, p, m
-    n_eps = len(eps_values)
-    col_spec = "r" + "rrr" * n_eps  # reach + (k, p, m) per epsilon
+    # LaTeX output
+    n_close = len(eps_closeness)
+    n_betw = len(eps_betweenness)
+    col_spec = "r" + "rr" * n_close + "rr" * n_betw
 
     latex = r"""\begin{table}[htbp]
 \centering
-\caption{Required effective sample sizes under the Hoeffding (closeness) and
-  Riondato--Kornaropoulos (betweenness) bounds at different additive error
-  tolerances ($\delta = 0.1$).}
+\caption{Required sample sizes under the Hoeffding/EW bound for
+  closeness (source sampling) and betweenness (path sampling) at different
+  additive error tolerances ($\delta = 0.1$).}
 \label{tab:ew_comparison}
 \small
 """
     latex += f"\\begin{{tabular}}{{@{{}}{col_spec}@{{}}}}\n"
     latex += "\\toprule\n"
 
-    # Header row 1: epsilon groupings
-    latex += "& "
-    for i, eps in enumerate(eps_values):
-        latex += f"\\multicolumn{{3}}{{c}}{{$\\varepsilon = {eps}$}}"
-        if i < n_eps - 1:
-            latex += " & "
+    # Header row 1: metric groupings
+    latex += " & "
+    latex += f"\\multicolumn{{{2 * n_close}}}{{c}}{{Closeness (source)}} & "
+    latex += f"\\multicolumn{{{2 * n_betw}}}{{c}}{{Betweenness (path)}}"
+    latex += " \\\\\n"
+    latex += f"\\cmidrule(lr){{2-{1 + 2 * n_close}}} "
+    latex += f"\\cmidrule(lr){{{2 + 2 * n_close}-{1 + 2 * n_close + 2 * n_betw}}}\n"
+
+    # Header row 2: epsilon values
+    latex += "\\textbf{Reach}"
+    for eps in eps_closeness:
+        latex += f" & \\textbf{{$k$}} & \\textbf{{$p$}}"
+    for eps in eps_betweenness:
+        latex += f" & \\textbf{{$m$}} & \\textbf{{frac}}"
     latex += " \\\\\n"
 
-    # Cmidrules under each epsilon group
-    for i, eps in enumerate(eps_values):
-        col_start = 2 + 3 * i
-        col_end = col_start + 2
-        latex += f"\\cmidrule(lr){{{col_start}-{col_end}}} "
-    latex += "\n"
-
-    # Header row 2: column labels
-    latex += "\\textbf{Reach}"
-    for eps in eps_values:
-        latex += " & \\textbf{$k$} & \\textbf{$p$} & \\textbf{$m$}"
+    # Header row 3: epsilon labels
+    latex += ""
+    for eps in eps_closeness:
+        latex += f" & \\multicolumn{{2}}{{c}}{{$\\varepsilon={eps}$}}"
+    for eps in eps_betweenness:
+        latex += f" & \\multicolumn{{2}}{{c}}{{$\\varepsilon={eps}$}}"
     latex += " \\\\\n"
     latex += "\\midrule\n"
 
     # Data rows
     for row in rows:
         latex += fmt_int(row["reach"])
-        for eps in eps_values:
+        for eps in eps_closeness:
             k = int(row[f"k_{eps}"])
             p = row[f"p_{eps}"]
+            if p >= 1.0:
+                latex += f" & \\multicolumn{{2}}{{c}}{{exact}}"
+            else:
+                latex += f" & {fmt_int(k)} & {fmt_pct(p)}"
+        for eps in eps_betweenness:
             m = int(row[f"m_{eps}"])
-            latex += f" & {fmt_int(k)} & {fmt_pct(p)} & {fmt_int(m)}"
+            frac = row[f"frac_{eps}"]
+            if frac >= 1.0:
+                latex += f" & \\multicolumn{{2}}{{c}}{{exact}}"
+            else:
+                latex += f" & {fmt_int(m)} & {fmt_pct(frac)}"
         latex += " \\\\\n"
 
     latex += r"""\bottomrule
@@ -393,8 +482,8 @@ def generate_comparison_table():
 \vspace{0.5em}
 \footnotesize
 \textbf{Closeness} (source sampling): $k = \log(2r/\delta) / (2\varepsilon^2)$, $p = \min(1, k/r)$.
-\textbf{Betweenness} (path sampling): $m = \lceil(\lfloor\log_2(\text{VD}-2)\rfloor + 1 + \ln(1/\delta)) / (2\varepsilon^2)\rceil$,
-where $\text{VD} = \lceil\sqrt{r}\rceil$.
+\textbf{Betweenness} (path sampling): $m = \min\bigl(\lceil\log(2r/\delta) / (2\varepsilon^2)\rceil,\; r(r{-}1)/2\bigr)$.
+Both use the same Hoeffding/EW concentration inequality.
 \end{table}
 """
 
@@ -412,7 +501,7 @@ where $\text{VD} = \lceil\sqrt{r}\rceil$.
 def main():
     print("=" * 70)
     print("02_fit_error_model.py - Concentration Bounds on Synthetic Data")
-    print("  Hoeffding/EW for closeness, R-K for betweenness")
+    print("  Hoeffding/EW for both closeness and betweenness")
     print("=" * 70)
 
     # Load data
@@ -423,13 +512,15 @@ def main():
     print("\nAnalysing bounds...")
     results = analyse_bounds(df)
     n_hoeff = (results["bound_type"] == "hoeffding").sum()
-    n_rk = (results["bound_type"] == "rk").sum()
-    print(f"  Analysed {len(results)} configurations ({n_hoeff} Hoeffding, {n_rk} R-K)")
+    print(f"  Analysed {len(results)} configurations ({n_hoeff} Hoeffding/EW)")
 
     # Console output
     print_success_rates(results)
-    print_observed_epsilon_summary(results)
-    print_epsilon_comparison(results)
+
+    # Plots
+    print("\nGenerating plots...")
+    plot_bound_success(results)
+    plot_observed_vs_predicted(results)
 
     # Table
     generate_comparison_table()
@@ -439,7 +530,7 @@ def main():
     results.to_csv(csv_path, index=False)
     print(f"\n  Saved: {csv_path}")
 
-    # Save JSON summary with conditional success rates
+    # Save JSON summary broken down by metric x epsilon x distance
     total = len(results)
     holds = int(results["bound_holds"].sum())
 
@@ -448,48 +539,52 @@ def main():
     cond_total = len(high_reach)
     cond_holds = int(high_reach["bound_holds"].sum()) if cond_total > 0 else 0
 
-    by_metric = {}
+    # By metric x epsilon
+    by_metric_epsilon = {}
     for metric in results["metric"].unique():
-        subset = results[results["metric"] == metric]
-        high_subset = subset[subset["reach"] >= REACH_THRESHOLD]
-        bt = subset["bound_type"].iloc[0] if len(subset) > 0 else "unknown"
-        by_metric[metric] = {
-            "bound_type": bt,
-            "total": len(subset),
-            "holds": int(subset["bound_holds"].sum()),
-            "rate": float(subset["bound_holds"].mean()),
-            "conditional_total": len(high_subset),
-            "conditional_holds": int(high_subset["bound_holds"].sum()),
-            "conditional_rate": float(high_subset["bound_holds"].mean()) if len(high_subset) > 0 else None,
-            "median_eps_observed": float(subset["eps_observed"].median()),
-            "median_eps_predicted": float(subset["eps_predicted"].median()),
-        }
-
-    by_topology = {}
-    for topo in results["topology"].unique():
-        subset = results[results["topology"] == topo]
-        by_topology[topo] = {
-            "total": len(subset),
-            "holds": int(subset["bound_holds"].sum()),
-            "rate": float(subset["bound_holds"].mean()),
-        }
-
-    by_distance = {}
-    for dist in results["distance"].unique():
-        subset = results[results["distance"] == dist]
-        by_distance[str(dist)] = {
-            "total": len(subset),
-            "holds": int(subset["bound_holds"].sum()),
-            "rate": float(subset["bound_holds"].mean()),
-        }
+        m_subset = results[results["metric"] == metric]
+        by_metric_epsilon[metric] = {}
+        for eps in sorted(m_subset["epsilon"].dropna().unique()):
+            e_subset = m_subset[m_subset["epsilon"] == eps]
+            # By distance within this metric x epsilon
+            by_dist = {}
+            for dist in sorted(e_subset["distance"].unique()):
+                d_subset = e_subset[e_subset["distance"] == dist]
+                by_dist[str(dist)] = {
+                    "total": len(d_subset),
+                    "holds": int(d_subset["bound_holds"].sum()),
+                    "rate": float(d_subset["bound_holds"].mean()),
+                    "median_eps_observed": float(d_subset["eps_observed"].median()),
+                    "median_eps_predicted": float(d_subset["eps_predicted"].median()),
+                    "median_spearman": float(d_subset["spearman"].median()),
+                }
+            # By topology
+            by_topo = {}
+            for topo in sorted(e_subset["topology"].unique()):
+                t_subset = e_subset[e_subset["topology"] == topo]
+                by_topo[topo] = {
+                    "total": len(t_subset),
+                    "holds": int(t_subset["bound_holds"].sum()),
+                    "rate": float(t_subset["bound_holds"].mean()),
+                }
+            by_metric_epsilon[metric][str(eps)] = {
+                "total": len(e_subset),
+                "holds": int(e_subset["bound_holds"].sum()),
+                "rate": float(e_subset["bound_holds"].mean()),
+                "median_eps_observed": float(e_subset["eps_observed"].median()),
+                "median_eps_predicted": float(e_subset["eps_predicted"].median()),
+                "by_distance": by_dist,
+                "by_topology": by_topo,
+            }
 
     json_output = {
         "generated": datetime.now().isoformat(timespec="seconds"),
         "script": "02_fit_error_model.py",
-        "description": "Concentration bound analysis on synthetic data (Hoeffding for closeness, R-K for betweenness)",
+        "description": "Concentration bound analysis on synthetic data (Hoeffding/EW for both closeness and betweenness)",
         "parameters": {
             "delta": DELTA,
-            "epsilon_targets": EPSILON_TARGETS,
+            "epsilon_targets_closeness": EPSILON_TARGETS_CLOSENESS,
+            "epsilon_targets_betweenness": EPSILON_TARGETS_BETWEENNESS,
             "reach_threshold": REACH_THRESHOLD,
             "cache_version": CACHE_VERSION,
         },
@@ -504,9 +599,7 @@ def main():
             "bound_holds": cond_holds,
             "success_rate": cond_holds / cond_total if cond_total > 0 else None,
         },
-        "by_metric": by_metric,
-        "by_topology": by_topology,
-        "by_distance": by_distance,
+        "by_metric_epsilon": by_metric_epsilon,
     }
 
     json_path = OUTPUT_DIR / "error_model_synthetic.json"
@@ -519,7 +612,9 @@ def main():
     print("=" * 70)
     print(f"  1. {csv_path}")
     print(f"  2. {json_path}")
-    print(f"  3. {TABLES_DIR / 'tab1_ew_comparison.tex'}")
+    print(f"  3. {FIGURES_DIR / 'fig_bound_success.pdf'}")
+    print(f"  4. {FIGURES_DIR / 'fig_observed_vs_predicted.pdf'}")
+    print(f"  5. {TABLES_DIR / 'tab1_ew_comparison.tex'}")
 
     return 0
 

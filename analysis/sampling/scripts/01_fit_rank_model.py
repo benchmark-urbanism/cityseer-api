@@ -4,14 +4,14 @@
 
 Loads the synthetic sampling cache and generates:
   1. Figure 1 (headline): Sampling opportunity — accuracy vs epsilon for both
-     closeness (Hoeffding source sampling) and betweenness (R-K path sampling),
-     plus theoretical speedup at the paper's default epsilon.
+     closeness (Hoeffding source sampling) and betweenness (Hoeffding path
+     sampling), plus theoretical speedup at the paper's default epsilon.
   2. Figure 3 (error crossover): Precision scales with importance — absolute
      and normalised MAE by per-node reach bin, with theoretical bound overlays.
 
 The cache sweep variable is epsilon (error tolerance).
   - Closeness rows contain `sample_prob` derived from Hoeffding.
-  - Betweenness rows contain `n_samples` derived from R-K.
+  - Betweenness rows contain `n_samples` derived from Hoeffding.
 
 Requires:
     - .cache/sampling_analysis_{CACHE_VERSION}.pkl (from 00_generate_cache.py)
@@ -34,10 +34,9 @@ from utilities import (
     CACHE_VERSION,
     FIGURES_DIR,
     HOEFFDING_DELTA,
+    compute_hoeffding_betw_budget,
     compute_hoeffding_p,
-    compute_rk_budget,
     ew_predicted_epsilon,
-    rk_predicted_epsilon,
 )
 
 # =============================================================================
@@ -291,7 +290,7 @@ def generate_fig1_headline(df: pd.DataFrame):
     bar_data = []
 
     for dist in all_distances:
-        # Closeness speedup: 1/p
+        # Closeness speedup: 1/p (fraction of sources sampled)
         subset_h = df[(df["metric"] == "harmonic") & (df["distance"] == dist) & (df["epsilon"] == PAPER_EPSILON)]
         if len(subset_h) > 0:
             mean_reach_h = subset_h["mean_reach"].mean()
@@ -300,17 +299,13 @@ def generate_fig1_headline(df: pd.DataFrame):
         else:
             speedup_h = None
 
-        # Betweenness speedup: n_live / n_samples
+        # Betweenness speedup: mean_reach / m (per-source pair reduction)
         subset_b = df[(df["metric"] == "betweenness") & (df["distance"] == dist) & (df["epsilon"] == PAPER_EPSILON)]
         if len(subset_b) > 0:
             mean_reach_b = subset_b["mean_reach"].mean()
-            # n_live = number of live nodes (use n_nodes from data, which is the graph size)
-            # For betweenness, exact computation visits all live nodes as sources;
-            # sampled visits n_samples paths. Use mean n_nodes across topologies.
-            n_live = subset_b["n_nodes"].mean()
-            n_samples = compute_rk_budget(mean_reach_b, epsilon=PAPER_EPSILON, delta=HOEFFDING_DELTA)
-            if n_samples is not None and n_samples > 0:
-                speedup_b = n_live / n_samples
+            m = compute_hoeffding_betw_budget(mean_reach_b, epsilon=PAPER_EPSILON, delta=HOEFFDING_DELTA)
+            if m is not None and m > 0:
+                speedup_b = mean_reach_b / m
             else:
                 speedup_b = 1.0
         else:
@@ -320,8 +315,8 @@ def generate_fig1_headline(df: pd.DataFrame):
             bar_data.append(
                 {
                     "distance": dist,
-                    "speedup_closeness": speedup_h if speedup_h is not None else 0,
-                    "speedup_betweenness": speedup_b if speedup_b is not None else 0,
+                    "speedup_closeness": speedup_h if speedup_h is not None else 1.0,
+                    "speedup_betweenness": speedup_b if speedup_b is not None else 1.0,
                 }
             )
 
@@ -344,7 +339,7 @@ def generate_fig1_headline(df: pd.DataFrame):
         width,
         color="#B2182B",
         alpha=0.8,
-        label=r"Betweenness ($n_{\mathrm{live}}/m$)",
+        label="Betweenness (reach/m)",
     )
 
     ax.set_xticks(x)
@@ -352,17 +347,19 @@ def generate_fig1_headline(df: pd.DataFrame):
     ax.set_xlabel("Analysis Distance")
     ax.set_ylabel("Theoretical Speedup")
     ax.set_title(rf"B) Speedup at $\varepsilon$={PAPER_EPSILON}")
+    ax.set_yscale("log")
+    ax.axhline(1.0, color="grey", linewidth=0.8, linestyle="--", alpha=0.5)
     ax.legend(loc="upper left", fontsize=9)
-    ax.grid(True, alpha=0.3, axis="y")
+    ax.grid(True, alpha=0.3, axis="y", which="both")
 
     # Add value labels on bars
     for bar_set in [bars_h, bars_b]:
         for bar in bar_set:
             height = bar.get_height()
-            if height > 1.5:
+            if height > 1.05:
                 ax.text(
                     bar.get_x() + bar.get_width() / 2,
-                    height + 0.3,
+                    height * 1.1,
                     f"{height:.1f}x",
                     ha="center",
                     fontsize=7,
@@ -397,18 +394,7 @@ def generate_fig3_error_crossover(node_acc: pd.DataFrame, df: pd.DataFrame):
 
     fig, axes = plt.subplots(1, 2, figsize=(11, 5))
 
-    # Compute the median sample_prob and n_samples at PAPER_EPSILON for bound overlays
-    df_at_eps = df[df["epsilon"] == PAPER_EPSILON]
-    median_p_h = None
-    median_n_samples_b = None
-
-    df_h_eps = df_at_eps[df_at_eps["metric"] == "harmonic"]
-    if len(df_h_eps) > 0 and "sample_prob" in df_h_eps.columns:
-        median_p_h = df_h_eps["sample_prob"].median()
-
-    df_b_eps = df_at_eps[df_at_eps["metric"] == "betweenness"]
-    if len(df_b_eps) > 0 and "n_samples" in df_b_eps.columns:
-        median_n_samples_b = df_b_eps["n_samples"].median()
+    # Bound overlays use the actual Hoeffding/R-K budget at each reach level
 
     for col_idx, (med_col, lo_col, hi_col, ylabel, title) in enumerate(
         [
@@ -452,40 +438,51 @@ def generate_fig3_error_crossover(node_acc: pd.DataFrame, df: pd.DataFrame):
 
         # Overlay theoretical bounds on normalised error panel
         if col_idx == 1:
-            r_line = np.logspace(np.log10(200), 4, 200)
+            r_line = np.logspace(np.log10(50), 4, 200)
 
-            # Hoeffding bound for closeness: eps = sqrt(log(2r/delta) / (2*n_eff))
-            # where n_eff = p * r_bin
-            if median_p_h is not None:
-                eps_hoeffding = np.array(
-                    [ew_predicted_epsilon(median_p_h * r, r) for r in r_line]
-                )
-                ax.plot(
-                    r_line,
-                    eps_hoeffding,
-                    color="grey",
-                    linewidth=2,
-                    linestyle="--",
-                    label="Hoeffding bound",
-                    zorder=1,
-                )
+            # Hoeffding bound for closeness at PAPER_EPSILON:
+            # For each reach r, compute p from the Hoeffding budget, then
+            # the predicted epsilon from that effective sample size.
+            eps_hoeffding = np.array(
+                [
+                    ew_predicted_epsilon(
+                        compute_hoeffding_p(r, PAPER_EPSILON, HOEFFDING_DELTA) * r,
+                        r,
+                    )
+                    for r in r_line
+                ]
+            )
+            ax.plot(
+                r_line,
+                eps_hoeffding,
+                color="grey",
+                linewidth=2,
+                linestyle="--",
+                label=rf"Hoeffding bound ($\varepsilon$={PAPER_EPSILON})",
+                zorder=1,
+            )
 
-            # R-K bound for betweenness: eps = sqrt((floor(log2(VD-2))+1 + ln(1/delta)) / (2*m))
-            # where VD = ceil(sqrt(r_bin)), m = median n_samples
-            if median_n_samples_b is not None:
-                eps_rk = np.array(
-                    [rk_predicted_epsilon(int(median_n_samples_b), r) for r in r_line]
-                )
-                ax.plot(
-                    r_line,
-                    eps_rk,
-                    color="#B2182B",
-                    linewidth=2,
-                    linestyle=":",
-                    alpha=0.7,
-                    label="R-K bound",
-                    zorder=1,
-                )
+            # Hoeffding bound for betweenness at PAPER_EPSILON:
+            # For each reach r, compute m from Hoeffding budget, then predicted epsilon.
+            eps_betw = np.array(
+                [
+                    ew_predicted_epsilon(
+                        compute_hoeffding_betw_budget(r, PAPER_EPSILON, HOEFFDING_DELTA) or 1,
+                        r,
+                    )
+                    for r in r_line
+                ]
+            )
+            ax.plot(
+                r_line,
+                eps_betw,
+                color="#B2182B",
+                linewidth=2,
+                linestyle=":",
+                alpha=0.7,
+                label=rf"Betw. Hoeffding bound ($\varepsilon$={PAPER_EPSILON})",
+                zorder=1,
+            )
 
         ax.set_xscale("log")
         ax.set_yscale("log")
@@ -518,7 +515,7 @@ def main():
 
     print(f"\nPaper default: epsilon = {PAPER_EPSILON}, delta = {HOEFFDING_DELTA}")
     print("  Closeness: Hoeffding source sampling  (p from epsilon + reach)")
-    print("  Betweenness: R-K path sampling         (m from epsilon + reach)")
+    print("  Betweenness: Hoeffding path sampling   (m from epsilon + reach)")
 
     # Load data
     df = load_synthetic_data()
@@ -538,21 +535,20 @@ def main():
     print("\n" + "=" * 70)
     print(f"SAMPLING BUDGETS AT EPSILON={PAPER_EPSILON}")
     print("=" * 70)
-    print(f"\n{'Reach':>10} | {'Hoeffding p':>12} | {'Speedup (1/p)':>14} | {'R-K m':>10} | {'R-K speedup*':>14}")
+    print(f"\n{'Reach':>10} | {'Hoeffding p':>12} | {'Speedup (1/p)':>14} | {'Hoeff m':>10} | {'Betw speedup*':>14}")
     print("-" * 70)
 
     for reach in [100, 300, 500, 1000, 2000, 5000, 10000, 50000]:
         p = compute_hoeffding_p(reach, epsilon=PAPER_EPSILON, delta=HOEFFDING_DELTA)
         speedup_h = 1 / p if 0 < p < 1 else 1.0
-        m = compute_rk_budget(reach, epsilon=PAPER_EPSILON, delta=HOEFFDING_DELTA)
+        m = compute_hoeffding_betw_budget(reach, epsilon=PAPER_EPSILON, delta=HOEFFDING_DELTA)
         m_str = f"{m:,}" if m is not None else "N/A"
-        # R-K speedup uses reach as a rough proxy for n_live
         speedup_b = reach / m if m is not None and m > 0 else float("inf")
         print(
             f"{reach:>10,} | {p:>11.1%} | {speedup_h:>13.1f}x | {m_str:>10} | {speedup_b:>13.1f}x"
         )
 
-    print("\n  * R-K speedup = reach / m (approximate; actual depends on n_live)")
+    print("\n  * Betw speedup = reach / m (approximate; actual depends on n_live)")
 
     print("\n" + "=" * 70)
     print("ALL OUTPUTS")

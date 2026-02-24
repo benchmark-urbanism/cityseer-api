@@ -129,6 +129,13 @@ def compute_rk_budget(
     VD = ceil(sqrt(reach))
     m = ceil((1 / (2ε²)) * (floor(log₂(VD-2)) + 1 + ln(1/δ)))
 
+    Returns None when m >= reach (tipping point): at this point the budget
+    demands at least one sample per reachable node. Since each exact Brandes
+    source-Dijkstra yields r pair-contributions via backpropagation while each
+    sampled targeted-Dijkstra yields only 1, sampling cannot converge below
+    this threshold. The reach-based check keeps the decision graph-independent
+    for cross-network comparability.
+
     Parameters
     ----------
     mean_reachability : float
@@ -141,7 +148,8 @@ def compute_rk_budget(
     Returns
     -------
     int | None
-        Required number of random (source, dest) path samples, or None if reach is invalid.
+        Required number of random (source, dest) path samples, or None if reach
+        is invalid or m >= reach (tipping point: use exact Brandes instead).
     """
     if mean_reachability <= 0:
         return None
@@ -150,7 +158,14 @@ def compute_rk_budget(
 
     vd = max(3, int(math.ceil(math.sqrt(mean_reachability))))
     vd_log = int(math.floor(math.log2(max(1, vd - 2)))) + 1
-    return int(math.ceil((1 / (2 * epsilon**2)) * (vd_log + math.log(1 / delta))))
+    m = int(math.ceil((1 / (2 * epsilon**2)) * (vd_log + math.log(1 / delta))))
+    # Hard cap at total pair space
+    total_pairs = int(mean_reachability * (mean_reachability - 1) / 2)
+    m = min(m, total_pairs)
+    # Tipping point: sampling can't converge at this reach
+    if m >= mean_reachability:
+        return None
+    return m
 
 
 def compute_betweenness_budgets(
@@ -392,7 +407,7 @@ def probe_reachability(
     for src_idx in probe_indices:
         # Run single Dijkstra to max distance
         visited, tree_map = network_structure.dijkstra_tree_shortest(
-            src_idx, max_seconds, speed_m_s, jitter_scale=None, random_seed=None
+            src_idx, max_seconds, speed_m_s
         )
 
         # Count nodes reachable at each distance threshold
