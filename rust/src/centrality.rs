@@ -2099,9 +2099,10 @@ impl NetworkStructure {
 
     /// Compute OD-weighted betweenness centrality using shortest paths.
     ///
-    /// Runs Dijkstra from each source that has outbound OD trips, traces
-    /// single-predecessor shortest paths to each destination with OD weight > 0,
-    /// and credits intermediates with the OD weight.
+    /// Uses Brandes multi-predecessor Dijkstra from each source that has
+    /// outbound OD trips. For each OD destination, backpropagates credit
+    /// through all equal shortest paths, weighted by the OD flow weight
+    /// and split by sigma (path count).
     #[pyo3(signature = (
         od_matrix,
         distances=None,
@@ -2109,6 +2110,7 @@ impl NetworkStructure {
         minutes=None,
         min_threshold_wt=None,
         speed_m_s=None,
+        tolerance=None,
         pbar_disabled=None
     ))]
     pub fn betweenness_od_shortest(
@@ -2119,6 +2121,7 @@ impl NetworkStructure {
         minutes: Option<Vec<f32>>,
         min_threshold_wt: Option<f32>,
         speed_m_s: Option<f32>,
+        tolerance: Option<f32>,
         pbar_disabled: Option<bool>,
         py: Python,
     ) -> PyResult<BetweennessShortestResult> {
@@ -2134,8 +2137,10 @@ impl NetworkStructure {
             .iter()
             .max()
             .expect("Seconds vector should not be empty");
+        let tolerance = tolerance.unwrap_or(0.0);
 
         let od_map = &od_matrix.map;
+        let n = self.node_count();
 
         let node_keys_py = self.node_keys_py(py);
         let node_indices = self.node_indices();
@@ -2163,46 +2168,82 @@ impl NetworkStructure {
                     None => return,
                 };
 
-                let (visited_nodes, tree_map) = self
-                    .dijkstra_tree_shortest(
-                        *src_idx,
-                        max_walk_seconds,
-                        speed_m_s,
-                    )
-                    .expect("pre-validated Dijkstra inputs");
+                let (visited_nodes, state) =
+                    self.dijkstra_brandes_shortest(*src_idx, max_walk_seconds, speed_m_s, tolerance);
 
-                for to_idx in visited_nodes.iter() {
-                    let node_visit = &tree_map[*to_idx];
-                    if to_idx == src_idx {
-                        continue;
-                    }
-                    if !node_visit.agg_seconds.is_finite() {
-                        continue;
-                    }
-                    // Get OD weight for this pair; skip if no flow.
-                    let od_w = match src_dests.get(to_idx) {
-                        Some(&w) => w,
-                        None => continue,
-                    };
-                    // Trace single-predecessor path, credit intermediates.
-                    let mut current_pred = node_visit.pred;
-                    while let Some(inter_idx) = current_pred {
-                        if inter_idx == *src_idx {
-                            break;
+                // Sort visited by distance (farthest first) for backpropagation
+                let mut sorted_visited: Vec<usize> = visited_nodes
+                    .iter()
+                    .filter(|&&v| v != *src_idx && state[v].sigma > 0)
+                    .copied()
+                    .collect();
+                sorted_visited.sort_by(|a, b| {
+                    state[*b]
+                        .short_dist
+                        .partial_cmp(&state[*a].short_dist)
+                        .unwrap_or(Ordering::Equal)
+                });
+
+                // Brandes backpropagation per distance threshold, weighted by OD flows
+                for d_idx in 0..distances.len() {
+                    let dist_threshold = distances[d_idx] as f32;
+                    let beta = betas[d_idx] as f64;
+
+                    // delta[v] = OD-weighted pair-dependency of this source on v
+                    let mut delta = vec![0.0f64; n];
+                    let mut delta_beta = vec![0.0f64; n];
+
+                    // Seed delta at OD destinations
+                    for &dest in sorted_visited.iter() {
+                        if state[dest].short_dist > dist_threshold {
+                            continue;
                         }
-                        let node_visit_short_dist = node_visit.short_dist;
-                        for i in 0..distances.len() {
-                            let distance = distances[i];
-                            let beta = betas[i];
-                            if node_visit_short_dist <= distance as f32 {
-                                res.node_betweenness_vec.metric[i][inter_idx]
-                                    .fetch_add(od_w as f64, AtomicOrdering::Relaxed);
-                                let exp_val = (-beta * node_visit_short_dist).exp();
-                                res.node_betweenness_beta_vec.metric[i][inter_idx]
-                                    .fetch_add((exp_val * od_w) as f64, AtomicOrdering::Relaxed);
-                            }
+                        if let Some(&od_w) = src_dests.get(&dest) {
+                            delta[dest] += od_w as f64;
+                            delta_beta[dest] +=
+                                od_w as f64 * (-beta * state[dest].short_dist as f64).exp();
                         }
-                        current_pred = tree_map[inter_idx].pred;
+                    }
+
+                    // Process in reverse order of distance (farthest first)
+                    for &w in &sorted_visited {
+                        if state[w].short_dist > dist_threshold {
+                            continue;
+                        }
+                        let sigma_w = state[w].sigma as f64;
+                        if sigma_w == 0.0 || delta[w] == 0.0 {
+                            continue;
+                        }
+
+                        // Propagate to predecessors
+                        for &v in &state[w].preds {
+                            let factor = state[v].sigma as f64 / sigma_w;
+                            delta[v] += factor * delta[w];
+                            delta_beta[v] += factor * delta_beta[w];
+                        }
+
+                        // Credit betweenness for w (only intermediates, not source)
+                        // Subtract the direct OD seed so we only count pass-through
+                        let direct_od = if let Some(&od_w) = src_dests.get(&w) {
+                            od_w as f64
+                        } else {
+                            0.0
+                        };
+                        let direct_od_beta = if let Some(&od_w) = src_dests.get(&w) {
+                            od_w as f64 * (-beta * state[w].short_dist as f64).exp()
+                        } else {
+                            0.0
+                        };
+                        let credit = delta[w] - direct_od;
+                        let credit_beta = delta_beta[w] - direct_od_beta;
+                        if credit > 0.0 {
+                            res.node_betweenness_vec.metric[d_idx][w]
+                                .fetch_add(credit, AtomicOrdering::Relaxed);
+                        }
+                        if credit_beta > 0.0 {
+                            res.node_betweenness_beta_vec.metric[d_idx][w]
+                                .fetch_add(credit_beta, AtomicOrdering::Relaxed);
+                        }
                     }
                 }
             });

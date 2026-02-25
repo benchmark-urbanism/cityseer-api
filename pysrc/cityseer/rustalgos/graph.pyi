@@ -586,6 +586,7 @@ class NetworkStructure:
         minutes: list[float] | None = None,
         min_threshold_wt: float | None = None,
         speed_m_s: float | None = None,
+        tolerance: float | None = None,
         pbar_disabled: bool | None = None,
     ) -> BetweennessShortestResult:
         """
