@@ -2,8 +2,8 @@
 """
 03_validate_gla.py - Validate sampling models on Greater London network.
 
-Tests closeness (Hoeffding source sampling) and betweenness (R-K path sampling)
-at multiple epsilon values across five distance thresholds.
+Tests closeness and betweenness (both using Hoeffding + spatial source sampling)
+at their respective epsilon values across five distance thresholds.
 
 Usage:
     python 03_validate_gla.py           # Run (skips cache if exists)
@@ -20,6 +20,7 @@ Outputs:
 import argparse
 import json
 import pickle
+import random
 import time
 from pathlib import Path
 
@@ -37,11 +38,9 @@ from utilities import (
     compute_accuracy_metrics,
     compute_hoeffding_p,
     compute_quartile_accuracy,
-    compute_rk_budget,
     ew_predicted_epsilon,
     mean_quartiles,
-    normalise_error,
-    rk_predicted_epsilon,
+    select_spatial_sources,
 )
 
 # =============================================================================
@@ -55,10 +54,9 @@ GLA_GPKG_FILE = SCRIPT_DIR.parent.parent.parent / "temp" / "os_open_roads" / "op
 
 # Validation parameters
 GLA_DISTANCES = [1000, 2000, 5000, 10000, 20000]
-# Closeness: Hoeffding source sampling
+# Hoeffding + spatial source sampling (both metrics)
 GLA_EPSILON_CLOSENESS = 0.1
-# Betweenness: R-K path sampling — tight ε, exact Brandes below tipping point
-GLA_EPSILON_BETWEENNESS = 0.01
+GLA_EPSILON_BETWEENNESS = 0.1
 N_RUNS = 1  # GLA is huge; keep runs minimal
 
 DELTA = HOEFFDING_DELTA
@@ -71,9 +69,9 @@ def get_gla_mask(force: bool = False):
     Returns
     -------
     boundary : shapely geometry
-        Simplified GLA boundary polygon — used to mark live nodes.
+        Simplified GLA boundary polygon -- used to mark live nodes.
     buffered : shapely geometry
-        GLA boundary buffered by 20km — used as spatial filter when loading roads.
+        GLA boundary buffered by 20km -- used as spatial filter when loading roads.
     """
     boundary_cache = CACHE_DIR / "gla_boundary.geojson"
     buffered_cache = CACHE_DIR / "gla_buffered.geojson"
@@ -207,7 +205,7 @@ def generate_validation_data(force: bool = False) -> pd.DataFrame:
 
             print("  Computing ground truth betweenness (exact Brandes)...")
             t0 = time.time()
-            betw_result = net.betweenness_exact_shortest(
+            betw_result = net.betweenness_shortest(
                 distances=[dist],
                 pbar_disabled=False,
             )
@@ -233,21 +231,27 @@ def generate_validation_data(force: bool = False) -> pd.DataFrame:
         print(f"  Mean reach: {mean_reach:.0f}")
 
         # ---------------------------------------------------------------
-        # Closeness: Hoeffding source sampling
+        # Closeness: Hoeffding + spatial source sampling
         # ---------------------------------------------------------------
         eps_close = GLA_EPSILON_CLOSENESS
         hoeffding_p = compute_hoeffding_p(mean_reach, epsilon=eps_close)
-        print(f"\n  Closeness ε={eps_close}: p={hoeffding_p:.4f}")
+        n_live = int(live_mask.sum())
+        cell_size = dist / 2.0
+        print(f"\n  Closeness eps={eps_close}: p={hoeffding_p:.4f}")
 
         spearmans_h, maes_h, precs_h, scales_h, quartiles_h = [], [], [], [], []
         close_times = []
 
         for seed in range(N_RUNS):
+            rng = random.Random(42 + seed)
+            n_sources = max(1, int(hoeffding_p * n_live))
+            sources = select_spatial_sources(net, n_sources, cell_size, rng)
+
             t0 = time.time()
             close_r = net.closeness_shortest(
                 distances=[dist],
+                source_indices=sources,
                 sample_probability=hoeffding_p,
-                random_seed=seed,
                 pbar_disabled=True,
             )
             close_times.append(time.time() - t0)
@@ -269,7 +273,7 @@ def generate_validation_data(force: bool = False) -> pd.DataFrame:
         eps_pred_close = ew_predicted_epsilon(n_eff_close, mean_reach)
 
         if spearmans_h:
-            eps_obs_h = normalise_error(np.max(maes_h), mean_reach, "harmonic") if maes_h else float("nan")
+            eps_obs_h = np.max(maes_h) / mean_reach if maes_h else float("nan")
             row_h = {
                 "distance": dist,
                 "mean_reach": mean_reach,
@@ -303,86 +307,60 @@ def generate_validation_data(force: bool = False) -> pd.DataFrame:
         print(f" rho_h={rho_h_str}")
 
         # ---------------------------------------------------------------
-        # Betweenness: R-K path sampling or exact Brandes (tipping point)
+        # Betweenness: Hoeffding + spatial source sampling
         # ---------------------------------------------------------------
-        eps_betw = GLA_EPSILON_BETWEENNESS
-        rk_n = compute_rk_budget(mean_reach, epsilon=eps_betw)
-        tipping_point = rk_n is None
-
-        if tipping_point:
-            # Tipping point: exact Brandes — ground truth IS the result
-            print(f"  Betweenness ε={eps_betw}: tipping point (m >= reach), using exact Brandes")
-            row_b = {
-                "distance": dist,
-                "mean_reach": mean_reach,
-                "epsilon": eps_betw,
-                "metric": "betweenness",
-                "budget_param": 0,
-                "tipping_point": True,
-                "spearman": 1.0,
-                "spearman_min": 1.0,
-                "spearman_max": 1.0,
-                "spearman_std": 0.0,
-                "max_abs_error": 0.0,
-                "mean_abs_error": 0.0,
-                "median_abs_error": 0.0,
-                "eps_observed": 0.0,
-                "eps_predicted": 0.0,
-                "bound_holds": True,
-                "top_k_precision": 1.0,
-                "scale_ratio": 1.0,
-                "baseline_time": baseline_betw_time if baseline_betw_time is not None else float("nan"),
-                "sampled_time": baseline_betw_time if baseline_betw_time is not None else float("nan"),
-                "speedup": 1.0,
-            }
-            results.append(row_b)
-            print(f"  rho_b=1.000 (exact)")
+        nonzero_betw = np.sum(true_betweenness > 0)
+        if nonzero_betw < 10:
+            print(f"  Betweenness: skipped (only {nonzero_betw} nonzero)")
         else:
-            print(f"  Betweenness ε={eps_betw}: rk_n={rk_n:,}, sampling")
+            eps_betw = GLA_EPSILON_BETWEENNESS
+            hoeffding_p_b = compute_hoeffding_p(mean_reach, epsilon=eps_betw)
+            n_live = int(live_mask.sum())
+            cell_size = dist / 2.0
+            print(f"\n  Betweenness eps={eps_betw}: p={hoeffding_p_b:.4f}")
 
             spearmans_b, maes_b, precs_b, scales_b, quartiles_b = [], [], [], [], []
             betw_times = []
+            est_betweenness = None
 
             for seed in range(N_RUNS):
+                rng = random.Random(42 + seed)
+                n_sources = max(1, int(hoeffding_p_b * n_live))
+                sources = select_spatial_sources(net, n_sources, cell_size, rng)
+
                 t0 = time.time()
                 betw_r = net.betweenness_shortest(
-                    distance=dist,
-                    n_samples=rk_n,
-                    random_seed=seed,
+                    distances=[dist],
+                    source_indices=sources,
+                    sample_probability=hoeffding_p_b,
                     pbar_disabled=True,
                 )
                 betw_times.append(time.time() - t0)
                 est_betweenness = np.array(betw_r.node_betweenness[dist])[live_mask]
 
-                sp_b, prec_b, scale_b, _, mae_b = compute_accuracy_metrics(
-                    true_betweenness, est_betweenness
-                )
+                sp_b, prec_b, scale_b, _, mae_b = compute_accuracy_metrics(true_betweenness, est_betweenness)
                 if not np.isnan(sp_b):
                     spearmans_b.append(sp_b)
                     maes_b.append(mae_b)
                     precs_b.append(prec_b)
                     scales_b.append(scale_b)
                 if node_reach is not None:
-                    quartiles_b.append(
-                        compute_quartile_accuracy(true_betweenness, est_betweenness, node_reach)
-                    )
+                    quartiles_b.append(compute_quartile_accuracy(true_betweenness, est_betweenness, node_reach))
                 print(".", end="", flush=True)
 
             mean_betw_time = np.mean(betw_times) if betw_times else float("nan")
             q_b = mean_quartiles(quartiles_b)
-            eps_pred_betw = rk_predicted_epsilon(rk_n, mean_reach)
+            n_eff_betw = mean_reach * hoeffding_p_b
+            eps_pred_betw = ew_predicted_epsilon(n_eff_betw, mean_reach)
 
             if spearmans_b:
-                eps_obs_b = (
-                    normalise_error(np.max(maes_b), mean_reach, "betweenness") if maes_b else float("nan")
-                )
+                eps_obs_b = np.max(maes_b) / mean_reach if maes_b else float("nan")
                 row_b = {
                     "distance": dist,
                     "mean_reach": mean_reach,
                     "epsilon": eps_betw,
                     "metric": "betweenness",
-                    "budget_param": rk_n,
-                    "tipping_point": False,
+                    "budget_param": hoeffding_p_b,
                     "spearman": np.mean(spearmans_b),
                     "spearman_min": np.min(spearmans_b),
                     "spearman_max": np.max(spearmans_b),
@@ -395,9 +373,7 @@ def generate_validation_data(force: bool = False) -> pd.DataFrame:
                     "bound_holds": eps_obs_b <= eps_pred_betw if np.isfinite(eps_obs_b) else False,
                     "top_k_precision": np.mean(precs_b),
                     "scale_ratio": np.mean(scales_b),
-                    "baseline_time": (
-                        baseline_betw_time if baseline_betw_time is not None else float("nan")
-                    ),
+                    "baseline_time": baseline_betw_time if baseline_betw_time is not None else float("nan"),
                     "sampled_time": mean_betw_time,
                     "speedup": (
                         baseline_betw_time / mean_betw_time
@@ -424,15 +400,10 @@ def generate_validation_data(force: bool = False) -> pd.DataFrame:
             "epsilon_closeness": GLA_EPSILON_CLOSENESS,
             "hoeffding_p": hoeffding_p,
             "true_betweenness": true_betweenness,
+            "est_betweenness": est_betweenness if est_betweenness is not None else None,
             "epsilon_betweenness": GLA_EPSILON_BETWEENNESS,
-            "tipping_point": tipping_point,
+            "hoeffding_p_betw": hoeffding_p_b if nonzero_betw >= 10 else None,
         }
-        if tipping_point:
-            sampled_data["est_betweenness"] = true_betweenness  # exact = ground truth
-            sampled_data["rk_n_samples"] = 0
-        else:
-            sampled_data["est_betweenness"] = est_betweenness
-            sampled_data["rk_n_samples"] = rk_n
         with open(sampled_cache, "wb") as f:
             pickle.dump(sampled_data, f)
         print(f"  Saved per-node results: {sampled_cache}")
@@ -449,7 +420,7 @@ def generate_validation_data(force: bool = False) -> pd.DataFrame:
 
 
 def generate_validation_summary(df: pd.DataFrame) -> pd.DataFrame:
-    """Generate summary CSV (closeness ε=0.1, betweenness ε=0.01)."""
+    """Generate summary CSV (closeness + betweenness)."""
     print("\nGenerating validation summary...")
 
     rows = []
@@ -458,22 +429,26 @@ def generate_validation_summary(df: pd.DataFrame) -> pd.DataFrame:
         h_rows = df[(df["distance"] == dist) & (df["metric"] == "harmonic")]
         b_rows = df[(df["distance"] == dist) & (df["metric"] == "betweenness")]
 
-        if h_rows.empty or b_rows.empty:
+        if h_rows.empty:
             continue
 
         h_row = h_rows.iloc[0]
-        b_row = b_rows.iloc[0]
         reach = h_row["mean_reach"]
-        hoeffding_p = h_row["budget_param"]
-        rk_n = b_row["budget_param"]
-        tipping_point = b_row.get("tipping_point", False)
 
         rho_close = h_row["spearman"]
-        rho_betw = b_row["spearman"]
-
+        p_close = h_row["budget_param"]
         speedup_close = h_row["speedup"] if np.isfinite(h_row["speedup"]) else float("nan")
-        speedup_betw = b_row["speedup"] if np.isfinite(b_row["speedup"]) else float("nan")
-        speedup = min(speedup_close, speedup_betw) if np.isfinite(speedup_betw) else speedup_close
+
+        rho_betw = float("nan")
+        p_betw = float("nan")
+        speedup_betw = float("nan")
+        if not b_rows.empty:
+            b_row = b_rows.iloc[0]
+            rho_betw = b_row["spearman"]
+            p_betw = b_row["budget_param"]
+            speedup_betw = b_row["speedup"] if np.isfinite(b_row["speedup"]) else float("nan")
+
+        meets = rho_close >= 0.95 and (np.isnan(rho_betw) or rho_betw >= 0.95)
 
         rows.append(
             {
@@ -481,15 +456,13 @@ def generate_validation_summary(df: pd.DataFrame) -> pd.DataFrame:
                 "reach": reach,
                 "epsilon_closeness": GLA_EPSILON_CLOSENESS,
                 "epsilon_betweenness": GLA_EPSILON_BETWEENNESS,
-                "hoeffding_p": hoeffding_p,
-                "rk_n_samples": rk_n,
-                "tipping_point": tipping_point,
+                "hoeffding_p_close": p_close,
+                "hoeffding_p_betw": p_betw,
                 "rho_closeness": rho_close,
                 "rho_betweenness": rho_betw,
                 "speedup_closeness": speedup_close,
                 "speedup_betweenness": speedup_betw,
-                "speedup": speedup,
-                "meets_target": rho_close >= 0.95 and rho_betw >= 0.95,
+                "meets_target": meets,
             }
         )
 
@@ -506,7 +479,7 @@ def generate_validation_summary(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def generate_validation_table(summary_df: pd.DataFrame):
-    """Generate LaTeX table of validation results."""
+    """Generate LaTeX table of validation results (both metrics)."""
     print("\nGenerating Table 2: Validation results...")
 
     eps_c = GLA_EPSILON_CLOSENESS
@@ -514,34 +487,43 @@ def generate_validation_table(summary_df: pd.DataFrame):
 
     latex = rf"""\begin{{table}}[htbp]
 \centering
-\caption{{Sampling validation on Greater London network (closeness $\varepsilon_c = {eps_c}$, betweenness $\varepsilon_b = {eps_b}$, $\delta = 0.1$).}}
+\caption{{Sampling validation on Greater London network
+  ($\varepsilon_c = {eps_c}$, $\varepsilon_b = {eps_b}$, $\delta = 0.1$).}}
 \label{{tab:validation}}
 \begin{{tabular}}{{rrrrrrrr}}
 \toprule
-\textbf{{Distance}} & \textbf{{Reach}} & \textbf{{Hoeff.\ $p$}} &
-\textbf{{$\rho_\text{{close}}$}} & \textbf{{R-K $m$}} &
-\textbf{{$\rho_\text{{betw}}$}} & \textbf{{Speedup}} & \textbf{{$\rho \geq 0.95$?}} \\
+\textbf{{Dist.}} & \textbf{{Reach}} &
+\textbf{{$p_c$}} & \textbf{{$\rho_c$}} & \textbf{{Spd$_c$}} &
+\textbf{{$p_b$}} & \textbf{{$\rho_b$}} & \textbf{{Spd$_b$}} \\
 \midrule
 """
 
     for _, row in summary_df.iterrows():
-        check = r"\checkmark" if row["meets_target"] else r"\texttimes"
-        hoeff_p_pct = f"{row['hoeffding_p'] * 100:.1f}\\%"
-        rk_n = int(row["rk_n_samples"])
-        rk_n_str = "exact" if row.get("tipping_point", False) else f"{rk_n:,}"
-        latex += f"{row['distance'] // 1000}km & {row['reach']:,.0f} & {hoeff_p_pct} & "
-        latex += f"{row['rho_closeness']:.4f} & {rk_n_str} & "
-        latex += f"{row['rho_betweenness']:.4f} & "
-        latex += f"{row['speedup']:.1f}$\\times$ & {check} \\\\\n"
+        p_c_pct = f"{row['hoeffding_p_close'] * 100:.1f}\\%"
+        rho_c = f"{row['rho_closeness']:.4f}"
+        spd_c = f"{row['speedup_closeness']:.1f}$\\times$" if np.isfinite(row['speedup_closeness']) else "---"
+
+        if np.isfinite(row['hoeffding_p_betw']):
+            p_b_pct = f"{row['hoeffding_p_betw'] * 100:.1f}\\%"
+            rho_b = f"{row['rho_betweenness']:.4f}" if np.isfinite(row['rho_betweenness']) else "---"
+            spd_b = f"{row['speedup_betweenness']:.1f}$\\times$" if np.isfinite(row['speedup_betweenness']) else "---"
+        else:
+            p_b_pct = "---"
+            rho_b = "---"
+            spd_b = "---"
+
+        latex += f"{row['distance'] // 1000}km & {row['reach']:,.0f} & "
+        latex += f"{p_c_pct} & {rho_c} & {spd_c} & "
+        latex += f"{p_b_pct} & {rho_b} & {spd_b} \\\\\n"
 
     latex += r"""\bottomrule
 \end{tabular}
 
 \vspace{0.5em}
 \footnotesize
-Network: Greater London Area, GLA boundary live node mask.
-Closeness: Hoeffding source sampling, $p = \min(1, k/r)$.
-Betweenness: R-K path sampling with tipping point fallback to exact Brandes when $m \geq r$.
+Network: Greater London Area. Both metrics use Hoeffding bound
+with spatial source selection: $p = \min(1, k/r)$.
+Subscripts: $c$ = closeness, $b$ = betweenness.
 \end{table}
 """
 
@@ -575,73 +557,51 @@ def get_n_nodes(force: bool = False) -> int | None:
 
 
 def compute_theoretical_bounds(summary_df: pd.DataFrame, n_nodes: int, raw_df: pd.DataFrame):
-    """Compare empirical sample counts against Riondato, Bader, and Eppstein-Wang bounds."""
+    """Compare empirical sample counts against Eppstein-Wang bounds for closeness."""
     print("\nComputing theoretical bounds comparison...")
 
-    delta = 0.1
     rows = []
 
     for _, srow in summary_df.iterrows():
         dist = srow["distance"]
         reach = srow["reach"]
 
-        for metric in ["harmonic", "betweenness"]:
-            raw_subset = raw_df[
-                (raw_df["distance"] == dist) & (raw_df["metric"] == metric)
-            ]
-            if raw_subset.empty:
-                continue
-            raw_row = raw_subset.iloc[0]
-            raw_eps = raw_row["max_abs_error"]
-            if np.isnan(raw_eps):
-                continue
+        raw_subset = raw_df[
+            (raw_df["distance"] == dist) & (raw_df["metric"] == "harmonic")
+        ]
+        if raw_subset.empty:
+            continue
+        raw_row = raw_subset.iloc[0]
+        raw_eps = raw_row["max_abs_error"]
+        if np.isnan(raw_eps):
+            continue
 
-            if metric == "betweenness":
-                eps_normalised = raw_eps / (reach * (reach - 1)) if reach > 1 else float("inf")
-            else:
-                eps_normalised = raw_eps / reach if reach > 0 else float("inf")
+        eps_normalised = raw_eps / reach if reach > 0 else float("inf")
 
-            if eps_normalised <= 0 or not np.isfinite(eps_normalised):
-                continue
+        if eps_normalised <= 0 or not np.isfinite(eps_normalised):
+            continue
 
-            # Our budget
-            if metric == "harmonic":
-                our_eff_n = reach * srow["hoeffding_p"]
-            else:
-                our_eff_n = float(srow["rk_n_samples"])
+        # Our budget
+        our_eff_n = reach * srow["hoeffding_p"]
 
-            # Riondato & Kornaropoulos (2016): VC-dimension bound
-            vd = max(3, int(np.sqrt(reach)))
-            vc_dim = int(np.floor(np.log2(max(1, vd - 2)))) + 1
-            riondato_samples = (1 / (2 * eps_normalised**2)) * (vc_dim + np.log(1 / delta))
+        # Eppstein & Wang (2004): source-sampling bound
+        eppstein_samples = np.log(n_nodes) / eps_normalised**2
+        eppstein_local_samples = np.log(reach) / eps_normalised**2
 
-            # Bader et al. (2007): per-vertex bound
-            bader_samples = 1 / eps_normalised**2
-
-            # Eppstein & Wang (2004): source-sampling bound
-            eppstein_samples = np.log(n_nodes) / eps_normalised**2
-            eppstein_local_samples = np.log(reach) / eps_normalised**2
-
-            rows.append(
-                {
-                    "distance": dist,
-                    "metric": metric,
-                    "reach": reach,
-                    "our_eff_n": our_eff_n,
-                    "raw_eps": raw_eps,
-                    "eps_normalised": eps_normalised,
-                    "vd_estimate": vd,
-                    "vc_dim": vc_dim,
-                    "riondato_samples": riondato_samples,
-                    "bader_samples": bader_samples,
-                    "eppstein_samples": eppstein_samples,
-                    "eppstein_local_samples": eppstein_local_samples,
-                    "ratio_riondato": riondato_samples / our_eff_n if our_eff_n > 0 else float("inf"),
-                    "ratio_bader": bader_samples / our_eff_n if our_eff_n > 0 else float("inf"),
-                    "ratio_eppstein": eppstein_samples / our_eff_n if our_eff_n > 0 else float("inf"),
-                    "ratio_eppstein_local": eppstein_local_samples / our_eff_n if our_eff_n > 0 else float("inf"),
-                }
-            )
+        rows.append(
+            {
+                "distance": dist,
+                "metric": "harmonic",
+                "reach": reach,
+                "our_eff_n": our_eff_n,
+                "raw_eps": raw_eps,
+                "eps_normalised": eps_normalised,
+                "eppstein_samples": eppstein_samples,
+                "eppstein_local_samples": eppstein_local_samples,
+                "ratio_eppstein": eppstein_samples / our_eff_n if our_eff_n > 0 else float("inf"),
+                "ratio_eppstein_local": eppstein_local_samples / our_eff_n if our_eff_n > 0 else float("inf"),
+            }
+        )
 
     if not rows:
         return None
@@ -654,9 +614,9 @@ def compute_theoretical_bounds(summary_df: pd.DataFrame, n_nodes: int, raw_df: p
 
     print(
         f"\n  {'Distance':>10} | {'Metric':>12} | {'Our budget':>10} | {'EW global':>12} | {'EW local':>12} | "
-        f"{'Riondato':>12} | {'Bader':>12} | {'R(EWg)':>8} | {'R(EWl)':>8}"
+        f"{'R(EWg)':>8} | {'R(EWl)':>8}"
     )
-    print("  " + "-" * 120)
+    print("  " + "-" * 90)
     for _, r in bounds_df.iterrows():
         print(
             f"  {r['distance'] // 1000}km       | "
@@ -664,8 +624,6 @@ def compute_theoretical_bounds(summary_df: pd.DataFrame, n_nodes: int, raw_df: p
             f"{r['our_eff_n']:>10,.0f} | "
             f"{r['eppstein_samples']:>12,.0f} | "
             f"{r['eppstein_local_samples']:>12,.0f} | "
-            f"{r['riondato_samples']:>12,.0f} | "
-            f"{r['bader_samples']:>12,.0f} | "
             f"{r['ratio_eppstein']:>8.1f}x | "
             f"{r['ratio_eppstein_local']:>8.1f}x"
         )
@@ -674,14 +632,14 @@ def compute_theoretical_bounds(summary_df: pd.DataFrame, n_nodes: int, raw_df: p
 
 
 # =============================================================================
-# EW / R-K BOUND ANALYSIS
+# EW BOUND ANALYSIS
 # =============================================================================
 
 
 def compute_bound_analysis(raw_df: pd.DataFrame):
-    """Evaluate Hoeffding (closeness) and R-K (betweenness) bounds on all configurations."""
+    """Evaluate Hoeffding bounds on all configurations (both metrics)."""
     print("\n" + "=" * 70)
-    print("BOUND ANALYSIS (Hoeffding for closeness, R-K for betweenness)")
+    print("BOUND ANALYSIS (Hoeffding for closeness + betweenness)")
     print("=" * 70)
 
     rows = []
@@ -694,13 +652,11 @@ def compute_bound_analysis(raw_df: pd.DataFrame):
         if not np.isfinite(eps_obs):
             continue
 
-        bound_type = "Hoeffding" if metric == "harmonic" else "R-K"
-
         rows.append(
             {
                 "distance": row["distance"],
                 "metric": metric,
-                "bound_type": bound_type,
+                "bound_type": "Hoeffding",
                 "reach": row["mean_reach"],
                 "epsilon": row["epsilon"],
                 "budget_param": row["budget_param"],
@@ -722,15 +678,6 @@ def compute_bound_analysis(raw_df: pd.DataFrame):
     holds = int(ew_df["bound_holds"].sum())
     print(f"\n  Overall: {holds}/{total} ({100 * holds / total:.1f}%) -- expected >= {100 * (1 - DELTA):.0f}%")
 
-    # By bound type
-    print(f"\n  {'Bound':15} {'Holds':>8} {'Total':>8} {'Rate':>8}")
-    print("  " + "-" * 45)
-    for bt in sorted(ew_df["bound_type"].unique()):
-        subset = ew_df[ew_df["bound_type"] == bt]
-        h = int(subset["bound_holds"].sum())
-        t = len(subset)
-        print(f"  {bt:<15} {h:>8} {t:>8} {100 * h / t:>7.1f}%")
-
     # By metric
     print(f"\n  {'Metric':<15} {'Holds':>8} {'Total':>8} {'Rate':>8}")
     print("  " + "-" * 45)
@@ -749,12 +696,11 @@ def compute_bound_analysis(raw_df: pd.DataFrame):
         t = len(subset)
         print(f"  {dist:<15} {h:>8} {t:>8} {100 * h / t:>7.1f}%")
 
-    # Conservatism: median predicted/observed ratio per bound type
-    for bt in sorted(ew_df["bound_type"].unique()):
-        subset = ew_df[(ew_df["bound_type"] == bt) & (ew_df["eps_observed"] > 0)]
-        if len(subset) > 0:
-            ratio = subset["eps_predicted"] / subset["eps_observed"]
-            print(f"\n  Conservatism ({bt}): median predicted/observed = {ratio.median():.1f}x")
+    # Conservatism
+    subset = ew_df[ew_df["eps_observed"] > 0]
+    if len(subset) > 0:
+        ratio = subset["eps_predicted"] / subset["eps_observed"]
+        print(f"\n  Conservatism (Hoeffding): median predicted/observed = {ratio.median():.1f}x")
 
     # Save
     csv_path = OUTPUT_DIR / "gla_ew_analysis.csv"
@@ -778,8 +724,8 @@ def main():
     print("03_validate_gla.py - Validating sampling models on Greater London network")
     print("=" * 70)
 
-    print(f"\nCloseness: Hoeffding source sampling, ε={GLA_EPSILON_CLOSENESS}")
-    print(f"Betweenness: R-K path sampling, ε={GLA_EPSILON_BETWEENNESS} (exact Brandes at tipping point)")
+    print(f"\nCloseness:   Hoeffding + spatial, eps={GLA_EPSILON_CLOSENESS}")
+    print(f"Betweenness: Hoeffding + spatial, eps={GLA_EPSILON_BETWEENNESS}")
     print(f"  Delta: {DELTA}")
     print(f"  Distances: {GLA_DISTANCES}")
     print(f"  N_RUNS: {N_RUNS}")
@@ -804,47 +750,50 @@ def main():
     else:
         print("\n  Skipping theoretical bounds comparison (graph cache not found)")
 
-    # Bound analysis (Hoeffding for closeness, R-K for betweenness)
+    # Bound analysis (Hoeffding for closeness)
     ew_df = compute_bound_analysis(raw_df)
 
     # Summary
     print("\n" + "=" * 70)
-    print(f"VALIDATION SUMMARY (closeness ε={GLA_EPSILON_CLOSENESS}, betweenness ε={GLA_EPSILON_BETWEENNESS})")
+    print("VALIDATION SUMMARY")
     print("=" * 70)
 
     print(
-        f"\n{'Distance':>10} | {'Reach':>10} | {'Hoeff p':>10} | {'rho_close':>10}"
-        f" | {'R-K m':>10} | {'rho_betw':>10} | {'Speedup':>10} | {'Target?':>10}"
+        f"\n{'Distance':>10} | {'Reach':>10} | {'p_c':>8} | {'rho_c':>8}"
+        f" | {'Spd_c':>8} | {'p_b':>8} | {'rho_b':>8} | {'Spd_b':>8} | {'OK?':>5}"
     )
-    print("-" * 100)
+    print("-" * 95)
 
     all_pass = True
     for _, row in summary_df.iterrows():
         status = "PASS" if row["meets_target"] else "FAIL"
         if not row["meets_target"]:
             all_pass = False
-        rk_n = int(row["rk_n_samples"])
-        rk_n_str = "exact" if row.get("tipping_point", False) else f"{rk_n:,}"
+
+        rho_b_str = f"{row['rho_betweenness']:.4f}" if np.isfinite(row['rho_betweenness']) else "n/a"
+        p_b_str = f"{row['hoeffding_p_betw']:.1%}" if np.isfinite(row['hoeffding_p_betw']) else "n/a"
+        spd_b_str = f"{row['speedup_betweenness']:.1f}x" if np.isfinite(row['speedup_betweenness']) else "n/a"
+
         print(
-            f"{row['distance'] // 1000}km       | {row['reach']:>10,.0f} | {row['hoeffding_p']:>9.1%} | "
-            f"{row['rho_closeness']:>10.4f} | {rk_n_str:>10} | {row['rho_betweenness']:>10.4f} | "
-            f"{row['speedup']:>9.1f}x | {status:>10}"
+            f"{row['distance'] // 1000}km       | {row['reach']:>10,.0f} | {row['hoeffding_p_close']:>7.1%} | "
+            f"{row['rho_closeness']:>8.4f} | {row['speedup_closeness']:>7.1f}x | "
+            f"{p_b_str:>8} | {rho_b_str:>8} | {spd_b_str:>8} | {status:>5}"
         )
 
-    print("\n" + "-" * 100)
+    print("\n" + "-" * 95)
     if all_pass:
-        print("ALL DISTANCES PASS: Model achieves rho >= 0.95 for both metrics at all distances.")
+        print("ALL DISTANCES PASS: rho >= 0.95 for both metrics at all distances.")
     else:
         print("WARNING: Some distances do not meet the rho >= 0.95 target.")
 
     # Overall statistics
     print("\nOverall Statistics:")
     print(f"  Mean speedup (closeness):   {summary_df['speedup_closeness'].mean():.2f}x")
-    betw_speedups = summary_df["speedup_betweenness"].dropna()
-    if len(betw_speedups) > 0:
-        print(f"  Mean speedup (betweenness): {betw_speedups.mean():.2f}x")
-    print(f"  Mean rho (closeness):   {summary_df['rho_closeness'].mean():.4f}")
-    print(f"  Mean rho (betweenness): {summary_df['rho_betweenness'].mean():.4f}")
+    print(f"  Mean rho (closeness):       {summary_df['rho_closeness'].mean():.4f}")
+    betw_valid = summary_df["rho_betweenness"].dropna()
+    if len(betw_valid) > 0:
+        print(f"  Mean speedup (betweenness): {summary_df['speedup_betweenness'].dropna().mean():.2f}x")
+        print(f"  Mean rho (betweenness):     {betw_valid.mean():.4f}")
 
     print("\n" + "=" * 70)
     print("OUTPUTS")

@@ -72,11 +72,11 @@ class CellSampler:
 def test_correctness(net, live_mask, dist):
     """Verify source_indices=all_live matches exact."""
     print(f"\n--- Test 1: source_indices correctness (dist={dist}m) ---")
-    exact_r = net.betweenness_exact_shortest(distances=[dist], pbar_disabled=True)
+    exact_r = net.betweenness_shortest(distances=[dist], pbar_disabled=True)
     true_betw = np.array(exact_r.node_betweenness[dist], dtype=np.float64)
 
     all_live = [i for i in net.node_indices() if net.is_node_live(i)]
-    check_r = net.betweenness_exact_shortest(
+    check_r = net.betweenness_shortest(
         distances=[dist], source_indices=all_live, pbar_disabled=True,
     )
     check_betw = np.array(check_r.node_betweenness[dist], dtype=np.float64)
@@ -119,7 +119,7 @@ def test_progressive(net, live_mask, dist, true_betw, max_rounds=30):
 
     for rnd in range(1, max_rounds + 1):
         round_sources = sampler.sample_round()
-        r = net.betweenness_exact_shortest(
+        r = net.betweenness_shortest(
             distances=[dist], source_indices=round_sources, pbar_disabled=True,
         )
         round_betw = np.array(r.node_betweenness[dist], dtype=np.float64)

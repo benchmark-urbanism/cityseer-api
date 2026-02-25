@@ -224,10 +224,6 @@ pub struct BetweennessShortestResult {
     pub reachability_totals: Vec<u32>,
     #[pyo3(get)]
     pub sampled_source_count: u32,
-    #[pyo3(get)]
-    pub t_euclidean: u64,
-    #[pyo3(get)]
-    pub actual_budget: u32,
 }
 
 impl BetweennessShortestResult {
@@ -246,8 +242,6 @@ impl BetweennessShortestResult {
             node_betweenness_beta_vec: MetricResult::new(&distances, len, init_val),
             reachability_totals: Vec::new(),
             sampled_source_count: 0,
-            t_euclidean: 0,
-            actual_budget: 0,
         }
     }
 }
@@ -274,6 +268,7 @@ pub struct BetweennessSimplestResult {
     node_indices: Vec<usize>,
 
     node_betweenness_vec: MetricResult,
+    node_betweenness_beta_vec: MetricResult,
 
     #[pyo3(get)]
     pub reachability_totals: Vec<u32>,
@@ -294,6 +289,7 @@ impl BetweennessSimplestResult {
             node_keys_py,
             node_indices: node_indices.clone(),
             node_betweenness_vec: MetricResult::new(&distances, len, init_val),
+            node_betweenness_beta_vec: MetricResult::new(&distances, len, init_val),
             reachability_totals: Vec::new(),
             sampled_source_count: 0,
         }
@@ -305,6 +301,10 @@ impl BetweennessSimplestResult {
     #[getter]
     pub fn node_betweenness(&self) -> HashMap<u32, Py<PyArray1<f32>>> {
         self.node_betweenness_vec.load()
+    }
+    #[getter]
+    pub fn node_betweenness_beta(&self) -> HashMap<u32, Py<PyArray1<f32>>> {
+        self.node_betweenness_beta_vec.load()
     }
 }
 
@@ -689,6 +689,18 @@ impl NetworkStructure {
                 if state[nb].visited {
                     continue;
                 }
+                // Sidestepping prevention (matches dijkstra_tree_simplest):
+                // Skip if current node and neighbor share a predecessor, which would
+                // mean the path is doubling back through a sibling edge.
+                if !state[node_idx].preds.is_empty()
+                    && !state[nb].preds.is_empty()
+                    && state[node_idx]
+                        .preds
+                        .iter()
+                        .any(|p| state[nb].preds.contains(p))
+                {
+                    continue;
+                }
                 // Turn angle calculation (same as dijkstra_tree_simplest)
                 let mut turn = 0.0;
                 if node_idx != src_idx
@@ -1014,6 +1026,7 @@ impl NetworkStructure {
         sample_probability=None,
         sampling_weights=None,
         random_seed=None,
+        source_indices=None,
         pbar_disabled=None
     ))]
     pub fn closeness_shortest(
@@ -1026,6 +1039,7 @@ impl NetworkStructure {
         sample_probability: Option<f32>,
         sampling_weights: Option<Vec<f32>>,
         random_seed: Option<u64>,
+        source_indices: Option<Vec<usize>>,
         pbar_disabled: Option<bool>,
         py: Python,
     ) -> PyResult<ClosenessShortestResult> {
@@ -1065,6 +1079,11 @@ impl NetworkStructure {
                 ));
             }
         }
+        if source_indices.is_some() && sampling_weights.is_some() {
+            return Err(exceptions::PyValueError::new_err(
+                "source_indices and sampling_weights are mutually exclusive",
+            ));
+        }
 
         let node_keys_py = self.node_keys_py(py);
         let node_indices = self.node_indices();
@@ -1079,7 +1098,9 @@ impl NetworkStructure {
         self.progress_init();
 
         // Pre-generate random samples from a single RNG to ensure uniform distribution.
-        let sample_randoms: Vec<f32> = if sample_probability.is_some() {
+        // Only needed for stochastic path (no source_indices).
+        let sample_randoms: Vec<f32> = if sample_probability.is_some() && source_indices.is_none()
+        {
             let mut rng = if let Some(seed) = random_seed {
                 StdRng::seed_from_u64(seed)
             } else {
@@ -1090,24 +1111,40 @@ impl NetworkStructure {
             Vec::new()
         };
 
+        // Determine which sources to iterate
+        let is_source_indexed = source_indices.is_some();
+        let sources: Vec<usize> = if let Some(ref indices) = source_indices {
+            indices.clone()
+        } else {
+            node_indices.clone()
+        };
+
         // Atomic counters for tracking source reachability when sampling
         let source_reachability_totals: Vec<AtomicU32> =
             distances.iter().map(|_| AtomicU32::new(0)).collect();
         let sampled_source_count = AtomicU32::new(0);
 
         let result = py.detach(move || {
-            node_indices.par_iter().for_each(|src_idx| {
+            sources.par_iter().for_each(|src_idx| {
                 if !pbar_disabled {
                     self.progress.fetch_add(1, AtomicOrdering::Relaxed);
                 }
-                if !self.is_node_live(*src_idx) {
+                // When using source_indices, trust the caller; otherwise skip non-live.
+                if !is_source_indexed && !self.is_node_live(*src_idx) {
                     return;
                 }
 
-                // Source sampling: skip Dijkstra for unsampled sources.
-                // Horvitz-Thompson (IPW) estimator: scale contributions by 1/p_src.
+                // Source sampling: Horvitz-Thompson (IPW) estimator scales by 1/p_src.
                 let mut wt = self.get_node_weight(*src_idx);
-                if let Some(prob) = sample_probability {
+                if is_source_indexed {
+                    // Deterministic spatial selection — skip random check.
+                    // Apply IPW scaling from sample_probability if provided.
+                    if let Some(prob) = sample_probability {
+                        wt /= prob;
+                    }
+                    sampled_source_count.fetch_add(1, AtomicOrdering::Relaxed);
+                } else if let Some(prob) = sample_probability {
+                    // Stochastic path (existing behaviour).
                     let mut p = prob;
                     if let Some(ref weights) = sampling_weights {
                         p *= weights[*src_idx];
@@ -1139,7 +1176,7 @@ impl NetworkStructure {
                         continue;
                     }
                     // Track reachability per distance when sampling
-                    if sample_probability.is_some() {
+                    if sample_probability.is_some() || is_source_indexed {
                         for i in 0..distances.len() {
                             if node_visit.short_dist <= distances[i] as f32 {
                                 source_reachability_totals[i].fetch_add(1, AtomicOrdering::Relaxed);
@@ -1170,7 +1207,7 @@ impl NetworkStructure {
                 }
             });
 
-            if sample_probability.is_some() {
+            if sample_probability.is_some() || is_source_indexed {
                 res.sampled_source_count = sampled_source_count.load(AtomicOrdering::Relaxed);
                 res.reachability_totals = source_reachability_totals
                     .iter()
@@ -1195,6 +1232,7 @@ impl NetworkStructure {
         sample_probability=None,
         sampling_weights=None,
         random_seed=None,
+        source_indices=None,
         pbar_disabled=None
     ))]
     pub fn closeness_simplest(
@@ -1209,6 +1247,7 @@ impl NetworkStructure {
         sample_probability: Option<f32>,
         sampling_weights: Option<Vec<f32>>,
         random_seed: Option<u64>,
+        source_indices: Option<Vec<usize>>,
         pbar_disabled: Option<bool>,
         py: Python,
     ) -> PyResult<ClosenessSimplestResult> {
@@ -1248,6 +1287,11 @@ impl NetworkStructure {
                 ));
             }
         }
+        if source_indices.is_some() && sampling_weights.is_some() {
+            return Err(exceptions::PyValueError::new_err(
+                "source_indices and sampling_weights are mutually exclusive",
+            ));
+        }
         let angular_scaling_unit = angular_scaling_unit.unwrap_or(180.0);
         let farness_scaling_offset = farness_scaling_offset.unwrap_or(1.0);
 
@@ -1264,7 +1308,9 @@ impl NetworkStructure {
         self.progress_init();
 
         // Pre-generate random samples from a single RNG to ensure uniform distribution.
-        let sample_randoms: Vec<f32> = if sample_probability.is_some() {
+        // Only needed for stochastic path (no source_indices).
+        let sample_randoms: Vec<f32> = if sample_probability.is_some() && source_indices.is_none()
+        {
             let mut rng = if let Some(seed) = random_seed {
                 StdRng::seed_from_u64(seed)
             } else {
@@ -1275,24 +1321,40 @@ impl NetworkStructure {
             Vec::new()
         };
 
+        // Determine which sources to iterate
+        let is_source_indexed = source_indices.is_some();
+        let sources: Vec<usize> = if let Some(ref indices) = source_indices {
+            indices.clone()
+        } else {
+            node_indices.clone()
+        };
+
         // Atomic counters for tracking source reachability when sampling
         let source_reachability_totals: Vec<AtomicU32> =
             seconds.iter().map(|_| AtomicU32::new(0)).collect();
         let sampled_source_count = AtomicU32::new(0);
 
         let result = py.detach(move || {
-            node_indices.par_iter().for_each(|src_idx| {
+            sources.par_iter().for_each(|src_idx| {
                 if !pbar_disabled {
                     self.progress.fetch_add(1, AtomicOrdering::Relaxed);
                 }
-                if !self.is_node_live(*src_idx) {
+                // When using source_indices, trust the caller; otherwise skip non-live.
+                if !is_source_indexed && !self.is_node_live(*src_idx) {
                     return;
                 }
 
-                // Source sampling: skip Dijkstra for unsampled sources.
-                // Horvitz-Thompson (IPW) estimator: scale contributions by 1/p_src.
+                // Source sampling: Horvitz-Thompson (IPW) estimator scales by 1/p_src.
                 let mut wt = self.get_node_weight(*src_idx);
-                if let Some(prob) = sample_probability {
+                if is_source_indexed {
+                    // Deterministic spatial selection — skip random check.
+                    // Apply IPW scaling from sample_probability if provided.
+                    if let Some(prob) = sample_probability {
+                        wt /= prob;
+                    }
+                    sampled_source_count.fetch_add(1, AtomicOrdering::Relaxed);
+                } else if let Some(prob) = sample_probability {
+                    // Stochastic path (existing behaviour).
                     let mut p = prob;
                     if let Some(ref weights) = sampling_weights {
                         p *= weights[*src_idx];
@@ -1324,7 +1386,7 @@ impl NetworkStructure {
                         continue;
                     }
                     // Track reachability per time threshold when sampling
-                    if sample_probability.is_some() {
+                    if sample_probability.is_some() || is_source_indexed {
                         for i in 0..seconds.len() {
                             if node_visit.agg_seconds <= seconds[i] as f32 {
                                 source_reachability_totals[i].fetch_add(1, AtomicOrdering::Relaxed);
@@ -1349,7 +1411,7 @@ impl NetworkStructure {
                 }
             });
 
-            if sample_probability.is_some() {
+            if sample_probability.is_some() || is_source_indexed {
                 res.sampled_source_count = sampled_source_count.load(AtomicOrdering::Relaxed);
                 res.reachability_totals = source_reachability_totals
                     .iter()
@@ -1636,729 +1698,16 @@ impl NetworkStructure {
     }
 
     // =========================================================================
-    // Riondato-Kornaropoulos path-sampled betweenness
-    // =========================================================================
-
-    /// Compute betweenness centrality using Riondato-Kornaropoulos path sampling
-    /// with standard Brandes multi-predecessor shortest paths.
-    ///
-    /// Instead of source-sampling (running Dijkstra from sampled sources and crediting
-    /// ALL intermediates on ALL paths), this samples random (source, destination) pairs
-    /// and credits intermediates on ONE randomly sampled shortest path per pair.
-    ///
-    /// This gives more uniform sampling of the betweenness contribution space, reducing
-    /// variance for high-betweenness bottleneck nodes on hierarchical networks.
-    ///
-    /// Accepts exactly one of: distance (meters), beta (decay), or minutes.
-    ///
-    /// Returns a `BetweennessShortestResult` with betweenness fields populated.
-    #[pyo3(signature = (
-        distance=None,
-        beta=None,
-        minutes=None,
-        min_threshold_wt=None,
-        speed_m_s=None,
-        tolerance=None,
-        n_samples=None,
-        random_seed=None,
-        pbar_disabled=None
-    ))]
-    pub fn betweenness_shortest(
-        &self,
-        distance: Option<u32>,
-        beta: Option<f32>,
-        minutes: Option<f32>,
-        min_threshold_wt: Option<f32>,
-        speed_m_s: Option<f32>,
-        tolerance: Option<f32>,
-        n_samples: Option<u32>,
-        random_seed: Option<u64>,
-        pbar_disabled: Option<bool>,
-        py: Python,
-    ) -> PyResult<BetweennessShortestResult> {
-        let speed_m_s = speed_m_s.unwrap_or(WALKING_SPEED);
-        let (distances, betas, seconds) = common::pair_distances_betas_time(
-            speed_m_s,
-            distance.map(|d| vec![d]),
-            beta.map(|b| vec![b]),
-            minutes.map(|m| vec![m]),
-            min_threshold_wt,
-        )?;
-        let dist_m = distances[0];
-        let beta_val = betas[0];
-        let walk_seconds = seconds[0];
-        let tolerance = tolerance.unwrap_or(0.0);
-        let n_samples = n_samples.unwrap_or(100);
-        let pbar_disabled = pbar_disabled.unwrap_or(false);
-
-        // Collect live node indices
-        let live_nodes: Vec<usize> = self
-            .node_indices()
-            .iter()
-            .filter(|&&idx| self.is_node_live(idx))
-            .copied()
-            .collect();
-        if live_nodes.is_empty() {
-            return Err(exceptions::PyValueError::new_err(
-                "No live nodes in network",
-            ));
-        }
-
-        // Build node R-tree from all node coordinates
-        let rtree_items: Vec<NodeRtreeItem> = self
-            .node_indices()
-            .iter()
-            .map(|&idx| {
-                let payload = self
-                    .graph
-                    .node_weight(NodeIndex::new(idx))
-                    .expect("Node payload should exist");
-                GeomWithData::new([payload.point.x(), payload.point.y()], idx)
-            })
-            .collect();
-        let node_rtree = RTree::bulk_load(rtree_items);
-
-        // Euclidean pair selection distance
-        let dist_m_f64 = dist_m as f64;
-        let dist_sq = dist_m_f64 * dist_m_f64;
-
-        // Precompute euclidean_reach for each live node: count of live nodes within
-        // Euclidean distance (excluding self). Store per node_idx for O(1) lookup.
-        let n = self.node_count();
-        let mut euclidean_reach: Vec<usize> = vec![0; n];
-        let mut t_euclidean: u64 = 0;
-        for &s in &live_nodes {
-            let s_payload = self
-                .graph
-                .node_weight(NodeIndex::new(s))
-                .expect("Node payload should exist");
-            let sx = s_payload.point.x();
-            let sy = s_payload.point.y();
-            let mut count: usize = 0;
-            for item in node_rtree.locate_within_distance([sx, sy], dist_sq) {
-                let t = item.data;
-                if t != s && self.is_node_live(t) {
-                    count += 1;
-                }
-            }
-            euclidean_reach[s] = count;
-            t_euclidean += count as u64;
-        }
-        // Each pair counted twice (once from each side), so divide by 2
-        t_euclidean /= 2;
-
-        // Python controls the budget (saturation check uses probe-based T_network)
-        let budget = n_samples;
-
-        let node_keys_py = self.node_keys_py(py);
-        let node_indices = self.node_indices();
-        let mut res = BetweennessShortestResult::new(
-            vec![dist_m],
-            node_keys_py,
-            node_indices.clone(),
-            0.0,
-        );
-
-        // Track reach for reporting
-        let reach_total = AtomicU32::new(0);
-
-        self.progress_init();
-
-        let result = py.detach(move || {
-            let base_rng_seed = random_seed.unwrap_or_else(|| {
-                let mut rng = rand::rng();
-                rng.random()
-            });
-
-            (0..budget).into_par_iter().for_each_init(
-                || TargetDijkstraBuffer::new(n),
-                |buf, sample_idx| {
-                if !pbar_disabled {
-                    self.progress.fetch_add(1, AtomicOrdering::Relaxed);
-                }
-
-                let sample_seed = derive_seed(base_rng_seed, sample_idx as usize);
-                let mut rng = StdRng::seed_from_u64(sample_seed);
-
-                // Pick random source uniformly from live nodes
-                let src_idx = live_nodes[rng.random_range(0..live_nodes.len())];
-
-                // Query R-tree for Euclidean neighbors within distance
-                let s_payload = self
-                    .graph
-                    .node_weight(NodeIndex::new(src_idx))
-                    .expect("Node payload should exist");
-                let sx = s_payload.point.x();
-                let sy = s_payload.point.y();
-                let candidates: Vec<usize> = node_rtree
-                    .locate_within_distance([sx, sy], dist_sq)
-                    .filter_map(|item| {
-                        let t = item.data;
-                        if t != src_idx && self.is_node_live(t) {
-                            Some(t)
-                        } else {
-                            None
-                        }
-                    })
-                    .collect();
-
-                if candidates.is_empty() {
-                    return;
-                }
-
-                // Pick random target from Euclidean candidates
-                let dest_idx = candidates[rng.random_range(0..candidates.len())];
-
-                // Weight by euclidean_reach of source for unbiased estimation
-                let eucl_reach_s = euclidean_reach[src_idx] as f64;
-
-                // Run targeted Dijkstra: stop when dest settles
-                let found = self.dijkstra_brandes_target(
-                    buf,
-                    src_idx,
-                    dest_idx,
-                    walk_seconds,
-                    speed_m_s,
-                    tolerance,
-                );
-                if !found {
-                    return; // dest unreachable within distance
-                }
-
-                // Check dest is within network distance threshold
-                let dist_threshold = dist_m as f32;
-                if buf.state[dest_idx].short_dist > dist_threshold || buf.state[dest_idx].sigma == 0 {
-                    return;
-                }
-
-                let dest_dist = buf.state[dest_idx].short_dist;
-
-                // Track reach for reporting
-                reach_total.fetch_add(1, AtomicOrdering::Relaxed);
-
-                // Trace ONE random shortest path from dest back to source
-                let mut current = dest_idx;
-                while current != src_idx {
-                    let preds = &buf.state[current].preds;
-                    if preds.is_empty() {
-                        break;
-                    }
-                    let pred = if preds.len() == 1 {
-                        preds[0]
-                    } else {
-                        let total_sigma: u64 = preds.iter().map(|&p| buf.state[p].sigma).sum();
-                        if total_sigma == 0 {
-                            preds[0]
-                        } else {
-                            let r = rng.random_range(0..total_sigma);
-                            let mut cumulative = 0u64;
-                            let mut chosen = preds[0];
-                            for &p in preds.iter() {
-                                cumulative += buf.state[p].sigma;
-                                if r < cumulative {
-                                    chosen = p;
-                                    break;
-                                }
-                            }
-                            chosen
-                        }
-                    };
-
-                    // Credit intermediary weighted by euclidean_reach_s
-                    // P(s)=1/n_live, P(t|s)=1/eucl_reach_s
-                    // Weighting by eucl_reach_s makes each pair uniform
-                    if pred != src_idx {
-                        res.node_betweenness_vec.metric[0][pred]
-                            .fetch_add(eucl_reach_s, AtomicOrdering::Relaxed);
-                        let exp_val = (-beta_val * dest_dist).exp();
-                        res.node_betweenness_beta_vec.metric[0][pred]
-                            .fetch_add(eucl_reach_s * exp_val as f64, AtomicOrdering::Relaxed);
-                    }
-
-                    current = pred;
-                }
-            });
-
-            // Scale: B̂(v) = accumulated × n_live / (2 × budget)
-            // E[eucl_reach_s × I(v on path)] = 2×B(v)/n_live per attempt
-            let n_live = live_nodes.len() as f64;
-            let scale = n_live / (2.0 * budget as f64);
-            let n_nodes = res.node_betweenness_vec.metric[0].len();
-            for node_idx in 0..n_nodes {
-                let raw = res.node_betweenness_vec.metric[0][node_idx]
-                    .load(AtomicOrdering::Relaxed);
-                res.node_betweenness_vec.metric[0][node_idx]
-                    .store(raw * scale, AtomicOrdering::Relaxed);
-                let raw_beta = res.node_betweenness_beta_vec.metric[0][node_idx]
-                    .load(AtomicOrdering::Relaxed);
-                res.node_betweenness_beta_vec.metric[0][node_idx]
-                    .store(raw_beta * scale, AtomicOrdering::Relaxed);
-            }
-
-            res.sampled_source_count = budget;
-            res.t_euclidean = t_euclidean;
-            res.actual_budget = budget;
-            res.reachability_totals = vec![reach_total.load(AtomicOrdering::Relaxed)];
-
-            res
-        });
-
-        Ok(result)
-    }
-
-    /// Compute betweenness centrality using global R-K path sampling with distance bucketing.
-    ///
-    /// Samples random pairs globally (Euclidean pre-filter at max distance),
-    /// finds targeted shortest paths, and buckets betweenness credits by the
-    /// network distance between each sampled pair. All distance thresholds
-    /// are computed in a single pass.
-    ///
-    /// The budget (n_samples) is anchored on reach via the R-K formula so that
-    /// results are comparable across different networks.
-    ///
-    /// Accepts distances (meters), betas (decay), or minutes (multiple thresholds).
-    #[pyo3(signature = (
-        distances=None,
-        betas=None,
-        minutes=None,
-        min_threshold_wt=None,
-        speed_m_s=None,
-        tolerance=None,
-        n_samples=None,
-        random_seed=None,
-        pbar_disabled=None,
-    ))]
-    pub fn betweenness_sample_shortest(
-        &self,
-        distances: Option<Vec<u32>>,
-        betas: Option<Vec<f32>>,
-        minutes: Option<Vec<f32>>,
-        min_threshold_wt: Option<f32>,
-        speed_m_s: Option<f32>,
-        tolerance: Option<f32>,
-        n_samples: Option<u32>,
-        random_seed: Option<u64>,
-        pbar_disabled: Option<bool>,
-        py: Python,
-    ) -> PyResult<BetweennessShortestResult> {
-        let speed_m_s = speed_m_s.unwrap_or(WALKING_SPEED);
-        let (distances, betas, seconds) = common::pair_distances_betas_time(
-            speed_m_s,
-            distances,
-            betas,
-            minutes,
-            min_threshold_wt,
-        )?;
-        let max_dist = *distances
-            .iter()
-            .max()
-            .expect("Distances vector should not be empty");
-        let max_walk_seconds = *seconds
-            .iter()
-            .max()
-            .expect("Seconds vector should not be empty");
-        let tolerance = tolerance.unwrap_or(0.0);
-        let n_samples = n_samples.unwrap_or(100);
-        let pbar_disabled = pbar_disabled.unwrap_or(false);
-
-        // Collect live node indices
-        let live_nodes: Vec<usize> = self
-            .node_indices()
-            .iter()
-            .filter(|&&idx| self.is_node_live(idx))
-            .copied()
-            .collect();
-        if live_nodes.is_empty() {
-            return Err(exceptions::PyValueError::new_err(
-                "No live nodes in network",
-            ));
-        }
-
-        // Build node R-tree from all node coordinates
-        let rtree_items: Vec<NodeRtreeItem> = self
-            .node_indices()
-            .iter()
-            .map(|&idx| {
-                let payload = self
-                    .graph
-                    .node_weight(NodeIndex::new(idx))
-                    .expect("Node payload should exist");
-                GeomWithData::new([payload.point.x(), payload.point.y()], idx)
-            })
-            .collect();
-        let node_rtree = RTree::bulk_load(rtree_items);
-
-        // Euclidean pair selection at max distance
-        let max_dist_f64 = max_dist as f64;
-        let max_dist_sq = max_dist_f64 * max_dist_f64;
-
-        // Precompute euclidean_reach at max_distance for each live node
-        let n = self.node_count();
-        let mut euclidean_reach: Vec<usize> = vec![0; n];
-        let mut t_euclidean: u64 = 0;
-        for &s in &live_nodes {
-            let s_payload = self
-                .graph
-                .node_weight(NodeIndex::new(s))
-                .expect("Node payload should exist");
-            let sx = s_payload.point.x();
-            let sy = s_payload.point.y();
-            let mut count: usize = 0;
-            for item in node_rtree.locate_within_distance([sx, sy], max_dist_sq) {
-                let t = item.data;
-                if t != s && self.is_node_live(t) {
-                    count += 1;
-                }
-            }
-            euclidean_reach[s] = count;
-            t_euclidean += count as u64;
-        }
-        t_euclidean /= 2;
-
-        let budget = n_samples;
-
-        let node_keys_py = self.node_keys_py(py);
-        let node_indices = self.node_indices();
-        let mut res = BetweennessShortestResult::new(
-            distances.clone(),
-            node_keys_py,
-            node_indices.clone(),
-            0.0,
-        );
-
-        self.progress_init();
-
-        let result = py.detach(move || {
-            let base_rng_seed = random_seed.unwrap_or_else(|| {
-                let mut rng = rand::rng();
-                rng.random()
-            });
-
-            (0..budget).into_par_iter().for_each_init(
-                || TargetDijkstraBuffer::new(n),
-                |buf, sample_idx| {
-                if !pbar_disabled {
-                    self.progress.fetch_add(1, AtomicOrdering::Relaxed);
-                }
-
-                let sample_seed = derive_seed(base_rng_seed, sample_idx as usize);
-                let mut rng = StdRng::seed_from_u64(sample_seed);
-
-                // Pick random source uniformly from live nodes
-                let src_idx = live_nodes[rng.random_range(0..live_nodes.len())];
-
-                // Query R-tree for Euclidean neighbors within max distance
-                let s_payload = self
-                    .graph
-                    .node_weight(NodeIndex::new(src_idx))
-                    .expect("Node payload should exist");
-                let sx = s_payload.point.x();
-                let sy = s_payload.point.y();
-                let candidates: Vec<usize> = node_rtree
-                    .locate_within_distance([sx, sy], max_dist_sq)
-                    .filter_map(|item| {
-                        let t = item.data;
-                        if t != src_idx && self.is_node_live(t) {
-                            Some(t)
-                        } else {
-                            None
-                        }
-                    })
-                    .collect();
-
-                if candidates.is_empty() {
-                    return;
-                }
-
-                // Pick random target from Euclidean candidates
-                let dest_idx = candidates[rng.random_range(0..candidates.len())];
-
-                // Weight by euclidean_reach of source for unbiased estimation
-                let eucl_reach_s = euclidean_reach[src_idx] as f64;
-
-                // Run targeted Dijkstra: stop when dest settles
-                let found = self.dijkstra_brandes_target(
-                    buf,
-                    src_idx,
-                    dest_idx,
-                    max_walk_seconds,
-                    speed_m_s,
-                    tolerance,
-                );
-                if !found {
-                    return;
-                }
-
-                // Check dest is within max network distance
-                let max_dist_threshold = max_dist as f32;
-                if buf.state[dest_idx].short_dist > max_dist_threshold
-                    || buf.state[dest_idx].sigma == 0
-                {
-                    return;
-                }
-
-                let dest_dist = buf.state[dest_idx].short_dist;
-
-                // Trace ONE random shortest path from dest back to source
-                let mut current = dest_idx;
-                while current != src_idx {
-                    let preds = &buf.state[current].preds;
-                    if preds.is_empty() {
-                        break;
-                    }
-                    let pred = if preds.len() == 1 {
-                        preds[0]
-                    } else {
-                        let total_sigma: u64 =
-                            preds.iter().map(|&p| buf.state[p].sigma).sum();
-                        if total_sigma == 0 {
-                            preds[0]
-                        } else {
-                            let r = rng.random_range(0..total_sigma);
-                            let mut cumulative = 0u64;
-                            let mut chosen = preds[0];
-                            for &p in preds.iter() {
-                                cumulative += buf.state[p].sigma;
-                                if r < cumulative {
-                                    chosen = p;
-                                    break;
-                                }
-                            }
-                            chosen
-                        }
-                    };
-
-                    // Credit intermediary to all distance bins where bin_dist >= net_dist
-                    if pred != src_idx {
-                        for d_idx in 0..distances.len() {
-                            if dest_dist <= distances[d_idx] as f32 {
-                                res.node_betweenness_vec.metric[d_idx][pred]
-                                    .fetch_add(eucl_reach_s, AtomicOrdering::Relaxed);
-                                let exp_val =
-                                    (-betas[d_idx] as f64 * dest_dist as f64).exp();
-                                res.node_betweenness_beta_vec.metric[d_idx][pred]
-                                    .fetch_add(
-                                        eucl_reach_s * exp_val,
-                                        AtomicOrdering::Relaxed,
-                                    );
-                            }
-                        }
-                    }
-
-                    current = pred;
-                }
-            });
-
-            // Scale: B̂(v) = accumulated × n_live / (2 × budget)
-            // Same normalization for all distance bins because eucl_reach weighting
-            // at max_distance makes all pairs uniform regardless of bucket.
-            let n_live = live_nodes.len() as f64;
-            let scale = n_live / (2.0 * budget as f64);
-            let n_nodes = res.node_betweenness_vec.metric[0].len();
-            for d_idx in 0..distances.len() {
-                for node_idx in 0..n_nodes {
-                    let raw = res.node_betweenness_vec.metric[d_idx][node_idx]
-                        .load(AtomicOrdering::Relaxed);
-                    res.node_betweenness_vec.metric[d_idx][node_idx]
-                        .store(raw * scale, AtomicOrdering::Relaxed);
-                    let raw_beta =
-                        res.node_betweenness_beta_vec.metric[d_idx][node_idx]
-                            .load(AtomicOrdering::Relaxed);
-                    res.node_betweenness_beta_vec.metric[d_idx][node_idx]
-                        .store(raw_beta * scale, AtomicOrdering::Relaxed);
-                }
-            }
-
-            res.sampled_source_count = budget;
-            res.t_euclidean = t_euclidean;
-            res.actual_budget = budget;
-
-            res
-        });
-
-        Ok(result)
-    }
-
-    /// Compute betweenness centrality using R-K path sampling with simplest (angular) paths.
-    ///
-    /// Same algorithm as `betweenness_shortest` but uses angular/simplest
-    /// path distances for the Dijkstra tree and distance thresholds.
-    ///
-    /// Accepts exactly one of: distance (meters), beta (decay), or minutes.
-    #[pyo3(signature = (
-        distance=None,
-        beta=None,
-        minutes=None,
-        min_threshold_wt=None,
-        speed_m_s=None,
-        tolerance=None,
-        n_samples=None,
-        random_seed=None,
-        pbar_disabled=None
-    ))]
-    pub fn betweenness_simplest(
-        &self,
-        distance: Option<u32>,
-        beta: Option<f32>,
-        minutes: Option<f32>,
-        min_threshold_wt: Option<f32>,
-        speed_m_s: Option<f32>,
-        tolerance: Option<f32>,
-        n_samples: Option<u32>,
-        random_seed: Option<u64>,
-        pbar_disabled: Option<bool>,
-        py: Python,
-    ) -> PyResult<BetweennessSimplestResult> {
-        let speed_m_s = speed_m_s.unwrap_or(WALKING_SPEED);
-        let (distances, _betas, seconds) = common::pair_distances_betas_time(
-            speed_m_s,
-            distance.map(|d| vec![d]),
-            beta.map(|b| vec![b]),
-            minutes.map(|m| vec![m]),
-            min_threshold_wt,
-        )?;
-        let walk_seconds = seconds[0];
-        let tolerance = tolerance.unwrap_or(0.0);
-        let n_samples = n_samples.unwrap_or(100);
-        let pbar_disabled = pbar_disabled.unwrap_or(false);
-
-        let live_nodes: Vec<usize> = self
-            .node_indices()
-            .iter()
-            .filter(|&&idx| self.is_node_live(idx))
-            .copied()
-            .collect();
-        if live_nodes.is_empty() {
-            return Err(exceptions::PyValueError::new_err(
-                "No live nodes in network",
-            ));
-        }
-
-        let node_keys_py = self.node_keys_py(py);
-        let node_indices = self.node_indices();
-        let mut res = BetweennessSimplestResult::new(
-            distances.clone(),
-            node_keys_py,
-            node_indices.clone(),
-            0.0,
-        );
-
-        let reach_total = AtomicU32::new(0);
-
-        self.progress_init();
-
-        let result = py.detach(move || {
-            let base_rng_seed = random_seed.unwrap_or_else(|| {
-                let mut rng = rand::rng();
-                rng.random()
-            });
-
-            let sec_threshold = walk_seconds as f32;
-
-            (0..n_samples).into_par_iter().for_each(|sample_idx| {
-                if !pbar_disabled {
-                    self.progress.fetch_add(1, AtomicOrdering::Relaxed);
-                }
-
-                let sample_seed = derive_seed(base_rng_seed, sample_idx as usize);
-                let mut rng = StdRng::seed_from_u64(sample_seed);
-
-                let src_idx = live_nodes[rng.random_range(0..live_nodes.len())];
-
-                let (visited_nodes, state) = self.dijkstra_brandes_simplest(
-                    src_idx,
-                    walk_seconds,
-                    speed_m_s,
-                    tolerance,
-                );
-
-                let reachable: Vec<usize> = visited_nodes
-                    .iter()
-                    .filter(|&&v| {
-                        v != src_idx
-                            && state[v].agg_seconds <= sec_threshold
-                            && state[v].sigma > 0
-                    })
-                    .copied()
-                    .collect();
-
-                if reachable.is_empty() {
-                    return;
-                }
-
-                let reach_s = reachable.len() as f64;
-                reach_total.fetch_add(reachable.len() as u32, AtomicOrdering::Relaxed);
-
-                let dest_idx = reachable[rng.random_range(0..reachable.len())];
-
-                // Trace random shortest path
-                let mut current = dest_idx;
-                while current != src_idx {
-                    let preds = &state[current].preds;
-                    if preds.is_empty() {
-                        break;
-                    }
-                    let pred = if preds.len() == 1 {
-                        preds[0]
-                    } else {
-                        let total_sigma: u64 = preds.iter().map(|&p| state[p].sigma).sum();
-                        if total_sigma == 0 {
-                            preds[0]
-                        } else {
-                            let r = rng.random_range(0..total_sigma);
-                            let mut cumulative = 0u64;
-                            let mut chosen = preds[0];
-                            for &p in preds.iter() {
-                                cumulative += state[p].sigma;
-                                if r < cumulative {
-                                    chosen = p;
-                                    break;
-                                }
-                            }
-                            chosen
-                        }
-                    };
-
-                    // Weight by reach_s for correct scaling (see betweenness_shortest)
-                    if pred != src_idx {
-                        res.node_betweenness_vec.metric[0][pred]
-                            .fetch_add(reach_s, AtomicOrdering::Relaxed);
-                    }
-
-                    current = pred;
-                }
-            });
-
-            // Scale betweenness by n_live / (2 * n_samples)
-            let n_live = live_nodes.len() as f64;
-            let scale = n_live / (2.0 * n_samples as f64);
-            let n_nodes = res.node_betweenness_vec.metric[0].len();
-            for node_idx in 0..n_nodes {
-                let raw = res.node_betweenness_vec.metric[0][node_idx]
-                    .load(AtomicOrdering::Relaxed);
-                res.node_betweenness_vec.metric[0][node_idx]
-                    .store(raw * scale, AtomicOrdering::Relaxed);
-            }
-
-            res.sampled_source_count = n_samples;
-            res.reachability_totals = vec![reach_total.load(AtomicOrdering::Relaxed)];
-
-            res
-        });
-
-        Ok(result)
-    }
-
-    // =========================================================================
-    // Exact Brandes betweenness (all sources, no sampling)
+    // Brandes betweenness (all sources or spatially stratified subset)
     // =========================================================================
 
     /// Compute Brandes betweenness centrality from all sources or a specified subset.
     ///
     /// When `source_indices` is None, iterates all live source nodes (exact).
-    /// When `source_indices` is provided, iterates only those sources and scales
-    /// by n_live / n_sources for an unbiased estimate. Use with spatially
-    /// stratified source selection for uniform spatial coverage.
+    /// When `source_indices` is provided with `sample_probability`, applies IPW
+    /// scaling (1/(2p)) for an unbiased estimate — matching the closeness framework.
+    /// When `source_indices` is provided without `sample_probability`, scales by
+    /// n_live / (2 * n_sources) for backwards compatibility.
     ///
     /// Returns a `BetweennessShortestResult` with betweenness fields populated.
     #[pyo3(signature = (
@@ -2369,9 +1718,10 @@ impl NetworkStructure {
         speed_m_s=None,
         tolerance=None,
         source_indices=None,
+        sample_probability=None,
         pbar_disabled=None
     ))]
-    pub fn betweenness_exact_shortest(
+    pub fn betweenness_shortest(
         &self,
         distances: Option<Vec<u32>>,
         betas: Option<Vec<f32>>,
@@ -2380,6 +1730,7 @@ impl NetworkStructure {
         speed_m_s: Option<f32>,
         tolerance: Option<f32>,
         source_indices: Option<Vec<usize>>,
+        sample_probability: Option<f32>,
         pbar_disabled: Option<bool>,
         py: Python,
     ) -> PyResult<BetweennessShortestResult> {
@@ -2398,7 +1749,20 @@ impl NetworkStructure {
         let tolerance = tolerance.unwrap_or(0.0);
         let pbar_disabled = pbar_disabled.unwrap_or(false);
 
-        // Count live nodes for scaling
+        if let Some(prob) = sample_probability {
+            if prob <= 0.0 || prob > 1.0 {
+                return Err(exceptions::PyValueError::new_err(
+                    "sample_probability must be in (0.0, 1.0]",
+                ));
+            }
+        }
+        if sample_probability.is_some() && source_indices.is_none() {
+            return Err(exceptions::PyValueError::new_err(
+                "sample_probability requires source_indices to be provided",
+            ));
+        }
+
+        // Count live nodes for scaling (needed for backwards-compat path)
         let n_live: usize = self
             .node_indices()
             .iter()
@@ -2497,37 +1861,227 @@ impl NetworkStructure {
                 }
             });
 
-            if is_sampled {
-                // Source sampling: scale by n_live / n_sources.
-                // Each source's backpropagation counts pairs from that source's
-                // perspective. With k sources out of n_live, scale by n_live/k
-                // then divide by 2 for undirected.
-                let scale = n_live as f64 / (2.0 * n_sources as f64);
-                for d_idx in 0..distances.len() {
-                    for node_idx in 0..n {
-                        let raw = res.node_betweenness_vec.metric[d_idx][node_idx]
-                            .load(AtomicOrdering::Relaxed);
-                        res.node_betweenness_vec.metric[d_idx][node_idx]
-                            .store(raw * scale, AtomicOrdering::Relaxed);
-                        let raw_beta = res.node_betweenness_beta_vec.metric[d_idx][node_idx]
-                            .load(AtomicOrdering::Relaxed);
-                        res.node_betweenness_beta_vec.metric[d_idx][node_idx]
-                            .store(raw_beta * scale, AtomicOrdering::Relaxed);
-                    }
+            // Post-hoc scaling: always divide by 2 for undirected graphs.
+            // When sampling with sample_probability, also apply IPW (1/p).
+            // When sampling without sample_probability, use n_live/n_sources (backwards compat).
+            let scale = if is_sampled {
+                if let Some(prob) = sample_probability {
+                    // IPW: 1/(2p) — matches closeness framework
+                    1.0 / (2.0 * prob as f64)
+                } else {
+                    // Legacy: n_live / (2 * n_sources)
+                    n_live as f64 / (2.0 * n_sources as f64)
                 }
             } else {
-                // Exact: divide by 2 for undirected graphs.
+                // Exact: just /2
+                0.5
+            };
+            for d_idx in 0..distances.len() {
+                for node_idx in 0..n {
+                    let raw = res.node_betweenness_vec.metric[d_idx][node_idx]
+                        .load(AtomicOrdering::Relaxed);
+                    res.node_betweenness_vec.metric[d_idx][node_idx]
+                        .store(raw * scale, AtomicOrdering::Relaxed);
+                    let raw_beta = res.node_betweenness_beta_vec.metric[d_idx][node_idx]
+                        .load(AtomicOrdering::Relaxed);
+                    res.node_betweenness_beta_vec.metric[d_idx][node_idx]
+                        .store(raw_beta * scale, AtomicOrdering::Relaxed);
+                }
+            }
+
+            res.sampled_source_count = n_sources as u32;
+
+            res
+        });
+
+        Ok(result)
+    }
+
+    // =========================================================================
+    // Brandes betweenness on simplest (angular) paths
+    // =========================================================================
+
+    /// Compute Brandes betweenness centrality using simplest (angular) paths.
+    ///
+    /// Mirrors `betweenness_shortest` but uses `dijkstra_brandes_simplest`
+    /// which optimises for minimum angular change (with sidestepping prevention).
+    /// Distance thresholds are still in metres (physical distance along the
+    /// simplest path).
+    #[pyo3(signature = (
+        distances=None,
+        betas=None,
+        minutes=None,
+        min_threshold_wt=None,
+        speed_m_s=None,
+        tolerance=None,
+        source_indices=None,
+        sample_probability=None,
+        pbar_disabled=None
+    ))]
+    pub fn betweenness_simplest(
+        &self,
+        distances: Option<Vec<u32>>,
+        betas: Option<Vec<f32>>,
+        minutes: Option<Vec<f32>>,
+        min_threshold_wt: Option<f32>,
+        speed_m_s: Option<f32>,
+        tolerance: Option<f32>,
+        source_indices: Option<Vec<usize>>,
+        sample_probability: Option<f32>,
+        pbar_disabled: Option<bool>,
+        py: Python,
+    ) -> PyResult<BetweennessSimplestResult> {
+        let speed_m_s = speed_m_s.unwrap_or(WALKING_SPEED);
+        let (distances, betas, seconds) = common::pair_distances_betas_time(
+            speed_m_s,
+            distances,
+            betas,
+            minutes,
+            min_threshold_wt,
+        )?;
+        let max_walk_seconds = *seconds
+            .iter()
+            .max()
+            .expect("Seconds vector should not be empty");
+        let tolerance = tolerance.unwrap_or(0.0);
+        let pbar_disabled = pbar_disabled.unwrap_or(false);
+
+        if let Some(prob) = sample_probability {
+            if prob <= 0.0 || prob > 1.0 {
+                return Err(exceptions::PyValueError::new_err(
+                    "sample_probability must be in (0.0, 1.0]",
+                ));
+            }
+        }
+        if sample_probability.is_some() && source_indices.is_none() {
+            return Err(exceptions::PyValueError::new_err(
+                "sample_probability requires source_indices to be provided",
+            ));
+        }
+
+        // Count live nodes for scaling (needed for backwards-compat path)
+        let n_live: usize = self
+            .node_indices()
+            .iter()
+            .filter(|&&idx| self.is_node_live(idx))
+            .count();
+
+        // Determine which sources to iterate
+        let sources: Vec<usize> = if let Some(ref indices) = source_indices {
+            indices.clone()
+        } else {
+            self.node_indices()
+                .iter()
+                .filter(|&&idx| self.is_node_live(idx))
+                .copied()
+                .collect()
+        };
+        let n_sources = sources.len();
+        let is_sampled = source_indices.is_some();
+
+        let node_keys_py = self.node_keys_py(py);
+        let node_indices = self.node_indices();
+        let n = self.node_count();
+        let mut res = BetweennessSimplestResult::new(
+            distances.clone(),
+            node_keys_py,
+            node_indices.clone(),
+            0.0,
+        );
+
+        self.progress_init();
+
+        let result = py.detach(move || {
+            sources.par_iter().for_each(|src_idx| {
+                if !pbar_disabled {
+                    self.progress.fetch_add(1, AtomicOrdering::Relaxed);
+                }
+                // When using explicit source_indices, trust the caller;
+                // when using all nodes, skip non-live.
+                if !is_sampled && !self.is_node_live(*src_idx) {
+                    return;
+                }
+
+                let (visited_nodes, state) = self.dijkstra_brandes_simplest(
+                    *src_idx,
+                    max_walk_seconds,
+                    speed_m_s,
+                    tolerance,
+                );
+
+                // Sort visited by angular distance from source (farthest first) for backpropagation
+                let mut sorted_visited: Vec<usize> = visited_nodes
+                    .iter()
+                    .filter(|&&v| v != *src_idx && state[v].sigma > 0)
+                    .copied()
+                    .collect();
+                sorted_visited.sort_by(|a, b| {
+                    state[*b]
+                        .simpl_dist
+                        .partial_cmp(&state[*a].simpl_dist)
+                        .unwrap_or(Ordering::Equal)
+                });
+
+                // Brandes backpropagation for each distance threshold
                 for d_idx in 0..distances.len() {
-                    for node_idx in 0..n {
-                        let raw = res.node_betweenness_vec.metric[d_idx][node_idx]
-                            .load(AtomicOrdering::Relaxed);
-                        res.node_betweenness_vec.metric[d_idx][node_idx]
-                            .store(raw / 2.0, AtomicOrdering::Relaxed);
-                        let raw_beta = res.node_betweenness_beta_vec.metric[d_idx][node_idx]
-                            .load(AtomicOrdering::Relaxed);
-                        res.node_betweenness_beta_vec.metric[d_idx][node_idx]
-                            .store(raw_beta / 2.0, AtomicOrdering::Relaxed);
+                    let dist_threshold = distances[d_idx] as f32;
+                    let beta = betas[d_idx] as f64;
+
+                    // delta[v] = pair-dependency of this source on v
+                    let mut delta = vec![0.0f64; n];
+                    let mut delta_beta = vec![0.0f64; n];
+
+                    // Process in reverse order of angular distance (farthest first)
+                    for &w in &sorted_visited {
+                        // Threshold on physical distance (short_dist = agg_seconds * speed_m_s)
+                        if state[w].short_dist > dist_threshold {
+                            continue;
+                        }
+                        let sigma_w = state[w].sigma as f64;
+                        if sigma_w == 0.0 {
+                            continue;
+                        }
+
+                        // Propagate to predecessors
+                        for &v in &state[w].preds {
+                            let factor = state[v].sigma as f64 / sigma_w;
+                            delta[v] += factor * (1.0 + delta[w]);
+                            delta_beta[v] += factor
+                                * ((-beta * state[w].short_dist as f64).exp() + delta_beta[w]);
+                        }
+
+                        // Credit betweenness for w (w != source, guaranteed by filter)
+                        res.node_betweenness_vec.metric[d_idx][w]
+                            .fetch_add(delta[w], AtomicOrdering::Relaxed);
+                        res.node_betweenness_beta_vec.metric[d_idx][w]
+                            .fetch_add(delta_beta[w], AtomicOrdering::Relaxed);
                     }
+                }
+            });
+
+            // Post-hoc scaling: always divide by 2 for undirected graphs.
+            let scale = if is_sampled {
+                if let Some(prob) = sample_probability {
+                    // IPW: 1/(2p) — matches closeness framework
+                    1.0 / (2.0 * prob as f64)
+                } else {
+                    // Legacy: n_live / (2 * n_sources)
+                    n_live as f64 / (2.0 * n_sources as f64)
+                }
+            } else {
+                // Exact: just /2
+                0.5
+            };
+            for d_idx in 0..distances.len() {
+                for node_idx in 0..n {
+                    let raw = res.node_betweenness_vec.metric[d_idx][node_idx]
+                        .load(AtomicOrdering::Relaxed);
+                    res.node_betweenness_vec.metric[d_idx][node_idx]
+                        .store(raw * scale, AtomicOrdering::Relaxed);
+                    let raw_beta = res.node_betweenness_beta_vec.metric[d_idx][node_idx]
+                        .load(AtomicOrdering::Relaxed);
+                    res.node_betweenness_beta_vec.metric[d_idx][node_idx]
+                        .store(raw_beta * scale, AtomicOrdering::Relaxed);
                 }
             }
 

@@ -94,17 +94,9 @@ class BetweennessShortestResult:
     def sampled_source_count(self) -> int:
         """Number of sources that were sampled."""
         ...
-    @property
-    def t_euclidean(self) -> int:
-        """Total Euclidean node pairs within distance threshold."""
-        ...
-    @property
-    def actual_budget(self) -> int:
-        """Actual budget used: min(n_samples, T_euclidean)."""
-        ...
 
 class BetweennessSimplestResult:
-    """Holds results for simplest path (angular) betweenness centrality calculations."""
+    """Holds results for simplest (angular) path betweenness centrality calculations."""
 
     distances: list[int]
     node_keys_py: list[Any]
@@ -112,6 +104,8 @@ class BetweennessSimplestResult:
 
     @property
     def node_betweenness(self) -> dict[int, npt.NDArray[np.float32]]: ...
+    @property
+    def node_betweenness_beta(self) -> dict[int, npt.NDArray[np.float32]]: ...
     @property
     def reachability_totals(self) -> list[int]:
         """Total reachability counts per distance from sampled sources."""

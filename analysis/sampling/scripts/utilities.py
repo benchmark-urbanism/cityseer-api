@@ -412,6 +412,154 @@ def compute_quartile_accuracy(
     return result
 
 
+# =============================================================================
+# SECTION 4b: Betweenness Spatial Sampling
+# =============================================================================
+
+# Betweenness convergence parameters
+BETW_RHO_THRESHOLD = 0.999  # Stop when ρ(current, previous) exceeds this
+BETW_MAX_ROUNDS = 30  # Safety cap
+BETW_MIN_ROUNDS = 3  # Always run at least this many rounds
+BETW_BASE_SEED = 42
+
+
+def build_spatial_grid(net, cell_size: float) -> dict[tuple[int, int], list[int]]:
+    """Partition live nodes into spatial grid cells.
+
+    Parameters
+    ----------
+    net
+        cityseer NetworkStructure
+    cell_size : float
+        Grid cell size in metres (typically distance / 2)
+
+    Returns
+    -------
+    dict[tuple[int, int], list[int]]
+        Mapping from (cx, cy) grid cell to list of live node indices
+    """
+    all_xs = net.node_xs
+    all_ys = net.node_ys
+    live_indices = [i for i in net.node_indices() if net.is_node_live(i)]
+
+    if not live_indices:
+        return {}
+
+    xs = [all_xs[i] for i in live_indices]
+    ys = [all_ys[i] for i in live_indices]
+    x_min = min(xs)
+    y_min = min(ys)
+
+    cells: dict[tuple[int, int], list[int]] = {}
+    for idx, x, y in zip(live_indices, xs, ys):
+        cx = int((x - x_min) / cell_size)
+        cy = int((y - y_min) / cell_size)
+        cells.setdefault((cx, cy), []).append(idx)
+
+    return cells
+
+
+class CellSampler:
+    """Without-replacement sampler across grid cells.
+
+    Each cell maintains a shuffled deck of node indices. Each call to
+    ``sample_round()`` draws one node per cell. When a cell's deck is
+    exhausted it reshuffles — so every node is used before any repeats.
+    """
+
+    def __init__(self, cells: dict[tuple[int, int], list[int]], rng):
+        import random as _random
+
+        self.rng: _random.Random = rng
+        self.decks: dict[tuple[int, int], list[int]] = {}
+        self.pools: dict[tuple[int, int], list[int]] = {}
+        for key, nodes in cells.items():
+            if nodes:
+                self.pools[key] = list(nodes)
+                deck = list(nodes)
+                rng.shuffle(deck)
+                self.decks[key] = deck
+
+    def sample_round(self) -> list[int]:
+        """Draw one node per cell (without replacement until exhausted)."""
+        sources: list[int] = []
+        for key, deck in self.decks.items():
+            if not deck:
+                deck = list(self.pools[key])
+                self.rng.shuffle(deck)
+                self.decks[key] = deck
+            sources.append(deck.pop())
+        return sources
+
+
+def select_spatial_sources(
+    net,
+    n_sources: int,
+    cell_size: float,
+    rng,
+) -> list[int]:
+    """Select spatially distributed live nodes using grid stratification.
+
+    Partitions live nodes into grid cells of ``cell_size`` metres and draws
+    from each cell in round-robin order (without replacement within each
+    cell) until ``n_sources`` nodes have been selected.
+
+    Parameters
+    ----------
+    net
+        cityseer NetworkStructure
+    n_sources : int
+        Number of source nodes to select
+    cell_size : float
+        Grid cell size in metres (typically distance / 2)
+    rng : random.Random
+        Random number generator for reproducibility
+
+    Returns
+    -------
+    list[int]
+        Selected live node indices (length == min(n_sources, n_live))
+    """
+    import random as _random
+
+    cells = build_spatial_grid(net, cell_size)
+    if not cells:
+        return []
+
+    # Build shuffled decks per cell
+    decks: dict[tuple[int, int], list[int]] = {}
+    for key, nodes in cells.items():
+        if nodes:
+            deck = list(nodes)
+            rng.shuffle(deck)
+            decks[key] = deck
+
+    cell_keys = list(decks.keys())
+    rng.shuffle(cell_keys)
+
+    selected: list[int] = []
+    while len(selected) < n_sources and decks:
+        empty_keys: list[tuple[int, int]] = []
+        for key in cell_keys:
+            if key not in decks:
+                continue
+            deck = decks[key]
+            if not deck:
+                empty_keys.append(key)
+                continue
+            selected.append(deck.pop())
+            if len(selected) >= n_sources:
+                break
+        # Remove exhausted cells
+        for key in empty_keys:
+            del decks[key]
+        # If all cells are exhausted, stop
+        if not any(decks.get(k) for k in cell_keys if k in decks):
+            break
+
+    return selected
+
+
 def apply_live_buffer_nx(G: nx.MultiGraph, buffer_dist: float) -> nx.MultiGraph:
     """
     Mark only interior nodes as live on NetworkX graph.
@@ -746,154 +894,3 @@ def ew_predicted_epsilon(
     if n_eff <= 0 or reach <= 0:
         return float("inf")
     return math.sqrt(math.log(2 * reach / delta) / (2 * n_eff))
-
-
-# =============================================================================
-# SECTION 6b: Hoeffding Bound for Betweenness (Path Sampling)
-# =============================================================================
-
-
-def compute_hoeffding_betw_budget(
-    reach: float,
-    epsilon: float = HOEFFDING_EPSILON,
-    delta: float = HOEFFDING_DELTA,
-) -> int | None:
-    """
-    Compute Hoeffding path-sampling budget for betweenness.
-
-    Uses the same Hoeffding/EW concentration inequality as closeness:
-        m = ceil(log(2r / delta) / (2 * epsilon^2))
-    capped at T = r(r-1)/2 total pairs (exact computation).
-
-    Each sampled path generates a bounded [0,1] indicator per node.
-    By Hoeffding + union bound over r nodes, m paths suffice for
-    additive epsilon at every node with probability >= 1 - delta.
-
-    Parameters
-    ----------
-    reach : float
-        Mean network reach (nodes within distance)
-    epsilon : float
-        Normalised additive error tolerance
-    delta : float
-        Failure probability
-
-    Returns
-    -------
-    int or None
-        Required number of sampled paths, or None if reach <= 1
-    """
-    if reach <= 1:
-        return None
-    total_pairs = int(reach * (reach - 1) / 2)
-    m = int(math.ceil(math.log(2 * reach / delta) / (2 * epsilon**2)))
-    return min(m, total_pairs)
-
-
-# =============================================================================
-# SECTION 7: Riondato-Kornaropoulos (R-K) Bound Utilities (legacy)
-# =============================================================================
-
-
-def compute_rk_budget(
-    mean_reachability: float,
-    epsilon: float = HOEFFDING_EPSILON,
-    delta: float = HOEFFDING_DELTA,
-) -> int | None:
-    """
-    Compute R-K path-sampling budget from reach + epsilon.
-
-    VD = ceil(sqrt(reach))
-    m = ceil((1/(2*eps^2)) * (floor(log2(VD-2)) + 1 + ln(1/delta)))
-
-    Returns None when m >= reach (tipping point): sampling can't converge
-    at this reach. The reach-based check keeps the decision graph-independent
-    for cross-network comparability.
-
-    Parameters
-    ----------
-    mean_reachability : float
-        Mean network reach (nodes within distance)
-    epsilon : float
-        Normalised additive error tolerance
-    delta : float
-        Failure probability
-
-    Returns
-    -------
-    int or None
-        Required number of sampled paths, or None if reach <= 0
-        or m >= reach (tipping point: use exact Brandes instead).
-    """
-    if mean_reachability <= 0:
-        return None
-    vd = max(3, int(math.ceil(math.sqrt(mean_reachability))))
-    vd_log = int(math.floor(math.log2(max(1, vd - 2)))) + 1
-    m = int(math.ceil((1 / (2 * epsilon**2)) * (vd_log + math.log(1 / delta))))
-    # Hard cap at total pair space
-    total_pairs = int(mean_reachability * (mean_reachability - 1) / 2)
-    m = min(m, total_pairs)
-    # Tipping point: sampling can't converge at this reach
-    if m >= mean_reachability:
-        return None
-    return m
-
-
-def rk_predicted_epsilon(
-    n_samples: int,
-    reach: float,
-    delta: float = HOEFFDING_DELTA,
-) -> float:
-    """
-    Compute the R-K-predicted maximum normalised epsilon.
-
-    eps = sqrt((floor(log2(VD-2)) + 1 + ln(1/delta)) / (2 * n_samples))
-
-    Parameters
-    ----------
-    n_samples : int
-        Number of sampled paths
-    reach : float
-        Mean network reach
-    delta : float
-        Failure probability
-
-    Returns
-    -------
-    float
-        Predicted maximum additive error
-    """
-    if n_samples <= 0 or reach <= 0:
-        return float("inf")
-    vd = max(3, int(math.ceil(math.sqrt(reach))))
-    vd_log = int(math.floor(math.log2(max(1, vd - 2)))) + 1
-    return math.sqrt((vd_log + math.log(1 / delta)) / (2 * n_samples))
-
-
-def normalise_error(max_abs_error: float, reach: float, metric: str) -> float:
-    """
-    Normalise raw absolute error by theoretical maximum.
-
-    Betweenness: bounded by r*(r-1) pair-paths.
-    Harmonic closeness: bounded by r (sum of 1/d for r nodes).
-
-    Parameters
-    ----------
-    max_abs_error : float
-        Raw absolute error
-    reach : float
-        Network reach
-    metric : str
-        'betweenness' or 'harmonic'
-
-    Returns
-    -------
-    float
-        Normalised error
-    """
-    if reach <= 1:
-        return float("inf")
-    if metric == "betweenness":
-        return max_abs_error / (reach * (reach - 1))
-    else:  # harmonic closeness
-        return max_abs_error / reach

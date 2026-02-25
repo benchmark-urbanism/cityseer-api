@@ -5,7 +5,7 @@
 For each distance d:
   1. Partition live nodes into spatial grid cells (cell_size = d/2)
   2. Each round: select one random live source per cell
-  3. Run betweenness_exact_shortest(source_indices=...) for that round
+  3. Run betweenness_shortest(source_indices=...) for that round
   4. Accumulate betweenness across rounds, check convergence
   5. Stop when Spearman ρ(current, previous) > threshold or max rounds
 
@@ -182,7 +182,7 @@ def run_stratified_betweenness(force: bool = False):
         else:
             print("  Computing exact betweenness (ground truth)...")
             t0 = time.time()
-            betw_r = net.betweenness_exact_shortest(
+            betw_r = net.betweenness_shortest(
                 distances=[dist], pbar_disabled=False,
             )
             baseline_time = time.time() - t0
@@ -228,7 +228,7 @@ def run_stratified_betweenness(force: bool = False):
             n_round = len(round_sources)
 
             # Run Brandes from these sources
-            r = net.betweenness_exact_shortest(
+            r = net.betweenness_shortest(
                 distances=[dist],
                 source_indices=round_sources,
                 pbar_disabled=True,

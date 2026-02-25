@@ -397,6 +397,7 @@ class NetworkStructure:
         sample_probability: float | None = None,
         sampling_weights: list[float] | None = None,
         random_seed: int | None = None,
+        source_indices: list[int] | None = None,
         pbar_disabled: bool | None = None,
     ) -> ClosenessShortestResult:
         """
@@ -415,11 +416,14 @@ class NetworkStructure:
         speed_m_s: float | None
             Travel speed (m/s).
         sample_probability: float | None
-            Probability of sampling a node as a source.
+            Probability of sampling a node as a source. Used for IPW scaling (1/p).
         sampling_weights: list[float] | None
-            Per-node sampling weights in range [0.0, 1.0].
+            Per-node sampling weights in range [0.0, 1.0]. Mutually exclusive with source_indices.
         random_seed: int | None
             Optional seed for reproducible sampling.
+        source_indices: list[int] | None
+            Subset of node indices to use as sources. When provided, only these sources are iterated.
+            Use with sample_probability for IPW scaling. Mutually exclusive with sampling_weights.
         pbar_disabled: bool | None
             Disable progress bar if True.
 
@@ -441,6 +445,7 @@ class NetworkStructure:
         sample_probability: float | None = None,
         sampling_weights: list[float] | None = None,
         random_seed: int | None = None,
+        source_indices: list[int] | None = None,
         pbar_disabled: bool | None = None,
     ) -> ClosenessSimplestResult:
         """
@@ -468,6 +473,9 @@ class NetworkStructure:
             Per-node sampling weights in range [0.0, 1.0].
         random_seed: int | None
             Optional seed for reproducible sampling.
+        source_indices: list[int] | None
+            Subset of node indices to use as sources. Mutually exclusive with sampling_weights.
+            When provided with sample_probability, applies deterministic IPW scaling (1/p).
         pbar_disabled: bool | None
             Disable progress bar if True.
 
@@ -479,149 +487,6 @@ class NetworkStructure:
         ...
     def betweenness_shortest(
         self,
-        distance: int | None = None,
-        beta: float | None = None,
-        minutes: float | None = None,
-        min_threshold_wt: float | None = None,
-        speed_m_s: float | None = None,
-        tolerance: float | None = None,
-        n_samples: int | None = None,
-        random_seed: int | None = None,
-        pbar_disabled: bool | None = None,
-    ) -> BetweennessShortestResult:
-        """
-        Compute betweenness centrality using R-K path sampling (shortest paths).
-
-        Uses Euclidean pair selection via R-tree and early-terminating targeted Dijkstra.
-        Budget is internally capped at T_euclidean (total Euclidean node pairs within distance).
-        At short distances this produces exact results (pair saturation).
-
-        Accepts exactly one of: distance (meters), beta (decay), or minutes.
-
-        Parameters
-        ----------
-        distance: int | None
-            Distance threshold (meters).
-        beta: float | None
-            Decay parameter (beta).
-        minutes: float | None
-            Time threshold (minutes).
-        min_threshold_wt: float | None
-            Minimum weight for beta/distance conversion.
-        speed_m_s: float | None
-            Travel speed (m/s).
-        tolerance: float | None
-            Relative tolerance for near-equal path detection in Brandes betweenness. 0.0 = exact shortest paths only.
-        n_samples: int | None
-            R-K sample budget. Internally capped at T_euclidean. Default 100.
-        random_seed: int | None
-            Optional seed for reproducible sampling.
-        pbar_disabled: bool | None
-            Disable progress bar if True.
-
-        Returns
-        -------
-        BetweennessShortestResult
-            Object containing betweenness centrality metrics.
-        """
-        ...
-    def betweenness_sample_shortest(
-        self,
-        distances: list[int] | None = None,
-        betas: list[float] | None = None,
-        minutes: list[float] | None = None,
-        min_threshold_wt: float | None = None,
-        speed_m_s: float | None = None,
-        tolerance: float | None = None,
-        n_samples: int | None = None,
-        random_seed: int | None = None,
-        pbar_disabled: bool | None = None,
-    ) -> BetweennessShortestResult:
-        """
-        Compute betweenness centrality using global R-K path sampling with distance bucketing.
-
-        Samples random pairs globally (Euclidean pre-filter at max distance),
-        finds targeted shortest paths, and buckets betweenness credits by the
-        network distance between each sampled pair. All distance thresholds
-        are computed in a single pass.
-
-        Parameters
-        ----------
-        distances: list[int] | None
-            Distance thresholds (meters). Credits are bucketed by pair distance.
-        betas: list[float] | None
-            Decay parameters (beta), one per distance.
-        minutes: list[float] | None
-            Time thresholds (minutes).
-        min_threshold_wt: float | None
-            Minimum weight for beta/distance conversion.
-        speed_m_s: float | None
-            Travel speed (m/s).
-        tolerance: float | None
-            Relative tolerance for near-equal path detection. 0.0 = exact shortest paths only.
-        n_samples: int | None
-            R-K sample budget (anchored on reach). Default 100.
-        random_seed: int | None
-            Optional seed for reproducible sampling.
-        pbar_disabled: bool | None
-            Disable progress bar if True.
-
-        Returns
-        -------
-        BetweennessShortestResult
-            Object containing betweenness centrality metrics per distance bucket.
-        """
-        ...
-    def betweenness_simplest(
-        self,
-        distance: int | None = None,
-        beta: float | None = None,
-        minutes: float | None = None,
-        min_threshold_wt: float | None = None,
-        speed_m_s: float | None = None,
-        tolerance: float | None = None,
-        n_samples: int | None = None,
-        random_seed: int | None = None,
-        pbar_disabled: bool | None = None,
-    ) -> BetweennessSimplestResult:
-        """
-        Compute betweenness centrality using R-K path sampling (simplest paths).
-
-        Uses Brandes multi-predecessor Dijkstra with angular distances and random
-        (source, destination) pair sampling. Sample budget (n_samples) should be
-        computed externally via config.compute_rk_budget().
-
-        Accepts exactly one of: distance (meters), beta (decay), or minutes.
-
-        Parameters
-        ----------
-        distance: int | None
-            Distance threshold (meters).
-        beta: float | None
-            Decay parameter (beta).
-        minutes: float | None
-            Time threshold (minutes).
-        min_threshold_wt: float | None
-            Minimum weight for beta/distance conversion.
-        speed_m_s: float | None
-            Travel speed (m/s).
-        tolerance: float | None
-            Relative tolerance for near-equal path detection in Brandes betweenness. 0.0 = exact shortest paths only.
-        n_samples: int | None
-            Number of (source, destination) pair samples. Default 100.
-        random_seed: int | None
-            Optional seed for reproducible sampling.
-        pbar_disabled: bool | None
-            Disable progress bar if True.
-
-        Returns
-        -------
-        BetweennessSimplestResult
-            Object containing betweenness centrality metrics.
-        """
-        ...
-    def betweenness_exact_shortest(
-        self,
         distances: list[int] | None = None,
         betas: list[float] | None = None,
         minutes: list[float] | None = None,
@@ -629,14 +494,15 @@ class NetworkStructure:
         speed_m_s: float | None = None,
         tolerance: float | None = None,
         source_indices: list[int] | None = None,
+        sample_probability: float | None = None,
         pbar_disabled: bool | None = None,
     ) -> BetweennessShortestResult:
         """
         Compute Brandes betweenness centrality from all sources or a specified subset.
 
         When source_indices is None, iterates all live source nodes (exact).
-        When source_indices is provided, iterates only those sources and scales
-        by n_live / (2 * n_sources) for an unbiased estimate.
+        When source_indices is provided with sample_probability, applies IPW scaling 1/(2p).
+        When source_indices is provided without sample_probability, scales by n_live/(2*n_sources).
 
         Parameters
         ----------
@@ -655,12 +521,60 @@ class NetworkStructure:
         source_indices: list[int] | None
             Subset of node indices to use as sources. When None, all live nodes are used (exact).
             When provided, only these sources are iterated and results are scaled for an unbiased estimate.
+        sample_probability: float | None
+            IPW scaling factor. Requires source_indices. Scales results by 1/(2p).
         pbar_disabled: bool | None
             Disable progress bar if True.
 
         Returns
         -------
         BetweennessShortestResult
+            Object containing betweenness centrality metrics.
+        """
+        ...
+    def betweenness_simplest(
+        self,
+        distances: list[int] | None = None,
+        betas: list[float] | None = None,
+        minutes: list[float] | None = None,
+        min_threshold_wt: float | None = None,
+        speed_m_s: float | None = None,
+        tolerance: float | None = None,
+        source_indices: list[int] | None = None,
+        sample_probability: float | None = None,
+        pbar_disabled: bool | None = None,
+    ) -> BetweennessSimplestResult:
+        """
+        Compute Brandes betweenness centrality using simplest (angular) paths.
+
+        Mirrors betweenness_shortest but uses angular-distance Dijkstra with
+        sidestepping prevention. Distance thresholds are still in metres
+        (physical distance along the simplest path).
+
+        Parameters
+        ----------
+        distances: list[int] | None
+            Distance thresholds (meters).
+        betas: list[float] | None
+            Decay parameters (beta).
+        minutes: list[float] | None
+            Time thresholds (minutes).
+        min_threshold_wt: float | None
+            Minimum weight for beta/distance conversion.
+        speed_m_s: float | None
+            Travel speed (m/s).
+        tolerance: float | None
+            Relative tolerance for near-equal angular path detection. 0.0 = exact simplest paths only.
+        source_indices: list[int] | None
+            Subset of node indices to use as sources. When None, all live nodes are used (exact).
+        sample_probability: float | None
+            IPW scaling factor. Requires source_indices. Scales results by 1/(2p).
+        pbar_disabled: bool | None
+            Disable progress bar if True.
+
+        Returns
+        -------
+        BetweennessSimplestResult
             Object containing betweenness centrality metrics.
         """
         ...

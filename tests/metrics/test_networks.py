@@ -14,7 +14,6 @@ def test_node_centrality_shortest(primal_graph):
     distances = [400, 800]
     betas = rustalgos.betas_from_distances(distances)
     nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(primal_graph)
-    seed = 42
     # test different combinations of closeness and betweenness
     for _closeness, _betweenness in [(False, True), (True, False), (True, True)]:
         for _distances, _betas in [(distances, None), (None, betas)]:
@@ -26,7 +25,6 @@ def test_node_centrality_shortest(primal_graph):
                 betas=_betas,
                 compute_closeness=_closeness,
                 compute_betweenness=_betweenness,
-                random_seed=seed,
             )
             for dist_key in distances:
                 if _closeness is True:
@@ -56,9 +54,9 @@ def test_node_centrality_shortest(primal_graph):
                         rtol=config.RTOL,
                     )
                 if _betweenness is True:
-                    # test betweenness against underlying R-K path sampling method (single distance)
+                    # test betweenness against underlying exact Brandes method
                     betweenness_result = network_structure.betweenness_shortest(
-                        distance=dist_key, random_seed=seed
+                        distances=[dist_key],
                     )
                     for measure_key, attr_key in [
                         ("betweenness", "node_betweenness"),
@@ -80,62 +78,58 @@ def test_node_centrality_simplest(primal_graph):
     distances = [400, 800]
     betas = rustalgos.betas_from_distances(distances)
     nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(primal_graph)
-    seed = 42
-    # test different combinations of closeness and betweenness
-    for _closeness, _betweenness in [(False, True), (True, False), (True, True)]:
-        for _distances, _betas in [(distances, None), (None, betas)]:
-            for _far_scale_off, _ang_scale_unit in [(0, 180), (0, 90), (1, 180)]:
-                nodes_gdf = networks.node_centrality_simplest(
-                    network_structure=network_structure,
-                    nodes_gdf=nodes_gdf,
-                    distances=_distances,
-                    betas=_betas,
-                    compute_closeness=_closeness,
-                    compute_betweenness=_betweenness,
+    for _distances, _betas in [(distances, None), (None, betas)]:
+        for _far_scale_off, _ang_scale_unit in [(0, 180), (0, 90), (1, 180)]:
+            nodes_gdf = networks.node_centrality_simplest(
+                network_structure=network_structure,
+                nodes_gdf=nodes_gdf,
+                distances=_distances,
+                betas=_betas,
+                compute_closeness=True,
+                compute_betweenness=True,
+                farness_scaling_offset=_far_scale_off,
+                angular_scaling_unit=_ang_scale_unit,
+            )
+            for dist_key in distances:
+                # test closeness against underlying method
+                node_result_simplest = network_structure.closeness_simplest(
+                    betas=betas,
                     farness_scaling_offset=_far_scale_off,
                     angular_scaling_unit=_ang_scale_unit,
-                    random_seed=seed,
                 )
-                for dist_key in distances:
-                    if _closeness is True:
-                        # test closeness against underlying source-sampling method
-                        node_result_simplest = network_structure.closeness_simplest(
-                            betas=betas,
-                            farness_scaling_offset=_far_scale_off,
-                            angular_scaling_unit=_ang_scale_unit,
-                        )
-                        for measure_key, attr_key in [
-                            ("density", "node_density"),
-                            ("farness", "node_farness"),
-                            ("harmonic", "node_harmonic"),
-                        ]:
-                            assert np.allclose(
-                                nodes_gdf[config.prep_gdf_key(measure_key, dist_key, angular=True)],
-                                getattr(node_result_simplest, attr_key)[dist_key],
-                                equal_nan=True,
-                                atol=config.ATOL,
-                                rtol=config.RTOL,
-                            )
-                        assert np.allclose(
-                            nodes_gdf[config.prep_gdf_key("hillier", dist_key, angular=True)],
-                            node_result_simplest.node_density[dist_key] ** 2
-                            / node_result_simplest.node_farness[dist_key],
-                            equal_nan=True,
-                            atol=config.ATOL,
-                            rtol=config.RTOL,
-                        )
-                    if _betweenness is True:
-                        # test betweenness against underlying R-K path sampling method (single distance)
-                        betweenness_result = network_structure.betweenness_simplest(
-                            distance=dist_key, random_seed=seed
-                        )
-                        assert np.allclose(
-                            nodes_gdf[config.prep_gdf_key("betweenness", dist_key, angular=True)],
-                            betweenness_result.node_betweenness[dist_key],
-                            equal_nan=True,
-                            atol=config.ATOL,
-                            rtol=config.RTOL,
-                        )
+                for measure_key, attr_key in [
+                    ("density", "node_density"),
+                    ("farness", "node_farness"),
+                    ("harmonic", "node_harmonic"),
+                ]:
+                    assert np.allclose(
+                        nodes_gdf[config.prep_gdf_key(measure_key, dist_key, angular=True)],
+                        getattr(node_result_simplest, attr_key)[dist_key],
+                        equal_nan=True,
+                        atol=config.ATOL,
+                        rtol=config.RTOL,
+                    )
+                assert np.allclose(
+                    nodes_gdf[config.prep_gdf_key("hillier", dist_key, angular=True)],
+                    node_result_simplest.node_density[dist_key] ** 2
+                    / node_result_simplest.node_farness[dist_key],
+                    equal_nan=True,
+                    atol=config.ATOL,
+                    rtol=config.RTOL,
+                )
+                # test betweenness against underlying method
+                betw_result = network_structure.betweenness_simplest(betas=betas)
+                for measure_key, attr_key in [
+                    ("betweenness", "node_betweenness"),
+                    ("betweenness_beta", "node_betweenness_beta"),
+                ]:
+                    assert np.allclose(
+                        nodes_gdf[config.prep_gdf_key(measure_key, dist_key, angular=True)],
+                        getattr(betw_result, attr_key)[dist_key],
+                        equal_nan=True,
+                        atol=config.ATOL,
+                        rtol=config.RTOL,
+                    )
 
 
 def test_segment_centrality(primal_graph):
@@ -214,30 +208,3 @@ def test_closeness_simplest(primal_graph):
         assert config.prep_gdf_key("hillier", dist, angular=True) in nodes_gdf_result.columns
 
 
-def test_betweenness_shortest(primal_graph):
-    """Test standalone betweenness_shortest with R-K sampling."""
-    distances = [200, 400, 800]
-    nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(primal_graph)
-    nodes_gdf_result = networks.betweenness_shortest(
-        network_structure=network_structure,
-        nodes_gdf=nodes_gdf.copy(),
-        distances=distances,
-        random_seed=42,
-    )
-    for dist in distances:
-        assert config.prep_gdf_key("betweenness", dist) in nodes_gdf_result.columns
-        assert config.prep_gdf_key("betweenness_beta", dist) in nodes_gdf_result.columns
-
-
-def test_betweenness_simplest(primal_graph):
-    """Test standalone betweenness_simplest with R-K sampling."""
-    distances = [200, 400, 800]
-    nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(primal_graph)
-    nodes_gdf_result = networks.betweenness_simplest(
-        network_structure=network_structure,
-        nodes_gdf=nodes_gdf.copy(),
-        distances=distances,
-        random_seed=42,
-    )
-    for dist in distances:
-        assert config.prep_gdf_key("betweenness", dist, angular=True) in nodes_gdf_result.columns

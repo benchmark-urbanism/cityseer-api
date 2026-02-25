@@ -725,7 +725,6 @@ def test_network_structure_from_gpd(primal_graph):
     assert network_structure_pruned.node_count() == 56
     assert network_structure_pruned.edge_count == 152
     # test robustness of centralities for pruned
-    seed = 42
     for netw_struct, nd_gdf in [(network_structure_round, nodes_gdf), (network_structure_pruned, nodes_pruned_gdf)]:
         nd_gdf = networks.node_centrality_shortest(
             network_structure=netw_struct,
@@ -733,7 +732,6 @@ def test_network_structure_from_gpd(primal_graph):
             distances=[400],
             compute_closeness=True,
             compute_betweenness=True,
-            random_seed=seed,
         )
         # test closeness against underlying source-sampling method
         node_result = netw_struct.closeness_shortest(
@@ -753,9 +751,9 @@ def test_network_structure_from_gpd(primal_graph):
                 atol=config.ATOL,
                 rtol=config.RTOL,
             )
-        # test betweenness against R-K path sampling method
+        # test betweenness against exact method
         betweenness_result = netw_struct.betweenness_shortest(
-            distance=400, random_seed=seed
+            distances=[400],
         )
         for measure_key, attr_key in [
             ("betweenness", "node_betweenness"),

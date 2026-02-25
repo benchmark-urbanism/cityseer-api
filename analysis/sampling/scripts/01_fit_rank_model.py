@@ -3,15 +3,16 @@
 01_fit_rank_model.py - Analyse synthetic sampling data and generate figures.
 
 Loads the synthetic sampling cache and generates:
-  1. Figure 1 (headline): Sampling opportunity — accuracy vs epsilon for both
-     closeness (Hoeffding source sampling) and betweenness (Hoeffding path
-     sampling), plus theoretical speedup at the paper's default epsilon.
+  1. Figure 1 (headline): Sampling opportunity — 1x3 layout:
+     A) Closeness accuracy vs epsilon (Hoeffding + spatial source sampling),
+     B) Betweenness accuracy vs epsilon (same framework),
+     C) Speedup comparison at the paper's default epsilons.
   2. Figure 3 (error crossover): Precision scales with importance — absolute
-     and normalised MAE by per-node reach bin, with theoretical bound overlays.
+     and normalised MAE by per-node reach bin, with theoretical bound overlay
+     for both closeness and betweenness.
 
-The cache sweep variable is epsilon (error tolerance).
-  - Closeness rows contain `sample_prob` derived from Hoeffding.
-  - Betweenness rows contain `n_samples` derived from Hoeffding.
+Both metrics use the same unified framework:
+  Hoeffding bound → p from (epsilon, reach) → spatial source_indices → IPW scaling.
 
 Requires:
     - .cache/sampling_analysis_{CACHE_VERSION}.pkl (from 00_generate_cache.py)
@@ -34,7 +35,6 @@ from utilities import (
     CACHE_VERSION,
     FIGURES_DIR,
     HOEFFDING_DELTA,
-    compute_hoeffding_betw_budget,
     compute_hoeffding_p,
     ew_predicted_epsilon,
 )
@@ -45,8 +45,9 @@ from utilities import (
 
 SYNTHETIC_CACHE = CACHE_DIR / f"sampling_analysis_{CACHE_VERSION}.pkl"
 
-# Paper default epsilon (matches \hoeffdingEpsilon in model_macros.tex)
-PAPER_EPSILON = 0.1
+# Paper default epsilons (separate for each metric)
+PAPER_EPSILON_CLOSENESS = 0.1
+PAPER_EPSILON_BETWEENNESS = 0.1
 
 # Matplotlib style
 plt.rcParams.update(
@@ -84,11 +85,15 @@ def load_synthetic_data() -> pd.DataFrame:
 
     df = pd.DataFrame(data)
     print(f"Loaded synthetic data: {len(df)} rows")
-    print(f"  Columns: {df.columns.tolist()}")
     print(f"  Topologies: {df['topology'].unique().tolist()}")
     print(f"  Distances: {sorted(df['distance'].unique())}")
     print(f"  Metrics: {df['metric'].unique().tolist()}")
-    print(f"  Epsilons: {sorted(df['epsilon'].unique())}")
+
+    for metric_label in df["metric"].unique():
+        subset = df[df["metric"] == metric_label]
+        epsilons = sorted(subset["epsilon"].dropna().unique())
+        print(f"  {metric_label}: {len(subset)} rows, epsilons: {epsilons}")
+
     return df
 
 
@@ -97,108 +102,107 @@ def load_synthetic_data() -> pd.DataFrame:
 # =============================================================================
 
 
-def evaluate_node_level_accuracy(df: pd.DataFrame) -> pd.DataFrame:
-    """Evaluate per-node accuracy at the paper's default epsilon.
+def _pool_node_errors(df_subset: pd.DataFrame, metric_label: str) -> list[dict]:
+    """Pool node-level errors from a DataFrame subset and bin by absolute reach."""
+    reach_pool: list[np.ndarray] = []
+    error_pool: list[np.ndarray] = []
 
-    Pools all nodes across all (topology, distance) configs at epsilon = PAPER_EPSILON,
-    then bins by absolute per-node reach. This avoids the within-config quartile
-    pre-aggregation that confounds boundary nodes from high-reach configs with all
-    nodes from low-reach configs.
-    """
-    reach_pool = {"harmonic": [], "betweenness": []}
-    error_pool = {"harmonic": [], "betweenness": []}
+    for _, row in df_subset.iterrows():
+        node_reach = np.asarray(row["node_reach"])
+        node_true = np.asarray(row["node_true_vals"])
+        node_est = np.asarray(row["node_est_vals"])
+        abs_error = np.abs(node_true - node_est)
 
-    for metric in ["harmonic", "betweenness"]:
-        df_m = df[(df["metric"] == metric) & (df["epsilon"] == PAPER_EPSILON)]
-        for _, row in df_m.iterrows():
-            node_reach = np.asarray(row["node_reach"])
-            node_true = np.asarray(row["node_true_vals"])
-            node_est = np.asarray(row["node_est_vals"])
-            abs_error = np.abs(node_true - node_est)
+        mask = (node_true > 0) & np.isfinite(node_true) & np.isfinite(node_est) & (node_reach > 0)
+        reach_pool.append(node_reach[mask])
+        error_pool.append(abs_error[mask])
 
-            # Filter to valid nodes
-            mask = (node_true > 0) & np.isfinite(node_true) & np.isfinite(node_est) & (node_reach > 0)
-            reach_pool[metric].append(node_reach[mask])
-            error_pool[metric].append(abs_error[mask])
+    if not reach_pool:
+        return []
 
-    # Bin by absolute reach
+    all_reach = np.concatenate(reach_pool)
+    all_error = np.concatenate(error_pool)
+
     bin_edges = np.array([10, 50, 100, 200, 500, 1000, 2000, 5000, 10000])
     rows = []
 
-    for metric in ["harmonic", "betweenness"]:
-        if not reach_pool[metric]:
+    for i in range(len(bin_edges) - 1):
+        lo, hi = bin_edges[i], bin_edges[i + 1]
+        mask = (all_reach >= lo) & (all_reach < hi)
+        n = mask.sum()
+        if n < 10:
             continue
-        all_reach = np.concatenate(reach_pool[metric])
-        all_error = np.concatenate(error_pool[metric])
 
-        for i in range(len(bin_edges) - 1):
-            lo, hi = bin_edges[i], bin_edges[i + 1]
-            mask = (all_reach >= lo) & (all_reach < hi)
-            n = mask.sum()
-            if n < 10:
-                continue
+        errors = all_error[mask]
+        reaches = all_reach[mask]
+        med_error = float(np.median(errors))
+        q25_error = float(np.percentile(errors, 25))
+        q75_error = float(np.percentile(errors, 75))
 
-            errors = all_error[mask]
-            reaches = all_reach[mask]
-            med_error = float(np.median(errors))
-            q25_error = float(np.percentile(errors, 25))
-            q75_error = float(np.percentile(errors, 75))
+        norm_errors = errors / reaches
+        valid_norm = norm_errors[np.isfinite(norm_errors)]
+        med_nrmse = float(np.median(valid_norm)) if len(valid_norm) > 0 else np.nan
+        q25_nrmse = float(np.percentile(valid_norm, 25)) if len(valid_norm) > 0 else np.nan
+        q75_nrmse = float(np.percentile(valid_norm, 75)) if len(valid_norm) > 0 else np.nan
 
-            # Normalised error per node, then take median
-            if metric == "harmonic":
-                norm_errors = errors / reaches
-            else:
-                norm_errors = errors / (reaches * (reaches - 1))
+        rows.append(
+            {
+                "metric": metric_label,
+                "reach_lo": lo,
+                "reach_hi": hi,
+                "reach_center": np.sqrt(lo * hi),
+                "median_reach": float(np.median(reaches)),
+                "median_mae": med_error,
+                "mae_q25": q25_error,
+                "mae_q75": q75_error,
+                "median_nrmse": med_nrmse,
+                "nrmse_q25": q25_nrmse,
+                "nrmse_q75": q75_nrmse,
+                "n_nodes": int(n),
+            }
+        )
 
-            valid_norm = norm_errors[np.isfinite(norm_errors)]
-            med_nrmse = float(np.median(valid_norm)) if len(valid_norm) > 0 else np.nan
-            q25_nrmse = float(np.percentile(valid_norm, 25)) if len(valid_norm) > 0 else np.nan
-            q75_nrmse = float(np.percentile(valid_norm, 75)) if len(valid_norm) > 0 else np.nan
+    return rows
 
-            rows.append(
-                {
-                    "metric": metric,
-                    "reach_lo": lo,
-                    "reach_hi": hi,
-                    "reach_center": np.sqrt(lo * hi),  # geometric mean
-                    "median_reach": float(np.median(reaches)),
-                    "median_mae": med_error,
-                    "mae_q25": q25_error,
-                    "mae_q75": q75_error,
-                    "median_nrmse": med_nrmse,
-                    "nrmse_q25": q25_nrmse,
-                    "nrmse_q75": q75_nrmse,
-                    "n_nodes": int(n),
-                }
-            )
 
-    return pd.DataFrame(rows)
+def evaluate_node_level_accuracy(df: pd.DataFrame) -> pd.DataFrame:
+    """Evaluate per-node accuracy at each metric's paper epsilon.
+
+    Pools all nodes across all (topology, distance) configs at the paper
+    epsilon for each metric, then bins by absolute per-node reach.
+    """
+    all_rows: list[dict] = []
+
+    # Closeness at its paper epsilon
+    df_close = df[(df["metric"] == "harmonic") & (df["epsilon"] == PAPER_EPSILON_CLOSENESS)]
+    all_rows.extend(_pool_node_errors(df_close, "harmonic"))
+
+    # Betweenness at its paper epsilon
+    df_betw = df[(df["metric"] == "betweenness") & (df["epsilon"] == PAPER_EPSILON_BETWEENNESS)]
+    all_rows.extend(_pool_node_errors(df_betw, "betweenness"))
+
+    return pd.DataFrame(all_rows) if all_rows else pd.DataFrame()
 
 
 def print_reach_bin_summary(node_acc: pd.DataFrame):
-    """Print per-reach-bin error diagnostics at the paper's default epsilon."""
+    """Print per-reach-bin error diagnostics."""
     print("\n" + "=" * 70)
-    print(f"NODE-LEVEL ERROR DIAGNOSTICS BY ABSOLUTE REACH (epsilon={PAPER_EPSILON})")
+    print("NODE-LEVEL ERROR DIAGNOSTICS BY ABSOLUTE REACH")
     print("=" * 70)
-    print("  Nodes pooled across all configs at paper epsilon,")
-    print("  binned by absolute per-node reach.")
 
-    for metric in ["betweenness", "harmonic"]:
-        subset = node_acc[node_acc["metric"] == metric]
-        if len(subset) == 0:
-            continue
+    for metric_label, display_name, eps in [
+        ("harmonic", "HARMONIC CLOSENESS", PAPER_EPSILON_CLOSENESS),
+        ("betweenness", "BETWEENNESS", PAPER_EPSILON_BETWEENNESS),
+    ]:
+        subset = node_acc[node_acc["metric"] == metric_label]
+        if len(subset) > 0:
+            print(f"\n  {display_name} (epsilon={eps})")
+            print(f"  {'Reach bin':<16} {'N nodes':>10} {'Med MAE':>12} {'Med NRMSE':>12}")
+            print("  " + "-" * 52)
 
-        print(f"\n  {metric.upper()}")
-        print(f"  {'Reach bin':<16} {'N nodes':>10} {'Med MAE':>12} {'Med NRMSE':>12}")
-        print("  " + "-" * 52)
-
-        for _, row in subset.iterrows():
-            label = f"{int(row['reach_lo'])}-{int(row['reach_hi'])}"
-            print(f"  {label:<16} {row['n_nodes']:>10,} {row['median_mae']:>12.2f} {row['median_nrmse']:>12.6f}")
-
-    print("\n  Crossover: absolute MAE increases with reach (larger errors")
-    print("  at high-reach nodes), but normalised error decreases")
-    print("  (precision scales with importance).")
+            for _, row in subset.iterrows():
+                label = f"{int(row['reach_lo'])}-{int(row['reach_hi'])}"
+                print(f"  {label:<16} {row['n_nodes']:>10,} {row['median_mae']:>12.2f} {row['median_nrmse']:>12.6f}")
 
 
 # =============================================================================
@@ -207,66 +211,42 @@ def print_reach_bin_summary(node_acc: pd.DataFrame):
 
 
 def generate_fig1_headline(df: pd.DataFrame):
-    """Figure 1: Sampling opportunity — accuracy vs epsilon and theoretical speedup.
+    """Figure 1: Sampling opportunity — 1x3 layout.
 
-    Panel A: Spearman rho vs epsilon for both closeness and betweenness at
-    representative distances. Solid lines for closeness, dashed for betweenness.
-    X-axis reversed (small epsilon = high accuracy on right).
-
-    Panel B: Theoretical speedup vs distance at epsilon = PAPER_EPSILON.
-    Paired bars: closeness (1/p) and betweenness (n_live / n_samples).
+    Panel A: Closeness — Spearman rho vs epsilon.
+    Panel B: Betweenness — Spearman rho vs epsilon (same framework).
+    Panel C: Speedup comparison at paper epsilons — grouped bars (both use 1/p).
     """
     print("\nGenerating Figure 1: Headline comparison...")
 
-    fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+    fig, axes = plt.subplots(1, 3, figsize=(16, 5))
 
     representative_dists = [500, 1000, 2000, 4000]
     colors = ["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728"]
 
     # ------------------------------------------------------------------
-    # Panel A: rho vs epsilon for both metrics
+    # Panel A: Closeness — rho vs epsilon
     # ------------------------------------------------------------------
     ax = axes[0]
 
     for dist, color in zip(representative_dists, colors, strict=True):
-        # Closeness (solid lines)
-        subset_h = df[(df["metric"] == "harmonic") & (df["distance"] == dist)]
-        if len(subset_h) > 0:
-            grouped_h = (
-                subset_h.groupby("epsilon")
+        subset = df[(df["metric"] == "harmonic") & (df["distance"] == dist)]
+        if len(subset) > 0:
+            grouped = (
+                subset.groupby("epsilon")
                 .agg({"spearman": "mean", "mean_reach": "mean"})
                 .reset_index()
                 .sort_values("epsilon")
             )
-            reach = grouped_h["mean_reach"].iloc[0]
+            reach = grouped["mean_reach"].iloc[0]
             ax.plot(
-                grouped_h["epsilon"],
-                grouped_h["spearman"],
+                grouped["epsilon"],
+                grouped["spearman"],
                 "o-",
                 color=color,
                 markersize=4,
                 linewidth=1.5,
-                label=f"{dist}m closeness (r={reach:.0f})",
-            )
-
-        # Betweenness (dashed lines)
-        subset_b = df[(df["metric"] == "betweenness") & (df["distance"] == dist)]
-        if len(subset_b) > 0:
-            grouped_b = (
-                subset_b.groupby("epsilon")
-                .agg({"spearman": "mean", "mean_reach": "mean"})
-                .reset_index()
-                .sort_values("epsilon")
-            )
-            ax.plot(
-                grouped_b["epsilon"],
-                grouped_b["spearman"],
-                "s--",
-                color=color,
-                markersize=4,
-                linewidth=1.5,
-                alpha=0.8,
-                label=f"{dist}m betweenness",
+                label=f"{dist}m (r={reach:.0f})",
             )
 
     ax.axhline(0.95, color="green", linestyle="--", linewidth=1.5, alpha=0.7)
@@ -274,51 +254,76 @@ def generate_fig1_headline(df: pd.DataFrame):
 
     ax.set_xlabel(r"$\varepsilon$ (error tolerance)")
     ax.set_ylabel(r"Spearman $\rho$ (ranking accuracy)")
-    ax.set_title(r"A) Accuracy vs $\varepsilon$")
-    ax.set_xlim(0.55, 0.005)  # Reversed: large epsilon on left, small on right
+    ax.set_title(r"A) Closeness: accuracy vs $\varepsilon$")
+    ax.set_xlim(0.55, 0.005)
     ax.set_xscale("log")
     ax.set_ylim(0.5, 1.02)
-    ax.legend(loc="lower right", fontsize=7, ncol=2)
+    ax.legend(loc="lower right", fontsize=8)
     ax.grid(True, alpha=0.3)
 
     # ------------------------------------------------------------------
-    # Panel B: Theoretical speedup at PAPER_EPSILON
+    # Panel B: Betweenness — rho vs epsilon (same framework)
     # ------------------------------------------------------------------
     ax = axes[1]
+
+    for dist, color in zip(representative_dists, colors, strict=True):
+        subset = df[(df["metric"] == "betweenness") & (df["distance"] == dist)]
+        if len(subset) > 0:
+            grouped = (
+                subset.groupby("epsilon")
+                .agg({"spearman": "mean", "mean_reach": "mean"})
+                .reset_index()
+                .sort_values("epsilon")
+            )
+            reach = grouped["mean_reach"].iloc[0]
+            ax.plot(
+                grouped["epsilon"],
+                grouped["spearman"],
+                "s-",
+                color=color,
+                markersize=4,
+                linewidth=1.5,
+                label=f"{dist}m (r={reach:.0f})",
+            )
+
+    ax.axhline(0.95, color="green", linestyle="--", linewidth=1.5, alpha=0.7)
+    ax.text(0.02, 0.955, r"target: $\rho$=0.95", fontsize=9, color="green", ha="left")
+
+    ax.set_xlabel(r"$\varepsilon$ (error tolerance)")
+    ax.set_ylabel(r"Spearman $\rho$ (ranking accuracy)")
+    ax.set_title(r"B) Betweenness: accuracy vs $\varepsilon$")
+    ax.set_xlim(0.55, 0.005)
+    ax.set_xscale("log")
+    ax.set_ylim(0.5, 1.02)
+    ax.legend(loc="lower right", fontsize=8)
+    ax.grid(True, alpha=0.3)
+
+    # ------------------------------------------------------------------
+    # Panel C: Speedup comparison at paper epsilons (grouped bars, both 1/p)
+    # ------------------------------------------------------------------
+    ax = axes[2]
 
     all_distances = sorted(df["distance"].unique())
     bar_data = []
 
     for dist in all_distances:
-        # Closeness speedup: 1/p (fraction of sources sampled)
-        subset_h = df[(df["metric"] == "harmonic") & (df["distance"] == dist) & (df["epsilon"] == PAPER_EPSILON)]
+        row_data: dict = {"distance": dist, "speedup_closeness": 1.0, "speedup_betweenness": 1.0}
+
+        # Closeness speedup: 1/p
+        subset_h = df[(df["metric"] == "harmonic") & (df["distance"] == dist) & (df["epsilon"] == PAPER_EPSILON_CLOSENESS)]
         if len(subset_h) > 0:
-            mean_reach_h = subset_h["mean_reach"].mean()
-            p = compute_hoeffding_p(mean_reach_h, epsilon=PAPER_EPSILON, delta=HOEFFDING_DELTA)
-            speedup_h = 1.0 / p if p > 0 and p < 1.0 else 1.0
-        else:
-            speedup_h = None
+            mean_reach = subset_h["mean_reach"].mean()
+            p = compute_hoeffding_p(mean_reach, epsilon=PAPER_EPSILON_CLOSENESS, delta=HOEFFDING_DELTA)
+            row_data["speedup_closeness"] = 1.0 / p if 0 < p < 1.0 else 1.0
 
-        # Betweenness speedup: mean_reach / m (per-source pair reduction)
-        subset_b = df[(df["metric"] == "betweenness") & (df["distance"] == dist) & (df["epsilon"] == PAPER_EPSILON)]
+        # Betweenness speedup: 1/p
+        subset_b = df[(df["metric"] == "betweenness") & (df["distance"] == dist) & (df["epsilon"] == PAPER_EPSILON_BETWEENNESS)]
         if len(subset_b) > 0:
-            mean_reach_b = subset_b["mean_reach"].mean()
-            m = compute_hoeffding_betw_budget(mean_reach_b, epsilon=PAPER_EPSILON, delta=HOEFFDING_DELTA)
-            if m is not None and m > 0:
-                speedup_b = mean_reach_b / m
-            else:
-                speedup_b = 1.0
-        else:
-            speedup_b = None
+            mean_reach = subset_b["mean_reach"].mean()
+            p = compute_hoeffding_p(mean_reach, epsilon=PAPER_EPSILON_BETWEENNESS, delta=HOEFFDING_DELTA)
+            row_data["speedup_betweenness"] = 1.0 / p if 0 < p < 1.0 else 1.0
 
-        if speedup_h is not None or speedup_b is not None:
-            bar_data.append(
-                {
-                    "distance": dist,
-                    "speedup_closeness": speedup_h if speedup_h is not None else 1.0,
-                    "speedup_betweenness": speedup_b if speedup_b is not None else 1.0,
-                }
-            )
+        bar_data.append(row_data)
 
     bar_df = pd.DataFrame(bar_data)
     n_dists = len(bar_df)
@@ -331,7 +336,7 @@ def generate_fig1_headline(df: pd.DataFrame):
         width,
         color="#2166AC",
         alpha=0.8,
-        label="Closeness (1/p)",
+        label=rf"Closeness ($\varepsilon$={PAPER_EPSILON_CLOSENESS})",
     )
     bars_b = ax.bar(
         x + width / 2,
@@ -339,22 +344,21 @@ def generate_fig1_headline(df: pd.DataFrame):
         width,
         color="#B2182B",
         alpha=0.8,
-        label="Betweenness (reach/m)",
+        label=rf"Betweenness ($\varepsilon$={PAPER_EPSILON_BETWEENNESS})",
     )
 
     ax.set_xticks(x)
     ax.set_xticklabels([f"{d}m" for d in bar_df["distance"]], rotation=45, ha="right")
     ax.set_xlabel("Analysis Distance")
-    ax.set_ylabel("Theoretical Speedup")
-    ax.set_title(rf"B) Speedup at $\varepsilon$={PAPER_EPSILON}")
+    ax.set_ylabel("Speedup Factor (1/p)")
+    ax.set_title("C) Speedup at paper defaults")
     ax.set_yscale("log")
     ax.axhline(1.0, color="grey", linewidth=0.8, linestyle="--", alpha=0.5)
     ax.legend(loc="upper left", fontsize=9)
     ax.grid(True, alpha=0.3, axis="y", which="both")
 
-    # Add value labels on bars
-    for bar_set in [bars_h, bars_b]:
-        for bar in bar_set:
+    for bars in [bars_h, bars_b]:
+        for bar in bars:
             height = bar.get_height()
             if height > 1.05:
                 ax.text(
@@ -365,7 +369,12 @@ def generate_fig1_headline(df: pd.DataFrame):
                     fontsize=7,
                 )
 
-    fig.suptitle("Sampling-Based Centrality: The Opportunity", fontsize=13, fontweight="bold", y=1.02)
+    fig.suptitle(
+        "Sampling-Based Centrality: The Opportunity",
+        fontsize=13,
+        fontweight="bold",
+        y=1.02,
+    )
     plt.tight_layout()
 
     output_path = FIGURES_DIR / "fig1_headline.pdf"
@@ -377,24 +386,16 @@ def generate_fig1_headline(df: pd.DataFrame):
 def generate_fig3_error_crossover(node_acc: pd.DataFrame, df: pd.DataFrame):
     """Figure 3: Error crossover — absolute error grows with reach, normalised error shrinks.
 
-    1x2 layout with continuous log-scale reach axis. Nodes are pooled across
-    all (topology, distance) configs at epsilon = PAPER_EPSILON and binned
-    by absolute per-node reach.
-
+    1x2 layout. Nodes pooled at each metric's paper epsilon.
     Panel A: Absolute MAE trending up with reach.
-    Panel B: Normalised MAE trending down with reach, with Hoeffding bound
-             overlay for closeness and R-K bound overlay for betweenness.
-
-    Both metrics shown (betweenness red squares, harmonic blue circles).
+    Panel B: Normalised MAE trending down, with Hoeffding bound overlay for both metrics.
     """
     print("\nGenerating Figure 3: Error crossover...")
 
-    colour_bet = "#B2182B"
     colour_har = "#2166AC"
+    colour_betw = "#B2182B"
 
     fig, axes = plt.subplots(1, 2, figsize=(11, 5))
-
-    # Bound overlays use the actual Hoeffding/R-K budget at each reach level
 
     for col_idx, (med_col, lo_col, hi_col, ylabel, title) in enumerate(
         [
@@ -404,95 +405,52 @@ def generate_fig3_error_crossover(node_acc: pd.DataFrame, df: pd.DataFrame):
     ):
         ax = axes[col_idx]
 
-        for metric, colour, marker, label in [
-            ("betweenness", colour_bet, "s", "Betweenness"),
-            ("harmonic", colour_har, "o", "Harmonic closeness"),
+        for metric_label, colour, marker, display, paper_eps in [
+            ("harmonic", colour_har, "o", "Harmonic closeness", PAPER_EPSILON_CLOSENESS),
+            ("betweenness", colour_betw, "s", "Betweenness", PAPER_EPSILON_BETWEENNESS),
         ]:
-            sub = node_acc[node_acc["metric"] == metric].copy()
+            sub = node_acc[node_acc["metric"] == metric_label].copy()
             sub = sub[sub[med_col].notna() & (sub[med_col] > 0)]
             if len(sub) == 0:
                 continue
 
             x = sub["reach_center"].values
             y = sub[med_col].values
-            lo_err = y - sub[lo_col].values
-            hi_err = sub[hi_col].values - y
-            # Clamp negative error bars (can happen at boundaries)
-            lo_err = np.maximum(lo_err, 0)
-            hi_err = np.maximum(hi_err, 0)
+            lo_err = np.maximum(y - sub[lo_col].values, 0)
+            hi_err = np.maximum(sub[hi_col].values - y, 0)
 
             ax.errorbar(
-                x,
-                y,
-                yerr=[lo_err, hi_err],
-                fmt=marker,
-                color=colour,
-                markersize=8,
-                capsize=4,
-                capthick=1.5,
-                linewidth=1.5,
-                label=label,
-                zorder=3,
+                x, y, yerr=[lo_err, hi_err],
+                fmt=marker, color=colour, markersize=7,
+                capsize=4, capthick=1.5, linewidth=1.5,
+                label=display, zorder=3,
             )
             ax.plot(x, y, color=colour, linewidth=1.5, alpha=0.5, zorder=2)
 
-        # Overlay theoretical bounds on normalised error panel
-        if col_idx == 1:
-            r_line = np.logspace(np.log10(50), 4, 200)
-
-            # Hoeffding bound for closeness at PAPER_EPSILON:
-            # For each reach r, compute p from the Hoeffding budget, then
-            # the predicted epsilon from that effective sample size.
-            eps_hoeffding = np.array(
-                [
-                    ew_predicted_epsilon(
-                        compute_hoeffding_p(r, PAPER_EPSILON, HOEFFDING_DELTA) * r,
-                        r,
-                    )
-                    for r in r_line
-                ]
-            )
-            ax.plot(
-                r_line,
-                eps_hoeffding,
-                color="grey",
-                linewidth=2,
-                linestyle="--",
-                label=rf"Hoeffding bound ($\varepsilon$={PAPER_EPSILON})",
-                zorder=1,
-            )
-
-            # Hoeffding bound for betweenness at PAPER_EPSILON:
-            # For each reach r, compute m from Hoeffding budget, then predicted epsilon.
-            eps_betw = np.array(
-                [
-                    ew_predicted_epsilon(
-                        compute_hoeffding_betw_budget(r, PAPER_EPSILON, HOEFFDING_DELTA) or 1,
-                        r,
-                    )
-                    for r in r_line
-                ]
-            )
-            ax.plot(
-                r_line,
-                eps_betw,
-                color="#B2182B",
-                linewidth=2,
-                linestyle=":",
-                alpha=0.7,
-                label=rf"Betw. Hoeffding bound ($\varepsilon$={PAPER_EPSILON})",
-                zorder=1,
-            )
+            # Hoeffding bound overlay on normalised error panel
+            if col_idx == 1:
+                r_line = np.logspace(np.log10(50), 4, 200)
+                eps_bound = np.array(
+                    [
+                        ew_predicted_epsilon(
+                            compute_hoeffding_p(r, paper_eps, HOEFFDING_DELTA) * r, r,
+                        )
+                        for r in r_line
+                    ]
+                )
+                ax.plot(
+                    r_line, eps_bound, color=colour, linewidth=2,
+                    linestyle="--", alpha=0.5,
+                    label=rf"Hoeffding ($\varepsilon$={paper_eps})",
+                    zorder=1,
+                )
 
         ax.set_xscale("log")
         ax.set_yscale("log")
         ax.set_xlabel("Per-Node Reach")
         ax.set_ylabel(ylabel)
         ax.set_title(title, fontweight="bold")
-        if col_idx == 0:
-            ax.legend(loc="lower right", fontsize=9)
-        else:
-            ax.legend(loc="upper right", fontsize=8)
+        ax.legend(loc="upper right" if col_idx == 1 else "lower right", fontsize=8)
         ax.grid(True, alpha=0.3, which="both")
 
     plt.tight_layout()
@@ -513,14 +471,16 @@ def main():
     print("01_fit_rank_model.py - Synthetic Data Analysis & Figure Generation")
     print("=" * 70)
 
-    print(f"\nPaper default: epsilon = {PAPER_EPSILON}, delta = {HOEFFDING_DELTA}")
-    print("  Closeness: Hoeffding source sampling  (p from epsilon + reach)")
-    print("  Betweenness: Hoeffding path sampling   (m from epsilon + reach)")
+    print(f"\nPaper defaults:")
+    print(f"  Closeness epsilon:   {PAPER_EPSILON_CLOSENESS}")
+    print(f"  Betweenness epsilon: {PAPER_EPSILON_BETWEENNESS}")
+    print(f"  Delta:               {HOEFFDING_DELTA}")
+    print("  Both use: Hoeffding bound + spatial source_indices + IPW scaling")
 
     # Load data
     df = load_synthetic_data()
 
-    # Node-level accuracy assessment at paper epsilon
+    # Node-level accuracy assessment
     print("\n" + "-" * 50)
     node_acc = evaluate_node_level_accuracy(df)
     print_reach_bin_summary(node_acc)
@@ -531,24 +491,21 @@ def main():
     generate_fig1_headline(df)
     generate_fig3_error_crossover(node_acc, df)
 
-    # Summary of key values at paper epsilon
-    print("\n" + "=" * 70)
-    print(f"SAMPLING BUDGETS AT EPSILON={PAPER_EPSILON}")
-    print("=" * 70)
-    print(f"\n{'Reach':>10} | {'Hoeffding p':>12} | {'Speedup (1/p)':>14} | {'Hoeff m':>10} | {'Betw speedup*':>14}")
-    print("-" * 70)
+    # Summary of sampling budgets at paper epsilons
+    for metric_label, display_name, paper_eps in [
+        ("harmonic", "CLOSENESS", PAPER_EPSILON_CLOSENESS),
+        ("betweenness", "BETWEENNESS", PAPER_EPSILON_BETWEENNESS),
+    ]:
+        print("\n" + "=" * 70)
+        print(f"{display_name} SAMPLING BUDGETS AT EPSILON={paper_eps}")
+        print("=" * 70)
+        print(f"\n{'Reach':>10} | {'Hoeffding p':>12} | {'Speedup (1/p)':>14}")
+        print("-" * 42)
 
-    for reach in [100, 300, 500, 1000, 2000, 5000, 10000, 50000]:
-        p = compute_hoeffding_p(reach, epsilon=PAPER_EPSILON, delta=HOEFFDING_DELTA)
-        speedup_h = 1 / p if 0 < p < 1 else 1.0
-        m = compute_hoeffding_betw_budget(reach, epsilon=PAPER_EPSILON, delta=HOEFFDING_DELTA)
-        m_str = f"{m:,}" if m is not None else "N/A"
-        speedup_b = reach / m if m is not None and m > 0 else float("inf")
-        print(
-            f"{reach:>10,} | {p:>11.1%} | {speedup_h:>13.1f}x | {m_str:>10} | {speedup_b:>13.1f}x"
-        )
-
-    print("\n  * Betw speedup = reach / m (approximate; actual depends on n_live)")
+        for reach in [100, 300, 500, 1000, 2000, 5000, 10000, 50000]:
+            p = compute_hoeffding_p(reach, epsilon=paper_eps, delta=HOEFFDING_DELTA)
+            speedup = 1 / p if 0 < p < 1 else 1.0
+            print(f"{reach:>10,} | {p:>11.1%} | {speedup:>13.1f}x")
 
     print("\n" + "=" * 70)
     print("ALL OUTPUTS")
