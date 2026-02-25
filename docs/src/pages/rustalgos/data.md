@@ -292,9 +292,6 @@ layout: ../../layouts/PageLayout.astro
     <span class="pn">speed_m_s</span>
   </div>
   <div class="param">
-    <span class="pn">jitter_scale=None</span>
-  </div>
-  <div class="param">
     <span class="pn">angular=None</span>
   </div>
   <span class="pt">)</span>
@@ -348,9 +345,6 @@ layout: ../../layouts/PageLayout.astro
   </div>
   <div class="param">
     <span class="pn">speed_m_s=None</span>
-  </div>
-  <div class="param">
-    <span class="pn">jitter_scale=None</span>
   </div>
   <div class="param">
     <span class="pn">pbar_disabled=None</span>
@@ -417,9 +411,6 @@ layout: ../../layouts/PageLayout.astro
     <span class="pn">speed_m_s=None</span>
   </div>
   <div class="param">
-    <span class="pn">jitter_scale=None</span>
-  </div>
-  <div class="param">
     <span class="pn">pbar_disabled=None</span>
   </div>
   <span class="pt">)</span>
@@ -470,9 +461,6 @@ layout: ../../layouts/PageLayout.astro
   </div>
   <div class="param">
     <span class="pn">speed_m_s=None</span>
-  </div>
-  <div class="param">
-    <span class="pn">jitter_scale=None</span>
   </div>
   <div class="param">
     <span class="pn">pbar_disabled=None</span>

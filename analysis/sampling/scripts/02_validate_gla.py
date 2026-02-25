@@ -27,7 +27,8 @@ import geopandas as gpd
 import numpy as np
 import osmnx as ox
 import pandas as pd
-from cityseer.config import compute_hoeffding_p, min_spatial_samples, spatial_sample
+from cityseer.config import compute_hoeffding_p, min_spatial_samples
+from cityseer.metrics import networks
 from cityseer.tools import graphs, io
 from shapely.geometry import Point
 from utilities import (
@@ -265,17 +266,18 @@ def generate_validation_data(force: bool = False) -> pd.DataFrame:
         close_times = []
 
         for seed in range(N_RUNS):
-            sources, _ = spatial_sample(net, n_sources_close, cell_size=dist / 2, random_seed=42 + seed)
-
             t0 = time.time()
-            close_r = net.closeness_shortest(
+            nodes_gdf_close = networks.closeness_shortest(
+                net,
+                nodes_gdf.copy(),
                 distances=[dist],
-                source_indices=sources,
-                sample_probability=actual_p_close,
-                pbar_disabled=True,
+                epsilon=eps_close,
+                random_seed=42 + seed,
+                sample=True,
             )
             close_times.append(time.time() - t0)
-            est_harmonic = np.array(close_r.node_harmonic[dist])[live_mask]
+            col_key = f"cc_harmonic_{dist}"
+            est_harmonic = nodes_gdf_close[col_key].values[live_mask]
 
             sp_h, prec_h, scale_h, _, mae_h = compute_accuracy_metrics(true_harmonic, est_harmonic)
             if not np.isnan(sp_h):
@@ -348,17 +350,18 @@ def generate_validation_data(force: bool = False) -> pd.DataFrame:
             betw_times = []
 
             for seed in range(N_RUNS):
-                sources, _ = spatial_sample(net, n_sources_b, cell_size=dist / 2, random_seed=42 + seed)
-
                 t0 = time.time()
-                betw_r = net.betweenness_shortest(
+                nodes_gdf_betw = networks.betweenness_shortest(
+                    net,
+                    nodes_gdf.copy(),
                     distances=[dist],
-                    source_indices=sources,
-                    sample_probability=actual_p_b,
-                    pbar_disabled=True,
+                    epsilon=eps_betw,
+                    random_seed=42 + seed,
+                    sample=True,
                 )
                 betw_times.append(time.time() - t0)
-                est_betweenness = np.array(betw_r.node_betweenness[dist])[live_mask]
+                col_key = f"cc_betweenness_{dist}"
+                est_betweenness = nodes_gdf_betw[col_key].values[live_mask]
 
                 sp_b, prec_b, scale_b, _, mae_b = compute_accuracy_metrics(true_betweenness, est_betweenness)
                 if not np.isnan(sp_b):

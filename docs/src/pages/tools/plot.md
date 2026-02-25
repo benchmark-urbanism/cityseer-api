@@ -40,9 +40,13 @@ layout: ../../layouts/PageLayout.astro
   </div>
   <div class="param">
     <span class="pn">primal_node_colour</span>
+    <span class="pc">:</span>
+    <span class="pa"> str | ArrayLike | None = None</span>
   </div>
   <div class="param">
     <span class="pn">primal_edge_colour</span>
+    <span class="pc">:</span>
+    <span class="pa"> str | ArrayLike | None = None</span>
   </div>
   <div class="param">
     <span class="pn">dual_node_size</span>
@@ -51,9 +55,13 @@ layout: ../../layouts/PageLayout.astro
   </div>
   <div class="param">
     <span class="pn">dual_node_colour</span>
+    <span class="pc">:</span>
+    <span class="pa"> str | ArrayLike | None = None</span>
   </div>
   <div class="param">
     <span class="pn">dual_edge_colour</span>
+    <span class="pc">:</span>
+    <span class="pa"> str | ArrayLike | None = None</span>
   </div>
   <div class="param">
     <span class="pn">primal_edge_width</span>
@@ -311,9 +319,13 @@ plot.plot_nx_primal_or_dual(G_simple, G_dual, plot_geoms=False)
   </div>
   <div class="param">
     <span class="pn">node_colour</span>
+    <span class="pc">:</span>
+    <span class="pa"> str | ArrayLike | None = None</span>
   </div>
   <div class="param">
     <span class="pn">edge_colour</span>
+    <span class="pc">:</span>
+    <span class="pa"> str | ArrayLike | None = None</span>
   </div>
   <div class="param">
     <span class="pn">edge_width</span>
@@ -534,6 +546,8 @@ plot.plot_nx(G_after, node_colour=cols)
   </div>
   <div class="param">
     <span class="pn">node_colour</span>
+    <span class="pc">:</span>
+    <span class="pa"> str | ArrayLike | None = None</span>
   </div>
   <div class="param">
     <span class="pn">node_labels</span>
@@ -542,6 +556,8 @@ plot.plot_nx(G_after, node_colour=cols)
   </div>
   <div class="param">
     <span class="pn">data_labels</span>
+    <span class="pc">:</span>
+    <span class="pa"> ArrayLike | None = None</span>
   </div>
   <div class="param">
     <span class="pn">**kwargs</span>
@@ -726,12 +742,18 @@ mainly to visually confirm the correct behaviour of particular algorithms during
   </div>
   <div class="param">
     <span class="pn">xs</span>
+    <span class="pc">:</span>
+    <span class="pa"> list[float] | ArrayLike</span>
   </div>
   <div class="param">
     <span class="pn">ys</span>
+    <span class="pc">:</span>
+    <span class="pa"> list[float] | ArrayLike</span>
   </div>
   <div class="param">
     <span class="pn">vals</span>
+    <span class="pc">:</span>
+    <span class="pa"> ArrayLike</span>
   </div>
   <div class="param">
     <span class="pn">bbox_extents</span>

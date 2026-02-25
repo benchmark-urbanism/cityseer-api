@@ -46,7 +46,7 @@ nodes_gdf = networks.closeness_shortest(
     distances=[500, 2000, 5000, 20000],
 )
 
-# Betweenness with R-K path sampling
+# Betweenness with adaptive per-distance sampling
 nodes_gdf = networks.betweenness_shortest(
     network_structure,
     nodes_gdf,
@@ -75,19 +75,16 @@ Adaptive sampling achieves **consistent accuracy (ρ ≥ 0.95) across all distan
 ## Recommendations
 
 1. **Use adaptive sampling for multi-scale analyses** spanning short to long distances
-2. **Set `target_rho=0.95`** for general use, or `target_rho=0.97+` if betweenness accuracy is critical
-3. **For single-distance computations**, standard uniform sampling remains appropriate
-4. **For very large networks** (>50,000 nodes), adaptive sampling provides substantial speedups while maintaining accuracy guarantees
+2. **Tighten `epsilon`** (e.g. `epsilon=0.05`) if higher accuracy is required; betweenness defaults to `0.05` already
+3. **Use `sample=False`** for exact computation on small networks or ground-truth benchmarking
+4. **Use `sample_rate`** for reach-agnostic fixed-fraction sampling when comparing across graphs
+5. **For very large networks** (>50,000 nodes), adaptive sampling provides substantial speedups while maintaining accuracy guarantees
 
 ## API Reference
 
 - [`closeness_shortest`](/metrics/networks#closeness-shortest) - Closeness centrality (shortest paths, adaptive sampling)
 - [`closeness_simplest`](/metrics/networks#closeness-simplest) - Closeness centrality (simplest paths, adaptive sampling)
-- [`betweenness_shortest`](/metrics/networks#betweenness-shortest) - Betweenness centrality (shortest paths, R-K sampling)
-- [`betweenness_simplest`](/metrics/networks#betweenness-simplest) - Betweenness centrality (simplest paths, R-K sampling)
-
-## Technical Details
-
-For the full methodology, empirical model fitting, and test results, see the [analysis documentation on GitHub](https://github.com/benchmark-urbanism/cityseer-api/blob/master/analysis/adaptive_sampling_results.md).
+- [`betweenness_shortest`](/metrics/networks#betweenness-shortest) - Betweenness centrality (shortest paths, adaptive sampling)
+- [`betweenness_simplest`](/metrics/networks#betweenness-simplest) - Betweenness centrality (simplest paths, adaptive sampling)
 
 </section>

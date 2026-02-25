@@ -481,12 +481,16 @@ def closeness_shortest(
     probe_density: float = config.DEFAULT_PROBE_DENSITY,
     epsilon: float = config.HOEFFDING_EPSILON,
     delta: float = config.HOEFFDING_DELTA,
+    sample: bool = True,
+    sample_rate: dict[int, float] | None = None,
 ) -> gpd.GeoDataFrame:
     """Compute closeness centrality using shortest paths with adaptive source sampling.
 
     Uses spatially stratified sampling with IPW correction. The inclusion probability
     passed to Rust is the marginal rate ``actual_p = n_sources / n_live`` rather than
     per-node cell-specific probabilities, making the estimator approximately unbiased.
+    Set ``sample=False`` to disable sampling and compute exact centrality from all sources.
+    Supply ``sample_rate`` to use fixed per-distance fractions, independent of reachability.
 
     Parameters
     ----------
@@ -512,6 +516,13 @@ def closeness_shortest(
         Hoeffding approximation error bound.
     delta: float
         Hoeffding failure probability.
+    sample: bool
+        If False, disables adaptive sampling and computes exact centrality from all sources.
+    sample_rate: dict[int, float] | None
+        Fixed sampling fractions keyed by distance (meters). When provided, overrides the
+        Hoeffding probe path: each distance uses the given fraction of live nodes as sources,
+        regardless of reachability. Distances absent from the dict are computed in full.
+        Enables reach-agnostic comparison across graphs.
 
     Returns
     -------
@@ -525,25 +536,35 @@ def closeness_shortest(
     node_count = network_structure.street_node_count()
     temp_data: dict[str, object] = {}
 
-    # Probe reachability and compute per-distance sampling probabilities
-    reach_estimates = config.probe_reachability(
-        network_structure,
-        resolved_distances,
-        probe_density=probe_density,
-        speed_m_s=speed_m_s,
-        random_seed=random_seed,
-    )
-    sample_probs = config.compute_sample_probs(reach_estimates, epsilon=epsilon, delta=delta)
-    config.log_adaptive_sampling_plan(resolved_distances, reach_estimates, sample_probs, epsilon=epsilon, delta=delta)
-
     full_distances: list[int] = []
     sampled_distances: list[tuple[int, float]] = []
-    for d in sorted(resolved_distances):
-        p = sample_probs.get(d)
-        if p >= 1.0:
-            full_distances.append(d)
-        else:
-            sampled_distances.append((d, p))
+    if not sample:
+        full_distances = sorted(resolved_distances)
+    elif sample_rate is not None:
+        for d in sorted(resolved_distances):
+            p = sample_rate.get(d, 1.0)
+            if p >= 1.0:
+                full_distances.append(d)
+            else:
+                sampled_distances.append((d, p))
+    else:
+        reach_estimates = config.probe_reachability(
+            network_structure,
+            resolved_distances,
+            probe_density=probe_density,
+            speed_m_s=speed_m_s,
+            random_seed=random_seed,
+        )
+        sample_probs = config.compute_sample_probs(reach_estimates, epsilon=epsilon, delta=delta)
+        config.log_adaptive_sampling_plan(
+            resolved_distances, reach_estimates, sample_probs, epsilon=epsilon, delta=delta
+        )
+        for d in sorted(resolved_distances):
+            p = sample_probs.get(d, 1.0)
+            if p >= 1.0:
+                full_distances.append(d)
+            else:
+                sampled_distances.append((d, p))
 
     closeness_results: dict[int, rustalgos.centrality.ClosenessShortestResult] = {}
 
@@ -625,12 +646,16 @@ def closeness_simplest(
     probe_density: float = config.DEFAULT_PROBE_DENSITY,
     epsilon: float = config.HOEFFDING_EPSILON,
     delta: float = config.HOEFFDING_DELTA,
+    sample: bool = True,
+    sample_rate: dict[int, float] | None = None,
 ) -> gpd.GeoDataFrame:
     """Compute closeness centrality using simplest paths with adaptive source sampling.
 
     Uses spatially stratified sampling with IPW correction. The inclusion probability
     passed to Rust is the marginal rate ``actual_p = n_sources / n_live`` rather than
     per-node cell-specific probabilities, making the estimator approximately unbiased.
+    Set ``sample=False`` to disable sampling and compute exact centrality from all sources.
+    Supply ``sample_rate`` to use fixed per-distance fractions, independent of reachability.
 
     Parameters
     ----------
@@ -660,6 +685,13 @@ def closeness_simplest(
         Hoeffding approximation error bound.
     delta: float
         Hoeffding failure probability.
+    sample: bool
+        If False, disables adaptive sampling and computes exact centrality from all sources.
+    sample_rate: dict[int, float] | None
+        Fixed sampling fractions keyed by distance (meters). When provided, overrides the
+        Hoeffding probe path: each distance uses the given fraction of live nodes as sources,
+        regardless of reachability. Distances absent from the dict are computed in full.
+        Enables reach-agnostic comparison across graphs.
 
     Returns
     -------
@@ -673,24 +705,35 @@ def closeness_simplest(
     node_count = network_structure.street_node_count()
     temp_data: dict[str, object] = {}
 
-    reach_estimates = config.probe_reachability(
-        network_structure,
-        resolved_distances,
-        probe_density=probe_density,
-        speed_m_s=speed_m_s,
-        random_seed=random_seed,
-    )
-    sample_probs = config.compute_sample_probs(reach_estimates, epsilon=epsilon, delta=delta)
-    config.log_adaptive_sampling_plan(resolved_distances, reach_estimates, sample_probs, epsilon=epsilon, delta=delta)
-
     full_distances: list[int] = []
     sampled_distances: list[tuple[int, float]] = []
-    for d in sorted(resolved_distances):
-        p = sample_probs.get(d)
-        if p >= 1.0:
-            full_distances.append(d)
-        else:
-            sampled_distances.append((d, p))
+    if not sample:
+        full_distances = sorted(resolved_distances)
+    elif sample_rate is not None:
+        for d in sorted(resolved_distances):
+            p = sample_rate.get(d, 1.0)
+            if p >= 1.0:
+                full_distances.append(d)
+            else:
+                sampled_distances.append((d, p))
+    else:
+        reach_estimates = config.probe_reachability(
+            network_structure,
+            resolved_distances,
+            probe_density=probe_density,
+            speed_m_s=speed_m_s,
+            random_seed=random_seed,
+        )
+        sample_probs = config.compute_sample_probs(reach_estimates, epsilon=epsilon, delta=delta)
+        config.log_adaptive_sampling_plan(
+            resolved_distances, reach_estimates, sample_probs, epsilon=epsilon, delta=delta
+        )
+        for d in sorted(resolved_distances):
+            p = sample_probs.get(d, 1.0)
+            if p >= 1.0:
+                full_distances.append(d)
+            else:
+                sampled_distances.append((d, p))
 
     closeness_results: dict[int, rustalgos.centrality.ClosenessSimplestResult] = {}
 
@@ -765,8 +808,20 @@ def betweenness_shortest(
     min_threshold_wt: float = MIN_THRESH_WT,
     speed_m_s: float = SPEED_M_S,
     tolerance: float = 0.0,
+    random_seed: int | None = None,
+    probe_density: float = config.DEFAULT_PROBE_DENSITY,
+    epsilon: float = config.HOEFFDING_EPSILON_BETWEENNESS,
+    delta: float = config.HOEFFDING_DELTA,
+    sample: bool = True,
+    sample_rate: dict[int, float] | None = None,
 ) -> gpd.GeoDataFrame:
-    """Compute exact Brandes betweenness centrality from all sources (no sampling).
+    """Compute betweenness centrality using shortest paths with adaptive source sampling.
+
+    Uses spatially stratified sampling with IPW correction. The inclusion probability
+    passed to Rust is the marginal rate ``actual_p = n_sources / n_live`` rather than
+    per-node cell-specific probabilities, making the estimator approximately unbiased.
+    Set ``sample=False`` to disable sampling and compute exact centrality from all sources.
+    Supply ``sample_rate`` to use fixed per-distance fractions, independent of reachability.
 
     Parameters
     ----------
@@ -788,42 +843,119 @@ def betweenness_shortest(
         Relative tolerance for betweenness path equality. Paths within `tolerance` fraction of the shortest are
         treated as near-equal for multi-predecessor Brandes betweenness. Set to 0.0 for exact shortest paths only.
         A value like 0.02 (2%) captures pedestrian indifference to near-equal routes.
+    random_seed: int
+        Optional seed for reproducible sampling.
+    probe_density: float
+        Probes per km² for reachability estimation.
+    epsilon: float
+        Hoeffding approximation error bound.
+    delta: float
+        Hoeffding failure probability.
+    sample: bool
+        If False, disables adaptive sampling and computes exact centrality from all sources.
+    sample_rate: dict[int, float] | None
+        Fixed sampling fractions keyed by distance (meters). When provided, overrides the
+        Hoeffding probe path: each distance uses the given fraction of live nodes as sources,
+        regardless of reachability. Distances absent from the dict are computed in full.
+        Enables reach-agnostic comparison across graphs.
 
     Returns
     -------
     nodes_gdf: GeoDataFrame
         The input GeoDataFrame with betweenness columns added.
     """
-    logger.info("Computing exact Brandes betweenness centrality (shortest).")
-    resolved_distances = config.log_thresholds(
-        distances=distances, betas=betas, minutes=minutes,
-        min_threshold_wt=min_threshold_wt, speed_m_s=speed_m_s,
+    logger.info("Computing adaptive betweenness centrality (shortest).")
+    resolved_distances, _betas, _seconds = rustalgos.pair_distances_betas_time(
+        speed_m_s, distances, betas, minutes, min_threshold_wt=min_threshold_wt
     )
-    partial_func = partial(
-        network_structure.betweenness_shortest,
-        distances=distances,
-        betas=betas,
-        minutes=minutes,
-        min_threshold_wt=min_threshold_wt,
-        speed_m_s=speed_m_s,
-        tolerance=tolerance,
-    )
-    result = config.wrap_progress(
-        total=network_structure.street_node_count(),
-        rust_struct=network_structure,
-        partial_func=partial_func,
-        desc="betweenness (exact)",
-    )
-    node_keys_py = result.node_keys_py
-    gdf_idx = nodes_gdf.index.intersection(node_keys_py)
+    node_count = network_structure.street_node_count()
     temp_data: dict[str, object] = {}
+
+    full_distances: list[int] = []
+    sampled_distances: list[tuple[int, float]] = []
+    if not sample:
+        full_distances = sorted(resolved_distances)
+    elif sample_rate is not None:
+        for d in sorted(resolved_distances):
+            p = sample_rate.get(d, 1.0)
+            if p >= 1.0:
+                full_distances.append(d)
+            else:
+                sampled_distances.append((d, p))
+    else:
+        reach_estimates = config.probe_reachability(
+            network_structure,
+            resolved_distances,
+            probe_density=probe_density,
+            speed_m_s=speed_m_s,
+            random_seed=random_seed,
+        )
+        sample_probs = config.compute_sample_probs(reach_estimates, epsilon=epsilon, delta=delta)
+        config.log_adaptive_sampling_plan(
+            resolved_distances, reach_estimates, sample_probs, epsilon=epsilon, delta=delta
+        )
+        for d in sorted(resolved_distances):
+            p = sample_probs.get(d, 1.0)
+            if p >= 1.0:
+                full_distances.append(d)
+            else:
+                sampled_distances.append((d, p))
+
+    betweenness_results: dict[int, rustalgos.centrality.BetweennessShortestResult] = {}
+
+    if full_distances:
+        dist_label = ", ".join(f"{d}m" for d in full_distances)
+        logger.info(f"  Betweenness full: {dist_label}")
+        partial_func = partial(
+            network_structure.betweenness_shortest,
+            distances=full_distances,
+            min_threshold_wt=min_threshold_wt,
+            speed_m_s=speed_m_s,
+            tolerance=tolerance,
+        )
+        result = config.wrap_progress(
+            total=node_count, rust_struct=network_structure, partial_func=partial_func,
+            desc=f"betweenness full: {dist_label}",
+        )
+        for d in full_distances:
+            betweenness_results[d] = result  # type: ignore[assignment]
+
+    n_live = sum(1 for i in network_structure.node_indices() if network_structure.is_node_live(i))
+    for d, p in sampled_distances:
+        n_cells = config.min_spatial_samples(network_structure, cell_size=d / 2)
+        n_sources = min(n_live, max(n_cells, int(p * n_live)))
+        actual_p = (n_sources / n_live) if n_live > 0 else 1.0
+        sources, _ = config.spatial_sample(network_structure, n_sources, cell_size=d / 2, random_seed=random_seed)
+        logger.info(f"  Betweenness {d}m: p={actual_p:.0%} ({len(sources)}/{n_live} sources)")
+        partial_func = partial(
+            network_structure.betweenness_shortest,
+            distances=[d],
+            min_threshold_wt=min_threshold_wt,
+            speed_m_s=speed_m_s,
+            tolerance=tolerance,
+            source_indices=sources,
+            sample_probability=actual_p,
+        )
+        result = config.wrap_progress(
+            total=node_count, rust_struct=network_structure, partial_func=partial_func,
+            desc=f"betweenness p={actual_p:.0%}: {d}m",
+        )
+        betweenness_results[d] = result  # type: ignore[assignment]
+
+    if not betweenness_results:
+        return nodes_gdf
+
+    ref_result = next(iter(betweenness_results.values()))
+    node_keys_py = ref_result.node_keys_py
+    gdf_idx = nodes_gdf.index.intersection(node_keys_py)
+
     for measure_key, attr_key in [
         ("betweenness", "node_betweenness"),
         ("betweenness_beta", "node_betweenness_beta"),
     ]:
-        for distance in resolved_distances:
-            data_key = config.prep_gdf_key(measure_key, distance)
-            temp_data[data_key] = getattr(result, attr_key)[distance]
+        for d, res in betweenness_results.items():
+            data_key = config.prep_gdf_key(measure_key, d)
+            temp_data[data_key] = getattr(res, attr_key)[d]
     temp_df = pd.DataFrame(temp_data, index=node_keys_py)
     nodes_gdf.loc[gdf_idx, temp_df.columns] = temp_df.loc[gdf_idx, temp_df.columns]
     return nodes_gdf
@@ -838,8 +970,20 @@ def betweenness_simplest(
     min_threshold_wt: float = MIN_THRESH_WT,
     speed_m_s: float = SPEED_M_S,
     tolerance: float = 0.0,
+    random_seed: int | None = None,
+    probe_density: float = config.DEFAULT_PROBE_DENSITY,
+    epsilon: float = config.HOEFFDING_EPSILON_BETWEENNESS,
+    delta: float = config.HOEFFDING_DELTA,
+    sample: bool = True,
+    sample_rate: dict[int, float] | None = None,
 ) -> gpd.GeoDataFrame:
-    """Compute exact Brandes betweenness centrality using simplest (angular) paths.
+    """Compute betweenness centrality using simplest paths with adaptive source sampling.
+
+    Uses spatially stratified sampling with IPW correction. The inclusion probability
+    passed to Rust is the marginal rate ``actual_p = n_sources / n_live`` rather than
+    per-node cell-specific probabilities, making the estimator approximately unbiased.
+    Set ``sample=False`` to disable sampling and compute exact centrality from all sources.
+    Supply ``sample_rate`` to use fixed per-distance fractions, independent of reachability.
 
     Parameters
     ----------
@@ -859,42 +1003,119 @@ def betweenness_simplest(
         Travel speed (m/s).
     tolerance: float
         Relative tolerance for near-equal angular path detection. 0.0 = exact simplest paths only.
+    random_seed: int
+        Optional seed for reproducible sampling.
+    probe_density: float
+        Probes per km² for reachability estimation.
+    epsilon: float
+        Hoeffding approximation error bound.
+    delta: float
+        Hoeffding failure probability.
+    sample: bool
+        If False, disables adaptive sampling and computes exact centrality from all sources.
+    sample_rate: dict[int, float] | None
+        Fixed sampling fractions keyed by distance (meters). When provided, overrides the
+        Hoeffding probe path: each distance uses the given fraction of live nodes as sources,
+        regardless of reachability. Distances absent from the dict are computed in full.
+        Enables reach-agnostic comparison across graphs.
 
     Returns
     -------
     nodes_gdf: GeoDataFrame
         The input GeoDataFrame with betweenness columns added.
     """
-    logger.info("Computing exact Brandes betweenness centrality (simplest).")
-    resolved_distances = config.log_thresholds(
-        distances=distances, betas=betas, minutes=minutes,
-        min_threshold_wt=min_threshold_wt, speed_m_s=speed_m_s,
+    logger.info("Computing adaptive betweenness centrality (simplest).")
+    resolved_distances, _betas, _seconds = rustalgos.pair_distances_betas_time(
+        speed_m_s, distances, betas, minutes, min_threshold_wt=min_threshold_wt
     )
-    partial_func = partial(
-        network_structure.betweenness_simplest,
-        distances=distances,
-        betas=betas,
-        minutes=minutes,
-        min_threshold_wt=min_threshold_wt,
-        speed_m_s=speed_m_s,
-        tolerance=tolerance,
-    )
-    result = config.wrap_progress(
-        total=network_structure.street_node_count(),
-        rust_struct=network_structure,
-        partial_func=partial_func,
-        desc="betweenness simplest (exact)",
-    )
-    node_keys_py = result.node_keys_py
-    gdf_idx = nodes_gdf.index.intersection(node_keys_py)
+    node_count = network_structure.street_node_count()
     temp_data: dict[str, object] = {}
+
+    full_distances: list[int] = []
+    sampled_distances: list[tuple[int, float]] = []
+    if not sample:
+        full_distances = sorted(resolved_distances)
+    elif sample_rate is not None:
+        for d in sorted(resolved_distances):
+            p = sample_rate.get(d, 1.0)
+            if p >= 1.0:
+                full_distances.append(d)
+            else:
+                sampled_distances.append((d, p))
+    else:
+        reach_estimates = config.probe_reachability(
+            network_structure,
+            resolved_distances,
+            probe_density=probe_density,
+            speed_m_s=speed_m_s,
+            random_seed=random_seed,
+        )
+        sample_probs = config.compute_sample_probs(reach_estimates, epsilon=epsilon, delta=delta)
+        config.log_adaptive_sampling_plan(
+            resolved_distances, reach_estimates, sample_probs, epsilon=epsilon, delta=delta
+        )
+        for d in sorted(resolved_distances):
+            p = sample_probs.get(d, 1.0)
+            if p >= 1.0:
+                full_distances.append(d)
+            else:
+                sampled_distances.append((d, p))
+
+    betweenness_results: dict[int, rustalgos.centrality.BetweennessSimplestResult] = {}
+
+    if full_distances:
+        dist_label = ", ".join(f"{d}m" for d in full_distances)
+        logger.info(f"  Betweenness full: {dist_label}")
+        partial_func = partial(
+            network_structure.betweenness_simplest,
+            distances=full_distances,
+            min_threshold_wt=min_threshold_wt,
+            speed_m_s=speed_m_s,
+            tolerance=tolerance,
+        )
+        result = config.wrap_progress(
+            total=node_count, rust_struct=network_structure, partial_func=partial_func,
+            desc=f"betweenness simplest full: {dist_label}",
+        )
+        for d in full_distances:
+            betweenness_results[d] = result  # type: ignore[assignment]
+
+    n_live = sum(1 for i in network_structure.node_indices() if network_structure.is_node_live(i))
+    for d, p in sampled_distances:
+        n_cells = config.min_spatial_samples(network_structure, cell_size=d / 2)
+        n_sources = min(n_live, max(n_cells, int(p * n_live)))
+        actual_p = (n_sources / n_live) if n_live > 0 else 1.0
+        sources, _ = config.spatial_sample(network_structure, n_sources, cell_size=d / 2, random_seed=random_seed)
+        logger.info(f"  Betweenness {d}m: p={actual_p:.0%} ({len(sources)}/{n_live} sources)")
+        partial_func = partial(
+            network_structure.betweenness_simplest,
+            distances=[d],
+            min_threshold_wt=min_threshold_wt,
+            speed_m_s=speed_m_s,
+            tolerance=tolerance,
+            source_indices=sources,
+            sample_probability=actual_p,
+        )
+        result = config.wrap_progress(
+            total=node_count, rust_struct=network_structure, partial_func=partial_func,
+            desc=f"betweenness simplest p={actual_p:.0%}: {d}m",
+        )
+        betweenness_results[d] = result  # type: ignore[assignment]
+
+    if not betweenness_results:
+        return nodes_gdf
+
+    ref_result = next(iter(betweenness_results.values()))
+    node_keys_py = ref_result.node_keys_py
+    gdf_idx = nodes_gdf.index.intersection(node_keys_py)
+
     for measure_key, attr_key in [
         ("betweenness", "node_betweenness"),
         ("betweenness_beta", "node_betweenness_beta"),
     ]:
-        for distance in resolved_distances:
-            data_key = config.prep_gdf_key(measure_key, distance, angular=True)
-            temp_data[data_key] = getattr(result, attr_key)[distance]
+        for d, res in betweenness_results.items():
+            data_key = config.prep_gdf_key(measure_key, d, angular=True)
+            temp_data[data_key] = getattr(res, attr_key)[d]
     temp_df = pd.DataFrame(temp_data, index=node_keys_py)
     nodes_gdf.loc[gdf_idx, temp_df.columns] = temp_df.loc[gdf_idx, temp_df.columns]
     return nodes_gdf

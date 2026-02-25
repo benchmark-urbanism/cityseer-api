@@ -9,8 +9,8 @@ target epsilon, then runs sampling at those specific probabilities.
 Both closeness and betweenness use the same pipeline:
   1. Invert Hoeffding bound: p = log(2r/δ) / (2ε²r)
   2. Compute n_sources = max(n_cells, int(p * n_live))
-  3. Proportional spatial allocation across grid cells (cell_size = dist/2)
-  4. Pass source_indices + actual sample_probability to Rust for IPW scaling
+  3. Compute actual_p = n_sources / n_live
+  4. Call library function with sample_rate={dist: actual_p} for IPW-corrected sampling
 
 Usage:
     python 00_generate_cache.py           # Generate cache (skips if exists)
@@ -29,7 +29,8 @@ from pathlib import Path
 
 import networkx as nx
 import numpy as np
-from cityseer.config import compute_hoeffding_p, min_spatial_samples, spatial_sample
+from cityseer.config import compute_hoeffding_p, min_spatial_samples
+from cityseer.metrics import networks
 from cityseer.tools import io
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
@@ -138,8 +139,8 @@ def generate_synthetic_cache(force: bool = False):
             ]
             for metric_label, eps_targets in eps_spec:
                 true_arr = true_harmonic if metric_label == "harmonic" else true_betw_arr
-                net_result_fn = net.closeness_shortest if metric_label == "harmonic" else net.betweenness_shortest
-                result_key = "node_harmonic" if metric_label == "harmonic" else "node_betweenness"
+                lib_fn = networks.closeness_shortest if metric_label == "harmonic" else networks.betweenness_shortest
+                col_key = f"cc_harmonic_{dist}" if metric_label == "harmonic" else f"cc_betweenness_{dist}"
 
                 for target_eps in eps_targets:
                     target_p = compute_hoeffding_p(mean_reach, target_eps, HOEFFDING_DELTA)
@@ -175,15 +176,15 @@ def generate_synthetic_cache(force: bool = False):
                     actual_p = n_sources / n_live if n_live > 0 else 1.0
                     effective_n = mean_reach * actual_p
                     eps_val = ew_predicted_epsilon(effective_n, mean_reach, delta=HOEFFDING_DELTA)
-                    sources, _ = spatial_sample(net, n_sources, cell_size=dist / 2, random_seed=SEED)
 
-                    r = net_result_fn(
+                    result_gdf = lib_fn(
+                        net,
+                        ndf.copy(),
                         distances=[dist],
-                        source_indices=sources,
-                        sample_probability=actual_p,
-                        pbar_disabled=True,
+                        sample_rate={dist: actual_p},
+                        random_seed=SEED,
                     )
-                    est = np.array(getattr(r, result_key)[dist])[live_mask]
+                    est = result_gdf[col_key].values[live_mask]
                     sp, prec, scale, iqr, mae = compute_accuracy_metrics(true_arr, est)
 
                     if not np.isnan(sp):

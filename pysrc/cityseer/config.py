@@ -80,6 +80,7 @@ RTOL: float = 0.0001
 # with speedups of 5–63× depending on distance threshold.
 # Validated on GLA (294k nodes) and Madrid (99k nodes) networks.
 HOEFFDING_EPSILON: float = 0.1
+HOEFFDING_EPSILON_BETWEENNESS: float = 0.05
 HOEFFDING_DELTA: float = 0.1
 
 
