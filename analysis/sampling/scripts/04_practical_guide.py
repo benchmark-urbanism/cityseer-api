@@ -1,16 +1,16 @@
 #!/usr/bin/env python
 """
-05_practical_guide.py - Generate practical guidance for practitioners.
+04_practical_guide.py - Generate practical guidance for practitioners.
 
 Creates visual and tabular guidance for users to quickly determine
 the appropriate sampling budget for their analysis. Both closeness
 and betweenness use the same Hoeffding/EW framework:
     k = log(2r/delta)/(2*eps^2), p = min(1, k/r)
 
-Default: epsilon_closeness = 0.1, epsilon_betweenness = 0.1, delta = 0.1.
+Default: epsilon_closeness = 0.1, epsilon_betweenness = 0.05, delta = 0.1.
 
 Outputs:
-    - paper/figures/fig4_practical_guide.pdf: Visual lookup chart
+    - paper/figures/fig6_practical_guide.pdf: Visual lookup chart
     - paper/tables/tab3_practical_lookup.tex: Lookup table (both metrics)
 """
 
@@ -47,7 +47,7 @@ plt.rcParams.update(
 
 # Paper defaults
 EPSILON_CLOSENESS = 0.1
-EPSILON_BETWEENNESS = 0.1
+EPSILON_BETWEENNESS = 0.05
 
 # GLA scenario reaches for annotation
 GLA_SCENARIOS = [
@@ -71,7 +71,7 @@ def generate_practical_figure():
     Panel A: Required sampling probability p (%) vs reach at multiple epsilons.
     Panel B: Speedup (1/p) vs reach at paper default epsilons for both metrics.
     """
-    print("\nGenerating Figure 4: Practical guide...")
+    print("\nGenerating Figure 6: Practical guide...")
 
     fig, axes = plt.subplots(1, 2, figsize=(12, 5))
     reach_range = np.logspace(2, 5.5, 200)
@@ -81,19 +81,22 @@ def generate_practical_figure():
     # ------------------------------------------------------------------
     ax = axes[0]
 
-    epsilon_values = [0.05, 0.1, 0.15, 0.2]
-    colours = ["#d73027", "#0072B2", "#fc8d59", "#91bfdb"]
-    linewidths = [1.5, 2.5, 1.5, 1.5]
+    # Paper defaults solid, others dashed
+    epsilon_specs = [
+        (EPSILON_BETWEENNESS, "#B2182B", 2.0, "-"),
+        (EPSILON_CLOSENESS,   "#2166AC", 2.0, "-"),
+        (0.15,                "#969696", 1.2, "--"),
+        (0.2,                 "#636363", 1.2, "--"),
+    ]
 
-    for eps, colour, lw in zip(epsilon_values, colours, linewidths, strict=True):
+    for eps, colour, lw, ls in epsilon_specs:
         p_values = [compute_hoeffding_p(r, eps) * 100 for r in reach_range]
-        style = "-" if eps == 0.1 else "--"
         label = r"$\varepsilon$" + f" = {eps}"
-        ax.plot(reach_range, p_values, linestyle=style, color=colour, linewidth=lw, label=label)
+        ax.plot(reach_range, p_values, linestyle=ls, color=colour, linewidth=lw, label=label)
 
-    # Annotate GLA network reaches at default epsilon
+    # Annotate GLA network reaches at closeness default epsilon
     for reach, label in GLA_SCENARIOS:
-        p = compute_hoeffding_p(reach, epsilon=0.1) * 100
+        p = compute_hoeffding_p(reach, epsilon=EPSILON_CLOSENESS) * 100
         ax.plot(reach, p, "o", color="#D55E00", markersize=7, zorder=5)
         if p >= 99.5:
             y_off, va = -12, "top"
@@ -120,8 +123,9 @@ def generate_practical_figure():
     from matplotlib.lines import Line2D
 
     legend_handles = [
-        Line2D([0], [0], color="#0072B2", linewidth=2.5, linestyle="-", label=r"$\varepsilon$ = 0.1 (default)"),
-        Line2D([0], [0], color="grey", linewidth=1.5, linestyle="--", label=r"Other $\varepsilon$"),
+        Line2D([0], [0], color="#B2182B", linewidth=2.0, linestyle="-", label=rf"$\varepsilon$={EPSILON_BETWEENNESS} (betweenness)"),
+        Line2D([0], [0], color="#2166AC", linewidth=2.0, linestyle="-", label=rf"$\varepsilon$={EPSILON_CLOSENESS} (closeness)"),
+        Line2D([0], [0], color="grey", linewidth=1.2, linestyle="--", label=r"Other $\varepsilon$"),
         Line2D([0], [0], color="#D55E00", marker="o", linestyle="none", markersize=7, label="GLA scenarios"),
     ]
     ax.legend(handles=legend_handles, loc="center right", fontsize=8)
@@ -173,7 +177,7 @@ def generate_practical_figure():
     fig.suptitle("Practical Guide: Adaptive Sampling", fontsize=13, fontweight="bold", y=1.02)
     plt.tight_layout()
 
-    output_path = FIGURES_DIR / "fig4_practical_guide.pdf"
+    output_path = FIGURES_DIR / "fig6_practical_guide.pdf"
     fig.savefig(output_path, dpi=300, bbox_inches="tight")
     print(f"  Saved: {output_path}")
     plt.close()
@@ -273,7 +277,7 @@ Closeness $\varepsilon_c = {EPSILON_CLOSENESS}$, betweenness $\varepsilon_b = {E
 
 def main():
     print("=" * 70)
-    print("05_practical_guide.py - Generating practical guidance")
+    print("04_practical_guide.py - Generating practical guidance")
     print("  Both closeness and betweenness use Hoeffding/EW")
     print("=" * 70)
 
@@ -312,7 +316,7 @@ def main():
     print("\n" + "=" * 70)
     print("OUTPUTS")
     print("=" * 70)
-    print(f"  1. {FIGURES_DIR / 'fig4_practical_guide.pdf'}")
+    print(f"  1. {FIGURES_DIR / 'fig6_practical_guide.pdf'}")
     print(f"  2. {TABLES_DIR / 'tab3_practical_lookup.tex'}")
 
     return 0

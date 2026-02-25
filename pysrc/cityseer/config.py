@@ -108,7 +108,15 @@ def compute_hoeffding_p(
     float
         Required sampling probability in [0, 1]. Returns 1.0 if reach is invalid.
     """
-    if mean_reachability <= 0 or epsilon <= 0:
+    if (
+        not np.isfinite(mean_reachability)
+        or not np.isfinite(epsilon)
+        or not np.isfinite(delta)
+        or mean_reachability <= 0
+        or epsilon <= 0
+        or delta <= 0
+        or delta >= 1
+    ):
         return 1.0
 
     import math
@@ -135,79 +143,68 @@ def log_thresholds(
     return distances
 
 
-def log_sampling(
-    sample_probability: float | None = None,
-    distances: list[int] | None = None,
-    reachability_totals: list[int] | None = None,
-    sampled_source_count: int | None = None,
-) -> None:
+def min_spatial_samples(
+    network_structure: rustalgos.graph.NetworkStructure,
+    cell_size: float,
+) -> int:
     """
-    Log sampling statistics when sampling is enabled.
+    Return the theoretical minimum number of samples for spatial coverage.
 
-    Reports the Hoeffding bound epsilon for each distance threshold,
-    showing the theoretical additive error guarantee.
+    Computes ``ceil(x_range / cell_size) * ceil(y_range / cell_size)`` from
+    the live-node bounding box — one sample per grid cell.
+
+    Parameters
+    ----------
+    network_structure
+        The network to sample from.
+    cell_size
+        Grid cell side length in metres.
+
+    Returns
+    -------
+    int
+        Minimum sample count for full grid coverage.
     """
-    if sample_probability is None:
-        return
-
     import math
 
-    # Log sampling overview
-    logger.info("")  # Visual separator
-    speedup = 1 / sample_probability
-    logger.info(f"Sampling enabled: p={sample_probability:.0%}, theoretical speedup ~{speedup:.1f}x")
+    if not np.isfinite(cell_size) or cell_size <= 0:
+        raise ValueError("cell_size must be a finite positive number")
 
-    # If we have actual reachability data, log effective_n and epsilon bound
-    if reachability_totals and sampled_source_count and sampled_source_count > 0 and distances:
-        logger.info("  Per-distance Hoeffding bound (ε = normalised additive error):")
-
-        for dist, total_reach in zip(distances, reachability_totals, strict=True):
-            mean_reach = total_reach / sampled_source_count
-            if mean_reach <= 0:
-                continue
-
-            effective_n = mean_reach * sample_probability
-            # Compute the Hoeffding epsilon achieved at this eff_n
-            if effective_n > 0 and mean_reach > 0:
-                eps = math.sqrt(math.log(2 * mean_reach / HOEFFDING_DELTA) / (2 * effective_n))
-            else:
-                eps = float("inf")
-
-            # Compute what the Hoeffding model would recommend
-            p_hoeffding = compute_hoeffding_p(mean_reach)
-            recommendation = ""
-            if p_hoeffding is not None and eps > HOEFFDING_EPSILON:
-                if p_hoeffding < 1.0:
-                    recommendation = f" → p≥{p_hoeffding:.0%} for ε≤{HOEFFDING_EPSILON}"
-                else:
-                    recommendation = " (full computation needed for ε≤0.1)"
-
-            logger.info(f"    {dist}m: reach={mean_reach:.0f}, eff_n={effective_n:.0f}, ε={eps:.3f}{recommendation}")
-
-
-# =============================================================================
-# Adaptive Sampling Helpers
-# =============================================================================
-# These functions support per-distance adaptive sampling, where sampling
-# probability is calibrated separately for each distance threshold based on
-# reachability. This allows aggressive sampling at large distances (high reach)
-# while maintaining accuracy at short distances (low reach).
+    live_indices = [i for i in network_structure.node_indices() if network_structure.is_node_live(i)]
+    if not live_indices:
+        return 0
+    all_xs = network_structure.node_xs
+    all_ys = network_structure.node_ys
+    xs = [all_xs[i] for i in live_indices]
+    ys = [all_ys[i] for i in live_indices]
+    x_range = max(max(xs) - min(xs), 1.0)
+    y_range = max(max(ys) - min(ys), 1.0)
+    return max(1, math.ceil(x_range / cell_size)) * max(1, math.ceil(y_range / cell_size))
 
 
 def spatial_sample(
     network_structure: rustalgos.graph.NetworkStructure,
     n_samples: int,
+    *,
+    cell_size: float = 1000.0,
     random_seed: int | None = None,
 ) -> tuple[list[int], float]:
     """
-    Sample nodes by uniform random draw with spatial coverage enforcement.
+    Sample nodes using proportional spatial allocation across grid cells.
 
-    Draws ``n_samples`` live nodes uniformly at random, then iteratively swaps
-    sources to ensure every occupied 1km grid cell has at least one sample
-    (when enough samples are available to cover all cells).
+    Divides the network into grid cells of ``cell_size`` metres and allocates
+    samples to each cell proportionally to its share of live nodes. Within each
+    cell, nodes are selected by uniform random draw.
 
-    The total count stays fixed at ``n_samples``, preserving a predictable
-    per-node inclusion probability for IPW scaling.
+    ``n_samples >= min_spatial_samples(...)`` provides a conservative coverage
+    budget, but proportional allocation does not guarantee one sample in every
+    occupied cell.
+
+    Note: the downstream IPW correction uses a single scalar probability
+    ``actual_p = n_sources / n_live`` rather than per-node inclusion
+    probabilities. Because proportional allocation closely tracks the global
+    rate, the estimator is approximately (not strictly) unbiased. This is an
+    intentional design trade-off for simplicity and empirical performance.
 
     Parameters
     ----------
@@ -215,6 +212,9 @@ def spatial_sample(
         The network to sample from.
     n_samples
         Number of nodes to sample.
+    cell_size
+        Grid cell side length in metres. Typically ``distance / 2`` so that
+        spatial stratification operates at half the analysis distance.
     random_seed
         Optional seed for reproducibility.
 
@@ -223,12 +223,21 @@ def spatial_sample(
     tuple[list[int], float]
         Indices of sampled nodes and network area in km².
     """
+    import math
     import random as _random
+
+    if n_samples < 0:
+        raise ValueError("n_samples must be non-negative")
+    if not np.isfinite(cell_size) or cell_size <= 0:
+        raise ValueError("cell_size must be a finite positive number")
 
     rng = _random.Random(random_seed)
 
     # Get live nodes
     live_indices = [i for i in network_structure.node_indices() if network_structure.is_node_live(i)]
+    n_live = len(live_indices)
+    if n_live == 0:
+        return [], 0.0
 
     # Get coordinates for live nodes
     all_xs = network_structure.node_xs
@@ -242,65 +251,48 @@ def spatial_sample(
     y_range = max(y_max - y_min, 1.0)  # metres
     area_km2 = (x_range * y_range) / 1_000_000  # convert m² to km²
 
-    if len(live_indices) <= n_samples:
+    if n_samples == 0:
+        return [], area_km2
+
+    if n_live <= n_samples:
         return live_indices, area_km2
 
-    # Step 1: uniform random draw
-    selected = list(rng.sample(live_indices, n_samples))
-    selected_set = set(selected)
-
-    # Step 2: build 1km grid
-    grid_side_x = max(1, int(np.ceil(x_range / 1000)))
-    grid_side_y = max(1, int(np.ceil(y_range / 1000)))
+    # Build grid and group nodes by cell
+    grid_side_x = max(1, int(np.ceil(x_range / cell_size)))
+    grid_side_y = max(1, int(np.ceil(y_range / cell_size)))
     cell_x = ((coords[:, 0] - x_min) / x_range * (grid_side_x - 0.001)).astype(int)
     cell_y = ((coords[:, 1] - y_min) / y_range * (grid_side_y - 0.001)).astype(int)
     cell_ids = cell_x * grid_side_y + cell_y
 
-    # Group nodes by cell
     cells: dict[int, list[int]] = {}
     for idx, cell_id in zip(live_indices, cell_ids, strict=False):
         cells.setdefault(cell_id, []).append(idx)
 
-    # Map each node to its cell
-    node_to_cell: dict[int, int] = {}
-    for cell_id, nodes in cells.items():
-        for n in nodes:
-            node_to_cell[n] = cell_id
+    cell_items = [(cell_id, nodes) for cell_id, nodes in cells.items() if nodes]
 
-    # Step 3: spatial coverage enforcement
-    # Skip if we don't have enough samples to cover all cells
-    n_occupied = sum(1 for nodes in cells.values() if nodes)
-    if n_samples >= n_occupied:
-        max_iters = n_samples * 10
-        for _ in range(max_iters):
-            # Count sources per cell
-            cell_counts: dict[int, int] = {k: 0 for k in cells}
-            for n in selected_set:
-                cell_counts[node_to_cell[n]] += 1
+    # Proportional allocation: each cell gets floor(n_samples * cell_count / n_live)
+    # Remaining samples distributed by largest fractional remainder
+    allocations: list[tuple[int, int, float]] = []
+    for cell_id, nodes in cell_items:
+        exact = n_samples * len(nodes) / n_live
+        floor_alloc = math.floor(exact)
+        allocations.append((cell_id, floor_alloc, exact - floor_alloc))
 
-            # Check coverage
-            empty_cells = [k for k, count in cell_counts.items() if count == 0 and cells[k]]
-            if not empty_cells:
-                break
+    total_floor = sum(a[1] for a in allocations)
+    leftover = n_samples - total_floor
+    # Sort by remainder descending, break ties randomly
+    rng.shuffle(allocations)
+    allocations.sort(key=lambda a: a[2], reverse=True)
+    cell_alloc: dict[int, int] = {}
+    for i, (cell_id, floor_alloc, _remainder) in enumerate(allocations):
+        cell_alloc[cell_id] = floor_alloc + (1 if i < leftover else 0)
 
-            # Remove a random source (only from cells with ≥2 sources)
-            remove_node = rng.choice(selected)
-            remove_cell = node_to_cell[remove_node]
-            if cell_counts[remove_cell] < 2:
-                continue
-
-            # Draw a new random node not already selected
-            add_node = rng.choice(live_indices)
-            if add_node in selected_set:
-                continue
-            add_cell = node_to_cell[add_node]
-
-            # Accept only if it fills an empty cell
-            if cell_counts[add_cell] == 0:
-                selected.remove(remove_node)
-                selected_set.remove(remove_node)
-                selected.append(add_node)
-                selected_set.add(add_node)
+    # Sample within each cell
+    selected: list[int] = []
+    for cell_id, nodes in cell_items:
+        k = min(cell_alloc[cell_id], len(nodes))
+        if k > 0:
+            selected.extend(rng.sample(nodes, k))
 
     return selected, area_km2
 
@@ -315,6 +307,7 @@ def probe_reachability(
     distances: list[int],
     probe_density: float = DEFAULT_PROBE_DENSITY,
     speed_m_s: float = SPEED_M_S,
+    random_seed: int | None = None,
 ) -> dict[int, float]:
     """
     Estimate reachability per distance by probing spatially distributed nodes.
@@ -338,6 +331,8 @@ def probe_reachability(
         The actual probe count is bounded by MIN_PROBES (20) and MAX_PROBES (200).
     speed_m_s
         Walking speed for converting distance to seconds.
+    random_seed
+        Optional seed for reproducible probe selection.
 
     Returns
     -------
@@ -346,6 +341,9 @@ def probe_reachability(
         Using a lower percentile provides conservative estimates that account
         for spatial variation in reachability across the network.
     """
+    if not distances:
+        return {}
+
     # Get live nodes
     live_indices = [i for i in network_structure.node_indices() if network_structure.is_node_live(i)]
 
@@ -363,7 +361,12 @@ def probe_reachability(
     n_probes = int(np.clip(area_km2 * probe_density, MIN_PROBES, MAX_PROBES))
 
     n_probes = min(n_probes, len(live_indices))
-    probe_indices, _ = spatial_sample(network_structure, n_probes)
+    probe_indices, _ = spatial_sample(
+        network_structure,
+        n_probes,
+        cell_size=max(distances) / 2,
+        random_seed=random_seed,
+    )
 
     # Accumulate reach counts per distance
     reach_counts: dict[int, list[int]] = {d: [] for d in distances}

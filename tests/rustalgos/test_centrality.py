@@ -534,3 +534,74 @@ def test_decomposed_local_centrality(primal_graph):
     assert np.allclose(
         segment_result.segment_harmonic[400].sum(), segment_result_decomp.segment_harmonic[400][:57].sum()
     )
+
+
+def test_betweenness_vs_networkx(primal_graph):
+    """Compare cityseer betweenness against NetworkX betweenness_centrality.
+
+    NetworkX betweenness_centrality(normalized=False) uses the standard Brandes algorithm
+    and divides by 2 for undirected graphs — matching cityseer's convention.
+    At a large distance cutoff (5000m) that exceeds the mock graph extent,
+    the two should agree exactly.
+    """
+    nodes_gdf, edges_gdf, network_structure = io.network_structure_from_nx(primal_graph)
+    G_round_trip = io.nx_from_cityseer_geopandas(nodes_gdf, edges_gdf)
+    for start_nd_key, end_nd_key, edge_idx in G_round_trip.edges(keys=True):
+        geom = G_round_trip[start_nd_key][end_nd_key][edge_idx]["geom"]
+        G_round_trip[start_nd_key][end_nd_key][edge_idx]["length"] = geom.length
+    # Use a large distance so no cutoff interferes
+    betw_result = network_structure.betweenness_shortest(distances=[5000])
+    nx_betw = nx.betweenness_centrality(G_round_trip, normalized=False, weight="length")
+    for src_idx in range(len(G_round_trip)):
+        assert abs(nx_betw[str(src_idx)] - betw_result.node_betweenness[5000][src_idx]) < config.ATOL, (
+            f"Betweenness mismatch at node {src_idx}: "
+            f"NX={nx_betw[str(src_idx)]:.6f}, cityseer={betw_result.node_betweenness[5000][src_idx]:.6f}"
+        )
+
+
+def test_simplest_closeness_differs_from_shortest(primal_graph):
+    """Simplest (angular) closeness produces different values from shortest closeness.
+
+    On a non-trivial graph, angular impedance routes through geometrically simpler
+    (straighter) paths, which differ from metrically shortest paths. This verifies
+    that the simplest path algorithm is not accidentally using shortest-path routing.
+    """
+    _nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(primal_graph)
+    # Use large distance to avoid cutoff differences between path types
+    distances = [5000]
+    res_shortest = network_structure.closeness_shortest(distances=distances)
+    res_simplest = network_structure.closeness_simplest(distances=distances)
+    # At large distance, density should match (all nodes reachable either way)
+    for d in distances:
+        assert np.allclose(
+            res_shortest.node_density[d], res_simplest.node_density[d], atol=config.ATOL, rtol=config.RTOL
+        ), f"Density should match at {d}m when no cutoff applies"
+    # Farness and harmonic should differ — angular impedance uses different cost metric
+    for d in distances:
+        if np.sum(res_shortest.node_farness[d]) > 0:
+            assert not np.allclose(
+                res_shortest.node_farness[d], res_simplest.node_farness[d], atol=config.ATOL
+            ), f"Farness should differ at {d}m (angular vs metric impedance)"
+        if np.sum(res_shortest.node_harmonic[d]) > 0:
+            assert not np.allclose(
+                res_shortest.node_harmonic[d], res_simplest.node_harmonic[d], atol=config.ATOL
+            ), f"Harmonic should differ at {d}m (angular vs metric impedance)"
+
+
+def test_simplest_betweenness_differs_from_shortest(primal_graph):
+    """Simplest (angular) betweenness produces different values from shortest betweenness.
+
+    Verifies that the angular betweenness is not accidentally falling back to
+    shortest-path routing, which would be a bug.
+    """
+    _nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(primal_graph)
+    distances = [500, 2000]
+    res_shortest = network_structure.betweenness_shortest(distances=distances)
+    res_simplest = network_structure.betweenness_simplest(distances=distances)
+    for d in distances:
+        betw_short = np.array(res_shortest.node_betweenness[d])
+        betw_simpl = np.array(res_simplest.node_betweenness[d])
+        if np.sum(betw_short) > 0 and np.sum(betw_simpl) > 0:
+            assert not np.allclose(betw_short, betw_simpl, atol=config.ATOL), (
+                f"Betweenness should differ at {d}m (angular vs metric path choice)"
+            )

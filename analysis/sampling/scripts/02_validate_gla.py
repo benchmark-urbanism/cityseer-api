@@ -1,13 +1,13 @@
 #!/usr/bin/env python
 """
-03_validate_gla.py - Validate sampling models on Greater London network.
+02_validate_gla.py - Validate sampling models on Greater London network.
 
 Tests closeness and betweenness (both using Hoeffding + spatial source sampling)
 at their respective epsilon values across five distance thresholds.
 
 Usage:
-    python 03_validate_gla.py           # Run (skips cache if exists)
-    python 03_validate_gla.py --force   # Force regeneration of validation data
+    python 02_validate_gla.py           # Run (skips cache if exists)
+    python 02_validate_gla.py --force   # Force regeneration of validation data
 
 Outputs:
     - output/gla_validation.csv
@@ -27,7 +27,7 @@ import geopandas as gpd
 import numpy as np
 import osmnx as ox
 import pandas as pd
-from cityseer.config import compute_hoeffding_p, spatial_sample
+from cityseer.config import compute_hoeffding_p, min_spatial_samples, spatial_sample
 from cityseer.tools import graphs, io
 from shapely.geometry import Point
 from utilities import (
@@ -54,7 +54,7 @@ GLA_GPKG_FILE = SCRIPT_DIR.parent.parent.parent / "temp" / "os_open_roads" / "op
 GLA_DISTANCES = [1000, 2000, 5000, 10000, 20000]
 # Hoeffding + spatial source sampling (both metrics)
 GLA_EPSILON_CLOSENESS = 0.1
-GLA_EPSILON_BETWEENNESS = 0.1
+GLA_EPSILON_BETWEENNESS = 0.05
 N_RUNS = 1  # GLA is huge; keep runs minimal
 
 DELTA = HOEFFDING_DELTA
@@ -102,6 +102,24 @@ def _is_stale_csv(csv_path: Path) -> bool:
     return False
 
 
+def _missing_validation_columns(df: pd.DataFrame) -> set[str]:
+    """Required columns for downstream summary + bound analysis."""
+    required = {
+        "distance",
+        "mean_reach",
+        "epsilon",
+        "metric",
+        "budget_param",
+        "spearman",
+        "max_abs_error",
+        "eps_observed",
+        "eps_predicted",
+        "bound_holds",
+        "speedup",
+    }
+    return required - set(df.columns)
+
+
 def generate_validation_data(force: bool = False) -> pd.DataFrame:
     """Generate GLA validation data, or load from cache."""
     validation_csv = OUTPUT_DIR / "gla_validation.csv"
@@ -113,10 +131,14 @@ def generate_validation_data(force: bool = False) -> pd.DataFrame:
 
     if validation_csv.exists() and not force:
         df = pd.read_csv(validation_csv)
-        if "metric" in df.columns and "epsilon" in df.columns and len(df) > 0:
+        missing = _missing_validation_columns(df)
+        if len(df) > 0 and not missing:
             print(f"Loading cached validation data from {validation_csv}")
             return df
-        print(f"Stale/empty cache at {validation_csv}, regenerating...")
+        if missing:
+            print(f"Stale cache columns at {validation_csv}: missing {sorted(missing)}")
+        else:
+            print(f"Stale/empty cache at {validation_csv}, regenerating...")
 
     if not GLA_GPKG_FILE.exists():
         raise FileNotFoundError(
@@ -234,20 +256,22 @@ def generate_validation_data(force: bool = False) -> pd.DataFrame:
         eps_close = GLA_EPSILON_CLOSENESS
         hoeffding_p = compute_hoeffding_p(mean_reach, epsilon=eps_close)
         n_live = int(live_mask.sum())
-        print(f"\n  Closeness eps={eps_close}: p={hoeffding_p:.4f}")
+        n_cells = min_spatial_samples(net, cell_size=dist / 2)
+        n_sources_close = min(n_live, max(n_cells, int(hoeffding_p * n_live))) if n_live > 0 else 0
+        actual_p_close = (n_sources_close / n_live) if n_live > 0 else 1.0
+        print(f"\n  Closeness eps={eps_close}: p={hoeffding_p:.4f} (actual {actual_p_close:.4f}), cells={n_cells}")
 
         spearmans_h, maes_h, precs_h, scales_h, quartiles_h = [], [], [], [], []
         close_times = []
 
         for seed in range(N_RUNS):
-            n_sources = max(1, int(hoeffding_p * n_live))
-            sources, _ = spatial_sample(net, n_sources, random_seed=42 + seed)
+            sources, _ = spatial_sample(net, n_sources_close, cell_size=dist / 2, random_seed=42 + seed)
 
             t0 = time.time()
             close_r = net.closeness_shortest(
                 distances=[dist],
                 source_indices=sources,
-                sample_probability=hoeffding_p,
+                sample_probability=actual_p_close,
                 pbar_disabled=True,
             )
             close_times.append(time.time() - t0)
@@ -265,7 +289,7 @@ def generate_validation_data(force: bool = False) -> pd.DataFrame:
 
         mean_close_time = np.mean(close_times) if close_times else float("nan")
         q_h = mean_quartiles(quartiles_h)
-        n_eff_close = mean_reach * hoeffding_p
+        n_eff_close = mean_reach * actual_p_close
         eps_pred_close = ew_predicted_epsilon(n_eff_close, mean_reach)
 
         if spearmans_h:
@@ -275,7 +299,8 @@ def generate_validation_data(force: bool = False) -> pd.DataFrame:
                 "mean_reach": mean_reach,
                 "epsilon": eps_close,
                 "metric": "harmonic",
-                "budget_param": hoeffding_p,
+                "budget_param": actual_p_close,
+                "budget_param_requested": hoeffding_p,
                 "spearman": np.mean(spearmans_h),
                 "spearman_min": np.min(spearmans_h),
                 "spearman_max": np.max(spearmans_h),
@@ -306,27 +331,30 @@ def generate_validation_data(force: bool = False) -> pd.DataFrame:
         # Betweenness: Hoeffding + spatial source sampling
         # ---------------------------------------------------------------
         nonzero_betw = np.sum(true_betweenness > 0)
+        hoeffding_p_b = float("nan")
+        actual_p_b = float("nan")
+        est_betweenness = None
         if nonzero_betw < 10:
             print(f"  Betweenness: skipped (only {nonzero_betw} nonzero)")
         else:
             eps_betw = GLA_EPSILON_BETWEENNESS
             hoeffding_p_b = compute_hoeffding_p(mean_reach, epsilon=eps_betw)
             n_live = int(live_mask.sum())
-            print(f"\n  Betweenness eps={eps_betw}: p={hoeffding_p_b:.4f}")
+            n_sources_b = min(n_live, max(n_cells, int(hoeffding_p_b * n_live))) if n_live > 0 else 0
+            actual_p_b = (n_sources_b / n_live) if n_live > 0 else 1.0
+            print(f"\n  Betweenness eps={eps_betw}: p={hoeffding_p_b:.4f} (actual {actual_p_b:.4f})")
 
             spearmans_b, maes_b, precs_b, scales_b, quartiles_b = [], [], [], [], []
             betw_times = []
-            est_betweenness = None
 
             for seed in range(N_RUNS):
-                n_sources = max(1, int(hoeffding_p_b * n_live))
-                sources, _ = spatial_sample(net, n_sources, random_seed=42 + seed)
+                sources, _ = spatial_sample(net, n_sources_b, cell_size=dist / 2, random_seed=42 + seed)
 
                 t0 = time.time()
                 betw_r = net.betweenness_shortest(
                     distances=[dist],
                     source_indices=sources,
-                    sample_probability=hoeffding_p_b,
+                    sample_probability=actual_p_b,
                     pbar_disabled=True,
                 )
                 betw_times.append(time.time() - t0)
@@ -344,7 +372,7 @@ def generate_validation_data(force: bool = False) -> pd.DataFrame:
 
             mean_betw_time = np.mean(betw_times) if betw_times else float("nan")
             q_b = mean_quartiles(quartiles_b)
-            n_eff_betw = mean_reach * hoeffding_p_b
+            n_eff_betw = mean_reach * actual_p_b
             eps_pred_betw = ew_predicted_epsilon(n_eff_betw, mean_reach)
 
             if spearmans_b:
@@ -354,7 +382,8 @@ def generate_validation_data(force: bool = False) -> pd.DataFrame:
                     "mean_reach": mean_reach,
                     "epsilon": eps_betw,
                     "metric": "betweenness",
-                    "budget_param": hoeffding_p_b,
+                    "budget_param": actual_p_b,
+                    "budget_param_requested": hoeffding_p_b,
                     "spearman": np.mean(spearmans_b),
                     "spearman_min": np.min(spearmans_b),
                     "spearman_max": np.max(spearmans_b),
@@ -392,11 +421,13 @@ def generate_validation_data(force: bool = False) -> pd.DataFrame:
             "true_harmonic": true_harmonic,
             "est_harmonic": est_harmonic,
             "epsilon_closeness": GLA_EPSILON_CLOSENESS,
-            "hoeffding_p": hoeffding_p,
+            "hoeffding_p": actual_p_close,
+            "hoeffding_p_requested": hoeffding_p,
             "true_betweenness": true_betweenness,
             "est_betweenness": est_betweenness if est_betweenness is not None else None,
             "epsilon_betweenness": GLA_EPSILON_BETWEENNESS,
-            "hoeffding_p_betw": hoeffding_p_b if nonzero_betw >= 10 else None,
+            "hoeffding_p_betw": actual_p_b if nonzero_betw >= 10 else None,
+            "hoeffding_p_betw_requested": hoeffding_p_b if nonzero_betw >= 10 else None,
         }
         with open(sampled_cache, "wb") as f:
             pickle.dump(sampled_data, f)
@@ -715,7 +746,7 @@ def main():
     args = parser.parse_args()
 
     print("=" * 70)
-    print("03_validate_gla.py - Validating sampling models on Greater London network")
+    print("02_validate_gla.py - Validating sampling models on Greater London network")
     print("=" * 70)
 
     print(f"\nCloseness:   Hoeffding + spatial, eps={GLA_EPSILON_CLOSENESS}")

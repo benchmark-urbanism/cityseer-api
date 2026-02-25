@@ -484,6 +484,10 @@ def closeness_shortest(
 ) -> gpd.GeoDataFrame:
     """Compute closeness centrality using shortest paths with adaptive source sampling.
 
+    Uses spatially stratified sampling with IPW correction. The inclusion probability
+    passed to Rust is the marginal rate ``actual_p = n_sources / n_live`` rather than
+    per-node cell-specific probabilities, making the estimator approximately unbiased.
+
     Parameters
     ----------
     network_structure
@@ -523,7 +527,11 @@ def closeness_shortest(
 
     # Probe reachability and compute per-distance sampling probabilities
     reach_estimates = config.probe_reachability(
-        network_structure, resolved_distances, probe_density=probe_density, speed_m_s=speed_m_s
+        network_structure,
+        resolved_distances,
+        probe_density=probe_density,
+        speed_m_s=speed_m_s,
+        random_seed=random_seed,
     )
     sample_probs = config.compute_sample_probs(reach_estimates, epsilon=epsilon, delta=delta)
     config.log_adaptive_sampling_plan(resolved_distances, reach_estimates, sample_probs, epsilon=epsilon, delta=delta)
@@ -556,24 +564,29 @@ def closeness_shortest(
         for d in full_distances:
             closeness_results[d] = result  # type: ignore[assignment]
 
+    n_live = sum(1 for i in network_structure.node_indices() if network_structure.is_node_live(i))
     for d, p in sampled_distances:
-        n_live = sum(1 for i in network_structure.node_indices() if network_structure.is_node_live(i))
-        n_sources = max(1, int(p * n_live))
-        sources, _ = config.spatial_sample(network_structure, n_sources, random_seed=random_seed)
-        logger.info(f"  Closeness {d}m: p={p:.0%} ({len(sources)}/{n_live} sources)")
+        n_cells = config.min_spatial_samples(network_structure, cell_size=d / 2)
+        n_sources = min(n_live, max(n_cells, int(p * n_live)))
+        actual_p = (n_sources / n_live) if n_live > 0 else 1.0
+        sources, _ = config.spatial_sample(network_structure, n_sources, cell_size=d / 2, random_seed=random_seed)
+        logger.info(f"  Closeness {d}m: p={actual_p:.0%} ({len(sources)}/{n_live} sources)")
         partial_func = partial(
             network_structure.closeness_shortest,
             distances=[d],
             min_threshold_wt=min_threshold_wt,
             speed_m_s=speed_m_s,
             source_indices=sources,
-            sample_probability=p,
+            sample_probability=actual_p,
         )
         result = config.wrap_progress(
             total=node_count, rust_struct=network_structure, partial_func=partial_func,
-            desc=f"closeness p={p:.0%}: {d}m",
+            desc=f"closeness p={actual_p:.0%}: {d}m",
         )
         closeness_results[d] = result  # type: ignore[assignment]
+
+    if not closeness_results:
+        return nodes_gdf
 
     ref_result = next(iter(closeness_results.values()))
     node_keys_py = ref_result.node_keys_py
@@ -614,6 +627,10 @@ def closeness_simplest(
     delta: float = config.HOEFFDING_DELTA,
 ) -> gpd.GeoDataFrame:
     """Compute closeness centrality using simplest paths with adaptive source sampling.
+
+    Uses spatially stratified sampling with IPW correction. The inclusion probability
+    passed to Rust is the marginal rate ``actual_p = n_sources / n_live`` rather than
+    per-node cell-specific probabilities, making the estimator approximately unbiased.
 
     Parameters
     ----------
@@ -657,7 +674,11 @@ def closeness_simplest(
     temp_data: dict[str, object] = {}
 
     reach_estimates = config.probe_reachability(
-        network_structure, resolved_distances, probe_density=probe_density, speed_m_s=speed_m_s
+        network_structure,
+        resolved_distances,
+        probe_density=probe_density,
+        speed_m_s=speed_m_s,
+        random_seed=random_seed,
     )
     sample_probs = config.compute_sample_probs(reach_estimates, epsilon=epsilon, delta=delta)
     config.log_adaptive_sampling_plan(resolved_distances, reach_estimates, sample_probs, epsilon=epsilon, delta=delta)
@@ -692,11 +713,13 @@ def closeness_simplest(
         for d in full_distances:
             closeness_results[d] = result  # type: ignore[assignment]
 
+    n_live = sum(1 for i in network_structure.node_indices() if network_structure.is_node_live(i))
     for d, p in sampled_distances:
-        n_live = sum(1 for i in network_structure.node_indices() if network_structure.is_node_live(i))
-        n_sources = max(1, int(p * n_live))
-        sources, _ = config.spatial_sample(network_structure, n_sources, random_seed=random_seed)
-        logger.info(f"  Closeness {d}m: p={p:.0%} ({len(sources)}/{n_live} sources)")
+        n_cells = config.min_spatial_samples(network_structure, cell_size=d / 2)
+        n_sources = min(n_live, max(n_cells, int(p * n_live)))
+        actual_p = (n_sources / n_live) if n_live > 0 else 1.0
+        sources, _ = config.spatial_sample(network_structure, n_sources, cell_size=d / 2, random_seed=random_seed)
+        logger.info(f"  Closeness {d}m: p={actual_p:.0%} ({len(sources)}/{n_live} sources)")
         partial_func = partial(
             network_structure.closeness_simplest,
             distances=[d],
@@ -705,13 +728,16 @@ def closeness_simplest(
             angular_scaling_unit=angular_scaling_unit,
             farness_scaling_offset=farness_scaling_offset,
             source_indices=sources,
-            sample_probability=p,
+            sample_probability=actual_p,
         )
         result = config.wrap_progress(
             total=node_count, rust_struct=network_structure, partial_func=partial_func,
-            desc=f"closeness p={p:.0%}: {d}m",
+            desc=f"closeness p={actual_p:.0%}: {d}m",
         )
         closeness_results[d] = result  # type: ignore[assignment]
+
+    if not closeness_results:
+        return nodes_gdf
 
     ref_result = next(iter(closeness_results.values()))
     node_keys_py = ref_result.node_keys_py

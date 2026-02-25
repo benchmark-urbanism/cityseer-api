@@ -190,6 +190,23 @@ def test_closeness_shortest(primal_graph):
         assert config.prep_gdf_key("hillier", dist) in nodes_gdf_result.columns
 
 
+def test_closeness_shortest_seeded_determinism(primal_graph):
+    """Same seed produces identical adaptive closeness_shortest results."""
+    distances = [200, 400, 800]
+    nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(primal_graph)
+    kwargs = dict(
+        network_structure=network_structure,
+        distances=distances,
+        random_seed=42,
+        probe_density=20.0,
+    )
+    r1 = networks.closeness_shortest(nodes_gdf=nodes_gdf.copy(), **kwargs)
+    r2 = networks.closeness_shortest(nodes_gdf=nodes_gdf.copy(), **kwargs)
+    for dist in distances:
+        key = config.prep_gdf_key("density", dist)
+        assert np.allclose(r1[key].values, r2[key].values), f"Non-deterministic at {dist}m"
+
+
 def test_closeness_simplest(primal_graph):
     """Test standalone closeness_simplest with adaptive sampling."""
     distances = [200, 400, 800]
@@ -206,5 +223,22 @@ def test_closeness_simplest(primal_graph):
         assert config.prep_gdf_key("density", dist, angular=True) in nodes_gdf_result.columns
         assert config.prep_gdf_key("farness", dist, angular=True) in nodes_gdf_result.columns
         assert config.prep_gdf_key("hillier", dist, angular=True) in nodes_gdf_result.columns
+
+
+def test_closeness_simplest_seeded_determinism(primal_graph):
+    """Same seed produces identical adaptive closeness_simplest results."""
+    distances = [200, 400, 800]
+    nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(primal_graph)
+    kwargs = dict(
+        network_structure=network_structure,
+        distances=distances,
+        random_seed=42,
+        probe_density=20.0,
+    )
+    r1 = networks.closeness_simplest(nodes_gdf=nodes_gdf.copy(), **kwargs)
+    r2 = networks.closeness_simplest(nodes_gdf=nodes_gdf.copy(), **kwargs)
+    for dist in distances:
+        key = config.prep_gdf_key("density", dist, angular=True)
+        assert np.allclose(r1[key].values, r2[key].values), f"Non-deterministic at {dist}m"
 
 

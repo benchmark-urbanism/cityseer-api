@@ -1,28 +1,22 @@
 \begin{table}[htbp]
 \centering
-\caption{Required effective sample sizes under the Hoeffding (closeness) and
-  Riondato--Kornaropoulos (betweenness) bounds at different additive error
-  tolerances ($\delta = 0.1$).}
+\caption{Required sample sizes under the Hoeffding/EW bound at different additive
+  error tolerances ($\delta = 0.1$): $k = \log(2r/\delta) / (2\varepsilon^2)$,
+  $p = \min(1, k/r)$. Paper defaults: closeness $\varepsilon=0.1$,
+  betweenness $\varepsilon=0.05$.}
 \label{tab:ew_comparison}
 \small
-\begin{tabular}{@{}rrrrrrrrrr@{}}
+\begin{tabular}{@{}rrrrrrr@{}}
 \toprule
-& \multicolumn{3}{c}{$\varepsilon = 0.05$} & \multicolumn{3}{c}{$\varepsilon = 0.1$} & \multicolumn{3}{c}{$\varepsilon = 0.2$} \\
-\cmidrule(lr){2-4} \cmidrule(lr){5-7} \cmidrule(lr){8-10} 
-\textbf{Reach} & \textbf{$k$} & \textbf{$p$} & \textbf{$m$} & \textbf{$k$} & \textbf{$p$} & \textbf{$m$} & \textbf{$k$} & \textbf{$p$} & \textbf{$m$} \\
+\textbf{Reach} & \multicolumn{2}{c}{$\varepsilon=0.05$} & \multicolumn{2}{c}{$\varepsilon=0.1$} & \multicolumn{2}{c}{$\varepsilon=0.2$} \\
+          & $k$ & $p$ & $k$ & $p$ & $k$ & $p$ \\
 \midrule
-100 & 1{,}520 & 100.0\% & 1{,}261 & 380 & 100.0\% & 316 & 95 & 95.0\% & 79 \\
-500 & 1{,}842 & 100.0\% & 1{,}461 & 460 & 92.1\% & 366 & 115 & 23.0\% & 92 \\
-1{,}000 & 1{,}980 & 100.0\% & 1{,}461 & 495 & 49.5\% & 366 & 123 & 12.4\% & 92 \\
-3{,}000 & 2{,}200 & 73.3\% & 1{,}661 & 550 & 18.3\% & 416 & 137 & 4.6\% & 104 \\
-10{,}000 & 2{,}441 & 24.4\% & 1{,}861 & 610 & 6.1\% & 466 & 152 & 1.5\% & 117 \\
-30{,}000 & 2{,}660 & 8.9\% & 2{,}061 & 665 & 2.2\% & 516 & 166 & 0.6\% & 129 \\
+100 & \multicolumn{2}{c}{exact} & \multicolumn{2}{c}{exact} & 95 & 95.0\% \\
+500 & \multicolumn{2}{c}{exact} & 460 & 92.1\% & 115 & 23.0\% \\
+1{,}000 & \multicolumn{2}{c}{exact} & 495 & 49.5\% & 123 & 12.4\% \\
+3{,}000 & 2{,}200 & 73.3\% & 550 & 18.3\% & 137 & 4.6\% \\
+10{,}000 & 2{,}441 & 24.4\% & 610 & 6.1\% & 152 & 1.5\% \\
+30{,}000 & 2{,}660 & 8.9\% & 665 & 2.2\% & 166 & 0.6\% \\
 \bottomrule
 \end{tabular}
-
-\vspace{0.5em}
-\footnotesize
-\textbf{Closeness} (source sampling): $k = \log(2r/\delta) / (2\varepsilon^2)$, $p = \min(1, k/r)$.
-\textbf{Betweenness} (path sampling): $m = \lceil(\lfloor\log_2(\text{VD}-2)\rfloor + 1 + \ln(1/\delta)) / (2\varepsilon^2)\rceil$,
-where $\text{VD} = \lceil\sqrt{r}\rceil$.
 \end{table}

@@ -1,13 +1,13 @@
 #!/usr/bin/env python
 """
-04_validate_madrid.py - External validation on Madrid regional network.
+03_validate_madrid.py - External validation on Madrid regional network.
 
 Validates both closeness and betweenness sampling models on an independent network.
 Both metrics use the unified framework: Hoeffding bound + spatial source_indices + IPW.
 
 Usage:
-    python 04_validate_madrid.py           # Run (skips cache if exists)
-    python 04_validate_madrid.py --force   # Force regeneration of validation data
+    python 03_validate_madrid.py           # Run (skips cache if exists)
+    python 03_validate_madrid.py --force   # Force regeneration of validation data
 
 Outputs:
     - output/madrid_validation.csv
@@ -27,7 +27,7 @@ import numpy as np
 import osmnx as ox
 import pandas as pd
 import shapely
-from cityseer.config import compute_hoeffding_p, spatial_sample
+from cityseer.config import compute_hoeffding_p, min_spatial_samples, spatial_sample
 from cityseer.tools import graphs, io
 from shapely.geometry import Point
 from utilities import (
@@ -56,7 +56,7 @@ N_RUNS = 5
 
 # Hoeffding + spatial source sampling (both metrics)
 MADRID_EPSILON_CLOSENESS = 0.1
-MADRID_EPSILON_BETWEENNESS = 0.1
+MADRID_EPSILON_BETWEENNESS = 0.05
 
 DELTA = HOEFFDING_DELTA
 
@@ -83,6 +83,18 @@ def get_madrid_mask(force: bool = False):
 def generate_validation_data(force: bool = False) -> pd.DataFrame:
     """Generate Madrid validation data, or load from cache."""
     validation_csv = OUTPUT_DIR / "madrid_validation.csv"
+    required_cols = {
+        "distance",
+        "mean_reach",
+        "rho_closeness",
+        "hoeffding_p_close",
+        "speedup_closeness",
+        "rho_betweenness",
+        "hoeffding_p_betw",
+        "speedup_betweenness",
+        "eps_obs_h",
+        "eps_pred_h",
+    }
 
     if validation_csv.exists() and not force:
         df = pd.read_csv(validation_csv)
@@ -110,7 +122,11 @@ def generate_validation_data(force: bool = False) -> pd.DataFrame:
                 df["speedup_betweenness"] = float("nan")
             if "baseline_time_b" not in df.columns:
                 df["baseline_time_b"] = float("nan")
-            return df
+            missing = required_cols - set(df.columns)
+            if missing:
+                print(f"Stale cache columns at {validation_csv}: missing {sorted(missing)}")
+            else:
+                return df
         else:
             print(f"Stale/empty cache at {validation_csv}, regenerating...")
 
@@ -217,21 +233,26 @@ def generate_validation_data(force: bool = False) -> pd.DataFrame:
         # Closeness: Hoeffding + spatial source sampling
         # ---------------------------------------------------------------
         p_close = compute_hoeffding_p(mean_reach, epsilon=MADRID_EPSILON_CLOSENESS, delta=DELTA)
-        print(f"  Closeness eps={MADRID_EPSILON_CLOSENESS}: p={p_close:.4f}")
+        n_cells = min_spatial_samples(net, cell_size=dist / 2)
+        n_sources_close = min(n_live, max(n_cells, int(p_close * n_live))) if n_live > 0 else 0
+        actual_p_close = (n_sources_close / n_live) if n_live > 0 else 1.0
+        print(
+            f"  Closeness eps={MADRID_EPSILON_CLOSENESS}: p={p_close:.4f} "
+            f"(actual {actual_p_close:.4f}), cells={n_cells}"
+        )
 
         spearmans_h, maes_h, precs_h, scales_h, quartiles_h = [], [], [], [], []
         close_times = []
 
         print(f"    Running {N_RUNS} runs: ", end="", flush=True)
         for seed in range(N_RUNS):
-            n_sources = max(1, int(p_close * n_live))
-            sources, _ = spatial_sample(net, n_sources, random_seed=42 + seed)
+            sources, _ = spatial_sample(net, n_sources_close, cell_size=dist / 2, random_seed=42 + seed)
 
             t0 = time.time()
             r_close = net.closeness_shortest(
                 distances=[dist],
                 source_indices=sources,
-                sample_probability=p_close,
+                sample_probability=actual_p_close,
                 pbar_disabled=True,
             )
             close_times.append(time.time() - t0)
@@ -249,7 +270,7 @@ def generate_validation_data(force: bool = False) -> pd.DataFrame:
 
         mean_close_time = np.mean(close_times) if close_times else float("nan")
         q_h = mean_quartiles(quartiles_h)
-        n_eff_h = mean_reach * p_close
+        n_eff_h = mean_reach * actual_p_close
         eps_pred_h = ew_predicted_epsilon(n_eff_h, mean_reach, delta=DELTA)
         max_mae_h = np.max(maes_h) if maes_h else float("nan")
         eps_obs_h = max_mae_h / mean_reach if not np.isnan(max_mae_h) else float("nan")
@@ -264,6 +285,7 @@ def generate_validation_data(force: bool = False) -> pd.DataFrame:
         rho_b = float("nan")
         speedup_b = float("nan")
         p_betw = float("nan")
+        actual_p_betw = float("nan")
         max_mae_b = float("nan")
         eps_obs_b = float("nan")
         eps_pred_b = float("nan")
@@ -274,20 +296,22 @@ def generate_validation_data(force: bool = False) -> pd.DataFrame:
         else:
             p_betw = compute_hoeffding_p(mean_reach, epsilon=MADRID_EPSILON_BETWEENNESS, delta=DELTA)
             print(f"  Betweenness eps={MADRID_EPSILON_BETWEENNESS}: p={p_betw:.4f}")
+            n_sources_betw = min(n_live, max(n_cells, int(p_betw * n_live))) if n_live > 0 else 0
+            actual_p_betw = (n_sources_betw / n_live) if n_live > 0 else 1.0
+            print(f"    Actual p after cell floor: {actual_p_betw:.4f}")
 
             spearmans_b, maes_b, precs_b, scales_b, quartiles_b = [], [], [], [], []
             betw_times = []
 
             print(f"    Running {N_RUNS} runs: ", end="", flush=True)
             for seed in range(N_RUNS):
-                n_sources = max(1, int(p_betw * n_live))
-                sources, _ = spatial_sample(net, n_sources, random_seed=42 + seed)
+                sources, _ = spatial_sample(net, n_sources_betw, cell_size=dist / 2, random_seed=42 + seed)
 
                 t0 = time.time()
                 r_betw = net.betweenness_shortest(
                     distances=[dist],
                     source_indices=sources,
-                    sample_probability=p_betw,
+                    sample_probability=actual_p_betw,
                     pbar_disabled=True,
                 )
                 betw_times.append(time.time() - t0)
@@ -305,7 +329,7 @@ def generate_validation_data(force: bool = False) -> pd.DataFrame:
 
             mean_betw_time = np.mean(betw_times) if betw_times else float("nan")
             q_b = mean_quartiles(quartiles_b)
-            n_eff_b = mean_reach * p_betw
+            n_eff_b = mean_reach * actual_p_betw
             eps_pred_b = ew_predicted_epsilon(n_eff_b, mean_reach, delta=DELTA)
             max_mae_b = np.max(maes_b) if maes_b else float("nan")
             eps_obs_b = max_mae_b / mean_reach if not np.isnan(max_mae_b) else float("nan")
@@ -319,7 +343,8 @@ def generate_validation_data(force: bool = False) -> pd.DataFrame:
             "mean_reach": mean_reach,
             # Closeness
             "epsilon_closeness": MADRID_EPSILON_CLOSENESS,
-            "hoeffding_p_close": p_close,
+            "hoeffding_p_close": actual_p_close,
+            "hoeffding_p_close_requested": p_close,
             "rho_closeness": rho_h,
             "max_abs_error_h": max_mae_h,
             "eps_obs_h": eps_obs_h,
@@ -330,7 +355,8 @@ def generate_validation_data(force: bool = False) -> pd.DataFrame:
             "speedup_closeness": speedup_h,
             # Betweenness
             "epsilon_betweenness": MADRID_EPSILON_BETWEENNESS,
-            "hoeffding_p_betw": p_betw,
+            "hoeffding_p_betw": actual_p_betw if np.isfinite(p_betw) else float("nan"),
+            "hoeffding_p_betw_requested": p_betw,
             "rho_betweenness": rho_b,
             "max_abs_error_b": max_mae_b,
             "eps_obs_b": eps_obs_b,
@@ -532,7 +558,7 @@ def main():
     args = parser.parse_args()
 
     print("=" * 70)
-    print("04_validate_madrid.py - External validation on Madrid network")
+    print("03_validate_madrid.py - External validation on Madrid network")
     print("=" * 70)
 
     print(f"\nCloseness:   Hoeffding + spatial, eps={MADRID_EPSILON_CLOSENESS}")

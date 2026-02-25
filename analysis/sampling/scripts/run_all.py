@@ -5,7 +5,7 @@ run_all.py - Run the full sampling analysis pipeline in order.
 Usage:
     python run_all.py           # Run all scripts (uses cached data where available)
     python run_all.py --force   # Force regeneration of all cached data
-    python run_all.py --from 3  # Resume from script 03 onwards
+    python run_all.py --from 2  # Resume from script 02 onwards
 """
 
 import argparse
@@ -18,13 +18,11 @@ SCRIPT_DIR = Path(__file__).parent
 
 SCRIPTS = [
     ("00_generate_cache.py", "Generate synthetic network sampling data", True),
-    ("01_fit_rank_model.py", "Analyse synthetic data and generate figures", False),
-    ("02_fit_error_model.py", "Validate Hoeffding/EW bound on synthetic data", False),
-    ("03_validate_gla.py", "Validate model on Greater London network", True),
-    ("04_validate_madrid.py", "Validate model on Greater Madrid network", True),
-    ("05_practical_guide.py", "Generate practical guidance figures/tables", False),
-    ("06_generate_macros.py", "Generate LaTeX macros from results", False),
-    ("07_hoeffding_model_figure.py", "Generate Hoeffding model figure", False),
+    ("01_analyse_synthetic.py", "Analyse synthetic data and generate figures", False),
+    ("02_validate_gla.py", "Validate on Greater London network", True),
+    ("03_validate_madrid.py", "Validate on Greater Madrid network", True),
+    ("04_practical_guide.py", "Generate practical guidance figures/tables", False),
+    ("05_generate_macros.py", "Generate LaTeX macros from results", False),
 ]
 
 
@@ -37,7 +35,7 @@ def main():
         default=0,
         dest="start_from",
         metavar="N",
-        help="Start from script N (e.g. --from 3 to start at 03_validate_gla.py)",
+        help="Start from script N (e.g. --from 2 to start at 02_validate_gla.py)",
     )
     args = parser.parse_args()
 
