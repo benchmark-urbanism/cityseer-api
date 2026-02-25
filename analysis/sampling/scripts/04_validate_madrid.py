@@ -19,7 +19,6 @@ Outputs:
 import argparse
 import json
 import pickle
-import random
 import time
 from pathlib import Path
 
@@ -28,6 +27,7 @@ import numpy as np
 import osmnx as ox
 import pandas as pd
 import shapely
+from cityseer.config import compute_hoeffding_p, spatial_sample
 from cityseer.tools import graphs, io
 from shapely.geometry import Point
 from utilities import (
@@ -36,11 +36,9 @@ from utilities import (
     OUTPUT_DIR,
     TABLES_DIR,
     compute_accuracy_metrics,
-    compute_hoeffding_p,
     compute_quartile_accuracy,
     ew_predicted_epsilon,
     mean_quartiles,
-    select_spatial_sources,
 )
 
 # =============================================================================
@@ -92,6 +90,26 @@ def generate_validation_data(force: bool = False) -> pd.DataFrame:
             print(f"Stale cache detected at {validation_csv}, regenerating...")
         elif "rho_closeness" in df.columns and "rho_betweenness" in df.columns and len(df) > 0:
             print(f"Loading cached validation data from {validation_csv}")
+            # Handle old column names from previous cache versions
+            renames = {}
+            if "hoeffding_p" in df.columns and "hoeffding_p_close" not in df.columns:
+                renames["hoeffding_p"] = "hoeffding_p_close"
+            if "epsilon" in df.columns and "epsilon_closeness" not in df.columns:
+                renames["epsilon"] = "epsilon_closeness"
+            if "speedup" in df.columns and "speedup_closeness" not in df.columns:
+                renames["speedup"] = "speedup_closeness"
+            if "baseline_time" in df.columns and "baseline_time_h" not in df.columns:
+                renames["baseline_time"] = "baseline_time_h"
+            if renames:
+                df = df.rename(columns=renames)
+            if "hoeffding_p_betw" not in df.columns:
+                df["hoeffding_p_betw"] = df.get("hoeffding_p_close", float("nan"))
+            if "epsilon_betweenness" not in df.columns:
+                df["epsilon_betweenness"] = df.get("epsilon_closeness", 0.1)
+            if "speedup_betweenness" not in df.columns:
+                df["speedup_betweenness"] = float("nan")
+            if "baseline_time_b" not in df.columns:
+                df["baseline_time_b"] = float("nan")
             return df
         else:
             print(f"Stale/empty cache at {validation_csv}, regenerating...")
@@ -194,7 +212,6 @@ def generate_validation_data(force: bool = False) -> pd.DataFrame:
             print(f"  Cached ground truth to {gt_cache}")
 
         print(f"  Mean reach: {mean_reach:.0f}")
-        cell_size = dist / 2.0
 
         # ---------------------------------------------------------------
         # Closeness: Hoeffding + spatial source sampling
@@ -207,9 +224,8 @@ def generate_validation_data(force: bool = False) -> pd.DataFrame:
 
         print(f"    Running {N_RUNS} runs: ", end="", flush=True)
         for seed in range(N_RUNS):
-            rng = random.Random(42 + seed)
             n_sources = max(1, int(p_close * n_live))
-            sources = select_spatial_sources(net, n_sources, cell_size, rng)
+            sources, _ = spatial_sample(net, n_sources, random_seed=42 + seed)
 
             t0 = time.time()
             r_close = net.closeness_shortest(
@@ -264,9 +280,8 @@ def generate_validation_data(force: bool = False) -> pd.DataFrame:
 
             print(f"    Running {N_RUNS} runs: ", end="", flush=True)
             for seed in range(N_RUNS):
-                rng = random.Random(42 + seed)
                 n_sources = max(1, int(p_betw * n_live))
-                sources = select_spatial_sources(net, n_sources, cell_size, rng)
+                sources, _ = spatial_sample(net, n_sources, random_seed=42 + seed)
 
                 t0 = time.time()
                 r_betw = net.betweenness_shortest(

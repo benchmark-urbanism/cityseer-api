@@ -30,12 +30,12 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from cityseer.config import compute_hoeffding_p
 from utilities import (
     CACHE_DIR,
     CACHE_VERSION,
     FIGURES_DIR,
     HOEFFDING_DELTA,
-    compute_hoeffding_p,
     ew_predicted_epsilon,
 )
 
@@ -91,8 +91,8 @@ def load_synthetic_data() -> pd.DataFrame:
 
     for metric_label in df["metric"].unique():
         subset = df[df["metric"] == metric_label]
-        epsilons = sorted(subset["epsilon"].dropna().unique())
-        print(f"  {metric_label}: {len(subset)} rows, epsilons: {epsilons}")
+        probs = sorted(subset["sample_prob"].dropna().unique())
+        print(f"  {metric_label}: {len(subset)} rows, sample_probs: {probs}")
 
     return df
 
@@ -166,19 +166,20 @@ def _pool_node_errors(df_subset: pd.DataFrame, metric_label: str) -> list[dict]:
 
 
 def evaluate_node_level_accuracy(df: pd.DataFrame) -> pd.DataFrame:
-    """Evaluate per-node accuracy at each metric's paper epsilon.
+    """Evaluate per-node accuracy at a representative sample probability.
 
-    Pools all nodes across all (topology, distance) configs at the paper
-    epsilon for each metric, then bins by absolute per-node reach.
+    Pools all nodes across all (topology, distance) configs at p=0.1
+    for each metric, then bins by absolute per-node reach.
     """
+    representative_p = 0.1
     all_rows: list[dict] = []
 
-    # Closeness at its paper epsilon
-    df_close = df[(df["metric"] == "harmonic") & (df["epsilon"] == PAPER_EPSILON_CLOSENESS)]
+    # Closeness at representative p
+    df_close = df[(df["metric"] == "harmonic") & (df["sample_prob"] == representative_p)]
     all_rows.extend(_pool_node_errors(df_close, "harmonic"))
 
-    # Betweenness at its paper epsilon
-    df_betw = df[(df["metric"] == "betweenness") & (df["epsilon"] == PAPER_EPSILON_BETWEENNESS)]
+    # Betweenness at representative p
+    df_betw = df[(df["metric"] == "betweenness") & (df["sample_prob"] == representative_p)]
     all_rows.extend(_pool_node_errors(df_betw, "betweenness"))
 
     return pd.DataFrame(all_rows) if all_rows else pd.DataFrame()
@@ -190,13 +191,13 @@ def print_reach_bin_summary(node_acc: pd.DataFrame):
     print("NODE-LEVEL ERROR DIAGNOSTICS BY ABSOLUTE REACH")
     print("=" * 70)
 
-    for metric_label, display_name, eps in [
-        ("harmonic", "HARMONIC CLOSENESS", PAPER_EPSILON_CLOSENESS),
-        ("betweenness", "BETWEENNESS", PAPER_EPSILON_BETWEENNESS),
+    for metric_label, display_name in [
+        ("harmonic", "HARMONIC CLOSENESS"),
+        ("betweenness", "BETWEENNESS"),
     ]:
         subset = node_acc[node_acc["metric"] == metric_label]
         if len(subset) > 0:
-            print(f"\n  {display_name} (epsilon={eps})")
+            print(f"\n  {display_name} (p=0.1)")
             print(f"  {'Reach bin':<16} {'N nodes':>10} {'Med MAE':>12} {'Med NRMSE':>12}")
             print("  " + "-" * 52)
 
@@ -213,8 +214,8 @@ def print_reach_bin_summary(node_acc: pd.DataFrame):
 def generate_fig1_headline(df: pd.DataFrame):
     """Figure 1: Sampling opportunity — 1x3 layout.
 
-    Panel A: Closeness — Spearman rho vs epsilon.
-    Panel B: Betweenness — Spearman rho vs epsilon (same framework).
+    Panel A: Closeness — Spearman rho vs sample probability.
+    Panel B: Betweenness — Spearman rho vs sample probability (same framework).
     Panel C: Speedup comparison at paper epsilons — grouped bars (both use 1/p).
     """
     print("\nGenerating Figure 1: Headline comparison...")
@@ -225,7 +226,7 @@ def generate_fig1_headline(df: pd.DataFrame):
     colors = ["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728"]
 
     # ------------------------------------------------------------------
-    # Panel A: Closeness — rho vs epsilon
+    # Panel A: Closeness — rho vs sample probability
     # ------------------------------------------------------------------
     ax = axes[0]
 
@@ -233,14 +234,14 @@ def generate_fig1_headline(df: pd.DataFrame):
         subset = df[(df["metric"] == "harmonic") & (df["distance"] == dist)]
         if len(subset) > 0:
             grouped = (
-                subset.groupby("epsilon")
+                subset.groupby("sample_prob")
                 .agg({"spearman": "mean", "mean_reach": "mean"})
                 .reset_index()
-                .sort_values("epsilon")
+                .sort_values("sample_prob")
             )
             reach = grouped["mean_reach"].iloc[0]
             ax.plot(
-                grouped["epsilon"],
+                grouped["sample_prob"],
                 grouped["spearman"],
                 "o-",
                 color=color,
@@ -252,17 +253,16 @@ def generate_fig1_headline(df: pd.DataFrame):
     ax.axhline(0.95, color="green", linestyle="--", linewidth=1.5, alpha=0.7)
     ax.text(0.02, 0.955, r"target: $\rho$=0.95", fontsize=9, color="green", ha="left")
 
-    ax.set_xlabel(r"$\varepsilon$ (error tolerance)")
+    ax.set_xlabel("Sample probability $p$")
     ax.set_ylabel(r"Spearman $\rho$ (ranking accuracy)")
-    ax.set_title(r"A) Closeness: accuracy vs $\varepsilon$")
-    ax.set_xlim(0.55, 0.005)
+    ax.set_title("A) Closeness: accuracy vs sample probability")
     ax.set_xscale("log")
     ax.set_ylim(0.5, 1.02)
     ax.legend(loc="lower right", fontsize=8)
     ax.grid(True, alpha=0.3)
 
     # ------------------------------------------------------------------
-    # Panel B: Betweenness — rho vs epsilon (same framework)
+    # Panel B: Betweenness — rho vs sample probability (same framework)
     # ------------------------------------------------------------------
     ax = axes[1]
 
@@ -270,14 +270,14 @@ def generate_fig1_headline(df: pd.DataFrame):
         subset = df[(df["metric"] == "betweenness") & (df["distance"] == dist)]
         if len(subset) > 0:
             grouped = (
-                subset.groupby("epsilon")
+                subset.groupby("sample_prob")
                 .agg({"spearman": "mean", "mean_reach": "mean"})
                 .reset_index()
-                .sort_values("epsilon")
+                .sort_values("sample_prob")
             )
             reach = grouped["mean_reach"].iloc[0]
             ax.plot(
-                grouped["epsilon"],
+                grouped["sample_prob"],
                 grouped["spearman"],
                 "s-",
                 color=color,
@@ -289,10 +289,9 @@ def generate_fig1_headline(df: pd.DataFrame):
     ax.axhline(0.95, color="green", linestyle="--", linewidth=1.5, alpha=0.7)
     ax.text(0.02, 0.955, r"target: $\rho$=0.95", fontsize=9, color="green", ha="left")
 
-    ax.set_xlabel(r"$\varepsilon$ (error tolerance)")
+    ax.set_xlabel("Sample probability $p$")
     ax.set_ylabel(r"Spearman $\rho$ (ranking accuracy)")
-    ax.set_title(r"B) Betweenness: accuracy vs $\varepsilon$")
-    ax.set_xlim(0.55, 0.005)
+    ax.set_title("B) Betweenness: accuracy vs sample probability")
     ax.set_xscale("log")
     ax.set_ylim(0.5, 1.02)
     ax.legend(loc="lower right", fontsize=8)
@@ -386,7 +385,7 @@ def generate_fig1_headline(df: pd.DataFrame):
 def generate_fig3_error_crossover(node_acc: pd.DataFrame, df: pd.DataFrame):
     """Figure 3: Error crossover — absolute error grows with reach, normalised error shrinks.
 
-    1x2 layout. Nodes pooled at each metric's paper epsilon.
+    1x2 layout. Nodes pooled at p=0.1 for each metric.
     Panel A: Absolute MAE trending up with reach.
     Panel B: Normalised MAE trending down, with Hoeffding bound overlay for both metrics.
     """

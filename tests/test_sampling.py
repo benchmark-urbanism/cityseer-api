@@ -335,10 +335,10 @@ class TestSamplingModel:
         assert probs[200] is not None and 0.0 < probs[200] <= 1.0
         assert probs[400] is not None and 0.0 < probs[400] <= 1.0
 
-    def test_zero_reach_returns_none(self):
-        """Zero reach returns None."""
-        assert config.compute_hoeffding_p(0) is None
+    def test_zero_reach_returns_full(self):
+        """Zero reach returns 1.0 (full sampling)."""
+        assert config.compute_hoeffding_p(0) == 1.0
 
-    def test_negative_reach_returns_none(self):
-        """Negative reach returns None."""
-        assert config.compute_hoeffding_p(-100) is None
+    def test_negative_reach_returns_full(self):
+        """Negative reach returns 1.0 (full sampling)."""
+        assert config.compute_hoeffding_p(-100) == 1.0

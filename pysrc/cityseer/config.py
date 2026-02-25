@@ -87,7 +87,7 @@ def compute_hoeffding_p(
     mean_reachability: float,
     epsilon: float = HOEFFDING_EPSILON,
     delta: float = HOEFFDING_DELTA,
-) -> float | None:
+) -> float:
     """
     Compute sampling probability from the Hoeffding/Eppstein-Wang bound.
 
@@ -105,11 +105,11 @@ def compute_hoeffding_p(
 
     Returns
     -------
-    float | None
-        Required sampling probability in [0, 1], or None if reach is invalid.
+    float
+        Required sampling probability in [0, 1]. Returns 1.0 if reach is invalid.
     """
-    if mean_reachability <= 0:
-        return None
+    if mean_reachability <= 0 or epsilon <= 0:
+        return 1.0
 
     import math
 
@@ -197,12 +197,17 @@ def log_sampling(
 def spatial_sample(
     network_structure: rustalgos.graph.NetworkStructure,
     n_samples: int,
+    random_seed: int | None = None,
 ) -> tuple[list[int], float]:
     """
-    Sample nodes with spatial distribution using grid stratification.
+    Sample nodes by uniform random draw with spatial coverage enforcement.
 
-    Divides the network bounding box into 1km² grid cells and samples round-robin
-    from each cell, ensuring spatial coverage across the network.
+    Draws ``n_samples`` live nodes uniformly at random, then iteratively swaps
+    sources to ensure every occupied 1km grid cell has at least one sample
+    (when enough samples are available to cover all cells).
+
+    The total count stays fixed at ``n_samples``, preserving a predictable
+    per-node inclusion probability for IPW scaling.
 
     Parameters
     ----------
@@ -210,13 +215,17 @@ def spatial_sample(
         The network to sample from.
     n_samples
         Number of nodes to sample.
+    random_seed
+        Optional seed for reproducibility.
 
     Returns
     -------
     tuple[list[int], float]
-        Indices of sampled nodes (spatially distributed) and network area in km².
+        Indices of sampled nodes and network area in km².
     """
-    import random
+    import random as _random
+
+    rng = _random.Random(random_seed)
 
     # Get live nodes
     live_indices = [i for i in network_structure.node_indices() if network_structure.is_node_live(i)]
@@ -236,11 +245,13 @@ def spatial_sample(
     if len(live_indices) <= n_samples:
         return live_indices, area_km2
 
-    # Grid with ~1km cells (1000m)
+    # Step 1: uniform random draw
+    selected = list(rng.sample(live_indices, n_samples))
+    selected_set = set(selected)
+
+    # Step 2: build 1km grid
     grid_side_x = max(1, int(np.ceil(x_range / 1000)))
     grid_side_y = max(1, int(np.ceil(y_range / 1000)))
-
-    # Compute grid cell for each node
     cell_x = ((coords[:, 0] - x_min) / x_range * (grid_side_x - 0.001)).astype(int)
     cell_y = ((coords[:, 1] - y_min) / y_range * (grid_side_y - 0.001)).astype(int)
     cell_ids = cell_x * grid_side_y + cell_y
@@ -250,16 +261,46 @@ def spatial_sample(
     for idx, cell_id in zip(live_indices, cell_ids, strict=False):
         cells.setdefault(cell_id, []).append(idx)
 
-    # Sample round-robin from cells
-    selected = []
-    cell_lists = list(cells.values())
-    random.shuffle(cell_lists)
+    # Map each node to its cell
+    node_to_cell: dict[int, int] = {}
+    for cell_id, nodes in cells.items():
+        for n in nodes:
+            node_to_cell[n] = cell_id
 
-    while len(selected) < n_samples:
-        for cell_nodes in cell_lists:
-            if cell_nodes and len(selected) < n_samples:
-                idx = random.randrange(len(cell_nodes))
-                selected.append(cell_nodes.pop(idx))
+    # Step 3: spatial coverage enforcement
+    # Skip if we don't have enough samples to cover all cells
+    n_occupied = sum(1 for nodes in cells.values() if nodes)
+    if n_samples >= n_occupied:
+        max_iters = n_samples * 10
+        for _ in range(max_iters):
+            # Count sources per cell
+            cell_counts: dict[int, int] = {k: 0 for k in cells}
+            for n in selected_set:
+                cell_counts[node_to_cell[n]] += 1
+
+            # Check coverage
+            empty_cells = [k for k, count in cell_counts.items() if count == 0 and cells[k]]
+            if not empty_cells:
+                break
+
+            # Remove a random source (only from cells with ≥2 sources)
+            remove_node = rng.choice(selected)
+            remove_cell = node_to_cell[remove_node]
+            if cell_counts[remove_cell] < 2:
+                continue
+
+            # Draw a new random node not already selected
+            add_node = rng.choice(live_indices)
+            if add_node in selected_set:
+                continue
+            add_cell = node_to_cell[add_node]
+
+            # Accept only if it fills an empty cell
+            if cell_counts[add_cell] == 0:
+                selected.remove(remove_node)
+                selected_set.remove(remove_node)
+                selected.append(add_node)
+                selected_set.add(add_node)
 
     return selected, area_km2
 
@@ -347,7 +388,7 @@ def compute_sample_probs(
     reach_estimates: dict[int, float],
     epsilon: float = HOEFFDING_EPSILON,
     delta: float = HOEFFDING_DELTA,
-) -> dict[int, float | None]:
+) -> dict[int, float]:
     """
     Compute sampling probability for each distance using the Hoeffding/EW bound.
 
@@ -362,9 +403,8 @@ def compute_sample_probs(
 
     Returns
     -------
-    dict[int, float | None]
-        Sampling probability for each distance.
-        Returns None for distances where reach is zero or negative.
+    dict[int, float]
+        Sampling probability for each distance. Returns 1.0 for invalid reach.
     """
     return {d: compute_hoeffding_p(reach, epsilon, delta) for d, reach in reach_estimates.items()}
 
@@ -372,7 +412,7 @@ def compute_sample_probs(
 def log_adaptive_sampling_plan(
     distances: list[int],
     reach_estimates: dict[int, float],
-    sample_probs: dict[int, float | None],
+    sample_probs: dict[int, float],
     epsilon: float = HOEFFDING_EPSILON,
     delta: float = HOEFFDING_DELTA,
 ) -> None:
@@ -401,8 +441,8 @@ def log_adaptive_sampling_plan(
         reach = reach_estimates.get(d, 0)
         p = sample_probs.get(d)
 
-        # Full computation (p >= 1.0 or None) means exact results
-        if p is None or p >= 1.0:
+        # Full computation (p >= 1.0) means exact results
+        if p is None or p >= 1.0:  # None check for backward compat
             logger.info(f"  {d:>7}m │ {reach:>6.0f} │     full │    1.0x")
         else:
             speedup = 1.0 / p

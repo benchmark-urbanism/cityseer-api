@@ -532,7 +532,7 @@ def closeness_shortest(
     sampled_distances: list[tuple[int, float]] = []
     for d in sorted(resolved_distances):
         p = sample_probs.get(d)
-        if p is None or p >= 1.0:
+        if p >= 1.0:
             full_distances.append(d)
         else:
             sampled_distances.append((d, p))
@@ -557,14 +557,17 @@ def closeness_shortest(
             closeness_results[d] = result  # type: ignore[assignment]
 
     for d, p in sampled_distances:
-        logger.info(f"  Closeness {d}m: p={p:.0%}")
+        n_live = sum(1 for i in network_structure.node_indices() if network_structure.is_node_live(i))
+        n_sources = max(1, int(p * n_live))
+        sources, _ = config.spatial_sample(network_structure, n_sources, random_seed=random_seed)
+        logger.info(f"  Closeness {d}m: p={p:.0%} ({len(sources)}/{n_live} sources)")
         partial_func = partial(
             network_structure.closeness_shortest,
             distances=[d],
             min_threshold_wt=min_threshold_wt,
             speed_m_s=speed_m_s,
+            source_indices=sources,
             sample_probability=p,
-            random_seed=random_seed,
         )
         result = config.wrap_progress(
             total=node_count, rust_struct=network_structure, partial_func=partial_func,
@@ -663,7 +666,7 @@ def closeness_simplest(
     sampled_distances: list[tuple[int, float]] = []
     for d in sorted(resolved_distances):
         p = sample_probs.get(d)
-        if p is None or p >= 1.0:
+        if p >= 1.0:
             full_distances.append(d)
         else:
             sampled_distances.append((d, p))
@@ -690,7 +693,10 @@ def closeness_simplest(
             closeness_results[d] = result  # type: ignore[assignment]
 
     for d, p in sampled_distances:
-        logger.info(f"  Closeness {d}m: p={p:.0%}")
+        n_live = sum(1 for i in network_structure.node_indices() if network_structure.is_node_live(i))
+        n_sources = max(1, int(p * n_live))
+        sources, _ = config.spatial_sample(network_structure, n_sources, random_seed=random_seed)
+        logger.info(f"  Closeness {d}m: p={p:.0%} ({len(sources)}/{n_live} sources)")
         partial_func = partial(
             network_structure.closeness_simplest,
             distances=[d],
@@ -698,8 +704,8 @@ def closeness_simplest(
             speed_m_s=speed_m_s,
             angular_scaling_unit=angular_scaling_unit,
             farness_scaling_offset=farness_scaling_offset,
+            source_indices=sources,
             sample_probability=p,
-            random_seed=random_seed,
         )
         result = config.wrap_progress(
             total=node_count, rust_struct=network_structure, partial_func=partial_func,

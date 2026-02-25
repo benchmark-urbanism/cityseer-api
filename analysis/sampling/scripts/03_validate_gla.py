@@ -20,7 +20,6 @@ Outputs:
 import argparse
 import json
 import pickle
-import random
 import time
 from pathlib import Path
 
@@ -28,6 +27,7 @@ import geopandas as gpd
 import numpy as np
 import osmnx as ox
 import pandas as pd
+from cityseer.config import compute_hoeffding_p, spatial_sample
 from cityseer.tools import graphs, io
 from shapely.geometry import Point
 from utilities import (
@@ -36,11 +36,9 @@ from utilities import (
     OUTPUT_DIR,
     TABLES_DIR,
     compute_accuracy_metrics,
-    compute_hoeffding_p,
     compute_quartile_accuracy,
     ew_predicted_epsilon,
     mean_quartiles,
-    select_spatial_sources,
 )
 
 # =============================================================================
@@ -236,16 +234,14 @@ def generate_validation_data(force: bool = False) -> pd.DataFrame:
         eps_close = GLA_EPSILON_CLOSENESS
         hoeffding_p = compute_hoeffding_p(mean_reach, epsilon=eps_close)
         n_live = int(live_mask.sum())
-        cell_size = dist / 2.0
         print(f"\n  Closeness eps={eps_close}: p={hoeffding_p:.4f}")
 
         spearmans_h, maes_h, precs_h, scales_h, quartiles_h = [], [], [], [], []
         close_times = []
 
         for seed in range(N_RUNS):
-            rng = random.Random(42 + seed)
             n_sources = max(1, int(hoeffding_p * n_live))
-            sources = select_spatial_sources(net, n_sources, cell_size, rng)
+            sources, _ = spatial_sample(net, n_sources, random_seed=42 + seed)
 
             t0 = time.time()
             close_r = net.closeness_shortest(
@@ -316,7 +312,6 @@ def generate_validation_data(force: bool = False) -> pd.DataFrame:
             eps_betw = GLA_EPSILON_BETWEENNESS
             hoeffding_p_b = compute_hoeffding_p(mean_reach, epsilon=eps_betw)
             n_live = int(live_mask.sum())
-            cell_size = dist / 2.0
             print(f"\n  Betweenness eps={eps_betw}: p={hoeffding_p_b:.4f}")
 
             spearmans_b, maes_b, precs_b, scales_b, quartiles_b = [], [], [], [], []
@@ -324,9 +319,8 @@ def generate_validation_data(force: bool = False) -> pd.DataFrame:
             est_betweenness = None
 
             for seed in range(N_RUNS):
-                rng = random.Random(42 + seed)
                 n_sources = max(1, int(hoeffding_p_b * n_live))
-                sources = select_spatial_sources(net, n_sources, cell_size, rng)
+                sources, _ = spatial_sample(net, n_sources, random_seed=42 + seed)
 
                 t0 = time.time()
                 betw_r = net.betweenness_shortest(
@@ -582,7 +576,7 @@ def compute_theoretical_bounds(summary_df: pd.DataFrame, n_nodes: int, raw_df: p
             continue
 
         # Our budget
-        our_eff_n = reach * srow["hoeffding_p"]
+        our_eff_n = reach * srow["hoeffding_p_close"]
 
         # Eppstein & Wang (2004): source-sampling bound
         eppstein_samples = np.log(n_nodes) / eps_normalised**2

@@ -33,6 +33,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from cityseer.config import compute_hoeffding_p
 from utilities import (
     CACHE_DIR,
     CACHE_VERSION,
@@ -41,7 +42,6 @@ from utilities import (
     OUTPUT_DIR,
     TABLES_DIR,
     compute_hoeffding_eff_n,
-    compute_hoeffding_p,
     ew_predicted_epsilon,
 )
 
@@ -107,8 +107,8 @@ def load_synthetic_cache() -> pd.DataFrame:
     print(f"  Metrics: {sorted(df['metric'].unique())}")
     for metric in df["metric"].unique():
         subset = df[df["metric"] == metric]
-        epsilons = sorted(subset["epsilon"].dropna().unique())
-        print(f"    {metric}: {len(subset)} rows, epsilons: {epsilons}")
+        probs = sorted(subset["sample_prob"].dropna().unique())
+        print(f"    {metric}: {len(subset)} rows, sample_probs: {probs}")
     return df
 
 
@@ -180,16 +180,16 @@ def print_success_rates(results: pd.DataFrame):
             continue
 
         print(f"\n  {display_name}:")
-        for eps in sorted(subset["epsilon"].dropna().unique()):
-            eps_sub = subset[subset["epsilon"] == eps]
-            h = eps_sub["bound_holds"].sum()
-            t = len(eps_sub)
-            print(f"\n    eps={eps}:  {h}/{t} ({100 * h / t:.1f}%)")
+        for p in sorted(subset["sample_prob"].dropna().unique()):
+            p_sub = subset[subset["sample_prob"] == p]
+            h = p_sub["bound_holds"].sum()
+            t = len(p_sub)
+            print(f"\n    p={p}:  {h}/{t} ({100 * h / t:.1f}%)")
 
             print(f"    {'Distance':<10} {'Reach':>8} {'Holds':>6} {'Total':>6} {'Rate':>7}  {'Med obs':>10} {'Predicted':>10}")
             print("    " + "-" * 65)
-            for dist in sorted(eps_sub["distance"].unique()):
-                ds = eps_sub[eps_sub["distance"] == dist]
+            for dist in sorted(p_sub["distance"].unique()):
+                ds = p_sub[p_sub["distance"] == dist]
                 dh = ds["bound_holds"].sum()
                 dt = len(ds)
                 med_obs = ds["eps_observed"].median()
@@ -204,7 +204,7 @@ def print_success_rates(results: pd.DataFrame):
 
 
 def plot_bound_success(results: pd.DataFrame):
-    """Plot bound success rate vs distance for both metrics, separated by epsilon."""
+    """Plot bound success rate vs distance for both metrics, separated by sample probability."""
     n_metrics = len(results["metric"].unique())
     fig, axes = plt.subplots(1, n_metrics, figsize=(7 * n_metrics, 5), squeeze=False)
 
@@ -216,16 +216,16 @@ def plot_bound_success(results: pd.DataFrame):
         ax = axes[0, ax_idx]
         distances = sorted(subset["distance"].unique())
 
-        for eps in sorted(subset["epsilon"].dropna().unique()):
-            eps_sub = subset[subset["epsilon"] == eps]
+        for p in sorted(subset["sample_prob"].dropna().unique()):
+            p_sub = subset[subset["sample_prob"] == p]
             rates = []
             for dist in distances:
-                ds = eps_sub[eps_sub["distance"] == dist]
+                ds = p_sub[p_sub["distance"] == dist]
                 if len(ds) > 0:
                     rates.append(100 * ds["bound_holds"].mean())
                 else:
                     rates.append(np.nan)
-            ax.plot(distances, rates, "o-", label=f"$\\varepsilon$={eps}", markersize=6)
+            ax.plot(distances, rates, "o-", label=f"$p$={p}", markersize=6)
 
         ax.axhline(90, color="grey", linestyle="--", linewidth=0.8, label=f"$1-\\delta$={100*(1-DELTA):.0f}%")
         ax.set_xlabel("Distance (m)")
@@ -379,12 +379,12 @@ def main():
         cond_total = len(high_reach)
         cond_holds = int(high_reach["bound_holds"].sum()) if cond_total > 0 else 0
 
-        by_epsilon = {}
-        for eps in sorted(metric_results["epsilon"].dropna().unique()):
-            e_subset = metric_results[metric_results["epsilon"] == eps]
+        by_prob = {}
+        for p in sorted(metric_results["sample_prob"].dropna().unique()):
+            p_subset = metric_results[metric_results["sample_prob"] == p]
             by_dist = {}
-            for dist in sorted(e_subset["distance"].unique()):
-                d_subset = e_subset[e_subset["distance"] == dist]
+            for dist in sorted(p_subset["distance"].unique()):
+                d_subset = p_subset[p_subset["distance"] == dist]
                 by_dist[str(dist)] = {
                     "total": len(d_subset),
                     "holds": int(d_subset["bound_holds"].sum()),
@@ -393,10 +393,10 @@ def main():
                     "median_eps_predicted": float(d_subset["eps_predicted"].median()),
                     "median_spearman": float(d_subset["spearman"].median()),
                 }
-            by_epsilon[str(eps)] = {
-                "total": len(e_subset),
-                "holds": int(e_subset["bound_holds"].sum()),
-                "rate": float(e_subset["bound_holds"].mean()),
+            by_prob[str(p)] = {
+                "total": len(p_subset),
+                "holds": int(p_subset["bound_holds"].sum()),
+                "rate": float(p_subset["bound_holds"].mean()),
                 "by_distance": by_dist,
             }
 
@@ -412,7 +412,7 @@ def main():
                 "bound_holds": cond_holds,
                 "success_rate": cond_holds / cond_total if cond_total > 0 else None,
             },
-            "by_epsilon": by_epsilon,
+            "by_sample_prob": by_prob,
         }
 
     json_path = OUTPUT_DIR / "error_model_synthetic.json"

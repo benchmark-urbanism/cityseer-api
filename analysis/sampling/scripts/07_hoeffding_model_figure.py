@@ -18,12 +18,12 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
+from cityseer.config import compute_hoeffding_p
 from utilities import (
     FIGURES_DIR,
     HOEFFDING_DELTA,
     HOEFFDING_EPSILON,
     compute_hoeffding_eff_n,
-    compute_hoeffding_p,
 )
 
 # Matplotlib style

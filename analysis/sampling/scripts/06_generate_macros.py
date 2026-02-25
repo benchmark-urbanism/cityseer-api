@@ -19,12 +19,12 @@ from datetime import datetime
 
 import numpy as np
 import pandas as pd
+from cityseer.config import compute_hoeffding_p
 from utilities import (
     CACHE_DIR,
     HOEFFDING_DELTA,
     OUTPUT_DIR,
     TABLES_DIR,
-    compute_hoeffding_p,
 )
 
 # Paper default epsilons
