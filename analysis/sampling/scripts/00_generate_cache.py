@@ -60,7 +60,7 @@ SEED = 42
 # find the exact sample_prob needed at each distance's mean_reach.
 # Spans the paper thresholds (0.1 for closeness, 0.05 for betweenness) plus values
 # above and below so Fig 1 can show where accuracy crosses 0.95.
-EPS_CLOSENESS_TARGETS = [0.05, 0.075, 0.1, 0.125, 0.15, 0.2, 0.3]
+EPS_CLOSENESS_TARGETS = [0.05, 0.075, 0.1, 0.125, 0.15, 0.2]
 EPS_BETWEENNESS_TARGETS = [0.025, 0.05, 0.075, 0.1, 0.15, 0.2]
 
 
@@ -210,7 +210,7 @@ def generate_synthetic_cache(force: bool = False):
                         }
                         results.append(row)
                     print("e", end="", flush=True)
-            print(f"  eps sweep done")
+            print("  eps sweep done")
 
     # Save cache
     path = CACHE_DIR / f"sampling_analysis_{CACHE_VERSION}.pkl"
