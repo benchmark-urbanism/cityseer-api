@@ -124,6 +124,9 @@ bin/
 include/
 man/
 
+# QGIS plugin build artifacts
+qgis_plugin/*.zip
+
 # LaTeX generated files
 *.aux
 *.bbl

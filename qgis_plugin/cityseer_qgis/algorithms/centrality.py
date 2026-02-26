@@ -67,6 +67,7 @@ class CityseerCentralityAlgorithm(CityseerAlgorithmBase):
     INPUT_LAYER = "INPUT_LAYER"
     BOUNDARY_LAYER = "BOUNDARY_LAYER"
     DISTANCES = "DISTANCES"
+    SAMPLE = "SAMPLE"
     CLOSENESS_SHORTEST = "CLOSENESS_SHORTEST"
     BETWEENNESS_SHORTEST = "BETWEENNESS_SHORTEST"
     CLOSENESS_SIMPLEST = "CLOSENESS_SIMPLEST"
@@ -109,6 +110,13 @@ class CityseerCentralityAlgorithm(CityseerAlgorithmBase):
                 self.DISTANCES,
                 self.tr("Distance thresholds (comma-separated metres)"),
                 defaultValue="400,800",
+            )
+        )
+        self.addParameter(
+            QgsProcessingParameterBoolean(
+                self.SAMPLE,
+                self.tr("Use adaptive sampling (faster, approximate)"),
+                defaultValue=False,
             )
         )
         self.addParameter(
@@ -195,6 +203,8 @@ class CityseerCentralityAlgorithm(CityseerAlgorithmBase):
         except ValueError as exc:
             raise QgsProcessingException(str(exc)) from exc
 
+        do_sample = self.parameterAsBool(parameters, self.SAMPLE, context)
+
         do_closeness_shortest = self.parameterAsBool(parameters, self.CLOSENESS_SHORTEST, context)
         do_betweenness_shortest = self.parameterAsBool(parameters, self.BETWEENNESS_SHORTEST, context)
         do_closeness_simplest = self.parameterAsBool(parameters, self.CLOSENESS_SIMPLEST, context)
@@ -226,6 +236,42 @@ class CityseerCentralityAlgorithm(CityseerAlgorithmBase):
             return {}
 
         # ------------------------------------------------------------------
+        # Sampling: split distances into full (exact) and sampled batches.
+        # When sample=True, per-distance probability is derived from a
+        # canonical grid model (config.compute_distance_p).  Distances where
+        # p >= 1.0 run exact; others get source_indices + sample_probability.
+        # ------------------------------------------------------------------
+        from cityseer import config as cs_config
+
+        full_distances: list[int] = []
+        sampled_distances: list[tuple[int, float]] = []  # (distance, p)
+        if not do_sample:
+            full_distances = sorted(distances)
+        else:
+            import random as _random
+
+            live_indices = [idx for idx in ns.node_indices() if ns.is_node_live(idx)]
+            n_live = len(live_indices)
+            for d in sorted(distances):
+                p = cs_config.compute_distance_p(d)
+                if p >= 1.0:
+                    full_distances.append(d)
+                else:
+                    sampled_distances.append((d, p))
+            if sampled_distances:
+                feedback.pushInfo(
+                    "Sampling: "
+                    + ", ".join(f"{d}m @ {p:.0%}" for d, p in sampled_distances)
+                )
+
+        def _sample_sources(p):
+            """Generate source_indices for a given probability."""
+            n_sources = max(1, int(p * n_live))
+            sources = _random.sample(live_indices, min(n_sources, n_live))
+            actual_p = len(sources) / n_live if n_live > 0 else 1.0
+            return sources, actual_p
+
+        # ------------------------------------------------------------------
         # Steps 3+: Run centrality — each metric gets its own 0–100%
         # ------------------------------------------------------------------
         results: dict[int, dict[str, float]] = {fid: {} for fid in fid_list}
@@ -243,17 +289,35 @@ class CityseerCentralityAlgorithm(CityseerAlgorithmBase):
 
         if do_closeness_shortest:
             feedback.setProgressText(f"Step {step} of {n_steps}: Computing closeness (shortest path)…")
-            r = _run_with_feedback(
-                ns, lambda: ns.closeness_shortest(distances=distances),
-                node_count, feedback,
-            )
-            _store(r, "", ["node_density", "node_farness", "node_harmonic", "node_beta", "node_cycles"])
-            for d in r.distances:
-                density = r.node_density[d]
-                farness = r.node_farness[d]
-                for i, fid in enumerate(r.node_keys_py):
-                    if fid in results and farness[i] > 0:
-                        results[fid][f"cc_hillier_{d}"] = float(density[i] ** 2 / farness[i])
+            if full_distances:
+                _fd = full_distances
+                r = _run_with_feedback(
+                    ns, lambda: ns.closeness_shortest(distances=_fd),
+                    node_count, feedback,
+                )
+                _store(r, "", ["node_density", "node_farness", "node_harmonic", "node_beta", "node_cycles"])
+                for d in r.distances:
+                    density = r.node_density[d]
+                    farness = r.node_farness[d]
+                    for i, fid in enumerate(r.node_keys_py):
+                        if fid in results and farness[i] > 0:
+                            results[fid][f"cc_hillier_{d}"] = float(density[i] ** 2 / farness[i])
+            for d, p in sampled_distances:
+                sources, actual_p = _sample_sources(p)
+                _d, _s, _ap = [d], sources, actual_p
+                r = _run_with_feedback(
+                    ns, lambda: ns.closeness_shortest(
+                        distances=_d, source_indices=_s, sample_probability=_ap,
+                    ),
+                    node_count, feedback,
+                )
+                _store(r, "", ["node_density", "node_farness", "node_harmonic", "node_beta", "node_cycles"])
+                for dd in r.distances:
+                    density = r.node_density[dd]
+                    farness = r.node_farness[dd]
+                    for i, fid in enumerate(r.node_keys_py):
+                        if fid in results and farness[i] > 0:
+                            results[fid][f"cc_hillier_{dd}"] = float(density[i] ** 2 / farness[i])
             step += 1
 
         if feedback.isCanceled():
@@ -261,11 +325,23 @@ class CityseerCentralityAlgorithm(CityseerAlgorithmBase):
 
         if do_betweenness_shortest:
             feedback.setProgressText(f"Step {step} of {n_steps}: Computing betweenness (shortest path)…")
-            r = _run_with_feedback(
-                ns, lambda: ns.betweenness_shortest(distances=distances),
-                node_count, feedback,
-            )
-            _store(r, "", ["node_betweenness", "node_betweenness_beta"])
+            if full_distances:
+                _fd = full_distances
+                r = _run_with_feedback(
+                    ns, lambda: ns.betweenness_shortest(distances=_fd),
+                    node_count, feedback,
+                )
+                _store(r, "", ["node_betweenness", "node_betweenness_beta"])
+            for d, p in sampled_distances:
+                sources, actual_p = _sample_sources(p)
+                _d, _s, _ap = [d], sources, actual_p
+                r = _run_with_feedback(
+                    ns, lambda: ns.betweenness_shortest(
+                        distances=_d, source_indices=_s, sample_probability=_ap,
+                    ),
+                    node_count, feedback,
+                )
+                _store(r, "", ["node_betweenness", "node_betweenness_beta"])
             step += 1
 
         if feedback.isCanceled():
@@ -273,11 +349,23 @@ class CityseerCentralityAlgorithm(CityseerAlgorithmBase):
 
         if do_closeness_simplest:
             feedback.setProgressText(f"Step {step} of {n_steps}: Computing closeness (simplest / angular path)…")
-            r = _run_with_feedback(
-                ns, lambda: ns.closeness_simplest(distances=distances),
-                node_count, feedback,
-            )
-            _store(r, "ang", ["node_density", "node_farness", "node_harmonic"])
+            if full_distances:
+                _fd = full_distances
+                r = _run_with_feedback(
+                    ns, lambda: ns.closeness_simplest(distances=_fd),
+                    node_count, feedback,
+                )
+                _store(r, "ang", ["node_density", "node_farness", "node_harmonic"])
+            for d, p in sampled_distances:
+                sources, actual_p = _sample_sources(p)
+                _d, _s, _ap = [d], sources, actual_p
+                r = _run_with_feedback(
+                    ns, lambda: ns.closeness_simplest(
+                        distances=_d, source_indices=_s, sample_probability=_ap,
+                    ),
+                    node_count, feedback,
+                )
+                _store(r, "ang", ["node_density", "node_farness", "node_harmonic"])
             step += 1
 
         if feedback.isCanceled():
@@ -285,11 +373,23 @@ class CityseerCentralityAlgorithm(CityseerAlgorithmBase):
 
         if do_betweenness_simplest:
             feedback.setProgressText(f"Step {step} of {n_steps}: Computing betweenness (simplest / angular path)…")
-            r = _run_with_feedback(
-                ns, lambda: ns.betweenness_simplest(distances=distances),
-                node_count, feedback,
-            )
-            _store(r, "ang", ["node_betweenness", "node_betweenness_beta"])
+            if full_distances:
+                _fd = full_distances
+                r = _run_with_feedback(
+                    ns, lambda: ns.betweenness_simplest(distances=_fd),
+                    node_count, feedback,
+                )
+                _store(r, "ang", ["node_betweenness", "node_betweenness_beta"])
+            for d, p in sampled_distances:
+                sources, actual_p = _sample_sources(p)
+                _d, _s, _ap = [d], sources, actual_p
+                r = _run_with_feedback(
+                    ns, lambda: ns.betweenness_simplest(
+                        distances=_d, source_indices=_s, sample_probability=_ap,
+                    ),
+                    node_count, feedback,
+                )
+                _store(r, "ang", ["node_betweenness", "node_betweenness_beta"])
             step += 1
 
         if feedback.isCanceled():
