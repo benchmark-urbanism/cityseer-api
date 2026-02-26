@@ -179,7 +179,7 @@ def test_closeness_shortest(primal_graph):
         nodes_gdf=nodes_gdf.copy(),
         distances=distances,
         random_seed=42,
-        probe_density=20.0,
+
     )
     for dist in distances:
         assert config.prep_gdf_key("harmonic", dist) in nodes_gdf_result.columns
@@ -198,7 +198,7 @@ def test_closeness_shortest_seeded_determinism(primal_graph):
         network_structure=network_structure,
         distances=distances,
         random_seed=42,
-        probe_density=20.0,
+
     )
     r1 = networks.closeness_shortest(nodes_gdf=nodes_gdf.copy(), **kwargs)
     r2 = networks.closeness_shortest(nodes_gdf=nodes_gdf.copy(), **kwargs)
@@ -216,7 +216,7 @@ def test_closeness_simplest(primal_graph):
         nodes_gdf=nodes_gdf.copy(),
         distances=distances,
         random_seed=42,
-        probe_density=20.0,
+
     )
     for dist in distances:
         assert config.prep_gdf_key("harmonic", dist, angular=True) in nodes_gdf_result.columns
@@ -233,7 +233,7 @@ def test_closeness_simplest_seeded_determinism(primal_graph):
         network_structure=network_structure,
         distances=distances,
         random_seed=42,
-        probe_density=20.0,
+
     )
     r1 = networks.closeness_simplest(nodes_gdf=nodes_gdf.copy(), **kwargs)
     r2 = networks.closeness_simplest(nodes_gdf=nodes_gdf.copy(), **kwargs)

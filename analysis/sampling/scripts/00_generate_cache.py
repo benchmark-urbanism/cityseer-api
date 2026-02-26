@@ -8,9 +8,9 @@ target epsilon, then runs sampling at those specific probabilities.
 
 Both closeness and betweenness use the same pipeline:
   1. Invert Hoeffding bound: p = log(2r/δ) / (2ε²r)
-  2. Compute n_sources = max(n_cells, int(p * n_live))
+  2. Compute n_sources = int(p * n_live)
   3. Compute actual_p = n_sources / n_live
-  4. Call library function with sample_rate={dist: actual_p} for IPW-corrected sampling
+  4. Call Rust function directly with source_indices and sample_probability for IPW-corrected sampling
 
 Usage:
     python 00_generate_cache.py           # Generate cache (skips if exists)
@@ -22,6 +22,7 @@ Outputs:
 
 import argparse
 import pickle
+import random as _random
 import sys
 import time
 import warnings
@@ -29,8 +30,7 @@ from pathlib import Path
 
 import networkx as nx
 import numpy as np
-from cityseer.config import compute_hoeffding_p, min_spatial_samples
-from cityseer.metrics import networks
+from cityseer.config import HOEFFDING_EPSILON, compute_distance_p, compute_hoeffding_p
 from cityseer.tools import io
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
@@ -59,9 +59,9 @@ SEED = 42
 
 # Epsilon-targeted sweep: these epsilons are inverted via the Hoeffding bound to
 # find the exact sample_prob needed at each distance's mean_reach.
-# Spans the paper thresholds (0.1 for closeness, 0.05 for betweenness) plus values
+# Spans the paper threshold (0.05, unified for both metrics) plus values
 # above and below so Fig 1 can show where accuracy crosses 0.95.
-EPS_CLOSENESS_TARGETS = [0.05, 0.075, 0.1, 0.125, 0.15, 0.2]
+EPS_CLOSENESS_TARGETS = [0.025, 0.05, 0.075, 0.1, 0.15, 0.2]
 EPS_BETWEENNESS_TARGETS = [0.025, 0.05, 0.075, 0.1, 0.15, 0.2]
 
 
@@ -130,17 +130,16 @@ def generate_synthetic_cache(force: bool = False):
             if mean_reach < 5:
                 continue
 
-            n_cells = min_spatial_samples(net, cell_size=dist / 2)
-            print(f"  d={dist}m, reach={mean_reach:.0f}, cells={n_cells}: ", end="", flush=True)
+            live_indices = [i for i in net.node_indices() if net.is_node_live(i)]
+            print(f"  d={dist}m, reach={mean_reach:.0f}: ", end="", flush=True)
 
             eps_spec = [
-                ("harmonic", EPS_CLOSENESS_TARGETS),
-                ("betweenness", EPS_BETWEENNESS_TARGETS),
+                ("harmonic", EPS_CLOSENESS_TARGETS, "node_harmonic"),
+                ("betweenness", EPS_BETWEENNESS_TARGETS, "node_betweenness"),
             ]
-            for metric_label, eps_targets in eps_spec:
+            for metric_label, eps_targets, result_attr in eps_spec:
                 true_arr = true_harmonic if metric_label == "harmonic" else true_betw_arr
-                lib_fn = networks.closeness_shortest if metric_label == "harmonic" else networks.betweenness_shortest
-                col_key = f"cc_harmonic_{dist}" if metric_label == "harmonic" else f"cc_betweenness_{dist}"
+                rust_fn = net.closeness_shortest if metric_label == "harmonic" else net.betweenness_shortest
 
                 for target_eps in eps_targets:
                     target_p = compute_hoeffding_p(mean_reach, target_eps, HOEFFDING_DELTA)
@@ -172,19 +171,15 @@ def generate_synthetic_cache(force: bool = False):
                         results.append(row)
                         continue
 
-                    n_sources = min(n_live, max(n_cells, int(target_p * n_live)))
+                    n_sources = max(1, min(n_live, int(target_p * n_live)))
                     actual_p = n_sources / n_live if n_live > 0 else 1.0
                     effective_n = mean_reach * actual_p
                     eps_val = ew_predicted_epsilon(effective_n, mean_reach, delta=HOEFFDING_DELTA)
 
-                    result_gdf = lib_fn(
-                        net,
-                        ndf.copy(),
-                        distances=[dist],
-                        sample_rate={dist: actual_p},
-                        random_seed=SEED,
-                    )
-                    est = result_gdf[col_key].values[live_mask]
+                    rng = _random.Random(SEED)
+                    sources = rng.sample(live_indices, n_sources)
+                    rust_result = rust_fn(distances=[dist], source_indices=sources, sample_probability=actual_p)
+                    est = np.array(getattr(rust_result, result_attr)[dist])[live_mask]
                     sp, prec, scale, iqr, mae = compute_accuracy_metrics(true_arr, est)
 
                     if not np.isnan(sp):
@@ -212,6 +207,78 @@ def generate_synthetic_cache(force: bool = False):
                         results.append(row)
                     print("e", end="", flush=True)
             print("  eps sweep done")
+
+            # -----------------------------------------------------------
+            # Distance-based deterministic sweep
+            # -----------------------------------------------------------
+            det_spec = [
+                ("harmonic", HOEFFDING_EPSILON, "node_harmonic", true_harmonic),
+                ("betweenness", HOEFFDING_EPSILON, "node_betweenness", true_betw_arr),
+            ]
+            for metric_label, epsilon, result_attr, true_arr in det_spec:
+                rust_fn = net.closeness_shortest if metric_label == "harmonic" else net.betweenness_shortest
+                det_p = compute_distance_p(dist, epsilon=epsilon)
+                if det_p >= 1.0:
+                    true_f32 = true_arr.astype(np.float32)
+                    row = {
+                        "topology": topo,
+                        "distance": dist,
+                        "n_nodes": n_nodes,
+                        "mean_reach": mean_reach,
+                        "node_reach": node_reach,
+                        "sample_prob": det_p,
+                        "actual_sample_prob": 1.0,
+                        "effective_n": mean_reach,
+                        "epsilon": 0.0,
+                        "target_epsilon": None,
+                        "sweep_type": "distance_based",
+                        "metric": metric_label,
+                        "spearman": 1.0,
+                        "top_k_precision": 1.0,
+                        "scale_ratio": 1.0,
+                        "scale_iqr": 0.0,
+                        "max_abs_error": 0.0,
+                        "node_true_vals": true_f32,
+                        "node_est_vals": true_f32,
+                    }
+                    results.append(row)
+                    continue
+
+                n_sources = max(1, min(n_live, int(det_p * n_live)))
+                actual_p = n_sources / n_live if n_live > 0 else 1.0
+                effective_n = mean_reach * actual_p
+
+                rng = _random.Random(SEED)
+                sources = rng.sample(live_indices, n_sources)
+                rust_result = rust_fn(distances=[dist], source_indices=sources, sample_probability=actual_p)
+                est = np.array(getattr(rust_result, result_attr)[dist])[live_mask]
+                sp, prec, scale, iqr, mae = compute_accuracy_metrics(true_arr, est)
+
+                if not np.isnan(sp):
+                    row = {
+                        "topology": topo,
+                        "distance": dist,
+                        "n_nodes": n_nodes,
+                        "mean_reach": mean_reach,
+                        "node_reach": node_reach,
+                        "sample_prob": det_p,
+                        "actual_sample_prob": actual_p,
+                        "effective_n": effective_n,
+                        "epsilon": epsilon,
+                        "target_epsilon": None,
+                        "sweep_type": "distance_based",
+                        "metric": metric_label,
+                        "spearman": sp,
+                        "top_k_precision": prec,
+                        "scale_ratio": scale,
+                        "scale_iqr": iqr,
+                        "max_abs_error": mae,
+                        "node_true_vals": true_arr.astype(np.float32),
+                        "node_est_vals": est.astype(np.float32),
+                    }
+                    results.append(row)
+                print("d", end="", flush=True)
+            print("  det sweep done")
 
     # Save cache
     path = CACHE_DIR / f"sampling_analysis_{CACHE_VERSION}.pkl"

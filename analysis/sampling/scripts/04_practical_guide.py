@@ -7,7 +7,7 @@ the appropriate sampling budget for their analysis. Both closeness
 and betweenness use the same Hoeffding/EW framework:
     k = log(2r/delta)/(2*eps^2), p = min(1, k/r)
 
-Default: epsilon_closeness = 0.1, epsilon_betweenness = 0.05, delta = 0.1.
+Default: epsilon_closeness = 0.05, epsilon_betweenness = 0.05, delta = 0.1.
 
 Outputs:
     - paper/figures/fig6_practical_guide.pdf: Visual lookup chart
@@ -45,8 +45,8 @@ plt.rcParams.update(
     }
 )
 
-# Paper defaults
-EPSILON_CLOSENESS = 0.1
+# Paper defaults — unified at 0.05 for both metrics
+EPSILON_CLOSENESS = 0.05
 EPSILON_BETWEENNESS = 0.05
 
 # GLA scenario reaches for annotation

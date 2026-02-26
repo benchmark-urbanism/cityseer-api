@@ -29,9 +29,9 @@ from utilities import (
     TABLES_DIR,
 )
 
-# Paper default epsilons
-PAPER_EPSILON_CLOSENESS = 0.1
-PAPER_EPSILON_BETWEENNESS = 0.1
+# Paper default epsilons — unified at 0.05 for both metrics
+PAPER_EPSILON_CLOSENESS = 0.05
+PAPER_EPSILON_BETWEENNESS = 0.05
 
 # =============================================================================
 # DATA LOADING
@@ -108,6 +108,13 @@ def generate_macros() -> str:
     gla_betw_rhos = gla_df["rho_betweenness"].dropna()
     gla_min_rho_b = gla_betw_rhos.min() if len(gla_betw_rhos) > 0 else float("nan")
 
+    # Load GLA node count from cache (written by 02_validate_gla.py)
+    gla_n_nodes_path = CACHE_DIR / "gla_n_nodes.json"
+    gla_n_nodes = None
+    if gla_n_nodes_path.exists():
+        with open(gla_n_nodes_path) as f:
+            gla_n_nodes = json.load(f)["n_nodes"]
+
     # -------------------------------------------------------------------------
     # Generate LaTeX content
     # -------------------------------------------------------------------------
@@ -155,13 +162,15 @@ def generate_macros() -> str:
 % GLA VALIDATION RESULTS
 % -----------------------------------------------------------------------------
 
-% GLA network size (approximate)
-\\newcommand{{\\glaNnodes}}{{294{{,}}000}}
+% GLA network size (live nodes within boundary)
 
 % Minimum observed rho across all GLA distances
 \\newcommand{{\\glaMinRho}}{{{gla_min_rho_c_conservative}}}
 \\newcommand{{\\glaMinRhoCloseness}}{{{gla_min_rho_c:.4f}}}
 """
+
+    if gla_n_nodes is not None:
+        macros += f"\\newcommand{{\\glaNnodes}}{{{format_number(gla_n_nodes, 0)}}}\n"
 
     if not np.isnan(gla_min_rho_b):
         macros += f"\\newcommand{{\\glaMinRhoBetweenness}}{{{gla_min_rho_b:.4f}}}\n"

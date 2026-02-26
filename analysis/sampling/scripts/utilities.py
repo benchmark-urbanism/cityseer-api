@@ -10,8 +10,8 @@ Sections:
 3. Network helpers (live buffer)
 4. Hoeffding / EW bound utilities (analysis-specific)
 
-Note: Sampling and source selection use cityseer.config.spatial_sample.
-      Hoeffding probability uses cityseer.config.compute_hoeffding_p.
+Note: Distance-based sampling probability uses cityseer.config.compute_distance_p.
+      Hoeffding probability (for cache sweep) uses cityseer.config.compute_hoeffding_p.
 """
 
 import math
@@ -45,7 +45,7 @@ for d in [CACHE_DIR, OUTPUT_DIR, FIGURES_DIR, TABLES_DIR]:
 # Cache version for invalidation — bump this to force all caches to regenerate
 # Versioned filenames (synthetic pkl, validation CSVs) auto-regenerate on bump.
 # Network graphs (gla_graph.pkl, gla_ground_truth_*.pkl) are unversioned and persist.
-CACHE_VERSION = "v29"
+CACHE_VERSION = "v33"
 
 # Canonical per-quartile key prefixes — single source of truth for fallback/perfect blocks
 QUARTILE_KEYS = ("spearman", "mae", "max_error", "reach")

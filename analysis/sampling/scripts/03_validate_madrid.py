@@ -27,7 +27,7 @@ import numpy as np
 import osmnx as ox
 import pandas as pd
 import shapely
-from cityseer.config import compute_hoeffding_p, min_spatial_samples
+from cityseer.config import compute_distance_p
 from cityseer.metrics import networks
 from cityseer.tools import graphs, io
 from shapely.geometry import Point
@@ -56,7 +56,7 @@ MADRID_DISTANCES = [1000, 2000, 5000, 10000, 20000]
 N_RUNS = 5
 
 # Hoeffding + spatial source sampling (both metrics)
-MADRID_EPSILON_CLOSENESS = 0.1
+MADRID_EPSILON_CLOSENESS = 0.05
 MADRID_EPSILON_BETWEENNESS = 0.05
 
 DELTA = HOEFFDING_DELTA
@@ -99,35 +99,12 @@ def generate_validation_data(force: bool = False) -> pd.DataFrame:
 
     if validation_csv.exists() and not force:
         df = pd.read_csv(validation_csv)
-        if "model" in df.columns:
-            print(f"Stale cache detected at {validation_csv}, regenerating...")
-        elif "rho_closeness" in df.columns and "rho_betweenness" in df.columns and len(df) > 0:
+        missing = required_cols - set(df.columns)
+        if len(df) > 0 and not missing:
             print(f"Loading cached validation data from {validation_csv}")
-            # Handle old column names from previous cache versions
-            renames = {}
-            if "hoeffding_p" in df.columns and "hoeffding_p_close" not in df.columns:
-                renames["hoeffding_p"] = "hoeffding_p_close"
-            if "epsilon" in df.columns and "epsilon_closeness" not in df.columns:
-                renames["epsilon"] = "epsilon_closeness"
-            if "speedup" in df.columns and "speedup_closeness" not in df.columns:
-                renames["speedup"] = "speedup_closeness"
-            if "baseline_time" in df.columns and "baseline_time_h" not in df.columns:
-                renames["baseline_time"] = "baseline_time_h"
-            if renames:
-                df = df.rename(columns=renames)
-            if "hoeffding_p_betw" not in df.columns:
-                df["hoeffding_p_betw"] = df.get("hoeffding_p_close", float("nan"))
-            if "epsilon_betweenness" not in df.columns:
-                df["epsilon_betweenness"] = df.get("epsilon_closeness", 0.1)
-            if "speedup_betweenness" not in df.columns:
-                df["speedup_betweenness"] = float("nan")
-            if "baseline_time_b" not in df.columns:
-                df["baseline_time_b"] = float("nan")
-            missing = required_cols - set(df.columns)
-            if missing:
-                print(f"Stale cache columns at {validation_csv}: missing {sorted(missing)}")
-            else:
-                return df
+            return df
+        if missing:
+            print(f"Stale cache columns at {validation_csv}: missing {sorted(missing)}, regenerating...")
         else:
             print(f"Stale/empty cache at {validation_csv}, regenerating...")
 
@@ -231,16 +208,10 @@ def generate_validation_data(force: bool = False) -> pd.DataFrame:
         print(f"  Mean reach: {mean_reach:.0f}")
 
         # ---------------------------------------------------------------
-        # Closeness: Hoeffding + spatial source sampling
+        # Closeness: distance-based sampling
         # ---------------------------------------------------------------
-        p_close = compute_hoeffding_p(mean_reach, epsilon=MADRID_EPSILON_CLOSENESS, delta=DELTA)
-        n_cells = min_spatial_samples(net, cell_size=dist / 2)
-        n_sources_close = min(n_live, max(n_cells, int(p_close * n_live))) if n_live > 0 else 0
-        actual_p_close = (n_sources_close / n_live) if n_live > 0 else 1.0
-        print(
-            f"  Closeness eps={MADRID_EPSILON_CLOSENESS}: p={p_close:.4f} "
-            f"(actual {actual_p_close:.4f}), cells={n_cells}"
-        )
+        actual_p_close = compute_distance_p(dist, epsilon=MADRID_EPSILON_CLOSENESS)
+        print(f"  Closeness eps={MADRID_EPSILON_CLOSENESS}: p={actual_p_close:.4f}")
 
         spearmans_h, maes_h, precs_h, scales_h, quartiles_h = [], [], [], [], []
         close_times = []
@@ -252,7 +223,6 @@ def generate_validation_data(force: bool = False) -> pd.DataFrame:
                 net,
                 nodes_gdf.copy(),
                 distances=[dist],
-                epsilon=MADRID_EPSILON_CLOSENESS,
                 random_seed=42 + seed,
                 sample=True,
             )
@@ -281,12 +251,11 @@ def generate_validation_data(force: bool = False) -> pd.DataFrame:
         print(f" rho={rho_h:.3f}, speedup={speedup_h:.1f}x")
 
         # ---------------------------------------------------------------
-        # Betweenness: Hoeffding + spatial source sampling
+        # Betweenness: distance-based sampling
         # ---------------------------------------------------------------
         nonzero_betw = np.sum(true_betweenness > 0)
         rho_b = float("nan")
         speedup_b = float("nan")
-        p_betw = float("nan")
         actual_p_betw = float("nan")
         max_mae_b = float("nan")
         eps_obs_b = float("nan")
@@ -296,11 +265,8 @@ def generate_validation_data(force: bool = False) -> pd.DataFrame:
         if nonzero_betw < 10:
             print(f"  Betweenness: skipped (only {nonzero_betw} nonzero)")
         else:
-            p_betw = compute_hoeffding_p(mean_reach, epsilon=MADRID_EPSILON_BETWEENNESS, delta=DELTA)
-            print(f"  Betweenness eps={MADRID_EPSILON_BETWEENNESS}: p={p_betw:.4f}")
-            n_sources_betw = min(n_live, max(n_cells, int(p_betw * n_live))) if n_live > 0 else 0
-            actual_p_betw = (n_sources_betw / n_live) if n_live > 0 else 1.0
-            print(f"    Actual p after cell floor: {actual_p_betw:.4f}")
+            actual_p_betw = compute_distance_p(dist, epsilon=MADRID_EPSILON_BETWEENNESS)
+            print(f"  Betweenness eps={MADRID_EPSILON_BETWEENNESS}: p={actual_p_betw:.4f}")
 
             spearmans_b, maes_b, precs_b, scales_b, quartiles_b = [], [], [], [], []
             betw_times = []
@@ -312,7 +278,6 @@ def generate_validation_data(force: bool = False) -> pd.DataFrame:
                     net,
                     nodes_gdf.copy(),
                     distances=[dist],
-                    epsilon=MADRID_EPSILON_BETWEENNESS,
                     random_seed=42 + seed,
                     sample=True,
                 )
@@ -347,7 +312,6 @@ def generate_validation_data(force: bool = False) -> pd.DataFrame:
             # Closeness
             "epsilon_closeness": MADRID_EPSILON_CLOSENESS,
             "hoeffding_p_close": actual_p_close,
-            "hoeffding_p_close_requested": p_close,
             "rho_closeness": rho_h,
             "max_abs_error_h": max_mae_h,
             "eps_obs_h": eps_obs_h,
@@ -358,8 +322,7 @@ def generate_validation_data(force: bool = False) -> pd.DataFrame:
             "speedup_closeness": speedup_h,
             # Betweenness
             "epsilon_betweenness": MADRID_EPSILON_BETWEENNESS,
-            "hoeffding_p_betw": actual_p_betw if np.isfinite(p_betw) else float("nan"),
-            "hoeffding_p_betw_requested": p_betw,
+            "hoeffding_p_betw": actual_p_betw,
             "rho_betweenness": rho_b,
             "max_abs_error_b": max_mae_b,
             "eps_obs_b": eps_obs_b,

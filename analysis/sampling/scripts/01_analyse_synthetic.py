@@ -21,7 +21,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from cityseer.config import compute_hoeffding_p
+from cityseer.config import HOEFFDING_EPSILON, compute_distance_p, compute_hoeffding_p
 from utilities import (
     CACHE_DIR,
     CACHE_VERSION,
@@ -38,7 +38,7 @@ from utilities import (
 
 SYNTHETIC_CACHE = CACHE_DIR / f"sampling_analysis_{CACHE_VERSION}.pkl"
 
-PAPER_EPSILON_CLOSENESS = 0.1
+PAPER_EPSILON_CLOSENESS = 0.05
 PAPER_EPSILON_BETWEENNESS = 0.05
 
 EPSILON_TARGETS = [0.05, 0.1, 0.2]
@@ -184,28 +184,47 @@ def evaluate_node_level_accuracy(df: pd.DataFrame) -> pd.DataFrame:
 def compute_threshold_epsilons(df: pd.DataFrame, rho_target: float = 0.95) -> dict[str, float]:
     """Find the epsilon at which rho crosses rho_target for each metric.
 
-    For each metric, pools across distances and finds the largest target_epsilon where
-    mean rho >= rho_target, using the eps_targeted sweep rows.
+    Reports per-topology and overall. Uses eps_targeted sweep rows only.
     """
     results = {}
+    eps_df = df[(df["sweep_type"] == "eps_targeted") & (df["actual_sample_prob"] < 1.0)]
     print(f"\nEmpirical epsilon threshold (rho >= {rho_target}):")
     for metric in ["harmonic", "betweenness"]:
-        subset = df[(df["metric"] == metric) & (df["actual_sample_prob"] < 1.0)]
-        grouped = (
+        subset = eps_df[eps_df["metric"] == metric]
+        print(f"\n  {metric}:")
+
+        # Per-topology breakdown
+        for topo in sorted(subset["topology"].unique()):
+            topo_sub = subset[subset["topology"] == topo]
+            grouped = (
+                topo_sub.groupby("target_epsilon")["spearman"]
+                .mean()
+                .reset_index()
+                .sort_values("target_epsilon")
+            )
+            above = grouped[grouped["spearman"] >= rho_target]
+            if len(above) == 0:
+                print(f"    [{topo}]: never reaches rho={rho_target}")
+            else:
+                threshold_eps = above["target_epsilon"].max()
+                threshold_rho = above.loc[above["target_epsilon"].idxmax(), "spearman"]
+                print(f"    [{topo}]: threshold eps={threshold_eps:.3f}  (rho={threshold_rho:.3f})")
+
+        # Overall mean
+        grouped_all = (
             subset.groupby("target_epsilon")["spearman"]
             .mean()
             .reset_index()
             .sort_values("target_epsilon")
         )
-        # Find the largest epsilon where rho is still >= rho_target
-        above = grouped[grouped["spearman"] >= rho_target]
-        if len(above) == 0:
-            print(f"  {metric}: never reaches rho={rho_target} in this dataset")
+        above_all = grouped_all[grouped_all["spearman"] >= rho_target]
+        if len(above_all) == 0:
+            print(f"    [overall mean]: never reaches rho={rho_target}")
             results[metric] = np.nan
         else:
-            threshold_eps = above["target_epsilon"].max()
-            threshold_rho = above.loc[above["target_epsilon"].idxmax(), "spearman"]
-            print(f"  {metric}: threshold eps={threshold_eps:.3f}  (rho={threshold_rho:.3f} at that point)")
+            threshold_eps = above_all["target_epsilon"].max()
+            threshold_rho = above_all.loc[above_all["target_epsilon"].idxmax(), "spearman"]
+            print(f"    [overall mean]: threshold eps={threshold_eps:.3f}  (rho={threshold_rho:.3f})")
             results[metric] = threshold_eps
     return results
 
@@ -279,11 +298,37 @@ def generate_fig1_rho_vs_epsilon(df: pd.DataFrame):
         ax.axvline(paper_eps, color="grey", linestyle=":", linewidth=1.2, alpha=0.8)
         ax.text(paper_eps + 0.002, 0.35, rf"$\varepsilon$={paper_eps}", fontsize=8, color="grey", ha="left")
 
+        # Distance-based deterministic method: overlay achieved rho per distance
+        det_eps = HOEFFDING_EPSILON
+        det_subset = df[(df["metric"] == metric_label) & (df["sweep_type"] == "distance_based")]
+        if not det_subset.empty:
+            det_grouped = det_subset.groupby("distance").agg(
+                mean_reach=("mean_reach", "mean"),
+                spearman=("spearman", "mean"),
+            ).reset_index()
+            # Compute the effective epsilon for each distance using canonical grid model
+            det_grouped["eff_eps"] = det_grouped["distance"].apply(
+                lambda d: det_eps  # by design: we target this epsilon
+            )
+            ax.scatter(
+                [det_eps] * len(det_grouped),
+                det_grouped["spearman"],
+                color=colour,
+                marker="*",
+                s=120,
+                zorder=5,
+                label="Distance-based method",
+            )
+            # Show mean achieved rho as a horizontal span
+            det_mean_rho = det_grouped["spearman"].mean()
+            ax.axhline(det_mean_rho, color=colour, linestyle="-.", linewidth=1.0, alpha=0.5)
+
         ax.set_xlabel(r"Target $\varepsilon$")
         ax.set_ylabel(r"Spearman $\rho$ (ranking accuracy)")
         ax.set_title(f"{panel_label} {metric_display}")
         ax.set_xlim(left=0)
         ax.set_ylim(0.3, 1.02)
+        ax.legend(loc="lower left", fontsize=8)
         ax.grid(True, alpha=0.3)
 
     fig.suptitle(r"Ranking Accuracy vs $\varepsilon$", fontsize=13, fontweight="bold", y=1.02)
@@ -351,8 +396,7 @@ def generate_fig3_hoeffding_bound():
 def generate_fig4_speedup(df: pd.DataFrame):
     """Figure 4: Speedup at paper default epsilons.
 
-    Closeness uses epsilon=0.1, betweenness uses epsilon=0.05. The more conservative
-    betweenness epsilon means less speedup but better ranking accuracy.
+    Both metrics use epsilon=0.05 (unified paper default).
     """
     print("\nGenerating Figure 4: Speedup...")
 
@@ -529,8 +573,7 @@ def generate_tab1_ew_comparison():
 \centering
 \caption{Required sample sizes under the Hoeffding/EW bound at different additive
   error tolerances ($\delta = 0.1$): $k = \log(2r/\delta) / (2\varepsilon^2)$,
-  $p = \min(1, k/r)$. Paper defaults: closeness $\varepsilon=0.1$,
-  betweenness $\varepsilon=0.05$.}
+  $p = \min(1, k/r)$. Paper default: $\varepsilon=0.05$ for both metrics.}
 \label{tab:ew_comparison}
 \small
 """

@@ -27,7 +27,7 @@ import geopandas as gpd
 import numpy as np
 import osmnx as ox
 import pandas as pd
-from cityseer.config import compute_hoeffding_p, min_spatial_samples
+from cityseer.config import compute_distance_p
 from cityseer.metrics import networks
 from cityseer.tools import graphs, io
 from shapely.geometry import Point
@@ -54,7 +54,7 @@ GLA_GPKG_FILE = SCRIPT_DIR.parent.parent.parent / "temp" / "os_open_roads" / "op
 # Validation parameters
 GLA_DISTANCES = [1000, 2000, 5000, 10000, 20000]
 # Hoeffding + spatial source sampling (both metrics)
-GLA_EPSILON_CLOSENESS = 0.1
+GLA_EPSILON_CLOSENESS = 0.05
 GLA_EPSILON_BETWEENNESS = 0.05
 N_RUNS = 1  # GLA is huge; keep runs minimal
 
@@ -252,15 +252,12 @@ def generate_validation_data(force: bool = False) -> pd.DataFrame:
         print(f"  Mean reach: {mean_reach:.0f}")
 
         # ---------------------------------------------------------------
-        # Closeness: Hoeffding + spatial source sampling
+        # Closeness: distance-based sampling
         # ---------------------------------------------------------------
         eps_close = GLA_EPSILON_CLOSENESS
-        hoeffding_p = compute_hoeffding_p(mean_reach, epsilon=eps_close)
         n_live = int(live_mask.sum())
-        n_cells = min_spatial_samples(net, cell_size=dist / 2)
-        n_sources_close = min(n_live, max(n_cells, int(hoeffding_p * n_live))) if n_live > 0 else 0
-        actual_p_close = (n_sources_close / n_live) if n_live > 0 else 1.0
-        print(f"\n  Closeness eps={eps_close}: p={hoeffding_p:.4f} (actual {actual_p_close:.4f}), cells={n_cells}")
+        actual_p_close = compute_distance_p(dist, epsilon=eps_close)
+        print(f"\n  Closeness eps={eps_close}: p={actual_p_close:.4f}")
 
         spearmans_h, maes_h, precs_h, scales_h, quartiles_h = [], [], [], [], []
         close_times = []
@@ -271,7 +268,6 @@ def generate_validation_data(force: bool = False) -> pd.DataFrame:
                 net,
                 nodes_gdf.copy(),
                 distances=[dist],
-                epsilon=eps_close,
                 random_seed=42 + seed,
                 sample=True,
             )
@@ -302,7 +298,6 @@ def generate_validation_data(force: bool = False) -> pd.DataFrame:
                 "epsilon": eps_close,
                 "metric": "harmonic",
                 "budget_param": actual_p_close,
-                "budget_param_requested": hoeffding_p,
                 "spearman": np.mean(spearmans_h),
                 "spearman_min": np.min(spearmans_h),
                 "spearman_max": np.max(spearmans_h),
@@ -330,21 +325,17 @@ def generate_validation_data(force: bool = False) -> pd.DataFrame:
         print(f" rho_h={rho_h_str}")
 
         # ---------------------------------------------------------------
-        # Betweenness: Hoeffding + spatial source sampling
+        # Betweenness: distance-based sampling
         # ---------------------------------------------------------------
         nonzero_betw = np.sum(true_betweenness > 0)
-        hoeffding_p_b = float("nan")
         actual_p_b = float("nan")
         est_betweenness = None
         if nonzero_betw < 10:
             print(f"  Betweenness: skipped (only {nonzero_betw} nonzero)")
         else:
             eps_betw = GLA_EPSILON_BETWEENNESS
-            hoeffding_p_b = compute_hoeffding_p(mean_reach, epsilon=eps_betw)
-            n_live = int(live_mask.sum())
-            n_sources_b = min(n_live, max(n_cells, int(hoeffding_p_b * n_live))) if n_live > 0 else 0
-            actual_p_b = (n_sources_b / n_live) if n_live > 0 else 1.0
-            print(f"\n  Betweenness eps={eps_betw}: p={hoeffding_p_b:.4f} (actual {actual_p_b:.4f})")
+            actual_p_b = compute_distance_p(dist, epsilon=eps_betw)
+            print(f"\n  Betweenness eps={eps_betw}: p={actual_p_b:.4f}")
 
             spearmans_b, maes_b, precs_b, scales_b, quartiles_b = [], [], [], [], []
             betw_times = []
@@ -355,7 +346,6 @@ def generate_validation_data(force: bool = False) -> pd.DataFrame:
                     net,
                     nodes_gdf.copy(),
                     distances=[dist],
-                    epsilon=eps_betw,
                     random_seed=42 + seed,
                     sample=True,
                 )
@@ -386,7 +376,6 @@ def generate_validation_data(force: bool = False) -> pd.DataFrame:
                     "epsilon": eps_betw,
                     "metric": "betweenness",
                     "budget_param": actual_p_b,
-                    "budget_param_requested": hoeffding_p_b,
                     "spearman": np.mean(spearmans_b),
                     "spearman_min": np.min(spearmans_b),
                     "spearman_max": np.max(spearmans_b),
@@ -425,12 +414,10 @@ def generate_validation_data(force: bool = False) -> pd.DataFrame:
             "est_harmonic": est_harmonic,
             "epsilon_closeness": GLA_EPSILON_CLOSENESS,
             "hoeffding_p": actual_p_close,
-            "hoeffding_p_requested": hoeffding_p,
             "true_betweenness": true_betweenness,
             "est_betweenness": est_betweenness if est_betweenness is not None else None,
             "epsilon_betweenness": GLA_EPSILON_BETWEENNESS,
             "hoeffding_p_betw": actual_p_b if nonzero_betw >= 10 else None,
-            "hoeffding_p_betw_requested": hoeffding_p_b if nonzero_betw >= 10 else None,
         }
         with open(sampled_cache, "wb") as f:
             pickle.dump(sampled_data, f)
