@@ -198,7 +198,7 @@ class TestSamplingWeights:
         ns, nodes_gdf = network_structure
         weights = [1.0] * (len(nodes_gdf) - 1)
 
-        with pytest.raises(ValueError, match="must match node count"):
+        with pytest.raises(ValueError, match="must match node_bound"):
             ns.closeness_shortest(
                 distances=[500], sample_probability=0.5, sampling_weights=weights, pbar_disabled=True
             )

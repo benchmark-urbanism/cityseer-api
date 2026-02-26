@@ -120,7 +120,7 @@ Figure~\ref{fig:headline} illustrates why sampling-based centrality is attractiv
 
 \begin{figure}[htbp]
   \centering
-  \includegraphics[width=\textwidth]{figures/fig1_headline.pdf}
+  \includegraphics[width=\textwidth]{figures/fig1_rho_vs_epsilon.pdf}
   \caption{\textbf{The sampling opportunity.} (A) Accuracy (Spearman $\rho$) vs.\ $\varepsilon$ for closeness and betweenness at different analysis distances. The green dashed line marks the $\rho = \targetRho$ target. (B) Potential speedup at each distance while maintaining $\rho \geq \targetRho$.}
   \label{fig:headline}
 \end{figure}
@@ -185,7 +185,7 @@ Although the additive error analyses target a uniform error criterion, it is nat
 
 \begin{figure}[htbp]
   \centering
-  \includegraphics[width=\textwidth]{figures/fig3_error_crossover.pdf}
+  \includegraphics[width=\textwidth]{figures/fig5_error_vs_reach.pdf}
   \caption{\textbf{Error crossover: precision scales with importance.} Per-node errors for both closeness and betweenness, pooled across all synthetic configurations at the model-prescribed budgets ($\varepsilon = \hoeffdingEpsilon$), binned by absolute per-node reach (log scale). Error bars show interquartile range across nodes within each bin. (A) Absolute error increases with reach: high-centrality nodes accumulate larger absolute errors because their centrality values are large sums over many contributions. (B) Normalised error decreases with reach: relative error shrinks because high-reach nodes enjoy higher effective sample sizes. Dashed lines show the Hoeffding theoretical bound: observed median errors are well below the worst-case predictions for both metrics. Normalisers are $r$ for closeness and $r(r-1)$ for betweenness.}
   \label{fig:error_crossover}
 \end{figure}
@@ -265,7 +265,7 @@ For example, on the Greater London network (Section~\ref{sec:validation}), the m
 
 Both sampling schedules are calibrated to additive error $\varepsilon$, but urban applications typically care about rank order. We therefore report Spearman $\rho$ as the primary validation metric: if the schedules control additive error, and the error structure concentrates precision at high-centrality nodes (Section~\ref{sec:models}), then rank preservation should follow.
 
-We evaluate on the GLA and Greater Madrid networks described in Section~\ref{sec:methods}. Both closeness and betweenness are computed via source-sampling at the Hoeffding-prescribed probability $p$ (Equation~\ref{eq:unified_p}), with $\varepsilon = \hoeffdingEpsilon$ and $\delta = \hoeffdingDelta$. For the GLA network, we compare against ground-truth centrality computed from all sources ($p = 1.0$). For the Madrid network, we repeat each configuration with five random seeds and report the mean to assess stability.
+We evaluate on the GLA and Greater Madrid networks described in Section~\ref{sec:methods}. Both closeness and betweenness are computed via source-sampling at the Hoeffding-prescribed probability $p$ (Equation~\ref{eq:unified_p}), with $\varepsilon = \hoeffdingEpsilon$ and $\delta = \hoeffdingDelta$. For both networks, each sampled configuration is repeated with three random seeds and the mean reported to assess stability. Ground-truth centrality for the GLA network is computed from all sources ($p = 1.0$).
 
 \textbf{Greater London.}
 Table~\ref{tab:validation} presents validation results for the Greater London network at five distances from 1--20\,km. At all distances, both harmonic closeness and betweenness achieve $\rho > \targetRho$, with the minimum observed $\rho = \glaMinRho$ (betweenness, 20\,km). At short distances (1--2\,km), the model prescribes $p = 1.0$ (exact computation). At longer distances, the prescribed sampling probabilities decrease with reach, and speedups grow from \glaFiveKmSpeedup{}$\times$ at 5\,km to \glaTwentyKmSpeedup{}$\times$ at 20\,km.
@@ -291,7 +291,7 @@ For users of the \cityseer{} library, sampling is applied automatically: the use
 
 \begin{figure}[htbp]
   \centering
-  \includegraphics[width=\textwidth]{figures/fig4_practical_guide.pdf}
+  \includegraphics[width=\textwidth]{figures/fig6_practical_guide.pdf}
   \caption{\textbf{Practical guidance.} (A) Required sampling probability $p$ vs.\ reach under the unified Hoeffding schedule ($\varepsilon = \hoeffdingEpsilon$, $\delta = \hoeffdingDelta$), annotated with GLA network distance thresholds. (B) Expected computational speedup $1/p$ vs.\ reach.}
   \label{fig:guide}
 \end{figure}

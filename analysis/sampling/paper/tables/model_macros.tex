@@ -1,6 +1,6 @@
 % =============================================================================
 % Model Macros - AUTO-GENERATED from analysis pipeline
-% Generated: 2026-02-26 07:54:24
+% Generated: 2026-02-26 12:43:10
 % Source files:
 %   - output/gla_validation_summary.csv
 %   - output/madrid_validation.csv (if available)
@@ -15,76 +15,76 @@
 % -----------------------------------------------------------------------------
 
 % Default parameters
-\newcommand{\hoeffdingEpsilon}{0.1}
-\newcommand{\hoeffdingEpsilonCloseness}{0.1}
-\newcommand{\hoeffdingEpsilonBetweenness}{0.1}
+\newcommand{\hoeffdingEpsilon}{0.05}
+\newcommand{\hoeffdingEpsilonCloseness}{0.05}
+\newcommand{\hoeffdingEpsilonBetweenness}{0.05}
 \newcommand{\hoeffdingDelta}{0.1}
 \newcommand{\targetRho}{0.95}
 
-% Hoeffding required k at common reaches (epsilon=0.1, delta=0.1)
-\newcommand{\hoeffdingKFiveK}{576}
-\newcommand{\hoeffdingKTenK}{610}
-\newcommand{\hoeffdingKTwentyK}{645}
+% Hoeffding required k at common reaches (epsilon=0.05, delta=0.1)
+\newcommand{\hoeffdingKFiveK}{2303}
+\newcommand{\hoeffdingKTenK}{2441}
+\newcommand{\hoeffdingKTwentyK}{2580}
 
 % Hoeffding sampling probability at common reaches (closeness)
-\newcommand{\hoeffdingPOneK}{49.5}
-\newcommand{\hoeffdingPTwoK}{26.5}
-\newcommand{\hoeffdingPFiveK}{11.5}
-\newcommand{\hoeffdingPTenK}{6.1}
-\newcommand{\hoeffdingPTwentyK}{3.2}
+\newcommand{\hoeffdingPOneK}{100.0}
+\newcommand{\hoeffdingPTwoK}{100.0}
+\newcommand{\hoeffdingPFiveK}{46.1}
+\newcommand{\hoeffdingPTenK}{24.4}
+\newcommand{\hoeffdingPTwentyK}{12.9}
 
 % Hoeffding speedup at common reaches (closeness)
-\newcommand{\hoeffdingSpeedupFiveK}{8.7}
-\newcommand{\hoeffdingSpeedupTenK}{16.4}
-\newcommand{\hoeffdingSpeedupTwentyK}{31.0}
+\newcommand{\hoeffdingSpeedupFiveK}{2.2}
+\newcommand{\hoeffdingSpeedupTenK}{4.1}
+\newcommand{\hoeffdingSpeedupTwentyK}{7.8}
 
 % -----------------------------------------------------------------------------
 % GLA VALIDATION RESULTS
 % -----------------------------------------------------------------------------
 
-% GLA network size (approximate)
-\newcommand{\glaNnodes}{294{,}000}
+% GLA network size (live nodes within boundary)
 
 % Minimum observed rho across all GLA distances
-\newcommand{\glaMinRho}{0.97}
-\newcommand{\glaMinRhoCloseness}{0.9755}
+\newcommand{\glaMinRho}{0.99}
+\newcommand{\glaMinRhoCloseness}{0.9930}
+\newcommand{\glaNnodes}{156{,}285}
 \newcommand{\glaMinRhoBetweenness}{0.9795}
 
 % 5km validation
 \newcommand{\glaFiveKmReach}{5{,}100}
-\newcommand{\glaFiveKmRhoH}{0.976}
-\newcommand{\glaFiveKmRho}{0.976}
-\newcommand{\glaFiveKmSpeedup}{7.1}
-\newcommand{\glaFiveKmSpeedupCloseness}{7.1}
+\newcommand{\glaFiveKmRhoH}{0.996}
+\newcommand{\glaFiveKmRho}{0.996}
+\newcommand{\glaFiveKmSpeedup}{1.5}
+\newcommand{\glaFiveKmSpeedupCloseness}{1.5}
 \newcommand{\glaFiveKmRhoB}{0.998}
 \newcommand{\glaFiveKmSpeedupBetweenness}{1.6}
-\newcommand{\glaHoeffdingFiveKmRhoH}{0.976}
-\newcommand{\glaHoeffdingFiveKmP}{11.3}
-\newcommand{\glaHoeffdingFiveKmSpeedup}{8.8}
+\newcommand{\glaHoeffdingFiveKmRhoH}{0.996}
+\newcommand{\glaHoeffdingFiveKmP}{45.2}
+\newcommand{\glaHoeffdingFiveKmSpeedup}{2.2}
 
 % 10km validation
 \newcommand{\glaTenKmReach}{20{,}394}
-\newcommand{\glaTenKmRhoH}{0.979}
-\newcommand{\glaTenKmRho}{0.979}
-\newcommand{\glaTenKmSpeedup}{18.6}
-\newcommand{\glaTenKmSpeedupCloseness}{18.6}
+\newcommand{\glaTenKmRhoH}{0.994}
+\newcommand{\glaTenKmRho}{0.994}
+\newcommand{\glaTenKmSpeedup}{4.7}
+\newcommand{\glaTenKmSpeedupCloseness}{4.7}
 \newcommand{\glaTenKmRhoB}{0.990}
-\newcommand{\glaTenKmSpeedupBetweenness}{5.5}
-\newcommand{\glaHoeffdingTenKmRhoH}{0.979}
-\newcommand{\glaHoeffdingTenKmP}{3.2}
-\newcommand{\glaHoeffdingTenKmSpeedup}{31.6}
+\newcommand{\glaTenKmSpeedupBetweenness}{4.8}
+\newcommand{\glaHoeffdingTenKmRhoH}{0.994}
+\newcommand{\glaHoeffdingTenKmP}{12.7}
+\newcommand{\glaHoeffdingTenKmSpeedup}{7.9}
 
 % 20km validation
 \newcommand{\glaTwentyKmReach}{69{,}463}
-\newcommand{\glaTwentyKmRhoH}{0.984}
-\newcommand{\glaTwentyKmRho}{0.984}
-\newcommand{\glaTwentyKmSpeedup}{58.8}
-\newcommand{\glaTwentyKmSpeedupCloseness}{58.8}
+\newcommand{\glaTwentyKmRhoH}{0.993}
+\newcommand{\glaTwentyKmRho}{0.993}
+\newcommand{\glaTwentyKmSpeedup}{14.3}
+\newcommand{\glaTwentyKmSpeedupCloseness}{14.3}
 \newcommand{\glaTwentyKmRhoB}{0.980}
-\newcommand{\glaTwentyKmSpeedupBetweenness}{19.5}
-\newcommand{\glaHoeffdingTwentyKmRhoH}{0.984}
-\newcommand{\glaHoeffdingTwentyKmP}{1.0}
-\newcommand{\glaHoeffdingTwentyKmSpeedup}{98.2}
+\newcommand{\glaTwentyKmSpeedupBetweenness}{18.3}
+\newcommand{\glaHoeffdingTwentyKmRhoH}{0.993}
+\newcommand{\glaHoeffdingTwentyKmP}{4.1}
+\newcommand{\glaHoeffdingTwentyKmSpeedup}{24.6}
 
 % Live node buffer (km)
 \newcommand{\glaBuffer}{20}
@@ -94,29 +94,29 @@
 % -----------------------------------------------------------------------------
 
 \newcommand{\madridNnodes}{181{,}176}
-\newcommand{\madridMinRho}{0.9706}
+\newcommand{\madridMinRho}{0.9874}
 \newcommand{\madridMinRhoBetweenness}{0.9782}
 
 % 5km validation
 \newcommand{\madridFiveKmReach}{2{,}447}
-\newcommand{\madridFiveKmRhoH}{0.9778}
-\newcommand{\madridFiveKmSpeedup}{6.1}
+\newcommand{\madridFiveKmRhoH}{0.9969}
+\newcommand{\madridFiveKmSpeedup}{1.6}
 \newcommand{\madridFiveKmRhoB}{0.9980}
-\newcommand{\madridFiveKmSpeedupBetweenness}{1.6}
+\newcommand{\madridFiveKmSpeedupBetweenness}{1.1}
 
 % 10km validation
 \newcommand{\madridTenKmReach}{8{,}802}
-\newcommand{\madridTenKmRhoH}{0.9720}
-\newcommand{\madridTenKmSpeedup}{19.9}
+\newcommand{\madridTenKmRhoH}{0.9905}
+\newcommand{\madridTenKmSpeedup}{4.6}
 \newcommand{\madridTenKmRhoB}{0.9895}
-\newcommand{\madridTenKmSpeedupBetweenness}{5.5}
+\newcommand{\madridTenKmSpeedupBetweenness}{4.8}
 
 % 20km validation
 \newcommand{\madridTwentyKmReach}{29{,}438}
-\newcommand{\madridTwentyKmRhoH}{0.9706}
-\newcommand{\madridTwentyKmSpeedup}{64.7}
+\newcommand{\madridTwentyKmRhoH}{0.9874}
+\newcommand{\madridTwentyKmSpeedup}{26.4}
 \newcommand{\madridTwentyKmRhoB}{0.9782}
-\newcommand{\madridTwentyKmSpeedupBetweenness}{20.2}
+\newcommand{\madridTwentyKmSpeedupBetweenness}{21.5}
 
 
 % -----------------------------------------------------------------------------
@@ -124,7 +124,7 @@
 % -----------------------------------------------------------------------------
 
 % Minimum observed rho across all validated networks (conservative, 2dp)
-\newcommand{\overallMinRho}{0.97}
+\newcommand{\overallMinRho}{0.98}
 
 % -----------------------------------------------------------------------------
 % SYNTHETIC DATA PARAMETERS

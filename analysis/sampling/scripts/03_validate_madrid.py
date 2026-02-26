@@ -53,7 +53,7 @@ MADRID_GPKG_FILE = SCRIPT_DIR.parent.parent.parent / "temp" / "RT_MADRID_gpkg" /
 
 # Validation parameters
 MADRID_DISTANCES = [1000, 2000, 5000, 10000, 20000]
-N_RUNS = 5
+N_RUNS = 3
 
 # Hoeffding + spatial source sampling (both metrics)
 MADRID_EPSILON_CLOSENESS = 0.05

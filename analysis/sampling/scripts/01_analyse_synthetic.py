@@ -5,7 +5,6 @@
 Loads the synthetic sampling cache and generates:
   - fig1_rho_vs_epsilon.pdf: Ranking accuracy (Spearman rho) vs epsilon, both metrics.
   - fig3_hoeffding_bound.pdf: Hoeffding bound — epsilon determines p and speedup.
-  - fig4_speedup.pdf: Speedup at paper default epsilons.
   - fig5_error_vs_reach.pdf: Absolute and normalised error vs reach.
   - tab1_ew_comparison.tex: Required k and p across epsilon values.
 
@@ -286,9 +285,8 @@ def generate_fig1_rho_vs_epsilon(df: pd.DataFrame):
         ax.plot(
             grouped["target_epsilon"],
             grouped["mean"],
-            "o-",
+            "-",
             color=colour,
-            markersize=5,
             linewidth=1.8,
         )
 
@@ -298,29 +296,25 @@ def generate_fig1_rho_vs_epsilon(df: pd.DataFrame):
         ax.axvline(paper_eps, color="grey", linestyle=":", linewidth=1.2, alpha=0.8)
         ax.text(paper_eps + 0.002, 0.35, rf"$\varepsilon$={paper_eps}", fontsize=8, color="grey", ha="left")
 
-        # Distance-based deterministic method: overlay achieved rho per distance
+        # Distance-based deterministic method: overlay mean achieved rho as a single star
+        # Only include distances where sampling actually occurs (sample_prob < 1)
         det_eps = HOEFFDING_EPSILON
-        det_subset = df[(df["metric"] == metric_label) & (df["sweep_type"] == "distance_based")]
+        det_subset = df[
+            (df["metric"] == metric_label)
+            & (df["sweep_type"] == "distance_based")
+            & (df["sample_prob"] < 1.0)
+        ]
         if not det_subset.empty:
-            det_grouped = det_subset.groupby("distance").agg(
-                mean_reach=("mean_reach", "mean"),
-                spearman=("spearman", "mean"),
-            ).reset_index()
-            # Compute the effective epsilon for each distance using canonical grid model
-            det_grouped["eff_eps"] = det_grouped["distance"].apply(
-                lambda d: det_eps  # by design: we target this epsilon
-            )
+            det_mean_rho = det_subset["spearman"].mean()
             ax.scatter(
-                [det_eps] * len(det_grouped),
-                det_grouped["spearman"],
+                [det_eps],
+                [det_mean_rho],
                 color=colour,
                 marker="*",
-                s=120,
+                s=200,
                 zorder=5,
                 label="Distance-based method",
             )
-            # Show mean achieved rho as a horizontal span
-            det_mean_rho = det_grouped["spearman"].mean()
             ax.axhline(det_mean_rho, color=colour, linestyle="-.", linewidth=1.0, alpha=0.5)
 
         ax.set_xlabel(r"Target $\varepsilon$")
@@ -352,12 +346,15 @@ def generate_fig3_hoeffding_bound():
     fig, axes = plt.subplots(1, 2, figsize=(11, 5))
 
     reach_range = np.logspace(1.5, 5.5, 500)
+    # All tested epsilons; paper default highlighted in colour, others in grey
     # (epsilon, colour, linewidth, linestyle, label)
     epsilon_specs = [
-        (PAPER_EPSILON_BETWEENNESS, "#B2182B", 2.0, "-",  rf"$\varepsilon$={PAPER_EPSILON_BETWEENNESS} (betweenness)"),
-        (PAPER_EPSILON_CLOSENESS,   "#2166AC", 2.0, "-",  rf"$\varepsilon$={PAPER_EPSILON_CLOSENESS} (closeness)"),
-        (0.15,                      "#969696", 1.2, "--", r"$\varepsilon$=0.15"),
-        (0.2,                       "#636363", 1.2, "--", r"$\varepsilon$=0.20"),
+        (0.025, "#636363", 1.2, "--", r"$\varepsilon$=0.025"),
+        (0.05,  "#2166AC", 2.2, "-",  rf"$\varepsilon$={PAPER_EPSILON_CLOSENESS} (default)"),
+        (0.075, "#969696", 1.2, "--", r"$\varepsilon$=0.075"),
+        (0.1,   "#969696", 1.2, "--", r"$\varepsilon$=0.10"),
+        (0.15,  "#969696", 1.2, "--", r"$\varepsilon$=0.15"),
+        (0.2,   "#636363", 1.2, "--", r"$\varepsilon$=0.20"),
     ]
 
     ax = axes[0]
@@ -388,84 +385,6 @@ def generate_fig3_hoeffding_bound():
     plt.tight_layout()
 
     output_path = FIGURES_DIR / "fig3_hoeffding_bound.pdf"
-    fig.savefig(output_path, dpi=300, bbox_inches="tight")
-    print(f"  Saved: {output_path}")
-    plt.close()
-
-
-def generate_fig4_speedup(df: pd.DataFrame):
-    """Figure 4: Speedup at paper default epsilons.
-
-    Both metrics use epsilon=0.05 (unified paper default).
-    """
-    print("\nGenerating Figure 4: Speedup...")
-
-    fig, ax = plt.subplots(figsize=(7, 5))
-
-    all_distances = sorted(df["distance"].unique())
-    bar_data = []
-
-    for dist in all_distances:
-        row_data: dict = {"distance": dist, "speedup_closeness": 1.0, "speedup_betweenness": 1.0}
-
-        for metric, paper_eps, col in [
-            ("harmonic", PAPER_EPSILON_CLOSENESS, "speedup_closeness"),
-            ("betweenness", PAPER_EPSILON_BETWEENNESS, "speedup_betweenness"),
-        ]:
-            subset = df[(df["metric"] == metric) & (df["distance"] == dist)]
-            if len(subset) > 0:
-                mean_reach = subset["mean_reach"].mean()
-                p = compute_hoeffding_p(mean_reach, epsilon=paper_eps, delta=HOEFFDING_DELTA)
-                row_data[col] = 1.0 / p if 0 < p < 1.0 else 1.0
-
-        bar_data.append(row_data)
-
-    bar_df = pd.DataFrame(bar_data)
-    x = np.arange(len(bar_df))
-    width = 0.35
-
-    bars_h = ax.bar(
-        x - width / 2,
-        bar_df["speedup_closeness"],
-        width,
-        color="#2166AC",
-        alpha=0.8,
-        label=rf"Closeness ($\varepsilon$={PAPER_EPSILON_CLOSENESS})",
-    )
-    bars_b = ax.bar(
-        x + width / 2,
-        bar_df["speedup_betweenness"],
-        width,
-        color="#B2182B",
-        alpha=0.8,
-        label=rf"Betweenness ($\varepsilon$={PAPER_EPSILON_BETWEENNESS})",
-    )
-
-    ax.set_xticks(x)
-    ax.set_xticklabels([f"{d}m" for d in bar_df["distance"]], rotation=45, ha="right")
-    ax.set_xlabel("Analysis Distance")
-    ax.set_ylabel("Speedup Factor (1/$p$)")
-    ax.set_title("Speedup at paper default epsilons")
-    ax.set_yscale("log")
-    ax.axhline(1.0, color="grey", linewidth=0.8, linestyle="--", alpha=0.5)
-    ax.legend(loc="upper left", fontsize=9)
-    ax.grid(True, alpha=0.3, axis="y", which="both")
-
-    for bars in [bars_h, bars_b]:
-        for bar in bars:
-            height = bar.get_height()
-            if height > 1.05:
-                ax.text(
-                    bar.get_x() + bar.get_width() / 2,
-                    height * 1.1,
-                    f"{height:.1f}x",
-                    ha="center",
-                    fontsize=7,
-                )
-
-    plt.tight_layout()
-
-    output_path = FIGURES_DIR / "fig4_speedup.pdf"
     fig.savefig(output_path, dpi=300, bbox_inches="tight")
     print(f"  Saved: {output_path}")
     plt.close()
@@ -634,7 +553,6 @@ def main():
 
     generate_fig1_rho_vs_epsilon(df)
     generate_fig3_hoeffding_bound()
-    generate_fig4_speedup(df)
     generate_fig5_error_vs_reach(node_acc)
     generate_tab1_ew_comparison()
 
@@ -643,7 +561,6 @@ def main():
     print("=" * 70)
     print(f"  {FIGURES_DIR / 'fig1_rho_vs_epsilon.pdf'}")
     print(f"  {FIGURES_DIR / 'fig3_hoeffding_bound.pdf'}")
-    print(f"  {FIGURES_DIR / 'fig4_speedup.pdf'}")
     print(f"  {FIGURES_DIR / 'fig5_error_vs_reach.pdf'}")
     print(f"  {TABLES_DIR / 'tab1_ew_comparison.tex'}")
 

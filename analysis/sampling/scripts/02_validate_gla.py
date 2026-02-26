@@ -56,7 +56,7 @@ GLA_DISTANCES = [1000, 2000, 5000, 10000, 20000]
 # Hoeffding + spatial source sampling (both metrics)
 GLA_EPSILON_CLOSENESS = 0.05
 GLA_EPSILON_BETWEENNESS = 0.05
-N_RUNS = 1  # GLA is huge; keep runs minimal
+N_RUNS = 3
 
 DELTA = HOEFFDING_DELTA
 
