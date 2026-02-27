@@ -21,6 +21,7 @@ use wkt::TryFromWkt;
 #[pyclass]
 #[derive(Clone)]
 pub struct LanduseAccess {
+    node_indices: Vec<usize>,
     weighted_vec: MetricResult,
     unweighted_vec: MetricResult,
     distance_vec: MetricResult,
@@ -30,15 +31,15 @@ pub struct LanduseAccess {
 impl LanduseAccess {
     #[getter]
     pub fn weighted(&self) -> HashMap<u32, Py<PyArray1<f32>>> {
-        self.weighted_vec.load()
+        self.weighted_vec.load_compact(&self.node_indices)
     }
     #[getter]
     pub fn unweighted(&self) -> HashMap<u32, Py<PyArray1<f32>>> {
-        self.unweighted_vec.load()
+        self.unweighted_vec.load_compact(&self.node_indices)
     }
     #[getter]
     pub fn distance(&self) -> HashMap<u32, Py<PyArray1<f32>>> {
-        self.distance_vec.load()
+        self.distance_vec.load_compact(&self.node_indices)
     }
 }
 
@@ -60,18 +61,19 @@ impl AccessibilityResult {
         distances: Vec<u32>,
         node_keys_py: Vec<Py<PyAny>>,
         node_indices: Vec<usize>,
+        capacity: usize,
         lu_keys: Vec<String>,
         max_dist: u32,
     ) -> Self {
-        let len = node_indices.len();
         let mut lu_map = HashMap::with_capacity(lu_keys.len());
         for lu_key in lu_keys {
             lu_map.insert(
                 lu_key,
                 LanduseAccess {
-                    weighted_vec: MetricResult::new(&distances, len, 0.0),
-                    unweighted_vec: MetricResult::new(&distances, len, 0.0),
-                    distance_vec: MetricResult::new(&vec![max_dist], len, f32::NAN),
+                    node_indices: node_indices.clone(),
+                    weighted_vec: MetricResult::new(&distances, capacity, 0.0),
+                    unweighted_vec: MetricResult::new(&distances, capacity, 0.0),
+                    distance_vec: MetricResult::new(&vec![max_dist], capacity, f32::NAN),
                 },
             );
         }
@@ -117,13 +119,13 @@ impl MixedUsesResult {
         distances: Vec<u32>,
         node_keys_py: Vec<Py<PyAny>>,
         node_indices: Vec<usize>,
+        capacity: usize,
     ) -> Self {
-        let len = node_indices.len();
         let mut hill_vec = HashMap::new();
         let mut hill_weighted_vec = HashMap::new();
         for q in [0, 1, 2] {
-            hill_vec.insert(q, MetricResult::new(&distances, len, 0.0));
-            hill_weighted_vec.insert(q, MetricResult::new(&distances, len, 0.0));
+            hill_vec.insert(q, MetricResult::new(&distances, capacity, 0.0));
+            hill_weighted_vec.insert(q, MetricResult::new(&distances, capacity, 0.0));
         }
         MixedUsesResult {
             distances: distances.clone(),
@@ -131,8 +133,8 @@ impl MixedUsesResult {
             node_indices: node_indices.clone(),
             hill_vec,
             hill_weighted_vec,
-            shannon_vec: MetricResult::new(&distances, len, 0.0),
-            gini_vec: MetricResult::new(&distances, len, 0.0),
+            shannon_vec: MetricResult::new(&distances, capacity, 0.0),
+            gini_vec: MetricResult::new(&distances, capacity, 0.0),
         }
     }
 }
@@ -141,28 +143,32 @@ impl MixedUsesResult {
 impl MixedUsesResult {
     #[getter]
     pub fn hill(&self) -> HashMap<u32, HashMap<u32, Py<PyArray1<f32>>>> {
-        self.hill_vec.iter().map(|(q, m)| (*q, m.load())).collect()
+        self.hill_vec
+            .iter()
+            .map(|(q, m)| (*q, m.load_compact(&self.node_indices)))
+            .collect()
     }
     #[getter]
     pub fn hill_weighted(&self) -> HashMap<u32, HashMap<u32, Py<PyArray1<f32>>>> {
         self.hill_weighted_vec
             .iter()
-            .map(|(q, m)| (*q, m.load()))
+            .map(|(q, m)| (*q, m.load_compact(&self.node_indices)))
             .collect()
     }
     #[getter]
     pub fn shannon(&self) -> HashMap<u32, Py<PyArray1<f32>>> {
-        self.shannon_vec.load()
+        self.shannon_vec.load_compact(&self.node_indices)
     }
     #[getter]
     pub fn gini(&self) -> HashMap<u32, Py<PyArray1<f32>>> {
-        self.gini_vec.load()
+        self.gini_vec.load_compact(&self.node_indices)
     }
 }
 
 #[pyclass]
 #[derive(Clone)]
 pub struct Stats {
+    node_indices: Vec<usize>,
     sum_vec: MetricResult,
     sum_wt_vec: MetricResult,
     mean_vec: MetricResult,
@@ -183,59 +189,59 @@ pub struct Stats {
 impl Stats {
     #[getter]
     pub fn sum(&self) -> HashMap<u32, Py<PyArray1<f32>>> {
-        self.sum_vec.load()
+        self.sum_vec.load_compact(&self.node_indices)
     }
     #[getter]
     pub fn sum_wt(&self) -> HashMap<u32, Py<PyArray1<f32>>> {
-        self.sum_wt_vec.load()
+        self.sum_wt_vec.load_compact(&self.node_indices)
     }
     #[getter]
     pub fn mean(&self) -> HashMap<u32, Py<PyArray1<f32>>> {
-        self.mean_vec.load()
+        self.mean_vec.load_compact(&self.node_indices)
     }
     #[getter]
     pub fn mean_wt(&self) -> HashMap<u32, Py<PyArray1<f32>>> {
-        self.mean_wt_vec.load()
+        self.mean_wt_vec.load_compact(&self.node_indices)
     }
     #[getter]
     pub fn median(&self) -> HashMap<u32, Py<PyArray1<f32>>> {
-        self.median_vec.load()
+        self.median_vec.load_compact(&self.node_indices)
     }
     #[getter]
     pub fn median_wt(&self) -> HashMap<u32, Py<PyArray1<f32>>> {
-        self.median_wt_vec.load()
+        self.median_wt_vec.load_compact(&self.node_indices)
     }
     #[getter]
     pub fn count(&self) -> HashMap<u32, Py<PyArray1<f32>>> {
-        self.count_vec.load()
+        self.count_vec.load_compact(&self.node_indices)
     }
     #[getter]
     pub fn count_wt(&self) -> HashMap<u32, Py<PyArray1<f32>>> {
-        self.count_wt_vec.load()
+        self.count_wt_vec.load_compact(&self.node_indices)
     }
     #[getter]
     pub fn variance(&self) -> HashMap<u32, Py<PyArray1<f32>>> {
-        self.variance_vec.load()
+        self.variance_vec.load_compact(&self.node_indices)
     }
     #[getter]
     pub fn variance_wt(&self) -> HashMap<u32, Py<PyArray1<f32>>> {
-        self.variance_wt_vec.load()
+        self.variance_wt_vec.load_compact(&self.node_indices)
     }
     #[getter]
     pub fn mad(&self) -> HashMap<u32, Py<PyArray1<f32>>> {
-        self.mad_vec.load()
+        self.mad_vec.load_compact(&self.node_indices)
     }
     #[getter]
     pub fn mad_wt(&self) -> HashMap<u32, Py<PyArray1<f32>>> {
-        self.mad_wt_vec.load()
+        self.mad_wt_vec.load_compact(&self.node_indices)
     }
     #[getter]
     pub fn max(&self) -> HashMap<u32, Py<PyArray1<f32>>> {
-        self.max_vec.load()
+        self.max_vec.load_compact(&self.node_indices)
     }
     #[getter]
     pub fn min(&self) -> HashMap<u32, Py<PyArray1<f32>>> {
-        self.min_vec.load()
+        self.min_vec.load_compact(&self.node_indices)
     }
 }
 
@@ -257,26 +263,27 @@ impl StatsResult {
         distances: Vec<u32>,
         node_keys_py: Vec<Py<PyAny>>,
         node_indices: Vec<usize>,
+        capacity: usize,
         stats_n: usize,
     ) -> Self {
-        let len = node_indices.len();
         let mut stats_vec = Vec::with_capacity(stats_n);
         for _ in 0..stats_n {
             stats_vec.push(Stats {
-                sum_vec: MetricResult::new(&distances, len, 0.0),
-                sum_wt_vec: MetricResult::new(&distances, len, 0.0),
-                mean_vec: MetricResult::new(&distances, len, f32::NAN),
-                mean_wt_vec: MetricResult::new(&distances, len, f32::NAN),
-                median_vec: MetricResult::new(&distances, len, f32::NAN),
-                median_wt_vec: MetricResult::new(&distances, len, f32::NAN),
-                count_vec: MetricResult::new(&distances, len, 0.0),
-                count_wt_vec: MetricResult::new(&distances, len, 0.0),
-                variance_vec: MetricResult::new(&distances, len, f32::NAN),
-                variance_wt_vec: MetricResult::new(&distances, len, f32::NAN),
-                mad_vec: MetricResult::new(&distances, len, f32::NAN),
-                mad_wt_vec: MetricResult::new(&distances, len, f32::NAN),
-                max_vec: MetricResult::new(&distances, len, f32::NAN),
-                min_vec: MetricResult::new(&distances, len, f32::NAN),
+                node_indices: node_indices.clone(),
+                sum_vec: MetricResult::new(&distances, capacity, 0.0),
+                sum_wt_vec: MetricResult::new(&distances, capacity, 0.0),
+                mean_vec: MetricResult::new(&distances, capacity, f32::NAN),
+                mean_wt_vec: MetricResult::new(&distances, capacity, f32::NAN),
+                median_vec: MetricResult::new(&distances, capacity, f32::NAN),
+                median_wt_vec: MetricResult::new(&distances, capacity, f32::NAN),
+                count_vec: MetricResult::new(&distances, capacity, 0.0),
+                count_wt_vec: MetricResult::new(&distances, capacity, 0.0),
+                variance_vec: MetricResult::new(&distances, capacity, f32::NAN),
+                variance_wt_vec: MetricResult::new(&distances, capacity, f32::NAN),
+                mad_vec: MetricResult::new(&distances, capacity, f32::NAN),
+                mad_wt_vec: MetricResult::new(&distances, capacity, f32::NAN),
+                max_vec: MetricResult::new(&distances, capacity, f32::NAN),
+                min_vec: MetricResult::new(&distances, capacity, f32::NAN),
             });
         }
         StatsResult {
@@ -664,6 +671,7 @@ impl DataMap {
             distances.clone(),
             node_keys_py,
             node_indices.clone(),
+            network_structure.node_bound(),
             accessibility_keys.clone(),
             max_dist,
         );
@@ -676,7 +684,7 @@ impl DataMap {
                 if !pbar_disabled {
                     self.progress.fetch_add(1, AtomicOrdering::Relaxed);
                 }
-                if !network_structure.is_node_live(*netw_src_idx) {
+                if !network_structure.is_node_live_unchecked(*netw_src_idx) {
                     return;
                 }
                 let reachable_entries = self.aggregate_to_src_idx(
@@ -794,7 +802,12 @@ impl DataMap {
 
         let node_keys_py = network_structure.node_keys_py(py);
         let node_indices = network_structure.node_indices();
-        let res = MixedUsesResult::new(distances.clone(), node_keys_py, node_indices.clone());
+        let res = MixedUsesResult::new(
+            distances.clone(),
+            node_keys_py,
+            node_indices.clone(),
+            network_structure.node_bound(),
+        );
 
         let pbar_disabled = pbar_disabled.unwrap_or(false);
         self.progress_init();
@@ -821,7 +834,7 @@ impl DataMap {
                 if !pbar_disabled {
                     self.progress.fetch_add(1, AtomicOrdering::Relaxed);
                 }
-                if !network_structure.is_node_live(*netw_src_idx) {
+                if !network_structure.is_node_live_unchecked(*netw_src_idx) {
                     return;
                 }
                 let reachable_entries = self.aggregate_to_src_idx(
@@ -1043,6 +1056,7 @@ impl DataMap {
             distances.clone(),
             node_keys_py,
             node_indices.clone(),
+            network_structure.node_bound(),
             num_maps.len(),
         );
 
@@ -1054,7 +1068,7 @@ impl DataMap {
                 if !pbar_disabled {
                     self.progress.fetch_add(1, AtomicOrdering::Relaxed);
                 }
-                if !network_structure.is_node_live(*netw_src_idx) {
+                if !network_structure.is_node_live_unchecked(*netw_src_idx) {
                     return;
                 }
                 let reachable_entries = self.aggregate_to_src_idx(

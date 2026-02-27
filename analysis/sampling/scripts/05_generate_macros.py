@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-05_generate_macros.py - Generate LaTeX macros from analysis data.
+05_generate_macros.py - Generate LaTeX macros and practical guide figure.
 
 Reads the JSON/CSV output files from the analysis pipeline and generates
 a LaTeX macros file that can be included in the paper. This ensures
@@ -11,6 +11,8 @@ Both closeness and betweenness use the Hoeffding/EW bound:
 
 Outputs:
     - paper/tables/model_macros.tex: LaTeX macro definitions
+    - paper/tables/tab_distance_lookup.tex: Distance-based lookup table
+    - paper/figures/fig3_practical_guide.pdf: Visual lookup chart (p and speedup vs distance)
 """
 
 import json
@@ -18,12 +20,18 @@ import math
 import pickle
 from datetime import datetime
 
+import matplotlib
+
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
+import matplotlib.ticker
 import numpy as np
 import pandas as pd
-from cityseer.config import compute_hoeffding_p
+from cityseer.config import GRID_SPACING, compute_distance_p
 from utilities import (
     CACHE_DIR,
     CACHE_VERSION,
+    FIGURES_DIR,
     HOEFFDING_DELTA,
     OUTPUT_DIR,
     TABLES_DIR,
@@ -88,14 +96,15 @@ def generate_macros() -> str:
     gla_df = load_gla_summary()
 
     # -------------------------------------------------------------------------
-    # Compute Hoeffding model values at common reaches
+    # Compute deterministic distance-based sampling values at standard distances
     # -------------------------------------------------------------------------
-    hoeffding_scenarios = {}
-    for reach in [1000, 2000, 5000, 10000, 20000, 50000, 100000]:
-        h_p_c = compute_hoeffding_p(reach, epsilon=PAPER_EPSILON_CLOSENESS, delta=HOEFFDING_DELTA)
-        h_p_b = compute_hoeffding_p(reach, epsilon=PAPER_EPSILON_BETWEENNESS, delta=HOEFFDING_DELTA)
-        h_k = math.log(2 * reach / HOEFFDING_DELTA) / (2 * PAPER_EPSILON_CLOSENESS**2)
-        hoeffding_scenarios[reach] = {"p_c": h_p_c, "p_b": h_p_b, "k": h_k, "speedup_c": 1.0 / h_p_c, "speedup_b": 1.0 / h_p_b}
+    distance_scenarios = {}
+    for dist in [1000, 2000, 5000, 10000, 20000]:
+        p = compute_distance_p(dist, epsilon=PAPER_EPSILON_CLOSENESS, delta=HOEFFDING_DELTA)
+        r = math.pi * dist**2 / GRID_SPACING**2
+        k = math.log(2 * r / HOEFFDING_DELTA) / (2 * PAPER_EPSILON_CLOSENESS**2)
+        speedup = 1.0 / p if p < 1.0 else 1.0
+        distance_scenarios[dist] = {"p": p, "k": k, "canonical_reach": r, "speedup": speedup}
 
     # Synthetic metadata (optional cache-derived values)
     synthetic_distance_count = load_synthetic_distance_count()
@@ -129,8 +138,9 @@ def generate_macros() -> str:
 % =============================================================================
 
 % -----------------------------------------------------------------------------
-% HOEFFDING / EW BOUND MODEL (both metrics)
-% k = log(2r/delta) / (2*epsilon^2), p = min(1, k/r)
+% DETERMINISTIC DISTANCE-BASED SAMPLING MODEL (both metrics)
+% Canonical grid: r = pi * d^2 / s^2, s = {GRID_SPACING:.0f}m
+% Hoeffding bound: k = log(2r/delta) / (2*epsilon^2), p = min(1, k/r)
 % Zero fitted parameters: epsilon and delta are user-chosen conventions.
 % -----------------------------------------------------------------------------
 
@@ -139,24 +149,25 @@ def generate_macros() -> str:
 \\newcommand{{\\hoeffdingEpsilonCloseness}}{{{PAPER_EPSILON_CLOSENESS}}}
 \\newcommand{{\\hoeffdingEpsilonBetweenness}}{{{PAPER_EPSILON_BETWEENNESS}}}
 \\newcommand{{\\hoeffdingDelta}}{{{HOEFFDING_DELTA}}}
+\\newcommand{{\\gridSpacing}}{{{GRID_SPACING:.0f}}}
 \\newcommand{{\\targetRho}}{{0.95}}
 
-% Hoeffding required k at common reaches (epsilon={PAPER_EPSILON_CLOSENESS}, delta={HOEFFDING_DELTA})
-\\newcommand{{\\hoeffdingKFiveK}}{{{hoeffding_scenarios[5000]["k"]:.0f}}}
-\\newcommand{{\\hoeffdingKTenK}}{{{hoeffding_scenarios[10000]["k"]:.0f}}}
-\\newcommand{{\\hoeffdingKTwentyK}}{{{hoeffding_scenarios[20000]["k"]:.0f}}}
+% Deterministic sampling at standard distances (epsilon={PAPER_EPSILON_CLOSENESS}, delta={HOEFFDING_DELTA}, s={GRID_SPACING:.0f}m)
+\\newcommand{{\\hoeffdingKFiveKm}}{{{distance_scenarios[5000]["k"]:.0f}}}
+\\newcommand{{\\hoeffdingKTenKm}}{{{distance_scenarios[10000]["k"]:.0f}}}
+\\newcommand{{\\hoeffdingKTwentyKm}}{{{distance_scenarios[20000]["k"]:.0f}}}
 
-% Hoeffding sampling probability at common reaches (closeness)
-\\newcommand{{\\hoeffdingPOneK}}{{{hoeffding_scenarios[1000]["p_c"] * 100:.1f}}}
-\\newcommand{{\\hoeffdingPTwoK}}{{{hoeffding_scenarios[2000]["p_c"] * 100:.1f}}}
-\\newcommand{{\\hoeffdingPFiveK}}{{{hoeffding_scenarios[5000]["p_c"] * 100:.1f}}}
-\\newcommand{{\\hoeffdingPTenK}}{{{hoeffding_scenarios[10000]["p_c"] * 100:.1f}}}
-\\newcommand{{\\hoeffdingPTwentyK}}{{{hoeffding_scenarios[20000]["p_c"] * 100:.1f}}}
+% Deterministic sampling probability at standard distances
+\\newcommand{{\\hoeffdingPOneKm}}{{{distance_scenarios[1000]["p"] * 100:.1f}}}
+\\newcommand{{\\hoeffdingPTwoKm}}{{{distance_scenarios[2000]["p"] * 100:.1f}}}
+\\newcommand{{\\hoeffdingPFiveKm}}{{{distance_scenarios[5000]["p"] * 100:.1f}}}
+\\newcommand{{\\hoeffdingPTenKm}}{{{distance_scenarios[10000]["p"] * 100:.1f}}}
+\\newcommand{{\\hoeffdingPTwentyKm}}{{{distance_scenarios[20000]["p"] * 100:.1f}}}
 
-% Hoeffding speedup at common reaches (closeness)
-\\newcommand{{\\hoeffdingSpeedupFiveK}}{{{hoeffding_scenarios[5000]["speedup_c"]:.1f}}}
-\\newcommand{{\\hoeffdingSpeedupTenK}}{{{hoeffding_scenarios[10000]["speedup_c"]:.1f}}}
-\\newcommand{{\\hoeffdingSpeedupTwentyK}}{{{hoeffding_scenarios[20000]["speedup_c"]:.1f}}}
+% Deterministic speedup at standard distances
+\\newcommand{{\\hoeffdingSpeedupFiveKm}}{{{distance_scenarios[5000]["speedup"]:.1f}}}
+\\newcommand{{\\hoeffdingSpeedupTenKm}}{{{distance_scenarios[10000]["speedup"]:.1f}}}
+\\newcommand{{\\hoeffdingSpeedupTwentyKm}}{{{distance_scenarios[20000]["speedup"]:.1f}}}
 
 % -----------------------------------------------------------------------------
 % GLA VALIDATION RESULTS
@@ -175,21 +186,22 @@ def generate_macros() -> str:
     if not np.isnan(gla_min_rho_b):
         macros += f"\\newcommand{{\\glaMinRhoBetweenness}}{{{gla_min_rho_b:.4f}}}\n"
 
-    # Per-distance GLA macros
+    # Per-distance GLA macros — all p values from deterministic distance-based formula
     for dist, label in [(5000, "FiveKm"), (10000, "TenKm"), (20000, "TwentyKm")]:
         dist_row = gla_df[gla_df["distance"] == dist]
         if dist_row.empty:
             continue
         r = dist_row.iloc[0]
-        reach = r["reach"]
-        h_p = compute_hoeffding_p(reach, epsilon=PAPER_EPSILON_CLOSENESS, delta=HOEFFDING_DELTA)
+        det_p = compute_distance_p(dist, epsilon=PAPER_EPSILON_CLOSENESS, delta=HOEFFDING_DELTA)
+        det_speedup = 1.0 / det_p if det_p < 1.0 else 1.0
 
         macros += f"\n% {dist // 1000}km validation\n"
-        macros += f"\\newcommand{{\\gla{label}Reach}}{{{format_number(reach, 0)}}}\n"
         macros += f"\\newcommand{{\\gla{label}RhoH}}{{{r['rho_closeness']:.3f}}}\n"
         macros += f"\\newcommand{{\\gla{label}Rho}}{{{r['rho_closeness']:.3f}}}\n"
+        macros += f"\\newcommand{{\\gla{label}P}}{{{det_p * 100:.1f}}}\n"
+        macros += f"\\newcommand{{\\gla{label}TheoreticalSpeedup}}{{{det_speedup:.1f}}}\n"
 
-        # Speedup
+        # Measured wall-clock speedup
         spd_c = r.get("speedup_closeness", float("nan"))
         if np.isfinite(spd_c):
             macros += f"\\newcommand{{\\gla{label}Speedup}}{{{spd_c:.1f}}}\n"
@@ -202,11 +214,6 @@ def generate_macros() -> str:
         spd_b = r.get("speedup_betweenness", float("nan"))
         if np.isfinite(spd_b):
             macros += f"\\newcommand{{\\gla{label}SpeedupBetweenness}}{{{spd_b:.1f}}}\n"
-
-        # Hoeffding validation macros
-        macros += f"\\newcommand{{\\glaHoeffding{label}RhoH}}{{{r['rho_closeness']:.3f}}}\n"
-        macros += f"\\newcommand{{\\glaHoeffding{label}P}}{{{h_p * 100:.1f}}}\n"
-        macros += f"\\newcommand{{\\glaHoeffding{label}Speedup}}{{{1.0 / h_p:.1f}}}\n"
 
     macros += "\n% Live node buffer (km)\n\\newcommand{\\glaBuffer}{20}\n"
 
@@ -244,9 +251,7 @@ def generate_macros() -> str:
             if dist_row.empty:
                 continue
             r = dist_row.iloc[0]
-            reach = r["mean_reach"]
             macros += f"% {dist // 1000}km validation\n"
-            macros += f"\\newcommand{{\\madrid{label}Reach}}{{{format_number(reach, 0)}}}\n"
             macros += f"\\newcommand{{\\madrid{label}RhoH}}{{{r['rho_closeness']:.4f}}}\n"
 
             spd_c = r.get("speedup_closeness", float("nan"))
@@ -264,9 +269,16 @@ def generate_macros() -> str:
     # -------------------------------------------------------------------------
     # Overall minimum rho across both validated networks
     # -------------------------------------------------------------------------
-    overall_min_rho = gla_min_rho_c
+    overall_min_rho_values = [gla_min_rho_c]
+    if not np.isnan(gla_min_rho_b):
+        overall_min_rho_values.append(gla_min_rho_b)
     if madrid_min_rho_c is not None:
-        overall_min_rho = min(gla_min_rho_c, madrid_min_rho_c)
+        overall_min_rho_values.append(madrid_min_rho_c)
+    if madrid_df is not None and "rho_betweenness" in madrid_df.columns:
+        madrid_b = madrid_df["rho_betweenness"].dropna()
+        if len(madrid_b) > 0:
+            overall_min_rho_values.append(float(madrid_b.min()))
+    overall_min_rho = min(overall_min_rho_values)
     overall_min_rho_conservative = int(overall_min_rho * 100) / 100
 
     macros += f"""
@@ -303,13 +315,196 @@ def generate_macros() -> str:
 
 
 # =============================================================================
+# DISTANCE-BASED LOOKUP TABLE
+# =============================================================================
+
+
+def generate_tab_distance_lookup() -> str:
+    """Generate a LaTeX table of p and speedup by analysis distance.
+
+    Uses the deterministic distance-based schedule (canonical grid model,
+    s=GRID_SPACING) to show p and speedup at the standard validation distances.
+    Canonical reach r = pi * d^2 / s^2 is shown alongside p and speedup.
+    Both metrics use the same schedule (epsilon=0.05).
+    """
+    import math
+
+    distances = [1000, 2000, 5000, 10000, 20000]
+    eps = PAPER_EPSILON_CLOSENESS
+    delta = HOEFFDING_DELTA
+
+    rows = []
+    for d in distances:
+        r = math.pi * d**2 / GRID_SPACING**2
+        p = compute_distance_p(d, epsilon=eps, delta=delta)
+        speedup = 1.0 / p if p < 1.0 else 1.0
+        rows.append((d, r, p, speedup))
+
+    lines = []
+    lines.append(r"\begin{table}[htbp]")
+    lines.append(r"\centering")
+    lines.append(
+        r"\caption{Deterministic sampling schedule by analysis distance "
+        r"($\varepsilon = 0.05$, $\delta = 0.1$, canonical grid spacing $s = "
+        + f"{GRID_SPACING:.0f}"
+        + r"\,\text{m}$). "
+        r"Both closeness and betweenness use the same schedule. "
+        r"Sampling is exact ($p = 100\%$) for distances up to 4\,km. "
+        r"Speedup shown is theoretical ($1/p$); measured wall-clock speedup is lower "
+        r"at near-unity $p$ due to sampling overhead and emerges at 10\,km and beyond.}"
+    )
+    lines.append(r"\label{tab:distance_lookup}")
+    lines.append(r"\begin{tabular}{rrrrr}")
+    lines.append(r"\toprule")
+    lines.append(r"\textbf{Distance} & \textbf{Canonical reach} & \textbf{$k$} & \textbf{$p$ (\%)} & \textbf{Speedup ($1/p$)} \\")
+    lines.append(r"\midrule")
+    for d, r, p, speedup in rows:
+        k = math.log(2 * r / delta) / (2 * eps**2) if r > 0 else 0
+        d_str = f"{d // 1000}\\,km"
+        r_str = f"{r:,.0f}".replace(",", "{,}")
+        k_str = f"{k:,.0f}".replace(",", "{,}")
+        p_str = f"{p * 100:.0f}" if p >= 1.0 else f"{p * 100:.1f}"
+        spd_str = "1$\\times$" if p >= 1.0 else f"{speedup:.1f}$\\times$"
+        lines.append(f"{d_str} & {r_str} & {k_str} & {p_str} & {spd_str} \\\\")
+    lines.append(r"\bottomrule")
+    lines.append(r"\end{tabular}")
+    lines.append(r"\end{table}")
+    lines.append("")
+
+    return "\n".join(lines)
+
+
+# =============================================================================
+# PRACTICAL GUIDE FIGURE
+# =============================================================================
+
+# Standard validation distances (m)
+ANNOTATION_DISTANCES_M = [1000, 2000, 5000, 10000, 20000]
+
+
+def generate_fig3_practical_guide():
+    """Figure 3: Practical guidance chart.
+
+    Panel A: Deterministic sampling probability p(%) vs analysis distance (km)
+             at multiple epsilon values.
+    Panel B: Speedup (1/p) vs analysis distance (km) at the paper default epsilon.
+    """
+    print("\nGenerating Figure 3: Practical guide...")
+
+    plt.rcParams.update(
+        {
+            "font.family": "sans-serif",
+            "font.size": 11,
+            "axes.titlesize": 12,
+            "axes.labelsize": 11,
+            "xtick.labelsize": 10,
+            "ytick.labelsize": 10,
+            "legend.fontsize": 10,
+            "figure.dpi": 150,
+            "savefig.dpi": 300,
+            "axes.spines.top": False,
+            "axes.spines.right": False,
+        }
+    )
+
+    fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+    d_range_m = np.linspace(500, 25000, 300)
+    d_range_km = d_range_m / 1000
+
+    # Panel A: Sampling probability vs distance at multiple epsilons
+    ax = axes[0]
+
+    epsilon_specs = [
+        (PAPER_EPSILON_CLOSENESS, "#2166AC", 2.0, "-"),
+        (0.15, "#969696", 1.2, "--"),
+        (0.2, "#636363", 1.2, "--"),
+    ]
+
+    for eps, colour, lw, ls in epsilon_specs:
+        p_values = [compute_distance_p(d, epsilon=eps) * 100 for d in d_range_m]
+        label = rf"$\varepsilon$ = {eps}" + (" (default)" if eps == PAPER_EPSILON_CLOSENESS else "")
+        ax.plot(d_range_km, p_values, linestyle=ls, color=colour, linewidth=lw, label=label)
+
+    for dist_m in ANNOTATION_DISTANCES_M:
+        p = compute_distance_p(dist_m, epsilon=PAPER_EPSILON_CLOSENESS) * 100
+        ax.plot(dist_m / 1000, p, "o", color="#D55E00", markersize=7, zorder=5)
+        if p >= 99.5:
+            y_off, va = -12, "top"
+        else:
+            y_off, va = 12, "bottom"
+        ax.annotate(
+            f"{dist_m // 1000} km\n{p:.0f}%",
+            xy=(dist_m / 1000, p),
+            xytext=(0, y_off),
+            textcoords="offset points",
+            fontsize=7,
+            ha="center",
+            va=va,
+            bbox=dict(boxstyle="round,pad=0.2", facecolor="white", alpha=0.8, edgecolor="none"),
+        )
+
+    ax.set_xlabel("Analysis Distance (km)")
+    ax.set_ylabel("Sampling Probability (%)")
+    ax.set_title("A) Deterministic Sampling Schedule")
+    ax.set_xlim(0, 25)
+    ax.set_ylim(0, 105)
+
+    from matplotlib.lines import Line2D
+
+    legend_handles = [
+        Line2D([0], [0], color="#2166AC", linewidth=2.0, linestyle="-",
+               label=rf"$\varepsilon$={PAPER_EPSILON_CLOSENESS} (default)"),
+        Line2D([0], [0], color="grey", linewidth=1.2, linestyle="--",
+               label=r"Other $\varepsilon$"),
+        Line2D([0], [0], color="#D55E00", marker="o", linestyle="none",
+               markersize=7, label="Standard distances"),
+    ]
+    ax.legend(handles=legend_handles, loc="center right", fontsize=8)
+    ax.grid(True, alpha=0.3)
+
+    # Panel B: Speedup vs distance at paper default
+    ax = axes[1]
+
+    speedups = [1 / compute_distance_p(d, epsilon=PAPER_EPSILON_CLOSENESS) for d in d_range_m]
+    ax.plot(d_range_km, speedups, color="#2166AC", linewidth=2.5,
+            label=rf"$\varepsilon$={PAPER_EPSILON_CLOSENESS}")
+
+    for dist_m in ANNOTATION_DISTANCES_M:
+        p = compute_distance_p(dist_m, epsilon=PAPER_EPSILON_CLOSENESS)
+        speedup = 1 / p if p < 1.0 else 1.0
+        ax.plot(dist_m / 1000, speedup, "o", color="#D55E00", markersize=7, zorder=5)
+        if speedup > 1.05:
+            ax.annotate(f"{speedup:.1f}\u00d7", xy=(dist_m / 1000, speedup * 1.1),
+                        fontsize=9, ha="center", va="bottom")
+
+    ax.set_yscale("log")
+    ax.set_xlabel("Analysis Distance (km)")
+    ax.set_ylabel("Speedup (1/p)")
+    ax.set_title(r"B) Speedup at $\varepsilon$=" + str(PAPER_EPSILON_CLOSENESS))
+    ax.set_xlim(0, 25)
+    ax.set_ylim(1, 20)
+    ax.grid(True, alpha=0.3, which="both")
+    ax.yaxis.set_major_formatter(matplotlib.ticker.FuncFormatter(lambda x, _: f"{x:.0f}\u00d7"))
+    ax.legend(loc="upper left", fontsize=8)
+
+    fig.suptitle("Practical Guide: Deterministic Sampling Schedule",
+                 fontsize=13, fontweight="bold", y=1.02)
+    plt.tight_layout()
+
+    output_path = FIGURES_DIR / "fig3_practical_guide.pdf"
+    fig.savefig(output_path, dpi=300, bbox_inches="tight")
+    print(f"  Saved: {output_path}")
+    plt.close()
+
+
+# =============================================================================
 # MAIN
 # =============================================================================
 
 
 def main():
     print("=" * 70)
-    print("05_generate_macros.py - Generating LaTeX macros from data")
+    print("05_generate_macros.py - Generating LaTeX macros and practical guide")
     print("=" * 70)
 
     try:
@@ -326,19 +521,28 @@ def main():
 
     print(f"\nGenerated: {output_path}")
 
+    table = generate_tab_distance_lookup()
+    table_path = TABLES_DIR / "tab_distance_lookup.tex"
+    with open(table_path, "w") as f:
+        f.write(table)
+    print(f"Generated: {table_path}")
+
+    generate_fig3_practical_guide()
+
     # Print summary
     print("\n" + "=" * 70)
     print("MACRO SUMMARY")
     print("=" * 70)
 
-    print(f"\nHoeffding model:")
-    print(f"  Closeness eps:   {PAPER_EPSILON_CLOSENESS}")
-    print(f"  Betweenness eps: {PAPER_EPSILON_BETWEENNESS}")
-    print(f"  Delta:           {HOEFFDING_DELTA}")
+    print(f"\nDeterministic distance-based model:")
+    print(f"  Epsilon:       {PAPER_EPSILON_CLOSENESS}")
+    print(f"  Delta:         {HOEFFDING_DELTA}")
+    print(f"  Grid spacing:  {GRID_SPACING}m")
 
-    for reach in [5000, 10000, 20000]:
-        h_p = compute_hoeffding_p(reach, epsilon=PAPER_EPSILON_CLOSENESS, delta=HOEFFDING_DELTA)
-        print(f"  reach={reach:,}: p={h_p:.3f}, speedup={1 / h_p:.1f}x")
+    for dist in [5000, 10000, 20000]:
+        det_p = compute_distance_p(dist, epsilon=PAPER_EPSILON_CLOSENESS, delta=HOEFFDING_DELTA)
+        spd = 1.0 / det_p if det_p < 1.0 else 1.0
+        print(f"  d={dist // 1000}km: p={det_p:.3f}, speedup={spd:.1f}x")
 
     gla_df = load_gla_summary()
     print("\nGLA validation:")

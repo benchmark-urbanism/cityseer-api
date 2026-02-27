@@ -172,7 +172,7 @@ def test_closeness_shortest(primal_graph):
     betas = [0.02, 0.01, 0.005, 0.0008]
     distances = rustalgos.distances_from_betas(betas)
     # generate the measures
-    node_result_short = network_structure.closeness_shortest(
+    node_result_short = network_structure.centrality_shortest(compute_closeness=True, compute_betweenness=False,
         distances=distances,
     )
     # test node density
@@ -253,7 +253,7 @@ def test_closeness_shortest(primal_graph):
         nodes_gdf_wt, edges_gdf_wt, network_structure_wt = io.network_structure_from_nx(primal_graph_wt)
         # weights should persists to the nodes GDF
         assert np.all(nodes_gdf_wt.weight == wt)
-        node_result_short_wt = network_structure_wt.closeness_shortest(
+        node_result_short_wt = network_structure_wt.centrality_shortest(compute_closeness=True, compute_betweenness=False,
             distances=distances,
         )
         # check that weighted versions behave as anticipated
@@ -304,8 +304,8 @@ def test_local_centrality_all(diamond_graph):
     distances = [50, 150, 250]
     rustalgos.betas_from_distances(distances)
     # NODE SHORTEST
-    node_result_short = network_structure.closeness_shortest(
-        distances,
+    node_result_short = network_structure.centrality_shortest(
+        distances=distances, compute_closeness=True, compute_betweenness=False,
     )
     # node density
     # additive nodes
@@ -352,11 +352,11 @@ def test_local_centrality_all(diamond_graph):
     # node shortest weights tested in previous function
 
     # NODE SIMPLEST
-    node_result_simplest = network_structure.closeness_simplest(
-        distances,
+    node_result_simplest = network_structure.centrality_simplest(
+        distances=distances, compute_closeness=True, compute_betweenness=False,
     )
-    node_result_simplest_0_180 = network_structure.closeness_simplest(
-        distances,
+    node_result_simplest_0_180 = network_structure.centrality_simplest(
+        distances=distances, compute_closeness=True, compute_betweenness=False,
         farness_scaling_offset=0,
         angular_scaling_unit=180,
     )
@@ -394,8 +394,8 @@ def test_local_centrality_all(diamond_graph):
         for nd_idx in diamond_graph_wt.nodes():
             diamond_graph_wt.nodes[nd_idx]["weight"] = wt
         _nodes_gdf_wt, _edges_gdf_wt, network_structure_wt = io.network_structure_from_nx(diamond_graph_wt)
-        node_result_simplest_wt = network_structure_wt.closeness_simplest(
-            distances,
+        node_result_simplest_wt = network_structure_wt.centrality_simplest(
+            distances=distances, compute_closeness=True, compute_betweenness=False,
         )
         # check that weighted versions behave as anticipated
         for dist in distances:
@@ -406,8 +406,8 @@ def test_local_centrality_all(diamond_graph):
                 atol=config.ATOL,
             )
     # NODE SIMPLEST ON DUAL network_structure_dual
-    node_result_simplest = network_structure_dual.closeness_simplest(
-        distances,
+    node_result_simplest = network_structure_dual.centrality_simplest(
+        distances=distances, compute_closeness=True, compute_betweenness=False,
     )
     # node_keys_dual = ('0_1', '0_2', '1_2', '1_3', '2_3')
     # node harmonic angular
@@ -550,7 +550,7 @@ def test_betweenness_vs_networkx(primal_graph):
         geom = G_round_trip[start_nd_key][end_nd_key][edge_idx]["geom"]
         G_round_trip[start_nd_key][end_nd_key][edge_idx]["length"] = geom.length
     # Use a large distance so no cutoff interferes
-    betw_result = network_structure.betweenness_shortest(distances=[5000])
+    betw_result = network_structure.centrality_shortest(compute_closeness=False, compute_betweenness=True,distances=[5000])
     nx_betw = nx.betweenness_centrality(G_round_trip, normalized=False, weight="length")
     for src_idx in range(len(G_round_trip)):
         assert abs(nx_betw[str(src_idx)] - betw_result.node_betweenness[5000][src_idx]) < config.ATOL, (
@@ -569,8 +569,8 @@ def test_simplest_closeness_differs_from_shortest(primal_graph):
     _nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(primal_graph)
     # Use large distance to avoid cutoff differences between path types
     distances = [5000]
-    res_shortest = network_structure.closeness_shortest(distances=distances)
-    res_simplest = network_structure.closeness_simplest(distances=distances)
+    res_shortest = network_structure.centrality_shortest(compute_closeness=True, compute_betweenness=False,distances=distances)
+    res_simplest = network_structure.centrality_simplest(compute_closeness=True, compute_betweenness=False,distances=distances)
     # At large distance, density should match (all nodes reachable either way)
     for d in distances:
         assert np.allclose(
@@ -596,8 +596,8 @@ def test_simplest_betweenness_differs_from_shortest(primal_graph):
     """
     _nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(primal_graph)
     distances = [500, 2000]
-    res_shortest = network_structure.betweenness_shortest(distances=distances)
-    res_simplest = network_structure.betweenness_simplest(distances=distances)
+    res_shortest = network_structure.centrality_shortest(compute_closeness=False, compute_betweenness=True,distances=distances)
+    res_simplest = network_structure.centrality_simplest(compute_closeness=False, compute_betweenness=True,distances=distances)
     for d in distances:
         betw_short = np.array(res_shortest.node_betweenness[d])
         betw_simpl = np.array(res_simplest.node_betweenness[d])

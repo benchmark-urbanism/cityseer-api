@@ -6,10 +6,9 @@ from typing import Any
 
 from .centrality import (
     BetweennessShortestResult,
-    BetweennessSimplestResult,
     CentralitySegmentResult,
-    ClosenessShortestResult,
-    ClosenessSimplestResult,
+    CentralityShortestResult,
+    CentralitySimplestResult,
     OdMatrix,
 )
 
@@ -78,12 +77,12 @@ class EdgeVisit:
         """Initialize a new EdgeVisit state."""
         ...
 
-class DiGraph: ...  # Placeholder for the internal graph representation (petgraph::graph::DiGraph)
+class StableGraph: ...  # Placeholder for the internal graph representation (petgraph::stable_graph::StableGraph)
 
 class NetworkStructure:
     """Manages the network graph, including nodes, edges, barriers, and spatial indexing."""
 
-    graph: DiGraph  # Actual type is petgraph::graph::DiGraph<NodePayload, EdgePayload>
+    graph: StableGraph  # Actual type is petgraph::stable_graph::StableGraph<NodePayload, EdgePayload>
     edge_rtree: (
         object | None
     )  # R-tree for efficient spatial queries on edges. Type in Rust: Option<RTree<EdgeRtreeItem>>
@@ -167,6 +166,9 @@ class NetworkStructure:
     def is_node_live(self, node_idx: int) -> bool:  # Returns PyResult<bool>
         """Check if a specific node index is marked as 'live'."""
         ...
+    def set_node_live(self, node_idx: int, live: bool) -> None:  # Returns PyResult<()>
+        """Set the live status of a node (e.g. based on a boundary polygon)."""
+        ...
     def node_count(self) -> int:  # Returns usize
         """Get the total number of nodes in the graph."""
         ...
@@ -249,6 +251,42 @@ class NetworkStructure:
         """
         ...
 
+    def remove_street_node(self, node_idx: int) -> None:
+        """
+        Remove a street node and all its connected edges.
+
+        Parameters
+        ----------
+        node_idx: int
+            The internal index of the node to remove.
+
+        Raises
+        ------
+        ValueError
+            If the node does not exist or is a transport node.
+        """
+        ...
+    def remove_street_edge(
+        self, start_nd_idx: int, end_nd_idx: int, edge_idx: int
+    ) -> None:
+        """
+        Remove a specific directed edge.
+
+        Parameters
+        ----------
+        start_nd_idx: int
+            Index of the starting node.
+        end_nd_idx: int
+            Index of the ending node.
+        edge_idx: int
+            The external edge identifier to match.
+
+        Raises
+        ------
+        ValueError
+            If no matching edge is found.
+        """
+        ...
     def add_transport_edge(
         self,
         start_nd_idx: int,  # usize
@@ -387,21 +425,27 @@ class NetworkStructure:
             (Reachable node indices, Visited edge indices, NodeVisit states, EdgeVisit states).
         """
         ...
-    def closeness_shortest(
+    def centrality_shortest(
         self,
         distances: list[int] | None = None,
         betas: list[float] | None = None,
         minutes: list[float] | None = None,
+        compute_closeness: bool | None = None,
+        compute_betweenness: bool | None = None,
         min_threshold_wt: float | None = None,
         speed_m_s: float | None = None,
+        tolerance: float | None = None,
         sample_probability: float | None = None,
         sampling_weights: list[float] | None = None,
         random_seed: int | None = None,
         source_indices: list[int] | None = None,
         pbar_disabled: bool | None = None,
-    ) -> ClosenessShortestResult:
+    ) -> CentralityShortestResult:
         """
-        Compute closeness centrality using shortest paths (metric distance).
+        Compute combined closeness and/or betweenness centrality using shortest paths.
+
+        Performs a single Dijkstra traversal per source node, computing both closeness
+        and betweenness metrics simultaneously when both flags are True.
 
         Parameters
         ----------
@@ -411,45 +455,56 @@ class NetworkStructure:
             Decay parameters (beta).
         minutes: list[float] | None
             Time thresholds (minutes).
+        compute_closeness: bool | None
+            Compute closeness metrics (density, farness, cycles, harmonic, beta). Default True.
+        compute_betweenness: bool | None
+            Compute betweenness metrics (betweenness, betweenness_beta). Default True.
         min_threshold_wt: float | None
             Minimum weight for beta/distance conversion.
         speed_m_s: float | None
             Travel speed (m/s).
+        tolerance: float | None
+            Relative tolerance for near-equal path detection in betweenness. 0.0 = exact shortest paths only.
         sample_probability: float | None
-            Probability of sampling a node as a source. Used for IPW scaling (1/p).
+            Probability of sampling a node as a source. Used for IPW scaling.
         sampling_weights: list[float] | None
             Per-node sampling weights in range [0.0, 1.0]. Mutually exclusive with source_indices.
         random_seed: int | None
             Optional seed for reproducible sampling.
         source_indices: list[int] | None
-            Subset of node indices to use as sources. When provided, only these sources are iterated.
-            Use with sample_probability for IPW scaling. Mutually exclusive with sampling_weights.
+            Subset of node indices to use as sources. Mutually exclusive with sampling_weights.
         pbar_disabled: bool | None
             Disable progress bar if True.
 
         Returns
         -------
-        ClosenessShortestResult
-            Object containing closeness centrality metrics.
+        CentralityShortestResult
+            Object containing closeness and/or betweenness centrality metrics.
         """
         ...
-    def closeness_simplest(
+    def centrality_simplest(
         self,
         distances: list[int] | None = None,
         betas: list[float] | None = None,
         minutes: list[float] | None = None,
+        compute_closeness: bool | None = None,
+        compute_betweenness: bool | None = None,
         min_threshold_wt: float | None = None,
         speed_m_s: float | None = None,
         angular_scaling_unit: float | None = None,
         farness_scaling_offset: float | None = None,
+        tolerance: float | None = None,
         sample_probability: float | None = None,
         sampling_weights: list[float] | None = None,
         random_seed: int | None = None,
         source_indices: list[int] | None = None,
         pbar_disabled: bool | None = None,
-    ) -> ClosenessSimplestResult:
+    ) -> CentralitySimplestResult:
         """
-        Compute closeness centrality using simplest paths (angular distance).
+        Compute combined closeness and/or betweenness centrality using simplest (angular) paths.
+
+        Performs a single angular Dijkstra traversal per source node, computing both closeness
+        and betweenness metrics simultaneously when both flags are True.
 
         Parameters
         ----------
@@ -459,6 +514,10 @@ class NetworkStructure:
             Decay parameters (beta).
         minutes: list[float] | None
             Time thresholds (minutes).
+        compute_closeness: bool | None
+            Compute closeness metrics (density, farness, harmonic). Default True.
+        compute_betweenness: bool | None
+            Compute betweenness metrics (betweenness, betweenness_beta). Default True.
         min_threshold_wt: float | None
             Minimum weight for beta/distance conversion.
         speed_m_s: float | None
@@ -467,115 +526,23 @@ class NetworkStructure:
             Scaling unit for angular cost (default: 180 degrees).
         farness_scaling_offset: float | None
             Offset for farness calculation (default: 1.0).
+        tolerance: float | None
+            Relative tolerance for near-equal angular path detection. 0.0 = exact simplest paths only.
         sample_probability: float | None
             Probability of sampling a node as a source.
         sampling_weights: list[float] | None
-            Per-node sampling weights in range [0.0, 1.0].
+            Per-node sampling weights in range [0.0, 1.0]. Mutually exclusive with source_indices.
         random_seed: int | None
             Optional seed for reproducible sampling.
         source_indices: list[int] | None
             Subset of node indices to use as sources. Mutually exclusive with sampling_weights.
-            When provided with sample_probability, applies deterministic IPW scaling (1/p).
         pbar_disabled: bool | None
             Disable progress bar if True.
 
         Returns
         -------
-        ClosenessSimplestResult
-            Object containing closeness centrality metrics.
-        """
-        ...
-    def betweenness_shortest(
-        self,
-        distances: list[int] | None = None,
-        betas: list[float] | None = None,
-        minutes: list[float] | None = None,
-        min_threshold_wt: float | None = None,
-        speed_m_s: float | None = None,
-        tolerance: float | None = None,
-        source_indices: list[int] | None = None,
-        sample_probability: float | None = None,
-        pbar_disabled: bool | None = None,
-    ) -> BetweennessShortestResult:
-        """
-        Compute Brandes betweenness centrality from all sources or a specified subset.
-
-        When source_indices is None, iterates all live source nodes (exact).
-        When source_indices is provided with sample_probability, applies IPW scaling 1/(2p).
-        When source_indices is provided without sample_probability, scales by n_live/(2*n_sources).
-
-        Parameters
-        ----------
-        distances: list[int] | None
-            Distance thresholds (meters).
-        betas: list[float] | None
-            Decay parameters (beta).
-        minutes: list[float] | None
-            Time thresholds (minutes).
-        min_threshold_wt: float | None
-            Minimum weight for beta/distance conversion.
-        speed_m_s: float | None
-            Travel speed (m/s).
-        tolerance: float | None
-            Relative tolerance for near-equal path detection in Brandes betweenness. 0.0 = exact shortest paths only.
-        source_indices: list[int] | None
-            Subset of node indices to use as sources. When None, all live nodes are used (exact).
-            When provided, only these sources are iterated and results are scaled for an unbiased estimate.
-        sample_probability: float | None
-            IPW scaling factor. Requires source_indices. Scales results by 1/(2p).
-        pbar_disabled: bool | None
-            Disable progress bar if True.
-
-        Returns
-        -------
-        BetweennessShortestResult
-            Object containing betweenness centrality metrics.
-        """
-        ...
-    def betweenness_simplest(
-        self,
-        distances: list[int] | None = None,
-        betas: list[float] | None = None,
-        minutes: list[float] | None = None,
-        min_threshold_wt: float | None = None,
-        speed_m_s: float | None = None,
-        tolerance: float | None = None,
-        source_indices: list[int] | None = None,
-        sample_probability: float | None = None,
-        pbar_disabled: bool | None = None,
-    ) -> BetweennessSimplestResult:
-        """
-        Compute Brandes betweenness centrality using simplest (angular) paths.
-
-        Mirrors betweenness_shortest but uses angular-distance Dijkstra with
-        sidestepping prevention. Distance thresholds are still in metres
-        (physical distance along the simplest path).
-
-        Parameters
-        ----------
-        distances: list[int] | None
-            Distance thresholds (meters).
-        betas: list[float] | None
-            Decay parameters (beta).
-        minutes: list[float] | None
-            Time thresholds (minutes).
-        min_threshold_wt: float | None
-            Minimum weight for beta/distance conversion.
-        speed_m_s: float | None
-            Travel speed (m/s).
-        tolerance: float | None
-            Relative tolerance for near-equal angular path detection. 0.0 = exact simplest paths only.
-        source_indices: list[int] | None
-            Subset of node indices to use as sources. When None, all live nodes are used (exact).
-        sample_probability: float | None
-            IPW scaling factor. Requires source_indices. Scales results by 1/(2p).
-        pbar_disabled: bool | None
-            Disable progress bar if True.
-
-        Returns
-        -------
-        BetweennessSimplestResult
-            Object containing betweenness centrality metrics.
+        CentralitySimplestResult
+            Object containing closeness and/or betweenness centrality metrics.
         """
         ...
     def betweenness_od_shortest(

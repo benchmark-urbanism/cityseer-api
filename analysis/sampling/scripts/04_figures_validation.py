@@ -2,10 +2,11 @@
 """
 04_figures_validation.py - Generate validation figures for GLA and Madrid networks.
 
-Reads cached validation CSVs and produces three publication figures:
-  - fig7_validation_accuracy.pdf:  Spearman rho vs distance (closeness + betweenness)
-  - fig8_validation_speedup.pdf:   Speedup vs distance (closeness + betweenness)
-  - fig9_validation_sampling.pdf:  Sampling probability vs distance vs theoretical curve
+Reads cached validation CSVs and produces publication figures:
+  - fig2_error_vs_reach.pdf:       Error vs per-node reach quartiles (GLA + Madrid)
+  - fig4_validation_accuracy.pdf:  Spearman rho vs distance (closeness + betweenness)
+  - fig5_validation_speedup.pdf:   Speedup vs distance (closeness + betweenness)
+  - fig6_reach_comparison.pdf:     Canonical vs actual network reach
 
 Usage:
     python 04_figures_validation.py
@@ -22,7 +23,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from cityseer.config import GRID_SPACING, HOEFFDING_EPSILON, compute_distance_p
+from cityseer.config import GRID_SPACING
 
 sys.path.insert(0, str(Path(__file__).parent))
 from utilities import CACHE_DIR, FIGURES_DIR, OUTPUT_DIR
@@ -72,10 +73,6 @@ def load_data() -> tuple[pd.DataFrame, pd.DataFrame]:
     gla = pd.read_csv(gla_path)
     madrid = pd.read_csv(madrid_path)
 
-    # Normalise Madrid column names to match GLA summary
-    if "mean_reach" in madrid.columns and "reach" not in madrid.columns:
-        madrid = madrid.rename(columns={"mean_reach": "reach"})
-
     gla["distance_km"] = gla["distance"] / 1000
     madrid["distance_km"] = madrid["distance"] / 1000
 
@@ -85,13 +82,13 @@ def load_data() -> tuple[pd.DataFrame, pd.DataFrame]:
 
 
 # =============================================================================
-# FIG 7: ACCURACY (RHO VS DISTANCE)
+# FIG 4: ACCURACY (RHO VS DISTANCE)
 # =============================================================================
 
 
-def generate_fig7_accuracy(gla: pd.DataFrame, madrid: pd.DataFrame):
-    """Figure 7: Spearman rho vs distance for GLA and Madrid, closeness and betweenness."""
-    print("\nGenerating Figure 7: validation accuracy...")
+def generate_fig4_accuracy(gla: pd.DataFrame, madrid: pd.DataFrame):
+    """Figure 4: Spearman rho vs distance for GLA and Madrid, closeness and betweenness."""
+    print("\nGenerating Figure 4: validation accuracy...")
 
     fig, axes = plt.subplots(1, 2, figsize=(11, 5), sharey=True)
 
@@ -143,20 +140,20 @@ def generate_fig7_accuracy(gla: pd.DataFrame, madrid: pd.DataFrame):
     fig.suptitle("Ranking Accuracy on Real Networks", fontsize=13, fontweight="bold", y=1.02)
     plt.tight_layout()
 
-    out = FIGURES_DIR / "fig7_validation_accuracy.pdf"
+    out = FIGURES_DIR / "fig4_validation_accuracy.pdf"
     fig.savefig(out, dpi=300, bbox_inches="tight")
     plt.close()
     print(f"  Saved: {out}")
 
 
 # =============================================================================
-# FIG 8: SPEEDUP VS DISTANCE
+# FIG 5: SPEEDUP VS DISTANCE
 # =============================================================================
 
 
-def generate_fig8_speedup(gla: pd.DataFrame, madrid: pd.DataFrame):
-    """Figure 8: Speedup vs distance for GLA and Madrid, closeness and betweenness."""
-    print("\nGenerating Figure 8: validation speedup...")
+def generate_fig5_speedup(gla: pd.DataFrame, madrid: pd.DataFrame):
+    """Figure 5: Speedup vs distance for GLA and Madrid, closeness and betweenness."""
+    print("\nGenerating Figure 5: validation speedup...")
 
     fig, axes = plt.subplots(1, 2, figsize=(11, 5))
 
@@ -169,9 +166,11 @@ def generate_fig8_speedup(gla: pd.DataFrame, madrid: pd.DataFrame):
         gla_valid = gla.dropna(subset=[col])
         madrid_valid = madrid.dropna(subset=[col])
 
-        # Filter out sub-1 speedups (full computation at short distances) for log scale
-        gla_plot = gla_valid[gla_valid[col] > 0]
-        madrid_plot = madrid_valid[madrid_valid[col] > 0]
+        # Clip to ≥1 — sub-1 values are timing noise at distances where p=1
+        gla_plot = gla_valid.copy()
+        madrid_plot = madrid_valid.copy()
+        gla_plot[col] = gla_plot[col].clip(lower=1.0)
+        madrid_plot[col] = madrid_plot[col].clip(lower=1.0)
 
         ax.plot(
             gla_plot["distance_km"],
@@ -212,78 +211,14 @@ def generate_fig8_speedup(gla: pd.DataFrame, madrid: pd.DataFrame):
     fig.suptitle("Sampling Speedup on Real Networks", fontsize=13, fontweight="bold", y=1.02)
     plt.tight_layout()
 
-    out = FIGURES_DIR / "fig8_validation_speedup.pdf"
+    out = FIGURES_DIR / "fig5_validation_speedup.pdf"
     fig.savefig(out, dpi=300, bbox_inches="tight")
     plt.close()
     print(f"  Saved: {out}")
 
 
 # =============================================================================
-# FIG 9: SAMPLING PROBABILITY VS DISTANCE
-# =============================================================================
-
-
-def generate_fig9_sampling(gla: pd.DataFrame, madrid: pd.DataFrame):
-    """Figure 9: Empirical vs theoretical sampling probability vs distance."""
-    print("\nGenerating Figure 9: sampling probability...")
-
-    fig, ax = plt.subplots(figsize=(7, 5))
-
-    # Theoretical curves
-    d_fine = np.linspace(500, 20000, 200)
-    p_close_theory = [compute_distance_p(d, epsilon=gla["epsilon_closeness"].iloc[0]) * 100 for d in d_fine]
-    p_betw_theory = [compute_distance_p(d, epsilon=gla["epsilon_betweenness"].iloc[0]) * 100 for d in d_fine]
-
-    ax.plot(d_fine / 1000, p_close_theory, "-", color=COLOUR_CLOSENESS, linewidth=1.5,
-            alpha=0.5, label="Closeness (theoretical)")
-    ax.plot(d_fine / 1000, p_betw_theory, "-", color=COLOUR_BETWEENNESS, linewidth=1.5,
-            alpha=0.5, label="Betweenness (theoretical)")
-
-    # GLA empirical
-    ax.plot(
-        gla["distance_km"], gla["hoeffding_p_close"] * 100,
-        "o", color=COLOUR_CLOSENESS, markersize=8, label="GLA closeness",
-    )
-    ax.plot(
-        gla["distance_km"], gla["hoeffding_p_betw"] * 100,
-        "o", color=COLOUR_BETWEENNESS, markersize=8, label="GLA betweenness",
-    )
-
-    # Madrid empirical
-    ax.plot(
-        madrid["distance_km"], madrid["hoeffding_p_close"] * 100,
-        "s", color=COLOUR_CLOSENESS, markersize=8, alpha=0.75, label="Madrid closeness",
-        markerfacecolor="white", markeredgewidth=2,
-    )
-    ax.plot(
-        madrid["distance_km"], madrid["hoeffding_p_betw"] * 100,
-        "s", color=COLOUR_BETWEENNESS, markersize=8, alpha=0.75, label="Madrid betweenness",
-        markerfacecolor="white", markeredgewidth=2,
-    )
-
-    ax.axhline(100, color="grey", linestyle=":", linewidth=1.0, alpha=0.6)
-    ax.text(0.5, 101, "100% (full computation)", fontsize=8, color="grey",
-            transform=ax.get_yaxis_transform())
-
-    ax.set_xlabel("Distance (km)")
-    ax.set_ylabel("Sampling probability (%)")
-    ax.set_title("Sampling Probability vs Distance")
-    ax.set_xticks(DISTANCES_KM)
-    ax.set_xlim(0, 22)
-    ax.set_ylim(-5, 115)
-    ax.legend(loc="upper right", ncol=2, fontsize=9)
-    ax.grid(True, alpha=0.3)
-
-    plt.tight_layout()
-
-    out = FIGURES_DIR / "fig9_validation_sampling.pdf"
-    fig.savefig(out, dpi=300, bbox_inches="tight")
-    plt.close()
-    print(f"  Saved: {out}")
-
-
-# =============================================================================
-# FIG 10: CANONICAL REACH VS ACTUAL REACH
+# FIG 6: CANONICAL REACH VS ACTUAL REACH
 # =============================================================================
 
 
@@ -308,7 +243,7 @@ def load_reach_data() -> list[dict]:
             rows.append({"network": "Madrid", "distance": dist, "mean_reach": d["mean_reach"]})
 
     # Synthetic topologies — topology reach values don't change with epsilon, use most recent cache
-    for cache_name in sorted(CACHE_DIR.glob("sampling_analysis_v*.pkl")):
+    for cache_name in sorted(CACHE_DIR.glob("sampling_analysis_v*.pkl"), key=lambda p: p.stat().st_mtime, reverse=True):
         with open(cache_name, "rb") as f:
             synthetic = pd.DataFrame(pickle.load(f))
         if "topology" not in synthetic.columns:
@@ -325,20 +260,20 @@ def load_reach_data() -> list[dict]:
                 "distance": row["distance"],
                 "mean_reach": row["mean_reach"],
             })
-        break  # use only the most recent synthetic cache
+        break  # use only the most recent synthetic cache (by mtime)
 
     return rows
 
 
-def generate_fig10_reach_comparison():
-    """Figure 10: Canonical grid reach vs actual network reach.
+def generate_fig6_reach_comparison():
+    """Figure 6: Canonical grid reach vs actual network reach.
 
     The canonical model r = π*d²/s² underpins the distance-based p schedule.
-    Actual network reaches plotted above the canonical curve confirm the model
-    is conservative — real networks always meet or exceed the assumed reach,
-    so the method never under-samples.
+    Networks above the canonical curve are denser than assumed — the schedule
+    is conservative (over-samples) for them. Networks below are sparser, so
+    the deterministic schedule under-samples relative to reach-based Hoeffding.
     """
-    print("\nGenerating Figure 10: canonical vs actual reach...")
+    print("\nGenerating Figure 6: canonical vs actual reach...")
 
     reach_rows = load_reach_data()
     if not reach_rows:
@@ -383,108 +318,109 @@ def generate_fig10_reach_comparison():
     ax.grid(True, alpha=0.3, which="both")
     ax.yaxis.set_major_formatter(matplotlib.ticker.FuncFormatter(lambda x, _: f"{x:,.0f}"))
 
-    # Shade the region below the canonical curve to indicate "under-sampled" zone
-    ax.fill_between(d_fine / 1000, 0, r_canonical, color="grey", alpha=0.08,
+    # Shade the region above the canonical curve to indicate where the schedule is conservative
+    ax.fill_between(d_fine / 1000, r_canonical, r_canonical * 20, color="#2166AC", alpha=0.04,
                     label="_nolegend_")
-    ax.text(18, 800, "Conservative\nregion", fontsize=8, color="grey",
-            ha="center", va="center", style="italic")
+    ax.text(18, 200000, "Denser than canonical\n(schedule conservative)", fontsize=8, color="#2166AC",
+            ha="center", va="top", style="italic")
 
     plt.tight_layout()
-    out = FIGURES_DIR / "fig10_reach_comparison.pdf"
+    out = FIGURES_DIR / "fig6_reach_comparison.pdf"
     fig.savefig(out, dpi=300, bbox_inches="tight")
     plt.close()
     print(f"  Saved: {out}")
 
 
 # =============================================================================
-# FIG 11: SAMPLING PROBABILITY + ACCURACY (DUAL AXIS)
+# FIG 2: ERROR VS REACH (GLA + MADRID QUARTILE DATA)
 # =============================================================================
 
 
-def generate_fig11_p_and_rho(gla: pd.DataFrame, madrid: pd.DataFrame):
-    """Figure 11: Sampling probability and achieved accuracy vs distance on dual y-axes.
+def generate_fig2_error_vs_reach(gla_full: pd.DataFrame, madrid_full: pd.DataFrame):
+    """Figure 2: Absolute and normalised error vs per-node reach quartiles.
 
-    Left axis: p (%) from compute_distance_p — how much we sample.
-    Right axis: Spearman rho — what accuracy we achieve.
-    Both plotted against distance on the same x-axis.
-    Two panels: closeness (left) and betweenness (right).
+    Uses GLA and Madrid validation quartile data (reach_q1-q4, mae_q1-q4)
+    across distances where sampling occurs (p < 1). Shows that absolute error
+    grows with reach while normalised error decreases — precision scales with
+    importance.
     """
-    print("\nGenerating Figure 11: p + rho dual axis...")
+    print("\nGenerating Figure 2: error vs reach (GLA + Madrid)...")
 
-    fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+    fig, axes = plt.subplots(1, 2, figsize=(11, 5))
 
-    panels = [
-        ("hoeffding_p_close", "rho_closeness", "A) Closeness", COLOUR_CLOSENESS),
-        ("hoeffding_p_betw",  "rho_betweenness", "B) Betweenness", COLOUR_BETWEENNESS),
+    from matplotlib.lines import Line2D
+
+    # Build per-quartile rows — normalise by per-quartile reach (not mean_reach)
+    records_abs = []
+    records_norm = []
+
+    # --- GLA ---
+    for _, row in gla_full.iterrows():
+        p_row = row.get("budget_param", np.nan)
+        if not np.isfinite(p_row) or p_row >= 1.0:
+            continue
+        metric = row["metric"]
+        colour = COLOUR_CLOSENESS if metric == "harmonic" else COLOUR_BETWEENNESS
+        for q in [1, 2, 3, 4]:
+            reach = row[f"reach_q{q}"]
+            mae = row[f"mae_q{q}"]
+            if reach > 0 and mae > 0:
+                norm_denom = reach if metric == "harmonic" else max(reach * (reach - 1), 1)
+                records_abs.append({"reach": reach, "error": mae, "colour": colour, "marker": "o"})
+                records_norm.append({"reach": reach, "error": mae / norm_denom, "colour": colour, "marker": "o"})
+
+    # --- Madrid ---
+    for _, row in madrid_full.iterrows():
+        for prefix, colour, is_harm in [("h", COLOUR_CLOSENESS, True), ("b", COLOUR_BETWEENNESS, False)]:
+            p_col = "hoeffding_p_close" if is_harm else "hoeffding_p_betw"
+            p_val = row.get(p_col, np.nan)
+            if not np.isfinite(p_val) or p_val >= 1.0:
+                continue
+            for q in [1, 2, 3, 4]:
+                reach = row.get(f"{prefix}_reach_q{q}", None)
+                mae = row.get(f"{prefix}_mae_q{q}", None)
+                if reach is not None and mae is not None and reach > 0 and mae > 0:
+                    norm_denom = reach if is_harm else max(reach * (reach - 1), 1)
+                    records_abs.append({"reach": reach, "error": mae, "colour": colour, "marker": "s"})
+                    records_norm.append({"reach": reach, "error": mae / norm_denom, "colour": colour, "marker": "s"})
+
+    df_abs = pd.DataFrame(records_abs)
+    df_norm = pd.DataFrame(records_norm)
+
+    # Shared legend handles
+    legend_handles = [
+        Line2D([0], [0], color=COLOUR_CLOSENESS, marker="o", linestyle="-", markersize=6, label="Closeness"),
+        Line2D([0], [0], color=COLOUR_BETWEENNESS, marker="o", linestyle="-", markersize=6, label="Betweenness"),
+        Line2D([0], [0], color="grey", marker="o", linestyle="none", markersize=6, label="GLA"),
+        Line2D([0], [0], color="grey", marker="s", linestyle="none", markersize=6, label="Madrid"),
     ]
 
-    d_fine = np.linspace(500, 20000, 300)
-    p_theory = [compute_distance_p(d) * 100 for d in d_fine]
+    for ax, df, ylabel, title, is_norm in [
+        (axes[0], df_abs,  "Median Absolute Error",   "A) Absolute Error",    False),
+        (axes[1], df_norm, "Median Normalised Error",  "B) Normalised Error",  True),
+    ]:
+        if df.empty:
+            ax.set_title(title + " (no data)")
+            continue
 
-    for ax, (p_col, rho_col, title, colour) in zip(axes, panels):
-        ax2 = ax.twinx()
+        for (colour, marker), grp in df.groupby(["colour", "marker"]):
+            ax.scatter(grp["reach"], grp["error"], color=colour,
+                       marker=marker, s=35, alpha=0.85, zorder=4)
 
-        # Theoretical p curve on left axis
-        ax.plot(d_fine / 1000, p_theory, "-", color="grey", linewidth=1.5,
-                alpha=0.6, label="Theoretical $p$")
-        ax.axhline(100, color="grey", linestyle=":", linewidth=0.8, alpha=0.5)
+        ax.legend(handles=legend_handles, fontsize=8, loc="upper right" if is_norm else "upper left")
 
-        # GLA empirical p
-        gla_v = gla.dropna(subset=[p_col, rho_col])
-        ax.plot(gla_v["distance_km"], gla_v[p_col] * 100,
-                "o", color=colour, markersize=7, alpha=0.6, markerfacecolor="white",
-                markeredgewidth=2)
-
-        # Madrid empirical p
-        madrid_v = madrid.dropna(subset=[p_col, rho_col])
-        ax.plot(madrid_v["distance_km"], madrid_v[p_col] * 100,
-                "s", color=colour, markersize=7, alpha=0.6, markerfacecolor="white",
-                markeredgewidth=2)
-
-        # GLA rho on right axis
-        ax2.plot(gla_v["distance_km"], gla_v[rho_col],
-                 "o-", color=colour, linewidth=1.8, markersize=7, label="Greater London $\\rho$")
-
-        # Madrid rho on right axis
-        ax2.plot(madrid_v["distance_km"], madrid_v[rho_col],
-                 "s--", color=colour, linewidth=1.8, markersize=7, alpha=0.75, label="Madrid $\\rho$")
-
-        # rho target
-        ax2.axhline(0.95, color="green", linestyle="--", linewidth=1.2, alpha=0.7)
-        ax2.text(0.98, 0.955, r"$\rho$=0.95", fontsize=8, color="green",
-                 ha="right", va="bottom", transform=ax2.transAxes)
-
-        ax.set_xlabel("Distance (km)")
-        ax.set_ylabel("Sampling probability (%)", color="grey")
-        ax.tick_params(axis="y", labelcolor="grey")
-        ax.set_xticks(DISTANCES_KM)
-        ax.set_xlim(0, 22)
-        ax.set_ylim(-5, 115)
-
-        ax2.set_ylabel(r"Spearman $\rho$", color=colour)
-        ax2.tick_params(axis="y", labelcolor=colour)
-        ax2.set_ylim(0.88, 1.01)
-        ax2.spines["right"].set_visible(True)
-
+        ax.set_xscale("log")
+        ax.set_yscale("log")
+        ax.set_xlabel("Per-Node Reach")
+        ax.set_ylabel(ylabel)
         ax.set_title(title)
-        ax.grid(True, alpha=0.2)
+        ax.grid(True, alpha=0.3, which="both")
 
-        # Combined legend
-        lines2, labels2 = ax2.get_legend_handles_labels()
-        from matplotlib.lines import Line2D
-        theory_line = Line2D([0], [0], color="grey", linewidth=1.5, alpha=0.6, label="Theoretical $p$")
-        empirical_dot = Line2D([0], [0], marker="o", color=colour, linestyle="None",
-                               markersize=7, markerfacecolor="white", markeredgewidth=2,
-                               label="Empirical $p$ (GLA / Madrid)")
-        ax.legend(handles=[theory_line, empirical_dot] + lines2,
-                  labels=["Theoretical $p$", "Empirical $p$"] + labels2,
-                  loc="center right", fontsize=8)
-
-    fig.suptitle("Sampling Probability and Achieved Accuracy vs Distance",
+    fig.suptitle("Error vs Reach: Precision Scales with Importance",
                  fontsize=13, fontweight="bold", y=1.02)
     plt.tight_layout()
 
-    out = FIGURES_DIR / "fig11_p_and_rho.pdf"
+    out = FIGURES_DIR / "fig2_error_vs_reach.pdf"
     fig.savefig(out, dpi=300, bbox_inches="tight")
     plt.close()
     print(f"  Saved: {out}")
@@ -501,12 +437,12 @@ def main():
     print("=" * 70)
 
     gla, madrid = load_data()
+    gla_full = pd.read_csv(OUTPUT_DIR / "gla_validation.csv")
 
-    generate_fig7_accuracy(gla, madrid)
-    generate_fig8_speedup(gla, madrid)
-    generate_fig9_sampling(gla, madrid)
-    generate_fig10_reach_comparison()
-    generate_fig11_p_and_rho(gla, madrid)
+    generate_fig2_error_vs_reach(gla_full, madrid)
+    generate_fig4_accuracy(gla, madrid)
+    generate_fig5_speedup(gla, madrid)
+    generate_fig6_reach_comparison()
 
     print("\nDone. Figures saved to:", FIGURES_DIR)
     return 0

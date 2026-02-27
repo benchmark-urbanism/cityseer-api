@@ -734,7 +734,7 @@ def test_network_structure_from_gpd(primal_graph):
             compute_betweenness=True,
         )
         # test closeness against underlying source-sampling method
-        node_result = netw_struct.closeness_shortest(
+        node_result = netw_struct.centrality_shortest(compute_closeness=True, compute_betweenness=False,
             distances=[400],
         )
         for measure_key, attr_key in [
@@ -752,7 +752,7 @@ def test_network_structure_from_gpd(primal_graph):
                 rtol=config.RTOL,
             )
         # test betweenness against exact method
-        betweenness_result = netw_struct.betweenness_shortest(
+        betweenness_result = netw_struct.centrality_shortest(compute_closeness=False, compute_betweenness=True,
             distances=[400],
         )
         for measure_key, attr_key in [

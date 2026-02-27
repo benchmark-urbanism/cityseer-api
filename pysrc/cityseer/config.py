@@ -76,10 +76,10 @@ RTOL: float = 0.0001
 # Default parameters:
 #   ε = 0.05  (normalised additive error tolerance; unified for closeness and betweenness)
 #   δ = 0.1   (failure probability → 90% confidence)
-#   s = 150m  (canonical sparse suburban grid spacing)
+#   s = 175m  (canonical sparse street network inter-node spacing)
 HOEFFDING_EPSILON: float = 0.05
 HOEFFDING_DELTA: float = 0.1
-GRID_SPACING: float = 150.0  # metres — canonical sparse suburban inter-node spacing
+GRID_SPACING: float = 175.0  # metres — canonical sparse street network inter-node spacing
 
 
 def compute_hoeffding_p(
@@ -146,7 +146,7 @@ def compute_distance_p(
     delta : float
         Failure probability (1 - confidence). Default 0.1.
     grid_spacing : float
-        Canonical inter-node spacing in metres. Default 150m (sparse suburban grid).
+        Canonical inter-node spacing in metres. Default 175m (sparse street network).
 
     Returns
     -------
@@ -180,8 +180,8 @@ def log_thresholds(
 
 
 RustResults = (
-    rustalgos.centrality.ClosenessShortestResult
-    | rustalgos.centrality.ClosenessSimplestResult
+    rustalgos.centrality.CentralityShortestResult
+    | rustalgos.centrality.CentralitySimplestResult
     | rustalgos.centrality.BetweennessShortestResult
     | rustalgos.centrality.CentralitySegmentResult
     | rustalgos.data.AccessibilityResult

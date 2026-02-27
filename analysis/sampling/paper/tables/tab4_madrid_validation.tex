@@ -1,24 +1,24 @@
 \begin{table}[htbp]
 \centering
 \caption{Sampling validation on Greater Madrid network
-  ($\varepsilon_c = 0.05$, $\varepsilon_b = 0.05$, $\delta = 0.1$).}
+  ($\varepsilon = 0.05$, $\delta = 0.1$, $s = 175\,$m).}
 \label{tab:madrid_validation}
-\begin{tabular}{rrrrrrrr}
+\begin{tabular}{rrrrrrr}
 \toprule
-\textbf{Dist.} & \textbf{Reach} &
-\textbf{$p_c$} & \textbf{$\rho_c$} & \textbf{Spd$_c$} &
-\textbf{$p_b$} & \textbf{$\rho_b$} & \textbf{Spd$_b$} \\
+\textbf{Dist.} &
+\textbf{$p$} & \textbf{$\rho_c$} & \textbf{Spd$_c$} &
+& \textbf{$\rho_b$} & \textbf{Spd$_b$} \\
 \midrule
-1.0km & 184 & 100.0\% & 1.0000 & 1.1$\times$ & 100.0\% & 1.0000 & 1.1$\times$ \\
-2.0km & 553 & 100.0\% & 1.0000 & 1.0$\times$ & 100.0\% & 1.0000 & 0.9$\times$ \\
-5.0km & 2,447 & 63.9\% & 0.9969 & 1.6$\times$ & 63.9\% & 0.9980 & 1.1$\times$ \\
-10.0km & 8,802 & 18.0\% & 0.9905 & 4.6$\times$ & 18.0\% & 0.9895 & 4.8$\times$ \\
-20.0km & 29,438 & 5.0\% & 0.9874 & 26.4$\times$ & 5.0\% & 0.9782 & 21.5$\times$ \\
+1\,km & 100.0\% & 1.0000 & 1.0$\times$ & & 1.0000 & 1.0$\times$ \\
+2\,km & 100.0\% & 1.0000 & 1.0$\times$ & & 1.0000 & 1.0$\times$ \\
+5\,km & 84.6\% & 0.9990 & 1.2$\times$ & & 0.9993 & 1.2$\times$ \\
+10\,km & 23.8\% & 0.9931 & 3.7$\times$ & & 0.9921 & 4.3$\times$ \\
+20\,km & 6.6\% & 0.9900 & 12.6$\times$ & & 0.9810 & 14.9$\times$ \\
 \bottomrule
 \end{tabular}
 
 \vspace{0.5em}
 \footnotesize
-Network: Greater Madrid, 181,176 nodes. Both metrics use Hoeffding bound
-with spatial source selection: $p = \min(1, k/r)$.
+Network: Greater Madrid, 181,176 nodes. Deterministic distance-based schedule:
+same $p$ for both metrics at each distance.
 \end{table}

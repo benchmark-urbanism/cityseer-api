@@ -1,25 +1,25 @@
 \begin{table}[htbp]
 \centering
 \caption{Sampling validation on Greater London network
-  ($\varepsilon_c = 0.05$, $\varepsilon_b = 0.05$, $\delta = 0.1$).}
+  ($\varepsilon = 0.05$, $\delta = 0.1$, $s = 175\,$m).}
 \label{tab:validation}
-\begin{tabular}{rrrrrrrr}
+\begin{tabular}{rrrrrrr}
 \toprule
-\textbf{Dist.} & \textbf{Reach} &
-\textbf{$p_c$} & \textbf{$\rho_c$} & \textbf{Spd$_c$} &
-\textbf{$p_b$} & \textbf{$\rho_b$} & \textbf{Spd$_b$} \\
+\textbf{Dist.} &
+\textbf{$p$} & \textbf{$\rho_c$} & \textbf{Spd$_c$} &
+& \textbf{$\rho_b$} & \textbf{Spd$_b$} \\
 \midrule
-1km & 185 & 100.0\% & 1.0000 & 1.0$\times$ & 100.0\% & 1.0000 & 0.9$\times$ \\
-2km & 765 & 100.0\% & 1.0000 & 1.1$\times$ & 100.0\% & 1.0000 & 1.0$\times$ \\
-5km & 5,100 & 63.9\% & 0.9964 & 1.5$\times$ & 63.9\% & 0.9981 & 1.6$\times$ \\
-10km & 20,394 & 18.0\% & 0.9942 & 4.7$\times$ & 18.0\% & 0.9900 & 4.8$\times$ \\
-20km & 69,463 & 5.0\% & 0.9930 & 14.3$\times$ & 5.0\% & 0.9795 & 18.3$\times$ \\
+1\,km & 100.0\% & 1.0000 & 1.0$\times$ & & 1.0000 & 1.0$\times$ \\
+2\,km & 100.0\% & 1.0000 & 1.0$\times$ & & 1.0000 & 1.0$\times$ \\
+5\,km & 84.6\% & 0.9988 & 1.0$\times$ & & 0.9994 & 1.1$\times$ \\
+10\,km & 23.8\% & 0.9958 & 3.7$\times$ & & 0.9921 & 4.8$\times$ \\
+20\,km & 6.6\% & 0.9949 & 11.0$\times$ & & 0.9812 & 15.1$\times$ \\
 \bottomrule
 \end{tabular}
 
 \vspace{0.5em}
 \footnotesize
-Network: Greater London Area. Both metrics use Hoeffding bound
-with spatial source selection: $p = \min(1, k/r)$.
+Network: Greater London Area. Deterministic distance-based schedule:
+same $p$ for both metrics at each distance.
 Subscripts: $c$ = closeness, $b$ = betweenness.
 \end{table}

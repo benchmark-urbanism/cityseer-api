@@ -29,7 +29,7 @@ def test_node_centrality_shortest(primal_graph):
             for dist_key in distances:
                 if _closeness is True:
                     # test closeness against underlying source-sampling method
-                    node_result_short = network_structure.closeness_shortest(
+                    node_result_short = network_structure.centrality_shortest(compute_closeness=True, compute_betweenness=False,
                         betas=betas,
                     )
                     for measure_key, attr_key in [
@@ -55,7 +55,7 @@ def test_node_centrality_shortest(primal_graph):
                     )
                 if _betweenness is True:
                     # test betweenness against underlying exact Brandes method
-                    betweenness_result = network_structure.betweenness_shortest(
+                    betweenness_result = network_structure.centrality_shortest(compute_closeness=False, compute_betweenness=True,
                         distances=[dist_key],
                     )
                     for measure_key, attr_key in [
@@ -92,7 +92,7 @@ def test_node_centrality_simplest(primal_graph):
             )
             for dist_key in distances:
                 # test closeness against underlying method
-                node_result_simplest = network_structure.closeness_simplest(
+                node_result_simplest = network_structure.centrality_simplest(compute_closeness=True, compute_betweenness=False,
                     betas=betas,
                     farness_scaling_offset=_far_scale_off,
                     angular_scaling_unit=_ang_scale_unit,
@@ -118,7 +118,7 @@ def test_node_centrality_simplest(primal_graph):
                     rtol=config.RTOL,
                 )
                 # test betweenness against underlying method
-                betw_result = network_structure.betweenness_simplest(betas=betas)
+                betw_result = network_structure.centrality_simplest(compute_closeness=False, compute_betweenness=True,betas=betas)
                 for measure_key, attr_key in [
                     ("betweenness", "node_betweenness"),
                     ("betweenness_beta", "node_betweenness_beta"),

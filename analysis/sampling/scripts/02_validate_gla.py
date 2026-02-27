@@ -2,7 +2,7 @@
 """
 02_validate_gla.py - Validate sampling models on Greater London network.
 
-Tests closeness and betweenness (both using Hoeffding + spatial source sampling)
+Tests closeness and betweenness (both using deterministic distance-based source sampling)
 at their respective epsilon values across five distance thresholds.
 
 Usage:
@@ -27,7 +27,7 @@ import geopandas as gpd
 import numpy as np
 import osmnx as ox
 import pandas as pd
-from cityseer.config import compute_distance_p
+from cityseer.config import GRID_SPACING, HOEFFDING_EPSILON as CITYSEER_HOEFFDING_EPSILON, compute_distance_p
 from cityseer.metrics import networks
 from cityseer.tools import graphs, io
 from shapely.geometry import Point
@@ -36,6 +36,7 @@ from utilities import (
     HOEFFDING_DELTA,
     OUTPUT_DIR,
     TABLES_DIR,
+    canonical_reach,
     compute_accuracy_metrics,
     compute_quartile_accuracy,
     ew_predicted_epsilon,
@@ -53,12 +54,21 @@ GLA_GPKG_FILE = SCRIPT_DIR.parent.parent.parent / "temp" / "os_open_roads" / "op
 
 # Validation parameters
 GLA_DISTANCES = [1000, 2000, 5000, 10000, 20000]
-# Hoeffding + spatial source sampling (both metrics)
+# Hoeffding + deterministic distance-based source sampling (both metrics)
 GLA_EPSILON_CLOSENESS = 0.05
 GLA_EPSILON_BETWEENNESS = 0.05
 N_RUNS = 3
 
 DELTA = HOEFFDING_DELTA
+
+if not np.isclose(GLA_EPSILON_CLOSENESS, CITYSEER_HOEFFDING_EPSILON) or not np.isclose(
+    GLA_EPSILON_BETWEENNESS, CITYSEER_HOEFFDING_EPSILON
+):
+    raise RuntimeError(
+        "Validation epsilons must match cityseer.metrics runtime sampling epsilon when using sample=True. "
+        f"Script eps: closeness={GLA_EPSILON_CLOSENESS}, betweenness={GLA_EPSILON_BETWEENNESS}; "
+        f"cityseer.config.HOEFFDING_EPSILON={CITYSEER_HOEFFDING_EPSILON}"
+    )
 
 
 def get_gla_mask(force: bool = False):
@@ -212,27 +222,23 @@ def generate_validation_data(force: bool = False) -> pd.DataFrame:
             baseline_close_time = gt_data.get("baseline_close_time", gt_data.get("baseline_time", None))
             baseline_betw_time = gt_data.get("baseline_betw_time", None)
         else:
-            print("  Computing ground truth closeness (this may take a while)...")
+            print("  Computing ground truth (closeness + betweenness combined)...")
             t0 = time.time()
-            close_result = net.closeness_shortest(
+            gt_result = net.centrality_shortest(
                 distances=[dist],
+                compute_closeness=True,
+                compute_betweenness=True,
                 pbar_disabled=False,
             )
-            baseline_close_time = time.time() - t0
-            true_harmonic = np.array(close_result.node_harmonic[dist])[live_mask]
-            node_reach = np.array(close_result.node_density[dist])[live_mask]
+            baseline_combined_time = time.time() - t0
+            true_harmonic = np.array(gt_result.node_harmonic[dist])[live_mask]
+            node_reach = np.array(gt_result.node_density[dist])[live_mask]
             mean_reach = float(np.mean(node_reach))
-            print(f"  Closeness ground truth: {baseline_close_time:.1f}s")
-
-            print("  Computing ground truth betweenness (exact Brandes)...")
-            t0 = time.time()
-            betw_result = net.betweenness_shortest(
-                distances=[dist],
-                pbar_disabled=False,
-            )
-            baseline_betw_time = time.time() - t0
-            true_betweenness = np.array(betw_result.node_betweenness[dist])[live_mask]
-            print(f"  Betweenness ground truth: {baseline_betw_time:.1f}s")
+            true_betweenness = np.array(gt_result.node_betweenness[dist])[live_mask]
+            # Split combined time proportionally for per-metric speedup comparison
+            baseline_close_time = baseline_combined_time / 2
+            baseline_betw_time = baseline_combined_time / 2
+            print(f"  Ground truth (combined): {baseline_combined_time:.1f}s")
 
             with open(gt_cache, "wb") as f:
                 pickle.dump(
@@ -287,11 +293,12 @@ def generate_validation_data(force: bool = False) -> pd.DataFrame:
 
         mean_close_time = np.mean(close_times) if close_times else float("nan")
         q_h = mean_quartiles(quartiles_h)
-        n_eff_close = mean_reach * actual_p_close
-        eps_pred_close = ew_predicted_epsilon(n_eff_close, mean_reach)
+        r_canonical = canonical_reach(dist)
+        n_eff_close = r_canonical * actual_p_close
+        eps_pred_close = ew_predicted_epsilon(dist, actual_p_close)
 
         if spearmans_h:
-            eps_obs_h = np.max(maes_h) / mean_reach if maes_h else float("nan")
+            eps_obs_h = np.max(maes_h) / r_canonical if maes_h else float("nan")
             row_h = {
                 "distance": dist,
                 "mean_reach": mean_reach,
@@ -365,11 +372,11 @@ def generate_validation_data(force: bool = False) -> pd.DataFrame:
 
             mean_betw_time = np.mean(betw_times) if betw_times else float("nan")
             q_b = mean_quartiles(quartiles_b)
-            n_eff_betw = mean_reach * actual_p_b
-            eps_pred_betw = ew_predicted_epsilon(n_eff_betw, mean_reach)
+            n_eff_betw = r_canonical * actual_p_b
+            eps_pred_betw = ew_predicted_epsilon(dist, actual_p_b)
 
             if spearmans_b:
-                eps_obs_b = np.max(maes_b) / mean_reach if maes_b else float("nan")
+                eps_obs_b = np.max(maes_b) / r_canonical if maes_b else float("nan")
                 row_b = {
                     "distance": dist,
                     "mean_reach": mean_reach,
@@ -448,7 +455,6 @@ def generate_validation_summary(df: pd.DataFrame) -> pd.DataFrame:
             continue
 
         h_row = h_rows.iloc[0]
-        reach = h_row["mean_reach"]
 
         rho_close = h_row["spearman"]
         p_close = h_row["budget_param"]
@@ -468,7 +474,7 @@ def generate_validation_summary(df: pd.DataFrame) -> pd.DataFrame:
         rows.append(
             {
                 "distance": dist,
-                "reach": reach,
+                "canonical_reach": canonical_reach(dist),
                 "epsilon_closeness": GLA_EPSILON_CLOSENESS,
                 "epsilon_betweenness": GLA_EPSILON_BETWEENNESS,
                 "hoeffding_p_close": p_close,
@@ -503,41 +509,39 @@ def generate_validation_table(summary_df: pd.DataFrame):
     latex = rf"""\begin{{table}}[htbp]
 \centering
 \caption{{Sampling validation on Greater London network
-  ($\varepsilon_c = {eps_c}$, $\varepsilon_b = {eps_b}$, $\delta = 0.1$).}}
+  ($\varepsilon = {eps_c}$, $\delta = 0.1$, $s = {GRID_SPACING:.0f}\,$m).}}
 \label{{tab:validation}}
-\begin{{tabular}}{{rrrrrrrr}}
+\begin{{tabular}}{{rrrrrrr}}
 \toprule
-\textbf{{Dist.}} & \textbf{{Reach}} &
-\textbf{{$p_c$}} & \textbf{{$\rho_c$}} & \textbf{{Spd$_c$}} &
-\textbf{{$p_b$}} & \textbf{{$\rho_b$}} & \textbf{{Spd$_b$}} \\
+\textbf{{Dist.}} &
+\textbf{{$p$}} & \textbf{{$\rho_c$}} & \textbf{{Spd$_c$}} &
+& \textbf{{$\rho_b$}} & \textbf{{Spd$_b$}} \\
 \midrule
 """
 
     for _, row in summary_df.iterrows():
-        p_c_pct = f"{row['hoeffding_p_close'] * 100:.1f}\\%"
+        p_pct = f"{row['hoeffding_p_close'] * 100:.1f}\\%"
         rho_c = f"{row['rho_closeness']:.4f}"
         spd_c = f"{row['speedup_closeness']:.1f}$\\times$" if np.isfinite(row['speedup_closeness']) else "---"
 
-        if np.isfinite(row['hoeffding_p_betw']):
-            p_b_pct = f"{row['hoeffding_p_betw'] * 100:.1f}\\%"
-            rho_b = f"{row['rho_betweenness']:.4f}" if np.isfinite(row['rho_betweenness']) else "---"
+        if np.isfinite(row.get('rho_betweenness', float("nan"))):
+            rho_b = f"{row['rho_betweenness']:.4f}"
             spd_b = f"{row['speedup_betweenness']:.1f}$\\times$" if np.isfinite(row['speedup_betweenness']) else "---"
         else:
-            p_b_pct = "---"
             rho_b = "---"
             spd_b = "---"
 
-        latex += f"{row['distance'] // 1000}km & {row['reach']:,.0f} & "
-        latex += f"{p_c_pct} & {rho_c} & {spd_c} & "
-        latex += f"{p_b_pct} & {rho_b} & {spd_b} \\\\\n"
+        latex += f"{int(row['distance'] // 1000)}\\,km & "
+        latex += f"{p_pct} & {rho_c} & {spd_c} & "
+        latex += f"& {rho_b} & {spd_b} \\\\\n"
 
     latex += r"""\bottomrule
 \end{tabular}
 
 \vspace{0.5em}
 \footnotesize
-Network: Greater London Area. Both metrics use Hoeffding bound
-with spatial source selection: $p = \min(1, k/r)$.
+Network: Greater London Area. Deterministic distance-based schedule:
+same $p$ for both metrics at each distance.
 Subscripts: $c$ = closeness, $b$ = betweenness.
 \end{table}
 """
@@ -579,7 +583,7 @@ def compute_theoretical_bounds(summary_df: pd.DataFrame, n_nodes: int, raw_df: p
 
     for _, srow in summary_df.iterrows():
         dist = srow["distance"]
-        reach = srow["reach"]
+        r = canonical_reach(dist)
 
         raw_subset = raw_df[
             (raw_df["distance"] == dist) & (raw_df["metric"] == "harmonic")
@@ -591,23 +595,23 @@ def compute_theoretical_bounds(summary_df: pd.DataFrame, n_nodes: int, raw_df: p
         if np.isnan(raw_eps):
             continue
 
-        eps_normalised = raw_eps / reach if reach > 0 else float("inf")
+        eps_normalised = raw_eps / r if r > 0 else float("inf")
 
         if eps_normalised <= 0 or not np.isfinite(eps_normalised):
             continue
 
         # Our budget
-        our_eff_n = reach * srow["hoeffding_p_close"]
+        our_eff_n = r * srow["hoeffding_p_close"]
 
         # Eppstein & Wang (2004): source-sampling bound
         eppstein_samples = np.log(n_nodes) / eps_normalised**2
-        eppstein_local_samples = np.log(reach) / eps_normalised**2
+        eppstein_local_samples = np.log(r) / eps_normalised**2
 
         rows.append(
             {
                 "distance": dist,
                 "metric": "harmonic",
-                "reach": reach,
+                "canonical_reach": r,
                 "our_eff_n": our_eff_n,
                 "raw_eps": raw_eps,
                 "eps_normalised": eps_normalised,
@@ -672,7 +676,7 @@ def compute_bound_analysis(raw_df: pd.DataFrame):
                 "distance": row["distance"],
                 "metric": metric,
                 "bound_type": "Hoeffding",
-                "reach": row["mean_reach"],
+                "canonical_reach": canonical_reach(row["distance"]),
                 "epsilon": row["epsilon"],
                 "budget_param": row["budget_param"],
                 "eps_observed": eps_obs,
@@ -739,8 +743,8 @@ def main():
     print("02_validate_gla.py - Validating sampling models on Greater London network")
     print("=" * 70)
 
-    print(f"\nCloseness:   Hoeffding + spatial, eps={GLA_EPSILON_CLOSENESS}")
-    print(f"Betweenness: Hoeffding + spatial, eps={GLA_EPSILON_BETWEENNESS}")
+    print(f"\nCloseness:   Hoeffding + deterministic distance-based, eps={GLA_EPSILON_CLOSENESS}")
+    print(f"Betweenness: Hoeffding + deterministic distance-based, eps={GLA_EPSILON_BETWEENNESS}")
     print(f"  Delta: {DELTA}")
     print(f"  Distances: {GLA_DISTANCES}")
     print(f"  N_RUNS: {N_RUNS}")
@@ -774,10 +778,10 @@ def main():
     print("=" * 70)
 
     print(
-        f"\n{'Distance':>10} | {'Reach':>10} | {'p_c':>8} | {'rho_c':>8}"
-        f" | {'Spd_c':>8} | {'p_b':>8} | {'rho_b':>8} | {'Spd_b':>8} | {'OK?':>5}"
+        f"\n{'Distance':>10} | {'p':>8} | {'rho_c':>8}"
+        f" | {'Spd_c':>8} | {'rho_b':>8} | {'Spd_b':>8} | {'OK?':>5}"
     )
-    print("-" * 95)
+    print("-" * 75)
 
     all_pass = True
     for _, row in summary_df.iterrows():
@@ -786,16 +790,15 @@ def main():
             all_pass = False
 
         rho_b_str = f"{row['rho_betweenness']:.4f}" if np.isfinite(row['rho_betweenness']) else "n/a"
-        p_b_str = f"{row['hoeffding_p_betw']:.1%}" if np.isfinite(row['hoeffding_p_betw']) else "n/a"
         spd_b_str = f"{row['speedup_betweenness']:.1f}x" if np.isfinite(row['speedup_betweenness']) else "n/a"
 
         print(
-            f"{row['distance'] // 1000}km       | {row['reach']:>10,.0f} | {row['hoeffding_p_close']:>7.1%} | "
+            f"{row['distance'] // 1000}km       | {row['hoeffding_p_close']:>7.1%} | "
             f"{row['rho_closeness']:>8.4f} | {row['speedup_closeness']:>7.1f}x | "
-            f"{p_b_str:>8} | {rho_b_str:>8} | {spd_b_str:>8} | {status:>5}"
+            f"{rho_b_str:>8} | {spd_b_str:>8} | {status:>5}"
         )
 
-    print("\n" + "-" * 95)
+    print("\n" + "-" * 75)
     if all_pass:
         print("ALL DISTANCES PASS: rho >= 0.95 for both metrics at all distances.")
     else:

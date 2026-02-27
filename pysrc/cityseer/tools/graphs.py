@@ -48,6 +48,7 @@ def nx_simple_geoms(nx_multigraph: nx.MultiGraph) -> nx.MultiGraph:
         `geom` attributes.
 
     """
+
     logger.info("Generating interpolated edge geometries.")
     g_multi_copy = nx_multigraph.copy()  # skip validation as geoms not yet assigned
 
@@ -104,6 +105,7 @@ def nx_remove_filler_nodes(nx_multigraph: nx.MultiGraph) -> nx.MultiGraph:
         edge with associated `geom` attributes spliced together.
 
     """
+
     logger.info("Removing filler nodes.")
     g_multi_copy = util.validate_cityseer_networkx_graph(nx_multigraph)
     removed_nodes: set[NodeKey] = set()
@@ -247,6 +249,7 @@ def nx_remove_dangling_nodes(
          the `despine` parameter distance.
 
     """
+
     logger.info("Removing dangling nodes.")
     if remove_disconnected > len(nx_multigraph):
         logger.warning(
@@ -424,6 +427,7 @@ def nx_merge_parallel_edges(
         A `networkX` `MultiGraph` with consolidated nodes.
 
     """
+
     if contains_buffer_dist < 1:
         raise TypeError("contains_buffer_dist should be greater or equal to 1. ")
     logger.info(f"Merging parallel edges within buffer of {contains_buffer_dist}.")
@@ -545,6 +549,7 @@ def nx_snap_endpoints(nx_multigraph: nx.MultiGraph) -> nx.MultiGraph:
         A `networkX` `MultiGraph`.
 
     """
+
     logger.info("Snapping edge endpoints.")
     g_multi_copy = util.validate_cityseer_networkx_graph(nx_multigraph)
     for start_nd_key, end_nd_key, edge_idx, edge_data in tqdm(
@@ -615,6 +620,7 @@ def nx_iron_edges(
         A `networkX` `MultiGraph` with simplified edges.
 
     """
+
     logger.info("Ironing edges.")
     g_multi_copy = util.validate_cityseer_networkx_graph(nx_multigraph)
     start_nd_key: NodeKey
@@ -712,6 +718,7 @@ def nx_deduplicate_edges(
         A `networkX` graph with non-motorised edges removed if parallel to motorised edges.
 
     """
+
     g_multi_copy = util.validate_cityseer_networkx_graph(nx_multigraph)
     # generate STR tree
     edges_tree, edge_lookups = util.create_edges_strtree(g_multi_copy)
@@ -1099,6 +1106,7 @@ def nx_consolidate_nodes(
     _The consolidated OSM street network for Soho, London. © OpenStreetMap contributors._
 
     """
+
     if neighbour_policy is not None and neighbour_policy not in ("direct", "indirect"):
         raise ValueError('Neighbour policy should be "direct", "indirect", or the default of "None"')
     if crawl and buffer_dist >= 20:
@@ -1246,6 +1254,7 @@ def nx_snap_gapped_endings(
     tag_cache: dict[tuple[NodeKey, str], set[str | int]] | None = None,
 ) -> nx.MultiGraph:
     """ """
+
     _multi_graph = util.validate_cityseer_networkx_graph(nx_multigraph)
     # if using OSM tags heuristic
     hwy_tags = _extract_tags_to_set(osm_hwy_target_tags)
@@ -1839,6 +1848,7 @@ def nx_decompose(
     _Example graph after decomposition._
 
     """
+
     logger.info(f"Decomposing graph to maximum edge lengths of {decompose_max}.")
     g_multi_copy = util.validate_cityseer_networkx_graph(nx_multigraph)
     # if using OSM tags heuristic
@@ -1962,6 +1972,7 @@ def nx_to_dual(nx_multigraph: nx.MultiGraph) -> nx.MultiGraph:
     _Dual graph (blue) overlaid on the source primal graph (red)._
 
     """
+
     logger.info("Converting graph to dual.")
     _ = util.validate_cityseer_networkx_graph(nx_multigraph)
     if "is_dual" in nx_multigraph.graph:
@@ -2130,6 +2141,7 @@ def nx_weight_by_dissolved_edges(
         locally 'dissolved' context.
 
     """
+
     # note it is better to weight via edges than via nodes this is because offset / staggered nodes
     # (intersections on one side of parallel road) might not otherwise trigger de-duplication via weights
     logger.info(f"Generating node weights based on locally dissolved edges using a buffer of {dissolve_distance}m.")

@@ -4,8 +4,6 @@
 
 Loads the synthetic sampling cache and generates:
   - fig1_rho_vs_epsilon.pdf: Ranking accuracy (Spearman rho) vs epsilon, both metrics.
-  - fig3_hoeffding_bound.pdf: Hoeffding bound — epsilon determines p and speedup.
-  - fig5_error_vs_reach.pdf: Absolute and normalised error vs reach.
   - tab1_ew_comparison.tex: Required k and p across epsilon values.
 
 Requires:
@@ -20,15 +18,13 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from cityseer.config import HOEFFDING_EPSILON, compute_distance_p, compute_hoeffding_p
+from cityseer.config import GRID_SPACING, compute_distance_p
 from utilities import (
     CACHE_DIR,
     CACHE_VERSION,
     FIGURES_DIR,
     HOEFFDING_DELTA,
     TABLES_DIR,
-    compute_hoeffding_eff_n,
-    ew_predicted_epsilon,
 )
 
 # =============================================================================
@@ -87,97 +83,6 @@ def load_synthetic_data() -> pd.DataFrame:
         print(f"  {metric_label}: {len(subset)} rows, sample_probs: {probs}")
 
     return df
-
-
-# =============================================================================
-# NODE-LEVEL ACCURACY (supports fig5)
-# =============================================================================
-
-
-def _pool_node_errors(df_subset: pd.DataFrame, metric_label: str) -> list[dict]:
-    """Pool node-level errors and bin by absolute reach.
-
-    Normalisation:
-      - closeness: error / reach  (metric proportional to reach)
-      - betweenness: error / true_value  (relative error; metric proportional to reach^2)
-    """
-    reach_pool: list[np.ndarray] = []
-    error_pool: list[np.ndarray] = []
-    true_pool: list[np.ndarray] = []
-
-    for _, row in df_subset.iterrows():
-        node_reach = np.asarray(row["node_reach"])
-        node_true = np.asarray(row["node_true_vals"])
-        node_est = np.asarray(row["node_est_vals"])
-        abs_error = np.abs(node_true - node_est)
-
-        mask = (node_true > 0) & np.isfinite(node_true) & np.isfinite(node_est) & (node_reach > 0)
-        reach_pool.append(node_reach[mask])
-        error_pool.append(abs_error[mask])
-        true_pool.append(node_true[mask])
-
-    if not reach_pool:
-        return []
-
-    all_reach = np.concatenate(reach_pool)
-    all_error = np.concatenate(error_pool)
-    all_true = np.concatenate(true_pool)
-
-    bin_edges = np.array([10, 50, 100, 200, 500, 1000, 2000, 5000, 10000])
-    rows = []
-
-    for i in range(len(bin_edges) - 1):
-        lo, hi = bin_edges[i], bin_edges[i + 1]
-        mask = (all_reach >= lo) & (all_reach < hi)
-        n = mask.sum()
-        if n < 10:
-            continue
-
-        errors = all_error[mask]
-        reaches = all_reach[mask]
-        trues = all_true[mask]
-
-        if metric_label == "betweenness":
-            norm_errors = errors / np.maximum(trues, 1e-10)
-        else:
-            norm_errors = errors / reaches
-        valid_norm = norm_errors[np.isfinite(norm_errors)]
-
-        rows.append(
-            {
-                "metric": metric_label,
-                "reach_lo": lo,
-                "reach_hi": hi,
-                "reach_center": np.sqrt(lo * hi),
-                "median_mae": float(np.median(errors)),
-                "mae_q25": float(np.percentile(errors, 25)),
-                "mae_q75": float(np.percentile(errors, 75)),
-                "median_nrmse": float(np.median(valid_norm)) if len(valid_norm) > 0 else np.nan,
-                "nrmse_q25": float(np.percentile(valid_norm, 25)) if len(valid_norm) > 0 else np.nan,
-                "nrmse_q75": float(np.percentile(valid_norm, 75)) if len(valid_norm) > 0 else np.nan,
-                "n_nodes": int(n),
-            }
-        )
-
-    return rows
-
-
-def evaluate_node_level_accuracy(df: pd.DataFrame) -> pd.DataFrame:
-    """Evaluate per-node accuracy at each metric's paper-default epsilon.
-
-    Uses eps_targeted rows whose target_epsilon is closest to the paper default.
-    """
-    all_rows: list[dict] = []
-    for metric, paper_eps in [("harmonic", PAPER_EPSILON_CLOSENESS), ("betweenness", PAPER_EPSILON_BETWEENNESS)]:
-        available_eps = sorted(df[df["metric"] == metric]["target_epsilon"].dropna().unique())
-        closest_eps = min(available_eps, key=lambda e: abs(e - paper_eps))
-        subset = df[(df["metric"] == metric) & np.isclose(df["target_epsilon"], closest_eps)]
-        print(
-            f"  Node accuracy [{metric}]: paper eps={paper_eps}, "
-            f"using target_epsilon={closest_eps:.3f} ({len(subset)} rows)"
-        )
-        all_rows.extend(_pool_node_errors(subset, metric))
-    return pd.DataFrame(all_rows) if all_rows else pd.DataFrame()
 
 
 def compute_threshold_epsilons(df: pd.DataFrame, rho_target: float = 0.95) -> dict[str, float]:
@@ -296,33 +201,11 @@ def generate_fig1_rho_vs_epsilon(df: pd.DataFrame):
         ax.axvline(paper_eps, color="grey", linestyle=":", linewidth=1.2, alpha=0.8)
         ax.text(paper_eps + 0.002, 0.35, rf"$\varepsilon$={paper_eps}", fontsize=8, color="grey", ha="left")
 
-        # Distance-based deterministic method: overlay mean achieved rho as a single star
-        # Only include distances where sampling actually occurs (sample_prob < 1)
-        det_eps = HOEFFDING_EPSILON
-        det_subset = df[
-            (df["metric"] == metric_label)
-            & (df["sweep_type"] == "distance_based")
-            & (df["sample_prob"] < 1.0)
-        ]
-        if not det_subset.empty:
-            det_mean_rho = det_subset["spearman"].mean()
-            ax.scatter(
-                [det_eps],
-                [det_mean_rho],
-                color=colour,
-                marker="*",
-                s=200,
-                zorder=5,
-                label="Distance-based method",
-            )
-            ax.axhline(det_mean_rho, color=colour, linestyle="-.", linewidth=1.0, alpha=0.5)
-
         ax.set_xlabel(r"Target $\varepsilon$")
         ax.set_ylabel(r"Spearman $\rho$ (ranking accuracy)")
         ax.set_title(f"{panel_label} {metric_display}")
         ax.set_xlim(left=0)
         ax.set_ylim(0.3, 1.02)
-        ax.legend(loc="lower left", fontsize=8)
         ax.grid(True, alpha=0.3)
 
     fig.suptitle(r"Ranking Accuracy vs $\varepsilon$", fontsize=13, fontweight="bold", y=1.02)
@@ -334,142 +217,18 @@ def generate_fig1_rho_vs_epsilon(df: pd.DataFrame):
     plt.close()
 
 
-def generate_fig3_hoeffding_bound():
-    """Figure 3: The Hoeffding bound — how epsilon determines p and speedup.
-
-    Panel A: Sample probability p vs reach, for several epsilon values.
-    Panel B: Resulting speedup (1/p) vs reach.
-    Paper defaults shown as solid coloured lines; other epsilons as grey dashes.
-    """
-    print("\nGenerating Figure 3: Hoeffding bound (epsilon -> p)...")
-
-    fig, axes = plt.subplots(1, 2, figsize=(11, 5))
-
-    reach_range = np.logspace(1.5, 5.5, 500)
-    # All tested epsilons; paper default highlighted in colour, others in grey
-    # (epsilon, colour, linewidth, linestyle, label)
-    epsilon_specs = [
-        (0.025, "#636363", 1.2, "--", r"$\varepsilon$=0.025"),
-        (0.05,  "#2166AC", 2.2, "-",  rf"$\varepsilon$={PAPER_EPSILON_CLOSENESS} (default)"),
-        (0.075, "#969696", 1.2, "--", r"$\varepsilon$=0.075"),
-        (0.1,   "#969696", 1.2, "--", r"$\varepsilon$=0.10"),
-        (0.15,  "#969696", 1.2, "--", r"$\varepsilon$=0.15"),
-        (0.2,   "#636363", 1.2, "--", r"$\varepsilon$=0.20"),
-    ]
-
-    ax = axes[0]
-    for eps, colour, lw, ls, label in epsilon_specs:
-        p_values = [compute_hoeffding_p(r, eps, HOEFFDING_DELTA) * 100 for r in reach_range]
-        ax.plot(reach_range, p_values, linestyle=ls, color=colour, linewidth=lw, label=label)
-    ax.set_xscale("log")
-    ax.set_xlabel("Network Reach ($r$)")
-    ax.set_ylabel("Required Sample Probability $p$ (%)")
-    ax.set_title(r"A) $\varepsilon \to p$")
-    ax.set_ylim(0, 105)
-    ax.legend(loc="upper right", fontsize=9)
-    ax.grid(True, alpha=0.3)
-
-    ax = axes[1]
-    for eps, colour, lw, ls, label in epsilon_specs:
-        speedup_values = [1.0 / compute_hoeffding_p(r, eps, HOEFFDING_DELTA) for r in reach_range]
-        ax.plot(reach_range, speedup_values, linestyle=ls, color=colour, linewidth=lw, label=label)
-    ax.set_xscale("log")
-    ax.set_yscale("log")
-    ax.set_xlabel("Network Reach ($r$)")
-    ax.set_ylabel("Speedup (1/$p$)")
-    ax.set_title(r"B) Resulting speedup")
-    ax.legend(loc="upper left", fontsize=9)
-    ax.grid(True, alpha=0.3, which="both")
-
-    fig.suptitle(r"Hoeffding Bound: $\varepsilon \to$ Sampling Budget", fontsize=13, fontweight="bold", y=1.02)
-    plt.tight_layout()
-
-    output_path = FIGURES_DIR / "fig3_hoeffding_bound.pdf"
-    fig.savefig(output_path, dpi=300, bbox_inches="tight")
-    print(f"  Saved: {output_path}")
-    plt.close()
-
-
-def generate_fig5_error_vs_reach(node_acc: pd.DataFrame):
-    """Figure 5: Absolute error grows with reach; normalised error bounded by epsilon."""
-    print("\nGenerating Figure 5: Error vs reach...")
-
-    colour_har = "#2166AC"
-    colour_betw = "#B2182B"
-
-    fig, axes = plt.subplots(1, 2, figsize=(11, 5))
-
-    for col_idx, (med_col, lo_col, hi_col, ylabel, title) in enumerate(
-        [
-            ("median_mae", "mae_q25", "mae_q75", "Median Absolute Error", "A) Absolute Error"),
-            ("median_nrmse", "nrmse_q25", "nrmse_q75", "Median Normalised Error", "B) Normalised Error"),
-        ]
-    ):
-        ax = axes[col_idx]
-
-        for metric_label, colour, marker, display, paper_eps in [
-            ("harmonic", colour_har, "o", "Closeness", PAPER_EPSILON_CLOSENESS),
-            ("betweenness", colour_betw, "s", "Betweenness", PAPER_EPSILON_BETWEENNESS),
-        ]:
-            sub = node_acc[node_acc["metric"] == metric_label].copy()
-            sub = sub[sub[med_col].notna() & (sub[med_col] > 0)]
-            if len(sub) == 0:
-                continue
-
-            x = sub["reach_center"].values
-            y = sub[med_col].values
-            lo_err = np.maximum(y - sub[lo_col].values, 0)
-            hi_err = np.maximum(sub[hi_col].values - y, 0)
-
-            ax.errorbar(
-                x, y, yerr=[lo_err, hi_err],
-                fmt=marker, color=colour, markersize=7,
-                capsize=4, capthick=1.5, linewidth=1.5,
-                label=display, zorder=3,
-            )
-            ax.plot(x, y, color=colour, linewidth=1.5, alpha=0.5, zorder=2)
-
-            if col_idx == 1:
-                r_line = np.logspace(np.log10(50), 4, 200)
-                eps_bound = np.array(
-                    [
-                        ew_predicted_epsilon(compute_hoeffding_p(r, paper_eps, HOEFFDING_DELTA) * r, r)
-                        for r in r_line
-                    ]
-                )
-                ax.plot(
-                    r_line, eps_bound, color=colour, linewidth=2,
-                    linestyle="--", alpha=0.5,
-                    label=rf"Hoeffding bound ($\varepsilon$={paper_eps})",
-                    zorder=1,
-                )
-
-        ax.set_xscale("log")
-        ax.set_yscale("log")
-        ax.set_xlabel("Per-Node Reach")
-        ax.set_ylabel(ylabel)
-        ax.set_title(title, fontweight="bold")
-        ax.legend(loc="upper right" if col_idx == 1 else "lower right", fontsize=8)
-        ax.grid(True, alpha=0.3, which="both")
-
-    plt.tight_layout()
-
-    output_path = FIGURES_DIR / "fig5_error_vs_reach.pdf"
-    fig.savefig(output_path, dpi=300, bbox_inches="tight")
-    print(f"  Saved: {output_path}")
-    plt.close()
-
-
 # =============================================================================
 # TABLE
 # =============================================================================
 
 
 def generate_tab1_ew_comparison():
-    """Tab 1: Required k and p across epsilon values, with paper defaults noted in caption."""
-    print("\nGenerating Table 1: EW comparison...")
+    """Tab 1: Deterministic sampling schedule at standard distances across epsilon values."""
+    import math
 
-    reach_values = [100, 500, 1000, 3000, 10000, 30000]
+    print("\nGenerating Table 1: Distance-based sampling comparison...")
+
+    distance_values = [500, 1000, 2000, 5000, 10000, 20000]
 
     def fmt_int(n):
         return f"{n:,}".replace(",", "{,}")
@@ -478,11 +237,14 @@ def generate_tab1_ew_comparison():
         return f"{p * 100:.1f}\\%"
 
     rows = []
-    for reach in reach_values:
-        row = {"reach": reach}
+    for dist in distance_values:
+        r = math.pi * dist**2 / GRID_SPACING**2
+        row = {"distance": dist, "canonical_reach": r}
         for eps in EPSILON_TARGETS:
-            row[f"k_{eps}"] = compute_hoeffding_eff_n(reach, eps, HOEFFDING_DELTA)
-            row[f"p_{eps}"] = compute_hoeffding_p(reach, eps, HOEFFDING_DELTA)
+            p = compute_distance_p(dist, epsilon=eps, delta=HOEFFDING_DELTA)
+            k = math.log(2 * r / HOEFFDING_DELTA) / (2 * eps**2) if r > 0 else 0
+            row[f"k_{eps}"] = k
+            row[f"p_{eps}"] = p
         rows.append(row)
 
     n_eps = len(EPSILON_TARGETS)
@@ -490,9 +252,9 @@ def generate_tab1_ew_comparison():
 
     latex = r"""\begin{table}[htbp]
 \centering
-\caption{Required sample sizes under the Hoeffding/EW bound at different additive
-  error tolerances ($\delta = 0.1$): $k = \log(2r/\delta) / (2\varepsilon^2)$,
-  $p = \min(1, k/r)$. Paper default: $\varepsilon=0.05$ for both metrics.}
+\caption{Deterministic sampling schedule at standard analysis distances under different
+  error tolerances ($\delta = 0.1$, $s = """ + f"{GRID_SPACING:.0f}" + r"""\,$m).
+  Paper default: $\varepsilon=0.05$ for both metrics.}
 \label{tab:ew_comparison}
 \small
 """
@@ -500,7 +262,7 @@ def generate_tab1_ew_comparison():
     latex += "\\toprule\n"
 
     # Top header: epsilon group labels
-    latex += "\\textbf{Reach}"
+    latex += "\\textbf{Distance}"
     for eps in EPSILON_TARGETS:
         latex += f" & \\multicolumn{{2}}{{c}}{{$\\varepsilon={eps}$}}"
     latex += " \\\\\n"
@@ -513,7 +275,8 @@ def generate_tab1_ew_comparison():
     latex += "\\midrule\n"
 
     for row in rows:
-        latex += fmt_int(row["reach"])
+        d_str = f"{int(row['distance'] // 1000)}\\,km" if row['distance'] >= 1000 else f"{row['distance']}\\,m"
+        latex += d_str
         for eps in EPSILON_TARGETS:
             k = int(row[f"k_{eps}"])
             p = row[f"p_{eps}"]
@@ -549,19 +312,13 @@ def main():
 
     compute_threshold_epsilons(df)
 
-    node_acc = evaluate_node_level_accuracy(df)
-
     generate_fig1_rho_vs_epsilon(df)
-    generate_fig3_hoeffding_bound()
-    generate_fig5_error_vs_reach(node_acc)
     generate_tab1_ew_comparison()
 
     print("\n" + "=" * 70)
     print("OUTPUTS")
     print("=" * 70)
     print(f"  {FIGURES_DIR / 'fig1_rho_vs_epsilon.pdf'}")
-    print(f"  {FIGURES_DIR / 'fig3_hoeffding_bound.pdf'}")
-    print(f"  {FIGURES_DIR / 'fig5_error_vs_reach.pdf'}")
     print(f"  {TABLES_DIR / 'tab1_ew_comparison.tex'}")
 
     return 0

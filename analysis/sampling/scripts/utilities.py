@@ -10,8 +10,8 @@ Sections:
 3. Network helpers (live buffer)
 4. Hoeffding / EW bound utilities (analysis-specific)
 
-Note: Distance-based sampling probability uses cityseer.config.compute_distance_p.
-      Hoeffding probability (for cache sweep) uses cityseer.config.compute_hoeffding_p.
+Note: All sampling probabilities use cityseer.config.compute_distance_p (distance-based).
+      All derived quantities (predicted epsilon, effective n) use canonical reach from distance.
 """
 
 import math
@@ -45,7 +45,7 @@ for d in [CACHE_DIR, OUTPUT_DIR, FIGURES_DIR, TABLES_DIR]:
 # Cache version for invalidation — bump this to force all caches to regenerate
 # Versioned filenames (synthetic pkl, validation CSVs) auto-regenerate on bump.
 # Network graphs (gla_graph.pkl, gla_ground_truth_*.pkl) are unversioned and persist.
-CACHE_VERSION = "v33"
+CACHE_VERSION = "v35"
 
 # Canonical per-quartile key prefixes — single source of truth for fallback/perfect blocks
 QUARTILE_KEYS = ("spearman", "mae", "max_error", "reach")
@@ -238,62 +238,45 @@ def apply_live_buffer_nx(G: nx.MultiGraph, buffer_dist: float) -> nx.MultiGraph:
 
 # =============================================================================
 # SECTION 4: Hoeffding / EW Bound Utilities (analysis-specific)
+# All functions use canonical reach from distance: r = pi * d^2 / s^2
 # =============================================================================
 
+from cityseer.config import GRID_SPACING
 
-def compute_hoeffding_eff_n(
-    reach: float,
-    epsilon: float = HOEFFDING_EPSILON,
-    delta: float = HOEFFDING_DELTA,
-) -> float:
-    """
-    Compute effective sample size from the Hoeffding/EW bound.
 
-    k = log(2r / delta) / (2 * epsilon^2)
-
-    Parameters
-    ----------
-    reach : float
-        Mean network reach (nodes within distance)
-    epsilon : float
-        Normalised additive error tolerance
-    delta : float
-        Failure probability
-
-    Returns
-    -------
-    float
-        Required effective sample size
-    """
-    if reach <= 0 or epsilon <= 0:
-        return reach
-    return math.log(2 * reach / delta) / (2 * epsilon**2)
+def canonical_reach(distance: float, grid_spacing: float = GRID_SPACING) -> float:
+    """Canonical reach from distance: r = pi * d^2 / s^2."""
+    return math.pi * distance**2 / grid_spacing**2
 
 
 def ew_predicted_epsilon(
-    n_eff: float,
-    reach: float,
+    distance: float,
+    p: float,
     delta: float = HOEFFDING_DELTA,
 ) -> float:
     """
-    Compute the EW-predicted maximum normalised epsilon.
+    Compute the EW-predicted maximum normalised epsilon using canonical reach.
 
+    r = pi * d^2 / s^2
+    n_eff = r * p
     eps = sqrt(log(2r / delta) / (2 * n_eff))
 
     Parameters
     ----------
-    n_eff : float
-        Effective sample size
-    reach : float
-        Mean network reach
+    distance : float
+        Analysis distance in metres.
+    p : float
+        Sampling probability.
     delta : float
-        Failure probability
+        Failure probability.
 
     Returns
     -------
     float
-        Predicted maximum additive error
+        Predicted maximum normalised additive error.
     """
-    if n_eff <= 0 or reach <= 0:
+    r = canonical_reach(distance)
+    n_eff = r * p
+    if n_eff <= 0 or r <= 0:
         return float("inf")
-    return math.sqrt(math.log(2 * reach / delta) / (2 * n_eff))
+    return math.sqrt(math.log(2 * r / delta) / (2 * n_eff))

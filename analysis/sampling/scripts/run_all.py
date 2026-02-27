@@ -22,8 +22,7 @@ SCRIPTS = [
     ("02_validate_gla.py", "Validate on Greater London network", True),
     ("03_validate_madrid.py", "Validate on Greater Madrid network", True),
     ("04_figures_validation.py", "Generate validation figures for GLA and Madrid", False),
-    ("04_practical_guide.py", "Generate practical guidance figures/tables", False),
-    ("05_generate_macros.py", "Generate LaTeX macros from results", False),
+    ("05_generate_macros.py", "Generate LaTeX macros, tables, and practical guide figure", False),
 ]
 
 

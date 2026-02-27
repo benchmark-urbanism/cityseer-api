@@ -220,6 +220,7 @@ def street_continuity(
     """
     # NOTE: experimented with string cleaning and removal of generic descriptors but this worked contrary to intentions.
 
+
     nx_multi_copy: nx.MultiGraph = nx_multigraph.copy()
     # check intended method keys
     available_targets = ["names", "routes", "highways"]

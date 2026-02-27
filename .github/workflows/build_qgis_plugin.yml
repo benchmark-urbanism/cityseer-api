@@ -1,0 +1,62 @@
+name: build qgis plugin zip
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-qgis-plugin:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build QGIS plugin zip
+        run: python qgis_plugin/build_plugin.py
+
+      - name: Verify plugin zip contents
+        run: |
+          python - <<'PY'
+          import zipfile
+          from pathlib import Path
+
+          zips = sorted(Path("qgis_plugin").glob("cityseer-qgis-*.zip"))
+          if not zips:
+              raise SystemExit("No QGIS plugin zip was generated.")
+          zip_path = zips[-1]
+          required = {
+              "cityseer_qgis/__init__.py",
+              "cityseer_qgis/provider.py",
+              "cityseer_qgis/metadata.txt",
+              "cityseer_qgis/LICENSE",
+          }
+          with zipfile.ZipFile(zip_path) as zf:
+              names = set(zf.namelist())
+          missing = sorted(required - names)
+          if missing:
+              raise SystemExit(f"Missing files in {zip_path.name}: {missing}")
+          print(f"Verified {zip_path.name}")
+          PY
+
+      - name: Upload QGIS plugin zip artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: qgis-plugin-zip
+          path: qgis_plugin/cityseer-qgis-*.zip
+          if-no-files-found: error
+
+      - name: Attach zip to GitHub release (tags)
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: qgis_plugin/cityseer-qgis-*.zip

@@ -1,6 +1,6 @@
 % =============================================================================
 % Model Macros - AUTO-GENERATED from analysis pipeline
-% Generated: 2026-02-26 12:43:10
+% Generated: 2026-02-27 08:28:49
 % Source files:
 %   - output/gla_validation_summary.csv
 %   - output/madrid_validation.csv (if available)
@@ -9,8 +9,9 @@
 % =============================================================================
 
 % -----------------------------------------------------------------------------
-% HOEFFDING / EW BOUND MODEL (both metrics)
-% k = log(2r/delta) / (2*epsilon^2), p = min(1, k/r)
+% DETERMINISTIC DISTANCE-BASED SAMPLING MODEL (both metrics)
+% Canonical grid: r = pi * d^2 / s^2, s = 175m
+% Hoeffding bound: k = log(2r/delta) / (2*epsilon^2), p = min(1, k/r)
 % Zero fitted parameters: epsilon and delta are user-chosen conventions.
 % -----------------------------------------------------------------------------
 
@@ -19,24 +20,25 @@
 \newcommand{\hoeffdingEpsilonCloseness}{0.05}
 \newcommand{\hoeffdingEpsilonBetweenness}{0.05}
 \newcommand{\hoeffdingDelta}{0.1}
+\newcommand{\gridSpacing}{175}
 \newcommand{\targetRho}{0.95}
 
-% Hoeffding required k at common reaches (epsilon=0.05, delta=0.1)
-\newcommand{\hoeffdingKFiveK}{2303}
-\newcommand{\hoeffdingKTenK}{2441}
-\newcommand{\hoeffdingKTwentyK}{2580}
+% Deterministic sampling at standard distances (epsilon=0.05, delta=0.1, s=175m)
+\newcommand{\hoeffdingKFiveKm}{2169}
+\newcommand{\hoeffdingKTenKm}{2446}
+\newcommand{\hoeffdingKTwentyKm}{2724}
 
-% Hoeffding sampling probability at common reaches (closeness)
-\newcommand{\hoeffdingPOneK}{100.0}
-\newcommand{\hoeffdingPTwoK}{100.0}
-\newcommand{\hoeffdingPFiveK}{46.1}
-\newcommand{\hoeffdingPTenK}{24.4}
-\newcommand{\hoeffdingPTwentyK}{12.9}
+% Deterministic sampling probability at standard distances
+\newcommand{\hoeffdingPOneKm}{100.0}
+\newcommand{\hoeffdingPTwoKm}{100.0}
+\newcommand{\hoeffdingPFiveKm}{84.6}
+\newcommand{\hoeffdingPTenKm}{23.8}
+\newcommand{\hoeffdingPTwentyKm}{6.6}
 
-% Hoeffding speedup at common reaches (closeness)
-\newcommand{\hoeffdingSpeedupFiveK}{2.2}
-\newcommand{\hoeffdingSpeedupTenK}{4.1}
-\newcommand{\hoeffdingSpeedupTwentyK}{7.8}
+% Deterministic speedup at standard distances
+\newcommand{\hoeffdingSpeedupFiveKm}{1.2}
+\newcommand{\hoeffdingSpeedupTenKm}{4.2}
+\newcommand{\hoeffdingSpeedupTwentyKm}{15.1}
 
 % -----------------------------------------------------------------------------
 % GLA VALIDATION RESULTS
@@ -46,45 +48,39 @@
 
 % Minimum observed rho across all GLA distances
 \newcommand{\glaMinRho}{0.99}
-\newcommand{\glaMinRhoCloseness}{0.9930}
+\newcommand{\glaMinRhoCloseness}{0.9949}
 \newcommand{\glaNnodes}{156{,}285}
-\newcommand{\glaMinRhoBetweenness}{0.9795}
+\newcommand{\glaMinRhoBetweenness}{0.9812}
 
 % 5km validation
-\newcommand{\glaFiveKmReach}{5{,}100}
-\newcommand{\glaFiveKmRhoH}{0.996}
-\newcommand{\glaFiveKmRho}{0.996}
-\newcommand{\glaFiveKmSpeedup}{1.5}
-\newcommand{\glaFiveKmSpeedupCloseness}{1.5}
-\newcommand{\glaFiveKmRhoB}{0.998}
-\newcommand{\glaFiveKmSpeedupBetweenness}{1.6}
-\newcommand{\glaHoeffdingFiveKmRhoH}{0.996}
-\newcommand{\glaHoeffdingFiveKmP}{45.2}
-\newcommand{\glaHoeffdingFiveKmSpeedup}{2.2}
+\newcommand{\glaFiveKmRhoH}{0.999}
+\newcommand{\glaFiveKmRho}{0.999}
+\newcommand{\glaFiveKmP}{84.6}
+\newcommand{\glaFiveKmTheoreticalSpeedup}{1.2}
+\newcommand{\glaFiveKmSpeedup}{1.0}
+\newcommand{\glaFiveKmSpeedupCloseness}{1.0}
+\newcommand{\glaFiveKmRhoB}{0.999}
+\newcommand{\glaFiveKmSpeedupBetweenness}{1.1}
 
 % 10km validation
-\newcommand{\glaTenKmReach}{20{,}394}
-\newcommand{\glaTenKmRhoH}{0.994}
-\newcommand{\glaTenKmRho}{0.994}
-\newcommand{\glaTenKmSpeedup}{4.7}
-\newcommand{\glaTenKmSpeedupCloseness}{4.7}
-\newcommand{\glaTenKmRhoB}{0.990}
+\newcommand{\glaTenKmRhoH}{0.996}
+\newcommand{\glaTenKmRho}{0.996}
+\newcommand{\glaTenKmP}{23.8}
+\newcommand{\glaTenKmTheoreticalSpeedup}{4.2}
+\newcommand{\glaTenKmSpeedup}{3.7}
+\newcommand{\glaTenKmSpeedupCloseness}{3.7}
+\newcommand{\glaTenKmRhoB}{0.992}
 \newcommand{\glaTenKmSpeedupBetweenness}{4.8}
-\newcommand{\glaHoeffdingTenKmRhoH}{0.994}
-\newcommand{\glaHoeffdingTenKmP}{12.7}
-\newcommand{\glaHoeffdingTenKmSpeedup}{7.9}
 
 % 20km validation
-\newcommand{\glaTwentyKmReach}{69{,}463}
-\newcommand{\glaTwentyKmRhoH}{0.993}
-\newcommand{\glaTwentyKmRho}{0.993}
-\newcommand{\glaTwentyKmSpeedup}{14.3}
-\newcommand{\glaTwentyKmSpeedupCloseness}{14.3}
-\newcommand{\glaTwentyKmRhoB}{0.980}
-\newcommand{\glaTwentyKmSpeedupBetweenness}{18.3}
-\newcommand{\glaHoeffdingTwentyKmRhoH}{0.993}
-\newcommand{\glaHoeffdingTwentyKmP}{4.1}
-\newcommand{\glaHoeffdingTwentyKmSpeedup}{24.6}
+\newcommand{\glaTwentyKmRhoH}{0.995}
+\newcommand{\glaTwentyKmRho}{0.995}
+\newcommand{\glaTwentyKmP}{6.6}
+\newcommand{\glaTwentyKmTheoreticalSpeedup}{15.1}
+\newcommand{\glaTwentyKmSpeedup}{11.0}
+\newcommand{\glaTwentyKmSpeedupCloseness}{11.0}
+\newcommand{\glaTwentyKmRhoB}{0.981}
+\newcommand{\glaTwentyKmSpeedupBetweenness}{15.1}
 
 % Live node buffer (km)
 \newcommand{\glaBuffer}{20}
@@ -94,29 +90,26 @@
 % -----------------------------------------------------------------------------
 
 \newcommand{\madridNnodes}{181{,}176}
-\newcommand{\madridMinRho}{0.9874}
-\newcommand{\madridMinRhoBetweenness}{0.9782}
+\newcommand{\madridMinRho}{0.9900}
+\newcommand{\madridMinRhoBetweenness}{0.9810}
 
 % 5km validation
-\newcommand{\madridFiveKmReach}{2{,}447}
-\newcommand{\madridFiveKmRhoH}{0.9969}
-\newcommand{\madridFiveKmSpeedup}{1.6}
-\newcommand{\madridFiveKmRhoB}{0.9980}
-\newcommand{\madridFiveKmSpeedupBetweenness}{1.1}
+\newcommand{\madridFiveKmRhoH}{0.9990}
+\newcommand{\madridFiveKmSpeedup}{1.2}
+\newcommand{\madridFiveKmRhoB}{0.9993}
+\newcommand{\madridFiveKmSpeedupBetweenness}{1.2}
 
 % 10km validation
-\newcommand{\madridTenKmReach}{8{,}802}
-\newcommand{\madridTenKmRhoH}{0.9905}
-\newcommand{\madridTenKmSpeedup}{4.6}
-\newcommand{\madridTenKmRhoB}{0.9895}
-\newcommand{\madridTenKmSpeedupBetweenness}{4.8}
+\newcommand{\madridTenKmRhoH}{0.9931}
+\newcommand{\madridTenKmSpeedup}{3.7}
+\newcommand{\madridTenKmRhoB}{0.9921}
+\newcommand{\madridTenKmSpeedupBetweenness}{4.3}
 
 % 20km validation
-\newcommand{\madridTwentyKmReach}{29{,}438}
-\newcommand{\madridTwentyKmRhoH}{0.9874}
-\newcommand{\madridTwentyKmSpeedup}{26.4}
-\newcommand{\madridTwentyKmRhoB}{0.9782}
-\newcommand{\madridTwentyKmSpeedupBetweenness}{21.5}
+\newcommand{\madridTwentyKmRhoH}{0.9900}
+\newcommand{\madridTwentyKmSpeedup}{12.6}
+\newcommand{\madridTwentyKmRhoB}{0.9810}
+\newcommand{\madridTwentyKmSpeedupBetweenness}{14.9}
 
 
 % -----------------------------------------------------------------------------

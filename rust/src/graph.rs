@@ -8,7 +8,8 @@ use geo::geometry::{Coord, Line, LineString};
 use geo::BoundingRect;
 use geo::{Distance, Euclidean, Geometry, Length, Point};
 use log;
-use petgraph::graph::{DiGraph, NodeIndex};
+use petgraph::stable_graph::{NodeIndex, StableGraph};
+use petgraph::visit::{EdgeIndexable, IntoEdgeReferences, NodeIndexable};
 use petgraph::prelude::*;
 use pyo3::exceptions;
 use pyo3::prelude::*;
@@ -379,7 +380,7 @@ fn measure_cumulative_angle(coords: &[Coord<f64>]) -> f64 {
 #[pyclass]
 #[derive(Clone)]
 pub struct NetworkStructure {
-    pub graph: DiGraph<NodePayload, EdgePayload>,
+    pub graph: StableGraph<NodePayload, EdgePayload>,
     pub progress: Arc<AtomicUsize>,
     pub edge_rtree: Option<RTree<EdgeRtreeItem>>,
     pub barrier_geoms: Option<Vec<Geometry<f64>>>,
@@ -391,7 +392,7 @@ impl NetworkStructure {
     #[new]
     pub fn new() -> Self {
         Self {
-            graph: DiGraph::<NodePayload, EdgePayload>::default(),
+            graph: StableGraph::<NodePayload, EdgePayload>::default(),
             progress: Arc::new(AtomicUsize::new(0)),
             edge_rtree: None,
             barrier_geoms: None,
@@ -535,32 +536,50 @@ impl NetworkStructure {
     }
 
     // EXPENSIVE DUE TO PY CLONING OF KEYS - avoid calling in a loop
-    pub fn get_node_payload_py(&self, node_idx: usize) -> NodePayload {
-        self.graph
-            .node_weight(NodeIndex::new(node_idx))
-            .expect("No payload for requested node index.")
-            .clone() // EXPENSIVE!!
+    pub fn get_node_payload_py(&self, node_idx: usize) -> PyResult<NodePayload> {
+        Ok(self
+            ._get_node_payload_checked(node_idx, "node_idx")?
+            .clone()) // EXPENSIVE!!
     }
 
     // Unpack node weight directly from the payload to avoid cloning
-    pub fn get_node_weight(&self, node_idx: usize) -> f32 {
-        self.graph
-            .node_weight(NodeIndex::new(node_idx))
-            .expect("No payload for requested node index.")
-            .weight
+    pub fn get_node_weight(&self, node_idx: usize) -> PyResult<f32> {
+        Ok(self._get_node_payload_checked(node_idx, "node_idx")?.weight)
     }
 
     // Unpack live directly from the payload to avoid cloning
-    pub fn is_node_live(&self, node_idx: usize) -> bool {
-        self.graph
-            .node_weight(NodeIndex::new(node_idx))
-            .expect("No payload for requested node index.")
-            .live
+    pub fn is_node_live(&self, node_idx: usize) -> PyResult<bool> {
+        Ok(self._get_node_payload_checked(node_idx, "node_idx")?.live)
+    }
+
+    /// Set the live status of a node (e.g. based on a boundary polygon).
+    pub fn set_node_live(&mut self, node_idx: usize, live: bool) -> PyResult<()> {
+        let ni = NodeIndex::new(node_idx);
+        let payload = self.graph.node_weight_mut(ni).ok_or_else(|| {
+            exceptions::PyValueError::new_err(format!(
+                "Node index {} does not exist in the graph.",
+                node_idx
+            ))
+        })?;
+        payload.live = live;
+        Ok(())
     }
 
     /// Returns the total count of all nodes (street and transport).
     pub fn node_count(&self) -> usize {
         self.graph.node_count()
+    }
+
+    /// Returns an upper bound on node indices (all valid indices are < node_bound).
+    /// Use this instead of node_count() when allocating index-addressed vectors,
+    /// because StableGraph may have gaps after node removal.
+    pub fn node_bound(&self) -> usize {
+        self.graph.node_bound()
+    }
+
+    /// Returns an upper bound on edge indices (all valid indices are < edge_bound).
+    pub fn edge_bound(&self) -> usize {
+        self.graph.edge_bound()
     }
 
     /// Returns the count of non-transport (street) nodes.
@@ -655,9 +674,8 @@ impl NetworkStructure {
         payload: EdgePayload,
         py: Python, // Add Python GIL token
     ) -> PyResult<usize> {
-        // Assume node indices exist based on user request
-        let start_node_index = NodeIndex::new(start_nd_idx);
-        let end_node_index = NodeIndex::new(end_nd_idx);
+        let start_node_index = self.require_node_exists(start_nd_idx, "start_nd_idx")?;
+        let end_node_index = self.require_node_exists(end_nd_idx, "end_nd_idx")?;
 
         // Validate payload consistency - now returns PyResult<()>
         payload.validate(py)?; // Propagate error if invalid
@@ -827,6 +845,61 @@ impl NetworkStructure {
         self._add_edge_internal(start_nd_idx, end_nd_idx, payload, py)
     }
 
+    /// Remove a street node and all its connected edges from the StableGraph.
+    ///
+    /// StableGraph::remove_node() cascades to all edges connected to the node,
+    /// and preserves existing indices for other nodes (no swap-and-compact).
+    /// This means node indices held externally (e.g. by the QGIS plugin's
+    /// `node_idx` dict) remain valid after removal.
+    ///
+    /// Returns an error if the node does not exist or is a transport node.
+    pub fn remove_street_node(&mut self, node_idx: usize) -> PyResult<()> {
+        let ni = NodeIndex::new(node_idx);
+        let payload = self.graph.node_weight(ni).ok_or_else(|| {
+            exceptions::PyValueError::new_err(format!(
+                "Node index {} does not exist in the graph.",
+                node_idx
+            ))
+        })?;
+        if payload.is_transport {
+            return Err(exceptions::PyValueError::new_err(format!(
+                "Node index {} is a transport node and cannot be removed with remove_street_node.",
+                node_idx
+            )));
+        }
+        self.graph.remove_node(ni);
+        self.edge_rtree = None;
+        Ok(())
+    }
+
+    /// Remove a specific directed edge identified by its start/end node indices and edge_idx.
+    /// Other edge indices remain stable after removal (StableGraph guarantee).
+    pub fn remove_street_edge(
+        &mut self,
+        start_nd_idx: usize,
+        end_nd_idx: usize,
+        edge_idx: usize,
+    ) -> PyResult<()> {
+        let start_ni = self.require_node_exists(start_nd_idx, "start_nd_idx")?;
+        let end_ni = self.require_node_exists(end_nd_idx, "end_nd_idx")?;
+        let edge_id = self
+            .graph
+            .edges_connecting(start_ni, end_ni)
+            .find(|e| e.weight().edge_idx == edge_idx)
+            .map(|e| e.id());
+        match edge_id {
+            Some(eid) => {
+                self.graph.remove_edge(eid);
+                self.edge_rtree = None;
+                Ok(())
+            }
+            None => Err(exceptions::PyValueError::new_err(format!(
+                "No edge with edge_idx {} found from node {} to node {}.",
+                edge_idx, start_nd_idx, end_nd_idx
+            ))),
+        }
+    }
+
     /// Adds an abstract transport edge defined by travel time (seconds).
     /// Length is set to NaN. Geometry-related fields are NaN/None.
     #[pyo3(signature = (start_nd_idx, end_nd_idx, edge_idx, start_nd_key_py, end_nd_key_py, seconds, imp_factor=None))]
@@ -888,14 +961,15 @@ impl NetworkStructure {
         edge_idx: usize,
     ) -> PyResult<EdgePayload> {
         let payload = self
-            ._get_edge_payload(start_nd_idx, end_nd_idx, edge_idx)
+            ._get_edge_payload_checked(start_nd_idx, end_nd_idx, edge_idx)?
             .clone(); // EXPENSIVE!!
         Ok(payload)
     }
 
-    pub fn get_edge_length(&self, start_nd_idx: usize, end_nd_idx: usize, edge_idx: usize) -> f32 {
-        self._get_edge_payload(start_nd_idx, end_nd_idx, edge_idx)
-            .length
+    pub fn get_edge_length(&self, start_nd_idx: usize, end_nd_idx: usize, edge_idx: usize) -> PyResult<f32> {
+        Ok(self
+            ._get_edge_payload_checked(start_nd_idx, end_nd_idx, edge_idx)?
+            .length)
     }
 
     pub fn get_edge_impedance(
@@ -903,9 +977,10 @@ impl NetworkStructure {
         start_nd_idx: usize,
         end_nd_idx: usize,
         edge_idx: usize,
-    ) -> f32 {
-        self._get_edge_payload(start_nd_idx, end_nd_idx, edge_idx)
-            .imp_factor
+    ) -> PyResult<f32> {
+        Ok(self
+            ._get_edge_payload_checked(start_nd_idx, end_nd_idx, edge_idx)?
+            .imp_factor)
     }
 
     pub fn validate(&self, py: Python) -> PyResult<()> {
@@ -1108,6 +1183,45 @@ impl NetworkStructure {
 }
 
 impl NetworkStructure {
+    #[inline]
+    fn _get_node_payload_checked(&self, node_idx: usize, param_name: &str) -> PyResult<&NodePayload> {
+        let ni = self.require_node_exists(node_idx, param_name)?;
+        Ok(self
+            .graph
+            .node_weight(ni)
+            .expect("Node payload should exist after require_node_exists"))
+    }
+
+    #[inline]
+    fn require_node_exists(&self, node_idx: usize, param_name: &str) -> PyResult<NodeIndex> {
+        let ni = NodeIndex::new(node_idx);
+        if self.graph.node_weight(ni).is_none() {
+            return Err(exceptions::PyValueError::new_err(format!(
+                "{} {} does not exist in the graph.",
+                param_name, node_idx
+            )));
+        }
+        Ok(ni)
+    }
+
+    fn _get_edge_payload_checked(
+        &self,
+        start_nd_idx: usize,
+        end_nd_idx: usize,
+        edge_idx: usize,
+    ) -> PyResult<&EdgePayload> {
+        let start_node_index = self.require_node_exists(start_nd_idx, "start_nd_idx")?;
+        let end_node_index = self.require_node_exists(end_nd_idx, "end_nd_idx")?;
+
+        let edge_ref = self
+            .graph
+            .edges_connecting(start_node_index, end_node_index)
+            .find(|edge_ref| edge_ref.weight().edge_idx == edge_idx);
+        edge_ref
+            .map(|e| e.weight())
+            .ok_or_else(|| exceptions::PyValueError::new_err("Edge not found"))
+    }
+
     fn _get_edge_payload(
         &self,
         start_nd_idx: usize,
@@ -1122,6 +1236,42 @@ impl NetworkStructure {
             .edges_connecting(start_node_index, end_node_index)
             .find(|edge_ref| edge_ref.weight().edge_idx == edge_idx);
         edge_ref.expect("Edge not found").weight()
+    }
+
+    #[inline]
+    pub(crate) fn get_edge_length_unchecked(
+        &self,
+        start_nd_idx: usize,
+        end_nd_idx: usize,
+        edge_idx: usize,
+    ) -> f32 {
+        self._get_edge_payload(start_nd_idx, end_nd_idx, edge_idx).length
+    }
+
+    #[inline]
+    pub(crate) fn get_edge_impedance_unchecked(
+        &self,
+        start_nd_idx: usize,
+        end_nd_idx: usize,
+        edge_idx: usize,
+    ) -> f32 {
+        self._get_edge_payload(start_nd_idx, end_nd_idx, edge_idx).imp_factor
+    }
+
+    #[inline]
+    pub(crate) fn get_node_weight_unchecked(&self, node_idx: usize) -> f32 {
+        self.graph
+            .node_weight(NodeIndex::new(node_idx))
+            .expect("No payload for requested node index.")
+            .weight
+    }
+
+    #[inline]
+    pub(crate) fn is_node_live_unchecked(&self, node_idx: usize) -> bool {
+        self.graph
+            .node_weight(NodeIndex::new(node_idx))
+            .expect("No payload for requested node index.")
+            .live
     }
 
     /// Finds valid network node assignments for a single data entry.

@@ -121,7 +121,7 @@ def test_local_centrality_time(primal_graph):
     assert func_time < 1
 
     def node_cent_wrapper():
-        network_structure.closeness_shortest(
+        network_structure.centrality_shortest(compute_closeness=True, compute_betweenness=False,
             distances=distances,
             betas=None,
             pbar_disabled=True,

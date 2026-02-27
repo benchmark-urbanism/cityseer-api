@@ -27,6 +27,10 @@ SCRIPT_DIR = Path(__file__).parent
 PROJECT_ROOT = SCRIPT_DIR.parent
 PLUGIN_DIR = SCRIPT_DIR / "cityseer_qgis"
 METADATA_PATH = PLUGIN_DIR / "metadata.txt"
+DEFAULT_ICON_CANDIDATES = [
+    PROJECT_ROOT / "docs" / "src" / "favicon.png",
+    PROJECT_ROOT / "docs" / "src" / "assets" / "logos" / "round_logo.png",
+]
 
 # Standard QGIS plugin directories by platform
 _QGIS_PLUGIN_DIRS = [
@@ -78,13 +82,51 @@ def stamp_metadata_version(version: str) -> None:
 
 def copy_license() -> None:
     """Copy LICENSE from project root into the plugin directory (required by QGIS repo)."""
-    src = PROJECT_ROOT / "LICENSE"
+    src_candidates = [
+        PROJECT_ROOT / "LICENSE",
+        PROJECT_ROOT / "LICENSE.txt",
+    ]
+    src = next((p for p in src_candidates if p.exists()), None)
     dest = PLUGIN_DIR / "LICENSE"
-    if src.exists():
+    if src is not None:
         shutil.copy2(src, dest)
         print(f"  Copied LICENSE into {PLUGIN_DIR.name}/")
     else:
         print("  WARNING: No LICENSE file found at project root")
+
+
+def ensure_plugin_icon() -> None:
+    """Ensure metadata-referenced icon exists in the plugin directory."""
+    icon_path = PLUGIN_DIR / "icon.png"
+    if icon_path.exists():
+        return
+    for candidate in DEFAULT_ICON_CANDIDATES:
+        if candidate.exists():
+            shutil.copy2(candidate, icon_path)
+            print(f"  Copied fallback icon from {candidate.relative_to(PROJECT_ROOT)}")
+            return
+    print("  WARNING: No icon.png found for plugin and no fallback icon candidate exists")
+
+
+def validate_plugin_package_inputs() -> None:
+    """Basic preflight checks before creating a zip or deploying."""
+    required_files = [
+        PLUGIN_DIR / "__init__.py",
+        PLUGIN_DIR / "provider.py",
+        METADATA_PATH,
+    ]
+    missing = [p for p in required_files if not p.exists()]
+    if missing:
+        raise RuntimeError("Missing required plugin files: " + ", ".join(str(p) for p in missing))
+
+    metadata_text = METADATA_PATH.read_text()
+    icon_match = re.search(r"^icon=(.+)$", metadata_text, re.MULTILINE)
+    if icon_match:
+        icon_rel = icon_match.group(1).strip()
+        if icon_rel and not (PLUGIN_DIR / icon_rel).exists():
+            raise RuntimeError(
+                f"metadata.txt references icon={icon_rel}, but {PLUGIN_DIR / icon_rel} does not exist."
+            )
 
 
 def create_package_zip(version: str) -> Path:
@@ -169,6 +211,8 @@ def main() -> None:
 
     stamp_metadata_version(version)
     copy_license()
+    ensure_plugin_icon()
+    validate_plugin_package_inputs()
 
     if args.deploy:
         plugins_dir = Path(args.plugins_dir) if args.plugins_dir else None

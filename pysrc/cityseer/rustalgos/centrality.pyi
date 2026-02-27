@@ -27,8 +27,8 @@ class OdMatrix:
         """Number of unique origin nodes."""
         ...
 
-class ClosenessShortestResult:
-    """Holds results for shortest path closeness centrality calculations."""
+class CentralityShortestResult:
+    """Holds combined closeness + betweenness results for shortest path centrality."""
 
     distances: list[int]
     node_keys_py: list[Any]
@@ -45,6 +45,10 @@ class ClosenessShortestResult:
     @property
     def node_beta(self) -> dict[int, npt.NDArray[np.float32]]: ...
     @property
+    def node_betweenness(self) -> dict[int, npt.NDArray[np.float32]]: ...
+    @property
+    def node_betweenness_beta(self) -> dict[int, npt.NDArray[np.float32]]: ...
+    @property
     def reachability_totals(self) -> list[int]:
         """Total reachability counts per distance from sampled sources."""
         ...
@@ -53,8 +57,8 @@ class ClosenessShortestResult:
         """Number of sources that were sampled."""
         ...
 
-class ClosenessSimplestResult:
-    """Holds results for simplest path (angular) closeness centrality calculations."""
+class CentralitySimplestResult:
+    """Holds combined closeness + betweenness results for simplest (angular) path centrality."""
 
     distances: list[int]
     node_keys_py: list[Any]
@@ -66,22 +70,6 @@ class ClosenessSimplestResult:
     def node_farness(self) -> dict[int, npt.NDArray[np.float32]]: ...
     @property
     def node_harmonic(self) -> dict[int, npt.NDArray[np.float32]]: ...
-    @property
-    def reachability_totals(self) -> list[int]:
-        """Total reachability counts per distance from sampled sources."""
-        ...
-    @property
-    def sampled_source_count(self) -> int:
-        """Number of sources that were sampled."""
-        ...
-
-class BetweennessShortestResult:
-    """Holds results for shortest path betweenness centrality calculations."""
-
-    distances: list[int]
-    node_keys_py: list[Any]
-    node_indices: list[int]
-
     @property
     def node_betweenness(self) -> dict[int, npt.NDArray[np.float32]]: ...
     @property
@@ -95,8 +83,8 @@ class BetweennessShortestResult:
         """Number of sources that were sampled."""
         ...
 
-class BetweennessSimplestResult:
-    """Holds results for simplest (angular) path betweenness centrality calculations."""
+class BetweennessShortestResult:
+    """Holds results for shortest path betweenness centrality calculations."""
 
     distances: list[int]
     node_keys_py: list[Any]

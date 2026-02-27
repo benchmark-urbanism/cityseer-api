@@ -8,9 +8,9 @@ target epsilon, then runs sampling at those specific probabilities.
 
 Both closeness and betweenness use the same pipeline:
   1. Invert Hoeffding bound: p = log(2r/δ) / (2ε²r)
-  2. Compute n_sources = int(p * n_live)
-  3. Compute actual_p = n_sources / n_live
-  4. Call Rust function directly with source_indices and sample_probability for IPW-corrected sampling
+  2. Bernoulli-sample sources with inclusion probability p
+  3. Pass the target probability p to Rust for IPW-corrected sampling
+  4. Record realised sample fraction as a diagnostic only
 
 Usage:
     python 00_generate_cache.py           # Generate cache (skips if exists)
@@ -21,16 +21,18 @@ Outputs:
 """
 
 import argparse
+import math
 import pickle
 import random as _random
 import sys
 import time
 import warnings
+from functools import partial
 from pathlib import Path
 
 import networkx as nx
 import numpy as np
-from cityseer.config import HOEFFDING_EPSILON, compute_distance_p, compute_hoeffding_p
+from cityseer.config import GRID_SPACING, HOEFFDING_EPSILON, compute_distance_p, compute_hoeffding_p
 from cityseer.tools import io
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
@@ -40,7 +42,6 @@ from utilities import (
     HOEFFDING_DELTA,
     apply_live_buffer_nx,
     compute_accuracy_metrics,
-    ew_predicted_epsilon,
 )
 from utils.substrates import generate_keyed_template
 
@@ -112,19 +113,18 @@ def generate_synthetic_cache(force: bool = False):
             continue
         print(f"  Setup: {time.perf_counter() - t0:.0f}s  |  {n_nodes} nodes, {n_live} live")
 
-        # Ground truth (single pass for all distances)
+        # Ground truth (single combined pass for all distances)
         t0 = time.perf_counter()
-        true_closeness = net.closeness_shortest(distances=DISTANCES, pbar_disabled=True)
-        t_close = time.perf_counter() - t0
-        t0 = time.perf_counter()
-        true_betw = net.betweenness_shortest(distances=DISTANCES, pbar_disabled=True)
-        t_betw = time.perf_counter() - t0
-        print(f"  Ground truth: closeness {t_close:.0f}s + betweenness {t_betw:.0f}s")
+        true_combined = net.centrality_shortest(
+            distances=DISTANCES, compute_closeness=True, compute_betweenness=True, pbar_disabled=True
+        )
+        t_gt = time.perf_counter() - t0
+        print(f"  Ground truth (combined): {t_gt:.0f}s")
 
         for dist in DISTANCES:
-            true_harmonic = np.array(true_closeness.node_harmonic[dist])[live_mask]
-            true_betw_arr = np.array(true_betw.node_betweenness[dist])[live_mask]
-            node_reach = np.array(true_closeness.node_density[dist])[live_mask]
+            true_harmonic = np.array(true_combined.node_harmonic[dist])[live_mask]
+            true_betw_arr = np.array(true_combined.node_betweenness[dist])[live_mask]
+            node_reach = np.array(true_combined.node_density[dist])[live_mask]
             mean_reach = float(np.mean(node_reach))
 
             if mean_reach < 5:
@@ -139,14 +139,15 @@ def generate_synthetic_cache(force: bool = False):
             ]
             for metric_label, eps_targets, result_attr in eps_spec:
                 true_arr = true_harmonic if metric_label == "harmonic" else true_betw_arr
-                rust_fn = net.closeness_shortest if metric_label == "harmonic" else net.betweenness_shortest
+                rust_fn = partial(net.centrality_shortest, compute_closeness=True, compute_betweenness=False) if metric_label == "harmonic" else partial(net.centrality_shortest, compute_closeness=False, compute_betweenness=True)
 
                 for target_eps in eps_targets:
                     target_p = compute_hoeffding_p(mean_reach, target_eps, HOEFFDING_DELTA)
                     if target_p >= 1.0:
                         # Full sampling — record as perfect
                         true_f32 = true_arr.astype(np.float32)
-                        eps_val = ew_predicted_epsilon(mean_reach, mean_reach, delta=HOEFFDING_DELTA)
+                        # Synthetic experiment: use actual reach (not canonical)
+                        eps_val = math.sqrt(math.log(2 * mean_reach / HOEFFDING_DELTA) / (2 * mean_reach))
                         row = {
                             "topology": topo,
                             "distance": dist,
@@ -171,14 +172,16 @@ def generate_synthetic_cache(force: bool = False):
                         results.append(row)
                         continue
 
-                    n_sources = max(1, min(n_live, int(target_p * n_live)))
-                    actual_p = n_sources / n_live if n_live > 0 else 1.0
-                    effective_n = mean_reach * actual_p
-                    eps_val = ew_predicted_epsilon(effective_n, mean_reach, delta=HOEFFDING_DELTA)
-
                     rng = _random.Random(SEED)
-                    sources = rng.sample(live_indices, n_sources)
-                    rust_result = rust_fn(distances=[dist], source_indices=sources, sample_probability=actual_p)
+                    sources = [idx for idx in live_indices if rng.random() < target_p]
+                    if not sources and n_live > 0:
+                        sources = [rng.choice(live_indices)]
+                    actual_p = len(sources) / n_live if n_live > 0 else 1.0
+                    effective_n = mean_reach * target_p
+                    # Synthetic experiment: use actual reach (not canonical)
+                    eps_val = math.sqrt(math.log(2 * mean_reach / HOEFFDING_DELTA) / (2 * effective_n))
+
+                    rust_result = rust_fn(distances=[dist], source_indices=sources, sample_probability=target_p)
                     est = np.array(getattr(rust_result, result_attr)[dist])[live_mask]
                     sp, prec, scale, iqr, mae = compute_accuracy_metrics(true_arr, est)
 
@@ -216,8 +219,9 @@ def generate_synthetic_cache(force: bool = False):
                 ("betweenness", HOEFFDING_EPSILON, "node_betweenness", true_betw_arr),
             ]
             for metric_label, epsilon, result_attr, true_arr in det_spec:
-                rust_fn = net.closeness_shortest if metric_label == "harmonic" else net.betweenness_shortest
+                rust_fn = partial(net.centrality_shortest, compute_closeness=True, compute_betweenness=False) if metric_label == "harmonic" else partial(net.centrality_shortest, compute_closeness=False, compute_betweenness=True)
                 det_p = compute_distance_p(dist, epsilon=epsilon)
+                r_canonical = math.pi * dist**2 / GRID_SPACING**2
                 if det_p >= 1.0:
                     true_f32 = true_arr.astype(np.float32)
                     row = {
@@ -228,7 +232,7 @@ def generate_synthetic_cache(force: bool = False):
                         "node_reach": node_reach,
                         "sample_prob": det_p,
                         "actual_sample_prob": 1.0,
-                        "effective_n": mean_reach,
+                        "effective_n": r_canonical,
                         "epsilon": 0.0,
                         "target_epsilon": None,
                         "sweep_type": "distance_based",
@@ -244,13 +248,14 @@ def generate_synthetic_cache(force: bool = False):
                     results.append(row)
                     continue
 
-                n_sources = max(1, min(n_live, int(det_p * n_live)))
-                actual_p = n_sources / n_live if n_live > 0 else 1.0
-                effective_n = mean_reach * actual_p
-
                 rng = _random.Random(SEED)
-                sources = rng.sample(live_indices, n_sources)
-                rust_result = rust_fn(distances=[dist], source_indices=sources, sample_probability=actual_p)
+                sources = [idx for idx in live_indices if rng.random() < det_p]
+                if not sources and n_live > 0:
+                    sources = [rng.choice(live_indices)]
+                actual_p = len(sources) / n_live if n_live > 0 else 1.0
+                effective_n = r_canonical * det_p
+
+                rust_result = rust_fn(distances=[dist], source_indices=sources, sample_probability=det_p)
                 est = np.array(getattr(rust_result, result_attr)[dist])[live_mask]
                 sp, prec, scale, iqr, mae = compute_accuracy_metrics(true_arr, est)
 
