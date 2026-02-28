@@ -18,7 +18,7 @@ use std::sync::atomic::{AtomicUsize, Ordering as AtomicOrdering};
 use std::sync::Arc;
 use wkt::TryFromWkt;
 
-#[pyclass]
+#[pyclass(skip_from_py_object)]
 #[derive(Clone)]
 pub struct LanduseAccess {
     node_indices: Vec<usize>,
@@ -165,7 +165,7 @@ impl MixedUsesResult {
     }
 }
 
-#[pyclass]
+#[pyclass(skip_from_py_object)]
 #[derive(Clone)]
 pub struct Stats {
     node_indices: Vec<usize>,
@@ -304,7 +304,7 @@ impl StatsResult {
 }
 
 /// Data entry for spatial analysis.
-#[pyclass]
+#[pyclass(skip_from_py_object)]
 pub struct DataEntry {
     #[pyo3(get)]
     pub data_key_py: Py<PyAny>,

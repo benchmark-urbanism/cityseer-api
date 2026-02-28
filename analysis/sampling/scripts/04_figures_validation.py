@@ -294,8 +294,8 @@ def generate_fig6_reach_comparison():
 
     # Real networks
     network_styles = {
-        "Greater London":    ("o", "#2166AC", 8, "-"),
-        "Madrid":            ("s", "#B2182B", 8, "--"),
+        "Greater London":    ("o", "#333333", 8, "-"),
+        "Madrid":            ("s", "#888888", 8, "--"),
         "Synthetic (trellis)": ("^", "#4DAC26", 7, ":"),
         "Synthetic (tree)":    ("v", "#D01C8B", 7, ":"),
         "Synthetic (linear)":  ("D", "#F1A340", 7, ":"),
@@ -321,9 +321,9 @@ def generate_fig6_reach_comparison():
     ax.yaxis.set_major_formatter(matplotlib.ticker.FuncFormatter(lambda x, _: f"{x:,.0f}"))
 
     # Shade the region above the canonical curve to indicate where the schedule is conservative
-    ax.fill_between(d_fine / 1000, r_canonical, r_canonical * 20, color="#2166AC", alpha=0.04,
+    ax.fill_between(d_fine / 1000, r_canonical, r_canonical * 20, color="#999999", alpha=0.06,
                     label="_nolegend_")
-    ax.text(18, 200000, "Denser than canonical\n(schedule conservative)", fontsize=8, color="#2166AC",
+    ax.text(18, 200000, "Denser than canonical\n(schedule conservative)", fontsize=8, color="#666666",
             ha="center", va="top", style="italic")
 
     plt.tight_layout()

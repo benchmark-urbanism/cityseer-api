@@ -23,7 +23,7 @@ use std::sync::atomic::Ordering as AtomicOrdering;
 ///
 /// Stores per-pair trip weights in a nested HashMap for O(1) lookup.
 /// Constructed once and passed to centrality functions; can be reused across calls.
-#[pyclass]
+#[pyclass(from_py_object)]
 #[derive(Clone)]
 pub struct OdMatrix {
     map: HashMap<usize, HashMap<usize, f32>>,

@@ -1,0 +1,16 @@
+\begin{table}[htbp]
+\centering
+\caption{Deterministic sampling schedule by analysis distance ($\varepsilon = 0.06$, $\delta = 0.1$, canonical grid spacing $s = 175\,\text{m}$). Both closeness and betweenness use the same schedule. Sampling is exact ($p = 100\%$) for distances up to 4\,km. Speedup shown is theoretical ($1/p$); measured wall-clock speedup is lower at near-unity $p$ due to sampling overhead and emerges at 10\,km and beyond.}
+\label{tab:distance_lookup}
+\begin{tabular}{rrrrr}
+\toprule
+\textbf{Distance} & \textbf{Canonical reach} & \textbf{$k$} & \textbf{$p$ (\%)} & \textbf{Speedup ($1/p$)} \\
+\midrule
+1\,km & 103 & 1{,}059 & 100 & 1$\times$ \\
+2\,km & 410 & 1{,}252 & 100 & 1$\times$ \\
+5\,km & 2{,}565 & 1{,}506 & 58.7 & 1.7$\times$ \\
+10\,km & 10{,}258 & 1{,}699 & 16.6 & 6.0$\times$ \\
+20\,km & 41{,}033 & 1{,}891 & 4.6 & 21.7$\times$ \\
+\bottomrule
+\end{tabular}
+\end{table}

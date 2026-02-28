@@ -22,7 +22,7 @@ use std::sync::Arc;
 use wkt::TryFromWkt;
 
 /// Payload for a network node.
-#[pyclass]
+#[pyclass(skip_from_py_object)]
 pub struct NodePayload {
     #[pyo3(get)]
     pub node_key: Py<PyAny>,
@@ -78,7 +78,7 @@ impl NodePayload {
 }
 
 /// Payload for a network edge.
-#[pyclass]
+#[pyclass(from_py_object)]
 pub struct EdgePayload {
     #[pyo3(get)]
     pub start_nd_key_py: Option<Py<PyAny>>, // Made optional
@@ -239,7 +239,7 @@ impl EdgePayload {
 }
 
 /// Visit state for a node during traversal.
-#[pyclass]
+#[pyclass(skip_from_py_object)]
 #[derive(Clone, Copy)]
 pub struct NodeVisit {
     #[pyo3(get)]
@@ -286,7 +286,7 @@ impl NodeVisit {
 }
 
 /// Visit state for an edge during traversal.
-#[pyclass]
+#[pyclass(skip_from_py_object)]
 #[derive(Clone, Copy)]
 pub struct EdgeVisit {
     #[pyo3(get)]
@@ -377,7 +377,7 @@ fn measure_cumulative_angle(coords: &[Coord<f64>]) -> f64 {
 }
 
 /// Main network structure.
-#[pyclass]
+#[pyclass(from_py_object)]
 #[derive(Clone)]
 pub struct NetworkStructure {
     pub graph: StableGraph<NodePayload, EdgePayload>,

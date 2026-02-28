@@ -28,7 +28,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import matplotlib.ticker
 import numpy as np
-from matplotlib.colors import Normalize, LogNorm
+from matplotlib.colors import Normalize, LogNorm, LinearSegmentedColormap
 from matplotlib.lines import Line2D
 from scipy.stats import rankdata
 
@@ -41,6 +41,17 @@ from utilities import CACHE_DIR, FIGURES_DIR, OUTPUT_DIR
 
 COLOUR_CLOSENESS = "#2166AC"
 COLOUR_BETWEENNESS = "#B2182B"
+
+# Diverging colourmap: closeness blue → white → betweenness red
+CMAP_DIVERGING = LinearSegmentedColormap.from_list(
+    "closeness_betweenness",
+    [COLOUR_CLOSENESS, "white", COLOUR_BETWEENNESS],
+)
+# Sequential colourmap: blue → red (for magnitude-only data)
+CMAP_SEQUENTIAL = LinearSegmentedColormap.from_list(
+    "blue_to_red",
+    [COLOUR_CLOSENESS, COLOUR_BETWEENNESS],
+)
 
 plt.rcParams.update(
     {
@@ -103,11 +114,11 @@ def _spatial_residual_panel(ax, node_x, node_y, residual, title, crop_half=10000
     vlim = np.percentile(np.abs(res), 95)
     scatter = ax.scatter(
         x, y, c=res, s=0.3, alpha=0.7,
-        cmap="RdBu_r", vmin=-vlim, vmax=vlim,
+        cmap=CMAP_DIVERGING, vmin=-vlim, vmax=vlim,
         rasterized=True,
     )
-    plt.colorbar(scatter, ax=ax, label="Residual (est \u2212 true)", shrink=0.8)
-    ax.set_title(title)
+    plt.colorbar(scatter, ax=ax, label="Residual (est \u2212 true)", shrink=0.4)
+    ax.set_title(title, pad=4)
     ax.set_aspect("equal")
     ax.tick_params(labelsize=8)
     ax.set_xlim(cx - crop_half, cx + crop_half)
@@ -125,7 +136,7 @@ def generate_fig7_spatial_error(gla_data: dict, madrid_data: dict | None, dist: 
     print(f"\nGenerating Figure 7: spatial residual map ({dist // 1000}km)...")
 
     nrows = 2 if madrid_data is not None else 1
-    fig, axes = plt.subplots(nrows, 2, figsize=(14, 7 * nrows))
+    fig, axes = plt.subplots(nrows, 2, figsize=(14, 5.5 * nrows))
     if nrows == 1:
         axes = axes[np.newaxis, :]  # ensure 2D indexing
 
@@ -172,9 +183,9 @@ def generate_fig7_spatial_error(gla_data: dict, madrid_data: dict | None, dist: 
 
     fig.suptitle(
         f"Spatial Distribution of Sampling Residuals ({dist_km}km)",
-        fontsize=13, fontweight="bold", y=1.02,
+        fontsize=13, fontweight="bold",
     )
-    plt.tight_layout()
+    plt.tight_layout(h_pad=1.0, w_pad=2.0, rect=[0, 0, 1, 0.96])
     out = FIGURES_DIR / "fig7_spatial_error_gla.png"
     fig.savefig(out, dpi=300, bbox_inches="tight")
     plt.close()
@@ -186,8 +197,72 @@ def generate_fig7_spatial_error(gla_data: dict, madrid_data: dict | None, dist: 
 # =============================================================================
 
 
+def _binned_error_panel(ax, datasets, true_key, est_key, colour, title, n_bins=10):
+    """Plot binned bar chart of median absolute error by reach decile.
+
+    Bins nodes by reach into quantiles, computes median absolute error per bin,
+    and plots grouped bars (one group per network) with IQR whiskers.
+    """
+    bar_width = 0.8 / len(datasets)
+    for d_idx, (label, data, hatch) in enumerate(datasets):
+        true_vals = data.get(true_key)
+        est_vals = data.get(est_key)
+        if true_vals is None or est_vals is None:
+            continue
+        reach = data["node_reach"]
+        abs_err = np.abs(true_vals - est_vals)
+        # For betweenness, exclude nodes with zero true value
+        if true_key == "true_betweenness":
+            mask = true_vals > 0
+            reach, abs_err = reach[mask], abs_err[mask]
+        # Bin by reach decile
+        bin_edges = np.percentile(reach, np.linspace(0, 100, n_bins + 1))
+        bin_indices = np.digitize(reach, bin_edges, right=True)
+        bin_indices = np.clip(bin_indices, 1, n_bins)
+        medians = []
+        q25s = []
+        q75s = []
+        bin_labels = []
+        for b in range(1, n_bins + 1):
+            in_bin = bin_indices == b
+            if in_bin.sum() == 0:
+                continue
+            err_bin = abs_err[in_bin]
+            reach_bin = reach[in_bin]
+            medians.append(np.median(err_bin))
+            q25s.append(np.percentile(err_bin, 25))
+            q75s.append(np.percentile(err_bin, 75))
+            median_reach = int(np.median(reach_bin))
+            if median_reach >= 1000:
+                bin_labels.append(f"{median_reach / 1000:.1f}k")
+            else:
+                bin_labels.append(str(median_reach))
+        medians = np.array(medians)
+        q25s = np.array(q25s)
+        q75s = np.array(q75s)
+        x = np.arange(len(medians))
+        offset = (d_idx - (len(datasets) - 1) / 2) * bar_width
+        yerr_lo = np.maximum(medians - q25s, 1e-10)
+        yerr_hi = q75s - medians
+        ax.bar(
+            x + offset, medians, bar_width * 0.9,
+            yerr=[yerr_lo, yerr_hi],
+            capsize=2, color=colour, alpha=0.7 if d_idx == 0 else 0.5,
+            hatch=hatch, edgecolor="white", linewidth=0.5,
+            label=label, error_kw={"linewidth": 0.8},
+        )
+    ax.set_xticks(np.arange(len(bin_labels)))
+    ax.set_xticklabels(bin_labels, fontsize=8, rotation=45, ha="right")
+    ax.set_yscale("log")
+    ax.set_xlabel("Median Reach (per decile)")
+    ax.set_ylabel("Median Absolute Error")
+    ax.set_title(title)
+    ax.legend(fontsize=9)
+    ax.grid(True, alpha=0.3, axis="y", which="both")
+
+
 def generate_fig8_error_vs_reach(gla_data: dict, madrid_data: dict | None, dist: int):
-    """Per-node scatter: absolute error vs per-node reach.
+    """Binned bar chart: median absolute error by reach decile.
 
     Shows that absolute error scales with reach (high-reach nodes have higher
     absolute error but lower normalised error — precision scales with importance).
@@ -196,68 +271,20 @@ def generate_fig8_error_vs_reach(gla_data: dict, madrid_data: dict | None, dist:
 
     fig, axes = plt.subplots(1, 2, figsize=(13, 5.5))
 
-    datasets = [("GLA", gla_data, "o", 0.15)]
+    datasets = [("GLA", gla_data, None)]
     if madrid_data is not None:
-        datasets.append(("Madrid", madrid_data, "s", 0.15))
+        datasets.append(("Madrid", madrid_data, "//"))
 
-    # Panel A: Closeness
-    ax = axes[0]
-    for label, data, marker, alpha in datasets:
-        if data["est_harmonic"] is None:
-            continue
-        reach = data["node_reach"]
-        abs_err = np.abs(data["true_harmonic"] - data["est_harmonic"])
-        # Subsample for plotting if too many points
-        n = len(reach)
-        if n > 20000:
-            idx = np.random.default_rng(42).choice(n, 20000, replace=False)
-            reach_plot, err_plot = reach[idx], abs_err[idx]
-        else:
-            reach_plot, err_plot = reach, abs_err
-        ax.scatter(
-            reach_plot, err_plot, s=2, alpha=alpha, color=COLOUR_CLOSENESS,
-            marker=marker, label=label, rasterized=True,
-        )
-
-    ax.set_xscale("log")
-    ax.set_yscale("log")
-    ax.set_xlabel("Per-Node Reach")
-    ax.set_ylabel("Absolute Error")
-    ax.set_title("A) Closeness: Error vs Reach")
-    ax.legend(fontsize=9, markerscale=4)
-    ax.grid(True, alpha=0.3, which="both")
-
-    # Panel B: Betweenness
-    ax = axes[1]
-    has_betw = False
-    for label, data, marker, alpha in datasets:
-        if data.get("est_betweenness") is None:
-            continue
-        reach = data["node_reach"]
-        abs_err = np.abs(data["true_betweenness"] - data["est_betweenness"])
-        # Only plot nodes with nonzero true betweenness
-        mask = data["true_betweenness"] > 0
-        reach_m, err_m = reach[mask], abs_err[mask]
-        n = len(reach_m)
-        if n > 20000:
-            idx = np.random.default_rng(42).choice(n, 20000, replace=False)
-            reach_m, err_m = reach_m[idx], err_m[idx]
-        ax.scatter(
-            reach_m, err_m, s=2, alpha=alpha, color=COLOUR_BETWEENNESS,
-            marker=marker, label=label, rasterized=True,
-        )
-        has_betw = True
-
-    if has_betw:
-        ax.set_xscale("log")
-        ax.set_yscale("log")
-        ax.set_xlabel("Per-Node Reach")
-        ax.set_ylabel("Absolute Error")
-        ax.set_title("B) Betweenness: Error vs Reach")
-        ax.legend(fontsize=9, markerscale=4)
-        ax.grid(True, alpha=0.3, which="both")
-    else:
-        ax.set_title("B) Betweenness (no data)")
+    _binned_error_panel(
+        axes[0], datasets,
+        "true_harmonic", "est_harmonic", COLOUR_CLOSENESS,
+        "A) Closeness: Error vs Reach",
+    )
+    _binned_error_panel(
+        axes[1], datasets,
+        "true_betweenness", "est_betweenness", COLOUR_BETWEENNESS,
+        "B) Betweenness: Error vs Reach",
+    )
 
     plt.tight_layout()
     out = FIGURES_DIR / "fig8_error_vs_reach.pdf"
@@ -412,11 +439,11 @@ def _spatial_rank_panel(ax, node_x, node_y, rank_disp, n_nodes, title, crop_half
 
     scatter = ax.scatter(
         x, y, c=disp_pct, s=0.3, alpha=0.7,
-        cmap="inferno_r", vmin=0, vmax=vmax,
+        cmap=CMAP_SEQUENTIAL, vmin=0, vmax=vmax,
         rasterized=True,
     )
-    plt.colorbar(scatter, ax=ax, label="Rank displacement (%)", shrink=0.8)
-    ax.set_title(title)
+    plt.colorbar(scatter, ax=ax, label="Rank displacement (%)", shrink=0.4)
+    ax.set_title(title, pad=4)
     ax.set_aspect("equal")
     ax.tick_params(labelsize=8)
     ax.set_xlim(cx - crop_half, cx + crop_half)
@@ -435,7 +462,7 @@ def generate_fig9b_rank_displacement(gla_data: dict, madrid_data: dict | None, d
     print(f"\nGenerating Figure 9b: spatial rank displacement ({dist // 1000}km)...")
 
     nrows = 2 if madrid_data is not None else 1
-    fig, axes = plt.subplots(nrows, 2, figsize=(14, 7 * nrows))
+    fig, axes = plt.subplots(nrows, 2, figsize=(14, 5.5 * nrows))
     if nrows == 1:
         axes = axes[np.newaxis, :]
 
@@ -487,9 +514,9 @@ def generate_fig9b_rank_displacement(gla_data: dict, madrid_data: dict | None, d
 
     fig.suptitle(
         f"Spatial Distribution of Rank Displacement ({dist_km}km)",
-        fontsize=13, fontweight="bold", y=1.02,
+        fontsize=13, fontweight="bold",
     )
-    plt.tight_layout()
+    plt.tight_layout(h_pad=1.0, w_pad=2.0, rect=[0, 0, 1, 0.96])
     out = FIGURES_DIR / "fig9b_rank_displacement.png"
     fig.savefig(out, dpi=300, bbox_inches="tight")
     plt.close()
@@ -683,12 +710,14 @@ def generate_fig11_decile_transition(gla_data: dict, madrid_data: dict | None, d
                 colour,
             )
 
-    # Add a shared colourbar
-    if im is not None:
-        cbar = fig.colorbar(im, ax=axes.ravel().tolist(), shrink=0.6, pad=0.02)
-        cbar.set_label("% of nodes in true decile", fontsize=10)
-
     plt.tight_layout()
+
+    # Add a shared colourbar outside the plot area
+    if im is not None:
+        fig.subplots_adjust(right=0.88)
+        cbar_ax = fig.add_axes([0.90, 0.15, 0.02, 0.7])
+        cbar = fig.colorbar(im, cax=cbar_ax)
+        cbar.set_label("% of nodes in true decile", fontsize=10)
     out = FIGURES_DIR / "fig11_decile_transition.pdf"
     fig.savefig(out, dpi=300, bbox_inches="tight")
     plt.close()
