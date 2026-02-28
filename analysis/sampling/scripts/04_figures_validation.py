@@ -205,8 +205,10 @@ def generate_fig5_speedup(gla: pd.DataFrame, madrid: pd.DataFrame):
         ax.legend(loc="upper left")
         ax.grid(True, alpha=0.3, which="both")
 
-        # Clean y-axis ticks for log scale
-        ax.yaxis.set_major_formatter(matplotlib.ticker.FuncFormatter(lambda x, _: f"{x:.0f}×"))
+        # Clean y-axis ticks: no scientific notation
+        fmt = matplotlib.ticker.FuncFormatter(lambda x, _: f"{x:.0f}×")
+        ax.yaxis.set_major_formatter(fmt)
+        ax.yaxis.set_minor_formatter(fmt)
 
     fig.suptitle("Sampling Speedup on Real Networks", fontsize=13, fontweight="bold", y=1.02)
     plt.tight_layout()
@@ -337,12 +339,12 @@ def generate_fig6_reach_comparison():
 
 
 def generate_fig2_error_vs_reach(gla_full: pd.DataFrame, madrid_full: pd.DataFrame):
-    """Figure 2: Absolute and normalised error vs per-node reach quartiles.
+    """Figure 2: Absolute and relative error vs per-node reach quartiles.
 
-    Uses GLA and Madrid validation quartile data (reach_q1-q4, mae_q1-q4)
-    across distances where sampling occurs (p < 1). Shows that absolute error
-    grows with reach while normalised error decreases — precision scales with
-    importance.
+    Uses GLA and Madrid validation quartile data (reach_q1-q4, mae_q1-q4,
+    median_true_q1-q4) across distances where sampling occurs (p < 1). Shows
+    that absolute error grows with reach while relative error (mae/true_value)
+    decreases — precision scales with importance.
     """
     print("\nGenerating Figure 2: error vs reach (GLA + Madrid)...")
 
@@ -350,9 +352,8 @@ def generate_fig2_error_vs_reach(gla_full: pd.DataFrame, madrid_full: pd.DataFra
 
     from matplotlib.lines import Line2D
 
-    # Build per-quartile rows — normalise by per-quartile reach (not mean_reach)
     records_abs = []
-    records_norm = []
+    records_rel = []
 
     # --- GLA ---
     for _, row in gla_full.iterrows():
@@ -364,28 +365,30 @@ def generate_fig2_error_vs_reach(gla_full: pd.DataFrame, madrid_full: pd.DataFra
         for q in [1, 2, 3, 4]:
             reach = row[f"reach_q{q}"]
             mae = row[f"mae_q{q}"]
+            median_true = row.get(f"median_true_q{q}", np.nan)
             if reach > 0 and mae > 0:
-                norm_denom = reach if metric == "harmonic" else max(reach * (reach - 1), 1)
                 records_abs.append({"reach": reach, "error": mae, "colour": colour, "marker": "o"})
-                records_norm.append({"reach": reach, "error": mae / norm_denom, "colour": colour, "marker": "o"})
+                if np.isfinite(median_true) and median_true > 0:
+                    records_rel.append({"reach": reach, "error": mae / median_true, "colour": colour, "marker": "o"})
 
     # --- Madrid ---
     for _, row in madrid_full.iterrows():
-        for prefix, colour, is_harm in [("h", COLOUR_CLOSENESS, True), ("b", COLOUR_BETWEENNESS, False)]:
-            p_col = "hoeffding_p_close" if is_harm else "hoeffding_p_betw"
+        for prefix, colour in [("h", COLOUR_CLOSENESS), ("b", COLOUR_BETWEENNESS)]:
+            p_col = "hoeffding_p_close" if prefix == "h" else "hoeffding_p_betw"
             p_val = row.get(p_col, np.nan)
             if not np.isfinite(p_val) or p_val >= 1.0:
                 continue
             for q in [1, 2, 3, 4]:
                 reach = row.get(f"{prefix}_reach_q{q}", None)
                 mae = row.get(f"{prefix}_mae_q{q}", None)
+                median_true = row.get(f"{prefix}_median_true_q{q}", np.nan)
                 if reach is not None and mae is not None and reach > 0 and mae > 0:
-                    norm_denom = reach if is_harm else max(reach * (reach - 1), 1)
                     records_abs.append({"reach": reach, "error": mae, "colour": colour, "marker": "s"})
-                    records_norm.append({"reach": reach, "error": mae / norm_denom, "colour": colour, "marker": "s"})
+                    if np.isfinite(median_true) and median_true > 0:
+                        records_rel.append({"reach": reach, "error": mae / median_true, "colour": colour, "marker": "s"})
 
     df_abs = pd.DataFrame(records_abs)
-    df_norm = pd.DataFrame(records_norm)
+    df_rel = pd.DataFrame(records_rel)
 
     # Shared legend handles
     legend_handles = [
@@ -395,9 +398,9 @@ def generate_fig2_error_vs_reach(gla_full: pd.DataFrame, madrid_full: pd.DataFra
         Line2D([0], [0], color="grey", marker="s", linestyle="none", markersize=6, label="Madrid"),
     ]
 
-    for ax, df, ylabel, title, is_norm in [
-        (axes[0], df_abs,  "Median Absolute Error",   "A) Absolute Error",    False),
-        (axes[1], df_norm, "Median Normalised Error",  "B) Normalised Error",  True),
+    for ax, df, ylabel, title, is_rel in [
+        (axes[0], df_abs, "Median Absolute Error",  "A) Absolute Error",  False),
+        (axes[1], df_rel, "Median Relative Error",  "B) Relative Error",  True),
     ]:
         if df.empty:
             ax.set_title(title + " (no data)")
@@ -407,7 +410,7 @@ def generate_fig2_error_vs_reach(gla_full: pd.DataFrame, madrid_full: pd.DataFra
             ax.scatter(grp["reach"], grp["error"], color=colour,
                        marker=marker, s=35, alpha=0.85, zorder=4)
 
-        ax.legend(handles=legend_handles, fontsize=8, loc="upper right" if is_norm else "upper left")
+        ax.legend(handles=legend_handles, fontsize=8, loc="upper right" if is_rel else "upper left")
 
         ax.set_xscale("log")
         ax.set_yscale("log")

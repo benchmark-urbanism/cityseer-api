@@ -45,13 +45,13 @@ for d in [CACHE_DIR, OUTPUT_DIR, FIGURES_DIR, TABLES_DIR]:
 # Cache version for invalidation — bump this to force all caches to regenerate
 # Versioned filenames (synthetic pkl, validation CSVs) auto-regenerate on bump.
 # Network graphs (gla_graph.pkl, gla_ground_truth_*.pkl) are unversioned and persist.
-CACHE_VERSION = "v35"
+CACHE_VERSION = "v36"
 
 # Canonical per-quartile key prefixes — single source of truth for fallback/perfect blocks
-QUARTILE_KEYS = ("spearman", "mae", "max_error", "reach")
+QUARTILE_KEYS = ("spearman", "mae", "max_error", "reach", "median_true")
 
-# Analysis-specific Hoeffding defaults (stricter than library default of 0.1)
-HOEFFDING_EPSILON = 0.05  # Normalised additive error tolerance
+# Analysis-specific Hoeffding defaults
+HOEFFDING_EPSILON = 0.06  # Normalised additive error tolerance
 HOEFFDING_DELTA = 0.1  # Failure probability (90% confidence)
 
 
@@ -128,6 +128,7 @@ def compute_quartile_accuracy(
           mae_q{i}         - median absolute error
           max_error_q{i}   - max absolute error
           reach_q{i}       - median reach in quartile
+          median_true_q{i} - median true centrality in quartile
     """
     nan_result = {}
     for q in range(1, 5):
@@ -135,6 +136,7 @@ def compute_quartile_accuracy(
         nan_result[f"mae_q{q}"] = np.nan
         nan_result[f"max_error_q{q}"] = np.nan
         nan_result[f"reach_q{q}"] = np.nan
+        nan_result[f"median_true_q{q}"] = np.nan
 
     mask = (true_vals > 0) & np.isfinite(true_vals) & np.isfinite(est_vals) & np.isfinite(node_reach)
     if mask.sum() < 40:
@@ -156,6 +158,7 @@ def compute_quartile_accuracy(
             result[f"mae_q{q + 1}"] = np.nan
             result[f"max_error_q{q + 1}"] = np.nan
             result[f"reach_q{q + 1}"] = np.nan
+            result[f"median_true_q{q + 1}"] = np.nan
         else:
             abs_errors = np.abs(true_m[q_mask] - est_m[q_mask])
             rho, _ = scipy_stats.spearmanr(true_m[q_mask], est_m[q_mask])
@@ -163,6 +166,7 @@ def compute_quartile_accuracy(
             result[f"mae_q{q + 1}"] = float(np.median(abs_errors))
             result[f"max_error_q{q + 1}"] = float(np.max(abs_errors))
             result[f"reach_q{q + 1}"] = float(np.median(reach_m[q_mask]))
+            result[f"median_true_q{q + 1}"] = float(np.median(true_m[q_mask]))
 
     return result
 

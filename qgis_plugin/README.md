@@ -11,7 +11,7 @@ The `Network Centrality` algorithm enables sampling by default.
 
 Default canonical parameters (from `pysrc/cityseer/config.py`):
 
-- `epsilon = 0.05`
+- `epsilon = 0.06`
 - `delta = 0.1`
 - `grid_spacing = 175 m`
 

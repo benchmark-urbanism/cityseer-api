@@ -345,12 +345,9 @@ class CityseerCentralityAlgorithm(CityseerAlgorithmBase):
         # Sampling: split distances into full (exact) and sampled batches.
         # When sample=True, per-distance probability is derived from a
         # canonical grid model (config.compute_distance_p).  Distances where
-        # p >= 1.0 run exact; others get source_indices + sample_probability.
+        # p >= 1.0 run exact; others pass sample_probability to Rust.
         # ------------------------------------------------------------------
         from cityseer import config as cs_config
-
-        live_indices = [idx for idx in ns.node_indices() if ns.is_node_live(idx)]
-        n_live = len(live_indices)
 
         full_distances: list[int] = []
         sampled_distances: list[tuple[int, float]] = []  # (distance, p)
@@ -358,9 +355,6 @@ class CityseerCentralityAlgorithm(CityseerAlgorithmBase):
             full_distances = sorted(distances)
             feedback.pushInfo("Sampling disabled: all thresholds will run exactly.")
         else:
-            import random as _random
-
-            feedback.pushInfo(f"Live segments available as sources: {n_live}")
             for d in sorted(distances):
                 p = cs_config.compute_distance_p(d)
                 if p >= 1.0:
@@ -369,21 +363,8 @@ class CityseerCentralityAlgorithm(CityseerAlgorithmBase):
                     sampled_distances.append((d, p))
             if sampled_distances:
                 feedback.pushInfo("Sampling: " + ", ".join(f"{d}m @ {p:.0%}" for d, p in sampled_distances))
-            if sampled_distances and n_live == 0:
-                raise QgsProcessingException(
-                    "No live segments are available for sampling. Adjust or remove the boundary polygon."
-                )
             if full_distances:
                 feedback.pushInfo("Exact distances (p=1): " + ", ".join(f"{d}m" for d in full_distances))
-
-        def _sample_sources(p):
-            """Bernoulli-sample source_indices at probability p (with 1-source fallback)."""
-            if n_live == 0:
-                return []
-            sources = [idx for idx in live_indices if _random.random() < p]
-            if not sources:
-                sources = [_random.choice(live_indices)]
-            return sources
 
         # ------------------------------------------------------------------
         # Compute centrality metrics
@@ -441,18 +422,16 @@ class CityseerCentralityAlgorithm(CityseerAlgorithmBase):
                                 results[fid][f"cc_hillier_{d}"] = float(density[i] ** 2 / farness[i])
                 batch_idx += 1
             for d, p in sampled_distances:
-                sources = _sample_sources(p)
-                _d, _s, _p = [d], sources, p
-                feedback.pushInfo(f"Running {label} sampled {d}m: p={p:.1%}, sources={len(sources)}/{n_live}")
+                _d, _p = [d], p
+                feedback.pushInfo(f"Running {label} sampled {d}m: p={p:.1%}")
                 r = _run_with_feedback(
                     ns,
                     lambda: metric_func(
                         distances=_d,
-                        source_indices=_s,
                         sample_probability=_p,
                         **extra_kwargs,
                     ),
-                    len(sources),
+                    total_exact,
                     feedback,
                     progress_base=base + batch_idx * batch_span,
                     progress_span=batch_span,

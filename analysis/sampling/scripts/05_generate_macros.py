@@ -37,9 +37,9 @@ from utilities import (
     TABLES_DIR,
 )
 
-# Paper default epsilons — unified at 0.05 for both metrics
-PAPER_EPSILON_CLOSENESS = 0.05
-PAPER_EPSILON_BETWEENNESS = 0.05
+# Paper default epsilons — unified at 0.06 for both metrics
+PAPER_EPSILON_CLOSENESS = 0.06
+PAPER_EPSILON_BETWEENNESS = 0.06
 
 # =============================================================================
 # DATA LOADING
@@ -301,7 +301,7 @@ def generate_macros() -> str:
 \\newcommand{\\nTopologies}{3}
 
 % Number of epsilon values tested (per metric)
-\\newcommand{\\nEpsilons}{3}
+\\newcommand{\\nEpsilons}{5}
 
 % Maximum analysis distance for synthetic networks
 \\newcommand{\\syntheticMaxDist}{4{,}000}
@@ -325,7 +325,7 @@ def generate_tab_distance_lookup() -> str:
     Uses the deterministic distance-based schedule (canonical grid model,
     s=GRID_SPACING) to show p and speedup at the standard validation distances.
     Canonical reach r = pi * d^2 / s^2 is shown alongside p and speedup.
-    Both metrics use the same schedule (epsilon=0.05).
+    Both metrics use the same schedule (epsilon=0.06).
     """
     import math
 
@@ -345,7 +345,7 @@ def generate_tab_distance_lookup() -> str:
     lines.append(r"\centering")
     lines.append(
         r"\caption{Deterministic sampling schedule by analysis distance "
-        r"($\varepsilon = 0.05$, $\delta = 0.1$, canonical grid spacing $s = "
+        r"($\varepsilon = 0.06$, $\delta = 0.1$, canonical grid spacing $s = "
         + f"{GRID_SPACING:.0f}"
         + r"\,\text{m}$). "
         r"Both closeness and betweenness use the same schedule. "
@@ -415,9 +415,11 @@ def generate_fig3_practical_guide():
     ax = axes[0]
 
     epsilon_specs = [
+        (0.02, "#D6604D", 1.2, ":"),
+        (0.04, "#F4A582", 1.2, "-."),
         (PAPER_EPSILON_CLOSENESS, "#2166AC", 2.0, "-"),
-        (0.15, "#969696", 1.2, "--"),
-        (0.2, "#636363", 1.2, "--"),
+        (0.08, "#7FCDBB", 1.2, "--"),
+        (0.1, "#969696", 1.2, ":"),
     ]
 
     for eps, colour, lw, ls in epsilon_specs:
@@ -452,22 +454,23 @@ def generate_fig3_practical_guide():
     from matplotlib.lines import Line2D
 
     legend_handles = [
-        Line2D([0], [0], color="#2166AC", linewidth=2.0, linestyle="-",
-               label=rf"$\varepsilon$={PAPER_EPSILON_CLOSENESS} (default)"),
-        Line2D([0], [0], color="grey", linewidth=1.2, linestyle="--",
-               label=r"Other $\varepsilon$"),
+        Line2D([0], [0], color=colour, linewidth=lw, linestyle=ls,
+               label=rf"$\varepsilon$={eps}" + (" (default)" if eps == PAPER_EPSILON_CLOSENESS else ""))
+        for eps, colour, lw, ls in epsilon_specs
+    ] + [
         Line2D([0], [0], color="#D55E00", marker="o", linestyle="none",
                markersize=7, label="Standard distances"),
     ]
     ax.legend(handles=legend_handles, loc="center right", fontsize=8)
     ax.grid(True, alpha=0.3)
 
-    # Panel B: Speedup vs distance at paper default
+    # Panel B: Speedup vs distance at all epsilons
     ax = axes[1]
 
-    speedups = [1 / compute_distance_p(d, epsilon=PAPER_EPSILON_CLOSENESS) for d in d_range_m]
-    ax.plot(d_range_km, speedups, color="#2166AC", linewidth=2.5,
-            label=rf"$\varepsilon$={PAPER_EPSILON_CLOSENESS}")
+    for eps, colour, lw, ls in epsilon_specs:
+        speedups = [1 / compute_distance_p(d, epsilon=eps) for d in d_range_m]
+        label = rf"$\varepsilon$={eps}" + (" (default)" if eps == PAPER_EPSILON_CLOSENESS else "")
+        ax.plot(d_range_km, speedups, linestyle=ls, color=colour, linewidth=lw, label=label)
 
     for dist_m in ANNOTATION_DISTANCES_M:
         p = compute_distance_p(dist_m, epsilon=PAPER_EPSILON_CLOSENESS)
@@ -480,9 +483,9 @@ def generate_fig3_practical_guide():
     ax.set_yscale("log")
     ax.set_xlabel("Analysis Distance (km)")
     ax.set_ylabel("Speedup (1/p)")
-    ax.set_title(r"B) Speedup at $\varepsilon$=" + str(PAPER_EPSILON_CLOSENESS))
+    ax.set_title("B) Theoretical Speedup")
     ax.set_xlim(0, 25)
-    ax.set_ylim(1, 20)
+    ax.set_ylim(1, 100)
     ax.grid(True, alpha=0.3, which="both")
     ax.yaxis.set_major_formatter(matplotlib.ticker.FuncFormatter(lambda x, _: f"{x:.0f}\u00d7"))
     ax.legend(loc="upper left", fontsize=8)

@@ -1215,16 +1215,29 @@ impl NetworkStructure {
                             if sigma_w == 0.0 {
                                 continue;
                             }
+                            // One-direction counting: only count the pair (src, w)
+                            // when w > src_idx. Since the graph is undirected, each
+                            // pair (a, b) with a < b is counted exactly once — from
+                            // source a with target b. This avoids the post-hoc /2
+                            // and eliminates the 0.5 variance spike in sampled
+                            // betweenness that arises from the symmetric double-count.
+                            let pair_count =
+                                if w > *src_idx { 1.0 } else { 0.0 };
+                            let pair_beta = if w > *src_idx {
+                                (-beta * state[w].short_dist as f64).exp()
+                            } else {
+                                0.0
+                            };
                             for &v in &state[w].preds {
                                 let factor = state[v].sigma as f64 / sigma_w;
-                                delta[v] += factor * (1.0 + delta[w]);
+                                delta[v] += factor * (pair_count + delta[w]);
                                 delta_beta[v] += factor
-                                    * ((-beta * state[w].short_dist as f64).exp() + delta_beta[w]);
+                                    * (pair_beta + delta_beta[w]);
                             }
                             res.node_betweenness_vec.metric[d_idx][w]
-                                .fetch_add(delta[w], AtomicOrdering::Relaxed);
+                                .fetch_add(delta[w] * wt as f64, AtomicOrdering::Relaxed);
                             res.node_betweenness_beta_vec.metric[d_idx][w]
-                                .fetch_add(delta_beta[w], AtomicOrdering::Relaxed);
+                                .fetch_add(delta_beta[w] * wt as f64, AtomicOrdering::Relaxed);
                         }
                     }
                 }
@@ -1239,27 +1252,32 @@ impl NetworkStructure {
                     .collect();
             }
 
-            // Betweenness post-hoc scaling: always divide by 2 for undirected graphs.
+            // Betweenness post-hoc scaling.
+            // One-direction counting means each undirected pair is counted once,
+            // so no /2 needed. For source-indexed without sampling, scale by
+            // n_live / n_sources to extrapolate from the subset.
             if compute_betweenness {
                 let scale = if is_source_indexed {
-                    if let Some(prob) = sample_probability {
-                        1.0 / (2.0 * prob as f64)
+                    if sample_probability.is_some() {
+                        1.0
                     } else {
-                        n_live as f64 / (2.0 * n_sources as f64)
+                        n_live as f64 / n_sources as f64
                     }
                 } else {
-                    0.5
+                    1.0
                 };
-                for d_idx in 0..distances.len() {
-                    for &node_idx in &node_indices {
-                        let raw = res.node_betweenness_vec.metric[d_idx][node_idx]
-                            .load(AtomicOrdering::Relaxed);
-                        res.node_betweenness_vec.metric[d_idx][node_idx]
-                            .store(raw * scale, AtomicOrdering::Relaxed);
-                        let raw_beta = res.node_betweenness_beta_vec.metric[d_idx][node_idx]
-                            .load(AtomicOrdering::Relaxed);
-                        res.node_betweenness_beta_vec.metric[d_idx][node_idx]
-                            .store(raw_beta * scale, AtomicOrdering::Relaxed);
+                if scale != 1.0 {
+                    for d_idx in 0..distances.len() {
+                        for &node_idx in &node_indices {
+                            let raw = res.node_betweenness_vec.metric[d_idx][node_idx]
+                                .load(AtomicOrdering::Relaxed);
+                            res.node_betweenness_vec.metric[d_idx][node_idx]
+                                .store(raw * scale, AtomicOrdering::Relaxed);
+                            let raw_beta = res.node_betweenness_beta_vec.metric[d_idx][node_idx]
+                                .load(AtomicOrdering::Relaxed);
+                            res.node_betweenness_beta_vec.metric[d_idx][node_idx]
+                                .store(raw_beta * scale, AtomicOrdering::Relaxed);
+                        }
                     }
                 }
             }
@@ -1509,16 +1527,24 @@ impl NetworkStructure {
                             if sigma_w == 0.0 {
                                 continue;
                             }
+                            // One-direction counting (see centrality_shortest).
+                            let pair_count =
+                                if w > *src_idx { 1.0 } else { 0.0 };
+                            let pair_beta = if w > *src_idx {
+                                (-beta * state[w].short_dist as f64).exp()
+                            } else {
+                                0.0
+                            };
                             for &v in &state[w].preds {
                                 let factor = state[v].sigma as f64 / sigma_w;
-                                delta[v] += factor * (1.0 + delta[w]);
+                                delta[v] += factor * (pair_count + delta[w]);
                                 delta_beta[v] += factor
-                                    * ((-beta * state[w].short_dist as f64).exp() + delta_beta[w]);
+                                    * (pair_beta + delta_beta[w]);
                             }
                             res.node_betweenness_vec.metric[d_idx][w]
-                                .fetch_add(delta[w], AtomicOrdering::Relaxed);
+                                .fetch_add(delta[w] * wt as f64, AtomicOrdering::Relaxed);
                             res.node_betweenness_beta_vec.metric[d_idx][w]
-                                .fetch_add(delta_beta[w], AtomicOrdering::Relaxed);
+                                .fetch_add(delta_beta[w] * wt as f64, AtomicOrdering::Relaxed);
                         }
                     }
                 }
@@ -1533,27 +1559,29 @@ impl NetworkStructure {
                     .collect();
             }
 
-            // Betweenness post-hoc scaling
+            // Betweenness post-hoc scaling (one-direction, see centrality_shortest).
             if compute_betweenness {
                 let scale = if is_source_indexed {
-                    if let Some(prob) = sample_probability {
-                        1.0 / (2.0 * prob as f64)
+                    if sample_probability.is_some() {
+                        1.0
                     } else {
-                        n_live as f64 / (2.0 * n_sources as f64)
+                        n_live as f64 / n_sources as f64
                     }
                 } else {
-                    0.5
+                    1.0
                 };
-                for d_idx in 0..distances.len() {
-                    for &node_idx in &node_indices {
-                        let raw = res.node_betweenness_vec.metric[d_idx][node_idx]
-                            .load(AtomicOrdering::Relaxed);
-                        res.node_betweenness_vec.metric[d_idx][node_idx]
-                            .store(raw * scale, AtomicOrdering::Relaxed);
-                        let raw_beta = res.node_betweenness_beta_vec.metric[d_idx][node_idx]
-                            .load(AtomicOrdering::Relaxed);
-                        res.node_betweenness_beta_vec.metric[d_idx][node_idx]
-                            .store(raw_beta * scale, AtomicOrdering::Relaxed);
+                if scale != 1.0 {
+                    for d_idx in 0..distances.len() {
+                        for &node_idx in &node_indices {
+                            let raw = res.node_betweenness_vec.metric[d_idx][node_idx]
+                                .load(AtomicOrdering::Relaxed);
+                            res.node_betweenness_vec.metric[d_idx][node_idx]
+                                .store(raw * scale, AtomicOrdering::Relaxed);
+                            let raw_beta = res.node_betweenness_beta_vec.metric[d_idx][node_idx]
+                                .load(AtomicOrdering::Relaxed);
+                            res.node_betweenness_beta_vec.metric[d_idx][node_idx]
+                                .store(raw_beta * scale, AtomicOrdering::Relaxed);
+                        }
                     }
                 }
             }

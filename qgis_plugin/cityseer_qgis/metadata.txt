@@ -1,8 +1,8 @@
 [general]
 name=Cityseer
-qgisMinimumVersion=3.28
+qgisMinimumVersion=3.99
 description=Urban network centrality analysis using the cityseer library
-version=4.23.0-beta12
+version=4.23.0-beta14
 author=Benchmark Urbanism
 email=gareth.simons@ucl.ac.uk
 
@@ -22,3 +22,4 @@ icon=icon.png
 experimental=True
 deprecated=False
 supportsQt6=True
+license=AGPL-3.0

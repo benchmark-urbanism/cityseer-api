@@ -33,10 +33,10 @@ from utilities import (
 
 SYNTHETIC_CACHE = CACHE_DIR / f"sampling_analysis_{CACHE_VERSION}.pkl"
 
-PAPER_EPSILON_CLOSENESS = 0.05
-PAPER_EPSILON_BETWEENNESS = 0.05
+PAPER_EPSILON_CLOSENESS = 0.06
+PAPER_EPSILON_BETWEENNESS = 0.06
 
-EPSILON_TARGETS = [0.05, 0.1, 0.2]
+EPSILON_TARGETS = [0.02, 0.04, 0.06, 0.08, 0.1]
 
 plt.rcParams.update(
     {
@@ -139,12 +139,12 @@ def compute_threshold_epsilons(df: pd.DataFrame, rho_target: float = 0.95) -> di
 
 
 def generate_fig1_rho_vs_epsilon(df: pd.DataFrame):
-    """Figure 1: Spearman rho vs epsilon — two panels, one per metric.
+    """Figure 1: Epsilon parameter sweep across synthetic network topologies.
 
     Uses the epsilon-targeted sweep rows (sweep_type="eps_targeted") where each
     row was sampled at exactly the p required to achieve a given target_epsilon.
-    Groups by target_epsilon and averages across topologies and distances, giving
-    a clean, unconfounded (epsilon, rho) relationship with a 95% CI band.
+    Shows per-topology lines (averaged over distances) plus a bold mean line,
+    revealing how network structure affects the epsilon-accuracy relationship.
     Left panel: closeness. Right panel: betweenness.
     """
     print("\nGenerating Figure 1: rho vs epsilon...")
@@ -162,6 +162,12 @@ def generate_fig1_rho_vs_epsilon(df: pd.DataFrame):
         ("betweenness", "Betweenness", "B)", "#B2182B", PAPER_EPSILON_BETWEENNESS),
     ]
 
+    topo_styles = {
+        "trellis": ("--", "s", "Trellis"),
+        "tree": ("-.", "^", "Tree"),
+        "linear": (":", "o", "Linear"),
+    }
+
     fig, axes = plt.subplots(1, 2, figsize=(11, 5))
 
     for panel_idx, (metric_label, metric_display, panel_label, colour, paper_eps) in enumerate(panels):
@@ -172,27 +178,42 @@ def generate_fig1_rho_vs_epsilon(df: pd.DataFrame):
             ax.set_title(f"{panel_label} {metric_display} (no data)")
             continue
 
-        grouped = (
+        # Per-topology lines (averaged over distances)
+        for topo in sorted(subset["topology"].unique()):
+            topo_sub = subset[subset["topology"] == topo]
+            grouped = (
+                topo_sub.groupby("target_epsilon")["spearman"]
+                .mean()
+                .reset_index()
+                .sort_values("target_epsilon")
+            )
+            ls, marker, label = topo_styles.get(topo, ("-", ".", topo))
+            ax.plot(
+                grouped["target_epsilon"],
+                grouped["spearman"],
+                linestyle=ls,
+                marker=marker,
+                markersize=4,
+                color=colour,
+                alpha=0.5,
+                linewidth=1.0,
+                label=label,
+            )
+
+        # Bold mean line across all topologies
+        grouped_mean = (
             subset.groupby("target_epsilon")["spearman"]
-            .agg(["mean", "std", "count"])
+            .mean()
             .reset_index()
             .sort_values("target_epsilon")
         )
-        grouped["ci"] = 1.96 * grouped["std"] / np.sqrt(grouped["count"])
-
-        ax.fill_between(
-            grouped["target_epsilon"],
-            (grouped["mean"] - grouped["ci"]).clip(0, 1),
-            (grouped["mean"] + grouped["ci"]).clip(0, 1),
-            color=colour,
-            alpha=0.2,
-        )
         ax.plot(
-            grouped["target_epsilon"],
-            grouped["mean"],
+            grouped_mean["target_epsilon"],
+            grouped_mean["spearman"],
             "-",
             color=colour,
-            linewidth=1.8,
+            linewidth=2.2,
+            label="Mean",
         )
 
         ax.axhline(0.95, color="green", linestyle="--", linewidth=1.2, alpha=0.7)
@@ -207,8 +228,14 @@ def generate_fig1_rho_vs_epsilon(df: pd.DataFrame):
         ax.set_xlim(left=0)
         ax.set_ylim(0.3, 1.02)
         ax.grid(True, alpha=0.3)
+        ax.legend(fontsize=8, loc="lower left")
 
-    fig.suptitle(r"Ranking Accuracy vs $\varepsilon$", fontsize=13, fontweight="bold", y=1.02)
+    fig.suptitle(
+        r"$\varepsilon$ parameter sweep: ranking accuracy across synthetic topologies",
+        fontsize=13,
+        fontweight="bold",
+        y=1.02,
+    )
     plt.tight_layout()
 
     output_path = FIGURES_DIR / "fig1_rho_vs_epsilon.pdf"
@@ -254,7 +281,7 @@ def generate_tab1_ew_comparison():
 \centering
 \caption{Deterministic sampling schedule at standard analysis distances under different
   error tolerances ($\delta = 0.1$, $s = """ + f"{GRID_SPACING:.0f}" + r"""\,$m).
-  Paper default: $\varepsilon=0.05$ for both metrics.}
+  Paper default: $\varepsilon=0.06$ for both metrics.}
 \label{tab:ew_comparison}
 \small
 """

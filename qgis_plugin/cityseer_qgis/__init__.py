@@ -7,12 +7,60 @@ metrics (closeness and betweenness) using the cityseer library.
 
 from __future__ import annotations
 
+import re
 import sys
 from pathlib import Path
 
 _PLUGIN_DIR = Path(__file__).resolve().parent
 _CITYSEER_AVAILABLE = False
 _CITYSEER_IMPORT_ERROR = None
+_CITYSEER_VERSION_MISMATCH = False
+
+
+def _read_required_version() -> str | None:
+    """Read the required cityseer version from metadata.txt (QGIS format)."""
+    metadata = _PLUGIN_DIR / "metadata.txt"
+    if not metadata.exists():
+        return None
+    text = metadata.read_text()
+    match = re.search(r"^version=(.+)$", text, re.MULTILINE)
+    if not match:
+        return None
+    # Convert QGIS format (4.23.0-beta14) back to PEP 440 (4.23.0b14)
+    version = match.group(1).strip()
+    version = re.sub(r"-alpha", "a", version)
+    version = re.sub(r"-beta", "b", version)
+    version = re.sub(r"-rc", "rc", version)
+    return version
+
+
+def _get_installed_version() -> str | None:
+    """Get the installed cityseer version."""
+    try:
+        from importlib.metadata import version
+
+        return version("cityseer")
+    except Exception:
+        return None
+
+
+def _check_version() -> bool:
+    """Check if installed cityseer version matches the plugin's required version."""
+    global _CITYSEER_VERSION_MISMATCH, _CITYSEER_IMPORT_ERROR
+    required = _read_required_version()
+    if required is None:
+        return True
+    installed = _get_installed_version()
+    if installed is None:
+        # Dev mode or metadata unavailable; skip check
+        return True
+    if installed != required:
+        _CITYSEER_VERSION_MISMATCH = True
+        _CITYSEER_IMPORT_ERROR = (
+            f"cityseer {installed} is installed but the plugin requires {required}"
+        )
+        return False
+    return True
 
 
 def _try_import_system() -> bool:
@@ -72,7 +120,7 @@ def _setup_cityseer() -> None:
         _try_import_dev()
 
 
-def _install_cityseer() -> tuple[bool, str]:
+def _install_cityseer(version: str | None = None) -> tuple[bool, str]:
     """
     Install or upgrade cityseer via pip in-process.
 
@@ -91,10 +139,11 @@ def _install_cityseer() -> tuple[bool, str]:
     except ImportError:
         return False, "pip is not available in this QGIS Python environment."
 
+    package = f"cityseer=={version}" if version else "cityseer"
     try:
         output = io.StringIO()
         with contextlib.redirect_stdout(output), contextlib.redirect_stderr(output):
-            exit_code = pip_main(["install", "--upgrade", "--no-deps", "cityseer"])
+            exit_code = pip_main(["install", "--upgrade", "--no-deps", package])
         if exit_code == 0:
             return True, "cityseer installed successfully."
         return False, f"pip install failed (exit code {exit_code}):\n{output.getvalue()}"
@@ -122,10 +171,13 @@ class CityseerPlugin:
         self.initProcessing()
         if not _CITYSEER_AVAILABLE:
             self._prompt_install()
+        elif not _check_version():
+            self._prompt_upgrade()
 
     def _prompt_install(self):
         from qgis.PyQt.QtWidgets import QMessageBox
 
+        required = _read_required_version()
         msg = QMessageBox()
         msg.setIcon(QMessageBox.Icon.Warning)
         msg.setWindowTitle("Cityseer plugin")
@@ -138,9 +190,8 @@ class CityseerPlugin:
         msg.setDefaultButton(QMessageBox.StandardButton.Yes)
 
         if msg.exec() == QMessageBox.StandardButton.Yes:
-            success, message = _install_cityseer()
+            success, message = _install_cityseer(version=required)
             if success:
-                # Re-attempt import after install
                 _setup_cityseer()
                 QMessageBox.information(
                     None,
@@ -154,6 +205,37 @@ class CityseerPlugin:
                     "Cityseer plugin",
                     f"Failed to install cityseer.\n\n{message}\n\n"
                     "Try manually: pip install cityseer",
+                )
+
+    def _prompt_upgrade(self):
+        from qgis.PyQt.QtWidgets import QMessageBox
+
+        required = _read_required_version()
+        installed = _get_installed_version()
+        msg = QMessageBox()
+        msg.setIcon(QMessageBox.Icon.Warning)
+        msg.setWindowTitle("Cityseer plugin")
+        msg.setText(f"cityseer version mismatch: {installed} installed, {required} required.")
+        msg.setInformativeText("Would you like to upgrade now?")
+        msg.setStandardButtons(QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+        msg.setDefaultButton(QMessageBox.StandardButton.Yes)
+
+        if msg.exec() == QMessageBox.StandardButton.Yes:
+            success, message = _install_cityseer(version=required)
+            if success:
+                _setup_cityseer()
+                QMessageBox.information(
+                    None,
+                    "Cityseer plugin",
+                    f"cityseer upgraded to {required}.\n\n"
+                    "Please restart QGIS to activate the new version.",
+                )
+            else:
+                QMessageBox.critical(
+                    None,
+                    "Cityseer plugin",
+                    f"Failed to upgrade cityseer.\n\n{message}\n\n"
+                    f"Try manually: pip install cityseer=={required}",
                 )
 
     def unload(self):

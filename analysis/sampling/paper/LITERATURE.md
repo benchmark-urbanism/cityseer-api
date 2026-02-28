@@ -63,6 +63,19 @@ At ε = 0.05, sample counts roughly quadruple. The bound guarantees uniform addi
 
 **Key insight for us.** The adaptive principle — fewer samples for important nodes — is the same structural property our model exploits. Bader makes it explicit for one vertex; our model achieves it implicitly across all vertices via the reach-dependent sampling rate.
 
+### Geisberger, Sanders & Schultes (2008)
+
+**What it does.** Source-sampling with Brandes backpropagation, like Brandes-Pich, but with bias correction. Addresses the overestimation problem near the sampled source (nodes close to the source tend to lie on many of that source's shortest paths, inflating their betweenness estimate).
+
+**Key innovations:**
+- **Linear scaling:** Weights dependency contributions by distance from the source to reduce overestimation of near-source nodes.
+- **Bisection method:** Only counts betweenness contributions for a vertex if it is at least half the distance between the source and target on the shortest path, eliminating trivially close contributions.
+- **Unbiased estimator:** The paper proves their method provides an unbiased estimator of betweenness centrality, whereas naive n/k scaling (Brandes-Pich) can be biased in practice.
+
+**Result:** Euclidean error reduced by a factor of 4 at the same runtime, or 16× faster for the same error.
+
+**Relevance.** Shows that the naive n/k scaling used in Brandes-Pich has systematic bias, and that unbiased estimation requires care. Our approach uses Horvitz-Thompson (1/p) weighting, which is the standard unbiased estimator for inclusion-probability sampling — a different but principled approach to the same problem.
+
 ---
 
 ## Path-sampling methods
@@ -338,8 +351,9 @@ The key uncited entries that COULD strengthen the paper:
 | Source                 | Key insight for localised source-sampling                                         |
 | ---------------------- | --------------------------------------------------------------------------------- |
 | Eppstein-Wang          | Formal bound adapts directly (n→r); establishes the baseline we improve on        |
-| Brandes-Pich           | Source-sampling works empirically; no calibration provided                        |
+| Brandes-Pich           | Source-sampling works empirically for both closeness and betweenness; no calibration provided |
 | Bader et al.           | Adaptive 1/b(v) scaling = our "precision scales with importance"                  |
+| Geisberger et al.      | Bias correction for source-sampling betweenness; unbiased estimator via distance weighting |
 | Riondato-Kornaropoulos | VC-dimension tighter than EW for betweenness, but path-sampling only              |
 | KADABRA                | Adaptive stopping + per-vertex budgets; principle applicable, machinery not       |
 | SILVAN                 | Variance-dependent bounds much tighter on structured graphs; supports our finding |

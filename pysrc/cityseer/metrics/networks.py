@@ -12,7 +12,21 @@ These methods wrap the underlying `rust` optimised functions for computing centr
 and distances are computed simultaneously to reduce the amount of time required for multi-variable and multi-scalar
 strategies.
 
-See the accompanying paper on `arXiv` for additional information about methods for computing centrality measures.
+When `sample=True`, adaptive sampling uses the Hoeffding bound to select a distance-dependent sampling probability.
+The `epsilon` parameter controls the error tolerance (lower = more samples, higher accuracy). The default for when sampling is enabled is 0.06.
+
+| Distance | ε=0.02 | ε=0.04 | ε=0.06 | ε=0.08 | ε=0.1 |
+|----------|--------|--------|--------|--------|-------|
+| 1 km     | 100%   | 100%   | 100%   | 100%   | 100%  |
+| 2 km     | 100%   | 100%   | 100%   | 100%   | 100%  |
+| 5 km     | 100%   | 100%   | 58.7%  | 33.0%  | 21.1% |
+| 10 km    | 100%   | 37.3%  | 16.6%  | 9.3%   | 6.0%  |
+| 20 km    | 41.5%  | 10.4%  | 4.6%   | 2.6%   | 1.7%  |
+
+Sampling is exact (100%) at short distances and becomes progressively sparser at longer distances where
+reachability is high enough to maintain relative accuracy. The theoretical speedup is approximately 1/p.
+When comparing centrality values across different locations, use the same epsilon to ensure consistent
+error tolerances and comparable sampling rates.
 
 :::note
 The reasons for picking one approach over another are varied:
@@ -84,6 +98,7 @@ def node_centrality_shortest(
     tolerance: float = 0.0,
     random_seed: int | None = None,
     sample: bool = False,
+    epsilon: float | None = None,
 ) -> gpd.GeoDataFrame:
     r"""Compute node centrality using shortest paths with a single Dijkstra per source.
 
@@ -125,6 +140,8 @@ def node_centrality_shortest(
         Optional seed for reproducible sampling.
     sample: bool
         If True, uses distance-based sampling. If False, computes exact centrality.
+    epsilon: float
+        Normalised additive error tolerance for sampling. Defaults to ``config.HOEFFDING_EPSILON``.
 
     Returns
     -------
@@ -138,13 +155,14 @@ def node_centrality_shortest(
     node_count = network_structure.street_node_count()
     temp_data: dict[str, object] = {}
 
+    eps = epsilon if epsilon is not None else config.HOEFFDING_EPSILON
     full_distances: list[int] = []
     sampled_distances: list[tuple[int, float]] = []
     if not sample:
         full_distances = sorted(resolved_distances)
     else:
         for d in sorted(resolved_distances):
-            p = config.compute_distance_p(d, epsilon=config.HOEFFDING_EPSILON)
+            p = config.compute_distance_p(d, epsilon=eps)
             if p >= 1.0:
                 full_distances.append(d)
             else:
@@ -174,16 +192,8 @@ def node_centrality_shortest(
         for d in full_distances:
             results[d] = result  # type: ignore[assignment]
 
-    import random as _random
-
-    live_indices = [i for i in network_structure.node_indices() if network_structure.is_node_live(i)]
-    n_live = len(live_indices)
     for d, p in sampled_distances:
-        rng = _random.Random(random_seed)
-        sources = [idx for idx in live_indices if rng.random() < p]
-        if not sources and n_live > 0:
-            sources = [rng.choice(live_indices)]
-        logger.info(f"  Sampled {d}m: p={p:.0%} ({len(sources)} sources)")
+        logger.info(f"  Sampled {d}m: p={p:.0%}")
         partial_func = partial(
             network_structure.centrality_shortest,
             distances=[d],
@@ -192,8 +202,8 @@ def node_centrality_shortest(
             min_threshold_wt=min_threshold_wt,
             speed_m_s=speed_m_s,
             tolerance=tolerance,
-            source_indices=sources,
             sample_probability=p,
+            random_seed=random_seed,
         )
         result = config.wrap_progress(
             total=node_count,
@@ -223,7 +233,8 @@ def node_centrality_shortest(
                 temp_data[data_key] = getattr(res, attr_key)[d]
         for d, res in results.items():
             data_key = config.prep_gdf_key("hillier", d)
-            temp_data[data_key] = res.node_density[d] ** 2 / res.node_farness[d]
+            with np.errstate(divide="ignore", invalid="ignore"):
+                temp_data[data_key] = res.node_density[d] ** 2 / res.node_farness[d]
 
     if compute_betweenness:
         for measure_key, attr_key in [
@@ -438,6 +449,7 @@ def node_centrality_simplest(
     tolerance: float = 0.0,
     random_seed: int | None = None,
     sample: bool = False,
+    epsilon: float | None = None,
 ) -> gpd.GeoDataFrame:
     r"""Compute node centrality using simplest (angular) paths with a single Dijkstra per source.
 
@@ -477,6 +489,8 @@ def node_centrality_simplest(
         Optional seed for reproducible sampling.
     sample: bool
         If True, uses distance-based sampling. If False, computes exact centrality.
+    epsilon: float
+        Normalised additive error tolerance for sampling. Defaults to ``config.HOEFFDING_EPSILON``.
 
     Returns
     -------
@@ -490,13 +504,14 @@ def node_centrality_simplest(
     node_count = network_structure.street_node_count()
     temp_data: dict[str, object] = {}
 
+    eps = epsilon if epsilon is not None else config.HOEFFDING_EPSILON
     full_distances: list[int] = []
     sampled_distances: list[tuple[int, float]] = []
     if not sample:
         full_distances = sorted(resolved_distances)
     else:
         for d in sorted(resolved_distances):
-            p = config.compute_distance_p(d, epsilon=config.HOEFFDING_EPSILON)
+            p = config.compute_distance_p(d, epsilon=eps)
             if p >= 1.0:
                 full_distances.append(d)
             else:
@@ -528,16 +543,8 @@ def node_centrality_simplest(
         for d in full_distances:
             results[d] = result  # type: ignore[assignment]
 
-    import random as _random
-
-    live_indices = [i for i in network_structure.node_indices() if network_structure.is_node_live(i)]
-    n_live = len(live_indices)
     for d, p in sampled_distances:
-        rng = _random.Random(random_seed)
-        sources = [idx for idx in live_indices if rng.random() < p]
-        if not sources and n_live > 0:
-            sources = [rng.choice(live_indices)]
-        logger.info(f"  Sampled {d}m: p={p:.0%} ({len(sources)} sources)")
+        logger.info(f"  Sampled {d}m: p={p:.0%}")
         partial_func = partial(
             network_structure.centrality_simplest,
             distances=[d],
@@ -548,8 +555,8 @@ def node_centrality_simplest(
             angular_scaling_unit=angular_scaling_unit,
             farness_scaling_offset=farness_scaling_offset,
             tolerance=tolerance,
-            source_indices=sources,
             sample_probability=p,
+            random_seed=random_seed,
         )
         result = config.wrap_progress(
             total=node_count,
@@ -571,7 +578,8 @@ def node_centrality_simplest(
             temp_data[config.prep_gdf_key("density", d, angular=True)] = res.node_density[d]
             temp_data[config.prep_gdf_key("harmonic", d, angular=True)] = res.node_harmonic[d]
             temp_data[config.prep_gdf_key("farness", d, angular=True)] = res.node_farness[d]
-            temp_data[config.prep_gdf_key("hillier", d, angular=True)] = res.node_density[d] ** 2 / res.node_farness[d]
+            with np.errstate(divide="ignore", invalid="ignore"):
+                temp_data[config.prep_gdf_key("hillier", d, angular=True)] = res.node_density[d] ** 2 / res.node_farness[d]
 
     if compute_betweenness:
         for measure_key, attr_key in [
@@ -722,6 +730,7 @@ def closeness_shortest(
     speed_m_s: float = SPEED_M_S,
     random_seed: int | None = None,
     sample: bool = False,
+    epsilon: float | None = None,
 ) -> gpd.GeoDataFrame:
     """Compute closeness centrality using shortest paths. Wraps `node_centrality_shortest`."""
     return node_centrality_shortest(
@@ -736,6 +745,7 @@ def closeness_shortest(
         speed_m_s=speed_m_s,
         random_seed=random_seed,
         sample=sample,
+        epsilon=epsilon,
     )
 
 
@@ -751,6 +761,7 @@ def closeness_simplest(
     farness_scaling_offset: float = 1,
     random_seed: int | None = None,
     sample: bool = False,
+    epsilon: float | None = None,
 ) -> gpd.GeoDataFrame:
     """Compute closeness centrality using simplest (angular) paths. Wraps `node_centrality_simplest`."""
     return node_centrality_simplest(
@@ -767,6 +778,7 @@ def closeness_simplest(
         farness_scaling_offset=farness_scaling_offset,
         random_seed=random_seed,
         sample=sample,
+        epsilon=epsilon,
     )
 
 
@@ -781,6 +793,7 @@ def betweenness_shortest(
     tolerance: float = 0.0,
     random_seed: int | None = None,
     sample: bool = False,
+    epsilon: float | None = None,
 ) -> gpd.GeoDataFrame:
     """Compute betweenness centrality using shortest paths. Wraps `node_centrality_shortest`."""
     return node_centrality_shortest(
@@ -796,6 +809,7 @@ def betweenness_shortest(
         tolerance=tolerance,
         random_seed=random_seed,
         sample=sample,
+        epsilon=epsilon,
     )
 
 
@@ -810,6 +824,7 @@ def betweenness_simplest(
     tolerance: float = 0.0,
     random_seed: int | None = None,
     sample: bool = False,
+    epsilon: float | None = None,
 ) -> gpd.GeoDataFrame:
     """Compute betweenness centrality using simplest (angular) paths. Wraps `node_centrality_simplest`."""
     return node_centrality_simplest(
@@ -825,4 +840,5 @@ def betweenness_simplest(
         tolerance=tolerance,
         random_seed=random_seed,
         sample=sample,
+        epsilon=epsilon,
     )

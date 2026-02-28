@@ -16,7 +16,7 @@ import math
 
 import numpy as np
 import pytest
-from cityseer import config
+from cityseer import config, rustalgos
 from cityseer.tools import graphs, io, mock
 
 
@@ -301,7 +301,7 @@ class TestSamplingModel:
 
     def test_constants_match_paper(self):
         """Default Hoeffding parameters match the paper defaults."""
-        assert config.HOEFFDING_EPSILON == 0.05
+        assert config.HOEFFDING_EPSILON == 0.06
         assert config.HOEFFDING_DELTA == 0.1
 
     def test_compute_hoeffding_p_matches_formula(self):
@@ -371,3 +371,161 @@ class TestComputeDistanceP:
         """Zero or negative distance returns 1.0."""
         assert config.compute_distance_p(0) == 1.0
         assert config.compute_distance_p(-100) == 1.0
+
+
+class TestBetweennessSampling:
+    """Sampling with betweenness centrality."""
+
+    def test_betweenness_reproducibility(self, network_structure):
+        """Same seed produces identical betweenness results."""
+        ns, _ = network_structure
+
+        res1 = ns.centrality_shortest(
+            compute_closeness=False, compute_betweenness=True,
+            distances=[500], sample_probability=0.3, random_seed=42, pbar_disabled=True,
+        )
+        res2 = ns.centrality_shortest(
+            compute_closeness=False, compute_betweenness=True,
+            distances=[500], sample_probability=0.3, random_seed=42, pbar_disabled=True,
+        )
+
+        assert np.allclose(res1.node_betweenness[500], res2.node_betweenness[500])
+        assert np.allclose(res1.node_betweenness_beta[500], res2.node_betweenness_beta[500])
+
+    def test_betweenness_full_sampling_matches_baseline(self, network_structure):
+        """Betweenness with p=1.0 matches full computation."""
+        ns, _ = network_structure
+
+        res_full = ns.centrality_shortest(
+            compute_closeness=False, compute_betweenness=True,
+            distances=[500], pbar_disabled=True,
+        )
+        res_sampled = ns.centrality_shortest(
+            compute_closeness=False, compute_betweenness=True,
+            distances=[500], sample_probability=1.0, random_seed=42, pbar_disabled=True,
+        )
+
+        assert np.allclose(res_full.node_betweenness[500], res_sampled.node_betweenness[500])
+
+    def test_betweenness_averaged_samples_converge(self, network_structure):
+        """Averaged betweenness samples converge to true values."""
+        ns, _ = network_structure
+        distance = 500
+        num_runs = 20
+
+        res_full = ns.centrality_shortest(
+            compute_closeness=False, compute_betweenness=True,
+            distances=[distance], pbar_disabled=True,
+        )
+        full_betw = np.array(res_full.node_betweenness[distance])
+
+        samples = [
+            np.array(
+                ns.centrality_shortest(
+                    compute_closeness=False, compute_betweenness=True,
+                    distances=[distance], sample_probability=0.5, random_seed=seed, pbar_disabled=True,
+                ).node_betweenness[distance]
+            )
+            for seed in range(num_runs)
+        ]
+
+        avg = np.mean(samples, axis=0)
+        mask = full_betw > 0
+        if np.any(mask):
+            error = np.mean(np.abs(avg[mask] - full_betw[mask]) / full_betw[mask])
+            assert error < 0.25, f"Betweenness error {error:.1%} exceeds 25%"
+
+
+class TestTolerance:
+    """Tolerance parameter for near-equal path handling."""
+
+    def test_tolerance_zero_matches_default(self, network_structure):
+        """Explicit tolerance=0.0 produces identical results to default (no tolerance)."""
+        ns, _ = network_structure
+
+        res_default = ns.centrality_shortest(
+            compute_closeness=True, compute_betweenness=True,
+            distances=[500], pbar_disabled=True,
+        )
+        res_zero = ns.centrality_shortest(
+            compute_closeness=True, compute_betweenness=True,
+            distances=[500], tolerance=0.0, pbar_disabled=True,
+        )
+
+        assert np.allclose(res_default.node_betweenness[500], res_zero.node_betweenness[500])
+        assert np.allclose(res_default.node_harmonic[500], res_zero.node_harmonic[500])
+
+    def test_tolerance_changes_betweenness(self, network_structure):
+        """Positive tolerance redistributes betweenness across near-equal paths."""
+        ns, _ = network_structure
+
+        res_exact = ns.centrality_shortest(
+            compute_closeness=False, compute_betweenness=True,
+            distances=[500], tolerance=0.0, pbar_disabled=True,
+        )
+        res_tolerant = ns.centrality_shortest(
+            compute_closeness=False, compute_betweenness=True,
+            distances=[500], tolerance=0.1, pbar_disabled=True,
+        )
+
+        betw_exact = np.array(res_exact.node_betweenness[500])
+        betw_tolerant = np.array(res_tolerant.node_betweenness[500])
+        # With tolerance, betweenness credit is spread across more near-equal paths,
+        # so the values should differ from exact computation.
+        assert not np.allclose(betw_exact, betw_tolerant)
+
+
+class TestOdBetweenness:
+    """OD-weighted betweenness centrality."""
+
+    def test_od_matrix_construction(self, network_structure):
+        """OdMatrix is constructed from parallel arrays."""
+        origins = [0, 0, 1]
+        destinations = [1, 2, 2]
+        weights = [1.0, 2.0, 3.0]
+        od = rustalgos.centrality.OdMatrix(origins, destinations, weights)
+        assert od.len() == 3
+        assert od.n_origins() == 2
+
+    def test_od_betweenness_runs(self, network_structure):
+        """OD-weighted betweenness produces valid output."""
+        ns, _ = network_structure
+        node_indices = ns.street_node_indices()
+
+        # Create OD pairs between a few nodes
+        origins = []
+        destinations = []
+        weights = []
+        for i in range(min(5, len(node_indices))):
+            for j in range(min(5, len(node_indices))):
+                if i != j:
+                    origins.append(node_indices[i])
+                    destinations.append(node_indices[j])
+                    weights.append(1.0)
+
+        od = rustalgos.centrality.OdMatrix(origins, destinations, weights)
+        result = ns.betweenness_od_shortest(
+            od_matrix=od, distances=[500], pbar_disabled=True,
+        )
+
+        betw = np.array(result.node_betweenness[500])
+        assert len(betw) == len(node_indices)
+        assert np.all(betw >= 0)
+        assert np.any(betw > 0)
+
+    def test_od_betweenness_zero_weights(self, network_structure):
+        """OD matrix with zero weights produces zero betweenness."""
+        ns, _ = network_structure
+        node_indices = ns.street_node_indices()
+
+        origins = [node_indices[0], node_indices[1]]
+        destinations = [node_indices[1], node_indices[2]]
+        weights = [0.0, 0.0]
+
+        od = rustalgos.centrality.OdMatrix(origins, destinations, weights)
+        result = ns.betweenness_od_shortest(
+            od_matrix=od, distances=[500], pbar_disabled=True,
+        )
+
+        betw = np.array(result.node_betweenness[500])
+        assert np.allclose(betw, 0.0)

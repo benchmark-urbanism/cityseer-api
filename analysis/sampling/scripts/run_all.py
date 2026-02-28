@@ -23,6 +23,7 @@ SCRIPTS = [
     ("03_validate_madrid.py", "Validate on Greater Madrid network", True),
     ("04_figures_validation.py", "Generate validation figures for GLA and Madrid", False),
     ("05_generate_macros.py", "Generate LaTeX macros, tables, and practical guide figure", False),
+    ("06_figures_spatial.py", "Generate spatial error figures from per-node caches", False),
 ]
 
 

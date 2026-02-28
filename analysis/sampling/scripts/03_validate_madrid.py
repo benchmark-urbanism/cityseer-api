@@ -27,7 +27,8 @@ import numpy as np
 import osmnx as ox
 import pandas as pd
 import shapely
-from cityseer.config import GRID_SPACING, HOEFFDING_EPSILON as CITYSEER_HOEFFDING_EPSILON, compute_distance_p
+from cityseer.config import GRID_SPACING, compute_distance_p
+from cityseer.config import HOEFFDING_EPSILON as CITYSEER_HOEFFDING_EPSILON
 from cityseer.metrics import networks
 from cityseer.tools import graphs, io
 from shapely.geometry import Point
@@ -57,10 +58,13 @@ MADRID_DISTANCES = [1000, 2000, 5000, 10000, 20000]
 N_RUNS = 3
 
 # Hoeffding + deterministic distance-based source sampling (both metrics)
-MADRID_EPSILON_CLOSENESS = 0.05
-MADRID_EPSILON_BETWEENNESS = 0.05
+MADRID_EPSILON_CLOSENESS = 0.06
+MADRID_EPSILON_BETWEENNESS = 0.06
 
 DELTA = HOEFFDING_DELTA
+
+# Sensitivity analysis: grid spacings to test (default s=175m is the paper default)
+DEFAULT_GRID_SPACINGS = [125, 150, 175, 200, 225]
 
 if not np.isclose(MADRID_EPSILON_CLOSENESS, CITYSEER_HOEFFDING_EPSILON) or not np.isclose(
     MADRID_EPSILON_BETWEENNESS, CITYSEER_HOEFFDING_EPSILON
@@ -83,15 +87,66 @@ def get_madrid_mask(force: bool = False):
     print("Downloading Community of Madrid boundary from OSM...")
     gdf = ox.geocode_to_gdf("Community of Madrid, Spain")
     gdf = gdf.to_crs("EPSG:25830")
-    boundary = gdf.geometry.iloc[0].simplify(100)
-    buffered = boundary.buffer(20_000)
+    buffered = gdf.geometry.iloc[0].simplify(100)
+    boundary = buffered.buffer(-20_000)  # 20km INNER buffer to cover all sampled nodes at max distance
     gpd.GeoDataFrame(geometry=[boundary], crs="EPSG:25830").to_file(boundary_cache, driver="GeoJSON")
     gpd.GeoDataFrame(geometry=[buffered], crs="EPSG:25830").to_file(buffered_cache, driver="GeoJSON")
     print(f"  Cached Madrid boundary to {boundary_cache}")
     return boundary, buffered
 
 
-def generate_validation_data(force: bool = False) -> pd.DataFrame:
+def load_madrid_network(force: bool = False):
+    """Load (or build) the Madrid network and return (net, nodes_gdf, live_mask, n_live).
+
+    This is separated from validation so the network can be reused for sensitivity analysis.
+    """
+    madrid_boundary, madrid_buffered = get_madrid_mask(force=force)
+
+    # Load or build Madrid graph
+    madrid_cache = CACHE_DIR / "madrid_graph.pkl"
+    if madrid_cache.exists() and not force:
+        print(f"Loading cached Madrid graph from {madrid_cache}")
+        with open(madrid_cache, "rb") as f:
+            G = pickle.load(f)
+    else:
+        print(f"Loading Madrid network from {MADRID_GPKG_FILE}")
+        buffered_4258 = (
+            gpd.GeoDataFrame(geometry=[madrid_buffered], crs="EPSG:25830").to_crs("EPSG:4258").geometry.iloc[0]
+        )
+        edges_gdf = gpd.read_file(MADRID_GPKG_FILE, layer="rt_tramo_vial", mask=buffered_4258)
+        edges_gdf = edges_gdf[edges_gdf.geometry.is_valid & ~edges_gdf.geometry.is_empty]
+        edges_gdf = edges_gdf.to_crs("EPSG:25830").explode(index_parts=False)
+        edges_gdf.geometry = edges_gdf.geometry.map(shapely.force_2d)
+        print(f"  Loaded: {len(edges_gdf)} edges")
+
+        print("  Building graph...")
+        G = io.nx_from_generic_geopandas(edges_gdf)
+        G = graphs.nx_remove_filler_nodes(G)
+        G = graphs.nx_remove_dangling_nodes(G)
+
+        print(f"  Caching to {madrid_cache}")
+        with open(madrid_cache, "wb") as f:
+            pickle.dump(G, f)
+
+    print(f"Madrid graph: {G.number_of_nodes()} nodes, {G.number_of_edges()} edges")
+
+    # Mark live nodes
+    print("Marking live nodes using Madrid boundary...")
+    n_live = 0
+    for _n, data in G.nodes(data=True):
+        data["live"] = madrid_boundary.contains(Point(data["x"], data["y"]))
+        n_live += data["live"]
+    print(f"  Live nodes: {n_live}/{G.number_of_nodes()} ({100 * n_live / G.number_of_nodes():.1f}%)")
+
+    # Convert to cityseer
+    print("Converting to cityseer format...")
+    nodes_gdf, _, net = io.network_structure_from_nx(G)
+    live_mask = nodes_gdf["live"].values
+
+    return net, nodes_gdf, live_mask, n_live
+
+
+def generate_validation_data(net, nodes_gdf, live_mask, force: bool = False) -> pd.DataFrame:
     """Generate Madrid validation data, or load from cache."""
     validation_csv = OUTPUT_DIR / "madrid_validation.csv"
     required_cols = {
@@ -122,47 +177,11 @@ def generate_validation_data(force: bool = False) -> pd.DataFrame:
     print("GENERATING MADRID VALIDATION DATA")
     print("=" * 70)
 
-    madrid_boundary, madrid_buffered = get_madrid_mask(force=force)
-
-    # Load or build Madrid graph
-    madrid_cache = CACHE_DIR / "madrid_graph.pkl"
-    if madrid_cache.exists() and not force:
-        print(f"Loading cached Madrid graph from {madrid_cache}")
-        with open(madrid_cache, "rb") as f:
-            G = pickle.load(f)
-    else:
-        print(f"Loading Madrid network from {MADRID_GPKG_FILE}")
-        buffered_4258 = gpd.GeoDataFrame(geometry=[madrid_buffered], crs="EPSG:25830").to_crs("EPSG:4258").geometry.iloc[0]
-        edges_gdf = gpd.read_file(MADRID_GPKG_FILE, layer="rt_tramo_vial", mask=buffered_4258)
-        edges_gdf = edges_gdf[edges_gdf.geometry.is_valid & ~edges_gdf.geometry.is_empty]
-        edges_gdf = edges_gdf.to_crs("EPSG:25830").explode(index_parts=False)
-        edges_gdf.geometry = edges_gdf.geometry.map(shapely.force_2d)
-        print(f"  Loaded: {len(edges_gdf)} edges")
-
-        print("  Building graph...")
-        G = io.nx_from_generic_geopandas(edges_gdf)
-        G = graphs.nx_remove_filler_nodes(G)
-        G = graphs.nx_remove_dangling_nodes(G)
-
-        print(f"  Caching to {madrid_cache}")
-        with open(madrid_cache, "wb") as f:
-            pickle.dump(G, f)
-
-    print(f"Madrid graph: {G.number_of_nodes()} nodes, {G.number_of_edges()} edges")
-
-    # Mark live nodes
-    print("Marking live nodes using Madrid boundary...")
-    n_live = 0
-    for _n, data in G.nodes(data=True):
-        data["live"] = madrid_boundary.contains(Point(data["x"], data["y"]))
-        n_live += data["live"]
-    print(f"  Live nodes: {n_live}/{G.number_of_nodes()} ({100 * n_live / G.number_of_nodes():.1f}%)")
-
-    # Convert to cityseer
-    print("Converting to cityseer format...")
-    nodes_gdf, _, net = io.network_structure_from_nx(G)
-    live_mask = nodes_gdf["live"].values
     n_live = int(live_mask.sum())
+
+    # Extract live node coordinates for spatial plots
+    node_x = nodes_gdf["x"].values[live_mask]
+    node_y = nodes_gdf["y"].values[live_mask]
 
     results = []
 
@@ -257,7 +276,11 @@ def generate_validation_data(force: bool = False) -> pd.DataFrame:
         max_mae_h = np.max(maes_h) if maes_h else float("nan")
         eps_obs_h = max_mae_h / r_canonical if not np.isnan(max_mae_h) else float("nan")
         rho_h = np.mean(spearmans_h) if spearmans_h else float("nan")
-        speedup_h = baseline_time_closeness / mean_close_time if baseline_time_closeness and mean_close_time > 0 else float("nan")
+        speedup_h = (
+            baseline_time_closeness / mean_close_time
+            if baseline_time_closeness and mean_close_time > 0
+            else float("nan")
+        )
         print(f" rho={rho_h:.3f}, speedup={speedup_h:.1f}x")
 
         # ---------------------------------------------------------------
@@ -271,6 +294,8 @@ def generate_validation_data(force: bool = False) -> pd.DataFrame:
         eps_obs_b = float("nan")
         eps_pred_b = float("nan")
         q_b = {}
+        est_betweenness = None
+        spearmans_b_list = []
 
         if nonzero_betw < 10:
             print(f"  Betweenness: skipped (only {nonzero_betw} nonzero)")
@@ -312,8 +337,38 @@ def generate_validation_data(force: bool = False) -> pd.DataFrame:
             max_mae_b = np.max(maes_b) if maes_b else float("nan")
             eps_obs_b = max_mae_b / r_canonical if not np.isnan(max_mae_b) else float("nan")
             rho_b = np.mean(spearmans_b) if spearmans_b else float("nan")
-            speedup_b = baseline_time_betweenness / mean_betw_time if baseline_time_betweenness and mean_betw_time > 0 else float("nan")
+            speedup_b = (
+                baseline_time_betweenness / mean_betw_time
+                if baseline_time_betweenness and mean_betw_time > 0
+                else float("nan")
+            )
+            spearmans_b_list = spearmans_b
             print(f" rho={rho_b:.3f}, speedup={speedup_b:.1f}x")
+
+        # ---------------------------------------------------------------
+        # Save per-node results (exact + sampled) for this distance
+        # ---------------------------------------------------------------
+        sampled_cache = CACHE_DIR / f"madrid_sampled_{dist}m.pkl"
+        sampled_data = {
+            "distance": dist,
+            "mean_reach": mean_reach,
+            "node_reach": node_reach,
+            "node_x": node_x,
+            "node_y": node_y,
+            "true_harmonic": true_harmonic,
+            "est_harmonic": est_harmonic,
+            "epsilon_closeness": MADRID_EPSILON_CLOSENESS,
+            "hoeffding_p": actual_p_close,
+            "spearmans_closeness": spearmans_h,
+            "true_betweenness": true_betweenness,
+            "est_betweenness": est_betweenness,
+            "epsilon_betweenness": MADRID_EPSILON_BETWEENNESS,
+            "hoeffding_p_betw": actual_p_betw if nonzero_betw >= 10 else None,
+            "spearmans_betweenness": spearmans_b_list if nonzero_betw >= 10 else None,
+        }
+        with open(sampled_cache, "wb") as f:
+            pickle.dump(sampled_data, f)
+        print(f"  Saved per-node results: {sampled_cache}")
 
         # Build result row
         row = {
@@ -491,11 +546,11 @@ def generate_validation_table(df: pd.DataFrame, n_nodes: int | None):
     for _, row in df.iterrows():
         p_pct = f"{row['hoeffding_p_close'] * 100:.1f}\\%"
         rho_c = f"{row['rho_closeness']:.4f}"
-        spd_c = f"{row['speedup_closeness']:.1f}$\\times$" if np.isfinite(row['speedup_closeness']) else "---"
+        spd_c = f"{row['speedup_closeness']:.1f}$\\times$" if np.isfinite(row["speedup_closeness"]) else "---"
 
-        if np.isfinite(row.get('rho_betweenness', float("nan"))):
+        if np.isfinite(row.get("rho_betweenness", float("nan"))):
             rho_b = f"{row['rho_betweenness']:.4f}"
-            spd_b = f"{row['speedup_betweenness']:.1f}$\\times$" if np.isfinite(row['speedup_betweenness']) else "---"
+            spd_b = f"{row['speedup_betweenness']:.1f}$\\times$" if np.isfinite(row["speedup_betweenness"]) else "---"
         else:
             rho_b = "---"
             spd_b = "---"
@@ -522,6 +577,113 @@ same $p$ for both metrics at each distance.
 
 
 # =============================================================================
+# SENSITIVITY ANALYSIS: GRID SPACING
+# =============================================================================
+
+
+def run_sensitivity_analysis(
+    net,
+    nodes_gdf: gpd.GeoDataFrame,
+    live_mask: np.ndarray,
+    grid_spacings: list[float],
+    distances: list[int] | None = None,
+    force: bool = False,
+) -> pd.DataFrame:
+    """Run sampling at multiple grid spacings to test sensitivity of ρ to s.
+
+    Reuses cached ground truth; only re-runs sampled centrality at each (distance, s).
+    Uses the Rust API with sample_probability + random_seed.
+    """
+    if distances is None:
+        distances = [10000, 20000]  # only long distances where sampling matters
+
+    sensitivity_csv = OUTPUT_DIR / "madrid_sensitivity.csv"
+    if sensitivity_csv.exists() and not force:
+        print(f"\nSensitivity results already exist: {sensitivity_csv}")
+        return pd.read_csv(sensitivity_csv)
+
+    print("\n" + "=" * 70)
+    print("SENSITIVITY ANALYSIS: GRID SPACING")
+    print(f"  Spacings: {grid_spacings}")
+    print(f"  Distances: {distances}")
+    print("=" * 70)
+
+    rows = []
+    for dist in distances:
+        # Load ground truth
+        gt_cache = CACHE_DIR / f"madrid_ground_truth_{dist}m.pkl"
+        if not gt_cache.exists():
+            print(f"  Skipping {dist}m — no ground truth cache")
+            continue
+        with open(gt_cache, "rb") as f:
+            gt_data = pickle.load(f)
+        true_harmonic = gt_data["harmonic"]
+        true_betweenness = gt_data["betweenness"]
+        mean_reach = gt_data["mean_reach"]
+
+        for s in grid_spacings:
+            p = compute_distance_p(dist, epsilon=MADRID_EPSILON_CLOSENESS, grid_spacing=float(s))
+            print(f"\n  d={dist}m, s={s}m: p={p:.4f}")
+
+            if p >= 1.0:
+                print("    p=1.0 (exact), skipping")
+                rows.append({
+                    "distance": dist, "grid_spacing": s, "p": p,
+                    "rho_closeness": 1.0, "rho_betweenness": 1.0,
+                    "mean_reach": mean_reach,
+                })
+                continue
+
+            # Closeness
+            spearmans_h = []
+            for seed in range(N_RUNS):
+                result = net.centrality_shortest(
+                    distances=[dist],
+                    compute_closeness=True,
+                    compute_betweenness=False,
+                    sample_probability=p,
+                    random_seed=42 + seed,
+                )
+                est_h = np.array(result.node_harmonic[dist])[live_mask]
+                sp_h, _, _, _, _ = compute_accuracy_metrics(true_harmonic, est_h)
+                if not np.isnan(sp_h):
+                    spearmans_h.append(sp_h)
+                print(".", end="", flush=True)
+
+            # Betweenness
+            spearmans_b = []
+            if np.sum(true_betweenness > 0) >= 10:
+                for seed in range(N_RUNS):
+                    result = net.centrality_shortest(
+                        distances=[dist],
+                        compute_closeness=False,
+                        compute_betweenness=True,
+                        sample_probability=p,
+                        random_seed=42 + seed,
+                    )
+                    est_b = np.array(result.node_betweenness[dist])[live_mask]
+                    sp_b, _, _, _, _ = compute_accuracy_metrics(true_betweenness, est_b)
+                    if not np.isnan(sp_b):
+                        spearmans_b.append(sp_b)
+                    print(".", end="", flush=True)
+
+            rho_h = np.mean(spearmans_h) if spearmans_h else float("nan")
+            rho_b = np.mean(spearmans_b) if spearmans_b else float("nan")
+            print(f" rho_c={rho_h:.4f}, rho_b={rho_b:.4f}")
+
+            rows.append({
+                "distance": dist, "grid_spacing": s, "p": p,
+                "rho_closeness": rho_h, "rho_betweenness": rho_b,
+                "mean_reach": mean_reach,
+            })
+
+    df = pd.DataFrame(rows)
+    df.to_csv(sensitivity_csv, index=False)
+    print(f"\nSaved sensitivity results: {sensitivity_csv}")
+    return df
+
+
+# =============================================================================
 # MAIN
 # =============================================================================
 
@@ -529,6 +691,14 @@ same $p$ for both metrics at each distance.
 def main():
     parser = argparse.ArgumentParser(description="Validate sampling model on Madrid network")
     parser.add_argument("--force", action="store_true", help="Force regeneration of validation data")
+    parser.add_argument(
+        "--sensitivity", action="store_true",
+        help="Run grid spacing sensitivity analysis after validation",
+    )
+    parser.add_argument(
+        "--grid-spacings", type=float, nargs="+", default=None,
+        help=f"Grid spacings for sensitivity analysis (default: {DEFAULT_GRID_SPACINGS})",
+    )
     args = parser.parse_args()
 
     print("=" * 70)
@@ -539,8 +709,11 @@ def main():
     print(f"Betweenness: Hoeffding + deterministic distance-based, eps={MADRID_EPSILON_BETWEENNESS}")
     print(f"Delta: {DELTA}")
 
+    # Load network (needed for both validation and sensitivity)
+    net, nodes_gdf, live_mask, n_live_count = load_madrid_network(force=args.force)
+
     # Generate or load validation data
-    df = generate_validation_data(force=args.force)
+    df = generate_validation_data(net, nodes_gdf, live_mask, force=args.force)
     print(f"\nValidation data: {len(df)} rows")
 
     # Theoretical bounds comparison
@@ -560,10 +733,7 @@ def main():
     print("VALIDATION SUMMARY")
     print("=" * 70)
 
-    print(
-        f"\n{'Dist':>6} | {'p':>7} | {'rho_c':>7} | {'Spd_c':>7}"
-        f" | {'rho_b':>7} | {'Spd_b':>7} | {'OK?':>5}"
-    )
+    print(f"\n{'Dist':>6} | {'p':>7} | {'rho_c':>7} | {'Spd_c':>7} | {'rho_b':>7} | {'Spd_b':>7} | {'OK?':>5}")
     print("-" * 65)
 
     all_pass = True
@@ -575,8 +745,8 @@ def main():
         if not passes:
             all_pass = False
 
-        rho_b_str = f"{row['rho_betweenness']:.4f}" if np.isfinite(row['rho_betweenness']) else "n/a"
-        spd_b_str = f"{row['speedup_betweenness']:.1f}x" if np.isfinite(row['speedup_betweenness']) else "n/a"
+        rho_b_str = f"{row['rho_betweenness']:.4f}" if np.isfinite(row["rho_betweenness"]) else "n/a"
+        spd_b_str = f"{row['speedup_betweenness']:.1f}x" if np.isfinite(row["speedup_betweenness"]) else "n/a"
 
         print(
             f"{row['distance'] // 1000}km   | {row['hoeffding_p_close']:>6.1%} | "
@@ -605,6 +775,16 @@ def main():
     print(f"  2. {TABLES_DIR / 'tab4_madrid_validation.tex'}")
     print(f"  3. {OUTPUT_DIR / 'madrid_theoretical_bounds_comparison.csv'}")
     print(f"  4. {OUTPUT_DIR / 'madrid_bound_analysis.csv'}")
+
+    # Sensitivity analysis (optional)
+    if args.sensitivity:
+        spacings = args.grid_spacings or DEFAULT_GRID_SPACINGS
+        run_sensitivity_analysis(
+            net, nodes_gdf, live_mask,
+            grid_spacings=spacings,
+            force=args.force,
+        )
+        print(f"  5. {OUTPUT_DIR / 'madrid_sensitivity.csv'}")
 
     return 0
 

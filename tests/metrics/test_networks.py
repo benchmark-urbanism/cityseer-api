@@ -46,13 +46,14 @@ def test_node_centrality_shortest(primal_graph):
                             atol=config.ATOL,
                             rtol=config.RTOL,
                         )
-                    assert np.allclose(
-                        nodes_gdf[config.prep_gdf_key("hillier", dist_key)],
-                        node_result_short.node_density[dist_key] ** 2 / node_result_short.node_farness[dist_key],
-                        equal_nan=True,
-                        atol=config.ATOL,
-                        rtol=config.RTOL,
-                    )
+                    with np.errstate(divide="ignore", invalid="ignore"):
+                        assert np.allclose(
+                            nodes_gdf[config.prep_gdf_key("hillier", dist_key)],
+                            node_result_short.node_density[dist_key] ** 2 / node_result_short.node_farness[dist_key],
+                            equal_nan=True,
+                            atol=config.ATOL,
+                            rtol=config.RTOL,
+                        )
                 if _betweenness is True:
                     # test betweenness against underlying exact Brandes method
                     betweenness_result = network_structure.centrality_shortest(compute_closeness=False, compute_betweenness=True,
@@ -109,14 +110,15 @@ def test_node_centrality_simplest(primal_graph):
                         atol=config.ATOL,
                         rtol=config.RTOL,
                     )
-                assert np.allclose(
-                    nodes_gdf[config.prep_gdf_key("hillier", dist_key, angular=True)],
-                    node_result_simplest.node_density[dist_key] ** 2
-                    / node_result_simplest.node_farness[dist_key],
-                    equal_nan=True,
-                    atol=config.ATOL,
-                    rtol=config.RTOL,
-                )
+                with np.errstate(divide="ignore", invalid="ignore"):
+                    assert np.allclose(
+                        nodes_gdf[config.prep_gdf_key("hillier", dist_key, angular=True)],
+                        node_result_simplest.node_density[dist_key] ** 2
+                        / node_result_simplest.node_farness[dist_key],
+                        equal_nan=True,
+                        atol=config.ATOL,
+                        rtol=config.RTOL,
+                    )
                 # test betweenness against underlying method
                 betw_result = network_structure.centrality_simplest(compute_closeness=False, compute_betweenness=True,betas=betas)
                 for measure_key, attr_key in [

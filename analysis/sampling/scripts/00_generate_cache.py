@@ -60,10 +60,10 @@ SEED = 42
 
 # Epsilon-targeted sweep: these epsilons are inverted via the Hoeffding bound to
 # find the exact sample_prob needed at each distance's mean_reach.
-# Spans the paper threshold (0.05, unified for both metrics) plus values
+# Spans the paper threshold (0.06, unified for both metrics) plus values
 # above and below so Fig 1 can show where accuracy crosses 0.95.
-EPS_CLOSENESS_TARGETS = [0.025, 0.05, 0.075, 0.1, 0.15, 0.2]
-EPS_BETWEENNESS_TARGETS = [0.025, 0.05, 0.075, 0.1, 0.15, 0.2]
+EPS_CLOSENESS_TARGETS = [0.02, 0.04, 0.06, 0.08, 0.1]
+EPS_BETWEENNESS_TARGETS = [0.02, 0.04, 0.06, 0.08, 0.1]
 
 
 # =============================================================================
@@ -139,7 +139,11 @@ def generate_synthetic_cache(force: bool = False):
             ]
             for metric_label, eps_targets, result_attr in eps_spec:
                 true_arr = true_harmonic if metric_label == "harmonic" else true_betw_arr
-                rust_fn = partial(net.centrality_shortest, compute_closeness=True, compute_betweenness=False) if metric_label == "harmonic" else partial(net.centrality_shortest, compute_closeness=False, compute_betweenness=True)
+                rust_fn = (
+                    partial(net.centrality_shortest, compute_closeness=True, compute_betweenness=False)
+                    if metric_label == "harmonic"
+                    else partial(net.centrality_shortest, compute_closeness=False, compute_betweenness=True)
+                )
 
                 for target_eps in eps_targets:
                     target_p = compute_hoeffding_p(mean_reach, target_eps, HOEFFDING_DELTA)
@@ -219,7 +223,11 @@ def generate_synthetic_cache(force: bool = False):
                 ("betweenness", HOEFFDING_EPSILON, "node_betweenness", true_betw_arr),
             ]
             for metric_label, epsilon, result_attr, true_arr in det_spec:
-                rust_fn = partial(net.centrality_shortest, compute_closeness=True, compute_betweenness=False) if metric_label == "harmonic" else partial(net.centrality_shortest, compute_closeness=False, compute_betweenness=True)
+                rust_fn = (
+                    partial(net.centrality_shortest, compute_closeness=True, compute_betweenness=False)
+                    if metric_label == "harmonic"
+                    else partial(net.centrality_shortest, compute_closeness=False, compute_betweenness=True)
+                )
                 det_p = compute_distance_p(dist, epsilon=epsilon)
                 r_canonical = math.pi * dist**2 / GRID_SPACING**2
                 if det_p >= 1.0:

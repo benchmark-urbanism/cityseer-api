@@ -74,10 +74,10 @@ RTOL: float = 0.0001
 # enabling reach-agnostic comparison across networks.
 #
 # Default parameters:
-#   ε = 0.05  (normalised additive error tolerance; unified for closeness and betweenness)
+#   ε = 0.06  (normalised additive error tolerance; unified for closeness and betweenness)
 #   δ = 0.1   (failure probability → 90% confidence)
 #   s = 175m  (canonical sparse street network inter-node spacing)
-HOEFFDING_EPSILON: float = 0.05
+HOEFFDING_EPSILON: float = 0.06
 HOEFFDING_DELTA: float = 0.1
 GRID_SPACING: float = 175.0  # metres — canonical sparse street network inter-node spacing
 
@@ -98,7 +98,7 @@ def compute_hoeffding_p(
     mean_reachability : float
         Average number of nodes reachable within distance threshold.
     epsilon : float
-        Normalised additive error tolerance. Default 0.05 (via HOEFFDING_EPSILON).
+        Normalised additive error tolerance. Default 0.06 (via HOEFFDING_EPSILON).
     delta : float
         Failure probability (1 - confidence). Default 0.1 (via HOEFFDING_DELTA).
 
@@ -142,7 +142,7 @@ def compute_distance_p(
     distance : float
         Distance threshold in metres.
     epsilon : float
-        Normalised additive error tolerance. Default 0.05 (unified for closeness and betweenness).
+        Normalised additive error tolerance. Default 0.06 (unified for closeness and betweenness).
     delta : float
         Failure probability (1 - confidence). Default 0.1.
     grid_spacing : float

@@ -55,11 +55,14 @@ GLA_GPKG_FILE = SCRIPT_DIR.parent.parent.parent / "temp" / "os_open_roads" / "op
 # Validation parameters
 GLA_DISTANCES = [1000, 2000, 5000, 10000, 20000]
 # Hoeffding + deterministic distance-based source sampling (both metrics)
-GLA_EPSILON_CLOSENESS = 0.05
-GLA_EPSILON_BETWEENNESS = 0.05
+GLA_EPSILON_CLOSENESS = 0.06
+GLA_EPSILON_BETWEENNESS = 0.06
 N_RUNS = 3
 
 DELTA = HOEFFDING_DELTA
+
+# Sensitivity analysis: grid spacings to test (default s=175m is the paper default)
+DEFAULT_GRID_SPACINGS = [125, 150, 175, 200, 225]
 
 if not np.isclose(GLA_EPSILON_CLOSENESS, CITYSEER_HOEFFDING_EPSILON) or not np.isclose(
     GLA_EPSILON_BETWEENNESS, CITYSEER_HOEFFDING_EPSILON
@@ -131,34 +134,15 @@ def _missing_validation_columns(df: pd.DataFrame) -> set[str]:
     return required - set(df.columns)
 
 
-def generate_validation_data(force: bool = False) -> pd.DataFrame:
-    """Generate GLA validation data, or load from cache."""
-    validation_csv = OUTPUT_DIR / "gla_validation.csv"
+def load_gla_network(force: bool = False):
+    """Load (or build) the GLA network and return (net, nodes_gdf, live_mask, n_live).
 
-    # Detect stale format
-    if _is_stale_csv(validation_csv):
-        print(f"Stale CSV format detected at {validation_csv}, regenerating...")
-        force = True
-
-    if validation_csv.exists() and not force:
-        df = pd.read_csv(validation_csv)
-        missing = _missing_validation_columns(df)
-        if len(df) > 0 and not missing:
-            print(f"Loading cached validation data from {validation_csv}")
-            return df
-        if missing:
-            print(f"Stale cache columns at {validation_csv}: missing {sorted(missing)}")
-        else:
-            print(f"Stale/empty cache at {validation_csv}, regenerating...")
-
+    This is separated from validation so the network can be reused for sensitivity analysis.
+    """
     if not GLA_GPKG_FILE.exists():
         raise FileNotFoundError(
             f"GLA network file not found: {GLA_GPKG_FILE}\n  Download the OS Open Roads dataset for Greater London"
         )
-
-    print("\n" + "=" * 70)
-    print("GENERATING GLA VALIDATION DATA")
-    print("=" * 70)
 
     # Load GLA boundary (cached after first download)
     gla_boundary, gla_buffered = get_gla_mask(force=force)
@@ -200,6 +184,39 @@ def generate_validation_data(force: bool = False) -> pd.DataFrame:
     print("Converting to cityseer format...")
     nodes_gdf, _, net = io.network_structure_from_nx(G)
     live_mask = nodes_gdf["live"].values
+
+    return net, nodes_gdf, live_mask, n_live
+
+
+def generate_validation_data(net, nodes_gdf, live_mask, force: bool = False) -> pd.DataFrame:
+    """Generate GLA validation data, or load from cache."""
+    validation_csv = OUTPUT_DIR / "gla_validation.csv"
+
+    # Detect stale format
+    if _is_stale_csv(validation_csv):
+        print(f"Stale CSV format detected at {validation_csv}, regenerating...")
+        force = True
+
+    if validation_csv.exists() and not force:
+        df = pd.read_csv(validation_csv)
+        missing = _missing_validation_columns(df)
+        if len(df) > 0 and not missing:
+            print(f"Loading cached validation data from {validation_csv}")
+            return df
+        if missing:
+            print(f"Stale cache columns at {validation_csv}: missing {sorted(missing)}")
+        else:
+            print(f"Stale/empty cache at {validation_csv}, regenerating...")
+
+    print("\n" + "=" * 70)
+    print("GENERATING GLA VALIDATION DATA")
+    print("=" * 70)
+
+    n_live = int(live_mask.sum())
+
+    # Extract live node coordinates for spatial plots
+    node_x = nodes_gdf["x"].values[live_mask]
+    node_y = nodes_gdf["y"].values[live_mask]
 
     results = []
     for dist in GLA_DISTANCES:
@@ -337,6 +354,7 @@ def generate_validation_data(force: bool = False) -> pd.DataFrame:
         nonzero_betw = np.sum(true_betweenness > 0)
         actual_p_b = float("nan")
         est_betweenness = None
+        spearmans_b = []
         if nonzero_betw < 10:
             print(f"  Betweenness: skipped (only {nonzero_betw} nonzero)")
         else:
@@ -417,14 +435,18 @@ def generate_validation_data(force: bool = False) -> pd.DataFrame:
             "distance": dist,
             "mean_reach": mean_reach,
             "node_reach": node_reach,
+            "node_x": node_x,
+            "node_y": node_y,
             "true_harmonic": true_harmonic,
             "est_harmonic": est_harmonic,
             "epsilon_closeness": GLA_EPSILON_CLOSENESS,
             "hoeffding_p": actual_p_close,
+            "spearmans_closeness": spearmans_h,
             "true_betweenness": true_betweenness,
             "est_betweenness": est_betweenness if est_betweenness is not None else None,
             "epsilon_betweenness": GLA_EPSILON_BETWEENNESS,
             "hoeffding_p_betw": actual_p_b if nonzero_betw >= 10 else None,
+            "spearmans_betweenness": spearmans_b if nonzero_betw >= 10 else None,
         }
         with open(sampled_cache, "wb") as f:
             pickle.dump(sampled_data, f)
@@ -730,6 +752,113 @@ def compute_bound_analysis(raw_df: pd.DataFrame):
 
 
 # =============================================================================
+# SENSITIVITY ANALYSIS: GRID SPACING
+# =============================================================================
+
+
+def run_sensitivity_analysis(
+    net,
+    nodes_gdf: gpd.GeoDataFrame,
+    live_mask: np.ndarray,
+    grid_spacings: list[float],
+    distances: list[int] | None = None,
+    force: bool = False,
+) -> pd.DataFrame:
+    """Run sampling at multiple grid spacings to test sensitivity of ρ to s.
+
+    Reuses cached ground truth; only re-runs sampled centrality at each (distance, s).
+    Uses the Rust API with sample_probability + random_seed.
+    """
+    if distances is None:
+        distances = [10000, 20000]  # only long distances where sampling matters
+
+    sensitivity_csv = OUTPUT_DIR / "gla_sensitivity.csv"
+    if sensitivity_csv.exists() and not force:
+        print(f"\nSensitivity results already exist: {sensitivity_csv}")
+        return pd.read_csv(sensitivity_csv)
+
+    print("\n" + "=" * 70)
+    print("SENSITIVITY ANALYSIS: GRID SPACING")
+    print(f"  Spacings: {grid_spacings}")
+    print(f"  Distances: {distances}")
+    print("=" * 70)
+
+    rows = []
+    for dist in distances:
+        # Load ground truth
+        gt_cache = CACHE_DIR / f"gla_ground_truth_{dist}m.pkl"
+        if not gt_cache.exists():
+            print(f"  Skipping {dist}m — no ground truth cache")
+            continue
+        with open(gt_cache, "rb") as f:
+            gt_data = pickle.load(f)
+        true_harmonic = gt_data["harmonic"]
+        true_betweenness = gt_data["betweenness"]
+        mean_reach = gt_data["mean_reach"]
+
+        for s in grid_spacings:
+            p = compute_distance_p(dist, epsilon=GLA_EPSILON_CLOSENESS, grid_spacing=float(s))
+            print(f"\n  d={dist}m, s={s}m: p={p:.4f}")
+
+            if p >= 1.0:
+                print("    p=1.0 (exact), skipping")
+                rows.append({
+                    "distance": dist, "grid_spacing": s, "p": p,
+                    "rho_closeness": 1.0, "rho_betweenness": 1.0,
+                    "mean_reach": mean_reach,
+                })
+                continue
+
+            # Closeness
+            spearmans_h = []
+            for seed in range(N_RUNS):
+                result = net.centrality_shortest(
+                    distances=[dist],
+                    compute_closeness=True,
+                    compute_betweenness=False,
+                    sample_probability=p,
+                    random_seed=42 + seed,
+                )
+                est_h = np.array(result.node_harmonic[dist])[live_mask]
+                sp_h, _, _, _, _ = compute_accuracy_metrics(true_harmonic, est_h)
+                if not np.isnan(sp_h):
+                    spearmans_h.append(sp_h)
+                print(".", end="", flush=True)
+
+            # Betweenness
+            spearmans_b = []
+            if np.sum(true_betweenness > 0) >= 10:
+                for seed in range(N_RUNS):
+                    result = net.centrality_shortest(
+                        distances=[dist],
+                        compute_closeness=False,
+                        compute_betweenness=True,
+                        sample_probability=p,
+                        random_seed=42 + seed,
+                    )
+                    est_b = np.array(result.node_betweenness[dist])[live_mask]
+                    sp_b, _, _, _, _ = compute_accuracy_metrics(true_betweenness, est_b)
+                    if not np.isnan(sp_b):
+                        spearmans_b.append(sp_b)
+                    print(".", end="", flush=True)
+
+            rho_h = np.mean(spearmans_h) if spearmans_h else float("nan")
+            rho_b = np.mean(spearmans_b) if spearmans_b else float("nan")
+            print(f" rho_c={rho_h:.4f}, rho_b={rho_b:.4f}")
+
+            rows.append({
+                "distance": dist, "grid_spacing": s, "p": p,
+                "rho_closeness": rho_h, "rho_betweenness": rho_b,
+                "mean_reach": mean_reach,
+            })
+
+    df = pd.DataFrame(rows)
+    df.to_csv(sensitivity_csv, index=False)
+    print(f"\nSaved sensitivity results: {sensitivity_csv}")
+    return df
+
+
+# =============================================================================
 # MAIN
 # =============================================================================
 
@@ -737,6 +866,14 @@ def compute_bound_analysis(raw_df: pd.DataFrame):
 def main():
     parser = argparse.ArgumentParser(description="Validate sampling model on GLA network")
     parser.add_argument("--force", action="store_true", help="Force regeneration of validation data")
+    parser.add_argument(
+        "--sensitivity", action="store_true",
+        help="Run grid spacing sensitivity analysis after validation",
+    )
+    parser.add_argument(
+        "--grid-spacings", type=float, nargs="+", default=None,
+        help=f"Grid spacings for sensitivity analysis (default: {DEFAULT_GRID_SPACINGS})",
+    )
     args = parser.parse_args()
 
     print("=" * 70)
@@ -749,8 +886,11 @@ def main():
     print(f"  Distances: {GLA_DISTANCES}")
     print(f"  N_RUNS: {N_RUNS}")
 
+    # Load network (needed for both validation and sensitivity)
+    net, nodes_gdf, live_mask, n_live_count = load_gla_network(force=args.force)
+
     # Generate or load validation data
-    raw_df = generate_validation_data(force=args.force)
+    raw_df = generate_validation_data(net, nodes_gdf, live_mask, force=args.force)
     print(f"\nValidation data: {len(raw_df)} rows")
     print(f"Distances: {sorted(raw_df['distance'].unique())}")
 
@@ -823,6 +963,16 @@ def main():
         print(f"  4. {OUTPUT_DIR / 'gla_theoretical_bounds_comparison.csv'}")
     if ew_df is not None:
         print(f"  5. {OUTPUT_DIR / 'gla_ew_analysis.csv'}")
+
+    # Sensitivity analysis (optional)
+    if args.sensitivity:
+        spacings = args.grid_spacings or DEFAULT_GRID_SPACINGS
+        run_sensitivity_analysis(
+            net, nodes_gdf, live_mask,
+            grid_spacings=spacings,
+            force=args.force,
+        )
+        print(f"  6. {OUTPUT_DIR / 'gla_sensitivity.csv'}")
 
     return 0
 
