@@ -266,9 +266,7 @@ class NetworkStructure:
             If the node does not exist or is a transport node.
         """
         ...
-    def remove_street_edge(
-        self, start_nd_idx: int, end_nd_idx: int, edge_idx: int
-    ) -> None:
+    def remove_street_edge(self, start_nd_idx: int, end_nd_idx: int, edge_idx: int) -> None:
         """
         Remove a specific directed edge.
 

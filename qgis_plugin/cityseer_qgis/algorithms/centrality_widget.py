@@ -18,31 +18,65 @@ from qgis.PyQt.QtWidgets import (
     QWidget,
 )
 
-
 # Metric definitions per box: (param_name, label, tooltip, default)
 _CLOSENESS_METRICS_SHORTEST = [
     ("METRIC_HARMONIC", "Harmonic", "Sum of inverse distances to reachable nodes \u2192 cc_harmonic_<d>", True),
-    ("METRIC_DENSITY", "Density", "Number of nodes reachable within the distance threshold \u2192 cc_density_<d>", False),
+    (
+        "METRIC_DENSITY",
+        "Density",
+        "Number of nodes reachable within the distance threshold \u2192 cc_density_<d>",
+        False,
+    ),
     ("METRIC_FARNESS", "Farness", "Sum of distances to all reachable nodes \u2192 cc_farness_<d>", False),
     ("METRIC_BETA", "Beta-weighted", "Closeness with negative-exponential distance decay \u2192 cc_beta_<d>", False),
     ("METRIC_CYCLES", "Cycles", "Count of network cycles through each node \u2192 cc_cycles_<d>", False),
-    ("METRIC_HILLIER", "Hillier (n\u00b2/farness)", "Derived closeness variant (density\u00b2 / farness) \u2192 cc_hillier_<d>", False),
+    (
+        "METRIC_HILLIER",
+        "Hillier (n\u00b2/farness)",
+        "Derived closeness variant (density\u00b2 / farness) \u2192 cc_hillier_<d>",
+        False,
+    ),
 ]
 
 _CLOSENESS_METRICS_SIMPLEST = [
     ("METRIC_HARMONIC", "Harmonic", "Sum of inverse distances to reachable nodes \u2192 cc_harmonic_<d>_ang", True),
-    ("METRIC_DENSITY", "Density", "Number of nodes reachable within the distance threshold \u2192 cc_density_<d>_ang", False),
+    (
+        "METRIC_DENSITY",
+        "Density",
+        "Number of nodes reachable within the distance threshold \u2192 cc_density_<d>_ang",
+        False,
+    ),
     ("METRIC_FARNESS", "Farness", "Sum of distances to all reachable nodes \u2192 cc_farness_<d>_ang", False),
 ]
 
 _BETWEENNESS_METRICS_SHORTEST = [
-    ("METRIC_BETWEENNESS", "Betweenness", "Count of shortest paths passing through each node \u2192 cc_betweenness_<d>", True),
-    ("METRIC_BETWEENNESS_BETA", "Beta-weighted", "Betweenness with negative-exponential distance decay \u2192 cc_betweenness_beta_<d>", False),
+    (
+        "METRIC_BETWEENNESS",
+        "Betweenness",
+        "Count of shortest paths passing through each node \u2192 cc_betweenness_<d>",
+        True,
+    ),
+    (
+        "METRIC_BETWEENNESS_BETA",
+        "Beta-weighted",
+        "Betweenness with negative-exponential distance decay \u2192 cc_betweenness_beta_<d>",
+        False,
+    ),
 ]
 
 _BETWEENNESS_METRICS_SIMPLEST = [
-    ("METRIC_BETWEENNESS", "Betweenness", "Count of shortest paths passing through each node \u2192 cc_betweenness_<d>_ang", True),
-    ("METRIC_BETWEENNESS_BETA", "Beta-weighted", "Betweenness with negative-exponential distance decay \u2192 cc_betweenness_beta_<d>_ang", False),
+    (
+        "METRIC_BETWEENNESS",
+        "Betweenness",
+        "Count of shortest paths passing through each node \u2192 cc_betweenness_<d>_ang",
+        True,
+    ),
+    (
+        "METRIC_BETWEENNESS_BETA",
+        "Beta-weighted",
+        "Betweenness with negative-exponential distance decay \u2192 cc_betweenness_beta_<d>_ang",
+        False,
+    ),
 ]
 
 
@@ -72,31 +106,43 @@ class CentralityParametersPanel(ParametersPanel):
         grid.setColumnStretch(1, 1)
         grid.addWidget(
             self._make_group_box(
-                "Closeness (Shortest Path)", "CLOSENESS_SHORTEST",
-                _CLOSENESS_METRICS_SHORTEST, checked=True,
+                "Closeness (Shortest Path)",
+                "CLOSENESS_SHORTEST",
+                _CLOSENESS_METRICS_SHORTEST,
+                checked=True,
             ),
-            0, 0,
+            0,
+            0,
         )
         grid.addWidget(
             self._make_group_box(
-                "Closeness (Simplest Path)", "CLOSENESS_SIMPLEST",
-                _CLOSENESS_METRICS_SIMPLEST, checked=False,
+                "Closeness (Simplest Path)",
+                "CLOSENESS_SIMPLEST",
+                _CLOSENESS_METRICS_SIMPLEST,
+                checked=False,
             ),
-            0, 1,
+            0,
+            1,
         )
         grid.addWidget(
             self._make_group_box(
-                "Betweenness (Shortest Path)", "BETWEENNESS_SHORTEST",
-                _BETWEENNESS_METRICS_SHORTEST, checked=True,
+                "Betweenness (Shortest Path)",
+                "BETWEENNESS_SHORTEST",
+                _BETWEENNESS_METRICS_SHORTEST,
+                checked=True,
             ),
-            1, 0,
+            1,
+            0,
         )
         grid.addWidget(
             self._make_group_box(
-                "Betweenness (Simplest Path)", "BETWEENNESS_SIMPLEST",
-                _BETWEENNESS_METRICS_SIMPLEST, checked=False,
+                "Betweenness (Simplest Path)",
+                "BETWEENNESS_SIMPLEST",
+                _BETWEENNESS_METRICS_SIMPLEST,
+                checked=False,
             ),
-            1, 1,
+            1,
+            1,
         )
         grid_widget = QWidget()
         grid_widget.setLayout(grid)

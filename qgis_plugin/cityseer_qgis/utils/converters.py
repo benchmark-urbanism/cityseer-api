@@ -18,15 +18,14 @@ cityseer.rustalgos.
 from __future__ import annotations
 
 import collections
+import contextlib
 import itertools
+import math
 
 # Module-level state for incremental updates.
 # Keys: wkts, ns, fid_list, geoms, midpoints, node_idx, endpoint_to_fids,
 #        edge_counter, seen
 _inc_state: dict | None = None
-
-
-import math
 
 
 # ---------------------------------------------------------------------------
@@ -149,8 +148,8 @@ def parse_distances(s: str) -> list[int]:
     for p in parts:
         try:
             d = int(p)
-        except ValueError:
-            raise ValueError(f"Invalid distance value: {p!r}. Expected integers.")
+        except ValueError as err:
+            raise ValueError(f"Invalid distance value: {p!r}. Expected integers.") from err
         if d <= 0:
             raise ValueError(f"Invalid distance value: {p!r}. Distances must be positive integers.")
         if d in seen:
@@ -161,8 +160,13 @@ def parse_distances(s: str) -> list[int]:
 
 
 def build_dual_network(
-    layer, feedback=None, step=1, n_steps=3,
-    progress_base=0, progress_span=100, boundary=None,
+    layer,
+    feedback=None,
+    step=1,
+    n_steps=3,
+    progress_base=0,
+    progress_span=100,
+    boundary=None,
 ):
     """
     Build a cityseer dual NetworkStructure directly from a QGIS line layer.
@@ -203,11 +207,10 @@ def build_dual_network(
         midpoints — dict mapping fid -> (x, y) midpoint coordinates
         geoms     — dict mapping fid -> shapely LineString (original geometry)
     """
+    from cityseer import rustalgos
     from shapely import wkt as shapely_wkt
     from shapely.geometry import LineString, Point
     from shapely.ops import linemerge
-
-    from cityseer import rustalgos
 
     global _inc_state
     layer_cache_key = (
@@ -230,11 +233,7 @@ def build_dual_network(
             return None
         if geom.geom_type == "MultiLineString":
             merged = linemerge(geom)
-            if merged.geom_type == "MultiLineString":
-                # Take the longest component
-                geom = max(merged.geoms, key=lambda g: g.length)
-            else:
-                geom = merged
+            geom = max(merged.geoms, key=lambda g: g.length) if merged.geom_type == "MultiLineString" else merged
         if geom.geom_type != "LineString" or len(geom.coords) < 2:
             return None
         if geom.has_z:
@@ -277,9 +276,7 @@ def build_dual_network(
     # Extract current WKTs from QGIS layer
     # ------------------------------------------------------------------
     if feedback:
-        feedback.setProgressText(
-            f"Step {step} of {n_steps}: Reading input features…"
-        )
+        feedback.setProgressText(f"Step {step} of {n_steps}: Reading input features…")
         feedback.setProgress(int(read_base))
     current_wkts: dict[int, str] = {}
     feat_count = layer.featureCount() if hasattr(layer, "featureCount") else -1
@@ -313,11 +310,7 @@ def build_dual_network(
 
         removed = prev_fids - curr_fids
         added = curr_fids - prev_fids
-        modified = {
-            fid
-            for fid in prev_fids & curr_fids
-            if prev_wkts[fid] != current_wkts[fid]
-        }
+        modified = {fid for fid in prev_fids & curr_fids if prev_wkts[fid] != current_wkts[fid]}
 
         to_remove = removed | modified
         to_add = added | modified
@@ -355,10 +348,7 @@ def build_dual_network(
         # (no swap-and-compact), so node_idx values for untouched features
         # remain valid after removals.
         if feedback:
-            feedback.setProgressText(
-                f"Step {step} of {n_steps}: "
-                f"Removing {len(to_remove)} features…"
-            )
+            feedback.setProgressText(f"Step {step} of {n_steps}: Removing {len(to_remove)} features…")
             feedback.setProgress(int(node_base))
 
         for i, fid in enumerate(to_remove):
@@ -367,10 +357,8 @@ def build_dual_network(
             for pt in (coords[0], coords[-1]):
                 key = _ep_key(pt)
                 if key in endpoint_to_fids:
-                    try:
+                    with contextlib.suppress(ValueError):
                         endpoint_to_fids[key].remove(fid)
-                    except ValueError:
-                        pass
                     if not endpoint_to_fids[key]:
                         del endpoint_to_fids[key]
             del geoms[fid]
@@ -387,10 +375,7 @@ def build_dual_network(
 
         # ---- Add phase: create nodes first ----
         if feedback:
-            feedback.setProgressText(
-                f"Step {step} of {n_steps}: "
-                f"Adding {len(to_add)} features…"
-            )
+            feedback.setProgressText(f"Step {step} of {n_steps}: Adding {len(to_add)} features…")
             feedback.setProgress(int(edge_base))
 
         for fid in to_add:
@@ -405,7 +390,11 @@ def build_dual_network(
             mid = _interpolate_at(coords, cum, 0.5)
             live = boundary is None or boundary.contains(Point(mid[0], mid[1]))
             idx = ns.add_street_node(
-                node_key=fid, x=mid[0], y=mid[1], live=live, weight=1.0,
+                node_key=fid,
+                x=mid[0],
+                y=mid[1],
+                live=live,
+                weight=1.0,
             )
             node_idx[fid] = idx
             midpoints[fid] = mid
@@ -430,14 +419,22 @@ def build_dual_network(
                     seen.add(pair)
                     merged_wkt = _make_edge_wkt(fid, other_fid, key)
                     ns.add_street_edge(
-                        node_idx[fid], node_idx[other_fid],
-                        edge_counter, fid, other_fid, merged_wkt,
+                        node_idx[fid],
+                        node_idx[other_fid],
+                        edge_counter,
+                        fid,
+                        other_fid,
+                        merged_wkt,
                     )
                     edge_counter += 1
                     merged_wkt_rev = _make_edge_wkt(other_fid, fid, key)
                     ns.add_street_edge(
-                        node_idx[other_fid], node_idx[fid],
-                        edge_counter, other_fid, fid, merged_wkt_rev,
+                        node_idx[other_fid],
+                        node_idx[fid],
+                        edge_counter,
+                        other_fid,
+                        fid,
+                        merged_wkt_rev,
                     )
                     edge_counter += 1
             if feedback and added_with_geom:
@@ -465,10 +462,7 @@ def build_dual_network(
         _inc_state["boundary_wkt"] = boundary_wkt
 
         if feedback:
-            feedback.pushInfo(
-                f"Incremental update: {len(to_remove)} removed, "
-                f"{len(to_add)} added."
-            )
+            feedback.pushInfo(f"Incremental update: {len(to_remove)} removed, {len(to_add)} added.")
             feedback.setProgress(int(progress_base + progress_span))
 
         return (ns, fid_list, midpoints, geoms)
@@ -492,9 +486,7 @@ def build_dual_network(
 
     # ---- Build dual nodes ----
     if feedback:
-        feedback.setProgressText(
-            f"Step {step} of {n_steps}: Building dual nodes…"
-        )
+        feedback.setProgressText(f"Step {step} of {n_steps}: Building dual nodes…")
         feedback.setProgress(int(node_base))
 
     endpoint_to_fids: dict[tuple, list[int]] = collections.defaultdict(list)
@@ -514,7 +506,11 @@ def build_dual_network(
         mid = _interpolate_at(coords, cum, 0.5)
         live = boundary is None or boundary.contains(Point(mid[0], mid[1]))
         idx = ns.add_street_node(
-            node_key=fid, x=mid[0], y=mid[1], live=live, weight=1.0,
+            node_key=fid,
+            x=mid[0],
+            y=mid[1],
+            live=live,
+            weight=1.0,
         )
         node_idx[fid] = idx
         midpoints[fid] = mid
@@ -528,9 +524,7 @@ def build_dual_network(
 
     # ---- Build dual edges ----
     if feedback:
-        feedback.setProgressText(
-            f"Step {step} of {n_steps}: Building dual edges…"
-        )
+        feedback.setProgressText(f"Step {step} of {n_steps}: Building dual edges…")
         feedback.setProgress(int(edge_base))
 
     edge_counter = 0
@@ -546,14 +540,22 @@ def build_dual_network(
             seen.add(pair)
             merged_wkt = _make_edge_wkt(fid_a, fid_b, endpoint)
             ns.add_street_edge(
-                node_idx[fid_a], node_idx[fid_b],
-                edge_counter, fid_a, fid_b, merged_wkt,
+                node_idx[fid_a],
+                node_idx[fid_b],
+                edge_counter,
+                fid_a,
+                fid_b,
+                merged_wkt,
             )
             edge_counter += 1
             merged_wkt_rev = _make_edge_wkt(fid_b, fid_a, endpoint)
             ns.add_street_edge(
-                node_idx[fid_b], node_idx[fid_a],
-                edge_counter, fid_b, fid_a, merged_wkt_rev,
+                node_idx[fid_b],
+                node_idx[fid_a],
+                edge_counter,
+                fid_b,
+                fid_a,
+                merged_wkt_rev,
             )
             edge_counter += 1
         if feedback and (j % edge_tick == 0 or j == n_endpoints - 1):

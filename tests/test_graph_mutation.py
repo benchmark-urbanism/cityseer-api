@@ -43,7 +43,9 @@ class TestGraphMutationRobustness:
         ns.remove_street_node(node_idx)
 
         with pytest.raises(ValueError, match="does not exist"):
-            ns.centrality_shortest(compute_closeness=True, compute_betweenness=False,
+            ns.centrality_shortest(
+                compute_closeness=True,
+                compute_betweenness=False,
                 distances=[500],
                 source_indices=[node_idx],
                 sample_probability=1.0,
@@ -56,7 +58,9 @@ class TestGraphMutationRobustness:
         ns.remove_street_node(node_idx)
 
         with pytest.raises(ValueError, match="does not exist"):
-            ns.centrality_shortest(compute_closeness=False, compute_betweenness=True,
+            ns.centrality_shortest(
+                compute_closeness=False,
+                compute_betweenness=True,
                 distances=[500],
                 source_indices=[node_idx],
                 sample_probability=1.0,

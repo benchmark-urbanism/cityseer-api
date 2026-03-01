@@ -80,18 +80,16 @@ def profile_phases(wkts: dict[int, str]):
     import collections
     import itertools
 
-    from shapely import wkt as shapely_wkt
-    from shapely.geometry import LineString
-    from shapely.ops import linemerge
-
     from cityseer import rustalgos
-
     from cityseer_qgis.utils.converters import (
         _coords_to_wkt,
         _cumulative_lengths,
         _interpolate_at,
         _substring_coords,
     )
+    from shapely import wkt as shapely_wkt
+    from shapely.geometry import LineString
+    from shapely.ops import linemerge
 
     def _parse_line(wkt_str):
         geom = shapely_wkt.loads(wkt_str)
@@ -99,10 +97,7 @@ def profile_phases(wkts: dict[int, str]):
             return None
         if geom.geom_type == "MultiLineString":
             merged = linemerge(geom)
-            if merged.geom_type == "MultiLineString":
-                geom = max(merged.geoms, key=lambda g: g.length)
-            else:
-                geom = merged
+            geom = max(merged.geoms, key=lambda g: g.length) if merged.geom_type == "MultiLineString" else merged
         if geom.geom_type != "LineString" or len(geom.coords) < 2:
             return None
         if geom.has_z:
@@ -183,20 +178,28 @@ def profile_phases(wkts: dict[int, str]):
             wkt_rev = _make_edge_wkt(fid_b, fid_a, endpoint)
             edge_wkts.append((fid_a, fid_b, wkt_fwd, wkt_rev))
     timings["4a_build_edge_wkts"] = time.perf_counter() - t0
-    print(f"  Built {len(edge_wkts)} edge pairs ({len(edge_wkts)*2} directed)")
+    print(f"  Built {len(edge_wkts)} edge pairs ({len(edge_wkts) * 2} directed)")
 
     # Phase 4b: Add edges to NetworkStructure (Rust WKT parsing)
     t0 = time.perf_counter()
     edge_counter = 0
     for fid_a, fid_b, wkt_fwd, wkt_rev in edge_wkts:
         ns.add_street_edge(
-            node_idx[fid_a], node_idx[fid_b],
-            edge_counter, fid_a, fid_b, wkt_fwd,
+            node_idx[fid_a],
+            node_idx[fid_b],
+            edge_counter,
+            fid_a,
+            fid_b,
+            wkt_fwd,
         )
         edge_counter += 1
         ns.add_street_edge(
-            node_idx[fid_b], node_idx[fid_a],
-            edge_counter, fid_b, fid_a, wkt_rev,
+            node_idx[fid_b],
+            node_idx[fid_a],
+            edge_counter,
+            fid_b,
+            fid_a,
+            wkt_rev,
         )
         edge_counter += 1
     timings["4b_add_edges_rust"] = time.perf_counter() - t0
@@ -243,10 +246,10 @@ def main():
 
     # Full build_dual_network via mock layer
     print("\n=== Full build_dual_network (end-to-end) ===")
-    from cityseer_qgis.utils.converters import _inc_state, build_dual_network
-
     # Reset cache
     import cityseer_qgis.utils.converters as conv_mod
+    from cityseer_qgis.utils.converters import build_dual_network
+
     conv_mod._inc_state = None
 
     layer = _MockLayer(wkts)

@@ -11,7 +11,8 @@ os.environ["USE_PYGEOS"] = "0"
 
 
 def __getattr__(name: str):
-    """Lazy-load heavy submodules so lightweight consumers (e.g. QGIS plugin) can import cityseer without pulling in networkx, geopandas, tqdm, etc."""
+    """Lazy-load heavy submodules so lightweight consumers (e.g. QGIS plugin) can import cityseer
+    without pulling in networkx, geopandas, tqdm, etc."""
     if name in ("config", "metrics", "tools"):
         import importlib
 

@@ -56,9 +56,7 @@ def _check_version() -> bool:
         return True
     if installed != required:
         _CITYSEER_VERSION_MISMATCH = True
-        _CITYSEER_IMPORT_ERROR = (
-            f"cityseer {installed} is installed but the plugin requires {required}"
-        )
+        _CITYSEER_IMPORT_ERROR = f"cityseer {installed} is installed but the plugin requires {required}"
         return False
     return True
 
@@ -182,10 +180,7 @@ class CityseerPlugin:
         msg.setIcon(QMessageBox.Icon.Warning)
         msg.setWindowTitle("Cityseer plugin")
         msg.setText("The cityseer library is not installed.")
-        msg.setInformativeText(
-            "Would you like to install it now?\n\n"
-            f"({_CITYSEER_IMPORT_ERROR})"
-        )
+        msg.setInformativeText(f"Would you like to install it now?\n\n({_CITYSEER_IMPORT_ERROR})")
         msg.setStandardButtons(QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
         msg.setDefaultButton(QMessageBox.StandardButton.Yes)
 
@@ -196,15 +191,13 @@ class CityseerPlugin:
                 QMessageBox.information(
                     None,
                     "Cityseer plugin",
-                    "cityseer installed successfully.\n\n"
-                    "Please restart QGIS to activate the plugin.",
+                    "cityseer installed successfully.\n\nPlease restart QGIS to activate the plugin.",
                 )
             else:
                 QMessageBox.critical(
                     None,
                     "Cityseer plugin",
-                    f"Failed to install cityseer.\n\n{message}\n\n"
-                    "Try manually: pip install cityseer",
+                    f"Failed to install cityseer.\n\n{message}\n\nTry manually: pip install cityseer",
                 )
 
     def _prompt_upgrade(self):
@@ -227,15 +220,13 @@ class CityseerPlugin:
                 QMessageBox.information(
                     None,
                     "Cityseer plugin",
-                    f"cityseer upgraded to {required}.\n\n"
-                    "Please restart QGIS to activate the new version.",
+                    f"cityseer upgraded to {required}.\n\nPlease restart QGIS to activate the new version.",
                 )
             else:
                 QMessageBox.critical(
                     None,
                     "Cityseer plugin",
-                    f"Failed to upgrade cityseer.\n\n{message}\n\n"
-                    f"Try manually: pip install cityseer=={required}",
+                    f"Failed to upgrade cityseer.\n\n{message}\n\nTry manually: pip install cityseer=={required}",
                 )
 
     def unload(self):

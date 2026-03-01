@@ -20,6 +20,7 @@ from pathlib import Path
 
 import networkx as nx
 import numpy as np
+from cityseer.config import GRID_SPACING
 from scipy import stats as scipy_stats
 from shapely.geometry import Point
 from shapely.ops import unary_union
@@ -244,8 +245,6 @@ def apply_live_buffer_nx(G: nx.MultiGraph, buffer_dist: float) -> nx.MultiGraph:
 # SECTION 4: Hoeffding / EW Bound Utilities (analysis-specific)
 # All functions use canonical reach from distance: r = pi * d^2 / s^2
 # =============================================================================
-
-from cityseer.config import GRID_SPACING
 
 
 def canonical_reach(distance: float, grid_spacing: float = GRID_SPACING) -> float:

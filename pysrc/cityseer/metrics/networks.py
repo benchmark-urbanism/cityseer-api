@@ -13,7 +13,8 @@ and distances are computed simultaneously to reduce the amount of time required 
 strategies.
 
 When `sample=True`, adaptive sampling uses the Hoeffding bound to select a distance-dependent sampling probability.
-The `epsilon` parameter controls the error tolerance (lower = more samples, higher accuracy). The default for when sampling is enabled is 0.06.
+The `epsilon` parameter controls the error tolerance (lower = more samples, higher accuracy).
+The default for when sampling is enabled is 0.06.
 
 | Distance | ε=0.02 | ε=0.04 | ε=0.06 | ε=0.08 | ε=0.1 |
 |----------|--------|--------|--------|--------|-------|
@@ -579,7 +580,9 @@ def node_centrality_simplest(
             temp_data[config.prep_gdf_key("harmonic", d, angular=True)] = res.node_harmonic[d]
             temp_data[config.prep_gdf_key("farness", d, angular=True)] = res.node_farness[d]
             with np.errstate(divide="ignore", invalid="ignore"):
-                temp_data[config.prep_gdf_key("hillier", d, angular=True)] = res.node_density[d] ** 2 / res.node_farness[d]
+                temp_data[config.prep_gdf_key("hillier", d, angular=True)] = (
+                    res.node_density[d] ** 2 / res.node_farness[d]
+                )
 
     if compute_betweenness:
         for measure_key, attr_key in [

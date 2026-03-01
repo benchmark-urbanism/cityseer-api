@@ -100,12 +100,7 @@ def compute_threshold_epsilons(df: pd.DataFrame, rho_target: float = 0.95) -> di
         # Per-topology breakdown
         for topo in sorted(subset["topology"].unique()):
             topo_sub = subset[subset["topology"] == topo]
-            grouped = (
-                topo_sub.groupby("target_epsilon")["spearman"]
-                .mean()
-                .reset_index()
-                .sort_values("target_epsilon")
-            )
+            grouped = topo_sub.groupby("target_epsilon")["spearman"].mean().reset_index().sort_values("target_epsilon")
             above = grouped[grouped["spearman"] >= rho_target]
             if len(above) == 0:
                 print(f"    [{topo}]: never reaches rho={rho_target}")
@@ -115,12 +110,7 @@ def compute_threshold_epsilons(df: pd.DataFrame, rho_target: float = 0.95) -> di
                 print(f"    [{topo}]: threshold eps={threshold_eps:.3f}  (rho={threshold_rho:.3f})")
 
         # Overall mean
-        grouped_all = (
-            subset.groupby("target_epsilon")["spearman"]
-            .mean()
-            .reset_index()
-            .sort_values("target_epsilon")
-        )
+        grouped_all = subset.groupby("target_epsilon")["spearman"].mean().reset_index().sort_values("target_epsilon")
         above_all = grouped_all[grouped_all["spearman"] >= rho_target]
         if len(above_all) == 0:
             print(f"    [overall mean]: never reaches rho={rho_target}")
@@ -181,12 +171,7 @@ def generate_fig1_rho_vs_epsilon(df: pd.DataFrame):
         # Per-topology lines (averaged over distances)
         for topo in sorted(subset["topology"].unique()):
             topo_sub = subset[subset["topology"] == topo]
-            grouped = (
-                topo_sub.groupby("target_epsilon")["spearman"]
-                .mean()
-                .reset_index()
-                .sort_values("target_epsilon")
-            )
+            grouped = topo_sub.groupby("target_epsilon")["spearman"].mean().reset_index().sort_values("target_epsilon")
             ls, marker, label = topo_styles.get(topo, ("-", ".", topo))
             ax.plot(
                 grouped["target_epsilon"],
@@ -201,12 +186,7 @@ def generate_fig1_rho_vs_epsilon(df: pd.DataFrame):
             )
 
         # Bold mean line across all topologies
-        grouped_mean = (
-            subset.groupby("target_epsilon")["spearman"]
-            .mean()
-            .reset_index()
-            .sort_values("target_epsilon")
-        )
+        grouped_mean = subset.groupby("target_epsilon")["spearman"].mean().reset_index().sort_values("target_epsilon")
         ax.plot(
             grouped_mean["target_epsilon"],
             grouped_mean["spearman"],
@@ -277,14 +257,18 @@ def generate_tab1_ew_comparison():
     n_eps = len(EPSILON_TARGETS)
     col_spec = "r" + "rr" * n_eps
 
-    latex = r"""\begin{table}[htbp]
+    latex = (
+        r"""\begin{table}[htbp]
 \centering
 \caption{Deterministic sampling schedule at standard analysis distances under different
-  error tolerances ($\delta = 0.1$, $s = """ + f"{GRID_SPACING:.0f}" + r"""\,$m).
+  error tolerances ($\delta = 0.1$, $s = """
+        + f"{GRID_SPACING:.0f}"
+        + r"""\,$m).
   Paper default: $\varepsilon=0.06$ for both metrics.}
 \label{tab:ew_comparison}
 \small
 """
+    )
     latex += f"\\begin{{tabular}}{{@{{}}{col_spec}@{{}}}}\n"
     latex += "\\toprule\n"
 
@@ -302,7 +286,7 @@ def generate_tab1_ew_comparison():
     latex += "\\midrule\n"
 
     for row in rows:
-        d_str = f"{int(row['distance'] // 1000)}\\,km" if row['distance'] >= 1000 else f"{row['distance']}\\,m"
+        d_str = f"{int(row['distance'] // 1000)}\\,km" if row["distance"] >= 1000 else f"{row['distance']}\\,m"
         latex += d_str
         for eps in EPSILON_TARGETS:
             k = math.ceil(row[f"k_{eps}"])

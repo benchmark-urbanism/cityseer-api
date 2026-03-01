@@ -97,7 +97,7 @@ def generate_fig4_accuracy(gla: pd.DataFrame, madrid: pd.DataFrame):
         ("rho_betweenness", "B) Betweenness", COLOUR_BETWEENNESS),
     ]
 
-    for ax, (col, title, colour) in zip(axes, panels):
+    for ax, (col, title, colour) in zip(axes, panels, strict=True):
         # GLA
         gla_valid = gla.dropna(subset=[col])
         ax.plot(
@@ -162,7 +162,7 @@ def generate_fig5_speedup(gla: pd.DataFrame, madrid: pd.DataFrame):
         ("speedup_betweenness", "B) Betweenness", COLOUR_BETWEENNESS),
     ]
 
-    for ax, (col, title, colour) in zip(axes, panels):
+    for ax, (col, title, colour) in zip(axes, panels, strict=True):
         gla_valid = gla.dropna(subset=[col])
         madrid_valid = madrid.dropna(subset=[col])
 
@@ -193,8 +193,7 @@ def generate_fig5_speedup(gla: pd.DataFrame, madrid: pd.DataFrame):
         )
 
         ax.axhline(1.0, color="grey", linestyle=":", linewidth=1.0, alpha=0.7)
-        ax.text(0.5, 1.05, "1× (no speedup)", fontsize=8, color="grey", va="bottom",
-                transform=ax.get_yaxis_transform())
+        ax.text(0.5, 1.05, "1× (no speedup)", fontsize=8, color="grey", va="bottom", transform=ax.get_yaxis_transform())
 
         ax.set_yscale("log")
         ax.set_xlabel("Distance (km)")
@@ -250,18 +249,18 @@ def load_reach_data() -> list[dict]:
             synthetic = pd.DataFrame(pickle.load(f))
         if "topology" not in synthetic.columns:
             continue
-        topo_reach = (
-            synthetic[synthetic["sweep_type"] == "distance_based"]
-            [["topology", "distance", "mean_reach"]]
-            .drop_duplicates()
-        )
+        topo_reach = synthetic[synthetic["sweep_type"] == "distance_based"][
+            ["topology", "distance", "mean_reach"]
+        ].drop_duplicates()
         topo_labels = {"trellis": "Synthetic (trellis)", "tree": "Synthetic (tree)", "linear": "Synthetic (linear)"}
         for _, row in topo_reach.iterrows():
-            rows.append({
-                "network": topo_labels.get(row["topology"], row["topology"]),
-                "distance": row["distance"],
-                "mean_reach": row["mean_reach"],
-            })
+            rows.append(
+                {
+                    "network": topo_labels.get(row["topology"], row["topology"]),
+                    "distance": row["distance"],
+                    "mean_reach": row["mean_reach"],
+                }
+            )
         break  # use only the most recent synthetic cache (by mtime)
 
     return rows
@@ -289,16 +288,23 @@ def generate_fig6_reach_comparison():
     # Canonical curve
     d_fine = np.linspace(300, 22000, 300)
     r_canonical = np.pi * d_fine**2 / GRID_SPACING**2
-    ax.plot(d_fine / 1000, r_canonical, "-", color="black", linewidth=2.0,
-            label=f"Canonical grid model ($s$={GRID_SPACING:.0f}m)", zorder=5)
+    ax.plot(
+        d_fine / 1000,
+        r_canonical,
+        "-",
+        color="black",
+        linewidth=2.0,
+        label=f"Canonical grid model ($s$={GRID_SPACING:.0f}m)",
+        zorder=5,
+    )
 
     # Real networks
     network_styles = {
-        "Greater London":    ("o", "#333333", 8, "-"),
-        "Madrid":            ("s", "#888888", 8, "--"),
+        "Greater London": ("o", "#333333", 8, "-"),
+        "Madrid": ("s", "#888888", 8, "--"),
         "Synthetic (trellis)": ("^", "#4DAC26", 7, ":"),
-        "Synthetic (tree)":    ("v", "#D01C8B", 7, ":"),
-        "Synthetic (linear)":  ("D", "#F1A340", 7, ":"),
+        "Synthetic (tree)": ("v", "#D01C8B", 7, ":"),
+        "Synthetic (linear)": ("D", "#F1A340", 7, ":"),
     }
 
     for network, style_args in network_styles.items():
@@ -306,9 +312,17 @@ def generate_fig6_reach_comparison():
         if subset.empty:
             continue
         marker, colour, ms, ls = style_args
-        ax.plot(subset["distance"] / 1000, subset["mean_reach"],
-                marker=marker, linestyle=ls, color=colour, markersize=ms,
-                linewidth=1.4, label=network, alpha=0.85)
+        ax.plot(
+            subset["distance"] / 1000,
+            subset["mean_reach"],
+            marker=marker,
+            linestyle=ls,
+            color=colour,
+            markersize=ms,
+            linewidth=1.4,
+            label=network,
+            alpha=0.85,
+        )
 
     ax.set_yscale("log")
     ax.set_xlabel("Distance (km)")
@@ -321,10 +335,17 @@ def generate_fig6_reach_comparison():
     ax.yaxis.set_major_formatter(matplotlib.ticker.FuncFormatter(lambda x, _: f"{x:,.0f}"))
 
     # Shade the region above the canonical curve to indicate where the schedule is conservative
-    ax.fill_between(d_fine / 1000, r_canonical, r_canonical * 20, color="#999999", alpha=0.06,
-                    label="_nolegend_")
-    ax.text(18, 200000, "Denser than canonical\n(schedule conservative)", fontsize=8, color="#666666",
-            ha="center", va="top", style="italic")
+    ax.fill_between(d_fine / 1000, r_canonical, r_canonical * 20, color="#999999", alpha=0.06, label="_nolegend_")
+    ax.text(
+        18,
+        200000,
+        "Denser than canonical\n(schedule conservative)",
+        fontsize=8,
+        color="#666666",
+        ha="center",
+        va="top",
+        style="italic",
+    )
 
     plt.tight_layout()
     out = FIGURES_DIR / "fig6_reach_comparison.pdf"
@@ -385,7 +406,9 @@ def generate_fig2_error_vs_reach(gla_full: pd.DataFrame, madrid_full: pd.DataFra
                 if reach is not None and mae is not None and reach > 0 and mae > 0:
                     records_abs.append({"reach": reach, "error": mae, "colour": colour, "marker": "s"})
                     if np.isfinite(median_true) and median_true > 0:
-                        records_rel.append({"reach": reach, "error": mae / median_true, "colour": colour, "marker": "s"})
+                        records_rel.append(
+                            {"reach": reach, "error": mae / median_true, "colour": colour, "marker": "s"}
+                        )
 
     df_abs = pd.DataFrame(records_abs)
     df_rel = pd.DataFrame(records_rel)
@@ -399,16 +422,15 @@ def generate_fig2_error_vs_reach(gla_full: pd.DataFrame, madrid_full: pd.DataFra
     ]
 
     for ax, df, ylabel, title, is_rel in [
-        (axes[0], df_abs, "Median Absolute Error",  "A) Absolute Error",  False),
-        (axes[1], df_rel, "Median Relative Error",  "B) Relative Error",  True),
+        (axes[0], df_abs, "Median Absolute Error", "A) Absolute Error", False),
+        (axes[1], df_rel, "Median Relative Error", "B) Relative Error", True),
     ]:
         if df.empty:
             ax.set_title(title + " (no data)")
             continue
 
         for (colour, marker), grp in df.groupby(["colour", "marker"]):
-            ax.scatter(grp["reach"], grp["error"], color=colour,
-                       marker=marker, s=35, alpha=0.85, zorder=4)
+            ax.scatter(grp["reach"], grp["error"], color=colour, marker=marker, s=35, alpha=0.85, zorder=4)
 
         ax.legend(handles=legend_handles, fontsize=8, loc="upper right" if is_rel else "upper left")
 
@@ -419,8 +441,7 @@ def generate_fig2_error_vs_reach(gla_full: pd.DataFrame, madrid_full: pd.DataFra
         ax.set_title(title)
         ax.grid(True, alpha=0.3, which="both")
 
-    fig.suptitle("Error vs Reach: Precision Scales with Importance",
-                 fontsize=13, fontweight="bold", y=1.02)
+    fig.suptitle("Error vs Reach: Precision Scales with Importance", fontsize=13, fontweight="bold", y=1.02)
     plt.tight_layout()
 
     out = FIGURES_DIR / "fig2_error_vs_reach.pdf"

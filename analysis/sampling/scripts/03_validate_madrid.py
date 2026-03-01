@@ -271,7 +271,6 @@ def generate_validation_data(net, nodes_gdf, live_mask, force: bool = False) -> 
         mean_close_time = np.mean(close_times) if close_times else float("nan")
         q_h = mean_quartiles(quartiles_h)
         r_canonical = canonical_reach(dist)
-        n_eff_h = r_canonical * actual_p_close
         eps_pred_h = ew_predicted_epsilon(dist, actual_p_close, delta=DELTA)
         max_mae_h = np.max(maes_h) if maes_h else float("nan")
         eps_obs_h = max_mae_h / r_canonical if not np.isnan(max_mae_h) else float("nan")
@@ -332,7 +331,6 @@ def generate_validation_data(net, nodes_gdf, live_mask, force: bool = False) -> 
 
             mean_betw_time = np.mean(betw_times) if betw_times else float("nan")
             q_b = mean_quartiles(quartiles_b)
-            n_eff_b = r_canonical * actual_p_betw
             eps_pred_b = ew_predicted_epsilon(dist, actual_p_betw, delta=DELTA)
             max_mae_b = np.max(maes_b) if maes_b else float("nan")
             eps_obs_b = max_mae_b / r_canonical if not np.isnan(max_mae_b) else float("nan")
@@ -528,7 +526,6 @@ def generate_validation_table(df: pd.DataFrame, n_nodes: int | None):
     print("\nGenerating Table: Madrid validation results...")
 
     eps_c = MADRID_EPSILON_CLOSENESS
-    eps_b = MADRID_EPSILON_BETWEENNESS
 
     latex = rf"""\begin{{table}}[htbp]
 \centering
@@ -627,11 +624,16 @@ def run_sensitivity_analysis(
 
             if p >= 1.0:
                 print("    p=1.0 (exact), skipping")
-                rows.append({
-                    "distance": dist, "grid_spacing": s, "p": p,
-                    "rho_closeness": 1.0, "rho_betweenness": 1.0,
-                    "mean_reach": mean_reach,
-                })
+                rows.append(
+                    {
+                        "distance": dist,
+                        "grid_spacing": s,
+                        "p": p,
+                        "rho_closeness": 1.0,
+                        "rho_betweenness": 1.0,
+                        "mean_reach": mean_reach,
+                    }
+                )
                 continue
 
             # Closeness
@@ -671,11 +673,16 @@ def run_sensitivity_analysis(
             rho_b = np.mean(spearmans_b) if spearmans_b else float("nan")
             print(f" rho_c={rho_h:.4f}, rho_b={rho_b:.4f}")
 
-            rows.append({
-                "distance": dist, "grid_spacing": s, "p": p,
-                "rho_closeness": rho_h, "rho_betweenness": rho_b,
-                "mean_reach": mean_reach,
-            })
+            rows.append(
+                {
+                    "distance": dist,
+                    "grid_spacing": s,
+                    "p": p,
+                    "rho_closeness": rho_h,
+                    "rho_betweenness": rho_b,
+                    "mean_reach": mean_reach,
+                }
+            )
 
     df = pd.DataFrame(rows)
     df.to_csv(sensitivity_csv, index=False)
@@ -692,11 +699,15 @@ def main():
     parser = argparse.ArgumentParser(description="Validate sampling model on Madrid network")
     parser.add_argument("--force", action="store_true", help="Force regeneration of validation data")
     parser.add_argument(
-        "--sensitivity", action="store_true",
+        "--sensitivity",
+        action="store_true",
         help="Run grid spacing sensitivity analysis after validation",
     )
     parser.add_argument(
-        "--grid-spacings", type=float, nargs="+", default=None,
+        "--grid-spacings",
+        type=float,
+        nargs="+",
+        default=None,
         help=f"Grid spacings for sensitivity analysis (default: {DEFAULT_GRID_SPACINGS})",
     )
     args = parser.parse_args()
@@ -780,7 +791,9 @@ def main():
     if args.sensitivity:
         spacings = args.grid_spacings or DEFAULT_GRID_SPACINGS
         run_sensitivity_analysis(
-            net, nodes_gdf, live_mask,
+            net,
+            nodes_gdf,
+            live_mask,
             grid_spacings=spacings,
             force=args.force,
         )

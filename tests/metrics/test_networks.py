@@ -29,7 +29,9 @@ def test_node_centrality_shortest(primal_graph):
             for dist_key in distances:
                 if _closeness is True:
                     # test closeness against underlying source-sampling method
-                    node_result_short = network_structure.centrality_shortest(compute_closeness=True, compute_betweenness=False,
+                    node_result_short = network_structure.centrality_shortest(
+                        compute_closeness=True,
+                        compute_betweenness=False,
                         betas=betas,
                     )
                     for measure_key, attr_key in [
@@ -56,7 +58,9 @@ def test_node_centrality_shortest(primal_graph):
                         )
                 if _betweenness is True:
                     # test betweenness against underlying exact Brandes method
-                    betweenness_result = network_structure.centrality_shortest(compute_closeness=False, compute_betweenness=True,
+                    betweenness_result = network_structure.centrality_shortest(
+                        compute_closeness=False,
+                        compute_betweenness=True,
                         distances=[dist_key],
                     )
                     for measure_key, attr_key in [
@@ -93,7 +97,9 @@ def test_node_centrality_simplest(primal_graph):
             )
             for dist_key in distances:
                 # test closeness against underlying method
-                node_result_simplest = network_structure.centrality_simplest(compute_closeness=True, compute_betweenness=False,
+                node_result_simplest = network_structure.centrality_simplest(
+                    compute_closeness=True,
+                    compute_betweenness=False,
                     betas=betas,
                     farness_scaling_offset=_far_scale_off,
                     angular_scaling_unit=_ang_scale_unit,
@@ -113,14 +119,15 @@ def test_node_centrality_simplest(primal_graph):
                 with np.errstate(divide="ignore", invalid="ignore"):
                     assert np.allclose(
                         nodes_gdf[config.prep_gdf_key("hillier", dist_key, angular=True)],
-                        node_result_simplest.node_density[dist_key] ** 2
-                        / node_result_simplest.node_farness[dist_key],
+                        node_result_simplest.node_density[dist_key] ** 2 / node_result_simplest.node_farness[dist_key],
                         equal_nan=True,
                         atol=config.ATOL,
                         rtol=config.RTOL,
                     )
                 # test betweenness against underlying method
-                betw_result = network_structure.centrality_simplest(compute_closeness=False, compute_betweenness=True,betas=betas)
+                betw_result = network_structure.centrality_simplest(
+                    compute_closeness=False, compute_betweenness=True, betas=betas
+                )
                 for measure_key, attr_key in [
                     ("betweenness", "node_betweenness"),
                     ("betweenness_beta", "node_betweenness_beta"),
@@ -181,7 +188,6 @@ def test_closeness_shortest(primal_graph):
         nodes_gdf=nodes_gdf.copy(),
         distances=distances,
         random_seed=42,
-
     )
     for dist in distances:
         assert config.prep_gdf_key("harmonic", dist) in nodes_gdf_result.columns
@@ -200,7 +206,6 @@ def test_closeness_shortest_seeded_determinism(primal_graph):
         network_structure=network_structure,
         distances=distances,
         random_seed=42,
-
     )
     r1 = networks.closeness_shortest(nodes_gdf=nodes_gdf.copy(), **kwargs)
     r2 = networks.closeness_shortest(nodes_gdf=nodes_gdf.copy(), **kwargs)
@@ -218,7 +223,6 @@ def test_closeness_simplest(primal_graph):
         nodes_gdf=nodes_gdf.copy(),
         distances=distances,
         random_seed=42,
-
     )
     for dist in distances:
         assert config.prep_gdf_key("harmonic", dist, angular=True) in nodes_gdf_result.columns
@@ -235,12 +239,9 @@ def test_closeness_simplest_seeded_determinism(primal_graph):
         network_structure=network_structure,
         distances=distances,
         random_seed=42,
-
     )
     r1 = networks.closeness_simplest(nodes_gdf=nodes_gdf.copy(), **kwargs)
     r2 = networks.closeness_simplest(nodes_gdf=nodes_gdf.copy(), **kwargs)
     for dist in distances:
         key = config.prep_gdf_key("density", dist, angular=True)
         assert np.allclose(r1[key].values, r2[key].values), f"Non-deterministic at {dist}m"
-
-

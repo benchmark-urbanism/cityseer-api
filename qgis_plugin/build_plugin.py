@@ -124,9 +124,7 @@ def validate_plugin_package_inputs() -> None:
     if icon_match:
         icon_rel = icon_match.group(1).strip()
         if icon_rel and not (PLUGIN_DIR / icon_rel).exists():
-            raise RuntimeError(
-                f"metadata.txt references icon={icon_rel}, but {PLUGIN_DIR / icon_rel} does not exist."
-            )
+            raise RuntimeError(f"metadata.txt references icon={icon_rel}, but {PLUGIN_DIR / icon_rel} does not exist.")
 
 
 def create_package_zip(version: str) -> Path:
@@ -161,10 +159,7 @@ def deploy_to_qgis(plugins_dir: Path | None = None) -> None:
     """
     target_root = plugins_dir or find_qgis_plugins_dir()
     if target_root is None:
-        raise RuntimeError(
-            "Could not find QGIS plugins directory. "
-            "Pass --plugins-dir to specify it manually."
-        )
+        raise RuntimeError("Could not find QGIS plugins directory. Pass --plugins-dir to specify it manually.")
     dest = target_root / PLUGIN_DIR.name
     if dest.is_symlink():
         dest.unlink()

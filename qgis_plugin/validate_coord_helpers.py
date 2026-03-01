@@ -13,11 +13,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
-import math
 import sys
-
-from shapely.geometry import LineString
-from shapely.ops import substring
 
 from cityseer_qgis.utils.converters import (
     _coords_to_wkt,
@@ -25,6 +21,8 @@ from cityseer_qgis.utils.converters import (
     _interpolate_at,
     _substring_coords,
 )
+from shapely.geometry import LineString
+from shapely.ops import substring
 
 TOLERANCE = 1e-8  # coordinate tolerance for floating-point comparison
 
@@ -33,12 +31,10 @@ def coords_close(a: tuple, b: tuple, tol: float = TOLERANCE) -> bool:
     return abs(a[0] - b[0]) < tol and abs(a[1] - b[1]) < tol
 
 
-def coord_lists_close(
-    a: list[tuple], b: list[tuple], tol: float = TOLERANCE
-) -> bool:
+def coord_lists_close(a: list[tuple], b: list[tuple], tol: float = TOLERANCE) -> bool:
     if len(a) != len(b):
         return False
-    return all(coords_close(p, q, tol) for p, q in zip(a, b))
+    return all(coords_close(p, q, tol) for p, q in zip(a, b, strict=True))
 
 
 # ---------------------------------------------------------------------------
@@ -55,7 +51,7 @@ def test_cumulative_lengths():
     for coords, expected in cases:
         result = _cumulative_lengths(coords)
         assert len(result) == len(expected), f"Length mismatch: {result} vs {expected}"
-        for r, e in zip(result, expected):
+        for r, e in zip(result, expected, strict=True):
             assert abs(r - e) < TOLERANCE, f"Value mismatch: {result} vs {expected}"
     print("  PASSED")
 
@@ -145,8 +141,6 @@ def test_coords_to_wkt():
     print("=== Test: _coords_to_wkt ===")
     coords = [(1.23456789, 9.87654321), (5.0, 5.0)]
     wkt = _coords_to_wkt(coords)
-    # Parse back with shapely and compare
-    parsed = LineString(coords)
     # Check format is valid WKT
     assert wkt.startswith("LINESTRING ("), f"Bad prefix: {wkt}"
     assert wkt.endswith(")"), f"Bad suffix: {wkt}"
@@ -285,7 +279,7 @@ def test_full_pipeline_on_real_data(gpkg_path: str, limit: int = 0):
                         print(f"    pure    ({len(pure_coords)}): {pure_coords[:3]}...")
                     # Compute max coordinate error
                     if len(shapely_coords) == len(pure_coords):
-                        for sc, pc in zip(shapely_coords, pure_coords):
+                        for sc, pc in zip(shapely_coords, pure_coords, strict=True):
                             err = max(abs(sc[0] - pc[0]), abs(sc[1] - pc[1]))
                             max_err = max(max_err, err)
 

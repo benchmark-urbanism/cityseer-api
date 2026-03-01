@@ -27,7 +27,8 @@ import geopandas as gpd
 import numpy as np
 import osmnx as ox
 import pandas as pd
-from cityseer.config import GRID_SPACING, HOEFFDING_EPSILON as CITYSEER_HOEFFDING_EPSILON, compute_distance_p
+from cityseer.config import GRID_SPACING, compute_distance_p
+from cityseer.config import HOEFFDING_EPSILON as CITYSEER_HOEFFDING_EPSILON
 from cityseer.metrics import networks
 from cityseer.tools import graphs, io
 from shapely.geometry import Point
@@ -311,7 +312,6 @@ def generate_validation_data(net, nodes_gdf, live_mask, force: bool = False) -> 
         mean_close_time = np.mean(close_times) if close_times else float("nan")
         q_h = mean_quartiles(quartiles_h)
         r_canonical = canonical_reach(dist)
-        n_eff_close = r_canonical * actual_p_close
         eps_pred_close = ew_predicted_epsilon(dist, actual_p_close)
 
         if spearmans_h:
@@ -390,7 +390,6 @@ def generate_validation_data(net, nodes_gdf, live_mask, force: bool = False) -> 
 
             mean_betw_time = np.mean(betw_times) if betw_times else float("nan")
             q_b = mean_quartiles(quartiles_b)
-            n_eff_betw = r_canonical * actual_p_b
             eps_pred_betw = ew_predicted_epsilon(dist, actual_p_b)
 
             if spearmans_b:
@@ -526,7 +525,6 @@ def generate_validation_table(summary_df: pd.DataFrame):
     print("\nGenerating Table 2: Validation results...")
 
     eps_c = GLA_EPSILON_CLOSENESS
-    eps_b = GLA_EPSILON_BETWEENNESS
 
     latex = rf"""\begin{{table}}[htbp]
 \centering
@@ -544,11 +542,11 @@ def generate_validation_table(summary_df: pd.DataFrame):
     for _, row in summary_df.iterrows():
         p_pct = f"{row['hoeffding_p_close'] * 100:.1f}\\%"
         rho_c = f"{row['rho_closeness']:.4f}"
-        spd_c = f"{row['speedup_closeness']:.1f}$\\times$" if np.isfinite(row['speedup_closeness']) else "---"
+        spd_c = f"{row['speedup_closeness']:.1f}$\\times$" if np.isfinite(row["speedup_closeness"]) else "---"
 
-        if np.isfinite(row.get('rho_betweenness', float("nan"))):
+        if np.isfinite(row.get("rho_betweenness", float("nan"))):
             rho_b = f"{row['rho_betweenness']:.4f}"
-            spd_b = f"{row['speedup_betweenness']:.1f}$\\times$" if np.isfinite(row['speedup_betweenness']) else "---"
+            spd_b = f"{row['speedup_betweenness']:.1f}$\\times$" if np.isfinite(row["speedup_betweenness"]) else "---"
         else:
             rho_b = "---"
             spd_b = "---"
@@ -607,9 +605,7 @@ def compute_theoretical_bounds(summary_df: pd.DataFrame, n_nodes: int, raw_df: p
         dist = srow["distance"]
         r = canonical_reach(dist)
 
-        raw_subset = raw_df[
-            (raw_df["distance"] == dist) & (raw_df["metric"] == "harmonic")
-        ]
+        raw_subset = raw_df[(raw_df["distance"] == dist) & (raw_df["metric"] == "harmonic")]
         if raw_subset.empty:
             continue
         raw_row = raw_subset.iloc[0]
@@ -802,11 +798,16 @@ def run_sensitivity_analysis(
 
             if p >= 1.0:
                 print("    p=1.0 (exact), skipping")
-                rows.append({
-                    "distance": dist, "grid_spacing": s, "p": p,
-                    "rho_closeness": 1.0, "rho_betweenness": 1.0,
-                    "mean_reach": mean_reach,
-                })
+                rows.append(
+                    {
+                        "distance": dist,
+                        "grid_spacing": s,
+                        "p": p,
+                        "rho_closeness": 1.0,
+                        "rho_betweenness": 1.0,
+                        "mean_reach": mean_reach,
+                    }
+                )
                 continue
 
             # Closeness
@@ -846,11 +847,16 @@ def run_sensitivity_analysis(
             rho_b = np.mean(spearmans_b) if spearmans_b else float("nan")
             print(f" rho_c={rho_h:.4f}, rho_b={rho_b:.4f}")
 
-            rows.append({
-                "distance": dist, "grid_spacing": s, "p": p,
-                "rho_closeness": rho_h, "rho_betweenness": rho_b,
-                "mean_reach": mean_reach,
-            })
+            rows.append(
+                {
+                    "distance": dist,
+                    "grid_spacing": s,
+                    "p": p,
+                    "rho_closeness": rho_h,
+                    "rho_betweenness": rho_b,
+                    "mean_reach": mean_reach,
+                }
+            )
 
     df = pd.DataFrame(rows)
     df.to_csv(sensitivity_csv, index=False)
@@ -867,11 +873,15 @@ def main():
     parser = argparse.ArgumentParser(description="Validate sampling model on GLA network")
     parser.add_argument("--force", action="store_true", help="Force regeneration of validation data")
     parser.add_argument(
-        "--sensitivity", action="store_true",
+        "--sensitivity",
+        action="store_true",
         help="Run grid spacing sensitivity analysis after validation",
     )
     parser.add_argument(
-        "--grid-spacings", type=float, nargs="+", default=None,
+        "--grid-spacings",
+        type=float,
+        nargs="+",
+        default=None,
         help=f"Grid spacings for sensitivity analysis (default: {DEFAULT_GRID_SPACINGS})",
     )
     args = parser.parse_args()
@@ -917,10 +927,7 @@ def main():
     print("VALIDATION SUMMARY")
     print("=" * 70)
 
-    print(
-        f"\n{'Distance':>10} | {'p':>8} | {'rho_c':>8}"
-        f" | {'Spd_c':>8} | {'rho_b':>8} | {'Spd_b':>8} | {'OK?':>5}"
-    )
+    print(f"\n{'Distance':>10} | {'p':>8} | {'rho_c':>8} | {'Spd_c':>8} | {'rho_b':>8} | {'Spd_b':>8} | {'OK?':>5}")
     print("-" * 75)
 
     all_pass = True
@@ -929,8 +936,8 @@ def main():
         if not row["meets_target"]:
             all_pass = False
 
-        rho_b_str = f"{row['rho_betweenness']:.4f}" if np.isfinite(row['rho_betweenness']) else "n/a"
-        spd_b_str = f"{row['speedup_betweenness']:.1f}x" if np.isfinite(row['speedup_betweenness']) else "n/a"
+        rho_b_str = f"{row['rho_betweenness']:.4f}" if np.isfinite(row["rho_betweenness"]) else "n/a"
+        spd_b_str = f"{row['speedup_betweenness']:.1f}x" if np.isfinite(row["speedup_betweenness"]) else "n/a"
 
         print(
             f"{row['distance'] // 1000}km       | {row['hoeffding_p_close']:>7.1%} | "
@@ -968,7 +975,9 @@ def main():
     if args.sensitivity:
         spacings = args.grid_spacings or DEFAULT_GRID_SPACINGS
         run_sensitivity_analysis(
-            net, nodes_gdf, live_mask,
+            net,
+            nodes_gdf,
+            live_mask,
             grid_spacings=spacings,
             force=args.force,
         )

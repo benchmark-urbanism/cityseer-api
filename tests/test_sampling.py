@@ -36,11 +36,21 @@ class TestSamplingBasics:
         """Same seed produces identical results."""
         ns, _ = network_structure
 
-        res1 = ns.centrality_shortest(compute_closeness=True, compute_betweenness=False,
-            distances=[500], sample_probability=0.3, random_seed=42, pbar_disabled=True
+        res1 = ns.centrality_shortest(
+            compute_closeness=True,
+            compute_betweenness=False,
+            distances=[500],
+            sample_probability=0.3,
+            random_seed=42,
+            pbar_disabled=True,
         )
-        res2 = ns.centrality_shortest(compute_closeness=True, compute_betweenness=False,
-            distances=[500], sample_probability=0.3, random_seed=42, pbar_disabled=True
+        res2 = ns.centrality_shortest(
+            compute_closeness=True,
+            compute_betweenness=False,
+            distances=[500],
+            sample_probability=0.3,
+            random_seed=42,
+            pbar_disabled=True,
         )
 
         assert np.allclose(res1.node_density[500], res2.node_density[500])
@@ -49,11 +59,21 @@ class TestSamplingBasics:
         """Different seeds produce different results."""
         ns, _ = network_structure
 
-        res1 = ns.centrality_shortest(compute_closeness=True, compute_betweenness=False,
-            distances=[500], sample_probability=0.3, random_seed=42, pbar_disabled=True
+        res1 = ns.centrality_shortest(
+            compute_closeness=True,
+            compute_betweenness=False,
+            distances=[500],
+            sample_probability=0.3,
+            random_seed=42,
+            pbar_disabled=True,
         )
-        res2 = ns.centrality_shortest(compute_closeness=True, compute_betweenness=False,
-            distances=[500], sample_probability=0.3, random_seed=43, pbar_disabled=True
+        res2 = ns.centrality_shortest(
+            compute_closeness=True,
+            compute_betweenness=False,
+            distances=[500],
+            sample_probability=0.3,
+            random_seed=43,
+            pbar_disabled=True,
         )
 
         assert not np.allclose(res1.node_density[500], res2.node_density[500])
@@ -62,9 +82,16 @@ class TestSamplingBasics:
         """Sampling with p=1.0 matches full computation."""
         ns, _ = network_structure
 
-        res_full = ns.centrality_shortest(compute_closeness=True, compute_betweenness=False,distances=[500], pbar_disabled=True)
-        res_sampled = ns.centrality_shortest(compute_closeness=True, compute_betweenness=False,
-            distances=[500], sample_probability=1.0, random_seed=42, pbar_disabled=True
+        res_full = ns.centrality_shortest(
+            compute_closeness=True, compute_betweenness=False, distances=[500], pbar_disabled=True
+        )
+        res_sampled = ns.centrality_shortest(
+            compute_closeness=True,
+            compute_betweenness=False,
+            distances=[500],
+            sample_probability=1.0,
+            random_seed=42,
+            pbar_disabled=True,
         )
 
         assert np.allclose(res_full.node_density[500], res_sampled.node_density[500])
@@ -79,13 +106,20 @@ class TestIPWCorrection:
         distance = 500
         num_runs = 20
 
-        res_full = ns.centrality_shortest(compute_closeness=True, compute_betweenness=False,distances=[distance], pbar_disabled=True)
+        res_full = ns.centrality_shortest(
+            compute_closeness=True, compute_betweenness=False, distances=[distance], pbar_disabled=True
+        )
         full_density = np.array(res_full.node_density[distance])
 
         samples = [
             np.array(
-                ns.centrality_shortest(compute_closeness=True, compute_betweenness=False,
-                    distances=[distance], sample_probability=0.5, random_seed=seed, pbar_disabled=True
+                ns.centrality_shortest(
+                    compute_closeness=True,
+                    compute_betweenness=False,
+                    distances=[distance],
+                    sample_probability=0.5,
+                    random_seed=seed,
+                    pbar_disabled=True,
                 ).node_density[distance]
             )
             for seed in range(num_runs)
@@ -103,15 +137,22 @@ class TestIPWCorrection:
         distance = 500
         num_runs = 25
 
-        res_full = ns.centrality_shortest(compute_closeness=True, compute_betweenness=False,distances=[distance], pbar_disabled=True)
+        res_full = ns.centrality_shortest(
+            compute_closeness=True, compute_betweenness=False, distances=[distance], pbar_disabled=True
+        )
         full_density = np.array(res_full.node_density[distance])
         full_mean = np.mean(full_density[full_density > 0])
 
         for prob in [0.3, 0.5, 0.7]:
             sampled_means = []
             for seed in range(num_runs):
-                res = ns.centrality_shortest(compute_closeness=True, compute_betweenness=False,
-                    distances=[distance], sample_probability=prob, random_seed=seed, pbar_disabled=True
+                res = ns.centrality_shortest(
+                    compute_closeness=True,
+                    compute_betweenness=False,
+                    distances=[distance],
+                    sample_probability=prob,
+                    random_seed=seed,
+                    pbar_disabled=True,
                 )
                 density = np.array(res.node_density[distance])
                 mask = (density > 0) & (full_density > 0)
@@ -131,9 +172,16 @@ class TestTargetAggregation:
         ns, _ = network_structure
         distance = 500
 
-        res_full = ns.centrality_shortest(compute_closeness=True, compute_betweenness=False,distances=[distance], pbar_disabled=True)
-        res_sampled = ns.centrality_shortest(compute_closeness=True, compute_betweenness=False,
-            distances=[distance], sample_probability=0.5, random_seed=42, pbar_disabled=True
+        res_full = ns.centrality_shortest(
+            compute_closeness=True, compute_betweenness=False, distances=[distance], pbar_disabled=True
+        )
+        res_sampled = ns.centrality_shortest(
+            compute_closeness=True,
+            compute_betweenness=False,
+            distances=[distance],
+            sample_probability=0.5,
+            random_seed=42,
+            pbar_disabled=True,
         )
 
         full = np.array(res_full.node_density[distance])
@@ -150,14 +198,21 @@ class TestTargetAggregation:
         ns, _ = network_structure
         distance = 500
 
-        res_full = ns.centrality_shortest(compute_closeness=True, compute_betweenness=False,distances=[distance], pbar_disabled=True)
+        res_full = ns.centrality_shortest(
+            compute_closeness=True, compute_betweenness=False, distances=[distance], pbar_disabled=True
+        )
         full_cycles = np.array(res_full.node_cycles[distance])
 
         if np.sum(full_cycles > 0) == 0:
             pytest.skip("Mock graph has no cycles")
 
-        res_sampled = ns.centrality_shortest(compute_closeness=True, compute_betweenness=False,
-            distances=[distance], sample_probability=0.5, random_seed=42, pbar_disabled=True
+        res_sampled = ns.centrality_shortest(
+            compute_closeness=True,
+            compute_betweenness=False,
+            distances=[distance],
+            sample_probability=0.5,
+            random_seed=42,
+            pbar_disabled=True,
         )
         sampled_cycles = np.array(res_sampled.node_cycles[distance])
 
@@ -178,8 +233,13 @@ class TestSamplingWeights:
         weights[0] = 1.5
 
         with pytest.raises(ValueError, match="out of range"):
-            ns.centrality_shortest(compute_closeness=True, compute_betweenness=False,
-                distances=[500], sample_probability=0.5, sampling_weights=weights, pbar_disabled=True
+            ns.centrality_shortest(
+                compute_closeness=True,
+                compute_betweenness=False,
+                distances=[500],
+                sample_probability=0.5,
+                sampling_weights=weights,
+                pbar_disabled=True,
             )
 
     def test_validation_weight_negative(self, network_structure):
@@ -189,8 +249,13 @@ class TestSamplingWeights:
         weights[0] = -0.1
 
         with pytest.raises(ValueError, match="out of range"):
-            ns.centrality_shortest(compute_closeness=True, compute_betweenness=False,
-                distances=[500], sample_probability=0.5, sampling_weights=weights, pbar_disabled=True
+            ns.centrality_shortest(
+                compute_closeness=True,
+                compute_betweenness=False,
+                distances=[500],
+                sample_probability=0.5,
+                sampling_weights=weights,
+                pbar_disabled=True,
             )
 
     def test_validation_wrong_length(self, network_structure):
@@ -199,8 +264,13 @@ class TestSamplingWeights:
         weights = [1.0] * (len(nodes_gdf) - 1)
 
         with pytest.raises(ValueError, match="must match node_count"):
-            ns.centrality_shortest(compute_closeness=True, compute_betweenness=False,
-                distances=[500], sample_probability=0.5, sampling_weights=weights, pbar_disabled=True
+            ns.centrality_shortest(
+                compute_closeness=True,
+                compute_betweenness=False,
+                distances=[500],
+                sample_probability=0.5,
+                sampling_weights=weights,
+                pbar_disabled=True,
             )
 
     def test_zero_weights_exclude_sources(self, network_structure):
@@ -211,8 +281,13 @@ class TestSamplingWeights:
         # Only first half can be sampled as sources
         weights = [1.0 if i < num_nodes // 2 else 0.0 for i in range(num_nodes)]
 
-        res = ns.centrality_shortest(compute_closeness=True, compute_betweenness=False,
-            distances=[500], sample_probability=1.0, sampling_weights=weights, pbar_disabled=True
+        res = ns.centrality_shortest(
+            compute_closeness=True,
+            compute_betweenness=False,
+            distances=[500],
+            sample_probability=1.0,
+            sampling_weights=weights,
+            pbar_disabled=True,
         )
 
         # Target aggregation: nodes can still receive values from other sources
@@ -226,7 +301,9 @@ class TestSamplingWeights:
 
         uniform_samples = [
             np.array(
-                ns.centrality_shortest(compute_closeness=True, compute_betweenness=False,
+                ns.centrality_shortest(
+                    compute_closeness=True,
+                    compute_betweenness=False,
                     distances=[distance],
                     sample_probability=1.0,
                     sampling_weights=[0.5] * len(nodes_gdf),
@@ -239,8 +316,13 @@ class TestSamplingWeights:
 
         plain_samples = [
             np.array(
-                ns.centrality_shortest(compute_closeness=True, compute_betweenness=False,
-                    distances=[distance], sample_probability=0.5, random_seed=seed, pbar_disabled=True
+                ns.centrality_shortest(
+                    compute_closeness=True,
+                    compute_betweenness=False,
+                    distances=[distance],
+                    sample_probability=0.5,
+                    random_seed=seed,
+                    pbar_disabled=True,
                 ).node_density[distance]
             )
             for seed in range(num_runs)
@@ -262,11 +344,21 @@ class TestSimplestCentrality:
         """Simplest centrality sampling is reproducible."""
         ns, _ = network_structure
 
-        res1 = ns.centrality_simplest(compute_closeness=True, compute_betweenness=False,
-            distances=[500], sample_probability=0.3, random_seed=42, pbar_disabled=True
+        res1 = ns.centrality_simplest(
+            compute_closeness=True,
+            compute_betweenness=False,
+            distances=[500],
+            sample_probability=0.3,
+            random_seed=42,
+            pbar_disabled=True,
         )
-        res2 = ns.centrality_simplest(compute_closeness=True, compute_betweenness=False,
-            distances=[500], sample_probability=0.3, random_seed=42, pbar_disabled=True
+        res2 = ns.centrality_simplest(
+            compute_closeness=True,
+            compute_betweenness=False,
+            distances=[500],
+            sample_probability=0.3,
+            random_seed=42,
+            pbar_disabled=True,
         )
 
         assert np.allclose(res1.node_density[500], res2.node_density[500])
@@ -277,13 +369,20 @@ class TestSimplestCentrality:
         distance = 500
         num_runs = 15
 
-        res_full = ns.centrality_simplest(compute_closeness=True, compute_betweenness=False,distances=[distance], pbar_disabled=True)
+        res_full = ns.centrality_simplest(
+            compute_closeness=True, compute_betweenness=False, distances=[distance], pbar_disabled=True
+        )
         full_density = np.array(res_full.node_density[distance])
 
         samples = [
             np.array(
-                ns.centrality_simplest(compute_closeness=True, compute_betweenness=False,
-                    distances=[distance], sample_probability=0.5, random_seed=seed, pbar_disabled=True
+                ns.centrality_simplest(
+                    compute_closeness=True,
+                    compute_betweenness=False,
+                    distances=[distance],
+                    sample_probability=0.5,
+                    random_seed=seed,
+                    pbar_disabled=True,
                 ).node_density[distance]
             )
             for seed in range(num_runs)
@@ -381,12 +480,20 @@ class TestBetweennessSampling:
         ns, _ = network_structure
 
         res1 = ns.centrality_shortest(
-            compute_closeness=False, compute_betweenness=True,
-            distances=[500], sample_probability=0.3, random_seed=42, pbar_disabled=True,
+            compute_closeness=False,
+            compute_betweenness=True,
+            distances=[500],
+            sample_probability=0.3,
+            random_seed=42,
+            pbar_disabled=True,
         )
         res2 = ns.centrality_shortest(
-            compute_closeness=False, compute_betweenness=True,
-            distances=[500], sample_probability=0.3, random_seed=42, pbar_disabled=True,
+            compute_closeness=False,
+            compute_betweenness=True,
+            distances=[500],
+            sample_probability=0.3,
+            random_seed=42,
+            pbar_disabled=True,
         )
 
         assert np.allclose(res1.node_betweenness[500], res2.node_betweenness[500])
@@ -397,12 +504,18 @@ class TestBetweennessSampling:
         ns, _ = network_structure
 
         res_full = ns.centrality_shortest(
-            compute_closeness=False, compute_betweenness=True,
-            distances=[500], pbar_disabled=True,
+            compute_closeness=False,
+            compute_betweenness=True,
+            distances=[500],
+            pbar_disabled=True,
         )
         res_sampled = ns.centrality_shortest(
-            compute_closeness=False, compute_betweenness=True,
-            distances=[500], sample_probability=1.0, random_seed=42, pbar_disabled=True,
+            compute_closeness=False,
+            compute_betweenness=True,
+            distances=[500],
+            sample_probability=1.0,
+            random_seed=42,
+            pbar_disabled=True,
         )
 
         assert np.allclose(res_full.node_betweenness[500], res_sampled.node_betweenness[500])
@@ -414,16 +527,22 @@ class TestBetweennessSampling:
         num_runs = 20
 
         res_full = ns.centrality_shortest(
-            compute_closeness=False, compute_betweenness=True,
-            distances=[distance], pbar_disabled=True,
+            compute_closeness=False,
+            compute_betweenness=True,
+            distances=[distance],
+            pbar_disabled=True,
         )
         full_betw = np.array(res_full.node_betweenness[distance])
 
         samples = [
             np.array(
                 ns.centrality_shortest(
-                    compute_closeness=False, compute_betweenness=True,
-                    distances=[distance], sample_probability=0.5, random_seed=seed, pbar_disabled=True,
+                    compute_closeness=False,
+                    compute_betweenness=True,
+                    distances=[distance],
+                    sample_probability=0.5,
+                    random_seed=seed,
+                    pbar_disabled=True,
                 ).node_betweenness[distance]
             )
             for seed in range(num_runs)
@@ -444,12 +563,17 @@ class TestTolerance:
         ns, _ = network_structure
 
         res_default = ns.centrality_shortest(
-            compute_closeness=True, compute_betweenness=True,
-            distances=[500], pbar_disabled=True,
+            compute_closeness=True,
+            compute_betweenness=True,
+            distances=[500],
+            pbar_disabled=True,
         )
         res_zero = ns.centrality_shortest(
-            compute_closeness=True, compute_betweenness=True,
-            distances=[500], tolerance=0.0, pbar_disabled=True,
+            compute_closeness=True,
+            compute_betweenness=True,
+            distances=[500],
+            tolerance=0.0,
+            pbar_disabled=True,
         )
 
         assert np.allclose(res_default.node_betweenness[500], res_zero.node_betweenness[500])
@@ -460,12 +584,18 @@ class TestTolerance:
         ns, _ = network_structure
 
         res_exact = ns.centrality_shortest(
-            compute_closeness=False, compute_betweenness=True,
-            distances=[500], tolerance=0.0, pbar_disabled=True,
+            compute_closeness=False,
+            compute_betweenness=True,
+            distances=[500],
+            tolerance=0.0,
+            pbar_disabled=True,
         )
         res_tolerant = ns.centrality_shortest(
-            compute_closeness=False, compute_betweenness=True,
-            distances=[500], tolerance=0.1, pbar_disabled=True,
+            compute_closeness=False,
+            compute_betweenness=True,
+            distances=[500],
+            tolerance=0.1,
+            pbar_disabled=True,
         )
 
         betw_exact = np.array(res_exact.node_betweenness[500])
@@ -505,7 +635,9 @@ class TestOdBetweenness:
 
         od = rustalgos.centrality.OdMatrix(origins, destinations, weights)
         result = ns.betweenness_od_shortest(
-            od_matrix=od, distances=[500], pbar_disabled=True,
+            od_matrix=od,
+            distances=[500],
+            pbar_disabled=True,
         )
 
         betw = np.array(result.node_betweenness[500])
@@ -524,7 +656,9 @@ class TestOdBetweenness:
 
         od = rustalgos.centrality.OdMatrix(origins, destinations, weights)
         result = ns.betweenness_od_shortest(
-            od_matrix=od, distances=[500], pbar_disabled=True,
+            od_matrix=od,
+            distances=[500],
+            pbar_disabled=True,
         )
 
         betw = np.array(result.node_betweenness[500])

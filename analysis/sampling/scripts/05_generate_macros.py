@@ -152,7 +152,7 @@ def generate_macros() -> str:
 \\newcommand{{\\gridSpacing}}{{{GRID_SPACING:.0f}}}
 \\newcommand{{\\targetRho}}{{0.95}}
 
-% Deterministic sampling at standard distances (epsilon={PAPER_EPSILON_CLOSENESS}, delta={HOEFFDING_DELTA}, s={GRID_SPACING:.0f}m)
+% Deterministic sampling (eps={PAPER_EPSILON_CLOSENESS}, delta={HOEFFDING_DELTA}, s={GRID_SPACING:.0f}m)
 \\newcommand{{\\hoeffdingKFiveKm}}{{{distance_scenarios[5000]["k"]:.0f}}}
 \\newcommand{{\\hoeffdingKTenKm}}{{{distance_scenarios[10000]["k"]:.0f}}}
 \\newcommand{{\\hoeffdingKTwentyKm}}{{{distance_scenarios[20000]["k"]:.0f}}}
@@ -224,7 +224,9 @@ def generate_macros() -> str:
     madrid_min_rho_c = None
     if madrid_df is not None:
         madrid_min_rho_c = madrid_df["rho_closeness"].min()
-        madrid_betw_rhos = madrid_df["rho_betweenness"].dropna() if "rho_betweenness" in madrid_df.columns else pd.Series(dtype=float)
+        madrid_betw_rhos = (
+            madrid_df["rho_betweenness"].dropna() if "rho_betweenness" in madrid_df.columns else pd.Series(dtype=float)
+        )
         madrid_min_rho_b = madrid_betw_rhos.min() if len(madrid_betw_rhos) > 0 else float("nan")
 
         madrid_n_nodes_path = CACHE_DIR / "madrid_n_nodes.json"
@@ -356,7 +358,9 @@ def generate_tab_distance_lookup() -> str:
     lines.append(r"\label{tab:distance_lookup}")
     lines.append(r"\begin{tabular}{rrrrr}")
     lines.append(r"\toprule")
-    lines.append(r"\textbf{Distance} & \textbf{Canonical reach} & \textbf{$k$} & \textbf{$p$ (\%)} & \textbf{Speedup ($1/p$)} \\")
+    lines.append(
+        r"\textbf{Distance} & \textbf{Canonical reach} & \textbf{$k$} & \textbf{$p$ (\%)} & \textbf{Speedup ($1/p$)} \\"
+    )
     lines.append(r"\midrule")
     for d, r, p, speedup in rows:
         k = math.ceil(math.log(2 * r / delta) / (2 * eps**2)) if r > 0 else 0
@@ -454,12 +458,17 @@ def generate_fig3_practical_guide():
     from matplotlib.lines import Line2D
 
     legend_handles = [
-        Line2D([0], [0], color=colour, linewidth=lw, linestyle=ls,
-               label=rf"$\varepsilon$={eps}" + (" (default)" if eps == PAPER_EPSILON_CLOSENESS else ""))
+        Line2D(
+            [0],
+            [0],
+            color=colour,
+            linewidth=lw,
+            linestyle=ls,
+            label=rf"$\varepsilon$={eps}" + (" (default)" if eps == PAPER_EPSILON_CLOSENESS else ""),
+        )
         for eps, colour, lw, ls in epsilon_specs
     ] + [
-        Line2D([0], [0], color="#D55E00", marker="o", linestyle="none",
-               markersize=7, label="Standard distances"),
+        Line2D([0], [0], color="#D55E00", marker="o", linestyle="none", markersize=7, label="Standard distances"),
     ]
     ax.legend(handles=legend_handles, loc="center right", fontsize=8)
     ax.grid(True, alpha=0.3)
@@ -477,8 +486,7 @@ def generate_fig3_practical_guide():
         speedup = 1 / p if p < 1.0 else 1.0
         ax.plot(dist_m / 1000, speedup, "o", color="#D55E00", markersize=7, zorder=5)
         if speedup > 1.05:
-            ax.annotate(f"{speedup:.1f}\u00d7", xy=(dist_m / 1000, speedup * 1.1),
-                        fontsize=9, ha="center", va="bottom")
+            ax.annotate(f"{speedup:.1f}\u00d7", xy=(dist_m / 1000, speedup * 1.1), fontsize=9, ha="center", va="bottom")
 
     ax.set_yscale("log")
     ax.set_xlabel("Analysis Distance (km)")
@@ -490,8 +498,7 @@ def generate_fig3_practical_guide():
     ax.yaxis.set_major_formatter(matplotlib.ticker.FuncFormatter(lambda x, _: f"{x:.0f}\u00d7"))
     ax.legend(loc="upper left", fontsize=8)
 
-    fig.suptitle("Practical Guide: Deterministic Sampling Schedule",
-                 fontsize=13, fontweight="bold", y=1.02)
+    fig.suptitle("Practical Guide: Deterministic Sampling Schedule", fontsize=13, fontweight="bold", y=1.02)
     plt.tight_layout()
 
     output_path = FIGURES_DIR / "fig3_practical_guide.pdf"
@@ -537,7 +544,7 @@ def main():
     print("MACRO SUMMARY")
     print("=" * 70)
 
-    print(f"\nDeterministic distance-based model:")
+    print("\nDeterministic distance-based model:")
     print(f"  Epsilon:       {PAPER_EPSILON_CLOSENESS}")
     print(f"  Delta:         {HOEFFDING_DELTA}")
     print(f"  Grid spacing:  {GRID_SPACING}m")
@@ -550,7 +557,9 @@ def main():
     gla_df = load_gla_summary()
     print("\nGLA validation:")
     for _, row in gla_df.iterrows():
-        rho_b_str = f", rho_b={row['rho_betweenness']:.3f}" if not np.isnan(row.get("rho_betweenness", float("nan"))) else ""
+        rho_b_str = (
+            f", rho_b={row['rho_betweenness']:.3f}" if not np.isnan(row.get("rho_betweenness", float("nan"))) else ""
+        )
         spd_c = row.get("speedup_closeness", float("nan"))
         spd_str = f", speedup_c={spd_c:.1f}x" if np.isfinite(spd_c) else ""
         print(f"  {int(row['distance'] / 1000)}km: rho_c={row['rho_closeness']:.3f}{rho_b_str}{spd_str}")
@@ -559,7 +568,11 @@ def main():
     if madrid_df is not None:
         print("\nMadrid validation:")
         for _, row in madrid_df.iterrows():
-            rho_b_str = f", rho_b={row['rho_betweenness']:.3f}" if not np.isnan(row.get("rho_betweenness", float("nan"))) else ""
+            rho_b_str = (
+                f", rho_b={row['rho_betweenness']:.3f}"
+                if not np.isnan(row.get("rho_betweenness", float("nan")))
+                else ""
+            )
             spd_c = row.get("speedup_closeness", float("nan"))
             spd_str = f", speedup_c={spd_c:.1f}x" if np.isfinite(spd_c) else ""
             print(f"  {int(row['distance'] / 1000)}km: rho_c={row['rho_closeness']:.3f}{rho_b_str}{spd_str}")

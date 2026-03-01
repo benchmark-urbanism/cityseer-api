@@ -28,8 +28,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import matplotlib.ticker
 import numpy as np
-from matplotlib.colors import Normalize, LogNorm, LinearSegmentedColormap
-from matplotlib.lines import Line2D
+from matplotlib.colors import LinearSegmentedColormap
 from scipy.stats import rankdata
 
 sys.path.insert(0, str(Path(__file__).parent))
@@ -105,16 +104,24 @@ def _spatial_residual_panel(ax, node_x, node_y, residual, title, crop_half=10000
     """
     cx, cy = np.median(node_x), np.median(node_y)
     mask = (
-        (node_x >= cx - crop_half) & (node_x <= cx + crop_half)
-        & (node_y >= cy - crop_half) & (node_y <= cy + crop_half)
+        (node_x >= cx - crop_half)
+        & (node_x <= cx + crop_half)
+        & (node_y >= cy - crop_half)
+        & (node_y <= cy + crop_half)
     )
     x, y, res = node_x[mask], node_y[mask], residual[mask]
 
     # Symmetric range centred on zero using 95th percentile of |residual|
     vlim = np.percentile(np.abs(res), 95)
     scatter = ax.scatter(
-        x, y, c=res, s=0.3, alpha=0.7,
-        cmap=CMAP_DIVERGING, vmin=-vlim, vmax=vlim,
+        x,
+        y,
+        c=res,
+        s=0.3,
+        alpha=0.7,
+        cmap=CMAP_DIVERGING,
+        vmin=-vlim,
+        vmax=vlim,
         rasterized=True,
     )
     plt.colorbar(scatter, ax=ax, label="Residual (est \u2212 true)", shrink=0.4)
@@ -146,7 +153,10 @@ def generate_fig7_spatial_error(gla_data: dict, madrid_data: dict | None, dist: 
     if gla_data["est_harmonic"] is not None:
         res_h = gla_data["est_harmonic"] - gla_data["true_harmonic"]
         _spatial_residual_panel(
-            axes[0, 0], gla_data["node_x"], gla_data["node_y"], res_h,
+            axes[0, 0],
+            gla_data["node_x"],
+            gla_data["node_y"],
+            res_h,
             f"A) GLA Closeness ({dist_km}km)",
         )
     else:
@@ -155,7 +165,10 @@ def generate_fig7_spatial_error(gla_data: dict, madrid_data: dict | None, dist: 
     if gla_data.get("est_betweenness") is not None:
         res_b = gla_data["est_betweenness"] - gla_data["true_betweenness"]
         _spatial_residual_panel(
-            axes[0, 1], gla_data["node_x"], gla_data["node_y"], res_b,
+            axes[0, 1],
+            gla_data["node_x"],
+            gla_data["node_y"],
+            res_b,
             f"B) GLA Betweenness ({dist_km}km)",
         )
     else:
@@ -166,7 +179,10 @@ def generate_fig7_spatial_error(gla_data: dict, madrid_data: dict | None, dist: 
         if madrid_data["est_harmonic"] is not None:
             res_h = madrid_data["est_harmonic"] - madrid_data["true_harmonic"]
             _spatial_residual_panel(
-                axes[1, 0], madrid_data["node_x"], madrid_data["node_y"], res_h,
+                axes[1, 0],
+                madrid_data["node_x"],
+                madrid_data["node_y"],
+                res_h,
                 f"C) Madrid Closeness ({dist_km}km)",
             )
         else:
@@ -175,7 +191,10 @@ def generate_fig7_spatial_error(gla_data: dict, madrid_data: dict | None, dist: 
         if madrid_data.get("est_betweenness") is not None:
             res_b = madrid_data["est_betweenness"] - madrid_data["true_betweenness"]
             _spatial_residual_panel(
-                axes[1, 1], madrid_data["node_x"], madrid_data["node_y"], res_b,
+                axes[1, 1],
+                madrid_data["node_x"],
+                madrid_data["node_y"],
+                res_b,
                 f"D) Madrid Betweenness ({dist_km}km)",
             )
         else:
@@ -183,7 +202,8 @@ def generate_fig7_spatial_error(gla_data: dict, madrid_data: dict | None, dist: 
 
     fig.suptitle(
         f"Spatial Distribution of Sampling Residuals ({dist_km}km)",
-        fontsize=13, fontweight="bold",
+        fontsize=13,
+        fontweight="bold",
     )
     plt.tight_layout(h_pad=1.0, w_pad=2.0, rect=[0, 0, 1, 0.96])
     out = FIGURES_DIR / "fig7_spatial_error_gla.png"
@@ -245,11 +265,18 @@ def _binned_error_panel(ax, datasets, true_key, est_key, colour, title, n_bins=1
         yerr_lo = np.maximum(medians - q25s, 1e-10)
         yerr_hi = q75s - medians
         ax.bar(
-            x + offset, medians, bar_width * 0.9,
+            x + offset,
+            medians,
+            bar_width * 0.9,
             yerr=[yerr_lo, yerr_hi],
-            capsize=2, color=colour, alpha=0.7 if d_idx == 0 else 0.5,
-            hatch=hatch, edgecolor="white", linewidth=0.5,
-            label=label, error_kw={"linewidth": 0.8},
+            capsize=2,
+            color=colour,
+            alpha=0.7 if d_idx == 0 else 0.5,
+            hatch=hatch,
+            edgecolor="white",
+            linewidth=0.5,
+            label=label,
+            error_kw={"linewidth": 0.8},
         )
     ax.set_xticks(np.arange(len(bin_labels)))
     ax.set_xticklabels(bin_labels, fontsize=8, rotation=45, ha="right")
@@ -276,13 +303,19 @@ def generate_fig8_error_vs_reach(gla_data: dict, madrid_data: dict | None, dist:
         datasets.append(("Madrid", madrid_data, "//"))
 
     _binned_error_panel(
-        axes[0], datasets,
-        "true_harmonic", "est_harmonic", COLOUR_CLOSENESS,
+        axes[0],
+        datasets,
+        "true_harmonic",
+        "est_harmonic",
+        COLOUR_CLOSENESS,
         "A) Closeness: Error vs Reach",
     )
     _binned_error_panel(
-        axes[1], datasets,
-        "true_betweenness", "est_betweenness", COLOUR_BETWEENNESS,
+        axes[1],
+        datasets,
+        "true_betweenness",
+        "est_betweenness",
+        COLOUR_BETWEENNESS,
         "B) Betweenness: Error vs Reach",
     )
 
@@ -322,10 +355,16 @@ def generate_fig9_residual_histogram(gla_data: dict, madrid_data: dict | None, d
         est_h = data["est_harmonic"]
         mask = true_h > 0
         res = (est_h[mask] - true_h[mask]) / true_h[mask]
-        ax.hist(res, bins=100, alpha=0.6, density=True,
-                range=(-0.5, 0.5),
-                color=COLOUR_CLOSENESS, edgecolor="none",
-                label=f"{label} (n={mask.sum():,})")
+        ax.hist(
+            res,
+            bins=100,
+            alpha=0.6,
+            density=True,
+            range=(-0.5, 0.5),
+            color=COLOUR_CLOSENESS,
+            edgecolor="none",
+            label=f"{label} (n={mask.sum():,})",
+        )
     ax.axvline(0, color="black", linestyle="--", linewidth=0.8)
     ax.set_xlabel("(est − true) / true")
     ax.set_ylabel("Density")
@@ -346,10 +385,16 @@ def generate_fig9_residual_histogram(gla_data: dict, madrid_data: dict | None, d
         threshold = np.percentile(true_b[nonzero], 10)
         mask = true_b >= threshold
         res = (est_b[mask] - true_b[mask]) / true_b[mask]
-        ax.hist(res, bins=200, alpha=0.6, density=True,
-                range=(-2, 2),
-                color=COLOUR_BETWEENNESS, edgecolor="none",
-                label=f"{label} (n={mask.sum():,})")
+        ax.hist(
+            res,
+            bins=200,
+            alpha=0.6,
+            density=True,
+            range=(-2, 2),
+            color=COLOUR_BETWEENNESS,
+            edgecolor="none",
+            label=f"{label} (n={mask.sum():,})",
+        )
         has_betw_val = True
     if has_betw_val:
         ax.axvline(0, color="black", linestyle="--", linewidth=0.8)
@@ -364,10 +409,12 @@ def generate_fig9_residual_histogram(gla_data: dict, madrid_data: dict | None, d
 
     # ---- Row 1: Rank residuals ----
 
-    for col_idx, (metric, true_key, est_key, colour, panel_label) in enumerate([
-        ("Closeness", "true_harmonic", "est_harmonic", COLOUR_CLOSENESS, "C"),
-        ("Betweenness", "true_betweenness", "est_betweenness", COLOUR_BETWEENNESS, "D"),
-    ]):
+    for col_idx, (metric, true_key, est_key, colour, panel_label) in enumerate(
+        [
+            ("Closeness", "true_harmonic", "est_harmonic", COLOUR_CLOSENESS, "C"),
+            ("Betweenness", "true_betweenness", "est_betweenness", COLOUR_BETWEENNESS, "D"),
+        ]
+    ):
         ax = axes[1, col_idx]
         has_data = False
         for label, data in datasets:
@@ -388,10 +435,16 @@ def generate_fig9_residual_histogram(gla_data: dict, madrid_data: dict | None, d
             # Signed rank displacement normalised to fraction of ranked nodes
             rank_res = (rank_est - rank_true) / n_valid
 
-            ax.hist(rank_res, bins=200, alpha=0.6, density=True,
-                    range=(-0.15, 0.15),
-                    color=colour, edgecolor="none",
-                    label=f"{label} (n={n_valid:,})")
+            ax.hist(
+                rank_res,
+                bins=200,
+                alpha=0.6,
+                density=True,
+                range=(-0.15, 0.15),
+                color=colour,
+                edgecolor="none",
+                label=f"{label} (n={n_valid:,})",
+            )
             has_data = True
 
         if has_data:
@@ -425,8 +478,10 @@ def _spatial_rank_panel(ax, node_x, node_y, rank_disp, n_nodes, title, crop_half
     """
     cx, cy = np.median(node_x), np.median(node_y)
     mask = (
-        (node_x >= cx - crop_half) & (node_x <= cx + crop_half)
-        & (node_y >= cy - crop_half) & (node_y <= cy + crop_half)
+        (node_x >= cx - crop_half)
+        & (node_x <= cx + crop_half)
+        & (node_y >= cy - crop_half)
+        & (node_y <= cy + crop_half)
     )
     x, y, disp = node_x[mask], node_y[mask], rank_disp[mask]
 
@@ -438,8 +493,14 @@ def _spatial_rank_panel(ax, node_x, node_y, rank_disp, n_nodes, title, crop_half
     vmax = max(vmax, 0.1)  # floor to avoid degenerate colourmap
 
     scatter = ax.scatter(
-        x, y, c=disp_pct, s=0.3, alpha=0.7,
-        cmap=CMAP_SEQUENTIAL, vmin=0, vmax=vmax,
+        x,
+        y,
+        c=disp_pct,
+        s=0.3,
+        alpha=0.7,
+        cmap=CMAP_SEQUENTIAL,
+        vmin=0,
+        vmax=vmax,
         rasterized=True,
     )
     plt.colorbar(scatter, ax=ax, label="Rank displacement (%)", shrink=0.4)
@@ -469,19 +530,19 @@ def generate_fig9b_rank_displacement(gla_data: dict, madrid_data: dict | None, d
     dist_km = dist // 1000
     panel_labels = iter("ABCDEFGH")
 
-    for row_idx, (net_label, data) in enumerate(
-        [("GLA", gla_data), ("Madrid", madrid_data)]
-    ):
+    for row_idx, (net_label, data) in enumerate([("GLA", gla_data), ("Madrid", madrid_data)]):
         if data is None:
             for col_idx in range(2):
                 label = next(panel_labels)
                 axes[row_idx, col_idx].set_title(f"{label}) {net_label} (no data)")
             continue
 
-        for col_idx, (metric, true_key, est_key, colour_label) in enumerate([
-            ("Closeness", "true_harmonic", "est_harmonic", "closeness"),
-            ("Betweenness", "true_betweenness", "est_betweenness", "betweenness"),
-        ]):
+        for col_idx, (metric, true_key, est_key, _colour_label) in enumerate(
+            [
+                ("Closeness", "true_harmonic", "est_harmonic", "closeness"),
+                ("Betweenness", "true_betweenness", "est_betweenness", "betweenness"),
+            ]
+        ):
             label = next(panel_labels)
             true_vals = data.get(true_key)
             est_vals = data.get(est_key)
@@ -507,14 +568,17 @@ def generate_fig9b_rank_displacement(gla_data: dict, madrid_data: dict | None, d
 
             _spatial_rank_panel(
                 axes[row_idx, col_idx],
-                data["node_x"], data["node_y"],
-                rank_disp, n_valid,
+                data["node_x"],
+                data["node_y"],
+                rank_disp,
+                n_valid,
                 f"{label}) {net_label} {metric} ({dist_km}km)",
             )
 
     fig.suptitle(
         f"Spatial Distribution of Rank Displacement ({dist_km}km)",
-        fontsize=13, fontweight="bold",
+        fontsize=13,
+        fontweight="bold",
     )
     plt.tight_layout(h_pad=1.0, w_pad=2.0, rect=[0, 0, 1, 0.96])
     out = FIGURES_DIR / "fig9b_rank_displacement.png"
@@ -555,16 +619,23 @@ def generate_fig10_sensitivity():
         ("rho_betweenness", "B) Betweenness", COLOUR_BETWEENNESS),
     ]
 
-    for ax, (col, title, colour) in zip(axes, panels):
+    for ax, (col, title, colour) in zip(axes, panels, strict=True):
         if has_gla:
             gla_df = pd.read_csv(gla_path)
             for dist, grp in gla_df.groupby("distance"):
                 grp = grp.sort_values("grid_spacing")
                 valid = grp.dropna(subset=[col])
                 if not valid.empty:
-                    ax.plot(valid["grid_spacing"], valid[col], "o-", color=colour,
-                            linewidth=1.5, markersize=6, alpha=0.85,
-                            label=f"GLA {int(dist) // 1000}km")
+                    ax.plot(
+                        valid["grid_spacing"],
+                        valid[col],
+                        "o-",
+                        color=colour,
+                        linewidth=1.5,
+                        markersize=6,
+                        alpha=0.85,
+                        label=f"GLA {int(dist) // 1000}km",
+                    )
 
         if has_madrid:
             madrid_df = pd.read_csv(madrid_path)
@@ -572,14 +643,29 @@ def generate_fig10_sensitivity():
                 grp = grp.sort_values("grid_spacing")
                 valid = grp.dropna(subset=[col])
                 if not valid.empty:
-                    ax.plot(valid["grid_spacing"], valid[col], "s--", color=colour,
-                            linewidth=1.5, markersize=6, alpha=0.7,
-                            label=f"Madrid {int(dist) // 1000}km")
+                    ax.plot(
+                        valid["grid_spacing"],
+                        valid[col],
+                        "s--",
+                        color=colour,
+                        linewidth=1.5,
+                        markersize=6,
+                        alpha=0.7,
+                        label=f"Madrid {int(dist) // 1000}km",
+                    )
 
         # Mark the default s=175m
         ax.axvline(175, color="grey", linestyle=":", linewidth=1.0, alpha=0.7)
-        ax.text(175, ax.get_ylim()[0] if ax.get_ylim()[0] > 0 else 0.9, "s=175m",
-                fontsize=8, color="grey", ha="center", va="bottom", rotation=90)
+        ax.text(
+            175,
+            ax.get_ylim()[0] if ax.get_ylim()[0] > 0 else 0.9,
+            "s=175m",
+            fontsize=8,
+            color="grey",
+            ha="center",
+            va="bottom",
+            rotation=90,
+        )
 
         # Target line
         ax.axhline(0.95, color="green", linestyle="--", linewidth=1.0, alpha=0.7)
@@ -642,8 +728,7 @@ def _decile_panel(ax, true_vals, est_vals, title, colour, n_groups=10):
             val = data[i, j]
             if val >= 1.0:
                 text_colour = "white" if val > 50 else "black"
-                ax.text(j, i, f"{val:.0f}", ha="center", va="center",
-                        fontsize=7, color=text_colour)
+                ax.text(j, i, f"{val:.0f}", ha="center", va="center", fontsize=7, color=text_colour)
 
     ax.set_xticks(range(n_actual))
     ax.set_xticklabels(range(1, n_actual + 1), fontsize=8)
@@ -658,8 +743,7 @@ def _decile_panel(ax, true_vals, est_vals, title, colour, n_groups=10):
 
     # Print summary
     diag_retention = np.trace(data) / n_actual
-    print(f"    {title}: diagonal retention = {diag_retention:.1f}%, "
-          f"top-decile retention = {top_retention:.1f}%")
+    print(f"    {title}: diagonal retention = {diag_retention:.1f}%, top-decile retention = {top_retention:.1f}%")
 
     return im, top_retention
 
@@ -691,10 +775,12 @@ def generate_fig11_decile_transition(gla_data: dict, madrid_data: dict | None, d
         configs.append((1, "Madrid", madrid_data))
 
     for row_idx, net_label, data in configs:
-        for col_idx, (metric, true_key, est_key, colour) in enumerate([
-            ("Closeness", "true_harmonic", "est_harmonic", COLOUR_CLOSENESS),
-            ("Betweenness", "true_betweenness", "est_betweenness", COLOUR_BETWEENNESS),
-        ]):
+        for col_idx, (metric, true_key, est_key, colour) in enumerate(
+            [
+                ("Closeness", "true_harmonic", "est_harmonic", COLOUR_CLOSENESS),
+                ("Betweenness", "true_betweenness", "est_betweenness", COLOUR_BETWEENNESS),
+            ]
+        ):
             ax = axes[row_idx, col_idx]
             true_vals = data.get(true_key)
             est_vals = data.get(est_key)
@@ -705,7 +791,9 @@ def generate_fig11_decile_transition(gla_data: dict, madrid_data: dict | None, d
 
             panel_label = chr(ord("A") + row_idx * 2 + col_idx)
             im, top_ret = _decile_panel(
-                ax, true_vals, est_vals,
+                ax,
+                true_vals,
+                est_vals,
                 f"{panel_label}) {net_label} {metric} ({dist_km}km)",
                 colour,
             )
@@ -732,7 +820,9 @@ def generate_fig11_decile_transition(gla_data: dict, madrid_data: dict | None, d
 def main():
     parser = argparse.ArgumentParser(description="Generate spatial error figures")
     parser.add_argument(
-        "--distance", type=int, default=20000,
+        "--distance",
+        type=int,
+        default=20000,
         help="Analysis distance to use for spatial figures (default: 20000)",
     )
     args = parser.parse_args()

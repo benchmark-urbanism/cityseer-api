@@ -273,7 +273,9 @@ class CityseerCentralityAlgorithm(CityseerAlgorithmBase):
         do_simplest = closeness_simplest or betweenness_simplest
 
         if not do_shortest and not do_simplest:
-            raise QgsProcessingException("Enable at least one category (closeness or betweenness for shortest or simplest path).")
+            raise QgsProcessingException(
+                "Enable at least one category (closeness or betweenness for shortest or simplest path)."
+            )
 
         # Determine which combined traversals to run
         n_combined = sum([do_shortest, do_simplest])
@@ -426,7 +428,7 @@ class CityseerCentralityAlgorithm(CityseerAlgorithmBase):
                 feedback.pushInfo(f"Running {label} sampled {d}m: p={p:.1%}")
                 r = _run_with_feedback(
                     ns,
-                    lambda: metric_func(
+                    lambda _d=_d, _p=_p: metric_func(
                         distances=_d,
                         sample_probability=_p,
                         **extra_kwargs,
