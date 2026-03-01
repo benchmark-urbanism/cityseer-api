@@ -305,7 +305,7 @@ def generate_tab1_ew_comparison():
         d_str = f"{int(row['distance'] // 1000)}\\,km" if row['distance'] >= 1000 else f"{row['distance']}\\,m"
         latex += d_str
         for eps in EPSILON_TARGETS:
-            k = int(row[f"k_{eps}"])
+            k = math.ceil(row[f"k_{eps}"])
             p = row[f"p_{eps}"]
             if p >= 1.0:
                 latex += " & \\multicolumn{2}{c}{exact}"

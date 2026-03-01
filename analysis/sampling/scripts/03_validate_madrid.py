@@ -559,15 +559,15 @@ def generate_validation_table(df: pd.DataFrame, n_nodes: int | None):
         latex += f"{p_pct} & {rho_c} & {spd_c} & "
         latex += f"& {rho_b} & {spd_b} \\\\\n"
 
-    n_nodes_str = f"{n_nodes:,}" if n_nodes else r"\texttildelow 99,000"
-    latex += rf"""\bottomrule
-\end{{tabular}}
+    latex += r"""\bottomrule
+\end{tabular}
 
-\vspace{{0.5em}}
+\vspace{0.5em}
 \footnotesize
-Network: Greater Madrid, {n_nodes_str} nodes. Deterministic distance-based schedule:
+Network: Greater Madrid, \madridNnodes{} nodes. Deterministic distance-based schedule:
 same $p$ for both metrics at each distance.
-\end{{table}}
+Subscripts: $c$ = closeness, $b$ = betweenness.
+\end{table}
 """
 
     output_path = TABLES_DIR / "tab4_madrid_validation.tex"

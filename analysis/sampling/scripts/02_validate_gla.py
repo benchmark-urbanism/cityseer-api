@@ -562,7 +562,7 @@ def generate_validation_table(summary_df: pd.DataFrame):
 
 \vspace{0.5em}
 \footnotesize
-Network: Greater London Area. Deterministic distance-based schedule:
+Network: Greater London Authority, \glaNnodes{} nodes. Deterministic distance-based schedule:
 same $p$ for both metrics at each distance.
 Subscripts: $c$ = closeness, $b$ = betweenness.
 \end{table}

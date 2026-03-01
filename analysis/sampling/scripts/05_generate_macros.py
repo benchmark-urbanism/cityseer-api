@@ -102,7 +102,7 @@ def generate_macros() -> str:
     for dist in [1000, 2000, 5000, 10000, 20000]:
         p = compute_distance_p(dist, epsilon=PAPER_EPSILON_CLOSENESS, delta=HOEFFDING_DELTA)
         r = math.pi * dist**2 / GRID_SPACING**2
-        k = math.log(2 * r / HOEFFDING_DELTA) / (2 * PAPER_EPSILON_CLOSENESS**2)
+        k = math.ceil(math.log(2 * r / HOEFFDING_DELTA) / (2 * PAPER_EPSILON_CLOSENESS**2))
         speedup = 1.0 / p if p < 1.0 else 1.0
         distance_scenarios[dist] = {"p": p, "k": k, "canonical_reach": r, "speedup": speedup}
 
@@ -349,7 +349,7 @@ def generate_tab_distance_lookup() -> str:
         + f"{GRID_SPACING:.0f}"
         + r"\,\text{m}$). "
         r"Both closeness and betweenness use the same schedule. "
-        r"Sampling is exact ($p = 100\%$) for distances up to 4\,km. "
+        r"Sampling is exact ($p = 100\%$) for distances up to 2\,km. "
         r"Speedup shown is theoretical ($1/p$); measured wall-clock speedup is lower "
         r"at near-unity $p$ due to sampling overhead and emerges at 10\,km and beyond.}"
     )
@@ -359,10 +359,10 @@ def generate_tab_distance_lookup() -> str:
     lines.append(r"\textbf{Distance} & \textbf{Canonical reach} & \textbf{$k$} & \textbf{$p$ (\%)} & \textbf{Speedup ($1/p$)} \\")
     lines.append(r"\midrule")
     for d, r, p, speedup in rows:
-        k = math.log(2 * r / delta) / (2 * eps**2) if r > 0 else 0
+        k = math.ceil(math.log(2 * r / delta) / (2 * eps**2)) if r > 0 else 0
         d_str = f"{d // 1000}\\,km"
         r_str = f"{r:,.0f}".replace(",", "{,}")
-        k_str = f"{k:,.0f}".replace(",", "{,}")
+        k_str = f"{k:,}".replace(",", "{,}")
         p_str = f"{p * 100:.0f}" if p >= 1.0 else f"{p * 100:.1f}"
         spd_str = "1$\\times$" if p >= 1.0 else f"{speedup:.1f}$\\times$"
         lines.append(f"{d_str} & {r_str} & {k_str} & {p_str} & {spd_str} \\\\")
