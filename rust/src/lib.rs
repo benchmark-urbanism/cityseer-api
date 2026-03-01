@@ -40,7 +40,9 @@ fn rustalgos(py_module: &Bound<'_, PyModule>) -> PyResult<()> {
     // Configure rayon thread pool (N-1 cores, or all if <= 2)
     configure_thread_pool();
     // Initialize pyo3-log to bridge Rust logs to Python logging
-    pyo3_log::init();
+    // Use try_init() so it silently succeeds if a logger is already registered
+    // (e.g. when loaded inside QGIS or another host that sets up logging first)
+    let _ = pyo3_log::try_init();
 
     // Register classes and functions
     py_module.add_function(wrap_pyfunction!(common::check_numerical_data, py_module)?)?;
