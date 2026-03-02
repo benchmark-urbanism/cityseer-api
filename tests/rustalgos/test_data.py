@@ -326,7 +326,7 @@ def test_assign_to_network(primal_graph):
     data_map.assign_data_to_network(network_structure, max_assignment_dist=200, n_nearest_candidates=6)
     # from cityseer.tools import plot
     # plot.plot_network_structure(network_structure, data_map)
-    # plot.plot_assignment(network_structure, G, data_map)
+    # plot.plot_assignment(network_structure, primal_graph, data_map)
     for node_idx, data_assignments in data_map.node_data_map.items():
         matches = []
         for data_idx, data_dist in data_assignments:

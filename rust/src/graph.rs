@@ -1347,6 +1347,17 @@ impl NetworkStructure {
 
         let check_node_validity_logic =
             |node_idx: usize, node_point: Point<f64>| -> Option<(usize, f64)> {
+                // Use Euclidean distance from node to geometry directly.
+                // This correctly returns 0 for nodes inside a polygon,
+                // avoiding the closest_point boundary-snap issue where interior
+                // nodes would get inflated distances to the polygon boundary.
+                let node_dist = Euclidean.distance(&node_point, data_geom);
+                if node_dist < 1e-6 {
+                    // Node is inside or on the geometry boundary — distance is 0.
+                    return Some((node_idx, 0.0));
+                }
+                // For exterior nodes, find the closest point on the geometry
+                // to construct the assignment line for barrier/street checks.
                 let closest_point_on_data = match data_geom.closest_point(&node_point) {
                     geo::Closest::SinglePoint(p) => p,
                     geo::Closest::Intersection(p) => p,
@@ -1359,16 +1370,11 @@ impl NetworkStructure {
                         data_cent
                     }
                 };
-                let node_dist = Euclidean.distance(&closest_point_on_data, &node_point);
-                // Skip barrier/street intersection checks for near-zero-length assignment lines;
-                // degenerate lines can trigger assertion panics in geo's line_intersection.
-                if node_dist > 1e-6 {
-                    let assignment_line = Line::new(closest_point_on_data.0, node_point.0);
-                    if self.line_intersects_barriers(&assignment_line)
-                        || self.line_intersects_streets(&assignment_line)
-                    {
-                        return None;
-                    }
+                let assignment_line = Line::new(closest_point_on_data.0, node_point.0);
+                if self.line_intersects_barriers(&assignment_line)
+                    || self.line_intersects_streets(&assignment_line)
+                {
+                    return None;
                 }
                 Some((node_idx, node_dist))
             };
