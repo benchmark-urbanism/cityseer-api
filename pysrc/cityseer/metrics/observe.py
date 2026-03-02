@@ -124,7 +124,7 @@ def _continuity_report_to_nx(
             nx_multigraph[hb_start_nd_key][hb_end_nd_key][hb_edge_idx][length_edge_key] = continuity_entry.length  # type: ignore
     # write zeros to empties
     edge_data: graphs.EdgeData
-    for start_nd_key, end_nd_key, edge_idx, edge_data in nx_multigraph.edges(keys=True, data=True):  # type: ignore
+    for start_nd_key, end_nd_key, edge_idx, edge_data in nx_multigraph.edges(keys=True, data=True):
         if count_edge_key not in edge_data or length_edge_key not in edge_data:
             nx_multigraph[start_nd_key][end_nd_key][edge_idx][label_edge_key] = None
             nx_multigraph[start_nd_key][end_nd_key][edge_idx][count_edge_key] = 0
@@ -172,15 +172,14 @@ def _recurse_edges(
     ]
     # recurse into neighbours
     for nested_a_nd_key, nested_b_nd_key in a_nb_pairs + b_nb_pairs:
-        nested_edge_idx: int
-        for nested_edge_idx in _nx_multigraph[nested_a_nd_key][nested_b_nd_key]:  # type: ignore
+        for nested_edge_idx in _nx_multigraph[nested_a_nd_key][nested_b_nd_key]:
             _recurse_edges(
                 _nx_multigraph,
                 _method,
                 _match_target,
                 nested_a_nd_key,
                 nested_b_nd_key,
-                nested_edge_idx,
+                int(nested_edge_idx),
                 _visited_edges,
                 _continuity_report,
                 _report_key,
@@ -221,7 +220,7 @@ def street_continuity(
     """
     # NOTE: experimented with string cleaning and removal of generic descriptors but this worked contrary to intentions.
 
-    nx_multi_copy: nx.MultiGraph = nx_multigraph.copy()  # type: ignore
+    nx_multi_copy: nx.MultiGraph = nx_multigraph.copy()
     # check intended method keys
     available_targets = ["names", "routes", "highways"]
     if method not in available_targets:
@@ -235,8 +234,8 @@ def street_continuity(
     b_nd_key: graphs.NodeKey
     edge_idx: int
     edge_data: dict[str, Any]
-    for a_nd_key, b_nd_key, edge_idx, edge_data in tqdm(  # type: ignore
-        nx_multi_copy.edges(keys=True, data=True),  # type: ignore
+    for a_nd_key, b_nd_key, edge_idx, edge_data in tqdm(
+        nx_multi_copy.edges(keys=True, data=True),
         disable=config.QUIET_MODE,
     ):
         # raise if the key doesn't exist

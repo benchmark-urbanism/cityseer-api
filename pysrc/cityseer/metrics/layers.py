@@ -69,23 +69,23 @@ def build_data_map(
     data_map = rustalgos.data.DataMap()
     # prepare the data_map
     logger.info("Assigning data to network.")
-    for data_key, data_row in data_gdf.iterrows():  # type: ignore
-        data_id = None if data_id_col is None else data_row[data_id_col]  # type: ignore
+    for data_key, data_row in data_gdf.iterrows():
+        data_id = None if data_id_col is None else data_row[data_id_col]
         data_map.insert(
             data_key,
-            data_row[data_gdf.active_geometry_name].wkt,  # type: ignore
-            data_id,  # type: ignore
+            data_row[data_gdf.active_geometry_name].wkt,
+            data_id,
         )
     # barrier geoms
     barriers_wkt: list[str] | None = None
     if barriers_gdf is not None:
         barriers_wkt = []
-        for _, row in barriers_gdf.iterrows():  # type: ignore
-            barriers_wkt.append(row.geometry.wkt)  # type: ignore
+        for _, row in barriers_gdf.iterrows():
+            barriers_wkt.append(row.geometry.wkt)
     if barriers_wkt is not None:
-        network_structure.set_barriers(barriers_wkt)  # type: ignore
+        network_structure.set_barriers(barriers_wkt)
     data_map.assign_data_to_network(network_structure, max_netw_assign_dist, n_nearest_candidates)
-    network_structure.unset_barriers()  # type: ignore
+    network_structure.unset_barriers()
 
     return data_map
 
@@ -107,7 +107,6 @@ def compute_accessibilities(
     spatial_tolerance: int = 0,
     min_threshold_wt: float = MIN_THRESH_WT,
     speed_m_s: float = SPEED_M_S,
-    jitter_scale: float = 0.0,
 ) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
     r"""
     Compute land-use accessibilities for the specified land-use classification keys over the street network.
@@ -178,13 +177,6 @@ def compute_accessibilities(
     speed_m_s: float
         The default `speed_m_s` parameter can be configured to generate custom mappings between walking times and
         distance thresholds $d_{max}$.
-    jitter_scale: float
-        The scale of random jitter to add to shortest path calculations, useful for situations with highly
-        rectilinear grids or for smoothing metrics on messy network representations. A random sample is drawn from a
-        range of zero to one and is then multiplied by the specified `jitter_scale`. This random value is added to the
-        shortest path calculations to provide random variation to the paths traced through the network. When working
-        with shortest paths in metres, the random value represents distance in metres. When using a simplest path
-        heuristic, the jitter will represent angular change in degrees.
 
     Returns
     -------
@@ -239,12 +231,12 @@ def compute_accessibilities(
     # extract landuses
     if landuse_column_label not in data_gdf.columns:
         raise ValueError("The specified landuse column name can't be found in the GeoDataFrame.")
-    landuses_map = dict(data_gdf[landuse_column_label])  # type: ignore
+    landuses_map = dict(data_gdf[landuse_column_label])
     # call the underlying function
     partial_func = partial(
         data_map.accessibility,
         network_structure=network_structure,
-        landuses_map=landuses_map,  # type: ignore
+        landuses_map=landuses_map,
         accessibility_keys=accessibility_keys,
         distances=distances,
         betas=betas,
@@ -253,7 +245,6 @@ def compute_accessibilities(
         spatial_tolerance=spatial_tolerance,
         min_threshold_wt=min_threshold_wt,
         speed_m_s=speed_m_s,
-        jitter_scale=jitter_scale,
     )
     # wraps progress bar
     acc_result = config.wrap_progress(
@@ -268,7 +259,7 @@ def compute_accessibilities(
         speed_m_s=speed_m_s,
     )
     # intersect computed keys with those available in the gdf index (stations vs. streets)
-    gdf_idx = nodes_gdf.index.intersection(acc_result.node_keys_py)  # type: ignore
+    gdf_idx = nodes_gdf.index.intersection(acc_result.node_keys_py)
     # create a dictionary to hold the data
     temp_data = {}
     # unpack accessibility data
@@ -283,7 +274,7 @@ def compute_accessibilities(
                 temp_data[ac_dist_data_key] = acc_result.result[acc_key].distance[dist_key]  # type: ignore
 
     temp_df = pd.DataFrame(temp_data, index=acc_result.node_keys_py)
-    nodes_gdf.loc[gdf_idx, temp_df.columns] = temp_df.loc[gdf_idx, temp_df.columns]  # type: ignore
+    nodes_gdf.loc[gdf_idx, temp_df.columns] = temp_df.loc[gdf_idx, temp_df.columns]
 
     return nodes_gdf, data_gdf
 
@@ -308,7 +299,6 @@ def compute_mixed_uses(
     spatial_tolerance: int = 0,
     min_threshold_wt: float = MIN_THRESH_WT,
     speed_m_s: float = SPEED_M_S,
-    jitter_scale: float = 0.0,
 ) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
     r"""
     Compute landuse metrics.
@@ -395,13 +385,6 @@ def compute_mixed_uses(
     speed_m_s: float
         The default `speed_m_s` parameter can be configured to generate custom mappings between walking times and
         distance thresholds $d_{max}$.
-    jitter_scale: float
-        The scale of random jitter to add to shortest path calculations, useful for situations with highly
-        rectilinear grids or for smoothing metrics on messy network representations. A random sample is drawn from a
-        range of zero to one and is then multiplied by the specified `jitter_scale`. This random value is added to the
-        shortest path calculations to provide random variation to the paths traced through the network. When working
-        with shortest paths in metres, the random value represents distance in metres. When using a simplest path
-        heuristic, the jitter will represent angular change in degrees.
 
     Returns
     -------
@@ -485,11 +468,11 @@ def compute_mixed_uses(
     # extract landuses
     if landuse_column_label not in data_gdf.columns:
         raise ValueError("The specified landuse column name can't be found in the GeoDataFrame.")
-    landuses_map = dict(data_gdf[landuse_column_label])  # type: ignore
+    landuses_map = dict(data_gdf[landuse_column_label])
     partial_func = partial(
         data_map.mixed_uses,
         network_structure=network_structure,
-        landuses_map=landuses_map,  # type: ignore
+        landuses_map=landuses_map,
         distances=distances,
         betas=betas,
         minutes=minutes,
@@ -501,7 +484,6 @@ def compute_mixed_uses(
         spatial_tolerance=spatial_tolerance,
         min_threshold_wt=min_threshold_wt,
         speed_m_s=speed_m_s,
-        jitter_scale=jitter_scale,
     )
     # wraps progress bar
     result = config.wrap_progress(
@@ -516,7 +498,7 @@ def compute_mixed_uses(
         speed_m_s=speed_m_s,
     )
     # intersect computed keys with those available in the gdf index (stations vs. streets)
-    gdf_idx = nodes_gdf.index.intersection(result.node_keys_py)  # type: ignore
+    gdf_idx = nodes_gdf.index.intersection(result.node_keys_py)
     # create a dictionary to hold the data
     temp_data = {}
     # unpack mixed-uses data
@@ -536,7 +518,7 @@ def compute_mixed_uses(
             temp_data[gini_data_key] = result.gini[dist_key]  # type: ignore
 
     temp_df = pd.DataFrame(temp_data, index=result.node_keys_py)
-    nodes_gdf.loc[gdf_idx, temp_df.columns] = temp_df.loc[gdf_idx, temp_df.columns]  # type: ignore
+    nodes_gdf.loc[gdf_idx, temp_df.columns] = temp_df.loc[gdf_idx, temp_df.columns]
 
     return nodes_gdf, data_gdf
 
@@ -557,7 +539,6 @@ def compute_stats(
     n_nearest_candidates: int = 50,
     min_threshold_wt: float = MIN_THRESH_WT,
     speed_m_s: float = SPEED_M_S,
-    jitter_scale: float = 0.0,
 ) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
     r"""
     Compute numerical statistics over the street network.
@@ -625,13 +606,6 @@ def compute_stats(
     speed_m_s: float
         The default `speed_m_s` parameter can be configured to generate custom mappings between walking times and
         distance thresholds $d_{max}$.
-    jitter_scale: float
-        The scale of random jitter to add to shortest path calculations, useful for situations with highly
-        rectilinear grids or for smoothing metrics on messy network representations. A random sample is drawn from a
-        range of zero to one and is then multiplied by the specified `jitter_scale`. This random value is added to the
-        shortest path calculations to provide random variation to the paths traced through the network. When working
-        with shortest paths in metres, the random value represents distance in metres. When using a simplest path
-        heuristic, the jitter will represent angular change in degrees.
 
     Returns
     -------
@@ -697,7 +671,7 @@ def compute_stats(
     for stats_column_label in stats_column_labels:
         if stats_column_label not in data_gdf.columns:
             raise ValueError("The specified numerical stats column name can't be found in the GeoDataFrame.")
-        stats_maps.append(dict(data_gdf[stats_column_label]))  # type: ignore
+        stats_maps.append(dict(data_gdf[stats_column_label]))
     # stats
     partial_func = partial(
         data_map.stats,
@@ -710,7 +684,6 @@ def compute_stats(
         spatial_tolerance=spatial_tolerance,
         min_threshold_wt=min_threshold_wt,
         speed_m_s=speed_m_s,
-        jitter_scale=jitter_scale,
     )
     # wraps progress bar
     stats_result = config.wrap_progress(
@@ -725,7 +698,7 @@ def compute_stats(
         speed_m_s=speed_m_s,
     )
     # intersect computed keys with those available in the gdf index (stations vs. streets)
-    gdf_idx = nodes_gdf.index.intersection(stats_result.node_keys_py)  # type: ignore
+    gdf_idx = nodes_gdf.index.intersection(stats_result.node_keys_py)
     # create a dictionary to hold the data
     temp_data = {}
     # unpack the numerical arrays
@@ -761,6 +734,6 @@ def compute_stats(
             temp_data[k] = stats_result.result[idx].min[dist_key]  # type: ignore
 
     temp_df = pd.DataFrame(temp_data, index=stats_result.node_keys_py)
-    nodes_gdf.loc[gdf_idx, temp_df.columns] = temp_df.loc[gdf_idx, temp_df.columns]  # type: ignore
+    nodes_gdf.loc[gdf_idx, temp_df.columns] = temp_df.loc[gdf_idx, temp_df.columns]
 
     return nodes_gdf, data_gdf

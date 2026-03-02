@@ -8,7 +8,7 @@ The use of `python` facilitates interaction with popular computational tools for
 
 The github repository is available at [github.com/benchmark-urbanism/cityseer-api](https://github.com/benchmark-urbanism/cityseer-api). Please cite the [associated paper](https://journals.sagepub.com/doi/full/10.1177/23998083221133827) when using this package.
 
-Code tests are run against Python versions `3.11` - `3.13`.
+Code tests are run against Python versions `3.10` - `3.13`.
 
 ## Getting Started
 
@@ -29,6 +29,10 @@ A growing collection of recipes and examples is available via the [`Cityseer Exa
 The broader emphasis on localised methods and how `cityseer` addresses these is broached in the [associated paper](https://journals.sagepub.com/doi/full/10.1177/23998083221133827). `cityseer` includes a variety of convenience methods for the general preparation of networks and their conversion into (and out of) the lower-level data structures used by the underlying algorithms. These graph utility methods are designed to work with `NetworkX` to facilitate ease of use. A complement of code tests has been developed to maintain the codebase's integrity through general package maintenance and upgrade cycles. Shortest-path algorithms, harmonic closeness, and betweenness algorithms are tested against `NetworkX`. Mock data and test plots have been used to visually confirm the intended behaviour for divergent simplest and shortest-path heuristics and for testing data assignment to network nodes given various scenarios.
 
 The best way to get started is to see the [`Cityseer Examples`](https://benchmark-urbanism.github.io/cityseer-examples/) site, which contains a number of recipes for a variety of use-cases.
+
+## QGIS Plugin
+
+A [QGIS plugin](/plugin) is available for computing localised network centrality metrics directly within QGIS without writing code. See the [plugin page](/plugin) for installation and usage instructions.
 
 ## Support
 

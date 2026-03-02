@@ -67,6 +67,58 @@ layout: ../../layouts/PageLayout.astro
 
 <div class="function">
 
+## stats
+
+
+<div class="content">
+<span class="name">stats</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">self</span>
+  </div>
+  <div class="param">
+    <span class="pn">/</span>
+  </div>
+  <div class="param">
+    <span class="pn">network_structure</span>
+  </div>
+  <div class="param">
+    <span class="pn">numerical_maps</span>
+  </div>
+  <div class="param">
+    <span class="pn">distances=None</span>
+  </div>
+  <div class="param">
+    <span class="pn">betas=None</span>
+  </div>
+  <div class="param">
+    <span class="pn">minutes=None</span>
+  </div>
+  <div class="param">
+    <span class="pn">angular=None</span>
+  </div>
+  <div class="param">
+    <span class="pn">spatial_tolerance=None</span>
+  </div>
+  <div class="param">
+    <span class="pn">min_threshold_wt=None</span>
+  </div>
+  <div class="param">
+    <span class="pn">speed_m_s=None</span>
+  </div>
+  <div class="param">
+    <span class="pn">pbar_disabled=None</span>
+  </div>
+  <span class="pt">)</span>
+</div>
+</div>
+
+</div>
+
+ 
+
+<div class="function">
+
 ## progress_init
 
 
@@ -292,9 +344,6 @@ layout: ../../layouts/PageLayout.astro
     <span class="pn">speed_m_s</span>
   </div>
   <div class="param">
-    <span class="pn">jitter_scale=None</span>
-  </div>
-  <div class="param">
     <span class="pn">angular=None</span>
   </div>
   <span class="pt">)</span>
@@ -348,9 +397,6 @@ layout: ../../layouts/PageLayout.astro
   </div>
   <div class="param">
     <span class="pn">speed_m_s=None</span>
-  </div>
-  <div class="param">
-    <span class="pn">jitter_scale=None</span>
   </div>
   <div class="param">
     <span class="pn">pbar_disabled=None</span>
@@ -415,64 +461,6 @@ layout: ../../layouts/PageLayout.astro
   </div>
   <div class="param">
     <span class="pn">speed_m_s=None</span>
-  </div>
-  <div class="param">
-    <span class="pn">jitter_scale=None</span>
-  </div>
-  <div class="param">
-    <span class="pn">pbar_disabled=None</span>
-  </div>
-  <span class="pt">)</span>
-</div>
-</div>
-
-</div>
-
- 
-
-<div class="function">
-
-## stats
-
-
-<div class="content">
-<span class="name">stats</span><div class="signature multiline">
-  <span class="pt">(</span>
-  <div class="param">
-    <span class="pn">self</span>
-  </div>
-  <div class="param">
-    <span class="pn">/</span>
-  </div>
-  <div class="param">
-    <span class="pn">network_structure</span>
-  </div>
-  <div class="param">
-    <span class="pn">numerical_maps</span>
-  </div>
-  <div class="param">
-    <span class="pn">distances=None</span>
-  </div>
-  <div class="param">
-    <span class="pn">betas=None</span>
-  </div>
-  <div class="param">
-    <span class="pn">minutes=None</span>
-  </div>
-  <div class="param">
-    <span class="pn">angular=None</span>
-  </div>
-  <div class="param">
-    <span class="pn">spatial_tolerance=None</span>
-  </div>
-  <div class="param">
-    <span class="pn">min_threshold_wt=None</span>
-  </div>
-  <div class="param">
-    <span class="pn">speed_m_s=None</span>
-  </div>
-  <div class="param">
-    <span class="pn">jitter_scale=None</span>
   </div>
   <div class="param">
     <span class="pn">pbar_disabled=None</span>

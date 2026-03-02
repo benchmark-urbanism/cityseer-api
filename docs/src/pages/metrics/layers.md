@@ -27,7 +27,7 @@ layout: ../../layouts/PageLayout.astro
   <div class="param">
     <span class="pn">max_netw_assign_dist</span>
     <span class="pc">:</span>
-    <span class="pa"> int = 200</span>
+    <span class="pa"> int = 100</span>
   </div>
   <div class="param">
     <span class="pn">data_id_col</span>
@@ -42,7 +42,7 @@ layout: ../../layouts/PageLayout.astro
   <div class="param">
     <span class="pn">n_nearest_candidates</span>
     <span class="pc">:</span>
-    <span class="pa"> int = 20</span>
+    <span class="pa"> int = 50</span>
   </div>
   <span class="pt">)-&gt;[</span>
   <span class="pr">DataMap</span>
@@ -164,7 +164,7 @@ layout: ../../layouts/PageLayout.astro
   <div class="param">
     <span class="pn">max_netw_assign_dist</span>
     <span class="pc">:</span>
-    <span class="pa"> int = 200</span>
+    <span class="pa"> int = 100</span>
   </div>
   <div class="param">
     <span class="pn">distances</span>
@@ -199,7 +199,7 @@ layout: ../../layouts/PageLayout.astro
   <div class="param">
     <span class="pn">n_nearest_candidates</span>
     <span class="pc">:</span>
-    <span class="pa"> int = 20</span>
+    <span class="pa"> int = 50</span>
   </div>
   <div class="param">
     <span class="pn">spatial_tolerance</span>
@@ -215,11 +215,6 @@ layout: ../../layouts/PageLayout.astro
     <span class="pn">speed_m_s</span>
     <span class="pc">:</span>
     <span class="pa"> float = 1.33333</span>
-  </div>
-  <div class="param">
-    <span class="pn">jitter_scale</span>
-    <span class="pc">:</span>
-    <span class="pa"> float = 0.0</span>
   </div>
   <span class="pt">)-&gt;[</span>
   <span class="pr">GeoDataFrame</span>
@@ -391,16 +386,6 @@ layout: ../../layouts/PageLayout.astro
  The default `speed_m_s` parameter can be configured to generate custom mappings between walking times and distance thresholds $d_{max}$.</div>
 </div>
 
-<div class="param-set">
-  <div class="def">
-    <div class="name">jitter_scale</div>
-    <div class="type">float</div>
-  </div>
-  <div class="desc">
-
- The scale of random jitter to add to shortest path calculations, useful for situations with highly rectilinear grids or for smoothing metrics on messy network representations. A random sample is drawn from a range of zero to one and is then multiplied by the specified `jitter_scale`. This random value is added to the shortest path calculations to provide random variation to the paths traced through the network. When working with shortest paths in metres, the random value represents distance in metres. When using a simplest path heuristic, the jitter will represent angular change in degrees.</div>
-</div>
-
 ### Returns
 <div class="param-set">
   <div class="def">
@@ -487,7 +472,7 @@ print(nodes_gdf["cc_c_nearest_max_800"])
   <div class="param">
     <span class="pn">max_netw_assign_dist</span>
     <span class="pc">:</span>
-    <span class="pa"> int = 200</span>
+    <span class="pa"> int = 100</span>
   </div>
   <div class="param">
     <span class="pn">compute_hill</span>
@@ -542,7 +527,7 @@ print(nodes_gdf["cc_c_nearest_max_800"])
   <div class="param">
     <span class="pn">n_nearest_candidates</span>
     <span class="pc">:</span>
-    <span class="pa"> int = 20</span>
+    <span class="pa"> int = 50</span>
   </div>
   <div class="param">
     <span class="pn">spatial_tolerance</span>
@@ -558,11 +543,6 @@ print(nodes_gdf["cc_c_nearest_max_800"])
     <span class="pn">speed_m_s</span>
     <span class="pc">:</span>
     <span class="pa"> float = 1.33333</span>
-  </div>
-  <div class="param">
-    <span class="pn">jitter_scale</span>
-    <span class="pc">:</span>
-    <span class="pa"> float = 0.0</span>
   </div>
   <span class="pt">)-&gt;[</span>
   <span class="pr">GeoDataFrame</span>
@@ -768,16 +748,6 @@ print(nodes_gdf["cc_c_nearest_max_800"])
  The default `speed_m_s` parameter can be configured to generate custom mappings between walking times and distance thresholds $d_{max}$.</div>
 </div>
 
-<div class="param-set">
-  <div class="def">
-    <div class="name">jitter_scale</div>
-    <div class="type">float</div>
-  </div>
-  <div class="desc">
-
- The scale of random jitter to add to shortest path calculations, useful for situations with highly rectilinear grids or for smoothing metrics on messy network representations. A random sample is drawn from a range of zero to one and is then multiplied by the specified `jitter_scale`. This random value is added to the shortest path calculations to provide random variation to the paths traced through the network. When working with shortest paths in metres, the random value represents distance in metres. When using a simplest path heuristic, the jitter will represent angular change in degrees.</div>
-</div>
-
 ### Returns
 <div class="param-set">
   <div class="def">
@@ -878,7 +848,7 @@ been applied.
   <div class="param">
     <span class="pn">max_netw_assign_dist</span>
     <span class="pc">:</span>
-    <span class="pa"> int = 200</span>
+    <span class="pa"> int = 100</span>
   </div>
   <div class="param">
     <span class="pn">distances</span>
@@ -918,7 +888,7 @@ been applied.
   <div class="param">
     <span class="pn">n_nearest_candidates</span>
     <span class="pc">:</span>
-    <span class="pa"> int = 20</span>
+    <span class="pa"> int = 50</span>
   </div>
   <div class="param">
     <span class="pn">min_threshold_wt</span>
@@ -929,11 +899,6 @@ been applied.
     <span class="pn">speed_m_s</span>
     <span class="pc">:</span>
     <span class="pa"> float = 1.33333</span>
-  </div>
-  <div class="param">
-    <span class="pn">jitter_scale</span>
-    <span class="pc">:</span>
-    <span class="pa"> float = 0.0</span>
   </div>
   <span class="pt">)-&gt;[</span>
   <span class="pr">GeoDataFrame</span>
@@ -1095,16 +1060,6 @@ been applied.
  The default `speed_m_s` parameter can be configured to generate custom mappings between walking times and distance thresholds $d_{max}$.</div>
 </div>
 
-<div class="param-set">
-  <div class="def">
-    <div class="name">jitter_scale</div>
-    <div class="type">float</div>
-  </div>
-  <div class="desc">
-
- The scale of random jitter to add to shortest path calculations, useful for situations with highly rectilinear grids or for smoothing metrics on messy network representations. A random sample is drawn from a range of zero to one and is then multiplied by the specified `jitter_scale`. This random value is added to the shortest path calculations to provide random variation to the paths traced through the network. When working with shortest paths in metres, the random value represents distance in metres. When using a simplest path heuristic, the jitter will represent angular change in degrees.</div>
-</div>
-
 ### Returns
 <div class="param-set">
   <div class="def">
@@ -1162,7 +1117,10 @@ computed distances:
 - `max` and `min`
 - `sum` and `sum_wt`
 - `mean` and `mean_wt`
+- `count` and `count_wt`
+- `median` and `median_wt`
 - `variance` and `variance_wt`
+- `mad` and `mad_wt` (deviation from the median)
 :::
 
 </div>

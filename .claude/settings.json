@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(export PATH=\"$HOME/.cargo/bin:$HOME/.local/bin:$PATH\")",
+      "Bash(/Users/gareth/.local/bin/uv run maturin develop:*)",
+      "Bash(export PATH=\"$HOME/.cargo/bin:/usr/bin:/bin:/usr/local/bin:$PATH\")",
+      "Bash(maturin develop:*)",
+      "Bash(source:*)",
+      "Bash(HOME=/Users/gareth)",
+      "Bash(export:*)",
+      "Bash(. \"$HOME/.cargo/env\")",
+      "Bash(echo:*)",
+      "Read(//Users/gareth/.cargo/**)",
+      "Bash(. /Users/gareth/.cargo/env)",
+      "Bash(grep:*)",
+      "Bash(.venv/bin/pytest tests/ --ignore=tests/metrics/test_visibility.py -x)",
+      "Bash(.venv/bin/pytest tests/rustalgos/test_centrality.py tests/metrics/test_networks.py -x -v)",
+      "Bash(.venv/bin/pytest tests/ --ignore=tests/metrics/test_visibility.py --ignore=tests/tools/test_io.py -x)",
+      "Bash(.venv/bin/pytest:*)"
+    ]
+  }
+}

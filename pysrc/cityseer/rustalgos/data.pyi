@@ -187,7 +187,6 @@ class DataMap:
         network_structure: NetworkStructure,
         max_walk_seconds: int,
         speed_m_s: float,
-        jitter_scale: float | None = None,
         angular: bool | None = None,
     ) -> dict[str, float]:
         """
@@ -206,8 +205,6 @@ class DataMap:
             Maximum travel time in seconds.
         speed_m_s: float
             Travel speed in meters per second.
-        jitter_scale: float | None
-            Optional scale for adding random jitter to path costs (for tie-breaking).
         angular: bool | None
             If True, use simplest path (angular distance); otherwise, use shortest path (metric distance).
 
@@ -229,7 +226,6 @@ class DataMap:
         spatial_tolerance: int | None = None,
         min_threshold_wt: float | None = None,
         speed_m_s: float | None = None,
-        jitter_scale: float | None = None,
         pbar_disabled: bool | None = None,
     ) -> AccessibilityResult:
         """
@@ -260,8 +256,6 @@ class DataMap:
             Minimum weight threshold for beta/distance conversion.
         speed_m_s: float | None
             Travel speed (m/s).
-        jitter_scale: float | None
-            Path cost jitter scale.
         pbar_disabled: bool | None
             Disable progress bar if True.
 
@@ -286,7 +280,6 @@ class DataMap:
         spatial_tolerance: int | None = None,
         min_threshold_wt: float | None = None,
         speed_m_s: float | None = None,
-        jitter_scale: float | None = None,
         pbar_disabled: bool | None = None,
     ) -> MixedUsesResult:
         """
@@ -323,8 +316,6 @@ class DataMap:
             Minimum weight threshold for beta/distance conversion.
         speed_m_s: float | None
             Travel speed (m/s).
-        jitter_scale: float | None
-            Path cost jitter scale.
         pbar_disabled: bool | None
             Disable progress bar if True.
 
@@ -345,7 +336,6 @@ class DataMap:
         spatial_tolerance: int | None = None,
         min_threshold_wt: float | None = None,
         speed_m_s: float | None = None,
-        jitter_scale: float | None = None,
         pbar_disabled: bool | None = None,
     ) -> StatsResult:
         """
@@ -374,8 +364,6 @@ class DataMap:
             Minimum weight threshold for beta/distance conversion.
         speed_m_s: float | None
             Travel speed (m/s).
-        jitter_scale: float | None
-            Path cost jitter scale.
         pbar_disabled: bool | None
             Disable progress bar if True.
 

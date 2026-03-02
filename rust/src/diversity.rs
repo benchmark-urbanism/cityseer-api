@@ -2,20 +2,8 @@ use crate::common;
 use pyo3::exceptions;
 use pyo3::prelude::*;
 
-#[pyfunction]
-pub fn hill_diversity(class_counts: Vec<u32>, q: f32) -> PyResult<f32> {
-    /*
-    Compute Hill diversity.
-
-    Hill numbers - express actual diversity as opposed e.g. to Gini-Simpson (probability) and Shannon (information)
-
-    exponent at 1 results in undefined because of 1/0 - but limit exists as exp(entropy)
-    Ssee "Entropy and diversity" by Lou Jost
-
-    Exponent at 0 = variety - i.e. count of unique species
-    Exponent at 1 = exp(Shannon)
-    Exponent at 2 = diversity form of simpson index
-    */
+/// Internal Hill diversity computation on slices (avoids Vec cloning).
+pub fn hill_diversity_core(class_counts: &[u32], q: f32) -> PyResult<f32> {
     if q < 0.0 {
         return Err(exceptions::PyValueError::new_err(
             "Invalid value for q: must be non-negative.",
@@ -81,26 +69,18 @@ pub fn hill_diversity(class_counts: Vec<u32>, q: f32) -> PyResult<f32> {
 }
 
 #[pyfunction]
-pub fn hill_diversity_branch_distance_wt(
-    class_counts: Vec<u32>,
-    class_distances: Vec<f32>,
+pub fn hill_diversity(class_counts: Vec<u32>, q: f32) -> PyResult<f32> {
+    hill_diversity_core(&class_counts, q)
+}
+
+/// Internal Hill diversity branch-distance-weighted computation on slices.
+pub fn hill_diversity_branch_distance_wt_core(
+    class_counts: &[u32],
+    class_distances: &[f32],
     q: f32,
     beta: f32,
     max_curve_wt: f32,
 ) -> PyResult<f32> {
-    /*
-    Compute Hill diversity weighted by branch distances.
-
-    Based on unified framework for species diversity in Chao, Chiu, Jost 2014.
-    See table on page 308 and surrounding text
-
-    In this case the presumption is that you supply branch weights in the form of negative exponential distance weights
-    i.e. pedestrian walking distance decay which weights more distant locations more weakly than nearer locations
-    This means that the walking distance to a landuse impacts how strongly it contributes to diversity
-
-    The weighting is based on the nearest of each landuse
-    This is debatably most relevant to q=0
-    */
     if class_counts.len() != class_distances.len() {
         return Err(exceptions::PyValueError::new_err(format!(
             "Mismatch between class counts length ({}) and distances length ({}).",
@@ -195,6 +175,17 @@ pub fn hill_diversity_branch_distance_wt(
 }
 
 #[pyfunction]
+pub fn hill_diversity_branch_distance_wt(
+    class_counts: Vec<u32>,
+    class_distances: Vec<f32>,
+    q: f32,
+    beta: f32,
+    max_curve_wt: f32,
+) -> PyResult<f32> {
+    hill_diversity_branch_distance_wt_core(&class_counts, &class_distances, q, beta, max_curve_wt)
+}
+
+#[pyfunction]
 pub fn hill_diversity_pairwise_distance_wt(
     class_counts: Vec<u32>,
     class_distances: Vec<f32>,
@@ -202,23 +193,6 @@ pub fn hill_diversity_pairwise_distance_wt(
     beta: f32,
     max_curve_wt: f32,
 ) -> PyResult<f32> {
-    /*
-    Compute Hill diversity weighted by pairwise distances.
-
-    This is the distances version - see below for disparity matrix version
-
-    Based on unified framework for species diversity in Chao, Chiu, Jost 2014
-    See table on page 308 and surrounding text
-
-    In this case the presumption is that you supply branch weights in the form of negative exponential distance weights
-    i.e. pedestrian walking distance decay which weights more distant locations more weakly than nearer locations
-    This means that the walking distance to a landuse impacts how strongly it contributes to diversity
-
-    Functional diversity takes the pairwise form, thus distances are based on pairwise i to j distances via the node k
-    Remember these are already distilled species counts - so it is OK to use closest distance to each species
-
-    This is different to the non-pairwise form of the phylogenetic version which simply takes singular distance k to i
-    */
     if class_counts.len() != class_distances.len() {
         return Err(exceptions::PyValueError::new_err(format!(
             "Mismatch between class counts length ({}) and distances length ({}).",
@@ -363,17 +337,8 @@ pub fn hill_diversity_pairwise_distance_wt(
     }
 }
 
-#[pyfunction]
-pub fn gini_simpson_diversity(class_counts: Vec<u32>) -> PyResult<f32> {
-    /*
-    Gini-Simpson diversity.
-    Gini transformed to 1 − λ
-    Probability that two individuals picked at random do not represent the same species (Tuomisto)
-    Ordinarily:
-    D = 1 - sum(p**2) where p = Xi/N
-    Bias corrected:
-    D = 1 - sum(Xi/N * (Xi-1/N-1))
-    */
+/// Internal Gini-Simpson diversity computation on slices.
+pub fn gini_simpson_diversity_core(class_counts: &[u32]) -> PyResult<f32> {
     let num = class_counts.iter().sum::<u32>();
     if num < 2 {
         return Ok(0.0);
@@ -392,14 +357,12 @@ pub fn gini_simpson_diversity(class_counts: Vec<u32>) -> PyResult<f32> {
 }
 
 #[pyfunction]
-pub fn shannon_diversity(class_counts: Vec<u32>) -> PyResult<f32> {
-    /*
-    Shannon diversity (information entropy).
-    Entropy
-    p = Xi/N
-    S = -sum(p * log(p))
-    Uncertainty of the species identity of an individual picked at random (Tuomisto)
-    */
+pub fn gini_simpson_diversity(class_counts: Vec<u32>) -> PyResult<f32> {
+    gini_simpson_diversity_core(&class_counts)
+}
+
+/// Internal Shannon diversity computation on slices.
+pub fn shannon_diversity_core(class_counts: &[u32]) -> PyResult<f32> {
     let num: u32 = class_counts.iter().sum();
     if num == 0 {
         return Ok(0.0);
@@ -422,30 +385,17 @@ pub fn shannon_diversity(class_counts: Vec<u32>) -> PyResult<f32> {
 }
 
 #[pyfunction]
+pub fn shannon_diversity(class_counts: Vec<u32>) -> PyResult<f32> {
+    shannon_diversity_core(&class_counts)
+}
+
+#[pyfunction]
 pub fn raos_quadratic_diversity(
     class_counts: Vec<u32>,
     wt_matrix: Vec<Vec<f32>>,
     alpha: f32,
     beta: f32,
 ) -> PyResult<f32> {
-    /*
-    Rao's quadratic diversity.
-
-    Bias corrected and based on disparity
-
-    Sum of weighted pairwise products
-
-    Note that Stirling's diversity is a rediscovery of Rao's quadratic diversity
-    Though adds alpha and beta exponents to tweak weights of disparity dij and pi * pj, respectively
-    This is a hybrid of the two, i.e. including alpha and beta options and adjusted for bias
-    Rd = sum(dij * Xi/N * (Xj/N-1))
-
-    Behaviour is controlled using alpha and beta exponents
-    0 and 0 reduces to variety (effectively a count of unique types)
-    0 and 1 reduces to balance (half-gini - pure balance, no weights)
-    1 and 0 reduces to disparity (effectively a weighted count)
-    1 and 1 is base stirling diversity / raos quadratic
-    */
     let n_classes = class_counts.len();
     if n_classes != wt_matrix.len() {
         return Err(exceptions::PyValueError::new_err(format!(

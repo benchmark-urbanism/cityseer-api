@@ -167,9 +167,6 @@ layout: ../../layouts/PageLayout.astro
   <div class="param">
     <span class="pn">speed_m_s</span>
   </div>
-  <div class="param">
-    <span class="pn">jitter_scale=None</span>
-  </div>
   <span class="pt">)</span>
 </div>
 </div>
@@ -200,9 +197,6 @@ layout: ../../layouts/PageLayout.astro
   </div>
   <div class="param">
     <span class="pn">speed_m_s</span>
-  </div>
-  <div class="param">
-    <span class="pn">jitter_scale=None</span>
   </div>
   <span class="pt">)</span>
 </div>
@@ -235,9 +229,6 @@ layout: ../../layouts/PageLayout.astro
   <div class="param">
     <span class="pn">speed_m_s</span>
   </div>
-  <div class="param">
-    <span class="pn">jitter_scale=None</span>
-  </div>
   <span class="pt">)</span>
 </div>
 </div>
@@ -248,11 +239,11 @@ layout: ../../layouts/PageLayout.astro
 
 <div class="function">
 
-## local_node_centrality_shortest
+## centrality_shortest
 
 
 <div class="content">
-<span class="name">local_node_centrality_shortest</span><div class="signature multiline">
+<span class="name">centrality_shortest</span><div class="signature multiline">
   <span class="pt">(</span>
   <div class="param">
     <span class="pn">self</span>
@@ -282,7 +273,19 @@ layout: ../../layouts/PageLayout.astro
     <span class="pn">speed_m_s=None</span>
   </div>
   <div class="param">
-    <span class="pn">jitter_scale=None</span>
+    <span class="pn">tolerance=None</span>
+  </div>
+  <div class="param">
+    <span class="pn">sample_probability=None</span>
+  </div>
+  <div class="param">
+    <span class="pn">sampling_weights=None</span>
+  </div>
+  <div class="param">
+    <span class="pn">random_seed=None</span>
+  </div>
+  <div class="param">
+    <span class="pn">source_indices=None</span>
   </div>
   <div class="param">
     <span class="pn">pbar_disabled=None</span>
@@ -291,17 +294,20 @@ layout: ../../layouts/PageLayout.astro
 </div>
 </div>
 
+
+ Compute node centrality using shortest paths with a single Dijkstra per source. When both `compute_closeness` and `compute_betweenness` are true, a single Brandes-style Dijkstra traversal per source produces the data for both closeness accumulation and betweenness backpropagation, halving computation time compared to calling `closeness_shortest` and `betweenness_shortest` separately.
+
 </div>
 
  
 
 <div class="function">
 
-## local_node_centrality_simplest
+## centrality_simplest
 
 
 <div class="content">
-<span class="name">local_node_centrality_simplest</span><div class="signature multiline">
+<span class="name">centrality_simplest</span><div class="signature multiline">
   <span class="pt">(</span>
   <div class="param">
     <span class="pn">self</span>
@@ -337,7 +343,19 @@ layout: ../../layouts/PageLayout.astro
     <span class="pn">farness_scaling_offset=None</span>
   </div>
   <div class="param">
-    <span class="pn">jitter_scale=None</span>
+    <span class="pn">tolerance=None</span>
+  </div>
+  <div class="param">
+    <span class="pn">sample_probability=None</span>
+  </div>
+  <div class="param">
+    <span class="pn">sampling_weights=None</span>
+  </div>
+  <div class="param">
+    <span class="pn">random_seed=None</span>
+  </div>
+  <div class="param">
+    <span class="pn">source_indices=None</span>
   </div>
   <div class="param">
     <span class="pn">pbar_disabled=None</span>
@@ -346,17 +364,20 @@ layout: ../../layouts/PageLayout.astro
 </div>
 </div>
 
+
+ Compute node centrality using simplest (angular) paths with a single Dijkstra per source. When both `compute_closeness` and `compute_betweenness` are true, a single Brandes-style Dijkstra traversal per source produces the data for both closeness accumulation and betweenness backpropagation.
+
 </div>
 
  
 
 <div class="function">
 
-## local_segment_centrality
+## segment_centrality
 
 
 <div class="content">
-<span class="name">local_segment_centrality</span><div class="signature multiline">
+<span class="name">segment_centrality</span><div class="signature multiline">
   <span class="pt">(</span>
   <div class="param">
     <span class="pn">self</span>
@@ -386,7 +407,50 @@ layout: ../../layouts/PageLayout.astro
     <span class="pn">speed_m_s=None</span>
   </div>
   <div class="param">
-    <span class="pn">jitter_scale=None</span>
+    <span class="pn">pbar_disabled=None</span>
+  </div>
+  <span class="pt">)</span>
+</div>
+</div>
+
+</div>
+
+ 
+
+<div class="function">
+
+## betweenness_od_shortest
+
+
+<div class="content">
+<span class="name">betweenness_od_shortest</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">self</span>
+  </div>
+  <div class="param">
+    <span class="pn">/</span>
+  </div>
+  <div class="param">
+    <span class="pn">od_matrix</span>
+  </div>
+  <div class="param">
+    <span class="pn">distances=None</span>
+  </div>
+  <div class="param">
+    <span class="pn">betas=None</span>
+  </div>
+  <div class="param">
+    <span class="pn">minutes=None</span>
+  </div>
+  <div class="param">
+    <span class="pn">min_threshold_wt=None</span>
+  </div>
+  <div class="param">
+    <span class="pn">speed_m_s=None</span>
+  </div>
+  <div class="param">
+    <span class="pn">tolerance=None</span>
   </div>
   <div class="param">
     <span class="pn">pbar_disabled=None</span>
@@ -394,6 +458,9 @@ layout: ../../layouts/PageLayout.astro
   <span class="pt">)</span>
 </div>
 </div>
+
+
+ Compute OD-weighted betweenness centrality using shortest paths. Uses Brandes multi-predecessor Dijkstra from each source that has outbound OD trips. For each OD destination, backpropagates credit through all equal shortest paths, weighted by the OD flow weight and split by sigma (path count).
 
 </div>
 
@@ -591,6 +658,37 @@ layout: ../../layouts/PageLayout.astro
 
 <div class="function">
 
+## set_node_live
+
+
+<div class="content">
+<span class="name">set_node_live</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">self</span>
+  </div>
+  <div class="param">
+    <span class="pn">/</span>
+  </div>
+  <div class="param">
+    <span class="pn">node_idx</span>
+  </div>
+  <div class="param">
+    <span class="pn">live</span>
+  </div>
+  <span class="pt">)</span>
+</div>
+</div>
+
+
+ Set the live status of a node (e.g. based on a boundary polygon).
+
+</div>
+
+ 
+
+<div class="function">
+
 ## node_count
 
 
@@ -609,6 +707,56 @@ layout: ../../layouts/PageLayout.astro
 
 
  Returns the total count of all nodes (street and transport).
+
+</div>
+
+ 
+
+<div class="function">
+
+## node_bound
+
+
+<div class="content">
+<span class="name">node_bound</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">self</span>
+  </div>
+  <div class="param">
+    <span class="pn">/</span>
+  </div>
+  <span class="pt">)</span>
+</div>
+</div>
+
+
+ Returns an upper bound on node indices (all valid indices are < node_bound). Use this instead of node_count() when allocating index-addressed vectors, because StableGraph may have gaps after node removal.
+
+</div>
+
+ 
+
+<div class="function">
+
+## edge_bound
+
+
+<div class="content">
+<span class="name">edge_bound</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">self</span>
+  </div>
+  <div class="param">
+    <span class="pn">/</span>
+  </div>
+  <span class="pt">)</span>
+</div>
+</div>
+
+
+ Returns an upper bound on edge indices (all valid indices are < edge_bound).
 
 </div>
 
@@ -755,6 +903,70 @@ layout: ../../layouts/PageLayout.astro
 
 
  Adds a street edge with geometry. Calculates length, bearings, and angle sum from WKT. Sets seconds to NaN.
+
+</div>
+
+ 
+
+<div class="function">
+
+## remove_street_node
+
+
+<div class="content">
+<span class="name">remove_street_node</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">self</span>
+  </div>
+  <div class="param">
+    <span class="pn">/</span>
+  </div>
+  <div class="param">
+    <span class="pn">node_idx</span>
+  </div>
+  <span class="pt">)</span>
+</div>
+</div>
+
+
+ Remove a street node and all its connected edges from the StableGraph. StableGraph::remove_node() cascades to all edges connected to the node, and preserves existing indices for other nodes (no swap-and-compact). This means node indices held externally (e.g. by the QGIS plugin's `node_idx` dict) remain valid after removal.
+
+ Returns an error if the node does not exist or is a transport node.
+
+</div>
+
+ 
+
+<div class="function">
+
+## remove_street_edge
+
+
+<div class="content">
+<span class="name">remove_street_edge</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">self</span>
+  </div>
+  <div class="param">
+    <span class="pn">/</span>
+  </div>
+  <div class="param">
+    <span class="pn">start_nd_idx</span>
+  </div>
+  <div class="param">
+    <span class="pn">end_nd_idx</span>
+  </div>
+  <div class="param">
+    <span class="pn">edge_idx</span>
+  </div>
+  <span class="pt">)</span>
+</div>
+</div>
+
+
+ Remove a specific directed edge identified by its start/end node indices and edge_idx. Other edge indices remain stable after removal (StableGraph guarantee).
 
 </div>
 
@@ -1021,22 +1233,22 @@ layout: ../../layouts/PageLayout.astro
 
  
 
-<span class="name">node_xys</span>
-
-
- 
-
-<span class="name">node_ys</span>
-
-
- 
-
 <span class="name">street_node_lives</span>
 
 
  
 
+<span class="name">node_xys</span>
+
+
+ 
+
 <span class="name">node_xs</span>
+
+
+ 
+
+<span class="name">node_ys</span>
 
 
  

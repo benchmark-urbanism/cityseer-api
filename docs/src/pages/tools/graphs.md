@@ -577,6 +577,11 @@ side-effects as a function of varied node intensities when computing network cen
     <span class="pc">:</span>
     <span class="pa"> int | None = None</span>
   </div>
+  <div class="param">
+    <span class="pn">tag_cache</span>
+    <span class="pc">:</span>
+    <span class="pa"> dict[tuple[str, str], set[str | int]] | None = None</span>
+  </div>
   <span class="pt">)-&gt;[</span>
   <span class="pr">MultiGraph</span>
   <span class="pt">]</span>
@@ -752,6 +757,11 @@ side-effects as a function of varied node intensities when computing network cen
     <span class="pc">:</span>
     <span class="pa"> bool = False</span>
   </div>
+  <div class="param">
+    <span class="pn">tag_cache</span>
+    <span class="pc">:</span>
+    <span class="pa"> dict[tuple[str, str], set[str | int]] | None = None</span>
+  </div>
   <span class="pt">)-&gt;[</span>
   <span class="pr">MultiGraph</span>
   <span class="pt">]</span>
@@ -828,6 +838,11 @@ side-effects as a function of varied node intensities when computing network cen
     <span class="pn">simplify_by_max_angle</span>
     <span class="pc">:</span>
     <span class="pa"> int | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">tag_cache</span>
+    <span class="pc">:</span>
+    <span class="pa"> dict[tuple[str, str], set[str | int]] | None = None</span>
   </div>
   <span class="pt">)-&gt;[</span>
   <span class="pr">MultiGraph</span>

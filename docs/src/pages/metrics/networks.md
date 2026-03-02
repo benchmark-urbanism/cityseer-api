@@ -14,7 +14,17 @@ layout: ../../layouts/PageLayout.astro
 
  These methods wrap the underlying `rust` optimised functions for computing centralities. Multiple classes of measures and distances are computed simultaneously to reduce the amount of time required for multi-variable and multi-scalar strategies.
 
- See the accompanying paper on `arXiv` for additional information about methods for computing centrality measures.
+ When `sample=True`, adaptive sampling uses the Hoeffding bound to select a distance-dependent sampling probability. The `epsilon` parameter controls the error tolerance (lower = more samples, higher accuracy). The default for when sampling is enabled is 0.06.
+
+| Distance | ε=0.02 | ε=0.04 | ε=0.06 | ε=0.08 | ε=0.1 |
+|----------|--------|--------|--------|--------|-------|
+| 1 km     | 100%   | 100%   | 100%   | 100%   | 100%  |
+| 2 km     | 100%   | 100%   | 100%   | 100%   | 100%  |
+| 5 km     | 100%   | 100%   | 58.7%  | 33.0%  | 21.1% |
+| 10 km    | 100%   | 37.3%  | 16.6%  | 9.3%   | 6.0%  |
+| 20 km    | 41.5%  | 10.4%  | 4.6%   | 2.6%   | 1.7%  |
+
+Sampling is exact (100%) at short distances and becomes progressively sparser at longer distances where reachability is high enough to maintain relative accuracy. The theoretical speedup is approximately 1/p. When comparing centrality values across different locations, use the same epsilon to ensure consistent error tolerances and comparable sampling rates.
 
 :::note
 The reasons for picking one approach over another are varied:
@@ -89,12 +99,12 @@ may therefore be preferable when working at small thresholds on decomposed netwo
   <div class="param">
     <span class="pn">compute_closeness</span>
     <span class="pc">:</span>
-    <span class="pa"> bool | None = True</span>
+    <span class="pa"> bool = True</span>
   </div>
   <div class="param">
     <span class="pn">compute_betweenness</span>
     <span class="pc">:</span>
-    <span class="pa"> bool | None = True</span>
+    <span class="pa"> bool = True</span>
   </div>
   <div class="param">
     <span class="pn">min_threshold_wt</span>
@@ -107,9 +117,24 @@ may therefore be preferable when working at small thresholds on decomposed netwo
     <span class="pa"> float = 1.33333</span>
   </div>
   <div class="param">
-    <span class="pn">jitter_scale</span>
+    <span class="pn">tolerance</span>
     <span class="pc">:</span>
     <span class="pa"> float = 0.0</span>
+  </div>
+  <div class="param">
+    <span class="pn">random_seed</span>
+    <span class="pc">:</span>
+    <span class="pa"> int | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">sample</span>
+    <span class="pc">:</span>
+    <span class="pa"> bool = False</span>
+  </div>
+  <div class="param">
+    <span class="pn">epsilon</span>
+    <span class="pc">:</span>
+    <span class="pa"> float | None = None</span>
   </div>
   <span class="pt">)-&gt;[</span>
   <span class="pr">GeoDataFrame</span>
@@ -118,11 +143,9 @@ may therefore be preferable when working at small thresholds on decomposed netwo
 </div>
 
 
- Compute node-based network centrality using the shortest path heuristic.
-:::note
-Node weights are taken into account when computing centralities. These would typically be initialised at 1 unless
-manually specified.
-:::
+ Compute node centrality using shortest paths with a single Dijkstra per source. When both `compute_closeness` and `compute_betweenness` are True, a single Brandes-style Dijkstra traversal per source produces the data for both closeness accumulation and betweenness backpropagation, halving computation time compared to computing them separately.
+
+ When ``sample=True``, sampling probability is derived from each distance threshold using a canonical grid network model (see ``config.compute_distance_p``). This produces deterministic, reach-agnostic sample fractions that are comparable across networks.
 ### Parameters
 <div class="param-set">
   <div class="def">
@@ -131,7 +154,7 @@ manually specified.
   </div>
   <div class="desc">
 
- A [`rustalgos.graph.NetworkStructure`](/rustalgos/rustalgos#networkstructure). Best generated with the [`io.network_structure_from_nx`](/tools/io#network-structure-from-nx) method.</div>
+ A [`rustalgos.graph.NetworkStructure`](/rustalgos/rustalgos#networkstructure).</div>
 </div>
 
 <div class="param-set">
@@ -141,7 +164,7 @@ manually specified.
   </div>
   <div class="desc">
 
- A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe) representing nodes. Best generated with the [`io.network_structure_from_nx`](/tools/io#network-structure-from-nx) method. The outputs of calculations will be written to this `GeoDataFrame`, which is then returned from the method.</div>
+ A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe) representing nodes. The outputs of calculations will be written to this `GeoDataFrame`.</div>
 </div>
 
 <div class="param-set">
@@ -151,7 +174,7 @@ manually specified.
   </div>
   <div class="desc">
 
- Distances corresponding to the local $d_{max}$ thresholds to be used for calculations. The $\beta$ for distance-weighted metrics will be determined implicitly using `min_threshold_wt`. If the `distances` parameter is not provided, then the `beta` or `minutes` parameters must be provided instead.</div>
+ Distances corresponding to the local $d_{max}$ thresholds to be used for calculations.</div>
 </div>
 
 <div class="param-set">
@@ -161,7 +184,7 @@ manually specified.
   </div>
   <div class="desc">
 
- A list of $\beta$ to be used for the exponential decay function for weighted metrics. The $d_{max}$ thresholds for unweighted metrics will be determined implicitly. If the `betas` parameter is not provided, then the `distances` or `minutes` parameter must be provided instead.</div>
+ A list of $\beta$ to be used for the exponential decay function for weighted metrics.</div>
 </div>
 
 <div class="param-set">
@@ -171,7 +194,7 @@ manually specified.
   </div>
   <div class="desc">
 
- A list of walking times in minutes to be used for calculations. The $d_{max}$ thresholds for unweighted metrics and $\beta$ for distance-weighted metrics will be determined implicitly using the `speed_m_s` and `min_threshold_wt` parameters. If the `minutes` parameter is not provided, then the `distances` or `betas` parameters must be provided instead.</div>
+ A list of walking times in minutes to be used for calculations.</div>
 </div>
 
 <div class="param-set">
@@ -201,7 +224,7 @@ manually specified.
   </div>
   <div class="desc">
 
- The default `min_threshold_wt` parameter can be overridden to generate custom mappings between the `distance` and `beta` parameters. See [`rustalgos.distances_from_beta`](/rustalgos#distances-from-betas) for more information.</div>
+ The default `min_threshold_wt` parameter can be overridden to generate custom mappings between the `distance` and `beta` parameters.</div>
 </div>
 
 <div class="param-set">
@@ -216,12 +239,42 @@ manually specified.
 
 <div class="param-set">
   <div class="def">
-    <div class="name">jitter_scale</div>
+    <div class="name">tolerance</div>
     <div class="type">float</div>
   </div>
   <div class="desc">
 
- The scale of random jitter to add to shortest path calculations, useful for situations with highly rectilinear grids or for smoothing metrics on messy network representations. A random sample is drawn from a range of zero to one and is then multiplied by the specified `jitter_scale`. This random value is added to the shortest path calculations to provide random variation to the paths traced through the network. When working with shortest paths in metres, the random value represents distance in metres. When using a simplest path heuristic, the jitter will represent angular change in degrees.</div>
+ Relative tolerance for betweenness path equality. Paths within `tolerance` fraction of the shortest are treated as near-equal for multi-predecessor Brandes betweenness. Set to 0.0 for exact shortest paths only.</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">random_seed</div>
+    <div class="type">int</div>
+  </div>
+  <div class="desc">
+
+ Optional seed for reproducible sampling.</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">sample</div>
+    <div class="type">bool</div>
+  </div>
+  <div class="desc">
+
+ If True, uses distance-based sampling. If False, computes exact centrality.</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">epsilon</div>
+    <div class="type">float</div>
+  </div>
+  <div class="desc">
+
+ Normalised additive error tolerance for sampling. Defaults to ``config.HOEFFDING_EPSILON``.</div>
 </div>
 
 ### Returns
@@ -232,23 +285,313 @@ manually specified.
   </div>
   <div class="desc">
 
- The input `node_gdf` parameter is returned with additional columns populated with the calcualted metrics.</div>
+ The input `nodes_gdf` parameter is returned with additional centrality columns.</div>
 </div>
 
-### Notes
 
- The following keys use the shortest-path heuristic:
+</div>
 
-| key                   | formula | notes |
-| ----------------------| :------:| ----- |
-| density          | $$\sum_{j\neq{i}}^{n}1$$ | A summation of nodes. |
-| harmonic         | $$\sum_{j\neq{i}}^{n}\frac{1}{d_{(i,j)}}$$ | Harmonic closeness is an appropriate form of closeness centrality for localised implementations constrained by the threshold $d_{max}$. |
-| hillier          | $$\frac{(n-1)^2}{\sum_{j \neq i}^{n} d_{(i,j)}}$$ | The square of node density divided by farness. This is also a simplified form of Improved Closeness Centrality. |
-| beta             | $$\sum_{j\neq{i}}^{n} \\ \exp(-\beta\cdot d[i,j])$$ | Also known as the gravity index. This is a spatial impedance metric differentiated from other closeness centralities by the use of an explicit $\beta$ parameter, which can be used to model the decay in walking tolerance as distances increase. |
-| cycles           | $$\sum_{j\neq{i}j=cycle}^{n}1$$ | A summation of network cycles. |
-| farness          | $$\sum_{j\neq{i}}^{n}d_{(i,j)}$$ | A summation of distances in metres. |
-| betweenness      | $$\sum_{j\neq{i}}^{n}\sum_{k\neq{j}\neq{i}}^{n}1$$ | Betweenness centrality summing all shortest-paths traversing each node $i$. |
-| betweenness_beta | $$\sum_{j\neq{i}}^{n}\sum_{k\neq{j}\neq{i}}^{n} \\ \exp(-\beta\cdot d[j,k])$$ | Applies a spatial impedance decay function to betweenness centrality. $d$ represents the full distance from any $j$ to $k$ node pair passing through node $i$. |
+
+<div class="function">
+
+## build_od_matrix
+
+
+<div class="content">
+<span class="name">build_od_matrix</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">od_df</span>
+    <span class="pc">:</span>
+    <span class="pa"> pandas.DataFrame</span>
+  </div>
+  <div class="param">
+    <span class="pn">zones_gdf</span>
+    <span class="pc">:</span>
+    <span class="pa"> geopandas.geodataframe.GeoDataFrame</span>
+  </div>
+  <div class="param">
+    <span class="pn">network_structure</span>
+    <span class="pc">:</span>
+    <span class="pa"> NetworkStructure</span>
+  </div>
+  <div class="param">
+    <span class="pn">origin_col</span>
+    <span class="pc">:</span>
+    <span class="pa"> str</span>
+  </div>
+  <div class="param">
+    <span class="pn">destination_col</span>
+    <span class="pc">:</span>
+    <span class="pa"> str</span>
+  </div>
+  <div class="param">
+    <span class="pn">weight_col</span>
+    <span class="pc">:</span>
+    <span class="pa"> str</span>
+  </div>
+  <div class="param">
+    <span class="pn">zone_id_col</span>
+    <span class="pc">:</span>
+    <span class="pa"> str | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">max_snap_dist</span>
+    <span class="pc">:</span>
+    <span class="pa"> float = 500.0</span>
+  </div>
+  <span class="pt">)-&gt;[</span>
+  <span class="pr">OdMatrix</span>
+  <span class="pt">]</span>
+</div>
+</div>
+
+
+ Build an OdMatrix from OD flow data and zone boundaries. Computes zone centroids, snaps them to the nearest network nodes, and constructs a sparse OD weight matrix for use with `betweenness_od`.
+### Parameters
+<div class="param-set">
+  <div class="def">
+    <div class="name">od_df</div>
+    <div class="type">pd.DataFrame</div>
+  </div>
+  <div class="desc">
+
+ Origin-destination flow data with columns for origin zone, destination zone, and weight.</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">zones_gdf</div>
+    <div class="type">gpd.GeoDataFrame</div>
+  </div>
+  <div class="desc">
+
+ Zone boundaries (polygons) or centroids (points). Must be in a projected CRS matching the network, or in EPSG:4326 (will be auto-reprojected).</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">network_structure</div>
+    <div class="type">rustalgos.graph.NetworkStructure</div>
+  </div>
+  <div class="desc">
+
+ The network to snap zone centroids to.</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">origin_col</div>
+    <div class="type">str</div>
+  </div>
+  <div class="desc">
+
+ Column in od_df containing origin zone identifiers.</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">destination_col</div>
+    <div class="type">str</div>
+  </div>
+  <div class="desc">
+
+ Column in od_df containing destination zone identifiers.</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">weight_col</div>
+    <div class="type">str</div>
+  </div>
+  <div class="desc">
+
+ Column in od_df containing trip weights (e.g., number of bicycle commuters).</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">zone_id_col</div>
+    <div class="type">str | None</div>
+  </div>
+  <div class="desc">
+
+ Column in zones_gdf containing zone identifiers matching origin_col/destination_col. If None, uses the GeoDataFrame index.</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">max_snap_dist</div>
+    <div class="type">float</div>
+  </div>
+  <div class="desc">
+
+ Maximum distance (in CRS units, typically metres) for snapping a centroid to a network node. Centroids beyond this distance are excluded with a warning.</div>
+</div>
+
+### Returns
+<div class="param-set">
+  <div class="def">
+    <div class="name"></div>
+    <div class="type">rustalgos.centrality.OdMatrix</div>
+  </div>
+  <div class="desc">
+
+ Sparse OD matrix ready for use with `betweenness_od`.</div>
+</div>
+
+
+</div>
+
+
+<div class="function">
+
+## betweenness_od
+
+
+<div class="content">
+<span class="name">betweenness_od</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">network_structure</span>
+    <span class="pc">:</span>
+    <span class="pa"> NetworkStructure</span>
+  </div>
+  <div class="param">
+    <span class="pn">nodes_gdf</span>
+    <span class="pc">:</span>
+    <span class="pa"> geopandas.geodataframe.GeoDataFrame</span>
+  </div>
+  <div class="param">
+    <span class="pn">od_matrix</span>
+    <span class="pc">:</span>
+    <span class="pa"> OdMatrix</span>
+  </div>
+  <div class="param">
+    <span class="pn">distances</span>
+    <span class="pc">:</span>
+    <span class="pa"> list[int] | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">betas</span>
+    <span class="pc">:</span>
+    <span class="pa"> list[float] | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">minutes</span>
+    <span class="pc">:</span>
+    <span class="pa"> list[float] | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">min_threshold_wt</span>
+    <span class="pc">:</span>
+    <span class="pa"> float = 0.01831563888873418</span>
+  </div>
+  <div class="param">
+    <span class="pn">speed_m_s</span>
+    <span class="pc">:</span>
+    <span class="pa"> float = 1.33333</span>
+  </div>
+  <span class="pt">)-&gt;[</span>
+  <span class="pr">GeoDataFrame</span>
+  <span class="pt">]</span>
+</div>
+</div>
+
+
+ Compute OD-weighted betweenness centrality using the shortest path heuristic. Weights betweenness by origin-destination trip counts from a sparse OD matrix. Only source nodes with outbound trips are traversed, and each shortest-path contribution is scaled by the corresponding OD weight. Closeness metrics are not computed.
+### Parameters
+<div class="param-set">
+  <div class="def">
+    <div class="name">network_structure</div>
+    <div class="type">None</div>
+  </div>
+  <div class="desc">
+
+ A [`rustalgos.graph.NetworkStructure`](/rustalgos/rustalgos#networkstructure).</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">nodes_gdf</div>
+    <div class="type">None</div>
+  </div>
+  <div class="desc">
+
+ A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe) representing nodes. The outputs of calculations will be written to this `GeoDataFrame`.</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">od_matrix</div>
+    <div class="type">None</div>
+  </div>
+  <div class="desc">
+
+ An [`OdMatrix`](/rustalgos/centrality#odmatrix) mapping (origin, destination) node pairs to trip weights. Build with [`config.build_od_matrix`](/config#build-od-matrix).</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">distances</div>
+    <div class="type">list[int]</div>
+  </div>
+  <div class="desc">
+
+ Distances corresponding to the local $d_{max}$ thresholds to be used for calculations.</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">betas</div>
+    <div class="type">list[float]</div>
+  </div>
+  <div class="desc">
+
+ A list of $\beta$ to be used for the exponential decay function for weighted metrics.</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">minutes</div>
+    <div class="type">list[float]</div>
+  </div>
+  <div class="desc">
+
+ A list of walking times in minutes to be used for calculations.</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">min_threshold_wt</div>
+    <div class="type">float</div>
+  </div>
+  <div class="desc">
+
+ The default `min_threshold_wt` parameter can be overridden to generate custom mappings between the `distance` and `beta` parameters.</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">speed_m_s</div>
+    <div class="type">float</div>
+  </div>
+  <div class="desc">
+
+ The default `speed_m_s` parameter can be configured to generate custom mappings between walking times and distance thresholds $d_{max}$.</div>
+</div>
+
+### Returns
+<div class="param-set">
+  <div class="def">
+    <div class="name">nodes_gdf</div>
+    <div class="type">GeoDataFrame</div>
+  </div>
+  <div class="desc">
+
+ The input `nodes_gdf` parameter is returned with additional betweenness columns.</div>
+</div>
+
 
 </div>
 
@@ -289,12 +632,12 @@ manually specified.
   <div class="param">
     <span class="pn">compute_closeness</span>
     <span class="pc">:</span>
-    <span class="pa"> bool | None = True</span>
+    <span class="pa"> bool = True</span>
   </div>
   <div class="param">
     <span class="pn">compute_betweenness</span>
     <span class="pc">:</span>
-    <span class="pa"> bool | None = True</span>
+    <span class="pa"> bool = True</span>
   </div>
   <div class="param">
     <span class="pn">min_threshold_wt</span>
@@ -317,9 +660,24 @@ manually specified.
     <span class="pa"> float = 1</span>
   </div>
   <div class="param">
-    <span class="pn">jitter_scale</span>
+    <span class="pn">tolerance</span>
     <span class="pc">:</span>
     <span class="pa"> float = 0.0</span>
+  </div>
+  <div class="param">
+    <span class="pn">random_seed</span>
+    <span class="pc">:</span>
+    <span class="pa"> int | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">sample</span>
+    <span class="pc">:</span>
+    <span class="pa"> bool = False</span>
+  </div>
+  <div class="param">
+    <span class="pn">epsilon</span>
+    <span class="pc">:</span>
+    <span class="pa"> float | None = None</span>
   </div>
   <span class="pt">)-&gt;[</span>
   <span class="pr">GeoDataFrame</span>
@@ -328,11 +686,7 @@ manually specified.
 </div>
 
 
- Compute node-based network centrality using the simplest path (angular) heuristic.
-:::note
-Node weights are taken into account when computing centralities. These would typically be initialised at 1 unless
-manually specified.
-:::
+ Compute node centrality using simplest (angular) paths with a single Dijkstra per source. When both `compute_closeness` and `compute_betweenness` are True, a single Brandes-style Dijkstra traversal per source produces the data for both closeness accumulation and betweenness backpropagation.
 ### Parameters
 <div class="param-set">
   <div class="def">
@@ -341,7 +695,7 @@ manually specified.
   </div>
   <div class="desc">
 
- A [`rustalgos.graph.NetworkStructure`](/rustalgos/rustalgos#networkstructure). Best generated with the [`io.network_structure_from_nx`](/tools/io#network-structure-from-nx) method.</div>
+ A [`rustalgos.graph.NetworkStructure`](/rustalgos/rustalgos#networkstructure).</div>
 </div>
 
 <div class="param-set">
@@ -351,7 +705,7 @@ manually specified.
   </div>
   <div class="desc">
 
- A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe) representing nodes. Best generated with the [`io.network_structure_from_nx`](/tools/io#network-structure-from-nx) method. The outputs of calculations will be written to this `GeoDataFrame`, which is then returned from the method.</div>
+ A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe) representing nodes. The outputs of calculations will be written to this `GeoDataFrame`.</div>
 </div>
 
 <div class="param-set">
@@ -361,7 +715,7 @@ manually specified.
   </div>
   <div class="desc">
 
- Distances corresponding to the local $d_{max}$ thresholds to be used for calculations. The $\beta$ for distance-weighted metrics will be determined implicitly using `min_threshold_wt`. If the `distances` parameter is not provided, then the `beta` or `minutes` parameters must be provided instead.</div>
+ Distances corresponding to the local $d_{max}$ thresholds to be used for calculations.</div>
 </div>
 
 <div class="param-set">
@@ -371,7 +725,7 @@ manually specified.
   </div>
   <div class="desc">
 
- A list of $\beta$ to be used for the exponential decay function for weighted metrics. The $d_{max}$ thresholds for unweighted metrics will be determined implicitly. If the `betas` parameter is not provided, then the `distances` or `minutes` parameter must be provided instead.</div>
+ A list of $\beta$ to be used for the exponential decay function for weighted metrics.</div>
 </div>
 
 <div class="param-set">
@@ -381,7 +735,7 @@ manually specified.
   </div>
   <div class="desc">
 
- A list of walking times in minutes to be used for calculations. The $d_{max}$ thresholds for unweighted metrics and $\beta$ for distance-weighted metrics will be determined implicitly using the `speed_m_s` and `min_threshold_wt` parameters. If the `minutes` parameter is not provided, then the `distances` or `betas` parameters must be provided instead.</div>
+ A list of walking times in minutes to be used for calculations.</div>
 </div>
 
 <div class="param-set">
@@ -411,7 +765,7 @@ manually specified.
   </div>
   <div class="desc">
 
- The default `min_threshold_wt` parameter can be overridden to generate custom mappings between the `distance` and `beta` parameters. See [`rustalgos.distances_from_beta`](/rustalgos#distances-from-betas) for more information.</div>
+ The default `min_threshold_wt` parameter can be overridden to generate custom mappings between the `distance` and `beta` parameters.</div>
 </div>
 
 <div class="param-set">
@@ -431,7 +785,7 @@ manually specified.
   </div>
   <div class="desc">
 
- The number by which to divide angular distances for scaling. 90 by default. For example, if the cumulative angular distance for a given route is 180 then this will be scaled per 180 / 90 = 2.</div>
+ Scaling unit for angular cost normalisation.</div>
 </div>
 
 <div class="param-set">
@@ -441,17 +795,47 @@ manually specified.
   </div>
   <div class="desc">
 
- A number by which to offset the scaled angular distance for computing farness. 1 by default. For example, if the scaled angular distance is 2, then an offset of 1 will be applied as 1 + 2 = 3. This offset is only applied when calculating farness. Harmonic closeness always uses an offset of 1 to prevent division by zero.</div>
+ Offset for farness calculation.</div>
 </div>
 
 <div class="param-set">
   <div class="def">
-    <div class="name">jitter_scale</div>
+    <div class="name">tolerance</div>
     <div class="type">float</div>
   </div>
   <div class="desc">
 
- The scale of random jitter to add to shortest path calculations, useful for situations with highly rectilinear grids or for smoothing metrics on messy network representations. A random sample is drawn from a range of zero to one and is then multiplied by the specified `jitter_scale`. This random value is added to the shortest path calculations to provide random variation to the paths traced through the network. When working with shortest paths in metres, the random value represents distance in metres. When using a simplest path heuristic, the jitter will represent angular change in degrees.</div>
+ Relative tolerance for betweenness path equality.</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">random_seed</div>
+    <div class="type">int</div>
+  </div>
+  <div class="desc">
+
+ Optional seed for reproducible sampling.</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">sample</div>
+    <div class="type">bool</div>
+  </div>
+  <div class="desc">
+
+ If True, uses distance-based sampling. If False, computes exact centrality.</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">epsilon</div>
+    <div class="type">float</div>
+  </div>
+  <div class="desc">
+
+ Normalised additive error tolerance for sampling. Defaults to ``config.HOEFFDING_EPSILON``.</div>
 </div>
 
 ### Returns
@@ -462,22 +846,9 @@ manually specified.
   </div>
   <div class="desc">
 
- The input `node_gdf` parameter is returned with additional columns populated with the calcualted metrics.</div>
+ The input `nodes_gdf` parameter is returned with additional centrality columns.</div>
 </div>
 
-### Notes
-
- The following keys use the simplest-path heuristic:
-
-| key                   | formula | notes |
-| ----------------------| :------:| ----- |
-| density_ang | $$\sum_{j\neq{i}}^{n}1$$ | A summation of nodes. |
-| harmonic_ang    | $$\sum_{j\neq{i}}^{n}\frac{1}{d_{(i,j)}}$$ | Harmonic closeness is an appropriate form of closeness centrality for localised implementations constrained by the threshold $d_{max}$. |
-| hillier_ang | $$\frac{(n-1)^2}{\sum_{j \neq i}^{n} d_{(i,j)}}$$ | The square of node density divided by farness. This is also a simplified form of Improved Closeness Centrality. |
-| farness_ang | $$\sum_{j\neq{i}}^{n}d_{(i,j)}$$ | A summation of distances in metres. |
-| betweenness_ang | $$\sum_{j\neq{i}}^{n}\sum_{k\neq{j}\neq{i}}^{n}1$$ | Betweenness centrality summing all shortest-paths traversing each node $i$. |
-
-The following keys use the simplest-path (shortest-angular-path) heuristic, and are available when the `angular` parameter is explicitly set to `True`:
 
 </div>
 
@@ -534,11 +905,6 @@ The following keys use the simplest-path (shortest-angular-path) heuristic, and 
     <span class="pn">speed_m_s</span>
     <span class="pc">:</span>
     <span class="pa"> float = 1.33333</span>
-  </div>
-  <div class="param">
-    <span class="pn">jitter_scale</span>
-    <span class="pc">:</span>
-    <span class="pa"> float = 0.0</span>
   </div>
   <span class="pt">)-&gt;[</span>
   <span class="pr">GeoDataFrame</span>
@@ -641,16 +1007,6 @@ The following keys use the simplest-path (shortest-angular-path) heuristic, and 
  The default `speed_m_s` parameter can be configured to generate custom mappings between walking times and distance thresholds $d_{max}$.</div>
 </div>
 
-<div class="param-set">
-  <div class="def">
-    <div class="name">jitter_scale</div>
-    <div class="type">float</div>
-  </div>
-  <div class="desc">
-
- The scale of random jitter to add to shortest path calculations, useful for situations with highly rectilinear grids or for smoothing metrics on messy network representations. A random sample is drawn from a range of zero to one and is then multiplied by the specified `jitter_scale`. This random value is added to the shortest path calculations to provide random variation to the paths traced through the network. When working with shortest paths in metres, the random value represents distance in metres. When using a simplest path heuristic, the jitter will represent angular change in degrees.</div>
-</div>
-
 ### Returns
 <div class="param-set">
   <div class="def">
@@ -672,6 +1028,306 @@ The following keys use the simplest-path (shortest-angular-path) heuristic, and 
 | seg_harmonic    | $$\sum_{(a, b)}^{edges}\int_{a}^{b}\ln(b) -\ln(a)$$ | A continuous form of harmonic closeness centrality applied to edge lengths. |
 | seg_beta        | $$\sum_{(a, b)}^{edges}\int_{a}^{b}\frac{\exp(-\beta\cdot b) -\exp(-\beta\cdot a)}{-\beta}$$ | A continuous form of beta-weighted (gravity index) centrality applied to edge lengths. |
 | seg_betweenness | | A continuous form of betweenness: Resembles `segment_beta` applied to edges situated on shortest paths between all nodes $j$ and $k$ passing through $i$. |
+
+</div>
+
+
+<div class="function">
+
+## closeness_shortest
+
+
+<div class="content">
+<span class="name">closeness_shortest</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">network_structure</span>
+    <span class="pc">:</span>
+    <span class="pa"> NetworkStructure</span>
+  </div>
+  <div class="param">
+    <span class="pn">nodes_gdf</span>
+    <span class="pc">:</span>
+    <span class="pa"> geopandas.geodataframe.GeoDataFrame</span>
+  </div>
+  <div class="param">
+    <span class="pn">distances</span>
+    <span class="pc">:</span>
+    <span class="pa"> list[int] | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">betas</span>
+    <span class="pc">:</span>
+    <span class="pa"> list[float] | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">minutes</span>
+    <span class="pc">:</span>
+    <span class="pa"> list[float] | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">min_threshold_wt</span>
+    <span class="pc">:</span>
+    <span class="pa"> float = 0.01831563888873418</span>
+  </div>
+  <div class="param">
+    <span class="pn">speed_m_s</span>
+    <span class="pc">:</span>
+    <span class="pa"> float = 1.33333</span>
+  </div>
+  <div class="param">
+    <span class="pn">random_seed</span>
+    <span class="pc">:</span>
+    <span class="pa"> int | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">sample</span>
+    <span class="pc">:</span>
+    <span class="pa"> bool = False</span>
+  </div>
+  <div class="param">
+    <span class="pn">epsilon</span>
+    <span class="pc">:</span>
+    <span class="pa"> float | None = None</span>
+  </div>
+  <span class="pt">)-&gt;[</span>
+  <span class="pr">GeoDataFrame</span>
+  <span class="pt">]</span>
+</div>
+</div>
+
+
+ Compute closeness centrality using shortest paths. Wraps `node_centrality_shortest`.
+
+</div>
+
+
+<div class="function">
+
+## closeness_simplest
+
+
+<div class="content">
+<span class="name">closeness_simplest</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">network_structure</span>
+    <span class="pc">:</span>
+    <span class="pa"> NetworkStructure</span>
+  </div>
+  <div class="param">
+    <span class="pn">nodes_gdf</span>
+    <span class="pc">:</span>
+    <span class="pa"> geopandas.geodataframe.GeoDataFrame</span>
+  </div>
+  <div class="param">
+    <span class="pn">distances</span>
+    <span class="pc">:</span>
+    <span class="pa"> list[int] | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">betas</span>
+    <span class="pc">:</span>
+    <span class="pa"> list[float] | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">minutes</span>
+    <span class="pc">:</span>
+    <span class="pa"> list[float] | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">min_threshold_wt</span>
+    <span class="pc">:</span>
+    <span class="pa"> float = 0.01831563888873418</span>
+  </div>
+  <div class="param">
+    <span class="pn">speed_m_s</span>
+    <span class="pc">:</span>
+    <span class="pa"> float = 1.33333</span>
+  </div>
+  <div class="param">
+    <span class="pn">angular_scaling_unit</span>
+    <span class="pc">:</span>
+    <span class="pa"> float = 90</span>
+  </div>
+  <div class="param">
+    <span class="pn">farness_scaling_offset</span>
+    <span class="pc">:</span>
+    <span class="pa"> float = 1</span>
+  </div>
+  <div class="param">
+    <span class="pn">random_seed</span>
+    <span class="pc">:</span>
+    <span class="pa"> int | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">sample</span>
+    <span class="pc">:</span>
+    <span class="pa"> bool = False</span>
+  </div>
+  <div class="param">
+    <span class="pn">epsilon</span>
+    <span class="pc">:</span>
+    <span class="pa"> float | None = None</span>
+  </div>
+  <span class="pt">)-&gt;[</span>
+  <span class="pr">GeoDataFrame</span>
+  <span class="pt">]</span>
+</div>
+</div>
+
+
+ Compute closeness centrality using simplest (angular) paths. Wraps `node_centrality_simplest`.
+
+</div>
+
+
+<div class="function">
+
+## betweenness_shortest
+
+
+<div class="content">
+<span class="name">betweenness_shortest</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">network_structure</span>
+    <span class="pc">:</span>
+    <span class="pa"> NetworkStructure</span>
+  </div>
+  <div class="param">
+    <span class="pn">nodes_gdf</span>
+    <span class="pc">:</span>
+    <span class="pa"> geopandas.geodataframe.GeoDataFrame</span>
+  </div>
+  <div class="param">
+    <span class="pn">distances</span>
+    <span class="pc">:</span>
+    <span class="pa"> list[int] | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">betas</span>
+    <span class="pc">:</span>
+    <span class="pa"> list[float] | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">minutes</span>
+    <span class="pc">:</span>
+    <span class="pa"> list[float] | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">min_threshold_wt</span>
+    <span class="pc">:</span>
+    <span class="pa"> float = 0.01831563888873418</span>
+  </div>
+  <div class="param">
+    <span class="pn">speed_m_s</span>
+    <span class="pc">:</span>
+    <span class="pa"> float = 1.33333</span>
+  </div>
+  <div class="param">
+    <span class="pn">tolerance</span>
+    <span class="pc">:</span>
+    <span class="pa"> float = 0.0</span>
+  </div>
+  <div class="param">
+    <span class="pn">random_seed</span>
+    <span class="pc">:</span>
+    <span class="pa"> int | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">sample</span>
+    <span class="pc">:</span>
+    <span class="pa"> bool = False</span>
+  </div>
+  <div class="param">
+    <span class="pn">epsilon</span>
+    <span class="pc">:</span>
+    <span class="pa"> float | None = None</span>
+  </div>
+  <span class="pt">)-&gt;[</span>
+  <span class="pr">GeoDataFrame</span>
+  <span class="pt">]</span>
+</div>
+</div>
+
+
+ Compute betweenness centrality using shortest paths. Wraps `node_centrality_shortest`.
+
+</div>
+
+
+<div class="function">
+
+## betweenness_simplest
+
+
+<div class="content">
+<span class="name">betweenness_simplest</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">network_structure</span>
+    <span class="pc">:</span>
+    <span class="pa"> NetworkStructure</span>
+  </div>
+  <div class="param">
+    <span class="pn">nodes_gdf</span>
+    <span class="pc">:</span>
+    <span class="pa"> geopandas.geodataframe.GeoDataFrame</span>
+  </div>
+  <div class="param">
+    <span class="pn">distances</span>
+    <span class="pc">:</span>
+    <span class="pa"> list[int] | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">betas</span>
+    <span class="pc">:</span>
+    <span class="pa"> list[float] | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">minutes</span>
+    <span class="pc">:</span>
+    <span class="pa"> list[float] | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">min_threshold_wt</span>
+    <span class="pc">:</span>
+    <span class="pa"> float = 0.01831563888873418</span>
+  </div>
+  <div class="param">
+    <span class="pn">speed_m_s</span>
+    <span class="pc">:</span>
+    <span class="pa"> float = 1.33333</span>
+  </div>
+  <div class="param">
+    <span class="pn">tolerance</span>
+    <span class="pc">:</span>
+    <span class="pa"> float = 0.0</span>
+  </div>
+  <div class="param">
+    <span class="pn">random_seed</span>
+    <span class="pc">:</span>
+    <span class="pa"> int | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">sample</span>
+    <span class="pc">:</span>
+    <span class="pa"> bool = False</span>
+  </div>
+  <div class="param">
+    <span class="pn">epsilon</span>
+    <span class="pc">:</span>
+    <span class="pa"> float | None = None</span>
+  </div>
+  <span class="pt">)-&gt;[</span>
+  <span class="pr">GeoDataFrame</span>
+  <span class="pt">]</span>
+</div>
+</div>
+
+
+ Compute betweenness centrality using simplest (angular) paths. Wraps `node_centrality_simplest`.
 
 </div>
 
