@@ -91,58 +91,6 @@ layout: ../../layouts/PageLayout.astro
 <div class="class">
 
 
-## ClosenessShortestResult
-
-
-
-
-<div class="function">
-
-## ClosenessShortestResult
-
-
-<div class="content">
-<span class="name">ClosenessShortestResult</span><div class="signature">
-  <span class="pt">(</span>
-  <span class="pt">)</span>
-</div>
-</div>
-
-</div>
-
- 
-</div>
-
-
-<div class="class">
-
-
-## ClosenessSimplestResult
-
-
-
-
-<div class="function">
-
-## ClosenessSimplestResult
-
-
-<div class="content">
-<span class="name">ClosenessSimplestResult</span><div class="signature">
-  <span class="pt">(</span>
-  <span class="pt">)</span>
-</div>
-</div>
-
-</div>
-
- 
-</div>
-
-
-<div class="class">
-
-
 ## BetweennessShortestResult
 
 
@@ -169,18 +117,44 @@ layout: ../../layouts/PageLayout.astro
 <div class="class">
 
 
-## BetweennessSimplestResult
+## CentralityShortestResult
 
 
 
 
 <div class="function">
 
-## BetweennessSimplestResult
+## CentralityShortestResult
 
 
 <div class="content">
-<span class="name">BetweennessSimplestResult</span><div class="signature">
+<span class="name">CentralityShortestResult</span><div class="signature">
+  <span class="pt">(</span>
+  <span class="pt">)</span>
+</div>
+</div>
+
+</div>
+
+ 
+</div>
+
+
+<div class="class">
+
+
+## CentralitySimplestResult
+
+
+
+
+<div class="function">
+
+## CentralitySimplestResult
+
+
+<div class="content">
+<span class="name">CentralitySimplestResult</span><div class="signature">
   <span class="pt">(</span>
   <span class="pt">)</span>
 </div>
