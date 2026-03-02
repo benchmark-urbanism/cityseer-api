@@ -26,7 +26,7 @@ The algorithm is accessible via **Processing > Cityseer > Network Centrality**.
 | **Distance thresholds**                       | Comma-separated distances in metres                                                                                                                                         | `400,800`    |
 | **Betweenness tolerance %**                   | Controls betweenness spread across near-shortest paths. 0 = exact shortest paths only.                                                                                      | `10.0`       |
 | **Boundary polygon**                          | Optional polygon layer. Nodes inside the boundary are used as centrality sources; nodes outside provide network context only.                                               | _(none)_     |
-| **Use deterministic distance-based sampling** | When enabled, sampling probability is computed per distance threshold. Distances where the probability is 1.0 are computed exactly; larger distances are sampled for speed. | `True`       |
+| **Use deterministic distance-based sampling** | *Experimental.* When enabled, sampling probability is computed per distance threshold. Distances where the probability is 1.0 are computed exactly; larger distances are sampled for speed. | `True`       |
 
 The input layer must be in a **projected metre-based CRS** (not geographic/degrees).
 

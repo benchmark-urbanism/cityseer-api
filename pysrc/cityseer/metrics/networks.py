@@ -162,6 +162,7 @@ def node_centrality_shortest(
     if not sample:
         full_distances = sorted(resolved_distances)
     else:
+        logger.warning("Sampling is experimental: API and behaviour may change in future releases.")
         for d in sorted(resolved_distances):
             p = config.compute_distance_p(d, epsilon=eps)
             if p >= 1.0:
@@ -511,6 +512,7 @@ def node_centrality_simplest(
     if not sample:
         full_distances = sorted(resolved_distances)
     else:
+        logger.warning("Sampling is experimental: API and behaviour may change in future releases.")
         for d in sorted(resolved_distances):
             p = config.compute_distance_p(d, epsilon=eps)
             if p >= 1.0:

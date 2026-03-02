@@ -5,6 +5,8 @@ layout: ../../layouts/PageLayout.astro
 
 # Adaptive Sampling for Network Centrality
 
+> **Experimental.** Adaptive sampling is under active development and its API or behaviour may change in future releases.
+
 Computing network centrality metrics across multiple distance thresholds (e.g., 500m to 20km) can be computationally expensive. `cityseer` provides **adaptive per-distance sampling** that automatically calibrates sampling probability for each distance threshold based on network reachability.
 
 ## The Problem
