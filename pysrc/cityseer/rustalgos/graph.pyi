@@ -4,7 +4,13 @@ from __future__ import annotations
 
 from typing import Any
 
-from .centrality import CentralitySegmentResult, CentralityShortestResult, CentralitySimplestResult, OdMatrix
+from .centrality import (
+    BetweennessShortestResult,
+    CentralitySegmentResult,
+    CentralityShortestResult,
+    CentralitySimplestResult,
+    OdMatrix,
+)
 
 __doc__: str
 
@@ -71,12 +77,12 @@ class EdgeVisit:
         """Initialize a new EdgeVisit state."""
         ...
 
-class DiGraph: ...  # Placeholder for the internal graph representation (petgraph::graph::DiGraph)
+class StableGraph: ...  # Placeholder for the internal graph representation (petgraph::stable_graph::StableGraph)
 
 class NetworkStructure:
     """Manages the network graph, including nodes, edges, barriers, and spatial indexing."""
 
-    graph: DiGraph  # Actual type is petgraph::graph::DiGraph<NodePayload, EdgePayload>
+    graph: StableGraph  # Actual type is petgraph::stable_graph::StableGraph<NodePayload, EdgePayload>
     edge_rtree: (
         object | None
     )  # R-tree for efficient spatial queries on edges. Type in Rust: Option<RTree<EdgeRtreeItem>>
@@ -160,6 +166,9 @@ class NetworkStructure:
     def is_node_live(self, node_idx: int) -> bool:  # Returns PyResult<bool>
         """Check if a specific node index is marked as 'live'."""
         ...
+    def set_node_live(self, node_idx: int, live: bool) -> None:  # Returns PyResult<()>
+        """Set the live status of a node (e.g. based on a boundary polygon)."""
+        ...
     def node_count(self) -> int:  # Returns usize
         """Get the total number of nodes in the graph."""
         ...
@@ -242,6 +251,40 @@ class NetworkStructure:
         """
         ...
 
+    def remove_street_node(self, node_idx: int) -> None:
+        """
+        Remove a street node and all its connected edges.
+
+        Parameters
+        ----------
+        node_idx: int
+            The internal index of the node to remove.
+
+        Raises
+        ------
+        ValueError
+            If the node does not exist or is a transport node.
+        """
+        ...
+    def remove_street_edge(self, start_nd_idx: int, end_nd_idx: int, edge_idx: int) -> None:
+        """
+        Remove a specific directed edge.
+
+        Parameters
+        ----------
+        start_nd_idx: int
+            Index of the starting node.
+        end_nd_idx: int
+            Index of the ending node.
+        edge_idx: int
+            The external edge identifier to match.
+
+        Raises
+        ------
+        ValueError
+            If no matching edge is found.
+        """
+        ...
     def add_transport_edge(
         self,
         start_nd_idx: int,  # usize
@@ -313,8 +356,6 @@ class NetworkStructure:
         src_idx: int,
         max_seconds: int,
         speed_m_s: float,
-        jitter_scale: float | None = None,
-        random_seed: int | None = None,
     ) -> tuple[list[int], list[NodeVisit]]:
         """
         Compute shortest path tree (metric distance) from a source node using Dijkstra.
@@ -327,10 +368,6 @@ class NetworkStructure:
             Maximum travel time cutoff.
         speed_m_s: float
             Travel speed (m/s) to convert edge lengths to time.
-        jitter_scale: float | None
-            Optional scale for random cost jitter (tie-breaking).
-        random_seed: int | None
-            Optional seed for deterministic random cost jitter.
 
         Returns
         -------
@@ -343,8 +380,6 @@ class NetworkStructure:
         src_idx: int,
         max_seconds: int,
         speed_m_s: float,
-        jitter_scale: float | None = None,
-        random_seed: int | None = None,
     ) -> tuple[list[int], list[NodeVisit]]:
         """
         Compute simplest path tree (angular distance) from a source node using Dijkstra.
@@ -357,10 +392,6 @@ class NetworkStructure:
             Maximum travel time cutoff.
         speed_m_s: float
             Travel speed (m/s).
-        jitter_scale: float | None
-            Optional scale for random cost jitter.
-        random_seed: int | None
-            Optional seed for deterministic random cost jitter.
 
         Returns
         -------
@@ -373,8 +404,6 @@ class NetworkStructure:
         src_idx: int,
         max_seconds: int,
         speed_m_s: float,
-        jitter_scale: float | None = None,
-        random_seed: int | None = None,
     ) -> tuple[list[int], list[int], list[NodeVisit], list[EdgeVisit]]:
         """
         Compute shortest path tree for segment-based analysis.
@@ -387,10 +416,6 @@ class NetworkStructure:
             Maximum travel time cutoff.
         speed_m_s: float
             Travel speed (m/s).
-        jitter_scale: float | None
-            Optional scale for random cost jitter.
-        random_seed: int | None
-            Optional seed for deterministic random cost jitter.
 
         Returns
         -------
@@ -398,27 +423,27 @@ class NetworkStructure:
             (Reachable node indices, Visited edge indices, NodeVisit states, EdgeVisit states).
         """
         ...
-    def local_node_centrality_shortest(
+    def centrality_shortest(
         self,
         distances: list[int] | None = None,
         betas: list[float] | None = None,
         minutes: list[float] | None = None,
-        compute_closeness: bool | None = True,
-        compute_betweenness: bool | None = True,
+        compute_closeness: bool | None = None,
+        compute_betweenness: bool | None = None,
         min_threshold_wt: float | None = None,
         speed_m_s: float | None = None,
-        jitter_scale: float | None = None,
+        tolerance: float | None = None,
         sample_probability: float | None = None,
         sampling_weights: list[float] | None = None,
-        od_matrix: OdMatrix | None = None,
         random_seed: int | None = None,
+        source_indices: list[int] | None = None,
         pbar_disabled: bool | None = None,
     ) -> CentralityShortestResult:
         """
-        Calculate local node centrality metrics based on shortest paths (metric distance).
+        Compute combined closeness and/or betweenness centrality using shortest paths.
 
-        Computes closeness and/or betweenness centrality within specified catchment thresholds.
-        Requires exactly one of `distances`, `betas`, or `minutes`.
+        Performs a single Dijkstra traversal per source node, computing both closeness
+        and betweenness metrics simultaneously when both flags are True.
 
         Parameters
         ----------
@@ -429,56 +454,55 @@ class NetworkStructure:
         minutes: list[float] | None
             Time thresholds (minutes).
         compute_closeness: bool | None
-            Compute closeness centrality if True.
+            Compute closeness metrics (density, farness, cycles, harmonic, beta). Default True.
         compute_betweenness: bool | None
-            Compute betweenness centrality if True.
+            Compute betweenness metrics (betweenness, betweenness_beta). Default True.
         min_threshold_wt: float | None
             Minimum weight for beta/distance conversion.
         speed_m_s: float | None
             Travel speed (m/s).
-        jitter_scale: float | None
-            Path cost jitter scale.
+        tolerance: float | None
+            Relative tolerance for near-equal path detection in betweenness. 0.0 = exact shortest paths only.
         sample_probability: float | None
-            Probability of sampling a node as a source for centrality calculations.
+            Probability of sampling a node as a source. Used for IPW scaling.
         sampling_weights: list[float] | None
-            Per-node sampling weights in range [0.0, 1.0]. When provided, sampling probability
-            for each node becomes sample_probability * sampling_weights[node_idx].
-        od_matrix: OdMatrix | None
-            Sparse OD weight matrix for demand-weighted centrality. When provided, only
-            (origin, destination) pairs in the matrix contribute, weighted by trip count.
+            Per-node sampling weights in range [0.0, 1.0]. Mutually exclusive with source_indices.
         random_seed: int | None
-            Optional seed for reproducible sampling and jitter.
+            Optional seed for reproducible sampling.
+        source_indices: list[int] | None
+            Subset of node indices to use as sources. Mutually exclusive with sampling_weights.
         pbar_disabled: bool | None
             Disable progress bar if True.
 
         Returns
         -------
         CentralityShortestResult
-            Object containing calculated centrality metrics.
+            Object containing closeness and/or betweenness centrality metrics.
         """
         ...
-    def local_node_centrality_simplest(
+    def centrality_simplest(
         self,
         distances: list[int] | None = None,
         betas: list[float] | None = None,
         minutes: list[float] | None = None,
-        compute_closeness: bool | None = True,
-        compute_betweenness: bool | None = True,
+        compute_closeness: bool | None = None,
+        compute_betweenness: bool | None = None,
         min_threshold_wt: float | None = None,
         speed_m_s: float | None = None,
         angular_scaling_unit: float | None = None,
         farness_scaling_offset: float | None = None,
-        jitter_scale: float | None = None,
+        tolerance: float | None = None,
         sample_probability: float | None = None,
         sampling_weights: list[float] | None = None,
         random_seed: int | None = None,
+        source_indices: list[int] | None = None,
         pbar_disabled: bool | None = None,
     ) -> CentralitySimplestResult:
         """
-        Calculate local node centrality metrics based on simplest paths (angular distance).
+        Compute combined closeness and/or betweenness centrality using simplest (angular) paths.
 
-        Computes closeness and/or betweenness centrality within specified catchment thresholds.
-        Requires exactly one of `distances`, `betas`, or `minutes`.
+        Performs a single angular Dijkstra traversal per source node, computing both closeness
+        and betweenness metrics simultaneously when both flags are True.
 
         Parameters
         ----------
@@ -489,36 +513,74 @@ class NetworkStructure:
         minutes: list[float] | None
             Time thresholds (minutes).
         compute_closeness: bool | None
-            Compute closeness centrality if True.
+            Compute closeness metrics (density, farness, harmonic). Default True.
         compute_betweenness: bool | None
-            Compute betweenness centrality if True.
+            Compute betweenness metrics (betweenness, betweenness_beta). Default True.
         min_threshold_wt: float | None
             Minimum weight for beta/distance conversion.
         speed_m_s: float | None
             Travel speed (m/s).
         angular_scaling_unit: float | None
-            Scaling unit for angular cost (default: 90 degrees).
+            Scaling unit for angular cost (default: 180 degrees).
         farness_scaling_offset: float | None
             Offset for farness calculation (default: 1.0).
-        jitter_scale: float | None
-            Path cost jitter scale.
+        tolerance: float | None
+            Relative tolerance for near-equal angular path detection. 0.0 = exact simplest paths only.
         sample_probability: float | None
-            Probability of sampling a node as a source for centrality calculations.
+            Probability of sampling a node as a source.
         sampling_weights: list[float] | None
-            Per-node sampling weights in range [0.0, 1.0]. When provided, sampling probability
-            for each node becomes sample_probability * sampling_weights[node_idx].
+            Per-node sampling weights in range [0.0, 1.0]. Mutually exclusive with source_indices.
         random_seed: int | None
-            Optional seed for reproducible sampling and jitter.
+            Optional seed for reproducible sampling.
+        source_indices: list[int] | None
+            Subset of node indices to use as sources. Mutually exclusive with sampling_weights.
         pbar_disabled: bool | None
             Disable progress bar if True.
 
         Returns
         -------
         CentralitySimplestResult
-            Object containing calculated centrality metrics.
+            Object containing closeness and/or betweenness centrality metrics.
         """
         ...
-    def local_segment_centrality(
+    def betweenness_od_shortest(
+        self,
+        od_matrix: OdMatrix,
+        distances: list[int] | None = None,
+        betas: list[float] | None = None,
+        minutes: list[float] | None = None,
+        min_threshold_wt: float | None = None,
+        speed_m_s: float | None = None,
+        tolerance: float | None = None,
+        pbar_disabled: bool | None = None,
+    ) -> BetweennessShortestResult:
+        """
+        Compute OD-weighted betweenness centrality using shortest paths.
+
+        Parameters
+        ----------
+        od_matrix: OdMatrix
+            Sparse OD weight matrix mapping (origin, destination) pairs to trip weights.
+        distances: list[int] | None
+            Distance thresholds (meters).
+        betas: list[float] | None
+            Decay parameters (beta).
+        minutes: list[float] | None
+            Time thresholds (minutes).
+        min_threshold_wt: float | None
+            Minimum weight for beta/distance conversion.
+        speed_m_s: float | None
+            Travel speed (m/s).
+        pbar_disabled: bool | None
+            Disable progress bar if True.
+
+        Returns
+        -------
+        BetweennessShortestResult
+            Object containing betweenness centrality metrics.
+        """
+        ...
+    def segment_centrality(
         self,
         distances: list[int] | None = None,
         betas: list[float] | None = None,
@@ -527,8 +589,6 @@ class NetworkStructure:
         compute_betweenness: bool | None = True,
         min_threshold_wt: float | None = None,
         speed_m_s: float | None = None,
-        jitter_scale: float | None = None,
-        random_seed: int | None = None,
         pbar_disabled: bool | None = None,
     ) -> CentralitySegmentResult:
         """
@@ -553,10 +613,6 @@ class NetworkStructure:
             Minimum weight for beta/distance conversion.
         speed_m_s: float | None
             Travel speed (m/s).
-        jitter_scale: float | None
-            Path cost jitter scale.
-        random_seed: int | None
-            Optional seed for random cost jitter.
         pbar_disabled: bool | None
             Disable progress bar if True.
 

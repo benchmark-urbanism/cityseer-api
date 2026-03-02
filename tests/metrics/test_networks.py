@@ -13,7 +13,6 @@ def test_node_centrality_shortest(primal_graph):
     """
     distances = [400, 800]
     betas = rustalgos.betas_from_distances(distances)
-    # node_measures_ang = ["node_harmonic_angular", "node_betweenness_angular"]
     nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(primal_graph)
     # test different combinations of closeness and betweenness
     for _closeness, _betweenness in [(False, True), (True, False), (True, True)]:
@@ -27,12 +26,14 @@ def test_node_centrality_shortest(primal_graph):
                 compute_closeness=_closeness,
                 compute_betweenness=_betweenness,
             )
-            # test against underlying method
-            node_result_short = network_structure.local_node_centrality_shortest(
-                betas=betas, compute_closeness=_closeness, compute_betweenness=_betweenness
-            )
             for dist_key in distances:
                 if _closeness is True:
+                    # test closeness against underlying source-sampling method
+                    node_result_short = network_structure.centrality_shortest(
+                        compute_closeness=True,
+                        compute_betweenness=False,
+                        betas=betas,
+                    )
                     for measure_key, attr_key in [
                         ("beta", "node_beta"),
                         ("cycles", "node_cycles"),
@@ -47,14 +48,21 @@ def test_node_centrality_shortest(primal_graph):
                             atol=config.ATOL,
                             rtol=config.RTOL,
                         )
-                    assert np.allclose(
-                        nodes_gdf[config.prep_gdf_key("hillier", dist_key)],
-                        node_result_short.node_density[dist_key] ** 2 / node_result_short.node_farness[dist_key],
-                        equal_nan=True,
-                        atol=config.ATOL,
-                        rtol=config.RTOL,
-                    )
+                    with np.errstate(divide="ignore", invalid="ignore"):
+                        assert np.allclose(
+                            nodes_gdf[config.prep_gdf_key("hillier", dist_key)],
+                            node_result_short.node_density[dist_key] ** 2 / node_result_short.node_farness[dist_key],
+                            equal_nan=True,
+                            atol=config.ATOL,
+                            rtol=config.RTOL,
+                        )
                 if _betweenness is True:
+                    # test betweenness against underlying exact Brandes method
+                    betweenness_result = network_structure.centrality_shortest(
+                        compute_closeness=False,
+                        compute_betweenness=True,
+                        distances=[dist_key],
+                    )
                     for measure_key, attr_key in [
                         ("betweenness", "node_betweenness"),
                         ("betweenness_beta", "node_betweenness_beta"),
@@ -62,7 +70,7 @@ def test_node_centrality_shortest(primal_graph):
                         data_key = config.prep_gdf_key(measure_key, dist_key)
                         assert np.allclose(
                             nodes_gdf[data_key],
-                            getattr(node_result_short, attr_key)[dist_key],
+                            getattr(betweenness_result, attr_key)[dist_key],
                             atol=config.ATOL,
                             rtol=config.RTOL,
                         )
@@ -74,61 +82,63 @@ def test_node_centrality_simplest(primal_graph):
     """
     distances = [400, 800]
     betas = rustalgos.betas_from_distances(distances)
-    # node_measures_ang = ["node_harmonic_angular", "node_betweenness_angular"]
     nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(primal_graph)
-    # test different combinations of closeness and betweenness
-    for _closeness, _betweenness in [(False, True), (True, False), (True, True)]:
-        for _distances, _betas in [(distances, None), (None, betas)]:
-            for _far_scale_off, _ang_scale_unit in [(0, 180), (0, 90), (1, 180)]:
-                # test shortest
-                nodes_gdf = networks.node_centrality_simplest(
-                    network_structure=network_structure,
-                    nodes_gdf=nodes_gdf,
-                    distances=_distances,
-                    betas=_betas,
-                    compute_closeness=_closeness,
-                    compute_betweenness=_betweenness,
-                    farness_scaling_offset=_far_scale_off,
-                    angular_scaling_unit=_ang_scale_unit,
-                )
-                # test against underlying method
-                node_result_simplest = network_structure.local_node_centrality_simplest(
+    for _distances, _betas in [(distances, None), (None, betas)]:
+        for _far_scale_off, _ang_scale_unit in [(0, 180), (0, 90), (1, 180)]:
+            nodes_gdf = networks.node_centrality_simplest(
+                network_structure=network_structure,
+                nodes_gdf=nodes_gdf,
+                distances=_distances,
+                betas=_betas,
+                compute_closeness=True,
+                compute_betweenness=True,
+                farness_scaling_offset=_far_scale_off,
+                angular_scaling_unit=_ang_scale_unit,
+            )
+            for dist_key in distances:
+                # test closeness against underlying method
+                node_result_simplest = network_structure.centrality_simplest(
+                    compute_closeness=True,
+                    compute_betweenness=False,
                     betas=betas,
-                    compute_closeness=_closeness,
-                    compute_betweenness=_betweenness,
                     farness_scaling_offset=_far_scale_off,
                     angular_scaling_unit=_ang_scale_unit,
                 )
-                for dist_key in distances:
-                    if _closeness is True:
-                        for measure_key, attr_key in [
-                            ("density", "node_density"),
-                            ("farness", "node_farness"),
-                            ("harmonic", "node_harmonic"),
-                        ]:
-                            assert np.allclose(
-                                nodes_gdf[config.prep_gdf_key(measure_key, dist_key, angular=True)],
-                                getattr(node_result_simplest, attr_key)[dist_key],
-                                equal_nan=True,
-                                atol=config.ATOL,
-                                rtol=config.RTOL,
-                            )
-                        assert np.allclose(
-                            nodes_gdf[config.prep_gdf_key("hillier", dist_key, angular=True)],
-                            node_result_simplest.node_density[dist_key] ** 2
-                            / node_result_simplest.node_farness[dist_key],
-                            equal_nan=True,
-                            atol=config.ATOL,
-                            rtol=config.RTOL,
-                        )
-                    if _betweenness is True:
-                        assert np.allclose(
-                            nodes_gdf[config.prep_gdf_key("betweenness", dist_key, angular=True)],
-                            node_result_simplest.node_betweenness[dist_key],
-                            equal_nan=True,
-                            atol=config.ATOL,
-                            rtol=config.RTOL,
-                        )
+                for measure_key, attr_key in [
+                    ("density", "node_density"),
+                    ("farness", "node_farness"),
+                    ("harmonic", "node_harmonic"),
+                ]:
+                    assert np.allclose(
+                        nodes_gdf[config.prep_gdf_key(measure_key, dist_key, angular=True)],
+                        getattr(node_result_simplest, attr_key)[dist_key],
+                        equal_nan=True,
+                        atol=config.ATOL,
+                        rtol=config.RTOL,
+                    )
+                with np.errstate(divide="ignore", invalid="ignore"):
+                    assert np.allclose(
+                        nodes_gdf[config.prep_gdf_key("hillier", dist_key, angular=True)],
+                        node_result_simplest.node_density[dist_key] ** 2 / node_result_simplest.node_farness[dist_key],
+                        equal_nan=True,
+                        atol=config.ATOL,
+                        rtol=config.RTOL,
+                    )
+                # test betweenness against underlying method
+                betw_result = network_structure.centrality_simplest(
+                    compute_closeness=False, compute_betweenness=True, betas=betas
+                )
+                for measure_key, attr_key in [
+                    ("betweenness", "node_betweenness"),
+                    ("betweenness_beta", "node_betweenness_beta"),
+                ]:
+                    assert np.allclose(
+                        nodes_gdf[config.prep_gdf_key(measure_key, dist_key, angular=True)],
+                        getattr(betw_result, attr_key)[dist_key],
+                        equal_nan=True,
+                        atol=config.ATOL,
+                        rtol=config.RTOL,
+                    )
 
 
 def test_segment_centrality(primal_graph):
@@ -152,7 +162,7 @@ def test_segment_centrality(primal_graph):
                 compute_betweenness=_betweenness,
             )
             # test against underlying method
-            segment_result = network_structure.local_segment_centrality(
+            segment_result = network_structure.segment_centrality(
                 betas=betas, compute_closeness=_closeness, compute_betweenness=_betweenness
             )
             for dist_key in distances:
@@ -169,141 +179,69 @@ def test_segment_centrality(primal_graph):
                     assert np.allclose(nodes_gdf[data_key], segment_result.segment_betweenness[dist_key])
 
 
-def test_node_centrality_shortest_adaptive(primal_graph):
-    """
-    Test adaptive shortest-path centrality with per-distance sampling.
-
-    The adaptive function should produce results that correlate highly with
-    full computation, while potentially using sampling at larger distances.
-    """
-    from scipy.stats import spearmanr
-
+def test_closeness_shortest(primal_graph):
+    """Test standalone closeness_shortest with adaptive sampling."""
     distances = [200, 400, 800]
     nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(primal_graph)
-
-    # Run adaptive version (small epsilon drives p close to full)
-    nodes_gdf_adaptive = networks.node_centrality_shortest_adaptive(
+    nodes_gdf_result = networks.closeness_shortest(
         network_structure=network_structure,
         nodes_gdf=nodes_gdf.copy(),
         distances=distances,
-        epsilon=0.05,
-        delta=0.1,
-        compute_closeness=True,
-        compute_betweenness=True,
         random_seed=42,
-        probe_density=20.0,
     )
-
-    # Run full computation for comparison
-    nodes_gdf_full = networks.node_centrality_shortest(
-        network_structure=network_structure,
-        nodes_gdf=nodes_gdf.copy(),
-        distances=distances,
-        compute_closeness=True,
-        compute_betweenness=True,
-    )
-
-    # Check that columns were created
     for dist in distances:
-        assert config.prep_gdf_key("harmonic", dist) in nodes_gdf_adaptive.columns
-        assert config.prep_gdf_key("betweenness", dist) in nodes_gdf_adaptive.columns
-
-    # Check correlation with full computation
-    # For this small test graph, adaptive should match very closely
-    for dist in distances:
-        harmonic_key = config.prep_gdf_key("harmonic", dist)
-        full_vals = nodes_gdf_full[harmonic_key].values
-        adaptive_vals = nodes_gdf_adaptive[harmonic_key].values
-
-        # Filter out zeros/nans for correlation
-        mask = (full_vals > 0) & np.isfinite(full_vals) & np.isfinite(adaptive_vals)
-        if mask.sum() > 5:
-            rho, _ = spearmanr(full_vals[mask], adaptive_vals[mask])
-            # Should achieve at least the target accuracy
-            assert rho >= 0.85, f"Correlation too low at {dist}m: {rho:.3f}"
+        assert config.prep_gdf_key("harmonic", dist) in nodes_gdf_result.columns
+        assert config.prep_gdf_key("density", dist) in nodes_gdf_result.columns
+        assert config.prep_gdf_key("farness", dist) in nodes_gdf_result.columns
+        assert config.prep_gdf_key("beta", dist) in nodes_gdf_result.columns
+        assert config.prep_gdf_key("cycles", dist) in nodes_gdf_result.columns
+        assert config.prep_gdf_key("hillier", dist) in nodes_gdf_result.columns
 
 
-def test_node_centrality_shortest_adaptive_minutes(primal_graph):
-    """Test adaptive shortest-path centrality using minutes instead of distances."""
-    nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(primal_graph)
-    # 5 minutes at default 1.33 m/s ≈ 400m
-    nodes_gdf_adaptive = networks.node_centrality_shortest_adaptive(
-        network_structure=network_structure,
-        nodes_gdf=nodes_gdf.copy(),
-        minutes=[5.0, 10.0],
-        epsilon=0.05,
-        delta=0.1,
-        random_seed=42,
-        probe_density=20.0,
-    )
-    # Verify columns were created using resolved distances
-    distances, _betas, _seconds = rustalgos.pair_distances_betas_time(config.SPEED_M_S, minutes=[5.0, 10.0])
-    for dist in distances:
-        assert config.prep_gdf_key("harmonic", dist) in nodes_gdf_adaptive.columns
-        assert config.prep_gdf_key("betweenness", dist) in nodes_gdf_adaptive.columns
-
-
-def test_node_centrality_simplest_adaptive(primal_graph):
-    """
-    Test adaptive simplest-path (angular) centrality with per-distance sampling.
-    """
-    from scipy.stats import spearmanr
-
+def test_closeness_shortest_seeded_determinism(primal_graph):
+    """Same seed produces identical adaptive closeness_shortest results."""
     distances = [200, 400, 800]
     nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(primal_graph)
-
-    # Run adaptive version
-    nodes_gdf_adaptive = networks.node_centrality_simplest_adaptive(
+    kwargs = dict(
         network_structure=network_structure,
-        nodes_gdf=nodes_gdf.copy(),
         distances=distances,
-        epsilon=0.05,
-        delta=0.1,
-        compute_closeness=True,
-        compute_betweenness=True,
         random_seed=42,
-        probe_density=20.0,
     )
-
-    # Run full computation for comparison
-    nodes_gdf_full = networks.node_centrality_simplest(
-        network_structure=network_structure,
-        nodes_gdf=nodes_gdf.copy(),
-        distances=distances,
-        compute_closeness=True,
-        compute_betweenness=True,
-    )
-
-    # Check that columns were created
+    r1 = networks.closeness_shortest(nodes_gdf=nodes_gdf.copy(), **kwargs)
+    r2 = networks.closeness_shortest(nodes_gdf=nodes_gdf.copy(), **kwargs)
     for dist in distances:
-        assert config.prep_gdf_key("harmonic", dist, angular=True) in nodes_gdf_adaptive.columns
-        assert config.prep_gdf_key("betweenness", dist, angular=True) in nodes_gdf_adaptive.columns
-
-    # Check correlation with full computation
-    for dist in distances:
-        harmonic_key = config.prep_gdf_key("harmonic", dist, angular=True)
-        full_vals = nodes_gdf_full[harmonic_key].values
-        adaptive_vals = nodes_gdf_adaptive[harmonic_key].values
-
-        mask = (full_vals > 0) & np.isfinite(full_vals) & np.isfinite(adaptive_vals)
-        if mask.sum() > 5:
-            rho, _ = spearmanr(full_vals[mask], adaptive_vals[mask])
-            assert rho >= 0.85, f"Correlation too low at {dist}m: {rho:.3f}"
+        key = config.prep_gdf_key("density", dist)
+        assert np.allclose(r1[key].values, r2[key].values), f"Non-deterministic at {dist}m"
 
 
-def test_node_centrality_simplest_adaptive_minutes(primal_graph):
-    """Test adaptive simplest-path centrality using minutes instead of distances."""
+def test_closeness_simplest(primal_graph):
+    """Test standalone closeness_simplest with adaptive sampling."""
+    distances = [200, 400, 800]
     nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(primal_graph)
-    nodes_gdf_adaptive = networks.node_centrality_simplest_adaptive(
+    nodes_gdf_result = networks.closeness_simplest(
         network_structure=network_structure,
         nodes_gdf=nodes_gdf.copy(),
-        minutes=[5.0, 10.0],
-        epsilon=0.05,
-        delta=0.1,
+        distances=distances,
         random_seed=42,
-        probe_density=20.0,
     )
-    distances, _betas, _seconds = rustalgos.pair_distances_betas_time(config.SPEED_M_S, minutes=[5.0, 10.0])
     for dist in distances:
-        assert config.prep_gdf_key("harmonic", dist, angular=True) in nodes_gdf_adaptive.columns
-        assert config.prep_gdf_key("betweenness", dist, angular=True) in nodes_gdf_adaptive.columns
+        assert config.prep_gdf_key("harmonic", dist, angular=True) in nodes_gdf_result.columns
+        assert config.prep_gdf_key("density", dist, angular=True) in nodes_gdf_result.columns
+        assert config.prep_gdf_key("farness", dist, angular=True) in nodes_gdf_result.columns
+        assert config.prep_gdf_key("hillier", dist, angular=True) in nodes_gdf_result.columns
+
+
+def test_closeness_simplest_seeded_determinism(primal_graph):
+    """Same seed produces identical adaptive closeness_simplest results."""
+    distances = [200, 400, 800]
+    nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(primal_graph)
+    kwargs = dict(
+        network_structure=network_structure,
+        distances=distances,
+        random_seed=42,
+    )
+    r1 = networks.closeness_simplest(nodes_gdf=nodes_gdf.copy(), **kwargs)
+    r2 = networks.closeness_simplest(nodes_gdf=nodes_gdf.copy(), **kwargs)
+    for dist in distances:
+        key = config.prep_gdf_key("density", dist, angular=True)
+        assert np.allclose(r1[key].values, r2[key].values), f"Non-deterministic at {dist}m"

@@ -1,25 +1,21 @@
 \begin{table}[htbp]
 \centering
-\caption{Required effective sample sizes and sampling probabilities under the localised
-  Eppstein--Wang bound at different additive error tolerances ($\delta = 0.1$).}
+\caption{Deterministic sampling schedule at standard analysis distances under different
+  error tolerances ($\delta = 0.1$, $s = 175\,$m).
+  Paper default: $\varepsilon=0.06$ for both metrics.}
 \label{tab:ew_comparison}
 \small
-\begin{tabular}{@{}rrrrrrr@{}}
+\begin{tabular}{@{}rrrrrrrrrrr@{}}
 \toprule
-\textbf{Reach} & \textbf{EW $\varepsilon{=}0.05$} & \textbf{$p$} & \textbf{EW $\varepsilon{=}0.1$} &
-  \textbf{$p$} & \textbf{EW $\varepsilon{=}0.2$} & \textbf{$p$} \\\\
+\textbf{Distance} & \multicolumn{2}{c}{$\varepsilon=0.02$} & \multicolumn{2}{c}{$\varepsilon=0.04$} & \multicolumn{2}{c}{$\varepsilon=0.06$} & \multicolumn{2}{c}{$\varepsilon=0.08$} & \multicolumn{2}{c}{$\varepsilon=0.1$} \\
+          & $k$ & $p$ & $k$ & $p$ & $k$ & $p$ & $k$ & $p$ & $k$ & $p$ \\
 \midrule
-100 & 1{,}520 & 100.0\% & 380 & 100.0\% & 95 & 95.0\% \\
-500 & 1{,}842 & 100.0\% & 460 & 92.1\% & 115 & 23.0\% \\
-1{,}000 & 1{,}980 & 100.0\% & 495 & 49.5\% & 123 & 12.4\% \\
-3{,}000 & 2{,}200 & 73.3\% & 550 & 18.3\% & 137 & 4.6\% \\
-10{,}000 & 2{,}441 & 24.4\% & 610 & 6.1\% & 152 & 1.5\% \\
-30{,}000 & 2{,}660 & 8.9\% & 665 & 2.2\% & 166 & 0.6\% \\
+500\,m & \multicolumn{2}{c}{exact} & \multicolumn{2}{c}{exact} & \multicolumn{2}{c}{exact} & \multicolumn{2}{c}{exact} & \multicolumn{2}{c}{exact} \\
+1\,km & \multicolumn{2}{c}{exact} & \multicolumn{2}{c}{exact} & \multicolumn{2}{c}{exact} & \multicolumn{2}{c}{exact} & \multicolumn{2}{c}{exact} \\
+2\,km & \multicolumn{2}{c}{exact} & \multicolumn{2}{c}{exact} & \multicolumn{2}{c}{exact} & \multicolumn{2}{c}{exact} & \multicolumn{2}{c}{exact} \\
+5\,km & \multicolumn{2}{c}{exact} & \multicolumn{2}{c}{exact} & 1{,}506 & 58.7\% & 847 & 33.0\% & 542 & 21.1\% \\
+10\,km & \multicolumn{2}{c}{exact} & 3{,}822 & 37.3\% & 1{,}699 & 16.6\% & 955 & 9.3\% & 611 & 6.0\% \\
+20\,km & 17{,}022 & 41.5\% & 4{,}255 & 10.4\% & 1{,}891 & 4.6\% & 1{,}063 & 2.6\% & 680 & 1.7\% \\
 \bottomrule
 \end{tabular}
-
-\vspace{0.5em}
-\footnotesize
-The Hoeffding model prescribes $k = \log(2r/\delta) / (2\varepsilon^2)$, $p = \min(1, k/r)$.
-At the default $\varepsilon = 0.1$, $\delta = 0.1$, the model has zero fitted parameters.
 \end{table}

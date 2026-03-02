@@ -11,13 +11,38 @@ mod diversity;
 mod graph;
 mod viewshed;
 
+/// Configure the rayon global thread pool.
+///
+/// Uses N-1 threads when more than 2 cores are available, leaving one core
+/// free for the OS, Python GIL operations, and progress bar updates.
+/// On 1- or 2-core machines, uses all available cores.
+///
+/// The RAYON_NUM_THREADS environment variable overrides this default.
+fn configure_thread_pool() {
+    // Respect explicit user override via environment variable
+    if std::env::var("RAYON_NUM_THREADS").is_ok() {
+        return;
+    }
+    let n_cpus = std::thread::available_parallelism()
+        .map(|p| p.get())
+        .unwrap_or(1);
+    let n_threads = if n_cpus > 2 { n_cpus - 1 } else { n_cpus };
+    let _ = rayon::ThreadPoolBuilder::new()
+        .num_threads(n_threads)
+        .build_global();
+}
+
 /// Cityseer API implementation in Rust for performance-critical algorithms.
 /// Exposes network, centrality, and diversity computation functions to Python.
 #[pymodule]
 #[pyo3(name = "rustalgos")]
 fn rustalgos(py_module: &Bound<'_, PyModule>) -> PyResult<()> {
+    // Configure rayon thread pool (N-1 cores, or all if <= 2)
+    configure_thread_pool();
     // Initialize pyo3-log to bridge Rust logs to Python logging
-    pyo3_log::init();
+    // Use try_init() so it silently succeeds if a logger is already registered
+    // (e.g. when loaded inside QGIS or another host that sets up logging first)
+    let _ = pyo3_log::try_init();
 
     // Register classes and functions
     py_module.add_function(wrap_pyfunction!(common::check_numerical_data, py_module)?)?;
@@ -118,6 +143,7 @@ fn register_centrality_module(py_module: &Bound<'_, PyModule>) -> PyResult<()> {
         "Centrality analysis utilities for network structures.",
     )?;
     submodule.add_class::<centrality::OdMatrix>()?;
+    submodule.add_class::<centrality::BetweennessShortestResult>()?;
     submodule.add_class::<centrality::CentralityShortestResult>()?;
     submodule.add_class::<centrality::CentralitySimplestResult>()?;
     submodule.add_class::<centrality::CentralitySegmentResult>()?;

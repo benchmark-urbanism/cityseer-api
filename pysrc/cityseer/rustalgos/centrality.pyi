@@ -28,7 +28,7 @@ class OdMatrix:
         ...
 
 class CentralityShortestResult:
-    """Holds results for shortest path (metric distance) centrality calculations."""
+    """Holds combined closeness + betweenness results for shortest path centrality."""
 
     distances: list[int]
     node_keys_py: list[Any]
@@ -41,13 +41,13 @@ class CentralityShortestResult:
     @property
     def node_cycles(self) -> dict[int, npt.NDArray[np.float32]]: ...
     @property
-    def node_harmonic(self) -> dict[int, npt.NDArray[np.float32]]: ...  # Closeness based on harmonic mean
+    def node_harmonic(self) -> dict[int, npt.NDArray[np.float32]]: ...
     @property
-    def node_beta(self) -> dict[int, npt.NDArray[np.float32]]: ...  # Beta-weighted closeness
+    def node_beta(self) -> dict[int, npt.NDArray[np.float32]]: ...
     @property
     def node_betweenness(self) -> dict[int, npt.NDArray[np.float32]]: ...
     @property
-    def node_betweenness_beta(self) -> dict[int, npt.NDArray[np.float32]]: ...  # Beta-weighted betweenness
+    def node_betweenness_beta(self) -> dict[int, npt.NDArray[np.float32]]: ...
     @property
     def reachability_totals(self) -> list[int]:
         """Total reachability counts per distance from sampled sources."""
@@ -58,7 +58,7 @@ class CentralityShortestResult:
         ...
 
 class CentralitySimplestResult:
-    """Holds results for simplest path (angular distance) centrality calculations."""
+    """Holds combined closeness + betweenness results for simplest (angular) path centrality."""
 
     distances: list[int]
     node_keys_py: list[Any]
@@ -67,11 +67,33 @@ class CentralitySimplestResult:
     @property
     def node_density(self) -> dict[int, npt.NDArray[np.float32]]: ...
     @property
-    def node_farness(self) -> dict[int, npt.NDArray[np.float32]]: ...  # Angular farness
+    def node_farness(self) -> dict[int, npt.NDArray[np.float32]]: ...
     @property
-    def node_harmonic(self) -> dict[int, npt.NDArray[np.float32]]: ...  # Angular closeness (harmonic)
+    def node_harmonic(self) -> dict[int, npt.NDArray[np.float32]]: ...
     @property
     def node_betweenness(self) -> dict[int, npt.NDArray[np.float32]]: ...
+    @property
+    def node_betweenness_beta(self) -> dict[int, npt.NDArray[np.float32]]: ...
+    @property
+    def reachability_totals(self) -> list[int]:
+        """Total reachability counts per distance from sampled sources."""
+        ...
+    @property
+    def sampled_source_count(self) -> int:
+        """Number of sources that were sampled."""
+        ...
+
+class BetweennessShortestResult:
+    """Holds results for shortest path betweenness centrality calculations."""
+
+    distances: list[int]
+    node_keys_py: list[Any]
+    node_indices: list[int]
+
+    @property
+    def node_betweenness(self) -> dict[int, npt.NDArray[np.float32]]: ...
+    @property
+    def node_betweenness_beta(self) -> dict[int, npt.NDArray[np.float32]]: ...
     @property
     def reachability_totals(self) -> list[int]:
         """Total reachability counts per distance from sampled sources."""
@@ -86,13 +108,13 @@ class CentralitySegmentResult:
 
     distances: list[int]
     node_keys_py: list[Any]
-    node_indices: list[int]  # Note: these are still node indices, results are mapped to segments via nodes
+    node_indices: list[int]
 
     @property
     def segment_density(self) -> dict[int, npt.NDArray[np.float32]]: ...
     @property
-    def segment_harmonic(self) -> dict[int, npt.NDArray[np.float32]]: ...  # Segment closeness (harmonic mean)
+    def segment_harmonic(self) -> dict[int, npt.NDArray[np.float32]]: ...
     @property
-    def segment_beta(self) -> dict[int, npt.NDArray[np.float32]]: ...  # Segment beta-weighted closeness
+    def segment_beta(self) -> dict[int, npt.NDArray[np.float32]]: ...
     @property
     def segment_betweenness(self) -> dict[int, npt.NDArray[np.float32]]: ...

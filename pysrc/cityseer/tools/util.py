@@ -574,6 +574,7 @@ def create_nodes_strtree(nx_multigraph: nx.MultiGraph) -> tuple[strtree.STRtree,
     """
     Create a nodes-based STRtree spatial index.
     """
+
     node_geoms = []
     node_lookups: list[dict[str, Any]] = []
     nd_key: NodeKey
@@ -599,6 +600,7 @@ def create_edges_strtree(nx_multigraph: nx.MultiGraph) -> tuple[strtree.STRtree,
     """
     Create an edges-based STRtree spatial index.
     """
+
     edge_geoms = []
     edge_lookups: list[dict[str, Any]] = []
     start_nd_key: NodeKey

@@ -1,0 +1,25 @@
+[general]
+name=Cityseer
+qgisMinimumVersion=3.99
+description=Urban network centrality analysis using the cityseer library
+version=4.23.0-beta17
+author=Benchmark Urbanism
+email=gareth.simons@ucl.ac.uk
+
+about=Cityseer computes localised network centrality metrics (closeness and betweenness)
+    on street networks at multiple distance thresholds. Metrics are computed on a dual
+    graph representation where each road segment is a node connected to its neighbours.
+    Requires the cityseer Python library: pip install cityseer
+
+tracker=https://github.com/benchmark-urbanism/cityseer-api/issues
+repository=https://github.com/benchmark-urbanism/cityseer-api
+homepage=https://cityseer.benchmarkurbanism.com
+
+hasProcessingProvider=yes
+tags=network centrality,urban analysis,closeness,betweenness,street network,graph
+category=Analysis
+icon=icon.png
+experimental=True
+deprecated=False
+supportsQt6=True
+license=AGPL-3.0

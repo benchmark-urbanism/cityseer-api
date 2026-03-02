@@ -34,16 +34,17 @@ impl MetricResult {
         }
     }
 
-    /// Converts the atomic f64 accumulators to f32 for Python output.
+    /// Extracts values at specified node positions into compact numpy arrays.
+    /// Used to strip StableGraph index gaps from output.
     #[inline]
-    pub fn load(&self) -> HashMap<u32, Py<PyArray1<f32>>> {
+    pub fn load_compact(&self, node_indices: &[usize]) -> HashMap<u32, Py<PyArray1<f32>>> {
         self.distances
             .iter()
             .zip(&self.metric)
             .map(|(&dist, row)| {
-                let vec_f32: Vec<f32> = row
+                let vec_f32: Vec<f32> = node_indices
                     .iter()
-                    .map(|a| a.load(Ordering::Relaxed) as f32)
+                    .map(|&idx| row[idx].load(Ordering::Relaxed) as f32)
                     .collect();
                 let array = Python::attach(|py| vec_f32.to_pyarray(py).unbind());
                 (dist, array)

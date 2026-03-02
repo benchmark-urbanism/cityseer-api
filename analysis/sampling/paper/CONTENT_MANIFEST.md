@@ -1,7 +1,10 @@
 # Content Manifest
 
-**Last updated:** 2026-02-23
-**Status:** COMPLETE - Hoeffding/EW sampling model with reproducible pipeline
+**Last updated:** 2026-02-26
+**Status:** STALE (historical) - not authoritative after deterministic-schedule pipeline refactor
+
+> Note: This manifest predates the current consolidated script pipeline (`00_generate_cache.py` ... `05_generate_macros.py`)
+> and updated figure/table naming. Use `analysis/sampling/scripts/run_all.py` and script headers as the authoritative source.
 
 ---
 
@@ -14,7 +17,7 @@ k = log(2r / δ) / (2ε²)
 p = min(1.0, k / r)
 ```
 
-Where reach `r` is the mean number of reachable nodes at a given distance threshold, and `ε, δ` are user-chosen error / failure-probability conventions (defaults used throughout the paper: `ε = 0.1`, `δ = 0.1`).
+Where reach `r` is the mean number of reachable nodes at a given distance threshold, and `ε, δ` are user-chosen error / failure-probability conventions (current paper defaults: `ε = 0.05`, `δ = 0.1`).
 
 ---
 

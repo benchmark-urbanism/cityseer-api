@@ -64,6 +64,7 @@ def nx_epsg_conversion(
         system. Edge `geom` attributes will also be converted if found.
 
     """
+
     if from_crs_code is not None:
         logger.warning(
             """
@@ -260,6 +261,7 @@ def _auto_clean_network(
     green_service_roads: bool = False,
 ) -> nx.MultiGraph:
     """ """
+
     # Skip intermediate validations for performance - validate once at the end
     was_skipping = config.SKIP_VALIDATION
     config.SKIP_VALIDATION = True
@@ -816,6 +818,7 @@ def nx_from_osm_nx(
         A `cityseer` compatible `networkX` graph with `x` and `y` node attributes and `geom` edge attributes.
 
     """
+
     if not isinstance(nx_multidigraph, nx.MultiDiGraph):
         raise TypeError("This method requires a directed networkX MultiDiGraph as derived from `OSMnx`.")
     if node_attributes is not None and not isinstance(node_attributes, list | tuple):
@@ -1033,6 +1036,7 @@ def network_structure_from_nx(
         A [`rustalgos.graph.NetworkStructure`](/rustalgos/rustalgos#networkstructure) instance.
 
     """
+
     if crs is not None:
         logger.warning(
             """
@@ -1206,6 +1210,7 @@ def network_structure_from_gpd(
         A [`rustalgos.graph.NetworkStructure`](/rustalgos/rustalgos#networkstructure) instance.
 
     """
+
     # prepare the network structure
     network_structure = rustalgos.graph.NetworkStructure()
     # check column integrity
@@ -1289,6 +1294,7 @@ def add_transport_gtfs(
 
     > This function is still in development and may change in future releases. Testing is ongoing.
     """
+
     gtfs_path = Path(gtfs_data_path)
     logger.info(f"Loading GTFS data from {gtfs_data_path}")
     if not gtfs_path.exists():
@@ -1414,6 +1420,7 @@ def nx_from_cityseer_geopandas(
         A `networkX` graph with geometries and attributes as copied from the input `GeoDataFrames`.
 
     """
+
     logger.info("Populating node and edge map data to a networkX graph.")
     g_multi_copy = nx.MultiGraph()
     g_multi_copy.graph["crs"] = CRS(nodes_gdf.crs)
@@ -1520,6 +1527,7 @@ def nx_from_generic_geopandas(
         A `cityseer` compatible `networkX` graph with `x` and `y` node attributes and `geom` edge attributes.
 
     """
+
     gdf_network: gpd.GeoDataFrame = gdf_network.copy()
     if gdf_network.crs is None:
         raise ValueError("The GeoDataframe must have a CRS set.")

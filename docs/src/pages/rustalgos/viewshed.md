@@ -85,11 +85,11 @@ layout: ../../layouts/PageLayout.astro
 
 <div class="function">
 
-## visibility_graph
+## visibility
 
 
 <div class="content">
-<span class="name">visibility_graph</span><div class="signature multiline">
+<span class="name">visibility</span><div class="signature multiline">
   <span class="pt">(</span>
   <div class="param">
     <span class="pn">self</span>
@@ -102,6 +102,12 @@ layout: ../../layouts/PageLayout.astro
   </div>
   <div class="param">
     <span class="pn">view_distance</span>
+  </div>
+  <div class="param">
+    <span class="pn">resolution</span>
+  </div>
+  <div class="param">
+    <span class="pn">observer_height</span>
   </div>
   <div class="param">
     <span class="pn">pbar_disabled=None</span>
@@ -136,6 +142,12 @@ layout: ../../layouts/PageLayout.astro
   </div>
   <div class="param">
     <span class="pn">view_distance</span>
+  </div>
+  <div class="param">
+    <span class="pn">resolution</span>
+  </div>
+  <div class="param">
+    <span class="pn">observer_height</span>
   </div>
   <div class="param">
     <span class="pn">origin_x</span>

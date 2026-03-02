@@ -167,9 +167,6 @@ layout: ../../layouts/PageLayout.astro
   <div class="param">
     <span class="pn">speed_m_s</span>
   </div>
-  <div class="param">
-    <span class="pn">jitter_scale=None</span>
-  </div>
   <span class="pt">)</span>
 </div>
 </div>
@@ -200,9 +197,6 @@ layout: ../../layouts/PageLayout.astro
   </div>
   <div class="param">
     <span class="pn">speed_m_s</span>
-  </div>
-  <div class="param">
-    <span class="pn">jitter_scale=None</span>
   </div>
   <span class="pt">)</span>
 </div>
@@ -235,9 +229,6 @@ layout: ../../layouts/PageLayout.astro
   <div class="param">
     <span class="pn">speed_m_s</span>
   </div>
-  <div class="param">
-    <span class="pn">jitter_scale=None</span>
-  </div>
   <span class="pt">)</span>
 </div>
 </div>
@@ -248,11 +239,11 @@ layout: ../../layouts/PageLayout.astro
 
 <div class="function">
 
-## local_node_centrality_shortest
+## closeness_shortest
 
 
 <div class="content">
-<span class="name">local_node_centrality_shortest</span><div class="signature multiline">
+<span class="name">closeness_shortest</span><div class="signature multiline">
   <span class="pt">(</span>
   <div class="param">
     <span class="pn">self</span>
@@ -270,19 +261,22 @@ layout: ../../layouts/PageLayout.astro
     <span class="pn">minutes=None</span>
   </div>
   <div class="param">
-    <span class="pn">compute_closeness=None</span>
-  </div>
-  <div class="param">
-    <span class="pn">compute_betweenness=None</span>
-  </div>
-  <div class="param">
     <span class="pn">min_threshold_wt=None</span>
   </div>
   <div class="param">
     <span class="pn">speed_m_s=None</span>
   </div>
   <div class="param">
-    <span class="pn">jitter_scale=None</span>
+    <span class="pn">sample_probability=None</span>
+  </div>
+  <div class="param">
+    <span class="pn">sampling_weights=None</span>
+  </div>
+  <div class="param">
+    <span class="pn">random_seed=None</span>
+  </div>
+  <div class="param">
+    <span class="pn">source_indices=None</span>
   </div>
   <div class="param">
     <span class="pn">pbar_disabled=None</span>
@@ -297,11 +291,11 @@ layout: ../../layouts/PageLayout.astro
 
 <div class="function">
 
-## local_node_centrality_simplest
+## closeness_simplest
 
 
 <div class="content">
-<span class="name">local_node_centrality_simplest</span><div class="signature multiline">
+<span class="name">closeness_simplest</span><div class="signature multiline">
   <span class="pt">(</span>
   <div class="param">
     <span class="pn">self</span>
@@ -317,12 +311,6 @@ layout: ../../layouts/PageLayout.astro
   </div>
   <div class="param">
     <span class="pn">minutes=None</span>
-  </div>
-  <div class="param">
-    <span class="pn">compute_closeness=None</span>
-  </div>
-  <div class="param">
-    <span class="pn">compute_betweenness=None</span>
   </div>
   <div class="param">
     <span class="pn">min_threshold_wt=None</span>
@@ -337,7 +325,16 @@ layout: ../../layouts/PageLayout.astro
     <span class="pn">farness_scaling_offset=None</span>
   </div>
   <div class="param">
-    <span class="pn">jitter_scale=None</span>
+    <span class="pn">sample_probability=None</span>
+  </div>
+  <div class="param">
+    <span class="pn">sampling_weights=None</span>
+  </div>
+  <div class="param">
+    <span class="pn">random_seed=None</span>
+  </div>
+  <div class="param">
+    <span class="pn">source_indices=None</span>
   </div>
   <div class="param">
     <span class="pn">pbar_disabled=None</span>
@@ -352,11 +349,11 @@ layout: ../../layouts/PageLayout.astro
 
 <div class="function">
 
-## local_segment_centrality
+## segment_centrality
 
 
 <div class="content">
-<span class="name">local_segment_centrality</span><div class="signature multiline">
+<span class="name">segment_centrality</span><div class="signature multiline">
   <span class="pt">(</span>
   <div class="param">
     <span class="pn">self</span>
@@ -386,7 +383,53 @@ layout: ../../layouts/PageLayout.astro
     <span class="pn">speed_m_s=None</span>
   </div>
   <div class="param">
-    <span class="pn">jitter_scale=None</span>
+    <span class="pn">pbar_disabled=None</span>
+  </div>
+  <span class="pt">)</span>
+</div>
+</div>
+
+</div>
+
+ 
+
+<div class="function">
+
+## betweenness_shortest
+
+
+<div class="content">
+<span class="name">betweenness_shortest</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">self</span>
+  </div>
+  <div class="param">
+    <span class="pn">/</span>
+  </div>
+  <div class="param">
+    <span class="pn">distances=None</span>
+  </div>
+  <div class="param">
+    <span class="pn">betas=None</span>
+  </div>
+  <div class="param">
+    <span class="pn">minutes=None</span>
+  </div>
+  <div class="param">
+    <span class="pn">min_threshold_wt=None</span>
+  </div>
+  <div class="param">
+    <span class="pn">speed_m_s=None</span>
+  </div>
+  <div class="param">
+    <span class="pn">tolerance=None</span>
+  </div>
+  <div class="param">
+    <span class="pn">source_indices=None</span>
+  </div>
+  <div class="param">
+    <span class="pn">sample_probability=None</span>
   </div>
   <div class="param">
     <span class="pn">pbar_disabled=None</span>
@@ -394,6 +437,112 @@ layout: ../../layouts/PageLayout.astro
   <span class="pt">)</span>
 </div>
 </div>
+
+
+ Compute Brandes betweenness centrality from all sources or a specified subset. When `source_indices` is None, iterates all live source nodes (exact). When `source_indices` is provided with `sample_probability`, applies IPW scaling (1/(2p)) for an unbiased estimate — matching the closeness framework. When `source_indices` is provided without `sample_probability`, scales by n_live / (2 * n_sources) for backwards compatibility.
+
+ Returns a `BetweennessShortestResult` with betweenness fields populated.
+
+</div>
+
+ 
+
+<div class="function">
+
+## betweenness_simplest
+
+
+<div class="content">
+<span class="name">betweenness_simplest</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">self</span>
+  </div>
+  <div class="param">
+    <span class="pn">/</span>
+  </div>
+  <div class="param">
+    <span class="pn">distances=None</span>
+  </div>
+  <div class="param">
+    <span class="pn">betas=None</span>
+  </div>
+  <div class="param">
+    <span class="pn">minutes=None</span>
+  </div>
+  <div class="param">
+    <span class="pn">min_threshold_wt=None</span>
+  </div>
+  <div class="param">
+    <span class="pn">speed_m_s=None</span>
+  </div>
+  <div class="param">
+    <span class="pn">tolerance=None</span>
+  </div>
+  <div class="param">
+    <span class="pn">source_indices=None</span>
+  </div>
+  <div class="param">
+    <span class="pn">sample_probability=None</span>
+  </div>
+  <div class="param">
+    <span class="pn">pbar_disabled=None</span>
+  </div>
+  <span class="pt">)</span>
+</div>
+</div>
+
+
+ Compute Brandes betweenness centrality using simplest (angular) paths. Mirrors `betweenness_shortest` but uses `dijkstra_brandes_simplest` which optimises for minimum angular change (with sidestepping prevention). Distance thresholds are still in metres (physical distance along the simplest path).
+
+</div>
+
+ 
+
+<div class="function">
+
+## betweenness_od_shortest
+
+
+<div class="content">
+<span class="name">betweenness_od_shortest</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">self</span>
+  </div>
+  <div class="param">
+    <span class="pn">/</span>
+  </div>
+  <div class="param">
+    <span class="pn">od_matrix</span>
+  </div>
+  <div class="param">
+    <span class="pn">distances=None</span>
+  </div>
+  <div class="param">
+    <span class="pn">betas=None</span>
+  </div>
+  <div class="param">
+    <span class="pn">minutes=None</span>
+  </div>
+  <div class="param">
+    <span class="pn">min_threshold_wt=None</span>
+  </div>
+  <div class="param">
+    <span class="pn">speed_m_s=None</span>
+  </div>
+  <div class="param">
+    <span class="pn">tolerance=None</span>
+  </div>
+  <div class="param">
+    <span class="pn">pbar_disabled=None</span>
+  </div>
+  <span class="pt">)</span>
+</div>
+</div>
+
+
+ Compute OD-weighted betweenness centrality using shortest paths. Uses Brandes multi-predecessor Dijkstra from each source that has outbound OD trips. For each OD destination, backpropagates credit through all equal shortest paths, weighted by the OD flow weight and split by sigma (path count).
 
 </div>
 
@@ -1021,22 +1170,22 @@ layout: ../../layouts/PageLayout.astro
 
  
 
-<span class="name">node_xys</span>
-
-
- 
-
 <span class="name">node_ys</span>
 
 
  
 
-<span class="name">street_node_lives</span>
+<span class="name">node_xys</span>
 
 
  
 
 <span class="name">node_xs</span>
+
+
+ 
+
+<span class="name">street_node_lives</span>
 
 
  

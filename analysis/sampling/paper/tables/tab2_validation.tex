@@ -1,22 +1,25 @@
 \begin{table}[htbp]
 \centering
-\caption{Hoeffding model validation on Greater London network ($\varepsilon = 0.1$, $\delta = 0.1$).}
+\caption{Sampling validation on Greater London network
+  ($\varepsilon = 0.06$, $\delta = 0.1$, $s = 175\,$m).}
 \label{tab:validation}
 \begin{tabular}{rrrrrrr}
 \toprule
-\textbf{Distance} & \textbf{Reach} & \textbf{Hoeff.\ $p$} &
-\textbf{$\rho_\text{close}$} & \textbf{$\rho_\text{betw}$} & \textbf{Speedup} & \textbf{$\rho \geq 0.95$?} \\
+\textbf{Dist.} &
+\textbf{$p$} & \textbf{$\rho_c$} & \textbf{Spd$_c$} &
+& \textbf{$\rho_b$} & \textbf{Spd$_b$} \\
 \midrule
-1km & 185 & 100.0\% & 0.9945 & 0.9980 & 1.0$\times$ & \checkmark \\
-2km & 765 & 63.0\% & 0.9856 & 0.9953 & 1.6$\times$ & \checkmark \\
-5km & 5,100 & 11.3\% & 0.9616 & 0.9777 & 8.8$\times$ & \checkmark \\
-10km & 20,394 & 3.2\% & 0.9735 & 0.9629 & 31.6$\times$ & \checkmark \\
-20km & 69,463 & 1.0\% & 0.9827 & 0.9510 & 98.2$\times$ & \checkmark \\
+1\,km & 100.0\% & 1.0000 & 0.5$\times$ & & 1.0000 & 0.5$\times$ \\
+2\,km & 100.0\% & 1.0000 & 0.5$\times$ & & 1.0000 & 0.5$\times$ \\
+5\,km & 58.7\% & 0.9957 & 0.9$\times$ & & 0.9972 & 0.8$\times$ \\
+10\,km & 16.6\% & 0.9938 & 3.1$\times$ & & 0.9857 & 3.5$\times$ \\
+20\,km & 4.6\% & 0.9932 & 12.4$\times$ & & 0.9672 & 12.2$\times$ \\
 \bottomrule
 \end{tabular}
 
 \vspace{0.5em}
 \footnotesize
-Network: Greater London Area, GLA boundary live node mask.
-Hoeffding model: $k = \log(2r/\delta) / (2\varepsilon^2)$, $p = \min(1, k/r)$.
+Network: Greater London Authority, \glaNnodes{} nodes. Deterministic distance-based schedule:
+same $p$ for both metrics at each distance.
+Subscripts: $c$ = closeness, $b$ = betweenness.
 \end{table}

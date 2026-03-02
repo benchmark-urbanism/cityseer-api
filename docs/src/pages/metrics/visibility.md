@@ -52,6 +52,66 @@ layout: ../../layouts/PageLayout.astro
     <span class="pc">:</span>
     <span class="pa"> int = 1</span>
   </div>
+  <div class="param">
+    <span class="pn">observer_height</span>
+    <span class="pc">:</span>
+    <span class="pa"> float = 1.5</span>
+  </div>
+  <span class="pt">)</span>
+</div>
+</div>
+
+</div>
+
+
+<div class="function">
+
+## visibility_from_gpd
+
+
+<div class="content">
+<span class="name">visibility_from_gpd</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">bldgs_gdf</span>
+    <span class="pc">:</span>
+    <span class="pa"> geopandas.geodataframe.GeoDataFrame</span>
+  </div>
+  <div class="param">
+    <span class="pn">bounds</span>
+    <span class="pc">:</span>
+    <span class="pa"> tuple[float, float, float, float]</span>
+  </div>
+  <div class="param">
+    <span class="pn">out_path</span>
+    <span class="pc">:</span>
+    <span class="pa"> str</span>
+  </div>
+  <div class="param">
+    <span class="pn">from_crs_code</span>
+    <span class="pc">:</span>
+    <span class="pa"> int | str</span>
+  </div>
+  <div class="param">
+    <span class="pn">to_crs_code</span>
+    <span class="pc">:</span>
+    <span class="pa"> int | str | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">view_distance</span>
+    <span class="pc">:</span>
+    <span class="pa"> int = 100</span>
+  </div>
+  <div class="param">
+    <span class="pn">resolution</span>
+    <span class="pc">:</span>
+    <span class="pa"> int = 1</span>
+  </div>
+  <div class="param">
+    <span class="pn">observer_height</span>
+    <span class="pc">:</span>
+    <span class="pa"> float = 1.5</span>
+  </div>
   <span class="pt">)</span>
 </div>
 </div>
@@ -129,6 +189,16 @@ layout: ../../layouts/PageLayout.astro
  The spatial resolution in metres to use when generating the raster. Lower resolutions will result in faster analysis.</div>
 </div>
 
+<div class="param-set">
+  <div class="def">
+    <div class="name">observer_height</div>
+    <div class="type">float = 1.5</div>
+  </div>
+  <div class="desc">
+
+ The height of the observer in metres. 1.5m by default.</div>
+</div>
+
 
 </div>
 
@@ -165,6 +235,56 @@ layout: ../../layouts/PageLayout.astro
     <span class="pn">resolution</span>
     <span class="pc">:</span>
     <span class="pa"> int = 1</span>
+  </div>
+  <div class="param">
+    <span class="pn">observer_height</span>
+    <span class="pc">:</span>
+    <span class="pa"> float = 1.5</span>
+  </div>
+  <span class="pt">)</span>
+</div>
+</div>
+
+</div>
+
+
+<div class="function">
+
+## visibility_from_osm
+
+
+<div class="content">
+<span class="name">visibility_from_osm</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">bounds_wgs</span>
+    <span class="pc">:</span>
+    <span class="pa"> tuple[float, float, float, float]</span>
+  </div>
+  <div class="param">
+    <span class="pn">out_path</span>
+    <span class="pc">:</span>
+    <span class="pa"> str</span>
+  </div>
+  <div class="param">
+    <span class="pn">to_crs_code</span>
+    <span class="pc">:</span>
+    <span class="pa"> int | str | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">view_distance</span>
+    <span class="pc">:</span>
+    <span class="pa"> int = 100</span>
+  </div>
+  <div class="param">
+    <span class="pn">resolution</span>
+    <span class="pc">:</span>
+    <span class="pa"> int = 1</span>
+  </div>
+  <div class="param">
+    <span class="pn">observer_height</span>
+    <span class="pc">:</span>
+    <span class="pa"> float = 1.5</span>
   </div>
   <span class="pt">)</span>
 </div>
@@ -223,6 +343,95 @@ layout: ../../layouts/PageLayout.astro
  The spatial resolution in metres to use when generating the raster. Lower resolutions will result in faster analysis.</div>
 </div>
 
+<div class="param-set">
+  <div class="def">
+    <div class="name">observer_height</div>
+    <div class="type">float = 1.5</div>
+  </div>
+  <div class="desc">
+
+ The height of the observer in metres. 1.5m by default.</div>
+</div>
+
+
+</div>
+
+
+<div class="function">
+
+## visibility_from_raster
+
+
+<div class="content">
+<span class="name">visibility_from_raster</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">input_path</span>
+    <span class="pc">:</span>
+    <span class="pa"> str</span>
+  </div>
+  <div class="param">
+    <span class="pn">out_path</span>
+    <span class="pc">:</span>
+    <span class="pa"> str</span>
+  </div>
+  <div class="param">
+    <span class="pn">view_distance</span>
+    <span class="pc">:</span>
+    <span class="pa"> int = 100</span>
+  </div>
+  <div class="param">
+    <span class="pn">observer_height</span>
+    <span class="pc">:</span>
+    <span class="pa"> float = 1.5</span>
+  </div>
+  <span class="pt">)</span>
+</div>
+</div>
+
+
+ Run a visibility graph analysis directly from a raster file. This will return three TIFF image files, respectively showing a density, farness, and harmonic closeness based measure.
+### Parameters
+<div class="param-set">
+  <div class="def">
+    <div class="name">input_path</div>
+    <div class="type">str</div>
+  </div>
+  <div class="desc">
+
+ Path to the input raster file representing building heights or presence.</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">out_path</div>
+    <div class="type">str</div>
+  </div>
+  <div class="desc">
+
+ An output path to which the generated TIFF images will be written. The pathname will be appended to correspond to the density, farness, and harmonic closeness measures.</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">view_distance</div>
+    <div class="type">int = 100</div>
+  </div>
+  <div class="desc">
+
+ The view distance within which to run the visibility analysis. 100m by default.</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">observer_height</div>
+    <div class="type">float = 1.5</div>
+  </div>
+  <div class="desc">
+
+ The height of the observer in metres. 1.5m by default.</div>
+</div>
+
 
 </div>
 
@@ -279,6 +488,76 @@ layout: ../../layouts/PageLayout.astro
     <span class="pn">resolution</span>
     <span class="pc">:</span>
     <span class="pa"> int = 1</span>
+  </div>
+  <div class="param">
+    <span class="pn">observer_height</span>
+    <span class="pc">:</span>
+    <span class="pa"> float = 1.5</span>
+  </div>
+  <span class="pt">)</span>
+</div>
+</div>
+
+</div>
+
+
+<div class="function">
+
+## viewshed_from_gpd
+
+
+<div class="content">
+<span class="name">viewshed_from_gpd</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">bldgs_gdf</span>
+    <span class="pc">:</span>
+    <span class="pa"> geopandas.geodataframe.GeoDataFrame</span>
+  </div>
+  <div class="param">
+    <span class="pn">bounds</span>
+    <span class="pc">:</span>
+    <span class="pa"> tuple[float, float, float, float]</span>
+  </div>
+  <div class="param">
+    <span class="pn">origin_x</span>
+    <span class="pc">:</span>
+    <span class="pa"> float</span>
+  </div>
+  <div class="param">
+    <span class="pn">origin_y</span>
+    <span class="pc">:</span>
+    <span class="pa"> float</span>
+  </div>
+  <div class="param">
+    <span class="pn">out_path</span>
+    <span class="pc">:</span>
+    <span class="pa"> str</span>
+  </div>
+  <div class="param">
+    <span class="pn">from_crs_code</span>
+    <span class="pc">:</span>
+    <span class="pa"> int | str</span>
+  </div>
+  <div class="param">
+    <span class="pn">to_crs_code</span>
+    <span class="pc">:</span>
+    <span class="pa"> int | str | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">view_distance</span>
+    <span class="pc">:</span>
+    <span class="pa"> int = 100</span>
+  </div>
+  <div class="param">
+    <span class="pn">resolution</span>
+    <span class="pc">:</span>
+    <span class="pa"> int = 1</span>
+  </div>
+  <div class="param">
+    <span class="pn">observer_height</span>
+    <span class="pc">:</span>
+    <span class="pa"> float = 1.5</span>
   </div>
   <span class="pt">)</span>
 </div>
@@ -377,6 +656,16 @@ layout: ../../layouts/PageLayout.astro
  The spatial resolution in metres to use when generating the raster. Lower resolutions will result in faster analysis.</div>
 </div>
 
+<div class="param-set">
+  <div class="def">
+    <div class="name">observer_height</div>
+    <div class="type">float = 1.5</div>
+  </div>
+  <div class="desc">
+
+ The height of the observer in metres. 1.5m by default.</div>
+</div>
+
 
 </div>
 
@@ -423,6 +712,11 @@ layout: ../../layouts/PageLayout.astro
     <span class="pn">resolution</span>
     <span class="pc">:</span>
     <span class="pa"> int = 1</span>
+  </div>
+  <div class="param">
+    <span class="pn">observer_height</span>
+    <span class="pc">:</span>
+    <span class="pa"> float = 1.5</span>
   </div>
   <span class="pt">)</span>
 </div>
@@ -499,6 +793,16 @@ layout: ../../layouts/PageLayout.astro
   <div class="desc">
 
  The spatial resolution in metres to use when generating the raster. Lower resolutions will result in faster analysis.</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">observer_height</div>
+    <div class="type">float = 1.5</div>
+  </div>
+  <div class="desc">
+
+ The height of the observer in metres. 1.5m by default.</div>
 </div>
 
 

@@ -170,6 +170,7 @@ def plot_nx_primal_or_dual(  # noqa
         _edge_style: str,
         _edge_width: int | float | None,
     ) -> None:
+
         if not len(_graph):
             logger.warning("Graph contains no nodes to plot.")
             return

@@ -39,20 +39,18 @@ This means:
 ```python
 from cityseer.metrics import networks
 
-# Standard approach (uniform sampling)
-nodes_gdf = networks.node_centrality_shortest(
+# Closeness with adaptive per-distance sampling
+nodes_gdf = networks.closeness_shortest(
     network_structure,
     nodes_gdf,
     distances=[500, 2000, 5000, 20000],
-    sample_probability=0.2,  # Same p for all distances
 )
 
-# Adaptive approach (per-distance calibration)
-nodes_gdf = networks.node_centrality_shortest_adaptive(
+# Betweenness with adaptive per-distance sampling
+nodes_gdf = networks.betweenness_shortest(
     network_structure,
     nodes_gdf,
     distances=[500, 2000, 5000, 20000],
-    target_rho=0.95,  # Target accuracy level
 )
 ```
 
@@ -77,17 +75,16 @@ Adaptive sampling achieves **consistent accuracy (ρ ≥ 0.95) across all distan
 ## Recommendations
 
 1. **Use adaptive sampling for multi-scale analyses** spanning short to long distances
-2. **Set `target_rho=0.95`** for general use, or `target_rho=0.97+` if betweenness accuracy is critical
-3. **For single-distance computations**, standard uniform sampling remains appropriate
-4. **For very large networks** (>50,000 nodes), adaptive sampling provides substantial speedups while maintaining accuracy guarantees
+2. **Tighten `epsilon`** (e.g. `epsilon=0.05`) if higher accuracy is required; betweenness defaults to `0.05` already
+3. **Use `sample=False`** for exact computation on small networks or ground-truth benchmarking
+4. **Use `sample_rate`** for reach-agnostic fixed-fraction sampling when comparing across graphs
+5. **For very large networks** (>50,000 nodes), adaptive sampling provides substantial speedups while maintaining accuracy guarantees
 
 ## API Reference
 
-- [`node_centrality_shortest_adaptive`](/metrics/networks#node-centrality-shortest-adaptive) - Adaptive shortest-path centrality
-- [`node_centrality_simplest_adaptive`](/metrics/networks#node-centrality-simplest-adaptive) - Adaptive simplest-path (angular) centrality
-
-## Technical Details
-
-For the full methodology, empirical model fitting, and test results, see the [analysis documentation on GitHub](https://github.com/benchmark-urbanism/cityseer-api/blob/master/analysis/adaptive_sampling_results.md).
+- [`closeness_shortest`](/metrics/networks#closeness-shortest) - Closeness centrality (shortest paths, adaptive sampling)
+- [`closeness_simplest`](/metrics/networks#closeness-simplest) - Closeness centrality (simplest paths, adaptive sampling)
+- [`betweenness_shortest`](/metrics/networks#betweenness-shortest) - Betweenness centrality (shortest paths, adaptive sampling)
+- [`betweenness_simplest`](/metrics/networks#betweenness-simplest) - Betweenness centrality (simplest paths, adaptive sampling)
 
 </section>

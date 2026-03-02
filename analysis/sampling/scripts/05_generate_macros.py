@@ -1,0 +1,584 @@
+#!/usr/bin/env python
+"""
+05_generate_macros.py - Generate LaTeX macros and practical guide figure.
+
+Reads the JSON/CSV output files from the analysis pipeline and generates
+a LaTeX macros file that can be included in the paper. This ensures
+all values in the paper are derived from actual data, not hardcoded.
+
+Both closeness and betweenness use the Hoeffding/EW bound:
+    k = log(2r/delta) / (2*epsilon^2), p = min(1, k/r)
+
+Outputs:
+    - paper/tables/model_macros.tex: LaTeX macro definitions
+    - paper/tables/tab_distance_lookup.tex: Distance-based lookup table
+    - paper/figures/fig3_practical_guide.pdf: Visual lookup chart (p and speedup vs distance)
+"""
+
+import json
+import math
+import pickle
+from datetime import datetime
+
+import matplotlib
+
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
+import matplotlib.ticker
+import numpy as np
+import pandas as pd
+from cityseer.config import GRID_SPACING, compute_distance_p
+from utilities import (
+    CACHE_DIR,
+    CACHE_VERSION,
+    FIGURES_DIR,
+    HOEFFDING_DELTA,
+    OUTPUT_DIR,
+    TABLES_DIR,
+)
+
+# Paper default epsilons — unified at 0.06 for both metrics
+PAPER_EPSILON_CLOSENESS = 0.06
+PAPER_EPSILON_BETWEENNESS = 0.06
+
+# =============================================================================
+# DATA LOADING
+# =============================================================================
+
+
+def load_gla_summary() -> pd.DataFrame:
+    """Load GLA validation summary results."""
+    path = OUTPUT_DIR / "gla_validation_summary.csv"
+    if not path.exists():
+        raise FileNotFoundError(f"GLA validation summary not found: {path}. Run 02_validate_gla.py first.")
+    return pd.read_csv(path)
+
+
+def load_madrid_validation() -> pd.DataFrame | None:
+    """Load Madrid validation results (optional)."""
+    path = OUTPUT_DIR / "madrid_validation.csv"
+    if not path.exists():
+        return None
+    return pd.read_csv(path)
+
+
+def load_synthetic_distance_count() -> int | None:
+    """Load synthetic cache distance count (optional, for metadata macros)."""
+    path = CACHE_DIR / f"sampling_analysis_{CACHE_VERSION}.pkl"
+    if not path.exists():
+        return None
+    with open(path, "rb") as f:
+        data = pickle.load(f)
+    df = pd.DataFrame(data)
+    if "distance" not in df.columns or df.empty:
+        return None
+    return int(df["distance"].nunique())
+
+
+# =============================================================================
+# MACRO GENERATION
+# =============================================================================
+
+
+def format_number(n: float, decimals: int = 2) -> str:
+    """Format a number with thousands separators for LaTeX."""
+    if n >= 1000:
+        return f"{n:,.0f}".replace(",", "{,}")
+    elif decimals == 0:
+        return f"{n:.0f}"
+    else:
+        return f"{n:.{decimals}f}"
+
+
+def generate_macros() -> str:
+    """Generate all LaTeX macros from data files."""
+
+    gla_df = load_gla_summary()
+
+    # -------------------------------------------------------------------------
+    # Compute deterministic distance-based sampling values at standard distances
+    # -------------------------------------------------------------------------
+    distance_scenarios = {}
+    for dist in [1000, 2000, 5000, 10000, 20000]:
+        p = compute_distance_p(dist, epsilon=PAPER_EPSILON_CLOSENESS, delta=HOEFFDING_DELTA)
+        r = math.pi * dist**2 / GRID_SPACING**2
+        k = math.ceil(math.log(2 * r / HOEFFDING_DELTA) / (2 * PAPER_EPSILON_CLOSENESS**2))
+        speedup = 1.0 / p if p < 1.0 else 1.0
+        distance_scenarios[dist] = {"p": p, "k": k, "canonical_reach": r, "speedup": speedup}
+
+    # Synthetic metadata (optional cache-derived values)
+    synthetic_distance_count = load_synthetic_distance_count()
+
+    # Min rho across all distances (closeness)
+    gla_min_rho_c = gla_df["rho_closeness"].min()
+    gla_min_rho_c_conservative = int(gla_min_rho_c * 100) / 100
+
+    # Min rho betweenness (may have NaN)
+    gla_betw_rhos = gla_df["rho_betweenness"].dropna()
+    gla_min_rho_b = gla_betw_rhos.min() if len(gla_betw_rhos) > 0 else float("nan")
+
+    # Load GLA node count from cache (written by 02_validate_gla.py)
+    gla_n_nodes_path = CACHE_DIR / "gla_n_nodes.json"
+    gla_n_nodes = None
+    if gla_n_nodes_path.exists():
+        with open(gla_n_nodes_path) as f:
+            gla_n_nodes = json.load(f)["n_nodes"]
+
+    # -------------------------------------------------------------------------
+    # Generate LaTeX content
+    # -------------------------------------------------------------------------
+    macros = f"""% =============================================================================
+% Model Macros - AUTO-GENERATED from analysis pipeline
+% Generated: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
+% Source files:
+%   - output/gla_validation_summary.csv
+%   - output/madrid_validation.csv (if available)
+%
+% DO NOT EDIT THIS FILE MANUALLY - regenerate with 05_generate_macros.py
+% =============================================================================
+
+% -----------------------------------------------------------------------------
+% DETERMINISTIC DISTANCE-BASED SAMPLING MODEL (both metrics)
+% Canonical grid: r = pi * d^2 / s^2, s = {GRID_SPACING:.0f}m
+% Hoeffding bound: k = log(2r/delta) / (2*epsilon^2), p = min(1, k/r)
+% Zero fitted parameters: epsilon and delta are user-chosen conventions.
+% -----------------------------------------------------------------------------
+
+% Default parameters
+\\newcommand{{\\hoeffdingEpsilon}}{{{PAPER_EPSILON_CLOSENESS}}}
+\\newcommand{{\\hoeffdingEpsilonCloseness}}{{{PAPER_EPSILON_CLOSENESS}}}
+\\newcommand{{\\hoeffdingEpsilonBetweenness}}{{{PAPER_EPSILON_BETWEENNESS}}}
+\\newcommand{{\\hoeffdingDelta}}{{{HOEFFDING_DELTA}}}
+\\newcommand{{\\gridSpacing}}{{{GRID_SPACING:.0f}}}
+\\newcommand{{\\targetRho}}{{0.95}}
+
+% Deterministic sampling (eps={PAPER_EPSILON_CLOSENESS}, delta={HOEFFDING_DELTA}, s={GRID_SPACING:.0f}m)
+\\newcommand{{\\hoeffdingKFiveKm}}{{{distance_scenarios[5000]["k"]:.0f}}}
+\\newcommand{{\\hoeffdingKTenKm}}{{{distance_scenarios[10000]["k"]:.0f}}}
+\\newcommand{{\\hoeffdingKTwentyKm}}{{{distance_scenarios[20000]["k"]:.0f}}}
+
+% Deterministic sampling probability at standard distances
+\\newcommand{{\\hoeffdingPOneKm}}{{{distance_scenarios[1000]["p"] * 100:.1f}}}
+\\newcommand{{\\hoeffdingPTwoKm}}{{{distance_scenarios[2000]["p"] * 100:.1f}}}
+\\newcommand{{\\hoeffdingPFiveKm}}{{{distance_scenarios[5000]["p"] * 100:.1f}}}
+\\newcommand{{\\hoeffdingPTenKm}}{{{distance_scenarios[10000]["p"] * 100:.1f}}}
+\\newcommand{{\\hoeffdingPTwentyKm}}{{{distance_scenarios[20000]["p"] * 100:.1f}}}
+
+% Deterministic speedup at standard distances
+\\newcommand{{\\hoeffdingSpeedupFiveKm}}{{{distance_scenarios[5000]["speedup"]:.1f}}}
+\\newcommand{{\\hoeffdingSpeedupTenKm}}{{{distance_scenarios[10000]["speedup"]:.1f}}}
+\\newcommand{{\\hoeffdingSpeedupTwentyKm}}{{{distance_scenarios[20000]["speedup"]:.1f}}}
+
+% -----------------------------------------------------------------------------
+% GLA VALIDATION RESULTS
+% -----------------------------------------------------------------------------
+
+% GLA network size (live nodes within boundary)
+
+% Minimum observed rho across all GLA distances
+\\newcommand{{\\glaMinRho}}{{{gla_min_rho_c_conservative}}}
+\\newcommand{{\\glaMinRhoCloseness}}{{{gla_min_rho_c:.4f}}}
+"""
+
+    if gla_n_nodes is not None:
+        macros += f"\\newcommand{{\\glaNnodes}}{{{format_number(gla_n_nodes, 0)}}}\n"
+
+    if not np.isnan(gla_min_rho_b):
+        macros += f"\\newcommand{{\\glaMinRhoBetweenness}}{{{gla_min_rho_b:.4f}}}\n"
+
+    # Per-distance GLA macros — all p values from deterministic distance-based formula
+    for dist, label in [(5000, "FiveKm"), (10000, "TenKm"), (20000, "TwentyKm")]:
+        dist_row = gla_df[gla_df["distance"] == dist]
+        if dist_row.empty:
+            continue
+        r = dist_row.iloc[0]
+        det_p = compute_distance_p(dist, epsilon=PAPER_EPSILON_CLOSENESS, delta=HOEFFDING_DELTA)
+        det_speedup = 1.0 / det_p if det_p < 1.0 else 1.0
+
+        macros += f"\n% {dist // 1000}km validation\n"
+        macros += f"\\newcommand{{\\gla{label}RhoH}}{{{r['rho_closeness']:.3f}}}\n"
+        macros += f"\\newcommand{{\\gla{label}Rho}}{{{r['rho_closeness']:.3f}}}\n"
+        macros += f"\\newcommand{{\\gla{label}P}}{{{det_p * 100:.1f}}}\n"
+        macros += f"\\newcommand{{\\gla{label}TheoreticalSpeedup}}{{{det_speedup:.1f}}}\n"
+
+        # Measured wall-clock speedup
+        spd_c = r.get("speedup_closeness", float("nan"))
+        if np.isfinite(spd_c):
+            macros += f"\\newcommand{{\\gla{label}Speedup}}{{{spd_c:.1f}}}\n"
+            macros += f"\\newcommand{{\\gla{label}SpeedupCloseness}}{{{spd_c:.1f}}}\n"
+
+        # Betweenness rho and speedup
+        rho_b = r.get("rho_betweenness", float("nan"))
+        if np.isfinite(rho_b):
+            macros += f"\\newcommand{{\\gla{label}RhoB}}{{{rho_b:.3f}}}\n"
+        spd_b = r.get("speedup_betweenness", float("nan"))
+        if np.isfinite(spd_b):
+            macros += f"\\newcommand{{\\gla{label}SpeedupBetweenness}}{{{spd_b:.1f}}}\n"
+
+    macros += "\n% Live node buffer (km)\n\\newcommand{\\glaBuffer}{20}\n"
+
+    # -------------------------------------------------------------------------
+    # Madrid validation macros (optional)
+    # -------------------------------------------------------------------------
+    madrid_df = load_madrid_validation()
+    madrid_min_rho_c = None
+    if madrid_df is not None:
+        madrid_min_rho_c = madrid_df["rho_closeness"].min()
+        madrid_betw_rhos = (
+            madrid_df["rho_betweenness"].dropna() if "rho_betweenness" in madrid_df.columns else pd.Series(dtype=float)
+        )
+        madrid_min_rho_b = madrid_betw_rhos.min() if len(madrid_betw_rhos) > 0 else float("nan")
+
+        madrid_n_nodes_path = CACHE_DIR / "madrid_n_nodes.json"
+        madrid_n_nodes = None
+        if madrid_n_nodes_path.exists():
+            with open(madrid_n_nodes_path) as f:
+                madrid_n_nodes = json.load(f)["n_nodes"]
+
+        macros += """
+% -----------------------------------------------------------------------------
+% MADRID VALIDATION RESULTS
+% -----------------------------------------------------------------------------
+
+"""
+        if madrid_n_nodes is not None:
+            macros += f"\\newcommand{{\\madridNnodes}}{{{format_number(madrid_n_nodes, 0)}}}\n"
+        macros += f"\\newcommand{{\\madridMinRho}}{{{madrid_min_rho_c:.4f}}}\n"
+        if not np.isnan(madrid_min_rho_b):
+            macros += f"\\newcommand{{\\madridMinRhoBetweenness}}{{{madrid_min_rho_b:.4f}}}\n"
+        macros += "\n"
+
+        for dist, label in [(5000, "FiveKm"), (10000, "TenKm"), (20000, "TwentyKm")]:
+            dist_row = madrid_df[madrid_df["distance"] == dist]
+            if dist_row.empty:
+                continue
+            r = dist_row.iloc[0]
+            macros += f"% {dist // 1000}km validation\n"
+            macros += f"\\newcommand{{\\madrid{label}RhoH}}{{{r['rho_closeness']:.4f}}}\n"
+
+            spd_c = r.get("speedup_closeness", float("nan"))
+            if np.isfinite(spd_c):
+                macros += f"\\newcommand{{\\madrid{label}Speedup}}{{{spd_c:.1f}}}\n"
+
+            rho_b = r.get("rho_betweenness", float("nan"))
+            if np.isfinite(rho_b):
+                macros += f"\\newcommand{{\\madrid{label}RhoB}}{{{rho_b:.4f}}}\n"
+            spd_b = r.get("speedup_betweenness", float("nan"))
+            if np.isfinite(spd_b):
+                macros += f"\\newcommand{{\\madrid{label}SpeedupBetweenness}}{{{spd_b:.1f}}}\n"
+            macros += "\n"
+
+    # -------------------------------------------------------------------------
+    # Overall minimum rho across both validated networks
+    # -------------------------------------------------------------------------
+    overall_min_rho_values = [gla_min_rho_c]
+    if not np.isnan(gla_min_rho_b):
+        overall_min_rho_values.append(gla_min_rho_b)
+    if madrid_min_rho_c is not None:
+        overall_min_rho_values.append(madrid_min_rho_c)
+    if madrid_df is not None and "rho_betweenness" in madrid_df.columns:
+        madrid_b = madrid_df["rho_betweenness"].dropna()
+        if len(madrid_b) > 0:
+            overall_min_rho_values.append(float(madrid_b.min()))
+    overall_min_rho = min(overall_min_rho_values)
+    overall_min_rho_conservative = int(overall_min_rho * 100) / 100
+
+    macros += f"""
+% -----------------------------------------------------------------------------
+% OVERALL (CROSS-NETWORK) METRICS
+% -----------------------------------------------------------------------------
+
+% Minimum observed rho across all validated networks (conservative, 2dp)
+\\newcommand{{\\overallMinRho}}{{{overall_min_rho_conservative}}}
+"""
+
+    n_distances_macro = synthetic_distance_count if synthetic_distance_count is not None else 5
+
+    macros += """
+% -----------------------------------------------------------------------------
+% SYNTHETIC DATA PARAMETERS
+% -----------------------------------------------------------------------------
+
+% Number of topologies tested
+\\newcommand{\\nTopologies}{3}
+
+% Number of epsilon values tested (per metric)
+\\newcommand{\\nEpsilons}{5}
+
+% Maximum analysis distance for synthetic networks
+\\newcommand{\\syntheticMaxDist}{4{,}000}
+
+% Inward buffer for synthetic networks (km)
+\\newcommand{\\syntheticBuffer}{4}
+"""
+    macros += f"\n% Number of distances tested\n\\newcommand{{\\nDistances}}{{{n_distances_macro}}}\n"
+
+    return macros
+
+
+# =============================================================================
+# DISTANCE-BASED LOOKUP TABLE
+# =============================================================================
+
+
+def generate_tab_distance_lookup() -> str:
+    """Generate a LaTeX table of p and speedup by analysis distance.
+
+    Uses the deterministic distance-based schedule (canonical grid model,
+    s=GRID_SPACING) to show p and speedup at the standard validation distances.
+    Canonical reach r = pi * d^2 / s^2 is shown alongside p and speedup.
+    Both metrics use the same schedule (epsilon=0.06).
+    """
+    import math
+
+    distances = [1000, 2000, 5000, 10000, 20000]
+    eps = PAPER_EPSILON_CLOSENESS
+    delta = HOEFFDING_DELTA
+
+    rows = []
+    for d in distances:
+        r = math.pi * d**2 / GRID_SPACING**2
+        p = compute_distance_p(d, epsilon=eps, delta=delta)
+        speedup = 1.0 / p if p < 1.0 else 1.0
+        rows.append((d, r, p, speedup))
+
+    lines = []
+    lines.append(r"\begin{table}[htbp]")
+    lines.append(r"\centering")
+    lines.append(
+        r"\caption{Deterministic sampling schedule by analysis distance "
+        r"($\varepsilon = 0.06$, $\delta = 0.1$, canonical grid spacing $s = "
+        + f"{GRID_SPACING:.0f}"
+        + r"\,\text{m}$). "
+        r"Both closeness and betweenness use the same schedule. "
+        r"Sampling is exact ($p = 100\%$) for distances up to 2\,km. "
+        r"Speedup shown is theoretical ($1/p$); measured wall-clock speedup is lower "
+        r"at near-unity $p$ due to sampling overhead and emerges at 10\,km and beyond.}"
+    )
+    lines.append(r"\label{tab:distance_lookup}")
+    lines.append(r"\begin{tabular}{rrrrr}")
+    lines.append(r"\toprule")
+    lines.append(
+        r"\textbf{Distance} & \textbf{Canonical reach} & \textbf{$k$} & \textbf{$p$ (\%)} & \textbf{Speedup ($1/p$)} \\"
+    )
+    lines.append(r"\midrule")
+    for d, r, p, speedup in rows:
+        k = math.ceil(math.log(2 * r / delta) / (2 * eps**2)) if r > 0 else 0
+        d_str = f"{d // 1000}\\,km"
+        r_str = f"{r:,.0f}".replace(",", "{,}")
+        k_str = f"{k:,}".replace(",", "{,}")
+        p_str = f"{p * 100:.0f}" if p >= 1.0 else f"{p * 100:.1f}"
+        spd_str = "1$\\times$" if p >= 1.0 else f"{speedup:.1f}$\\times$"
+        lines.append(f"{d_str} & {r_str} & {k_str} & {p_str} & {spd_str} \\\\")
+    lines.append(r"\bottomrule")
+    lines.append(r"\end{tabular}")
+    lines.append(r"\end{table}")
+    lines.append("")
+
+    return "\n".join(lines)
+
+
+# =============================================================================
+# PRACTICAL GUIDE FIGURE
+# =============================================================================
+
+# Standard validation distances (m)
+ANNOTATION_DISTANCES_M = [1000, 2000, 5000, 10000, 20000]
+
+
+def generate_fig3_practical_guide():
+    """Figure 3: Practical guidance chart.
+
+    Panel A: Deterministic sampling probability p(%) vs analysis distance (km)
+             at multiple epsilon values.
+    Panel B: Speedup (1/p) vs analysis distance (km) at the paper default epsilon.
+    """
+    print("\nGenerating Figure 3: Practical guide...")
+
+    plt.rcParams.update(
+        {
+            "font.family": "sans-serif",
+            "font.size": 11,
+            "axes.titlesize": 12,
+            "axes.labelsize": 11,
+            "xtick.labelsize": 10,
+            "ytick.labelsize": 10,
+            "legend.fontsize": 10,
+            "figure.dpi": 150,
+            "savefig.dpi": 300,
+            "axes.spines.top": False,
+            "axes.spines.right": False,
+        }
+    )
+
+    fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+    d_range_m = np.linspace(500, 25000, 300)
+    d_range_km = d_range_m / 1000
+
+    # Panel A: Sampling probability vs distance at multiple epsilons
+    ax = axes[0]
+
+    epsilon_specs = [
+        (0.02, "#D6604D", 1.2, ":"),
+        (0.04, "#F4A582", 1.2, "-."),
+        (PAPER_EPSILON_CLOSENESS, "#2166AC", 2.0, "-"),
+        (0.08, "#7FCDBB", 1.2, "--"),
+        (0.1, "#969696", 1.2, ":"),
+    ]
+
+    for eps, colour, lw, ls in epsilon_specs:
+        p_values = [compute_distance_p(d, epsilon=eps) * 100 for d in d_range_m]
+        label = rf"$\varepsilon$ = {eps}" + (" (default)" if eps == PAPER_EPSILON_CLOSENESS else "")
+        ax.plot(d_range_km, p_values, linestyle=ls, color=colour, linewidth=lw, label=label)
+
+    for dist_m in ANNOTATION_DISTANCES_M:
+        p = compute_distance_p(dist_m, epsilon=PAPER_EPSILON_CLOSENESS) * 100
+        ax.plot(dist_m / 1000, p, "o", color="#D55E00", markersize=7, zorder=5)
+        if p >= 99.5:
+            y_off, va = -12, "top"
+        else:
+            y_off, va = 12, "bottom"
+        ax.annotate(
+            f"{dist_m // 1000} km\n{p:.0f}%",
+            xy=(dist_m / 1000, p),
+            xytext=(0, y_off),
+            textcoords="offset points",
+            fontsize=7,
+            ha="center",
+            va=va,
+            bbox=dict(boxstyle="round,pad=0.2", facecolor="white", alpha=0.8, edgecolor="none"),
+        )
+
+    ax.set_xlabel("Analysis Distance (km)")
+    ax.set_ylabel("Sampling Probability (%)")
+    ax.set_title("A) Deterministic Sampling Schedule")
+    ax.set_xlim(0, 25)
+    ax.set_ylim(0, 105)
+
+    from matplotlib.lines import Line2D
+
+    legend_handles = [
+        Line2D(
+            [0],
+            [0],
+            color=colour,
+            linewidth=lw,
+            linestyle=ls,
+            label=rf"$\varepsilon$={eps}" + (" (default)" if eps == PAPER_EPSILON_CLOSENESS else ""),
+        )
+        for eps, colour, lw, ls in epsilon_specs
+    ] + [
+        Line2D([0], [0], color="#D55E00", marker="o", linestyle="none", markersize=7, label="Standard distances"),
+    ]
+    ax.legend(handles=legend_handles, loc="center right", fontsize=8)
+    ax.grid(True, alpha=0.3)
+
+    # Panel B: Speedup vs distance at all epsilons
+    ax = axes[1]
+
+    for eps, colour, lw, ls in epsilon_specs:
+        speedups = [1 / compute_distance_p(d, epsilon=eps) for d in d_range_m]
+        label = rf"$\varepsilon$={eps}" + (" (default)" if eps == PAPER_EPSILON_CLOSENESS else "")
+        ax.plot(d_range_km, speedups, linestyle=ls, color=colour, linewidth=lw, label=label)
+
+    for dist_m in ANNOTATION_DISTANCES_M:
+        p = compute_distance_p(dist_m, epsilon=PAPER_EPSILON_CLOSENESS)
+        speedup = 1 / p if p < 1.0 else 1.0
+        ax.plot(dist_m / 1000, speedup, "o", color="#D55E00", markersize=7, zorder=5)
+        if speedup > 1.05:
+            ax.annotate(f"{speedup:.1f}\u00d7", xy=(dist_m / 1000, speedup * 1.1), fontsize=9, ha="center", va="bottom")
+
+    ax.set_yscale("log")
+    ax.set_xlabel("Analysis Distance (km)")
+    ax.set_ylabel("Speedup (1/p)")
+    ax.set_title("B) Theoretical Speedup")
+    ax.set_xlim(0, 25)
+    ax.set_ylim(1, 100)
+    ax.grid(True, alpha=0.3, which="both")
+    ax.yaxis.set_major_formatter(matplotlib.ticker.FuncFormatter(lambda x, _: f"{x:.0f}\u00d7"))
+    ax.legend(loc="upper left", fontsize=8)
+
+    fig.suptitle("Practical Guide: Deterministic Sampling Schedule", fontsize=13, fontweight="bold", y=1.02)
+    plt.tight_layout()
+
+    output_path = FIGURES_DIR / "fig3_practical_guide.pdf"
+    fig.savefig(output_path, dpi=300, bbox_inches="tight")
+    print(f"  Saved: {output_path}")
+    plt.close()
+
+
+# =============================================================================
+# MAIN
+# =============================================================================
+
+
+def main():
+    print("=" * 70)
+    print("05_generate_macros.py - Generating LaTeX macros and practical guide")
+    print("=" * 70)
+
+    try:
+        macros = generate_macros()
+    except FileNotFoundError as e:
+        print(f"\nERROR: {e}")
+        print("\nRun the pipeline scripts first:")
+        print("  python scripts/02_validate_gla.py")
+        return 1
+
+    output_path = TABLES_DIR / "model_macros.tex"
+    with open(output_path, "w") as f:
+        f.write(macros)
+
+    print(f"\nGenerated: {output_path}")
+
+    table = generate_tab_distance_lookup()
+    table_path = TABLES_DIR / "tab_distance_lookup.tex"
+    with open(table_path, "w") as f:
+        f.write(table)
+    print(f"Generated: {table_path}")
+
+    generate_fig3_practical_guide()
+
+    # Print summary
+    print("\n" + "=" * 70)
+    print("MACRO SUMMARY")
+    print("=" * 70)
+
+    print("\nDeterministic distance-based model:")
+    print(f"  Epsilon:       {PAPER_EPSILON_CLOSENESS}")
+    print(f"  Delta:         {HOEFFDING_DELTA}")
+    print(f"  Grid spacing:  {GRID_SPACING}m")
+
+    for dist in [5000, 10000, 20000]:
+        det_p = compute_distance_p(dist, epsilon=PAPER_EPSILON_CLOSENESS, delta=HOEFFDING_DELTA)
+        spd = 1.0 / det_p if det_p < 1.0 else 1.0
+        print(f"  d={dist // 1000}km: p={det_p:.3f}, speedup={spd:.1f}x")
+
+    gla_df = load_gla_summary()
+    print("\nGLA validation:")
+    for _, row in gla_df.iterrows():
+        rho_b_str = (
+            f", rho_b={row['rho_betweenness']:.3f}" if not np.isnan(row.get("rho_betweenness", float("nan"))) else ""
+        )
+        spd_c = row.get("speedup_closeness", float("nan"))
+        spd_str = f", speedup_c={spd_c:.1f}x" if np.isfinite(spd_c) else ""
+        print(f"  {int(row['distance'] / 1000)}km: rho_c={row['rho_closeness']:.3f}{rho_b_str}{spd_str}")
+
+    madrid_df = load_madrid_validation()
+    if madrid_df is not None:
+        print("\nMadrid validation:")
+        for _, row in madrid_df.iterrows():
+            rho_b_str = (
+                f", rho_b={row['rho_betweenness']:.3f}"
+                if not np.isnan(row.get("rho_betweenness", float("nan")))
+                else ""
+            )
+            spd_c = row.get("speedup_closeness", float("nan"))
+            spd_str = f", speedup_c={spd_c:.1f}x" if np.isfinite(spd_c) else ""
+            print(f"  {int(row['distance'] / 1000)}km: rho_c={row['rho_closeness']:.3f}{rho_b_str}{spd_str}")
+
+    return 0
+
+
+if __name__ == "__main__":
+    exit(main())

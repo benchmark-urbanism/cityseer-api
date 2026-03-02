@@ -1,115 +1,59 @@
-# Argument Notes
+# Paper Argument: One-Page Summary
 
-## The argument in one sentence
+## The Problem
 
-Adapting the Eppstein-Wang source-sampling bound to localised centrality gives a zero-parameter Hoeffding model, k = log(2r/delta)/(2eps^2), that at eps = 0.1 delivers both additive-error guarantees and rank preservation (rho >= `\overallMinRho`; minimum `\madridMinRho` on Madrid betweenness at 20km) on real street networks, with speedups of up to `\glaTwentyKmSpeedup`x.
+Localised network centrality (closeness, betweenness within distance thresholds) is fundamental to comparative urban morphological analysis. At metropolitan scales (10--20 km), exact computation becomes prohibitively expensive because each source traversal must explore tens of thousands of reachable nodes. Source sampling can reduce cost, but introduces a design question: how much to sample?
 
-## The logical chain
+## The Core Requirement: Deterministic Comparability
 
-1. Localised centrality at multiple distance thresholds is effectively quadratic. Sampling reduces cost by computing from a random subset of sources.
-2. Each sampled source contributes a bounded random variable to each target node's centrality estimate. Hoeffding's inequality with a union bound over r reachable target nodes (the Eppstein-Wang framework, substituting reach r for global node count n) gives: k = log(2r/delta)/(2eps^2), p = min(1, k/r).
-3. This is a formal bound on additive normalised error at every node simultaneously. It has zero fitted parameters: eps and delta are user-chosen (default 0.1, 0.1).
-4. At low reach, k > r so p = 1 (exact computation). No separate floor parameter is needed.
-5. At high reach, p decreases as O(log r / r), giving speedups that grow with network size.
-6. On street networks, the bound also preserves rank order (Spearman rho >= `\overallMinRho`; all configurations pass rho >= `\targetRho`). This is structural: high-reach nodes get high effective sample sizes and precise estimates; these are precisely the high-centrality nodes whose ranking matters. Low-reach peripheral nodes get near-exact computation (p -> 1).
-7. Validation on GLA (`\glaNnodes` nodes) and Madrid (`\madridNnodes` nodes) at 1-20km confirms this. Minimum rho = `\madridMinRho` (Madrid betweenness, 20km). All distances pass rho >= `\targetRho`.
+The central constraint --- and the paper's motivating insight --- is that urban analysts routinely compare centrality patterns **within and between cities**. This means:
 
-## What is novel
+- Sampling must be **deterministic**: the same analysis distance must produce the same sampling probability regardless of which network is being analysed.
+- Sampling must be **network-agnostic**: no per-network calibration, no dependence on local graph density or node count.
+- The schedule must be **conservative enough** to preserve rank ordering across heterogeneous morphologies, but **not so conservative** that it eliminates the computational benefit of sampling.
 
-1. **The adaptation**: applying EW to distance-bounded centrality (r for n) and showing it works at eps = 0.1. The common assumption is that EW bounds are "too conservative" -- we show they are not, for localised centrality on street networks.
-2. **Rank preservation as a consequence**: additive eps = 0.1 implies rho >= `\overallMinRho` (minimum observed across both networks). No separate rank-calibrated model is needed.
-3. **Validation at scale**: from small synthetic networks to GLA and Madrid, the model generalises without fitting.
+Without deterministic comparability, sampled centrality values from different locations would reflect different noise levels, making cross-city or cross-neighbourhood comparison meaningless.
 
-## What is obvious (do not oversell)
+## The Solution: Distance-Only Schedule via Canonical Grid
 
-- The localisation step (r for n) is trivially direct for source-sampling.
-- Hoeffding's inequality is a standard tool.
-- Distance-dependent calibration follows automatically from r varying by distance.
+We construct a single function p(d) that converts analysis distance to sampling probability:
 
-## Paper structure
+1. **Canonical grid model**: Estimate reach as r = pi \* d^2 / s^2 using a fixed grid spacing s = 175 m (representative of sparse street networks). This is intentionally conservative: real urban networks are typically denser, so actual reach exceeds canonical reach, meaning the schedule oversamples relative to what the network requires.
 
-### Section 1: Introduction
+2. **Hoeffding bound**: Given canonical reach r, compute the required sample count k = log(2r/delta) / (2 \* epsilon^2), then p = min(1, k/r).
 
-Problem: multi-scale localised centrality is expensive. Source-sampling bounds (EW) adapt to the localised setting by replacing n with r. We show this adapted bound delivers practical speedups while preserving rank order.
+3. **Unified for both metrics**: The same p(d) applies to closeness and betweenness. This is not just for simplicity: a single Brandes-style Dijkstra traversal from each sampled source produces both closeness accumulation and betweenness backpropagation simultaneously. Using the same sampling schedule for both metrics means each source traversal is shared, halving computation time compared to running separate schedules. Although betweenness is noisier in principle, the practical benefit of shared traversals outweighs the marginal gain from metric-specific tuning.
 
-### Section 2: Methods
+The user-facing parameter is epsilon (default 0.06), which controls the error--speed trade-off. Lower epsilon = more conservative = more samples = slower but more accurate.
 
-Define harmonic closeness, betweenness, reach. Describe experimental design: 3 synthetic topologies, 7 distances, 12 sampling probabilities. Accuracy metrics: Spearman rho (rank) and normalised additive error (formal). Validation networks: GLA (294k nodes), Madrid (99k nodes), both with 20km live buffers.
+## What We Validate
 
-### Section 3: The Hoeffding sampling model
+We are **not** trying to prove that sampled centrality preserves absolute values. We are showing that it preserves **rank ordering** (Spearman rho), which is what matters for the comparative analyses that motivate this work: identifying the most central streets, comparing centrality profiles across neighbourhoods, tracking morphological change.
 
-**3.1 The opportunity.** Accuracy saturates well below p = 1; speedup grows with distance.
--> Fig 1: headline (accuracy vs p; speedup vs distance)
+Specifically:
 
-**3.2 The model.** Adapt EW: k = log(2r/delta)/(2eps^2), p = min(1, k/r). At low reach, p = 1 (floor emerges naturally). At high reach, speedup grows as O(r / log r). Show prescribed p and speedup across eps values.
--> Fig 2: Hoeffding model (Panel A: required eff_n vs reach for 3 eps values; Panel B: speedup 1/p vs reach, log-log)
+1. **Epsilon sweep on synthetic networks** (Fig 1): At epsilon = 0.06, rho >= 0.95 across trellis, tree, and linear topologies --- covering the structural range of real street networks.
 
-**3.3 Error structure.** Absolute error increases with reach; normalised error decreases. High-importance nodes get highest precision. The Hoeffding bound line confirms observed errors are 2-3 orders of magnitude below the worst-case prediction.
--> Fig 3: error crossover (2x2: betweenness/harmonic x absolute/normalised)
+2. **Practical guide** (Fig 3): Shows the deterministic schedule across epsilon values so practitioners can choose their operating point. At epsilon = 0.06, sampling kicks in beyond ~5 km and reaches ~20x speedup at 20 km.
 
-### Section 4: Validation
+3. **Real-world validation** (Figs 4--6, Tables 2, 4): Greater London (~295k nodes) and Greater Madrid confirm rho >= 0.95 at distances from 1--20 km for both closeness and betweenness.
 
-**4.1 GLA results.**
--> Tab 2: GLA validation — see `tab2_validation.tex` (auto-generated by `03_validate_gla.py`)
+4. **Spatial residuals** (Fig 7): No systematic spatial bias --- the sampling error is spatially uniform, not concentrated in particular areas of the network.
 
-Key macros: `\glaFiveKmReach`, `\glaTenKmReach`, `\glaTwentyKmReach`, `\glaMinRho`, `\gla*KmSpeedup`
+5. **Precision scales with importance**: High-centrality nodes have high reach, hence high effective sample size, hence the best precision. This is a desirable property: the nodes analysts care about most are estimated most accurately.
 
-**4.2 Madrid results.**
--> Tab 4: Madrid validation — see `tab4_madrid_validation.tex` (auto-generated by `04_validate_madrid.py`)
+## The Narrative Arc
 
-Key macros: `\madridFiveKmReach`, `\madridTenKmReach`, `\madridTwentyKmReach`, `\madridMinRho`, `\madrid*KmSpeedup`
+1. **Problem**: Exact multi-scale centrality is O(n \* r) per distance, prohibitive at metropolitan scales.
+2. **Requirement**: Comparative urban analysis demands a deterministic, network-agnostic sampling schedule so that results are directly comparable within and between cities.
+3. **Theoretical grounding**: The Hoeffding/Eppstein-Wang bound, applied to a canonical grid reach model, yields a conservative distance-only schedule p(d).
+4. **Practical calibration**: We sweep epsilon on synthetic networks to identify a regime (epsilon = 0.06) that reliably achieves rho >= 0.95 across diverse topologies without excessive oversampling.
+5. **Validation**: Two large real-world networks confirm rank preservation and demonstrate meaningful speedups.
+6. **Implementation**: Released in the open-source cityseer package with user-configurable epsilon.
 
-All pass rho >= `\targetRho`. Minimum rho: `\madridMinRho` (Madrid betweenness, 20km). Betweenness is the binding constraint at every distance.
+## Key Messages
 
-### Section 5: Discussion and practical guidelines
-
-Practical guidance: choose eps (default 0.1), compute p = min(1, k/r). Lookup charts and table for common scenarios.
--> Fig 4: practical guide (Panel A: required p by reach with scenario annotations; Panel B: speedup curve)
--> Tab 1: EW comparison across eps values
--> Tab 3: practical lookup table
-
-Limitations: uniform sampling only, shortest-path distance only, two European cities. Betweenness margin thinner than closeness at high reach.
-
-## Figure inventory
-
-| Figure | Script | Role |
-|--------|--------|------|
-| Fig 1 (headline) | 01_fit_rank_model.py | Motivates the paper: sampling works |
-| Fig 2 (Hoeffding model) | 07_hoeffding_model_figure.py | The model: eff_n and speedup vs reach |
-| Fig 3 (error crossover) | 01_fit_rank_model.py | Precision scales with importance |
-| Fig 4 (practical guide) | 05_practical_guide.py | Practitioner lookup charts |
-
-## Table inventory
-
-| Table | Script | Role |
-|-------|--------|------|
-| Tab 1 (EW comparison) | 02_fit_error_model.py | Required k and p across eps values |
-| Tab 2 (GLA validation) | 03_validate_gla.py | Primary validation results |
-| Tab 3 (practical lookup) | 05_practical_guide.py | Numerical reference by reach |
-| Tab 4 (Madrid validation) | 04_validate_madrid.py | External validation results |
-| model_macros.tex | 06_generate_macros.py | Auto-generated LaTeX macros |
-
-## Script pipeline
-
-| # | Script | Depends on | Outputs |
-|---|--------|------------|---------|
-| 00 | generate_cache.py | -- | .cache/sampling_analysis_v21.pkl |
-| 01 | fit_rank_model.py | 00 | fig1, fig3 |
-| 02 | fit_error_model.py | 00 | tab1, error_model_synthetic.csv |
-| 03 | validate_gla.py | -- | tab2, gla_validation.csv |
-| 04 | validate_madrid.py | -- | tab4, madrid_validation.csv |
-| 05 | practical_guide.py | -- | fig4, tab3 |
-| 06 | generate_macros.py | 03 | model_macros.tex |
-| 07 | hoeffding_model_figure.py | -- | fig2 |
-
-## Key numbers
-
-All values via macros in `model_macros.tex` (auto-generated by `06_generate_macros.py`):
-
-- GLA: `\glaNnodes` nodes, `\glaBuffer`km buffer
-- Madrid: `\madridNnodes` nodes
-- Hoeffding model: eps = `\hoeffdingEpsilon`, delta = `\hoeffdingDelta`, zero fitted parameters
-- GLA minimum rho: `\glaMinRho` (betweenness, 20km)
-- Madrid minimum rho: `\madridMinRho` (betweenness, 20km)
-- Maximum speedup: `\glaTwentyKmSpeedup`x (GLA 20km), `\madridTwentyKmSpeedup`x (Madrid 20km)
-- Overall minimum rho: `\overallMinRho`
+- **Rank preservation, not absolute accuracy**: The goal is rho >= 0.95, not matching exact centrality values. This is appropriate because urban morphological analysis uses centrality for relative comparison.
+- **Deterministic = comparable**: The same epsilon and distance always produce the same p, regardless of the network. This is what makes cross-city analysis valid.
+- **Conservative by design**: The canonical grid spacing of 175 m underestimates the reach of most real networks, so the schedule oversamples. This is the right trade-off: slightly less speedup in exchange for robust rank preservation.
+- **User control**: Practitioners can adjust epsilon to suit their needs. Tighter tolerance (lower epsilon) for publication-quality analysis; looser tolerance (higher epsilon) for exploratory work.
