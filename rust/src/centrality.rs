@@ -572,13 +572,22 @@ impl NetworkStructure {
                 if candidate > max_seconds as f32 {
                     continue;
                 }
-                if candidate < state[nb].agg_seconds * (1.0 - tolerance) {
-                    // Strictly shorter path: replace predecessors
+                if candidate < state[nb].agg_seconds {
+                    // Shorter path found: always update distance to keep
+                    // Dijkstra exploration accurate.
+                    if candidate < state[nb].agg_seconds * (1.0 - tolerance) {
+                        // Much shorter — old preds are outside new tolerance
+                        // window, so clear them.
+                        state[nb].preds.clear();
+                        state[nb].sigma = state[node_idx].sigma;
+                    } else {
+                        // Slightly shorter — old preds are likely still within
+                        // tolerance of the new distance, so keep them.
+                        state[nb].sigma += state[node_idx].sigma;
+                    }
                     state[nb].short_dist = candidate * speed_m_s;
                     state[nb].agg_seconds = candidate;
-                    state[nb].preds.clear();
                     state[nb].preds.push(node_idx);
-                    state[nb].sigma = state[node_idx].sigma;
                     state[nb].discovered = true;
                     active.push(NodeDistance {
                         node_idx: nb,
@@ -587,7 +596,7 @@ impl NetworkStructure {
                 } else if candidate <= state[nb].agg_seconds * (1.0 + tolerance)
                     && !state[nb].visited
                 {
-                    // Within tolerance: add predecessor and accumulate sigma
+                    // Longer but within tolerance: add predecessor only.
                     state[nb].preds.push(node_idx);
                     state[nb].sigma += state[node_idx].sigma;
                 }
@@ -671,14 +680,20 @@ impl NetworkStructure {
                 if total_seconds > max_seconds as f32 {
                     continue;
                 }
-                if candidate < state[nb].simpl_dist * (1.0 - tolerance) {
-                    // Strictly shorter angular path: replace
+                if candidate < state[nb].simpl_dist {
+                    // Shorter angular path found: always update distance.
+                    if candidate < state[nb].simpl_dist * (1.0 - tolerance) {
+                        // Much shorter — old preds outside new tolerance.
+                        state[nb].preds.clear();
+                        state[nb].sigma = state[node_idx].sigma;
+                    } else {
+                        // Slightly shorter — old preds likely still valid.
+                        state[nb].sigma += state[node_idx].sigma;
+                    }
                     state[nb].simpl_dist = candidate;
                     state[nb].agg_seconds = total_seconds;
                     state[nb].short_dist = total_seconds * speed_m_s;
-                    state[nb].preds.clear();
                     state[nb].preds.push(node_idx);
-                    state[nb].sigma = state[node_idx].sigma;
                     state[nb].prev_in_bearing = edge_payload.in_bearing;
                     state[nb].discovered = true;
                     active.push(NodeDistance {
@@ -688,7 +703,7 @@ impl NetworkStructure {
                 } else if candidate <= state[nb].simpl_dist * (1.0 + tolerance)
                     && !state[nb].visited
                 {
-                    // Within tolerance: add predecessor and accumulate sigma
+                    // Longer but within tolerance: add predecessor only.
                     state[nb].preds.push(node_idx);
                     state[nb].sigma += state[node_idx].sigma;
                 }

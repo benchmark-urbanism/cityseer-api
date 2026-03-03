@@ -2,7 +2,7 @@
 name=Cityseer
 qgisMinimumVersion=3.99
 description=Urban network centrality analysis using the cityseer library
-version=4.23.1
+version=4.23.2
 author=Benchmark Urbanism
 email=gareth.simons@ucl.ac.uk
 
@@ -11,10 +11,16 @@ about=Cityseer computes localised network centrality metrics (closeness and betw
     graph representation where each road segment is a node connected to its neighbours.
     Requires the cityseer Python library: pip install cityseer
 
-changelog=4.23.1
+changelog=4.23.2
+    - Fix betweenness tolerance: always update shortest distance on improvement
+    - Default tolerance to 0% (exact shortest paths)
+
+    4.23.1
+    - Fix betweenness tolerance: accurate distance tracking prevents route drift
     - Fix betweenness overflow with tolerance-based path counting
     - Switch metric output to f64 precision
     - Add geometry validation and network cleanup on ingestion
+    - Default tolerance to 0% (exact shortest paths)
 
 tracker=https://github.com/benchmark-urbanism/cityseer-api/issues
 repository=https://github.com/benchmark-urbanism/cityseer-api
