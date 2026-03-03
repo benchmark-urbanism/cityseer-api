@@ -1,6 +1,6 @@
 """Common utilities for converting between distance, time, and decay parameters, and data validation."""
 
-import numpy as np  # Add import for np.float32
+import numpy as np
 import numpy.typing as npt
 
 # Declare the existence of submodules for type checkers
