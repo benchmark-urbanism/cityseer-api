@@ -107,11 +107,11 @@ impl BetweennessShortestResult {
 #[pymethods]
 impl BetweennessShortestResult {
     #[getter]
-    pub fn node_betweenness(&self) -> HashMap<u32, Py<PyArray1<f32>>> {
+    pub fn node_betweenness(&self) -> HashMap<u32, Py<PyArray1<f64>>> {
         self.node_betweenness_vec.load_compact(&self.node_indices)
     }
     #[getter]
-    pub fn node_betweenness_beta(&self) -> HashMap<u32, Py<PyArray1<f32>>> {
+    pub fn node_betweenness_beta(&self) -> HashMap<u32, Py<PyArray1<f64>>> {
         self.node_betweenness_beta_vec
             .load_compact(&self.node_indices)
     }
@@ -175,31 +175,31 @@ impl CentralityShortestResult {
 #[pymethods]
 impl CentralityShortestResult {
     #[getter]
-    pub fn node_density(&self) -> HashMap<u32, Py<PyArray1<f32>>> {
+    pub fn node_density(&self) -> HashMap<u32, Py<PyArray1<f64>>> {
         self.node_density_vec.load_compact(&self.node_indices)
     }
     #[getter]
-    pub fn node_farness(&self) -> HashMap<u32, Py<PyArray1<f32>>> {
+    pub fn node_farness(&self) -> HashMap<u32, Py<PyArray1<f64>>> {
         self.node_farness_vec.load_compact(&self.node_indices)
     }
     #[getter]
-    pub fn node_cycles(&self) -> HashMap<u32, Py<PyArray1<f32>>> {
+    pub fn node_cycles(&self) -> HashMap<u32, Py<PyArray1<f64>>> {
         self.node_cycles_vec.load_compact(&self.node_indices)
     }
     #[getter]
-    pub fn node_harmonic(&self) -> HashMap<u32, Py<PyArray1<f32>>> {
+    pub fn node_harmonic(&self) -> HashMap<u32, Py<PyArray1<f64>>> {
         self.node_harmonic_vec.load_compact(&self.node_indices)
     }
     #[getter]
-    pub fn node_beta(&self) -> HashMap<u32, Py<PyArray1<f32>>> {
+    pub fn node_beta(&self) -> HashMap<u32, Py<PyArray1<f64>>> {
         self.node_beta_vec.load_compact(&self.node_indices)
     }
     #[getter]
-    pub fn node_betweenness(&self) -> HashMap<u32, Py<PyArray1<f32>>> {
+    pub fn node_betweenness(&self) -> HashMap<u32, Py<PyArray1<f64>>> {
         self.node_betweenness_vec.load_compact(&self.node_indices)
     }
     #[getter]
-    pub fn node_betweenness_beta(&self) -> HashMap<u32, Py<PyArray1<f32>>> {
+    pub fn node_betweenness_beta(&self) -> HashMap<u32, Py<PyArray1<f64>>> {
         self.node_betweenness_beta_vec
             .load_compact(&self.node_indices)
     }
@@ -255,23 +255,23 @@ impl CentralitySimplestResult {
 #[pymethods]
 impl CentralitySimplestResult {
     #[getter]
-    pub fn node_density(&self) -> HashMap<u32, Py<PyArray1<f32>>> {
+    pub fn node_density(&self) -> HashMap<u32, Py<PyArray1<f64>>> {
         self.node_density_vec.load_compact(&self.node_indices)
     }
     #[getter]
-    pub fn node_farness(&self) -> HashMap<u32, Py<PyArray1<f32>>> {
+    pub fn node_farness(&self) -> HashMap<u32, Py<PyArray1<f64>>> {
         self.node_farness_vec.load_compact(&self.node_indices)
     }
     #[getter]
-    pub fn node_harmonic(&self) -> HashMap<u32, Py<PyArray1<f32>>> {
+    pub fn node_harmonic(&self) -> HashMap<u32, Py<PyArray1<f64>>> {
         self.node_harmonic_vec.load_compact(&self.node_indices)
     }
     #[getter]
-    pub fn node_betweenness(&self) -> HashMap<u32, Py<PyArray1<f32>>> {
+    pub fn node_betweenness(&self) -> HashMap<u32, Py<PyArray1<f64>>> {
         self.node_betweenness_vec.load_compact(&self.node_indices)
     }
     #[getter]
-    pub fn node_betweenness_beta(&self) -> HashMap<u32, Py<PyArray1<f32>>> {
+    pub fn node_betweenness_beta(&self) -> HashMap<u32, Py<PyArray1<f64>>> {
         self.node_betweenness_beta_vec
             .load_compact(&self.node_indices)
     }
@@ -315,19 +315,19 @@ impl CentralitySegmentResult {
 #[pymethods]
 impl CentralitySegmentResult {
     #[getter]
-    pub fn segment_density(&self) -> HashMap<u32, Py<PyArray1<f32>>> {
+    pub fn segment_density(&self) -> HashMap<u32, Py<PyArray1<f64>>> {
         self.segment_density_vec.load_compact(&self.node_indices)
     }
     #[getter]
-    pub fn segment_harmonic(&self) -> HashMap<u32, Py<PyArray1<f32>>> {
+    pub fn segment_harmonic(&self) -> HashMap<u32, Py<PyArray1<f64>>> {
         self.segment_harmonic_vec.load_compact(&self.node_indices)
     }
     #[getter]
-    pub fn segment_beta(&self) -> HashMap<u32, Py<PyArray1<f32>>> {
+    pub fn segment_beta(&self) -> HashMap<u32, Py<PyArray1<f64>>> {
         self.segment_beta_vec.load_compact(&self.node_indices)
     }
     #[getter]
-    pub fn segment_betweenness(&self) -> HashMap<u32, Py<PyArray1<f32>>> {
+    pub fn segment_betweenness(&self) -> HashMap<u32, Py<PyArray1<f64>>> {
         self.segment_betweenness_vec
             .load_compact(&self.node_indices)
     }
@@ -374,7 +374,7 @@ struct BrandesNodeState {
     visited: bool,
     discovered: bool,
     preds: SmallVec<[usize; 2]>,
-    sigma: u64,
+    sigma: f64,
     short_dist: f32,
     simpl_dist: f32,
     cycles: f32,
@@ -388,7 +388,7 @@ impl BrandesNodeState {
             visited: false,
             discovered: false,
             preds: SmallVec::new(),
-            sigma: 0,
+            sigma: 0.0,
             short_dist: f32::INFINITY,
             simpl_dist: f32::INFINITY,
             cycles: 0.0,
@@ -512,7 +512,7 @@ impl NetworkStructure {
         let mut visited_nodes = Vec::new();
         state[src_idx].short_dist = 0.0;
         state[src_idx].agg_seconds = 0.0;
-        state[src_idx].sigma = 1;
+        state[src_idx].sigma = 1.0;
         state[src_idx].discovered = true;
         let mut active = BinaryHeap::new();
         active.push(NodeDistance {
@@ -610,7 +610,7 @@ impl NetworkStructure {
         let mut visited_nodes = Vec::new();
         state[src_idx].simpl_dist = 0.0;
         state[src_idx].agg_seconds = 0.0;
-        state[src_idx].sigma = 1;
+        state[src_idx].sigma = 1.0;
         state[src_idx].discovered = true;
         let mut active = BinaryHeap::new();
         active.push(NodeDistance {
@@ -1190,7 +1190,7 @@ impl NetworkStructure {
                     // Sort visited by distance from source (farthest first)
                     let mut sorted_visited: Vec<usize> = visited_nodes
                         .iter()
-                        .filter(|&&v| v != *src_idx && state[v].sigma > 0)
+                        .filter(|&&v| v != *src_idx && state[v].sigma > 0.0)
                         .copied()
                         .collect();
                     sorted_visited.sort_by(|a, b| {
@@ -1211,7 +1211,7 @@ impl NetworkStructure {
                             if state[w].short_dist > dist_threshold {
                                 continue;
                             }
-                            let sigma_w = state[w].sigma as f64;
+                            let sigma_w = state[w].sigma;
                             if sigma_w == 0.0 {
                                 continue;
                             }
@@ -1229,7 +1229,7 @@ impl NetworkStructure {
                                 0.0
                             };
                             for &v in &state[w].preds {
-                                let factor = state[v].sigma as f64 / sigma_w;
+                                let factor = state[v].sigma / sigma_w;
                                 delta[v] += factor * (pair_count + delta[w]);
                                 delta_beta[v] += factor
                                     * (pair_beta + delta_beta[w]);
@@ -1501,7 +1501,7 @@ impl NetworkStructure {
                     // Sort visited by angular distance from source (farthest first)
                     let mut sorted_visited: Vec<usize> = visited_nodes
                         .iter()
-                        .filter(|&&v| v != *src_idx && state[v].sigma > 0)
+                        .filter(|&&v| v != *src_idx && state[v].sigma > 0.0)
                         .copied()
                         .collect();
                     sorted_visited.sort_by(|a, b| {
@@ -1523,7 +1523,7 @@ impl NetworkStructure {
                             if state[w].short_dist > dist_threshold {
                                 continue;
                             }
-                            let sigma_w = state[w].sigma as f64;
+                            let sigma_w = state[w].sigma;
                             if sigma_w == 0.0 {
                                 continue;
                             }
@@ -1536,7 +1536,7 @@ impl NetworkStructure {
                                 0.0
                             };
                             for &v in &state[w].preds {
-                                let factor = state[v].sigma as f64 / sigma_w;
+                                let factor = state[v].sigma / sigma_w;
                                 delta[v] += factor * (pair_count + delta[w]);
                                 delta_beta[v] += factor
                                     * (pair_beta + delta_beta[w]);
@@ -1954,7 +1954,7 @@ impl NetworkStructure {
                 // Sort visited by distance (farthest first) for backpropagation
                 let mut sorted_visited: Vec<usize> = visited_nodes
                     .iter()
-                    .filter(|&&v| v != *src_idx && state[v].sigma > 0)
+                    .filter(|&&v| v != *src_idx && state[v].sigma > 0.0)
                     .copied()
                     .collect();
                 sorted_visited.sort_by(|a, b| {
@@ -1990,14 +1990,14 @@ impl NetworkStructure {
                         if state[w].short_dist > dist_threshold {
                             continue;
                         }
-                        let sigma_w = state[w].sigma as f64;
+                        let sigma_w = state[w].sigma;
                         if sigma_w == 0.0 || delta[w] == 0.0 {
                             continue;
                         }
 
                         // Propagate to predecessors
                         for &v in &state[w].preds {
-                            let factor = state[v].sigma as f64 / sigma_w;
+                            let factor = state[v].sigma / sigma_w;
                             delta[v] += factor * delta[w];
                             delta_beta[v] += factor * delta_beta[w];
                         }

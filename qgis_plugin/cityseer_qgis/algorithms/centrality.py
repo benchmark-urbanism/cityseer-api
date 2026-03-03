@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 import threading
 import time
 from queue import Queue
@@ -382,7 +383,8 @@ class CityseerCentralityAlgorithm(CityseerAlgorithmBase):
                     col = f"cc_{base}_{d}_{col_prefix}" if col_prefix else f"cc_{base}_{d}"
                     for i, fid in enumerate(result.node_keys_py):
                         if fid in results:
-                            results[fid][col] = float(arr[i])
+                            val = float(arr[i])
+                            results[fid][col] = val if math.isfinite(val) else None
 
         def _run_metric_batches(
             label,
@@ -421,7 +423,8 @@ class CityseerCentralityAlgorithm(CityseerAlgorithmBase):
                         farness = r.node_farness[d]
                         for i, fid in enumerate(r.node_keys_py):
                             if fid in results and farness[i] > 0:
-                                results[fid][f"cc_hillier_{d}"] = float(density[i] ** 2 / farness[i])
+                                val = float(density[i] ** 2 / farness[i])
+                                results[fid][f"cc_hillier_{d}"] = val if math.isfinite(val) else None
                 batch_idx += 1
             for d, p in sampled_distances:
                 _d, _p = [d], p
@@ -445,7 +448,8 @@ class CityseerCentralityAlgorithm(CityseerAlgorithmBase):
                         farness = r.node_farness[dd]
                         for i, fid in enumerate(r.node_keys_py):
                             if fid in results and farness[i] > 0:
-                                results[fid][f"cc_hillier_{dd}"] = float(density[i] ** 2 / farness[i])
+                                val = float(density[i] ** 2 / farness[i])
+                                results[fid][f"cc_hillier_{dd}"] = val if math.isfinite(val) else None
                 batch_idx += 1
             step += 1
 
@@ -536,7 +540,7 @@ class CityseerCentralityAlgorithm(CityseerAlgorithmBase):
         fields = QgsFields()
         fields.append(QgsField("fid", QVariant.Int))
         for col in all_cols:
-            fields.append(QgsField(col, QVariant.Double))
+            fields.append(QgsField(col, QVariant.Double, "double", 30, 6))
 
         (sink, dest_id) = self.parameterAsSink(
             parameters,

@@ -211,6 +211,7 @@ def build_dual_network(
     from shapely import wkt as shapely_wkt
     from shapely.geometry import LineString, Point
     from shapely.ops import linemerge
+    from shapely.validation import make_valid
 
     global _inc_state
     layer_cache_key = (
@@ -226,18 +227,30 @@ def build_dual_network(
         """Parse WKT into a 2D shapely LineString, or None if degenerate.
 
         Handles MultiLineString by merging parts (linemerge) or, if that
-        yields a MultiLineString, taking the longest part.
+        yields a MultiLineString, taking the longest part. Attempts to fix
+        invalid geometries via make_valid and skips zero-length geometries.
         """
         geom = shapely_wkt.loads(wkt)
         if geom.is_empty:
             return None
+        if not geom.is_valid:
+            geom = make_valid(geom)
+            if geom.is_empty:
+                return None
         if geom.geom_type == "MultiLineString":
             merged = linemerge(geom)
             geom = max(merged.geoms, key=lambda g: g.length) if merged.geom_type == "MultiLineString" else merged
+        elif geom.geom_type == "GeometryCollection":
+            lines = [g for g in geom.geoms if g.geom_type == "LineString" and g.length > 0]
+            if not lines:
+                return None
+            geom = max(lines, key=lambda g: g.length)
         if geom.geom_type != "LineString" or len(geom.coords) < 2:
             return None
         if geom.has_z:
             geom = LineString([(c[0], c[1]) for c in geom.coords])
+        if geom.length < 1e-3:
+            return None
         return geom
 
     def _ep_key(pt):
@@ -378,10 +391,31 @@ def build_dual_network(
             feedback.setProgressText(f"Step {step} of {n_steps}: Adding {len(to_add)} features…")
             feedback.setProgress(int(edge_base))
 
+        # Build endpoint-pair index for duplicate detection
+        ep_pair_best: dict[frozenset, tuple[int, float]] = {}
+        for existing_fid, existing_line in geoms.items():
+            ec = list(existing_line.coords)
+            pair = frozenset({_ep_key(ec[0]), _ep_key(ec[-1])})
+            if pair not in ep_pair_best or existing_line.length > ep_pair_best[pair][1]:
+                ep_pair_best[pair] = (existing_fid, existing_line.length)
+
+        n_skipped = 0
         for fid in to_add:
             line = _parse_line(current_wkts[fid])
             if line is None:
+                n_skipped += 1
                 continue
+            c = list(line.coords)
+            # Skip short self-loops
+            if _ep_key(c[0]) == _ep_key(c[-1]) and line.length < 10.0:
+                n_skipped += 1
+                continue
+            # Skip duplicates (same endpoint pair, similar length to existing)
+            pair = frozenset({_ep_key(c[0]), _ep_key(c[-1])})
+            if pair in ep_pair_best and line.length >= ep_pair_best[pair][1] * 0.8:
+                n_skipped += 1
+                continue
+            ep_pair_best[pair] = (fid, line.length)
             geoms[fid] = line
             fid_list.append(fid)
             coords = [(c[0], c[1]) for c in line.coords]
@@ -400,6 +434,9 @@ def build_dual_network(
             midpoints[fid] = mid
             for pt in (coords[0], coords[-1]):
                 endpoint_to_fids[_ep_key(pt)].append(fid)
+
+        if n_skipped > 0 and feedback:
+            feedback.pushInfo(f"Skipped {n_skipped} features with invalid or zero-length geometry.")
 
         # Keep fid_list in stable sorted order after remove+append.
         fid_list.sort()
@@ -482,7 +519,70 @@ def build_dual_network(
         geoms[fid] = line
         fid_list.append(fid)
 
+    n_skipped = len(current_wkts) - len(fid_list)
+    if n_skipped > 0 and feedback:
+        feedback.pushInfo(f"Skipped {n_skipped} features with invalid or zero-length geometry.")
+
+    # ---- Geometry cleanup ----
+    n_self_loops = 0
+    n_duplicates = 0
+    n_danglers = 0
+
+    # Remove short self-loops (start and end endpoints round to same key, < 10m)
+    SELF_LOOP_MAX = 10.0
+    for fid in list(geoms.keys()):
+        c = list(geoms[fid].coords)
+        if _ep_key(c[0]) == _ep_key(c[-1]) and geoms[fid].length < SELF_LOOP_MAX:
+            del geoms[fid]
+            n_self_loops += 1
+
+    # Remove duplicate geometries (same endpoint pair, similar length — keep longest)
+    DUPLICATE_LENGTH_RATIO = 0.8  # remove shorter if within 80% of longest
+    ep_pairs: dict[frozenset, list[tuple[int, float]]] = collections.defaultdict(list)
+    for fid, line in geoms.items():
+        c = list(line.coords)
+        pair = frozenset({_ep_key(c[0]), _ep_key(c[-1])})
+        ep_pairs[pair].append((fid, line.length))
+    for items in ep_pairs.values():
+        if len(items) > 1:
+            items.sort(key=lambda x: x[1], reverse=True)
+            longest = items[0][1]
+            for fid, length in items[1:]:
+                if fid in geoms and length >= longest * DUPLICATE_LENGTH_RATIO:
+                    del geoms[fid]
+                    n_duplicates += 1
+
+    # Remove short danglers (primal degree-1, iterative)
+    DANGLER_MAX = 10.0
+    while True:
+        temp_ep: dict[tuple, list[int]] = collections.defaultdict(list)
+        for fid, line in geoms.items():
+            c = list(line.coords)
+            for pt in (c[0], c[-1]):
+                temp_ep[_ep_key(pt)].append(fid)
+        to_remove: set[int] = set()
+        for fid, line in geoms.items():
+            if line.length > DANGLER_MAX:
+                continue
+            c = list(line.coords)
+            if len(temp_ep.get(_ep_key(c[0]), [])) <= 1 or len(temp_ep.get(_ep_key(c[-1]), [])) <= 1:
+                to_remove.add(fid)
+        if not to_remove:
+            break
+        for fid in to_remove:
+            del geoms[fid]
+        n_danglers += len(to_remove)
+
+    fid_list = sorted(geoms.keys())
     n_segments = len(fid_list)
+
+    if feedback:
+        if n_self_loops:
+            feedback.pushInfo(f"Removed {n_self_loops} short self-loop geometries (< {SELF_LOOP_MAX}m).")
+        if n_duplicates:
+            feedback.pushInfo(f"Removed {n_duplicates} duplicate geometries.")
+        if n_danglers:
+            feedback.pushInfo(f"Removed {n_danglers} short dangling segments (< {DANGLER_MAX}m).")
 
     # ---- Build dual nodes ----
     if feedback:

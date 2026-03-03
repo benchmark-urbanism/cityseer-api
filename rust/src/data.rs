@@ -30,15 +30,15 @@ pub struct LanduseAccess {
 #[pymethods]
 impl LanduseAccess {
     #[getter]
-    pub fn weighted(&self) -> HashMap<u32, Py<PyArray1<f32>>> {
+    pub fn weighted(&self) -> HashMap<u32, Py<PyArray1<f64>>> {
         self.weighted_vec.load_compact(&self.node_indices)
     }
     #[getter]
-    pub fn unweighted(&self) -> HashMap<u32, Py<PyArray1<f32>>> {
+    pub fn unweighted(&self) -> HashMap<u32, Py<PyArray1<f64>>> {
         self.unweighted_vec.load_compact(&self.node_indices)
     }
     #[getter]
-    pub fn distance(&self) -> HashMap<u32, Py<PyArray1<f32>>> {
+    pub fn distance(&self) -> HashMap<u32, Py<PyArray1<f64>>> {
         self.distance_vec.load_compact(&self.node_indices)
     }
 }
@@ -142,25 +142,25 @@ impl MixedUsesResult {
 #[pymethods]
 impl MixedUsesResult {
     #[getter]
-    pub fn hill(&self) -> HashMap<u32, HashMap<u32, Py<PyArray1<f32>>>> {
+    pub fn hill(&self) -> HashMap<u32, HashMap<u32, Py<PyArray1<f64>>>> {
         self.hill_vec
             .iter()
             .map(|(q, m)| (*q, m.load_compact(&self.node_indices)))
             .collect()
     }
     #[getter]
-    pub fn hill_weighted(&self) -> HashMap<u32, HashMap<u32, Py<PyArray1<f32>>>> {
+    pub fn hill_weighted(&self) -> HashMap<u32, HashMap<u32, Py<PyArray1<f64>>>> {
         self.hill_weighted_vec
             .iter()
             .map(|(q, m)| (*q, m.load_compact(&self.node_indices)))
             .collect()
     }
     #[getter]
-    pub fn shannon(&self) -> HashMap<u32, Py<PyArray1<f32>>> {
+    pub fn shannon(&self) -> HashMap<u32, Py<PyArray1<f64>>> {
         self.shannon_vec.load_compact(&self.node_indices)
     }
     #[getter]
-    pub fn gini(&self) -> HashMap<u32, Py<PyArray1<f32>>> {
+    pub fn gini(&self) -> HashMap<u32, Py<PyArray1<f64>>> {
         self.gini_vec.load_compact(&self.node_indices)
     }
 }
@@ -188,59 +188,59 @@ pub struct Stats {
 #[pymethods]
 impl Stats {
     #[getter]
-    pub fn sum(&self) -> HashMap<u32, Py<PyArray1<f32>>> {
+    pub fn sum(&self) -> HashMap<u32, Py<PyArray1<f64>>> {
         self.sum_vec.load_compact(&self.node_indices)
     }
     #[getter]
-    pub fn sum_wt(&self) -> HashMap<u32, Py<PyArray1<f32>>> {
+    pub fn sum_wt(&self) -> HashMap<u32, Py<PyArray1<f64>>> {
         self.sum_wt_vec.load_compact(&self.node_indices)
     }
     #[getter]
-    pub fn mean(&self) -> HashMap<u32, Py<PyArray1<f32>>> {
+    pub fn mean(&self) -> HashMap<u32, Py<PyArray1<f64>>> {
         self.mean_vec.load_compact(&self.node_indices)
     }
     #[getter]
-    pub fn mean_wt(&self) -> HashMap<u32, Py<PyArray1<f32>>> {
+    pub fn mean_wt(&self) -> HashMap<u32, Py<PyArray1<f64>>> {
         self.mean_wt_vec.load_compact(&self.node_indices)
     }
     #[getter]
-    pub fn median(&self) -> HashMap<u32, Py<PyArray1<f32>>> {
+    pub fn median(&self) -> HashMap<u32, Py<PyArray1<f64>>> {
         self.median_vec.load_compact(&self.node_indices)
     }
     #[getter]
-    pub fn median_wt(&self) -> HashMap<u32, Py<PyArray1<f32>>> {
+    pub fn median_wt(&self) -> HashMap<u32, Py<PyArray1<f64>>> {
         self.median_wt_vec.load_compact(&self.node_indices)
     }
     #[getter]
-    pub fn count(&self) -> HashMap<u32, Py<PyArray1<f32>>> {
+    pub fn count(&self) -> HashMap<u32, Py<PyArray1<f64>>> {
         self.count_vec.load_compact(&self.node_indices)
     }
     #[getter]
-    pub fn count_wt(&self) -> HashMap<u32, Py<PyArray1<f32>>> {
+    pub fn count_wt(&self) -> HashMap<u32, Py<PyArray1<f64>>> {
         self.count_wt_vec.load_compact(&self.node_indices)
     }
     #[getter]
-    pub fn variance(&self) -> HashMap<u32, Py<PyArray1<f32>>> {
+    pub fn variance(&self) -> HashMap<u32, Py<PyArray1<f64>>> {
         self.variance_vec.load_compact(&self.node_indices)
     }
     #[getter]
-    pub fn variance_wt(&self) -> HashMap<u32, Py<PyArray1<f32>>> {
+    pub fn variance_wt(&self) -> HashMap<u32, Py<PyArray1<f64>>> {
         self.variance_wt_vec.load_compact(&self.node_indices)
     }
     #[getter]
-    pub fn mad(&self) -> HashMap<u32, Py<PyArray1<f32>>> {
+    pub fn mad(&self) -> HashMap<u32, Py<PyArray1<f64>>> {
         self.mad_vec.load_compact(&self.node_indices)
     }
     #[getter]
-    pub fn mad_wt(&self) -> HashMap<u32, Py<PyArray1<f32>>> {
+    pub fn mad_wt(&self) -> HashMap<u32, Py<PyArray1<f64>>> {
         self.mad_wt_vec.load_compact(&self.node_indices)
     }
     #[getter]
-    pub fn max(&self) -> HashMap<u32, Py<PyArray1<f32>>> {
+    pub fn max(&self) -> HashMap<u32, Py<PyArray1<f64>>> {
         self.max_vec.load_compact(&self.node_indices)
     }
     #[getter]
-    pub fn min(&self) -> HashMap<u32, Py<PyArray1<f32>>> {
+    pub fn min(&self) -> HashMap<u32, Py<PyArray1<f64>>> {
         self.min_vec.load_compact(&self.node_indices)
     }
 }
