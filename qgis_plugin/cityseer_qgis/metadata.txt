@@ -13,14 +13,14 @@ about=Cityseer computes localised network centrality metrics (closeness and betw
 
 changelog=4.23.2
     - Fix betweenness tolerance: always update shortest distance on improvement
-    - Default tolerance to 0% (exact shortest paths)
+    - Default tolerance to 0 (exact shortest paths)
 
     4.23.1
     - Fix betweenness tolerance: accurate distance tracking prevents route drift
     - Fix betweenness overflow with tolerance-based path counting
     - Switch metric output to f64 precision
     - Add geometry validation and network cleanup on ingestion
-    - Default tolerance to 0% (exact shortest paths)
+    - Default tolerance to 0 (exact shortest paths)
 
 tracker=https://github.com/benchmark-urbanism/cityseer-api/issues
 repository=https://github.com/benchmark-urbanism/cityseer-api
