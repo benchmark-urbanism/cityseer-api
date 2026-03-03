@@ -173,11 +173,13 @@ class CityseerCentralityAlgorithm(CityseerAlgorithmBase):
         tol_param = QgsProcessingParameterNumber(
             self.TOLERANCE,
             self.tr(
-                "Betweenness tolerance % (0 = exact shortest paths only; "
-                "e.g. 1% spreads betweenness across routes within 1% of the shortest)"
+                "Betweenness tolerance % (0 = exact shortest paths only). "
+                "Spreads betweenness across near-shortest routes. Keep below 1% "
+                "— higher values increasingly diffuse route concentration, "
+                "especially at larger distance thresholds."
             ),
             type=QgsProcessingParameterNumber.Type.Double,
-            defaultValue=10.0,
+            defaultValue=0.0,
             optional=False,
             minValue=0.0,
             maxValue=20.0,
