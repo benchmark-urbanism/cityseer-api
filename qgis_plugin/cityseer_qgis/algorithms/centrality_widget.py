@@ -1,7 +1,7 @@
 """Custom dialog and parameters widget for the Network Centrality algorithm.
 
 Provides a 4-box layout (closeness/betweenness x shortest/simplest)
-with per-box metric checkboxes, replacing the flat parameter list.
+with fully independent per-box metric checkboxes.
 """
 
 from __future__ import annotations
@@ -18,72 +18,42 @@ from qgis.PyQt.QtWidgets import (
     QWidget,
 )
 
-# Metric definitions per box: (param_name, label, tooltip, default)
+# Metric definitions per box: (param_suffix, label, tooltip_template, default)
+# The full param name is built as METRIC_{suffix}_{category_short}
+# e.g. METRIC_HARMONIC_CS for closeness-shortest
 _CLOSENESS_METRICS_SHORTEST = [
-    ("METRIC_HARMONIC", "Harmonic", "Sum of inverse distances to reachable nodes \u2192 cc_harmonic_<d>", True),
-    (
-        "METRIC_DENSITY",
-        "Density",
-        "Number of nodes reachable within the distance threshold \u2192 cc_density_<d>",
-        False,
-    ),
-    ("METRIC_FARNESS", "Farness", "Sum of distances to all reachable nodes \u2192 cc_farness_<d>", False),
-    ("METRIC_BETA", "Beta-weighted", "Closeness with negative-exponential distance decay \u2192 cc_beta_<d>", False),
-    ("METRIC_CYCLES", "Cycles", "Count of network cycles through each node \u2192 cc_cycles_<d>", False),
-    (
-        "METRIC_HILLIER",
-        "Hillier (n\u00b2/farness)",
-        "Derived closeness variant (density\u00b2 / farness) \u2192 cc_hillier_<d>",
-        False,
-    ),
+    ("HARMONIC", "Harmonic", "Sum of inverse distances to reachable nodes → cc_harmonic_<d>", True),
+    ("DENSITY", "Density", "Number of nodes reachable within the distance threshold → cc_density_<d>", False),
+    ("FARNESS", "Farness", "Sum of distances to all reachable nodes → cc_farness_<d>", False),
+    ("BETA", "Beta-weighted", "Closeness with negative-exponential distance decay → cc_beta_<d>", False),
+    ("CYCLES", "Cycles", "Count of network cycles through each node → cc_cycles_<d>", False),
+    ("HILLIER", "Hillier (n²/farness)", "Derived closeness variant (density² / farness) → cc_hillier_<d>", False),
 ]
 
 _CLOSENESS_METRICS_SIMPLEST = [
-    ("METRIC_HARMONIC", "Harmonic", "Sum of inverse distances to reachable nodes \u2192 cc_harmonic_<d>_ang", True),
-    (
-        "METRIC_DENSITY",
-        "Density",
-        "Number of nodes reachable within the distance threshold \u2192 cc_density_<d>_ang",
-        False,
-    ),
-    ("METRIC_FARNESS", "Farness", "Sum of distances to all reachable nodes \u2192 cc_farness_<d>_ang", False),
-    (
-        "METRIC_HILLIER",
-        "Hillier (n\u00b2/farness)",
-        "Derived closeness variant (density\u00b2 / farness) \u2192 cc_hillier_<d>_ang",
-        False,
-    ),
+    ("HARMONIC", "Harmonic", "Sum of inverse distances to reachable nodes → cc_harmonic_<d>_ang", True),
+    ("DENSITY", "Density", "Number of nodes reachable within the distance threshold → cc_density_<d>_ang", False),
+    ("FARNESS", "Farness", "Sum of distances to all reachable nodes → cc_farness_<d>_ang", False),
+    ("HILLIER", "Hillier (n²/farness)", "Derived closeness variant (density² / farness) → cc_hillier_<d>_ang", False),
 ]
 
 _BETWEENNESS_METRICS_SHORTEST = [
-    (
-        "METRIC_BETWEENNESS",
-        "Betweenness",
-        "Count of shortest paths passing through each node \u2192 cc_betweenness_<d>",
-        True,
-    ),
-    (
-        "METRIC_BETWEENNESS_BETA",
-        "Beta-weighted",
-        "Betweenness with negative-exponential distance decay \u2192 cc_betweenness_beta_<d>",
-        False,
-    ),
+    ("BETWEENNESS", "Betweenness", "Count of shortest paths passing through each node → cc_betweenness_<d>", True),
+    ("BETWEENNESS_BETA", "Beta-weighted", "Betweenness with negative-exponential distance decay → cc_betweenness_beta_<d>", False),
 ]
 
 _BETWEENNESS_METRICS_SIMPLEST = [
-    (
-        "METRIC_BETWEENNESS",
-        "Betweenness",
-        "Count of shortest paths passing through each node \u2192 cc_betweenness_<d>_ang",
-        True,
-    ),
-    (
-        "METRIC_BETWEENNESS_BETA",
-        "Beta-weighted",
-        "Betweenness with negative-exponential distance decay \u2192 cc_betweenness_beta_<d>_ang",
-        False,
-    ),
+    ("BETWEENNESS", "Betweenness", "Count of shortest paths passing through each node → cc_betweenness_<d>_ang", True),
+    ("BETWEENNESS_BETA", "Beta-weighted", "Betweenness with negative-exponential distance decay → cc_betweenness_beta_<d>_ang", False),
 ]
+
+# Category short codes used to build param names
+_CATEGORY_SHORTS = {
+    "CLOSENESS_SHORTEST": "CS",
+    "CLOSENESS_SIMPLEST": "CA",
+    "BETWEENNESS_SHORTEST": "BS",
+    "BETWEENNESS_SIMPLEST": "BA",
+}
 
 
 class CentralityParametersPanel(ParametersPanel):
@@ -91,7 +61,8 @@ class CentralityParametersPanel(ParametersPanel):
 
     def __init__(self, parent, alg):
         self._group_boxes = {}
-        self._metric_cbs = {}
+        # key: full param name (e.g. "METRIC_HARMONIC_CS"), value: QCheckBox
+        self._metric_cbs: dict[str, QCheckBox] = {}
         # super().__init__ calls self.initWidgets()
         super().__init__(parent, alg)
 
@@ -106,7 +77,6 @@ class CentralityParametersPanel(ParametersPanel):
 
     def _insert_group_boxes(self):
         """Build and insert the 4 metric group boxes into the scroll area layout."""
-        # Build the 4 group boxes in a 2x2 grid.
         grid = QGridLayout()
         grid.setColumnStretch(0, 1)
         grid.setColumnStretch(1, 1)
@@ -117,8 +87,7 @@ class CentralityParametersPanel(ParametersPanel):
                 _CLOSENESS_METRICS_SHORTEST,
                 checked=True,
             ),
-            0,
-            0,
+            0, 0,
         )
         grid.addWidget(
             self._make_group_box(
@@ -127,8 +96,7 @@ class CentralityParametersPanel(ParametersPanel):
                 _CLOSENESS_METRICS_SIMPLEST,
                 checked=False,
             ),
-            0,
-            1,
+            0, 1,
         )
         grid.addWidget(
             self._make_group_box(
@@ -137,8 +105,7 @@ class CentralityParametersPanel(ParametersPanel):
                 _BETWEENNESS_METRICS_SHORTEST,
                 checked=True,
             ),
-            1,
-            0,
+            1, 0,
         )
         grid.addWidget(
             self._make_group_box(
@@ -147,18 +114,15 @@ class CentralityParametersPanel(ParametersPanel):
                 _BETWEENNESS_METRICS_SIMPLEST,
                 checked=False,
             ),
-            1,
-            1,
+            1, 1,
         )
         grid_widget = QWidget()
         grid_widget.setLayout(grid)
 
         # Insert the grid into the scroll area layout, before TOLERANCE.
-        # Find the layout via the named content widget from the .ui file.
         content = self.findChild(QWidget, "scrollAreaWidgetContents")
         if content is not None and content.layout() is not None:
             layout = content.layout()
-            # Find the TOLERANCE wrapper's label to insert just before it.
             tol_wrapper = self.wrappers.get("TOLERANCE")
             if tol_wrapper is not None:
                 tol_label = tol_wrapper.wrappedLabel()
@@ -173,7 +137,6 @@ class CentralityParametersPanel(ParametersPanel):
             layout.insertWidget(max(0, layout.count() - 1), grid_widget)
             grid_widget.show()
             return
-        # Last resort: append via C++ method (may have a gap).
         self.addExtraWidget(grid_widget)
 
     def _make_group_box(self, title, category_param, metrics, checked):
@@ -183,23 +146,15 @@ class CentralityParametersPanel(ParametersPanel):
         box.setChecked(checked)
         self._group_boxes[category_param] = box
 
+        cat_short = _CATEGORY_SHORTS[category_param]
         layout = QVBoxLayout()
-        for param_name, label, tooltip, default in metrics:
+        for metric_suffix, label, tooltip, default in metrics:
+            full_param = f"METRIC_{metric_suffix}_{cat_short}"
             cb = QCheckBox(label)
             cb.setToolTip(tooltip)
             cb.setChecked(default)
             layout.addWidget(cb)
-
-            # Sync with any existing checkbox for the same param.
-            if param_name in self._metric_cbs:
-                existing = self._metric_cbs[param_name]
-                cb.setChecked(existing[0].isChecked())
-                for other in existing:
-                    cb.toggled.connect(lambda state, o=other: _sync_cb(o, state))
-                    other.toggled.connect(lambda state, c=cb: _sync_cb(c, state))
-                existing.append(cb)
-            else:
-                self._metric_cbs[param_name] = [cb]
+            self._metric_cbs[full_param] = cb
 
         layout.addStretch()
         box.setLayout(layout)
@@ -217,8 +172,8 @@ class CentralityParametersPanel(ParametersPanel):
             params[category_param] = box.isChecked()
 
         # Add metric booleans from our custom checkboxes.
-        for param_name, cb_list in self._metric_cbs.items():
-            params[param_name] = cb_list[0].isChecked()
+        for param_name, cb in self._metric_cbs.items():
+            params[param_name] = cb.isChecked()
 
         return params
 
@@ -228,9 +183,3 @@ class CentralityDialog(AlgorithmDialog):
 
     def getParametersPanel(self, alg, parent):
         return CentralityParametersPanel(parent, alg)
-
-
-def _sync_cb(target, state):
-    """Set target checkbox to state without triggering infinite recursion."""
-    if target.isChecked() != state:
-        target.setChecked(state)
