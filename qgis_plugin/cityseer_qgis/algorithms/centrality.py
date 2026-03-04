@@ -592,8 +592,7 @@ class CityseerCentralityAlgorithm(CityseerAlgorithmBase):
         n_features = len(live_fids)
         if n_features == 0:
             feedback.reportError(
-                "No live segments to write. If using a boundary polygon, check that it "
-                "overlaps the street network."
+                "No live segments to write. If using a boundary polygon, check that it overlaps the street network."
             )
         for i, fid in enumerate(live_fids):
             feat = QgsFeature(fields)

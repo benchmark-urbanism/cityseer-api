@@ -10,7 +10,7 @@ import traceback
 
 from processing.gui.AlgorithmDialog import AlgorithmDialog
 from processing.gui.ParametersPanel import ParametersPanel
-from qgis.core import QgsMapLayerProxyModel, QgsProject, QgsVectorLayer
+from qgis.core import QgsProject, QgsVectorLayer
 from qgis.PyQt.QtWidgets import (
     QCheckBox,
     QGroupBox,
@@ -68,9 +68,7 @@ class AccessibilityParametersPanel(ParametersPanel):
         scroll_content = QWidget()
         self._category_layout = QVBoxLayout()
         self._category_layout.setContentsMargins(4, 4, 4, 4)
-        self._category_layout.addWidget(
-            QLabel("Select a land-use field and click 'Load categories'.")
-        )
+        self._category_layout.addWidget(QLabel("Select a land-use field and click 'Load categories'."))
         self._category_layout.addStretch()
         scroll_content.setLayout(self._category_layout)
         scroll.setWidget(scroll_content)
@@ -156,30 +154,22 @@ class AccessibilityParametersPanel(ParametersPanel):
         field_name = self._get_current_field()
 
         if layer is None or not field_name:
-            self._category_layout.addWidget(
-                QLabel("Select a data layer and land-use field first.")
-            )
+            self._category_layout.addWidget(QLabel("Select a data layer and land-use field first."))
             self._category_layout.addStretch()
             return
 
         # Check field exists
         if field_name not in [f.name() for f in layer.fields()]:
-            self._category_layout.addWidget(
-                QLabel(f"Field '{field_name}' not found in layer.")
-            )
+            self._category_layout.addWidget(QLabel(f"Field '{field_name}' not found in layer."))
             self._category_layout.addStretch()
             return
 
         # Read unique values
         idx = layer.fields().indexFromName(field_name)
-        unique_values = sorted(
-            set(str(v) for v in layer.uniqueValues(idx) if v is not None and str(v).strip())
-        )
+        unique_values = sorted(set(str(v) for v in layer.uniqueValues(idx) if v is not None and str(v).strip()))
 
         if not unique_values:
-            self._category_layout.addWidget(
-                QLabel("No values found in selected field.")
-            )
+            self._category_layout.addWidget(QLabel("No values found in selected field."))
             self._category_layout.addStretch()
             return
 

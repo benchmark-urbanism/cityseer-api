@@ -39,12 +39,22 @@ _CLOSENESS_METRICS_SIMPLEST = [
 
 _BETWEENNESS_METRICS_SHORTEST = [
     ("BETWEENNESS", "Betweenness", "Count of shortest paths passing through each node → cc_betweenness_<d>", True),
-    ("BETWEENNESS_BETA", "Beta-weighted", "Betweenness with negative-exponential distance decay → cc_betweenness_beta_<d>", False),
+    (
+        "BETWEENNESS_BETA",
+        "Beta-weighted",
+        "Betweenness with negative-exponential distance decay → cc_betweenness_beta_<d>",
+        False,
+    ),
 ]
 
 _BETWEENNESS_METRICS_SIMPLEST = [
     ("BETWEENNESS", "Betweenness", "Count of shortest paths passing through each node → cc_betweenness_<d>_ang", True),
-    ("BETWEENNESS_BETA", "Beta-weighted", "Betweenness with negative-exponential distance decay → cc_betweenness_beta_<d>_ang", False),
+    (
+        "BETWEENNESS_BETA",
+        "Beta-weighted",
+        "Betweenness with negative-exponential distance decay → cc_betweenness_beta_<d>_ang",
+        False,
+    ),
 ]
 
 # Category short codes used to build param names
@@ -87,7 +97,8 @@ class CentralityParametersPanel(ParametersPanel):
                 _CLOSENESS_METRICS_SHORTEST,
                 checked=True,
             ),
-            0, 0,
+            0,
+            0,
         )
         grid.addWidget(
             self._make_group_box(
@@ -96,7 +107,8 @@ class CentralityParametersPanel(ParametersPanel):
                 _CLOSENESS_METRICS_SIMPLEST,
                 checked=False,
             ),
-            0, 1,
+            0,
+            1,
         )
         grid.addWidget(
             self._make_group_box(
@@ -105,7 +117,8 @@ class CentralityParametersPanel(ParametersPanel):
                 _BETWEENNESS_METRICS_SHORTEST,
                 checked=True,
             ),
-            1, 0,
+            1,
+            0,
         )
         grid.addWidget(
             self._make_group_box(
@@ -114,7 +127,8 @@ class CentralityParametersPanel(ParametersPanel):
                 _BETWEENNESS_METRICS_SIMPLEST,
                 checked=False,
             ),
-            1, 1,
+            1,
+            1,
         )
         grid_widget = QWidget()
         grid_widget.setLayout(grid)
