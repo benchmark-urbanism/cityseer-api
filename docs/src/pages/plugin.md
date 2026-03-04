@@ -24,7 +24,7 @@ The algorithm is accessible via **Processing > Cityseer > Network Centrality**.
 | --------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------ |
 | **Street network line layer**                 | A line layer in a projected metre-based CRS                                                                                                                                 | _(required)_ |
 | **Distance thresholds**                       | Comma-separated distances in metres                                                                                                                                         | `400,800`    |
-| **Betweenness tolerance %**                   | Controls betweenness spread across near-shortest paths. 0 = exact shortest paths only.                                                                                      | `10.0`       |
+| **Betweenness tolerance %**                   | Controls betweenness spread across near-shortest paths. 0 = exact shortest paths only. Keep below 1%.                                                                       | `0.0`        |
 | **Boundary polygon**                          | Optional polygon layer. Nodes inside the boundary are used as centrality sources; nodes outside provide network context only.                                               | _(none)_     |
 | **Use deterministic distance-based sampling** | *Experimental.* When enabled, sampling probability is computed per distance threshold. Distances where the probability is 1.0 are computed exactly; larger distances are sampled for speed. | `True`       |
 
@@ -36,7 +36,7 @@ The algorithm dialog provides a 2x2 grid of metric categories:
 
 |                 | Shortest path                                     | Simplest path (angular)       |
 | --------------- | ------------------------------------------------- | ----------------------------- |
-| **Closeness**   | harmonic, density, farness, beta, cycles, hillier | harmonic, density, farness    |
+| **Closeness**   | harmonic, density, farness, beta, cycles, hillier | harmonic, density, farness, hillier |
 | **Betweenness** | betweenness, betweenness_beta                     | betweenness, betweenness_beta |
 
 Each category can be toggled on or off, and individual metrics within each category can be selected independently. By default, harmonic closeness and betweenness are enabled for shortest paths.
@@ -65,10 +65,10 @@ Deterministic distance-based sampling is enabled by default. Sampling probabilit
 |          800 |            100% |               1x |
 |         1600 |            100% |               1x |
 |         3200 |            100% |               1x |
-|         5000 |           84.6% |             1.2x |
-|         8000 |           35.9% |             2.8x |
-|        10000 |           23.8% |             4.2x |
-|        15000 |           11.3% |             8.9x |
-|        20000 |            6.6% |              15x |
+|         5000 |           58.7% |             1.7x |
+|         8000 |           24.9% |             4.0x |
+|        10000 |           16.6% |             6.0x |
+|        15000 |            7.8% |            12.7x |
+|        20000 |            4.6% |            21.7x |
 
 Disable sampling for exact computation at all distances.

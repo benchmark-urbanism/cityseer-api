@@ -47,6 +47,12 @@ _CLOSENESS_METRICS_SIMPLEST = [
         False,
     ),
     ("METRIC_FARNESS", "Farness", "Sum of distances to all reachable nodes \u2192 cc_farness_<d>_ang", False),
+    (
+        "METRIC_HILLIER",
+        "Hillier (n\u00b2/farness)",
+        "Derived closeness variant (density\u00b2 / farness) \u2192 cc_hillier_<d>_ang",
+        False,
+    ),
 ]
 
 _BETWEENNESS_METRICS_SHORTEST = [

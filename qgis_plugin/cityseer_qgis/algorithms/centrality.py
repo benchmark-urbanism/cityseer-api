@@ -426,7 +426,8 @@ class CityseerCentralityAlgorithm(CityseerAlgorithmBase):
                         for i, fid in enumerate(r.node_keys_py):
                             if fid in results and farness[i] > 0:
                                 val = float(density[i] ** 2 / farness[i])
-                                results[fid][f"cc_hillier_{d}"] = val if math.isfinite(val) else None
+                                hcol = f"cc_hillier_{d}_{col_prefix}" if col_prefix else f"cc_hillier_{d}"
+                                results[fid][hcol] = val if math.isfinite(val) else None
                 batch_idx += 1
             for d, p in sampled_distances:
                 _d, _p = [d], p
@@ -451,7 +452,8 @@ class CityseerCentralityAlgorithm(CityseerAlgorithmBase):
                         for i, fid in enumerate(r.node_keys_py):
                             if fid in results and farness[i] > 0:
                                 val = float(density[i] ** 2 / farness[i])
-                                results[fid][f"cc_hillier_{dd}"] = val if math.isfinite(val) else None
+                                hcol = f"cc_hillier_{dd}_{col_prefix}" if col_prefix else f"cc_hillier_{dd}"
+                                results[fid][hcol] = val if math.isfinite(val) else None
                 batch_idx += 1
             step += 1
 
@@ -490,7 +492,7 @@ class CityseerCentralityAlgorithm(CityseerAlgorithmBase):
             return {}
 
         if do_simplest:
-            # Build attr list per category — beta, cycles, hillier are shortest-path-only
+            # Build attr list per category — beta, cycles are shortest-path-only
             simplest_attrs = []
             if closeness_simplest:
                 if do_harmonic:
@@ -514,6 +516,7 @@ class CityseerCentralityAlgorithm(CityseerAlgorithmBase):
                     node_count,
                     simplest_attrs,
                     "ang",
+                    derive_hillier=do_hillier and closeness_simplest,
                     compute_closeness=closeness_simplest,
                     compute_betweenness=betweenness_simplest,
                     tolerance=tolerance,
