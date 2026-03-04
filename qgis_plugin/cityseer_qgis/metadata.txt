@@ -1,6 +1,6 @@
 [general]
 name=Cityseer
-qgisMinimumVersion=3.99
+qgisMinimumVersion=4.0
 description=Urban network analysis: centrality, accessibility, and statistics
 version=4.23.6
 author=Benchmark Urbanism
@@ -13,7 +13,10 @@ about=Cityseer provides Processing algorithms for urban network analysis: networ
     (angular) paths, boundary polygons, and deterministic distance-based sampling.
     Requires the cityseer Python library: pip install cityseer
 
-changelog=4.23.6
+changelog=4.23.7
+    - Set QGIS minimum version to 4.0
+
+    4.23.6
     - Linting fixes
 
     4.23.5
