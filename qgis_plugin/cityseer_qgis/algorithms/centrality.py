@@ -379,7 +379,7 @@ class CityseerCentralityAlgorithm(CityseerAlgorithmBase):
         # ------------------------------------------------------------------
         # Sampling: split distances into full (exact) and sampled batches.
         # ------------------------------------------------------------------
-        from cityseer import config as cs_config
+        from cityseer import sampling as cs_sampling
 
         full_distances: list[int] = []
         sampled_distances: list[tuple[int, float]] = []  # (distance, p)
@@ -388,7 +388,7 @@ class CityseerCentralityAlgorithm(CityseerAlgorithmBase):
             feedback.pushInfo("Sampling disabled: all thresholds will run exactly.")
         else:
             for d in sorted(distances):
-                p = cs_config.compute_distance_p(d)
+                p = cs_sampling.compute_distance_p(d)
                 if p >= 1.0:
                     full_distances.append(d)
                 else:

@@ -76,7 +76,7 @@ import geopandas as gpd
 import numpy as np
 import pandas as pd
 
-from .. import config, rustalgos
+from .. import config, rustalgos, sampling
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -108,7 +108,7 @@ def node_centrality_shortest(
     time compared to computing them separately.
 
     When ``sample=True``, sampling probability is derived from each distance threshold using a canonical grid network
-    model (see ``config.compute_distance_p``). This produces deterministic, reach-agnostic sample fractions that are
+    model (see ``sampling.compute_distance_p``). This produces deterministic, reach-agnostic sample fractions that are
     comparable across networks.
 
     Parameters
@@ -142,7 +142,7 @@ def node_centrality_shortest(
     sample: bool
         If True, uses distance-based sampling. If False, computes exact centrality.
     epsilon: float
-        Normalised additive error tolerance for sampling. Defaults to ``config.HOEFFDING_EPSILON``.
+        Normalised additive error tolerance for sampling. Defaults to ``sampling.HOEFFDING_EPSILON``.
 
     Returns
     -------
@@ -156,7 +156,7 @@ def node_centrality_shortest(
     node_count = network_structure.street_node_count()
     temp_data: dict[str, object] = {}
 
-    eps = epsilon if epsilon is not None else config.HOEFFDING_EPSILON
+    eps = epsilon if epsilon is not None else sampling.HOEFFDING_EPSILON
     full_distances: list[int] = []
     sampled_distances: list[tuple[int, float]] = []
     if not sample:
@@ -164,7 +164,7 @@ def node_centrality_shortest(
     else:
         logger.warning("Sampling is experimental: API and behaviour may change in future releases.")
         for d in sorted(resolved_distances):
-            p = config.compute_distance_p(d, epsilon=eps)
+            p = sampling.compute_distance_p(d, epsilon=eps)
             if p >= 1.0:
                 full_distances.append(d)
             else:
@@ -492,7 +492,7 @@ def node_centrality_simplest(
     sample: bool
         If True, uses distance-based sampling. If False, computes exact centrality.
     epsilon: float
-        Normalised additive error tolerance for sampling. Defaults to ``config.HOEFFDING_EPSILON``.
+        Normalised additive error tolerance for sampling. Defaults to ``sampling.HOEFFDING_EPSILON``.
 
     Returns
     -------
@@ -506,7 +506,7 @@ def node_centrality_simplest(
     node_count = network_structure.street_node_count()
     temp_data: dict[str, object] = {}
 
-    eps = epsilon if epsilon is not None else config.HOEFFDING_EPSILON
+    eps = epsilon if epsilon is not None else sampling.HOEFFDING_EPSILON
     full_distances: list[int] = []
     sampled_distances: list[tuple[int, float]] = []
     if not sample:
@@ -514,7 +514,7 @@ def node_centrality_simplest(
     else:
         logger.warning("Sampling is experimental: API and behaviour may change in future releases.")
         for d in sorted(resolved_distances):
-            p = config.compute_distance_p(d, epsilon=eps)
+            p = sampling.compute_distance_p(d, epsilon=eps)
             if p >= 1.0:
                 full_distances.append(d)
             else:

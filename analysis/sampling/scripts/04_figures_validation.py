@@ -23,7 +23,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from cityseer.config import GRID_SPACING
+from cityseer.sampling import GRID_SPACING
 
 sys.path.insert(0, str(Path(__file__).parent))
 from utilities import CACHE_DIR, FIGURES_DIR, OUTPUT_DIR

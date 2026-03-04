@@ -27,9 +27,9 @@ import geopandas as gpd
 import numpy as np
 import osmnx as ox
 import pandas as pd
-from cityseer.config import GRID_SPACING, compute_distance_p
-from cityseer.config import HOEFFDING_EPSILON as CITYSEER_HOEFFDING_EPSILON
 from cityseer.metrics import networks
+from cityseer.sampling import GRID_SPACING, compute_distance_p
+from cityseer.sampling import HOEFFDING_EPSILON as CITYSEER_HOEFFDING_EPSILON
 from cityseer.tools import graphs, io
 from shapely.geometry import Point
 from utilities import (
