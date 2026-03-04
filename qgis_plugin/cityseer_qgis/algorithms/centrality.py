@@ -75,6 +75,39 @@ def _run_with_feedback(ns, func, total, feedback, progress_base=0, progress_span
     return result
 
 
+# Per-category metric parameter definitions.
+# Each entry: (metric_suffix, label, default_on)
+# The full hidden param name is METRIC_{suffix}_{category_short}.
+# Category shorts: CS=closeness-shortest, CA=closeness-simplest,
+#                  BS=betweenness-shortest, BA=betweenness-simplest
+_CLOSENESS_SHORTEST_METRICS = [
+    ("HARMONIC", "Harmonic closeness (shortest)", True),
+    ("DENSITY", "Density (shortest)", False),
+    ("FARNESS", "Farness (shortest)", False),
+    ("BETA", "Beta-weighted closeness (shortest)", False),
+    ("CYCLES", "Cycles (shortest)", False),
+    ("HILLIER", "Hillier closeness (shortest)", False),
+]
+_CLOSENESS_SIMPLEST_METRICS = [
+    ("HARMONIC", "Harmonic closeness (simplest)", True),
+    ("DENSITY", "Density (simplest)", False),
+    ("FARNESS", "Farness (simplest)", False),
+    ("HILLIER", "Hillier closeness (simplest)", False),
+]
+_BETWEENNESS_SHORTEST_METRICS = [
+    ("BETWEENNESS", "Betweenness (shortest)", True),
+    ("BETWEENNESS_BETA", "Beta-weighted betweenness (shortest)", False),
+]
+_BETWEENNESS_SIMPLEST_METRICS = [
+    ("BETWEENNESS", "Betweenness (simplest)", True),
+    ("BETWEENNESS_BETA", "Beta-weighted betweenness (simplest)", False),
+]
+
+
+def _param_name(suffix: str, cat_short: str) -> str:
+    return f"METRIC_{suffix}_{cat_short}"
+
+
 class CityseerCentralityAlgorithm(CityseerAlgorithmBase):
     INPUT_LAYER = "INPUT_LAYER"
     BOUNDARY_LAYER = "BOUNDARY_LAYER"
@@ -84,14 +117,6 @@ class CityseerCentralityAlgorithm(CityseerAlgorithmBase):
     CLOSENESS_SIMPLEST = "CLOSENESS_SIMPLEST"
     BETWEENNESS_SHORTEST = "BETWEENNESS_SHORTEST"
     BETWEENNESS_SIMPLEST = "BETWEENNESS_SIMPLEST"
-    METRIC_HARMONIC = "METRIC_HARMONIC"
-    METRIC_DENSITY = "METRIC_DENSITY"
-    METRIC_FARNESS = "METRIC_FARNESS"
-    METRIC_BETA = "METRIC_BETA"
-    METRIC_CYCLES = "METRIC_CYCLES"
-    METRIC_HILLIER = "METRIC_HILLIER"
-    METRIC_BETWEENNESS = "METRIC_BETWEENNESS"
-    METRIC_BETWEENNESS_BETA = "METRIC_BETWEENNESS_BETA"
     TOLERANCE = "TOLERANCE"
     OUTPUT = "OUTPUT"
 
@@ -146,7 +171,7 @@ class CityseerCentralityAlgorithm(CityseerAlgorithmBase):
                 defaultValue=True,
             )
         )
-        # -- Category toggles (hidden in GUI — custom widget handles these) --
+        # -- Category toggles (hidden — custom widget handles these) --
         for name, label, default in [
             (self.CLOSENESS_SHORTEST, "Closeness (shortest path)", True),
             (self.CLOSENESS_SIMPLEST, "Closeness (simplest path)", False),
@@ -156,20 +181,18 @@ class CityseerCentralityAlgorithm(CityseerAlgorithmBase):
             p = QgsProcessingParameterBoolean(name, self.tr(label), defaultValue=default)
             p.setFlags(p.flags() | QgsProcessingParameterDefinition.Flag.FlagHidden)
             self.addParameter(p)
-        # -- Metric toggles (hidden in GUI — custom widget handles these) --
-        for name, label, default in [
-            (self.METRIC_HARMONIC, "Harmonic closeness", True),
-            (self.METRIC_DENSITY, "Density", False),
-            (self.METRIC_FARNESS, "Farness", False),
-            (self.METRIC_BETA, "Beta-weighted closeness", False),
-            (self.METRIC_CYCLES, "Cycles", False),
-            (self.METRIC_HILLIER, "Hillier closeness", False),
-            (self.METRIC_BETWEENNESS, "Betweenness", True),
-            (self.METRIC_BETWEENNESS_BETA, "Beta-weighted betweenness", False),
+        # -- Per-category metric toggles (hidden — custom widget handles these) --
+        for cat_short, metrics in [
+            ("CS", _CLOSENESS_SHORTEST_METRICS),
+            ("CA", _CLOSENESS_SIMPLEST_METRICS),
+            ("BS", _BETWEENNESS_SHORTEST_METRICS),
+            ("BA", _BETWEENNESS_SIMPLEST_METRICS),
         ]:
-            p = QgsProcessingParameterBoolean(name, self.tr(label), defaultValue=default)
-            p.setFlags(p.flags() | QgsProcessingParameterDefinition.Flag.FlagHidden)
-            self.addParameter(p)
+            for suffix, label, default in metrics:
+                pname = _param_name(suffix, cat_short)
+                p = QgsProcessingParameterBoolean(pname, self.tr(label), defaultValue=default)
+                p.setFlags(p.flags() | QgsProcessingParameterDefinition.Flag.FlagHidden)
+                self.addParameter(p)
         tol_param = QgsProcessingParameterNumber(
             self.TOLERANCE,
             self.tr(
@@ -191,6 +214,10 @@ class CityseerCentralityAlgorithm(CityseerAlgorithmBase):
                 self.tr("Output layer (street segments with centrality values)"),
             )
         )
+
+    def _get_metric(self, parameters, suffix, cat_short, context):
+        """Read a per-category metric boolean parameter."""
+        return self.parameterAsBool(parameters, _param_name(suffix, cat_short), context)
 
     def processAlgorithm(self, parameters, context, feedback):
         from ..utils.converters import build_dual_network, parse_distances
@@ -219,8 +246,7 @@ class CityseerCentralityAlgorithm(CityseerAlgorithmBase):
             )
         feedback.pushInfo(f"Input layer loaded: {layer.name()} ({crs.authid()})")
 
-        # Optional boundary polygon — nodes inside are "live" (analysis sources);
-        # nodes outside provide network context but are not used as sources.
+        # Optional boundary polygon
         boundary_layer = self.parameterAsVectorLayer(parameters, self.BOUNDARY_LAYER, context)
         boundary_poly = None
         if boundary_layer is not None:
@@ -242,6 +268,11 @@ class CityseerCentralityAlgorithm(CityseerAlgorithmBase):
                 if polys:
                     boundary_poly = unary_union(polys)
                     feedback.pushInfo(f"Boundary polygon loaded ({len(polys)} feature(s)).")
+                else:
+                    feedback.reportError(
+                        "Boundary layer has no valid geometries — ignoring boundary. "
+                        "All segments will be treated as live sources."
+                    )
             except Exception as exc:
                 raise QgsProcessingException(f"Failed to parse boundary polygon layer: {exc}") from exc
         else:
@@ -260,15 +291,27 @@ class CityseerCentralityAlgorithm(CityseerAlgorithmBase):
         closeness_simplest = self.parameterAsBool(parameters, self.CLOSENESS_SIMPLEST, context)
         betweenness_shortest = self.parameterAsBool(parameters, self.BETWEENNESS_SHORTEST, context)
         betweenness_simplest = self.parameterAsBool(parameters, self.BETWEENNESS_SIMPLEST, context)
-        # -- Individual metrics --
-        do_harmonic = self.parameterAsBool(parameters, self.METRIC_HARMONIC, context)
-        do_density = self.parameterAsBool(parameters, self.METRIC_DENSITY, context)
-        do_farness = self.parameterAsBool(parameters, self.METRIC_FARNESS, context)
-        do_beta = self.parameterAsBool(parameters, self.METRIC_BETA, context)
-        do_cycles = self.parameterAsBool(parameters, self.METRIC_CYCLES, context)
-        do_hillier = self.parameterAsBool(parameters, self.METRIC_HILLIER, context)
-        do_betweenness = self.parameterAsBool(parameters, self.METRIC_BETWEENNESS, context)
-        do_betweenness_beta = self.parameterAsBool(parameters, self.METRIC_BETWEENNESS_BETA, context)
+
+        # -- Per-category metric flags --
+        # Closeness shortest (CS)
+        cs_harmonic = self._get_metric(parameters, "HARMONIC", "CS", context)
+        cs_density = self._get_metric(parameters, "DENSITY", "CS", context)
+        cs_farness = self._get_metric(parameters, "FARNESS", "CS", context)
+        cs_beta = self._get_metric(parameters, "BETA", "CS", context)
+        cs_cycles = self._get_metric(parameters, "CYCLES", "CS", context)
+        cs_hillier = self._get_metric(parameters, "HILLIER", "CS", context)
+        # Closeness simplest (CA)
+        ca_harmonic = self._get_metric(parameters, "HARMONIC", "CA", context)
+        ca_density = self._get_metric(parameters, "DENSITY", "CA", context)
+        ca_farness = self._get_metric(parameters, "FARNESS", "CA", context)
+        ca_hillier = self._get_metric(parameters, "HILLIER", "CA", context)
+        # Betweenness shortest (BS)
+        bs_betweenness = self._get_metric(parameters, "BETWEENNESS", "BS", context)
+        bs_betweenness_beta = self._get_metric(parameters, "BETWEENNESS_BETA", "BS", context)
+        # Betweenness simplest (BA)
+        ba_betweenness = self._get_metric(parameters, "BETWEENNESS", "BA", context)
+        ba_betweenness_beta = self._get_metric(parameters, "BETWEENNESS_BETA", "BA", context)
+
         tolerance = self.parameterAsDouble(parameters, self.TOLERANCE, context) / 100.0
 
         # Derive path types from category toggles
@@ -292,7 +335,7 @@ class CityseerCentralityAlgorithm(CityseerAlgorithmBase):
         feedback.pushInfo(
             "Sampling mode: " + ("deterministic distance-based (default)" if do_sample else "exact (sampling disabled)")
         )
-        # Log selected categories and metrics
+        # Log selected categories
         categories = []
         if closeness_shortest:
             categories.append("closeness-shortest")
@@ -303,24 +346,6 @@ class CityseerCentralityAlgorithm(CityseerAlgorithmBase):
         if betweenness_simplest:
             categories.append("betweenness-simplest")
         feedback.pushInfo("Categories: " + ", ".join(categories))
-        selected = []
-        if do_harmonic:
-            selected.append("harmonic")
-        if do_density:
-            selected.append("density")
-        if do_farness:
-            selected.append("farness")
-        if do_beta:
-            selected.append("beta")
-        if do_cycles:
-            selected.append("cycles")
-        if do_hillier:
-            selected.append("hillier")
-        if do_betweenness:
-            selected.append("betweenness")
-        if do_betweenness_beta:
-            selected.append("betweenness_beta")
-        feedback.pushInfo("Metrics selected: " + ", ".join(selected))
         if (betweenness_shortest or betweenness_simplest) and tolerance > 0:
             feedback.pushInfo(f"Betweenness tolerance: {tolerance * 100:.1f}%")
 
@@ -340,6 +365,11 @@ class CityseerCentralityAlgorithm(CityseerAlgorithmBase):
             boundary=boundary_poly,
         )
         node_count = ns.street_node_count()
+        if node_count == 0:
+            raise QgsProcessingException(
+                "No valid street segments found. Check that the input layer contains line features "
+                "with valid geometries in a projected CRS."
+            )
         feedback.pushInfo(f"Network built: {node_count} segments.")
         step += 1
 
@@ -348,9 +378,6 @@ class CityseerCentralityAlgorithm(CityseerAlgorithmBase):
 
         # ------------------------------------------------------------------
         # Sampling: split distances into full (exact) and sampled batches.
-        # When sample=True, per-distance probability is derived from a
-        # canonical grid model (config.compute_distance_p).  Distances where
-        # p >= 1.0 run exact; others pass sample_probability to Rust.
         # ------------------------------------------------------------------
         from cityseer import config as cs_config
 
@@ -458,23 +485,23 @@ class CityseerCentralityAlgorithm(CityseerAlgorithmBase):
             step += 1
 
         if do_shortest:
-            # Build attr list per category for shortest path
+            # Build attr list for shortest path from per-category flags
             shortest_attrs = []
             if closeness_shortest:
-                if do_harmonic:
+                if cs_harmonic:
                     shortest_attrs.append("node_harmonic")
-                if do_density:
+                if cs_density:
                     shortest_attrs.append("node_density")
-                if do_farness:
+                if cs_farness:
                     shortest_attrs.append("node_farness")
-                if do_beta:
+                if cs_beta:
                     shortest_attrs.append("node_beta")
-                if do_cycles:
+                if cs_cycles:
                     shortest_attrs.append("node_cycles")
             if betweenness_shortest:
-                if do_betweenness:
+                if bs_betweenness:
                     shortest_attrs.append("node_betweenness")
-                if do_betweenness_beta:
+                if bs_betweenness_beta:
                     shortest_attrs.append("node_betweenness_beta")
             _run_metric_batches(
                 "centrality (shortest path)",
@@ -482,7 +509,7 @@ class CityseerCentralityAlgorithm(CityseerAlgorithmBase):
                 node_count,
                 shortest_attrs,
                 "",
-                derive_hillier=do_hillier and closeness_shortest,
+                derive_hillier=cs_hillier and closeness_shortest,
                 compute_closeness=closeness_shortest,
                 compute_betweenness=betweenness_shortest,
                 tolerance=tolerance,
@@ -492,19 +519,19 @@ class CityseerCentralityAlgorithm(CityseerAlgorithmBase):
             return {}
 
         if do_simplest:
-            # Build attr list per category — beta, cycles are shortest-path-only
+            # Build attr list for simplest path from per-category flags
             simplest_attrs = []
             if closeness_simplest:
-                if do_harmonic:
+                if ca_harmonic:
                     simplest_attrs.append("node_harmonic")
-                if do_density:
+                if ca_density:
                     simplest_attrs.append("node_density")
-                if do_farness:
+                if ca_farness:
                     simplest_attrs.append("node_farness")
             if betweenness_simplest:
-                if do_betweenness:
+                if ba_betweenness:
                     simplest_attrs.append("node_betweenness")
-                if do_betweenness_beta:
+                if ba_betweenness_beta:
                     simplest_attrs.append("node_betweenness_beta")
             if not simplest_attrs:
                 feedback.pushInfo("Simplest path: no applicable metrics selected. Skipping.")
@@ -516,7 +543,7 @@ class CityseerCentralityAlgorithm(CityseerAlgorithmBase):
                     node_count,
                     simplest_attrs,
                     "ang",
-                    derive_hillier=do_hillier and closeness_simplest,
+                    derive_hillier=ca_hillier and closeness_simplest,
                     compute_closeness=closeness_simplest,
                     compute_betweenness=betweenness_simplest,
                     tolerance=tolerance,
@@ -563,6 +590,10 @@ class CityseerCentralityAlgorithm(CityseerAlgorithmBase):
         )
         live_fids = [fid for fid in fid_list if fid in live_fid_set]
         n_features = len(live_fids)
+        if n_features == 0:
+            feedback.reportError(
+                "No live segments to write. If using a boundary polygon, check that it overlaps the street network."
+            )
         for i, fid in enumerate(live_fids):
             feat = QgsFeature(fields)
             feat.setGeometry(QgsGeometry.fromWkt(geoms[fid].wkt))

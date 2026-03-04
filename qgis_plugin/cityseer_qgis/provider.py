@@ -23,6 +23,10 @@ class CityseerProvider(QgsProcessingProvider):
         return super().icon()
 
     def loadAlgorithms(self) -> None:
+        from .algorithms.accessibility import CityseerAccessibilityAlgorithm
         from .algorithms.centrality import CityseerCentralityAlgorithm
+        from .algorithms.stats import CityseerStatsAlgorithm
 
         self.addAlgorithm(CityseerCentralityAlgorithm())
+        self.addAlgorithm(CityseerAccessibilityAlgorithm())
+        self.addAlgorithm(CityseerStatsAlgorithm())

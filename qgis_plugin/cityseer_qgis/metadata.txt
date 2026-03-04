@@ -1,17 +1,26 @@
 [general]
 name=Cityseer
 qgisMinimumVersion=3.99
-description=Urban network centrality analysis using the cityseer library
-version=4.23.4
+description=Urban network analysis: centrality, accessibility, and statistics
+version=4.23.6
 author=Benchmark Urbanism
 email=gareth.simons@ucl.ac.uk
 
-about=Cityseer computes localised network centrality metrics (closeness and betweenness)
-    on street networks at multiple distance thresholds. Metrics are computed on a dual
-    graph representation where each road segment is a node connected to its neighbours.
+about=Cityseer provides Processing algorithms for urban network analysis: network centrality
+    (closeness and betweenness), land-use accessibility, and localised statistics. Metrics
+    are computed on a dual graph representation where each road segment is a node connected
+    to its neighbours, with support for multiple distance thresholds, shortest and simplest
+    (angular) paths, boundary polygons, and deterministic distance-based sampling.
     Requires the cityseer Python library: pip install cityseer
 
-changelog=4.23.4
+changelog=4.23.6
+    - Linting fixes
+
+    4.23.5
+    - Add Accessibility and Statistics algorithms
+    - Independent metric selection per centrality category
+
+    4.23.4
     - Expose Hillier metric for angular closeness
 
     4.23.3
@@ -33,7 +42,7 @@ repository=https://github.com/benchmark-urbanism/cityseer-api
 homepage=https://cityseer.benchmarkurbanism.com/plugin
 
 hasProcessingProvider=yes
-tags=network centrality,urban analysis,closeness,betweenness,street network,graph
+tags=network centrality,urban analysis,closeness,betweenness,accessibility,statistics,street network,graph
 category=Analysis
 icon=icon.png
 experimental=True
