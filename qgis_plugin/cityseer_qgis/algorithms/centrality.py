@@ -528,9 +528,8 @@ class CityseerCentralityAlgorithm(CityseerAlgorithmBase):
                     simplest_attrs.append("node_density")
                 if ca_farness:
                     simplest_attrs.append("node_farness")
-            if betweenness_simplest:
-                if ba_betweenness:
-                    simplest_attrs.append("node_betweenness")
+            if betweenness_simplest and ba_betweenness:
+                simplest_attrs.append("node_betweenness")
             if not simplest_attrs:
                 feedback.pushInfo("Simplest path: no applicable metrics selected. Skipping.")
                 step += 1
