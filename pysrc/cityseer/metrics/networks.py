@@ -448,15 +448,14 @@ def node_centrality_simplest(
     speed_m_s: float = SPEED_M_S,
     angular_scaling_unit: float = 90,
     farness_scaling_offset: float = 1,
-    tolerance: float = 0.0,
     random_seed: int | None = None,
     sample: bool = False,
     epsilon: float | None = None,
 ) -> gpd.GeoDataFrame:
     r"""Compute node centrality using simplest (angular) paths with a single Dijkstra per source.
 
-    When both `compute_closeness` and `compute_betweenness` are True, a single Brandes-style Dijkstra traversal
-    per source produces the data for both closeness accumulation and betweenness backpropagation.
+    When both `compute_closeness` and `compute_betweenness` are True, a single Dijkstra traversal
+    per source produces the data for both closeness accumulation and betweenness path tracing.
 
     Parameters
     ----------
@@ -485,8 +484,6 @@ def node_centrality_simplest(
         Scaling unit for angular cost normalisation.
     farness_scaling_offset: float
         Offset for farness calculation.
-    tolerance: float
-        Relative tolerance for betweenness path equality.
     random_seed: int
         Optional seed for reproducible sampling.
     sample: bool
@@ -534,7 +531,6 @@ def node_centrality_simplest(
             speed_m_s=speed_m_s,
             angular_scaling_unit=angular_scaling_unit,
             farness_scaling_offset=farness_scaling_offset,
-            tolerance=tolerance,
             random_seed=random_seed,
         )
         result = config.wrap_progress(
@@ -557,7 +553,6 @@ def node_centrality_simplest(
             speed_m_s=speed_m_s,
             angular_scaling_unit=angular_scaling_unit,
             farness_scaling_offset=farness_scaling_offset,
-            tolerance=tolerance,
             sample_probability=p,
             random_seed=random_seed,
         )
@@ -587,13 +582,9 @@ def node_centrality_simplest(
                 )
 
     if compute_betweenness:
-        for measure_key, attr_key in [
-            ("betweenness", "node_betweenness"),
-            ("betweenness_beta", "node_betweenness_beta"),
-        ]:
-            for d, res in results.items():
-                data_key = config.prep_gdf_key(measure_key, d, angular=True)
-                temp_data[data_key] = getattr(res, attr_key)[d]
+        for d, res in results.items():
+            data_key = config.prep_gdf_key("betweenness", d, angular=True)
+            temp_data[data_key] = res.node_betweenness[d]
 
     temp_df = pd.DataFrame(temp_data, index=node_keys_py)
     nodes_gdf.loc[gdf_idx, temp_df.columns] = temp_df.loc[gdf_idx, temp_df.columns]
@@ -826,7 +817,6 @@ def betweenness_simplest(
     minutes: list[float] | None = None,
     min_threshold_wt: float = MIN_THRESH_WT,
     speed_m_s: float = SPEED_M_S,
-    tolerance: float = 0.0,
     random_seed: int | None = None,
     sample: bool = False,
     epsilon: float | None = None,
@@ -842,7 +832,6 @@ def betweenness_simplest(
         compute_betweenness=True,
         min_threshold_wt=min_threshold_wt,
         speed_m_s=speed_m_s,
-        tolerance=tolerance,
         random_seed=random_seed,
         sample=sample,
         epsilon=epsilon,

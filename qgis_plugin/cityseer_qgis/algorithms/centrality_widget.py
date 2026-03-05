@@ -48,13 +48,7 @@ _BETWEENNESS_METRICS_SHORTEST = [
 ]
 
 _BETWEENNESS_METRICS_SIMPLEST = [
-    ("BETWEENNESS", "Betweenness", "Count of shortest paths passing through each node → cc_betweenness_<d>_ang", True),
-    (
-        "BETWEENNESS_BETA",
-        "Beta-weighted",
-        "Betweenness with negative-exponential distance decay → cc_betweenness_beta_<d>_ang",
-        False,
-    ),
+    ("BETWEENNESS", "Betweenness", "Count of simplest paths passing through each node → cc_betweenness_<d>_ang", True),
 ]
 
 # Category short codes used to build param names

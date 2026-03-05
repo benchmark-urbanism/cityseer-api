@@ -211,6 +211,7 @@ def build_dual_network(
     from shapely import wkt as shapely_wkt
     from shapely.geometry import LineString, Point
     from shapely.ops import linemerge
+    from shapely.prepared import prep
     from shapely.validation import make_valid
 
     global _inc_state
@@ -312,6 +313,7 @@ def build_dual_network(
     # ------------------------------------------------------------------
     # Track boundary identity so we can update live flags when it changes.
     boundary_wkt = boundary.wkt if boundary is not None else None
+    prepared_boundary = prep(boundary) if boundary is not None else None
 
     if _inc_state is not None and _inc_state.get("layer_cache_key") == layer_cache_key:
         prev_boundary_wkt = _inc_state.get("boundary_wkt")
@@ -422,7 +424,7 @@ def build_dual_network(
             cum = _cumulative_lengths(coords)
             _line_data[fid] = (coords, cum)
             mid = _interpolate_at(coords, cum, 0.5)
-            live = boundary is None or boundary.contains(Point(mid[0], mid[1]))
+            live = prepared_boundary is None or prepared_boundary.contains(Point(mid[0], mid[1]))
             idx = ns.add_street_node(
                 node_key=fid,
                 x=mid[0],
@@ -483,7 +485,7 @@ def build_dual_network(
             for fid in fid_list:
                 if fid in node_idx:
                     mx, my = midpoints[fid]
-                    live = boundary is None or boundary.contains(Point(mx, my))
+                    live = prepared_boundary is None or prepared_boundary.contains(Point(mx, my))
                     ns.set_node_live(node_idx[fid], live)
             if feedback:
                 feedback.pushInfo("Boundary changed — updated live status for all nodes.")
@@ -604,7 +606,7 @@ def build_dual_network(
         for pt in (coords[0], coords[-1]):
             endpoint_to_fids[_ep_key(pt)].append(fid)
         mid = _interpolate_at(coords, cum, 0.5)
-        live = boundary is None or boundary.contains(Point(mid[0], mid[1]))
+        live = prepared_boundary is None or prepared_boundary.contains(Point(mid[0], mid[1]))
         idx = ns.add_street_node(
             node_key=fid,
             x=mid[0],

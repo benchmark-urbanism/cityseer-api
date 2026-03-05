@@ -491,7 +491,6 @@ class NetworkStructure:
         speed_m_s: float | None = None,
         angular_scaling_unit: float | None = None,
         farness_scaling_offset: float | None = None,
-        tolerance: float | None = None,
         sample_probability: float | None = None,
         sampling_weights: list[float] | None = None,
         random_seed: int | None = None,
@@ -524,8 +523,6 @@ class NetworkStructure:
             Scaling unit for angular cost (default: 180 degrees).
         farness_scaling_offset: float | None
             Offset for farness calculation (default: 1.0).
-        tolerance: float | None
-            Relative tolerance for near-equal angular path detection. 0.0 = exact simplest paths only.
         sample_probability: float | None
             Probability of sampling a node as a source.
         sampling_weights: list[float] | None
