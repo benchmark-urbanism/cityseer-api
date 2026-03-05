@@ -196,10 +196,11 @@ class CityseerCentralityAlgorithm(CityseerAlgorithmBase):
         tol_param = QgsProcessingParameterNumber(
             self.TOLERANCE,
             self.tr(
-                "Betweenness tolerance % (0 = exact shortest paths only). "
+                "Shortest-path betweenness tolerance % (0 = exact shortest paths only). "
                 "Spreads betweenness across near-shortest routes. Keep below 1% "
                 "— higher values increasingly diffuse route concentration, "
-                "especially at larger distance thresholds."
+                "especially at larger distance thresholds. "
+                "Does not apply to simplest (angular) path betweenness."
             ),
             type=QgsProcessingParameterNumber.Type.Double,
             defaultValue=0.0,
@@ -310,7 +311,6 @@ class CityseerCentralityAlgorithm(CityseerAlgorithmBase):
         bs_betweenness_beta = self._get_metric(parameters, "BETWEENNESS_BETA", "BS", context)
         # Betweenness simplest (BA)
         ba_betweenness = self._get_metric(parameters, "BETWEENNESS", "BA", context)
-        ba_betweenness_beta = self._get_metric(parameters, "BETWEENNESS_BETA", "BA", context)
 
         tolerance = self.parameterAsDouble(parameters, self.TOLERANCE, context) / 100.0
 
@@ -346,7 +346,7 @@ class CityseerCentralityAlgorithm(CityseerAlgorithmBase):
         if betweenness_simplest:
             categories.append("betweenness-simplest")
         feedback.pushInfo("Categories: " + ", ".join(categories))
-        if (betweenness_shortest or betweenness_simplest) and tolerance > 0:
+        if betweenness_shortest and tolerance > 0:
             feedback.pushInfo(f"Betweenness tolerance: {tolerance * 100:.1f}%")
 
         # Overall progress: divide 0–100% equally among steps.
@@ -379,7 +379,7 @@ class CityseerCentralityAlgorithm(CityseerAlgorithmBase):
         # ------------------------------------------------------------------
         # Sampling: split distances into full (exact) and sampled batches.
         # ------------------------------------------------------------------
-        from cityseer import config as cs_config
+        from cityseer import sampling as cs_sampling
 
         full_distances: list[int] = []
         sampled_distances: list[tuple[int, float]] = []  # (distance, p)
@@ -388,7 +388,7 @@ class CityseerCentralityAlgorithm(CityseerAlgorithmBase):
             feedback.pushInfo("Sampling disabled: all thresholds will run exactly.")
         else:
             for d in sorted(distances):
-                p = cs_config.compute_distance_p(d)
+                p = cs_sampling.compute_distance_p(d)
                 if p >= 1.0:
                     full_distances.append(d)
                 else:
@@ -528,11 +528,8 @@ class CityseerCentralityAlgorithm(CityseerAlgorithmBase):
                     simplest_attrs.append("node_density")
                 if ca_farness:
                     simplest_attrs.append("node_farness")
-            if betweenness_simplest:
-                if ba_betweenness:
-                    simplest_attrs.append("node_betweenness")
-                if ba_betweenness_beta:
-                    simplest_attrs.append("node_betweenness_beta")
+            if betweenness_simplest and ba_betweenness:
+                simplest_attrs.append("node_betweenness")
             if not simplest_attrs:
                 feedback.pushInfo("Simplest path: no applicable metrics selected. Skipping.")
                 step += 1
@@ -546,7 +543,6 @@ class CityseerCentralityAlgorithm(CityseerAlgorithmBase):
                     derive_hillier=ca_hillier and closeness_simplest,
                     compute_closeness=closeness_simplest,
                     compute_betweenness=betweenness_simplest,
-                    tolerance=tolerance,
                 )
 
         if feedback.isCanceled():

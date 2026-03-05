@@ -608,6 +608,131 @@ def test_simplest_closeness_differs_from_shortest(primal_graph):
             )
 
 
+def test_simplest_betweenness_invariant_to_node_order():
+    """Angular betweenness must not depend on node insertion order.
+
+    Builds an asymmetric graph (T-junction with an angled branch) using three
+    different node-label orderings.  All three must produce identical betweenness.
+    """
+    from pyproj import CRS
+
+    # T-junction: straight road 0--1--2 with angled branch 1--3
+    #
+    #   3
+    #    \
+    #     1---2
+    #     |
+    #     0
+    base_coords = {
+        "A": (500000.0, 0.0),
+        "B": (500000.0, 100.0),
+        "C": (500100.0, 100.0),
+        "D": (500050.0, 170.0),
+    }
+    base_edges = [("A", "B"), ("B", "C"), ("B", "D")]
+    # Three different label→index mappings
+    orderings = [
+        ["A", "B", "C", "D"],
+        ["D", "C", "B", "A"],
+        ["C", "A", "D", "B"],
+    ]
+    results = []
+    for ordering in orderings:
+        label_to_idx = {label: str(i) for i, label in enumerate(ordering)}
+        G = nx.MultiGraph()
+        G.graph["crs"] = CRS(32630)
+        for label in ordering:
+            idx = label_to_idx[label]
+            x, y = base_coords[label]
+            G.add_node(idx, x=x, y=y)
+        for a, b in base_edges:
+            G.add_edge(label_to_idx[a], label_to_idx[b])
+        G = graphs.nx_simple_geoms(G)
+        _nodes_gdf, _edges_gdf, net = io.network_structure_from_nx(G)
+        res = net.centrality_simplest(
+            compute_closeness=False,
+            compute_betweenness=True,
+            distances=[500],
+        )
+        # Map back to canonical labels so we can compare across orderings
+        betw_by_label = {}
+        for label in ordering:
+            idx = int(label_to_idx[label])
+            betw_by_label[label] = res.node_betweenness[500][idx]
+        results.append(betw_by_label)
+    # All orderings must agree
+    for label in ["A", "B", "C", "D"]:
+        vals = [r[label] for r in results]
+        assert all(abs(v - vals[0]) < config.ATOL for v in vals), (
+            f"Node {label}: betweenness varies with insertion order: {vals}"
+        )
+
+
+def test_betweenness_mixed_live_non_live_invariant_to_node_order():
+    """Betweenness must be invariant when non-live nodes are interleaved by index."""
+    from pyproj import CRS
+
+    # Linear corridor A-B-C-D with D non-live (boundary/context node).
+    base_coords = {
+        "A": (500000.0, 0.0),
+        "B": (500000.0, 100.0),
+        "C": (500000.0, 200.0),
+        "D": (500000.0, 300.0),
+    }
+    base_edges = [("A", "B"), ("B", "C"), ("C", "D")]
+    live_by_label = {"A": True, "B": True, "C": True, "D": False}
+    # Keep topology fixed but permute label->index assignment, including
+    # orderings where the non-live node has a smaller index than live nodes.
+    orderings = [
+        ["A", "B", "C", "D"],
+        ["D", "A", "B", "C"],
+        ["B", "D", "A", "C"],
+    ]
+
+    shortest_results = []
+    simplest_results = []
+    for ordering in orderings:
+        label_to_idx = {label: str(i) for i, label in enumerate(ordering)}
+        G = nx.MultiGraph()
+        G.graph["crs"] = CRS(32630)
+        for label in ordering:
+            idx = label_to_idx[label]
+            x, y = base_coords[label]
+            G.add_node(idx, x=x, y=y, live=live_by_label[label])
+        for a, b in base_edges:
+            G.add_edge(label_to_idx[a], label_to_idx[b])
+        G = graphs.nx_simple_geoms(G)
+        _nodes_gdf, _edges_gdf, net = io.network_structure_from_nx(G)
+
+        res_shortest = net.centrality_shortest(
+            compute_closeness=False,
+            compute_betweenness=True,
+            distances=[1000],
+        )
+        res_simplest = net.centrality_simplest(
+            compute_closeness=False,
+            compute_betweenness=True,
+            distances=[1000],
+        )
+
+        shortest_results.append(
+            {label: res_shortest.node_betweenness[1000][int(label_to_idx[label])] for label in ordering}
+        )
+        simplest_results.append(
+            {label: res_simplest.node_betweenness[1000][int(label_to_idx[label])] for label in ordering}
+        )
+
+    for method_name, results in [
+        ("shortest", shortest_results),
+        ("simplest", simplest_results),
+    ]:
+        for label in ["A", "B", "C", "D"]:
+            vals = [r[label] for r in results]
+            assert all(abs(v - vals[0]) < config.ATOL for v in vals), (
+                f"{method_name} node {label}: betweenness varies with insertion order: {vals}"
+            )
+
+
 def test_simplest_betweenness_differs_from_shortest(primal_graph):
     """Simplest (angular) betweenness produces different values from shortest betweenness.
 

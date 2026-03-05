@@ -1,8 +1,8 @@
 [general]
 name=Cityseer
-qgisMinimumVersion=3.99
+qgisMinimumVersion=4.0
 description=Urban network analysis: centrality, accessibility, and statistics
-version=4.23.6
+version=4.23.9
 author=Benchmark Urbanism
 email=gareth.simons@ucl.ac.uk
 
@@ -13,7 +13,21 @@ about=Cityseer provides Processing algorithms for urban network analysis: networ
     (angular) paths, boundary polygons, and deterministic distance-based sampling.
     Requires the cityseer Python library: pip install cityseer
 
-changelog=4.23.6
+changelog=4.23.9
+    - Fix angular betweenness: replace Brandes backpropagation with single-predecessor path tracing
+    - Remove tolerance parameter from simplest path (only applies to shortest path)
+    - Remove beta-weighted betweenness from simplest path
+    - Use lightweight SimplestNodeState struct for angular Dijkstra
+    - Fix betweenness threshold to use agg_seconds consistently with closeness
+    - Use prepared boundary geometry for faster containment checks
+
+    4.23.8
+    - Extract sampling module for lightweight imports in QGIS
+
+    4.23.7
+    - Set QGIS minimum version to 4.0
+
+    4.23.6
     - Linting fixes
 
     4.23.5

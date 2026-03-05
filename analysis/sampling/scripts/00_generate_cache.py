@@ -32,7 +32,7 @@ from pathlib import Path
 
 import networkx as nx
 import numpy as np
-from cityseer.config import GRID_SPACING, HOEFFDING_EPSILON, compute_distance_p, compute_hoeffding_p
+from cityseer.sampling import GRID_SPACING, HOEFFDING_EPSILON, compute_distance_p, compute_hoeffding_p
 from cityseer.tools import io
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))

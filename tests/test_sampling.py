@@ -16,7 +16,7 @@ import math
 
 import numpy as np
 import pytest
-from cityseer import config, rustalgos
+from cityseer import rustalgos, sampling
 from cityseer.tools import graphs, io, mock
 
 
@@ -400,15 +400,15 @@ class TestSamplingModel:
 
     def test_constants_match_paper(self):
         """Default Hoeffding parameters match the paper defaults."""
-        assert config.HOEFFDING_EPSILON == 0.06
-        assert config.HOEFFDING_DELTA == 0.1
+        assert sampling.HOEFFDING_EPSILON == 0.06
+        assert sampling.HOEFFDING_DELTA == 0.1
 
     def test_compute_hoeffding_p_matches_formula(self):
         """compute_hoeffding_p implements k=log(2r/δ)/(2ε²), p=min(1,k/r)."""
         reach = 1000.0
         epsilon = 0.1
         delta = 0.1
-        p = config.compute_hoeffding_p(reach, epsilon=epsilon, delta=delta)
+        p = sampling.compute_hoeffding_p(reach, epsilon=epsilon, delta=delta)
         assert p is not None
         expected_k = math.log(2 * reach / delta) / (2 * epsilon**2)
         expected_p = min(1.0, expected_k / reach)
@@ -417,59 +417,59 @@ class TestSamplingModel:
     def test_p_decreases_with_reach(self):
         """Sampling probability decreases as reach increases."""
         reaches = [200.0, 500.0, 1000.0, 5000.0, 10000.0]
-        probs = [config.compute_hoeffding_p(r) for r in reaches]
+        probs = [sampling.compute_hoeffding_p(r) for r in reaches]
         assert all(p is not None for p in probs)
         for i in range(len(probs) - 1):
             assert probs[i] >= probs[i + 1], f"p should decrease: {probs[i]} < {probs[i + 1]}"
 
     def test_low_reach_clamps_to_one(self):
         """At low reach the bound requests full computation (p=1)."""
-        assert config.compute_hoeffding_p(50.0) == 1.0
+        assert sampling.compute_hoeffding_p(50.0) == 1.0
 
     def test_zero_reach_returns_full(self):
         """Zero reach returns 1.0 (full sampling)."""
-        assert config.compute_hoeffding_p(0) == 1.0
+        assert sampling.compute_hoeffding_p(0) == 1.0
 
     def test_negative_reach_returns_full(self):
         """Negative reach returns 1.0 (full sampling)."""
-        assert config.compute_hoeffding_p(-100) == 1.0
+        assert sampling.compute_hoeffding_p(-100) == 1.0
 
     def test_invalid_delta_returns_full(self):
         """Invalid delta returns 1.0 (defensive fallback)."""
-        assert config.compute_hoeffding_p(1000.0, delta=0.0) == 1.0
-        assert config.compute_hoeffding_p(1000.0, delta=1.0) == 1.0
+        assert sampling.compute_hoeffding_p(1000.0, delta=0.0) == 1.0
+        assert sampling.compute_hoeffding_p(1000.0, delta=1.0) == 1.0
 
 
 class TestComputeDistanceP:
-    """Tests for config.compute_distance_p()."""
+    """Tests for sampling.compute_distance_p()."""
 
     def test_returns_float_in_range(self):
         """Returns a value in [0, 1] for valid inputs."""
-        p = config.compute_distance_p(2000)
+        p = sampling.compute_distance_p(2000)
         assert 0.0 < p <= 1.0
 
     def test_p_decreases_with_distance(self):
         """Larger distance → lower p (more reachable nodes → less sampling needed)."""
         distances = [500, 1000, 2000, 5000, 10000, 20000]
-        probs = [config.compute_distance_p(d) for d in distances]
+        probs = [sampling.compute_distance_p(d) for d in distances]
         for i in range(len(probs) - 1):
             assert probs[i] >= probs[i + 1], f"p should decrease: {probs[i]} < {probs[i + 1]}"
 
     def test_small_distance_returns_one(self):
         """Short distances have full sampling (p=1.0)."""
-        assert config.compute_distance_p(100) == 1.0
+        assert sampling.compute_distance_p(100) == 1.0
 
     def test_tighter_epsilon_gives_higher_p(self):
         """Tighter epsilon (smaller value) requires higher sampling probability."""
         d = 5000
-        p_tight = config.compute_distance_p(d, epsilon=0.05)
-        p_loose = config.compute_distance_p(d, epsilon=0.1)
+        p_tight = sampling.compute_distance_p(d, epsilon=0.05)
+        p_loose = sampling.compute_distance_p(d, epsilon=0.1)
         assert p_tight >= p_loose
 
     def test_invalid_distance_returns_one(self):
         """Zero or negative distance returns 1.0."""
-        assert config.compute_distance_p(0) == 1.0
-        assert config.compute_distance_p(-100) == 1.0
+        assert sampling.compute_distance_p(0) == 1.0
+        assert sampling.compute_distance_p(-100) == 1.0
 
 
 class TestBetweennessSampling:

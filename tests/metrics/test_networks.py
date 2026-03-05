@@ -128,17 +128,13 @@ def test_node_centrality_simplest(primal_graph):
                 betw_result = network_structure.centrality_simplest(
                     compute_closeness=False, compute_betweenness=True, betas=betas
                 )
-                for measure_key, attr_key in [
-                    ("betweenness", "node_betweenness"),
-                    ("betweenness_beta", "node_betweenness_beta"),
-                ]:
-                    assert np.allclose(
-                        nodes_gdf[config.prep_gdf_key(measure_key, dist_key, angular=True)],
-                        getattr(betw_result, attr_key)[dist_key],
-                        equal_nan=True,
-                        atol=config.ATOL,
-                        rtol=config.RTOL,
-                    )
+                assert np.allclose(
+                    nodes_gdf[config.prep_gdf_key("betweenness", dist_key, angular=True)],
+                    betw_result.node_betweenness[dist_key],
+                    equal_nan=True,
+                    atol=config.ATOL,
+                    rtol=config.RTOL,
+                )
 
 
 def test_segment_centrality(primal_graph):

@@ -221,7 +221,6 @@ pub struct CentralitySimplestResult {
 
     // Betweenness fields
     node_betweenness_vec: MetricResult,
-    node_betweenness_beta_vec: MetricResult,
 
     #[pyo3(get)]
     pub reachability_totals: Vec<u32>,
@@ -245,7 +244,6 @@ impl CentralitySimplestResult {
             node_farness_vec: MetricResult::new(&distances, capacity, init_val),
             node_harmonic_vec: MetricResult::new(&distances, capacity, init_val),
             node_betweenness_vec: MetricResult::new(&distances, capacity, init_val),
-            node_betweenness_beta_vec: MetricResult::new(&distances, capacity, init_val),
             reachability_totals: Vec::new(),
             sampled_source_count: 0,
         }
@@ -269,11 +267,6 @@ impl CentralitySimplestResult {
     #[getter]
     pub fn node_betweenness(&self) -> HashMap<u32, Py<PyArray1<f64>>> {
         self.node_betweenness_vec.load_compact(&self.node_indices)
-    }
-    #[getter]
-    pub fn node_betweenness_beta(&self) -> HashMap<u32, Py<PyArray1<f64>>> {
-        self.node_betweenness_beta_vec
-            .load_compact(&self.node_indices)
     }
 }
 
@@ -396,7 +389,32 @@ impl BrandesNodeState {
             agg_seconds: f32::INFINITY,
         }
     }
+}
 
+/// Lightweight node state for simplest (angular) Dijkstra with single-predecessor
+/// path tracing. Unlike BrandesNodeState, this uses Option<usize> instead of
+/// SmallVec for predecessors and omits sigma/cycles (unused for angular paths).
+#[derive(Clone)]
+struct SimplestNodeState {
+    visited: bool,
+    discovered: bool,
+    pred: Option<usize>,
+    simpl_dist: f32,
+    prev_in_bearing: f32,
+    agg_seconds: f32,
+}
+
+impl SimplestNodeState {
+    fn new() -> Self {
+        Self {
+            visited: false,
+            discovered: false,
+            pred: None,
+            simpl_dist: f32::INFINITY,
+            prev_in_bearing: f32::NAN,
+            agg_seconds: f32::INFINITY,
+        }
+    }
 }
 
 impl NetworkStructure {
@@ -605,21 +623,20 @@ impl NetworkStructure {
         (visited_nodes, state)
     }
 
-    /// Targeted Dijkstra with multi-predecessor tracking for Brandes betweenness.
-    /// Dijkstra with multi-predecessor tracking for Brandes betweenness (simplest/angular paths).
-    fn dijkstra_brandes_simplest(
+    /// Single-predecessor Dijkstra for simplest (angular) paths.
+    /// Uses SimplestNodeState with Option<usize> pred instead of SmallVec,
+    /// since angular turn cost is path-dependent (depends on incoming bearing).
+    fn dijkstra_simplest(
         &self,
         src_idx: usize,
         max_seconds: u32,
         speed_m_s: f32,
-        tolerance: f32,
-    ) -> (Vec<usize>, Vec<BrandesNodeState>) {
+    ) -> (Vec<usize>, Vec<SimplestNodeState>) {
         let n = self.node_bound();
-        let mut state = vec![BrandesNodeState::new(); n];
+        let mut state = vec![SimplestNodeState::new(); n];
         let mut visited_nodes = Vec::new();
         state[src_idx].simpl_dist = 0.0;
         state[src_idx].agg_seconds = 0.0;
-        state[src_idx].sigma = 1.0;
         state[src_idx].discovered = true;
         let mut active = BinaryHeap::new();
         active.push(NodeDistance {
@@ -646,19 +663,14 @@ impl NetworkStructure {
                 if state[nb].visited {
                     continue;
                 }
-                // Sidestepping prevention (matches dijkstra_tree_simplest):
-                // Skip if current node and neighbor share a predecessor, which would
-                // mean the path is doubling back through a sibling edge.
-                if !state[node_idx].preds.is_empty()
-                    && !state[nb].preds.is_empty()
-                    && state[node_idx]
-                        .preds
-                        .iter()
-                        .any(|p| state[nb].preds.contains(p))
-                {
-                    continue;
+                // Sidestepping prevention: skip if current node and neighbor
+                // share a predecessor (path doubling back through sibling edge).
+                if let (Some(p1), Some(p2)) = (state[node_idx].pred, state[nb].pred) {
+                    if p1 == p2 {
+                        continue;
+                    }
                 }
-                // Turn angle calculation (same as dijkstra_tree_simplest)
+                // Turn angle calculation
                 let mut turn = 0.0;
                 if node_idx != src_idx
                     && edge_payload.out_bearing.is_finite()
@@ -680,32 +692,18 @@ impl NetworkStructure {
                 if total_seconds > max_seconds as f32 {
                     continue;
                 }
+                // Single-predecessor: strict < only, since angular turn cost
+                // depends on incoming bearing (path-dependent).
                 if candidate < state[nb].simpl_dist {
-                    // Shorter angular path found: always update distance.
-                    if candidate < state[nb].simpl_dist * (1.0 - tolerance) {
-                        // Much shorter — old preds outside new tolerance.
-                        state[nb].preds.clear();
-                        state[nb].sigma = state[node_idx].sigma;
-                    } else {
-                        // Slightly shorter — old preds likely still valid.
-                        state[nb].sigma += state[node_idx].sigma;
-                    }
+                    state[nb].pred = Some(node_idx);
                     state[nb].simpl_dist = candidate;
                     state[nb].agg_seconds = total_seconds;
-                    state[nb].short_dist = total_seconds * speed_m_s;
-                    state[nb].preds.push(node_idx);
                     state[nb].prev_in_bearing = edge_payload.in_bearing;
                     state[nb].discovered = true;
                     active.push(NodeDistance {
                         node_idx: nb,
                         metric: candidate,
                     });
-                } else if candidate <= state[nb].simpl_dist * (1.0 + tolerance)
-                    && !state[nb].visited
-                {
-                    // Longer but within tolerance: add predecessor only.
-                    state[nb].preds.push(node_idx);
-                    state[nb].sigma += state[node_idx].sigma;
                 }
             }
         }
@@ -1105,6 +1103,25 @@ impl NetworkStructure {
             node_indices.clone()
         };
         let n_sources = sources.len();
+        // Marks nodes that can contribute as sources under this run configuration.
+        // Used for direction-free pair weighting in undirected betweenness:
+        // - target can also be a source: 0.5 contribution from each direction
+        // - target cannot be a source: full 1.0 from the only possible direction
+        let source_eligible: Vec<bool> = if is_source_indexed {
+            let mut eligible = vec![false; n];
+            for &idx in &sources {
+                eligible[idx] = true;
+            }
+            eligible
+        } else {
+            let mut eligible = vec![false; n];
+            for &idx in &node_indices {
+                if self.is_node_live_unchecked(idx) {
+                    eligible[idx] = true;
+                }
+            }
+            eligible
+        };
 
         // Atomic counters for tracking source reachability when sampling
         let source_reachability_totals: Vec<AtomicU32> =
@@ -1116,8 +1133,7 @@ impl NetworkStructure {
                 if !pbar_disabled {
                     self.progress.fetch_add(1, AtomicOrdering::Relaxed);
                 }
-                // When using source_indices, trust the caller; otherwise skip non-live.
-                if !is_source_indexed && !self.is_node_live_unchecked(*src_idx) {
+                if !source_eligible[*src_idx] {
                     return;
                 }
 
@@ -1230,24 +1246,16 @@ impl NetworkStructure {
                             if sigma_w == 0.0 {
                                 continue;
                             }
-                            // One-direction counting: only count the pair (src, w)
-                            // when w > src_idx. Since the graph is undirected, each
-                            // pair (a, b) with a < b is counted exactly once — from
-                            // source a with target b. This avoids the post-hoc /2
-                            // and eliminates the 0.5 variance spike in sampled
-                            // betweenness that arises from the symmetric double-count.
-                            let pair_count =
-                                if w > *src_idx { 1.0 } else { 0.0 };
-                            let pair_beta = if w > *src_idx {
-                                (-beta * state[w].short_dist as f64).exp()
-                            } else {
-                                0.0
-                            };
+                            // Direction-free pair weighting for undirected graphs:
+                            // if target can also appear as a source, each direction
+                            // contributes 0.5; otherwise this is the only direction
+                            // and contributes 1.0.
+                            let pair_count = if source_eligible[w] { 0.5 } else { 1.0 };
+                            let pair_beta = pair_count * (-beta * state[w].short_dist as f64).exp();
                             for &v in &state[w].preds {
                                 let factor = state[v].sigma / sigma_w;
                                 delta[v] += factor * (pair_count + delta[w]);
-                                delta_beta[v] += factor
-                                    * (pair_beta + delta_beta[w]);
+                                delta_beta[v] += factor * (pair_beta + delta_beta[w]);
                             }
                             res.node_betweenness_vec.metric[d_idx][w]
                                 .fetch_add(delta[w] * wt as f64, AtomicOrdering::Relaxed);
@@ -1268,9 +1276,10 @@ impl NetworkStructure {
             }
 
             // Betweenness post-hoc scaling.
-            // One-direction counting means each undirected pair is counted once,
-            // so no /2 needed. For source-indexed without sampling, scale by
-            // n_live / n_sources to extrapolate from the subset.
+            // Pair weighting is already handled in-loop (0.5 for source-eligible
+            // targets, 1.0 otherwise), so no /2 is required here. For source-indexed
+            // without sampling, scale by n_live / n_sources to extrapolate from
+            // the subset.
             if compute_betweenness {
                 let scale = if is_source_indexed {
                     if sample_probability.is_some() {
@@ -1318,7 +1327,6 @@ impl NetworkStructure {
         speed_m_s=None,
         angular_scaling_unit=None,
         farness_scaling_offset=None,
-        tolerance=None,
         sample_probability=None,
         sampling_weights=None,
         random_seed=None,
@@ -1336,7 +1344,6 @@ impl NetworkStructure {
         speed_m_s: Option<f32>,
         angular_scaling_unit: Option<f32>,
         farness_scaling_offset: Option<f32>,
-        tolerance: Option<f32>,
         sample_probability: Option<f32>,
         sampling_weights: Option<Vec<f32>>,
         random_seed: Option<u64>,
@@ -1352,10 +1359,9 @@ impl NetworkStructure {
             ));
         }
         let speed_m_s = speed_m_s.unwrap_or(WALKING_SPEED);
-        let tolerance = tolerance.unwrap_or(0.0);
         let angular_scaling_unit = angular_scaling_unit.unwrap_or(180.0);
         let farness_scaling_offset = farness_scaling_offset.unwrap_or(1.0);
-        let (distances, betas, seconds) = common::pair_distances_betas_time(
+        let (distances, _betas, seconds) = common::pair_distances_betas_time(
             speed_m_s,
             distances,
             betas,
@@ -1427,6 +1433,25 @@ impl NetworkStructure {
             node_indices.clone()
         };
         let n_sources = sources.len();
+        // Marks nodes that can contribute as sources under this run configuration.
+        // Used for direction-free pair weighting in undirected betweenness:
+        // - target can also be a source: 0.5 contribution from each direction
+        // - target cannot be a source: full 1.0 from the only possible direction
+        let source_eligible: Vec<bool> = if is_source_indexed {
+            let mut eligible = vec![false; n];
+            for &idx in &sources {
+                eligible[idx] = true;
+            }
+            eligible
+        } else {
+            let mut eligible = vec![false; n];
+            for &idx in &node_indices {
+                if self.is_node_live_unchecked(idx) {
+                    eligible[idx] = true;
+                }
+            }
+            eligible
+        };
 
         // Atomic counters for tracking source reachability when sampling
         let source_reachability_totals: Vec<AtomicU32> =
@@ -1438,7 +1463,7 @@ impl NetworkStructure {
                 if !pbar_disabled {
                     self.progress.fetch_add(1, AtomicOrdering::Relaxed);
                 }
-                if !is_source_indexed && !self.is_node_live_unchecked(*src_idx) {
+                if !source_eligible[*src_idx] {
                     return;
                 }
 
@@ -1465,12 +1490,8 @@ impl NetworkStructure {
                 }
 
                 // Single Dijkstra traversal serves both closeness and betweenness
-                let (visited_nodes, state) = self.dijkstra_brandes_simplest(
-                    *src_idx,
-                    max_walk_seconds,
-                    speed_m_s,
-                    tolerance,
-                );
+                let (visited_nodes, state) =
+                    self.dijkstra_simplest(*src_idx, max_walk_seconds, speed_m_s);
 
                 // --- Closeness accumulation ---
                 if compute_closeness {
@@ -1511,55 +1532,32 @@ impl NetworkStructure {
                     }
                 }
 
-                // --- Betweenness backpropagation ---
+                // --- Betweenness via predecessor chain tracing ---
+                // Angular paths have single-predecessor semantics (turn cost
+                // depends on incoming bearing), so we walk each target's
+                // predecessor chain back to source, incrementing betweenness
+                // for each intermediate node. This matches the pre-v4.23
+                // approach and avoids Brandes backpropagation, which requires
+                // multi-predecessor semantics that are invalid for angular paths.
                 if compute_betweenness {
-                    // Sort visited by angular distance from source (farthest first)
-                    let mut sorted_visited: Vec<usize> = visited_nodes
-                        .iter()
-                        .filter(|&&v| v != *src_idx && state[v].sigma > 0.0)
-                        .copied()
-                        .collect();
-                    sorted_visited.sort_by(|a, b| {
-                        state[*b]
-                            .simpl_dist
-                            .partial_cmp(&state[*a].simpl_dist)
-                            .unwrap_or(Ordering::Equal)
-                    });
-
-                    for d_idx in 0..distances.len() {
-                        let dist_threshold = distances[d_idx] as f32;
-                        let beta = betas[d_idx] as f64;
-
-                        let mut delta = vec![0.0f64; n];
-                        let mut delta_beta = vec![0.0f64; n];
-
-                        for &w in &sorted_visited {
-                            // Threshold on physical distance
-                            if state[w].short_dist > dist_threshold {
-                                continue;
+                    for &to_idx in &visited_nodes {
+                        if to_idx == *src_idx {
+                            continue;
+                        }
+                        let pair_count = if source_eligible[to_idx] { 0.5 } else { 1.0 };
+                        // Walk predecessor chain from target back to source.
+                        let mut current_pred = state[to_idx].pred;
+                        while let Some(inter_idx) = current_pred {
+                            if inter_idx == *src_idx {
+                                break;
                             }
-                            let sigma_w = state[w].sigma;
-                            if sigma_w == 0.0 {
-                                continue;
+                            for d_idx in 0..seconds.len() {
+                                if state[to_idx].agg_seconds <= seconds[d_idx] as f32 {
+                                    res.node_betweenness_vec.metric[d_idx][inter_idx]
+                                        .fetch_add(pair_count * wt as f64, AtomicOrdering::Relaxed);
+                                }
                             }
-                            // One-direction counting (see centrality_shortest).
-                            let pair_count =
-                                if w > *src_idx { 1.0 } else { 0.0 };
-                            let pair_beta = if w > *src_idx {
-                                (-beta * state[w].short_dist as f64).exp()
-                            } else {
-                                0.0
-                            };
-                            for &v in &state[w].preds {
-                                let factor = state[v].sigma / sigma_w;
-                                delta[v] += factor * (pair_count + delta[w]);
-                                delta_beta[v] += factor
-                                    * (pair_beta + delta_beta[w]);
-                            }
-                            res.node_betweenness_vec.metric[d_idx][w]
-                                .fetch_add(delta[w] * wt as f64, AtomicOrdering::Relaxed);
-                            res.node_betweenness_beta_vec.metric[d_idx][w]
-                                .fetch_add(delta_beta[w] * wt as f64, AtomicOrdering::Relaxed);
+                            current_pred = state[inter_idx].pred;
                         }
                     }
                 }
@@ -1574,7 +1572,8 @@ impl NetworkStructure {
                     .collect();
             }
 
-            // Betweenness post-hoc scaling (one-direction, see centrality_shortest).
+            // Betweenness post-hoc scaling (pair weighting handled in-loop, see
+            // centrality_shortest).
             if compute_betweenness {
                 let scale = if is_source_indexed {
                     if sample_probability.is_some() {
@@ -1586,16 +1585,12 @@ impl NetworkStructure {
                     1.0
                 };
                 if scale != 1.0 {
-                    for d_idx in 0..distances.len() {
+                    for d_idx in 0..seconds.len() {
                         for &node_idx in &node_indices {
                             let raw = res.node_betweenness_vec.metric[d_idx][node_idx]
                                 .load(AtomicOrdering::Relaxed);
                             res.node_betweenness_vec.metric[d_idx][node_idx]
                                 .store(raw * scale, AtomicOrdering::Relaxed);
-                            let raw_beta = res.node_betweenness_beta_vec.metric[d_idx][node_idx]
-                                .load(AtomicOrdering::Relaxed);
-                            res.node_betweenness_beta_vec.metric[d_idx][node_idx]
-                                .store(raw_beta * scale, AtomicOrdering::Relaxed);
                         }
                     }
                 }

@@ -20,7 +20,7 @@ from pathlib import Path
 
 import networkx as nx
 import numpy as np
-from cityseer.config import GRID_SPACING
+from cityseer.sampling import GRID_SPACING
 from scipy import stats as scipy_stats
 from shapely.geometry import Point
 from shapely.ops import unary_union

@@ -18,7 +18,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from cityseer.config import GRID_SPACING, compute_distance_p
+from cityseer.sampling import GRID_SPACING, compute_distance_p
 from utilities import (
     CACHE_DIR,
     CACHE_VERSION,
