@@ -308,6 +308,17 @@ def build_dual_network(
     if feedback and (feat_count <= 0):
         feedback.setProgress(int(read_base + read_span))
 
+    if not current_wkts:
+        feat_total = layer.featureCount() if hasattr(layer, "featureCount") else 0
+        if feat_total > 0:
+            msg = (
+                f"Layer reports {feat_total} features but none could be read. "
+                "The data source may have moved or become unavailable."
+            )
+        else:
+            msg = "Input layer contains no features."
+        raise ValueError(msg)
+
     # ------------------------------------------------------------------
     # Incremental path — diff against previous state
     # ------------------------------------------------------------------
