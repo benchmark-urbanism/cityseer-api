@@ -85,6 +85,7 @@ def nx_epsg_conversion(
         # write back to graph
         g_multi_copy.nodes[nd_key]["x"] = easting
         g_multi_copy.nodes[nd_key]["y"] = northing
+        # z is preserved as-is (elevation doesn't change with CRS reprojection)
     # if line geom property provided, then convert as well
     logger.info("Processing edge geom coordinates, if present.")
     start_nd_key: NodeKey
@@ -98,8 +99,13 @@ def nx_epsg_conversion(
         # check if geom present - optional step
         if "geom" in edge_data:
             line_geom: geometry.LineString = edge_data["geom"]
-            # convert
-            edge_coords: ListCoordsType = [transformer.transform(x, y) for x, y in line_geom.coords]
+            # convert, preserving z if present
+            if line_geom.has_z:
+                edge_coords: ListCoordsType = [
+                    (*transformer.transform(c[0], c[1]), c[2]) for c in line_geom.coords
+                ]
+            else:
+                edge_coords = [transformer.transform(x, y) for x, y in line_geom.coords]
             # snap ends
             edge_coords = util.snap_linestring_endpoints(g_multi_copy, start_nd_key, end_nd_key, edge_coords)
             # write back to edge
@@ -842,7 +848,10 @@ def nx_from_osm_nx(
         # add node and attributes if necessary
         nd_key = str(nd_key)
         if nd_key not in g_multi:
-            g_multi.add_node(nd_key, x=x, y=y)
+            node_kwargs: dict[str, Any] = {"x": x, "y": y}
+            if "z" in nx_multidigraph.nodes[nd_key]:
+                node_kwargs["z"] = nx_multidigraph.nodes[nd_key]["z"]
+            g_multi.add_node(nd_key, **node_kwargs)
             if node_attributes is not None:
                 for node_att in node_attributes:
                     if node_att not in nx_multidigraph.nodes[nd_key]:
@@ -868,7 +877,12 @@ def nx_from_osm_nx(
             line_geom: geometry.LineString = edge_data["geometry"]
         # otherwise create
         else:
-            line_geom = geometry.LineString([[s_x, s_y], [e_x, e_y]])
+            s_nd = g_multi.nodes[str(start_nd_key)]
+            e_nd = g_multi.nodes[str(end_nd_key)]
+            if "z" in s_nd and "z" in e_nd:
+                line_geom = geometry.LineString([[s_x, s_y, s_nd["z"]], [e_x, e_y, e_nd["z"]]])
+            else:
+                line_geom = geometry.LineString([[s_x, s_y], [e_x, e_y]])
         # check for LineString validity
         if line_geom.geom_type != "LineString":
             raise TypeError(
@@ -938,10 +952,13 @@ def nx_from_open_roads(
     with fiona.open(open_roads_path, layer=road_node_layer_key) as nodes:
         for node_data in nodes.values(bbox=target_bbox):
             node_id: str = node_data.properties["id"]
-            x: float
-            y: float
-            x, y = node_data.geometry["coordinates"]
-            g_multi.add_node(node_id, x=x, y=y)
+            coords = node_data.geometry["coordinates"]
+            x: float = coords[0]
+            y: float = coords[1]
+            node_kwargs: dict[str, Any] = {"x": x, "y": y}
+            if len(coords) == 3:
+                node_kwargs["z"] = coords[2]
+            g_multi.add_node(node_id, **node_kwargs)
     # load the edges
     n_dropped = 0
     with fiona.open(open_roads_path, layer=road_link_layer_key) as edges:
@@ -1062,6 +1079,7 @@ def network_structure_from_nx(
             raise TypeError(f"Node key must be of type string but encountered {type(node_key)}")
         node_x: float = node_data["x"]
         node_y: float = node_data["y"]
+        node_z: float | None = node_data.get("z", None)
         is_live: bool = True
         if "live" in node_data:
             is_live = bool(node_data["live"])
@@ -1069,8 +1087,9 @@ def network_structure_from_nx(
         if "weight" in node_data:
             weight = node_data["weight"]
         # set node
-        ns_node_idx = network_structure.add_street_node(node_key, node_x, node_y, is_live, weight)
-        agg_node_data[node_key] = (ns_node_idx, node_x, node_y, is_live, weight, geometry.Point(node_x, node_y))
+        ns_node_idx = network_structure.add_street_node(node_key, node_x, node_y, is_live, weight, z=node_z)
+        node_geom = geometry.Point(node_x, node_y, node_z) if node_z is not None else geometry.Point(node_x, node_y)
+        agg_node_data[node_key] = (ns_node_idx, node_x, node_y, node_z, is_live, weight, node_geom)
         if "is_dual" in g_multi_copy.graph and g_multi_copy.graph["is_dual"]:
             agg_node_dual_data[node_key] = (
                 node_data["primal_edge"],
@@ -1081,10 +1100,10 @@ def network_structure_from_nx(
     # set edges
     for start_node_key in tqdm(g_multi_copy.nodes(), disable=config.QUIET_MODE):
         # build edges
-        start_ns_node_idx, start_node_x, start_node_y, _, _, _ = agg_node_data[start_node_key]
+        start_ns_node_idx, start_node_x, start_node_y, _, _, _, _ = agg_node_data[start_node_key]
         end_node_key: str
         for end_node_key in g_multi_copy.neighbors(start_node_key):
-            end_ns_node_idx, end_node_x, end_node_y, _, _, _ = agg_node_data[end_node_key]
+            end_ns_node_idx, end_node_x, end_node_y, _, _, _, _ = agg_node_data[end_node_key]
             for edge_idx, edge_data in g_multi_copy[start_node_key][end_node_key].items():
                 # validate geometry exists
                 edge_geom = edge_data.get("geom")
@@ -1136,7 +1155,7 @@ def network_structure_from_nx(
     nodes_gdf = gpd.GeoDataFrame.from_dict(
         agg_node_data,
         orient="index",
-        columns=["ns_node_idx", "x", "y", "live", "weight", "geom"],
+        columns=["ns_node_idx", "x", "y", "z", "live", "weight", "geom"],
         geometry="geom",
         crs=g_multi_copy.graph["crs"],
     )
@@ -1239,12 +1258,16 @@ def network_structure_from_gpd(
     node_mapping = {}
     # process nodes and build mapping
     for nd_key, node_data in tqdm(nodes_gdf.iterrows(), total=len(nodes_gdf), disable=config.QUIET_MODE):
+        node_z = None
+        if "z" in node_data and node_data["z"] is not None and not (isinstance(node_data["z"], float) and np.isnan(node_data["z"])):
+            node_z = float(node_data["z"])
         ns_node_idx = network_structure.add_street_node(
             str(nd_key),
             float(node_data["x"]),
             float(node_data["y"]),
             bool(node_data["live"]),
             float(node_data["weight"]),
+            z=node_z,
         )
         # store mapping in dictionary instead of writing back to GeoDataFrame
         node_mapping[nd_key] = ns_node_idx
@@ -1429,7 +1452,10 @@ def nx_from_cityseer_geopandas(
     for nd_key, nd_data in tqdm(nodes_gdf.iterrows(), disable=config.QUIET_MODE):
         live = nd_data.live if hasattr(nd_data, "live") else True
         weight = nd_data.weight if hasattr(nd_data, "weight") else 1
-        g_multi_copy.add_node(str(nd_key), x=nd_data.x, y=nd_data.y, live=live, weight=weight)
+        node_kwargs: dict[str, Any] = {"x": nd_data.x, "y": nd_data.y, "live": live, "weight": weight}
+        if hasattr(nd_data, "z") and nd_data.z is not None and not (isinstance(nd_data.z, float) and np.isnan(nd_data.z)):
+            node_kwargs["z"] = nd_data.z
+        g_multi_copy.add_node(str(nd_key), **node_kwargs)
     logger.info("Unpacking edge data.")
     geom_key = edges_gdf.geometry.name
     for _, row_data in tqdm(edges_gdf.iterrows(), disable=config.QUIET_MODE):
@@ -1572,9 +1598,15 @@ def nx_from_generic_geopandas(
             continue
         # add nodes
         if node_key_a not in g_multi:
-            g_multi.add_node(node_key_a, x=coords_a[0], y=coords_a[1])
+            node_kwargs_a: dict[str, Any] = {"x": coords_a[0], "y": coords_a[1]}
+            if len(coords_a) == 3:
+                node_kwargs_a["z"] = coords_a[2]
+            g_multi.add_node(node_key_a, **node_kwargs_a)
         if node_key_b not in g_multi:
-            g_multi.add_node(node_key_b, x=coords_b[0], y=coords_b[1])
+            node_kwargs_b: dict[str, Any] = {"x": coords_b[0], "y": coords_b[1]}
+            if len(coords_b) == 3:
+                node_kwargs_b["z"] = coords_b[2]
+            g_multi.add_node(node_key_b, **node_kwargs_b)
         # add edge
         props = dict(edge_row)
         for k in ["geom", "geometry"]:

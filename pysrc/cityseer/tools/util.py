@@ -119,8 +119,8 @@ def validate_cityseer_networkx_graph(
 
 def measure_bearing(xy_1: npt.NDArray[np.float64], xy_2: npt.NDArray[np.float64]) -> float:
     """Measures the angular bearing between two coordinate pairs."""
-    y_1, x_1 = xy_1[::-1]
-    y_2, x_2 = xy_2[::-1]
+    x_1, y_1 = xy_1[0], xy_1[1]
+    x_2, y_2 = xy_2[0], xy_2[1]
     return np.rad2deg(np.arctan2(y_2 - y_1, x_2 - x_1))
 
 
@@ -519,6 +519,7 @@ def add_node(
     x: float,
     y: float,
     live: bool | None = None,
+    z: float | None = None,
 ) -> tuple[str, bool]:
     """
     Add a node to a networkX `MultiGraph`. Assembles a new name from source node names. Checks for duplicates.
@@ -563,9 +564,11 @@ def add_node(
                 )
             break
     # add
-    attributes = {"x": x, "y": y}
+    attributes: dict[str, Any] = {"x": x, "y": y}
     if live is not None:
         attributes["live"] = live
+    if z is not None:
+        attributes["z"] = z
     nx_multigraph.add_node(new_nd_name, **attributes)
     return new_nd_name, False  # is_dupe
 
