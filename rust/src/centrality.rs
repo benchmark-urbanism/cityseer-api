@@ -369,9 +369,7 @@ struct BrandesNodeState {
     preds: SmallVec<[usize; 2]>,
     sigma: f64,
     short_dist: f32,
-    simpl_dist: f32,
     cycles: f32,
-    prev_in_bearing: f32,
     agg_seconds: f32,
 }
 
@@ -383,38 +381,27 @@ impl BrandesNodeState {
             preds: SmallVec::new(),
             sigma: 0.0,
             short_dist: f32::INFINITY,
-            simpl_dist: f32::INFINITY,
             cycles: 0.0,
-            prev_in_bearing: f32::NAN,
             agg_seconds: f32::INFINITY,
         }
     }
 }
 
-/// Lightweight node state for simplest (angular) Dijkstra with single-predecessor
-/// path tracing. Unlike BrandesNodeState, this uses Option<usize> instead of
-/// SmallVec for predecessors and omits sigma/cycles (unused for angular paths).
-#[derive(Clone)]
-struct SimplestNodeState {
-    visited: bool,
-    discovered: bool,
-    pred: Option<usize>,
-    simpl_dist: f32,
-    prev_in_bearing: f32,
-    agg_seconds: f32,
+#[derive(Clone, Copy)]
+enum NodeTraversalMode {
+    Shortest,
+    Simplest,
 }
 
-impl SimplestNodeState {
-    fn new() -> Self {
-        Self {
-            visited: false,
-            discovered: false,
-            pred: None,
-            simpl_dist: f32::INFINITY,
-            prev_in_bearing: f32::NAN,
-            agg_seconds: f32::INFINITY,
-        }
-    }
+struct SourceSamplingPlan {
+    sample_probability: Option<f32>,
+    sampling_weights: Option<Vec<f32>>,
+    sample_randoms: Vec<f32>,
+    sources: Vec<usize>,
+    source_eligible: Vec<bool>,
+    is_source_indexed: bool,
+    n_sources: usize,
+    n_live: usize,
 }
 
 impl NetworkStructure {
@@ -555,6 +542,237 @@ impl NetworkStructure {
         Ok(())
     }
 
+    fn prepare_source_sampling(
+        &self,
+        sample_probability: Option<f32>,
+        sampling_weights: Option<Vec<f32>>,
+        random_seed: Option<u64>,
+        source_indices: Option<Vec<usize>>,
+        node_indices: &[usize],
+    ) -> PyResult<SourceSamplingPlan> {
+        let sampling_weights = match sampling_weights {
+            Some(w) => Some(self.expand_sampling_weights(&w)?),
+            None => None,
+        };
+        if let Some(prob) = sample_probability {
+            if prob <= 0.0 || prob > 1.0 {
+                return Err(exceptions::PyValueError::new_err(
+                    "sample_probability must be in (0.0, 1.0]",
+                ));
+            }
+        }
+        if source_indices.is_some() && sampling_weights.is_some() {
+            return Err(exceptions::PyValueError::new_err(
+                "source_indices and sampling_weights are mutually exclusive",
+            ));
+        }
+        if let Some(ref indices) = source_indices {
+            self.validate_source_indices_exist(indices)?;
+        }
+
+        let n = self.node_bound();
+        let n_live = node_indices
+            .iter()
+            .filter(|&&idx| self.is_node_live_unchecked(idx))
+            .count();
+        let is_source_indexed = source_indices.is_some();
+        let sources = source_indices.unwrap_or_else(|| node_indices.to_vec());
+        let n_sources = sources.len();
+        let source_eligible = if is_source_indexed {
+            let mut eligible = vec![false; n];
+            for &idx in &sources {
+                eligible[idx] = true;
+            }
+            eligible
+        } else {
+            let mut eligible = vec![false; n];
+            for &idx in node_indices {
+                if self.is_node_live_unchecked(idx) {
+                    eligible[idx] = true;
+                }
+            }
+            eligible
+        };
+        let sample_randoms = if sample_probability.is_some() && !is_source_indexed {
+            let mut rng = if let Some(seed) = random_seed {
+                StdRng::seed_from_u64(seed)
+            } else {
+                StdRng::from_rng(&mut rand::rng())
+            };
+            (0..self.node_bound()).map(|_| rng.random()).collect()
+        } else {
+            Vec::new()
+        };
+
+        Ok(SourceSamplingPlan {
+            sample_probability,
+            sampling_weights,
+            sample_randoms,
+            sources,
+            source_eligible,
+            is_source_indexed,
+            n_sources,
+            n_live,
+        })
+    }
+
+    #[inline]
+    fn sample_source_weight(
+        &self,
+        src_idx: usize,
+        sample_probability: Option<f32>,
+        sampling_weights: Option<&[f32]>,
+        sample_randoms: &[f32],
+        is_source_indexed: bool,
+        sampled_source_count: &AtomicU32,
+    ) -> Option<f32> {
+        let mut wt = self.get_node_weight_unchecked(src_idx);
+        if is_source_indexed {
+            if let Some(prob) = sample_probability {
+                wt /= prob;
+            }
+            sampled_source_count.fetch_add(1, AtomicOrdering::Relaxed);
+            return Some(wt);
+        }
+        if let Some(prob) = sample_probability {
+            let mut p = prob;
+            if let Some(weights) = sampling_weights {
+                p *= weights[src_idx];
+            }
+            if p <= 0.0 {
+                return None;
+            }
+            if sample_randoms[src_idx] >= p {
+                return None;
+            }
+            sampled_source_count.fetch_add(1, AtomicOrdering::Relaxed);
+            wt /= p;
+        }
+        Some(wt)
+    }
+
+    fn dijkstra_tree_node(
+        &self,
+        src_idx: usize,
+        max_seconds: u32,
+        speed_m_s: f32,
+        mode: NodeTraversalMode,
+    ) -> (Vec<usize>, Vec<NodeVisit>) {
+        let mut tree_map = vec![NodeVisit::new(); self.node_bound()];
+        let mut visited_nodes = Vec::new();
+        tree_map[src_idx].agg_seconds = 0.0;
+        tree_map[src_idx].discovered = true;
+        match mode {
+            NodeTraversalMode::Shortest => tree_map[src_idx].short_dist = 0.0,
+            NodeTraversalMode::Simplest => tree_map[src_idx].simpl_dist = 0.0,
+        }
+        let mut active = BinaryHeap::new();
+        active.push(NodeDistance {
+            node_idx: src_idx,
+            metric: 0.0,
+        });
+
+        while let Some(NodeDistance { node_idx, .. }) = active.pop() {
+            if tree_map[node_idx].visited {
+                continue;
+            }
+            tree_map[node_idx].visited = true;
+            visited_nodes.push(node_idx);
+            let current_node_index = NodeIndex::new(node_idx);
+            for edge_ref in self
+                .graph
+                .edges_directed(current_node_index, Direction::Incoming)
+            {
+                let nb_nd_idx = edge_ref.source();
+                let nb_idx = nb_nd_idx.index();
+                let edge_payload = edge_ref.weight();
+                if nb_idx == node_idx || tree_map[nb_idx].visited {
+                    continue;
+                }
+
+                match mode {
+                    NodeTraversalMode::Shortest => {
+                        if let Some(pred_idx) = tree_map[node_idx].pred {
+                            if nb_idx == pred_idx {
+                                continue;
+                            }
+                        }
+                        if tree_map[nb_idx].pred.is_some() {
+                            if tree_map[node_idx].agg_seconds <= tree_map[nb_idx].agg_seconds {
+                                tree_map[nb_idx].cycles += 0.5;
+                            } else {
+                                tree_map[node_idx].cycles += 0.5;
+                            }
+                        }
+                        let edge_seconds =
+                            self.edge_travel_seconds(nb_idx, node_idx, edge_payload, speed_m_s, true);
+                        let total_seconds = tree_map[node_idx].agg_seconds + edge_seconds;
+                        if total_seconds > max_seconds as f32 {
+                            continue;
+                        }
+                        if total_seconds < tree_map[nb_idx].agg_seconds {
+                            tree_map[nb_idx].short_dist = total_seconds * speed_m_s;
+                            tree_map[nb_idx].agg_seconds = total_seconds;
+                            tree_map[nb_idx].pred = Some(node_idx);
+                            tree_map[nb_idx].discovered = true;
+                            active.push(NodeDistance {
+                                node_idx: nb_idx,
+                                metric: total_seconds,
+                            });
+                        }
+                    }
+                    NodeTraversalMode::Simplest => {
+                        let current_pred = tree_map[node_idx].pred;
+                        let neighbor_pred = tree_map[nb_idx].pred;
+                        if current_pred.is_some()
+                            && neighbor_pred.is_some()
+                            && current_pred == neighbor_pred
+                        {
+                            continue;
+                        }
+                        let mut turn = 0.0;
+                        if node_idx != src_idx
+                            && edge_payload.out_bearing.is_finite()
+                            && tree_map[node_idx].prev_in_bearing.is_finite()
+                        {
+                            turn = ((edge_payload.out_bearing - tree_map[node_idx].prev_in_bearing
+                                + 180.0)
+                                .rem_euclid(360.0)
+                                - 180.0)
+                                .abs();
+                        }
+                        let simpl_total_dist =
+                            tree_map[node_idx].simpl_dist + turn + edge_payload.angle_sum;
+                        let edge_seconds = self.edge_travel_seconds(
+                            nb_idx,
+                            node_idx,
+                            edge_payload,
+                            speed_m_s,
+                            false,
+                        );
+                        let total_seconds = tree_map[node_idx].agg_seconds + edge_seconds;
+                        if total_seconds > max_seconds as f32 {
+                            continue;
+                        }
+                        if simpl_total_dist < tree_map[nb_idx].simpl_dist {
+                            tree_map[nb_idx].simpl_dist = simpl_total_dist;
+                            tree_map[nb_idx].agg_seconds = total_seconds;
+                            tree_map[nb_idx].pred = Some(node_idx);
+                            tree_map[nb_idx].prev_in_bearing = edge_payload.in_bearing;
+                            tree_map[nb_idx].discovered = true;
+                            active.push(NodeDistance {
+                                node_idx: nb_idx,
+                                metric: simpl_total_dist,
+                            });
+                        }
+                    }
+                }
+            }
+        }
+
+        (visited_nodes, tree_map)
+    }
+
     /// Dijkstra with multi-predecessor tracking for Brandes betweenness (shortest paths).
     ///
     /// Unlike `dijkstra_tree_shortest` which stores a single predecessor, this variant
@@ -667,88 +885,6 @@ impl NetworkStructure {
         (visited_nodes, state)
     }
 
-    /// Single-predecessor Dijkstra for simplest (angular) paths.
-    /// Uses SimplestNodeState with Option<usize> pred instead of SmallVec,
-    /// since angular turn cost is path-dependent (depends on incoming bearing).
-    fn dijkstra_simplest(
-        &self,
-        src_idx: usize,
-        max_seconds: u32,
-        speed_m_s: f32,
-    ) -> (Vec<usize>, Vec<SimplestNodeState>) {
-        let n = self.node_bound();
-        let mut state = vec![SimplestNodeState::new(); n];
-        let mut visited_nodes = Vec::new();
-        state[src_idx].simpl_dist = 0.0;
-        state[src_idx].agg_seconds = 0.0;
-        state[src_idx].discovered = true;
-        let mut active = BinaryHeap::new();
-        active.push(NodeDistance {
-            node_idx: src_idx,
-            metric: 0.0,
-        });
-        while let Some(NodeDistance { node_idx, .. }) = active.pop() {
-            if state[node_idx].visited {
-                continue;
-            }
-            state[node_idx].visited = true;
-            visited_nodes.push(node_idx);
-            let current_node_index = NodeIndex::new(node_idx);
-            for edge_ref in self
-                .graph
-                .edges_directed(current_node_index, Direction::Incoming)
-            {
-                let nb_nd_idx = edge_ref.source();
-                let edge_payload = edge_ref.weight();
-                let nb = nb_nd_idx.index();
-                if nb == node_idx {
-                    continue;
-                }
-                if state[nb].visited {
-                    continue;
-                }
-                // Sidestepping prevention: skip if current node and neighbor
-                // share a predecessor (path doubling back through sibling edge).
-                if let (Some(p1), Some(p2)) = (state[node_idx].pred, state[nb].pred) {
-                    if p1 == p2 {
-                        continue;
-                    }
-                }
-                // Turn angle calculation
-                let mut turn = 0.0;
-                if node_idx != src_idx
-                    && edge_payload.out_bearing.is_finite()
-                    && state[node_idx].prev_in_bearing.is_finite()
-                {
-                    turn = ((edge_payload.out_bearing - state[node_idx].prev_in_bearing + 180.0)
-                        .rem_euclid(360.0)
-                        - 180.0)
-                        .abs();
-                }
-                let simpl_preceding_dist = turn + edge_payload.angle_sum;
-                let candidate = state[node_idx].simpl_dist + simpl_preceding_dist;
-                let edge_seconds = self.edge_travel_seconds(nb, node_idx, edge_payload, speed_m_s, false);
-                let total_seconds = state[node_idx].agg_seconds + edge_seconds;
-                if total_seconds > max_seconds as f32 {
-                    continue;
-                }
-                // Single-predecessor: strict < only, since angular turn cost
-                // depends on incoming bearing (path-dependent).
-                if candidate < state[nb].simpl_dist {
-                    state[nb].pred = Some(node_idx);
-                    state[nb].simpl_dist = candidate;
-                    state[nb].agg_seconds = total_seconds;
-                    state[nb].prev_in_bearing = edge_payload.in_bearing;
-                    state[nb].discovered = true;
-                    active.push(NodeDistance {
-                        node_idx: nb,
-                        metric: candidate,
-                    });
-                }
-            }
-        }
-        (visited_nodes, state)
-    }
 }
 
 #[pymethods]
@@ -761,80 +897,12 @@ impl NetworkStructure {
         speed_m_s: f32,
     ) -> PyResult<(Vec<usize>, Vec<NodeVisit>)> {
         self.validate_dijkstra_inputs(src_idx, speed_m_s)?;
-        let mut tree_map = vec![NodeVisit::new(); self.node_bound()];
-        let mut visited_nodes = Vec::new();
-        tree_map[src_idx].short_dist = 0.0;
-        tree_map[src_idx].agg_seconds = 0.0;
-        tree_map[src_idx].discovered = true;
-        let mut active = BinaryHeap::new();
-        active.push(NodeDistance {
-            node_idx: src_idx,
-            metric: 0.0,
-        });
-        while let Some(NodeDistance { node_idx, .. }) = active.pop() {
-            if tree_map[node_idx].visited {
-                continue;
-            }
-            tree_map[node_idx].visited = true;
-            visited_nodes.push(node_idx);
-            let current_node_index = NodeIndex::new(node_idx);
-            // Use Incoming direction to discover neighbors via edges pointing INTO current node.
-            // Edge Y→X (neighbor→current) gives us the distance FROM Y TO X, which is what we
-            // want for reversed/flipped aggregation where we accumulate TO the target node.
-            for edge_ref in self
-                .graph
-                .edges_directed(current_node_index, Direction::Incoming)
-            {
-                // With Incoming, source() gives the neighbor node (edge goes: neighbor → current)
-                let nb_nd_idx = edge_ref.source();
-                // Use incoming edge directly - it has the correct distance for Y→X
-                let edge_payload = edge_ref.weight();
-                if nb_nd_idx.index() == node_idx {
-                    continue;
-                }
-                if let Some(pred_idx) = tree_map[node_idx].pred {
-                    if nb_nd_idx.index() == pred_idx {
-                        continue;
-                    }
-                }
-                if tree_map[nb_nd_idx.index()].pred.is_some() {
-                    // Cycle detection: another path exists to this neighbor
-                    // Attribution based on which node was discovered first (smaller agg_seconds)
-                    if tree_map[node_idx].agg_seconds <= tree_map[nb_nd_idx.index()].agg_seconds {
-                        tree_map[nb_nd_idx.index()].cycles += 0.5;
-                    } else {
-                        tree_map[node_idx].cycles += 0.5;
-                    }
-                }
-                // Skip already-visited nodes to prevent stale distance updates
-                // that cannot propagate (the node has already been explored).
-                if tree_map[nb_nd_idx.index()].visited {
-                    continue;
-                }
-                let edge_seconds = self.edge_travel_seconds(
-                    nb_nd_idx.index(),
-                    node_idx,
-                    edge_payload,
-                    speed_m_s,
-                    true,
-                );
-                let total_seconds = tree_map[node_idx].agg_seconds + edge_seconds;
-                if total_seconds > max_seconds as f32 {
-                    continue;
-                }
-                if total_seconds < tree_map[nb_nd_idx.index()].agg_seconds {
-                    tree_map[nb_nd_idx.index()].short_dist = total_seconds * speed_m_s;
-                    tree_map[nb_nd_idx.index()].agg_seconds = total_seconds;
-                    tree_map[nb_nd_idx.index()].pred = Some(node_idx);
-                    tree_map[nb_nd_idx.index()].discovered = true;
-                    active.push(NodeDistance {
-                        node_idx: nb_nd_idx.index(),
-                        metric: total_seconds,
-                    });
-                }
-            }
-        }
-        Ok((visited_nodes, tree_map))
+        Ok(self.dijkstra_tree_node(
+            src_idx,
+            max_seconds,
+            speed_m_s,
+            NodeTraversalMode::Shortest,
+        ))
     }
 
     #[pyo3(signature = (src_idx, max_seconds, speed_m_s))]
@@ -846,93 +914,12 @@ impl NetworkStructure {
     ) -> PyResult<(Vec<usize>, Vec<NodeVisit>)> {
         self.validate_dual_for_angular("dijkstra_tree_simplest")?;
         self.validate_dijkstra_inputs(src_idx, speed_m_s)?;
-        let mut tree_map = vec![NodeVisit::new(); self.node_bound()];
-        let mut visited_nodes = Vec::new();
-        tree_map[src_idx].simpl_dist = 0.0;
-        tree_map[src_idx].agg_seconds = 0.0;
-        tree_map[src_idx].discovered = true;
-        let mut active = BinaryHeap::new();
-        active.push(NodeDistance {
-            node_idx: src_idx,
-            metric: 0.0,
-        });
-        while let Some(NodeDistance { node_idx, .. }) = active.pop() {
-            if tree_map[node_idx].visited {
-                continue;
-            }
-            tree_map[node_idx].visited = true;
-            visited_nodes.push(node_idx);
-            let current_node_index = NodeIndex::new(node_idx);
-            // Use Incoming direction to discover neighbors via edges pointing INTO current node.
-            // Edge Y→X (neighbor→current) gives us the distance FROM Y TO X, which is what we
-            // want for reversed/flipped aggregation where we accumulate TO the target node.
-            // For angular paths, the incoming edge has the correct bearings for Y→X travel.
-            for edge_ref in self
-                .graph
-                .edges_directed(current_node_index, Direction::Incoming)
-            {
-                // With Incoming, source() gives the neighbor node (edge goes: neighbor → current)
-                let nb_nd_idx = edge_ref.source();
-                // Use incoming edge directly - it has correct distance and bearings for Y→X
-                let edge_payload = edge_ref.weight();
-                if nb_nd_idx.index() == node_idx {
-                    continue;
-                }
-                if tree_map[nb_nd_idx.index()].visited {
-                    continue;
-                }
-                let current_pred = tree_map[node_idx].pred;
-                let neighbor_pred = tree_map[nb_nd_idx.index()].pred;
-                if current_pred.is_some()
-                    && neighbor_pred.is_some()
-                    && current_pred == neighbor_pred
-                {
-                    continue;
-                }
-                // Turn angle at node_idx when path goes: predecessor → node_idx → nb_nd_idx
-                // Using Direction::Incoming, we get edge Y→X (neighbor→current) but travel is X→Y.
-                // Both bearings are 180° offset from the actual travel direction, but the turn
-                // calculation still works if we use rem_euclid for proper modular arithmetic.
-                let mut turn = 0.0;
-                if node_idx != src_idx
-                    && edge_payload.out_bearing.is_finite()
-                    && tree_map[node_idx].prev_in_bearing.is_finite()
-                {
-                    turn = ((edge_payload.out_bearing - tree_map[node_idx].prev_in_bearing
-                        + 180.0)
-                        .rem_euclid(360.0)
-                        - 180.0)
-                        .abs();
-                }
-                let simpl_preceding_dist = turn + edge_payload.angle_sum;
-                let simpl_total_dist = tree_map[node_idx].simpl_dist + simpl_preceding_dist;
-                let edge_seconds = self.edge_travel_seconds(
-                    nb_nd_idx.index(),
-                    node_idx,
-                    edge_payload,
-                    speed_m_s,
-                    false,
-                );
-                let total_seconds = tree_map[node_idx].agg_seconds + edge_seconds;
-                if total_seconds > max_seconds as f32 {
-                    continue;
-                }
-                if simpl_total_dist < tree_map[nb_nd_idx.index()].simpl_dist {
-                    tree_map[nb_nd_idx.index()].simpl_dist = simpl_total_dist;
-                    tree_map[nb_nd_idx.index()].agg_seconds = total_seconds;
-                    tree_map[nb_nd_idx.index()].pred = Some(node_idx);
-                    // Store in_bearing for next turn calculation
-                    // in_bearing on edge Y→X = inward bearing from future Z to Y
-                    tree_map[nb_nd_idx.index()].prev_in_bearing = edge_payload.in_bearing;
-                    tree_map[nb_nd_idx.index()].discovered = true;
-                    active.push(NodeDistance {
-                        node_idx: nb_nd_idx.index(),
-                        metric: simpl_total_dist,
-                    });
-                }
-            }
-        }
-        Ok((visited_nodes, tree_map))
+        Ok(self.dijkstra_tree_node(
+            src_idx,
+            max_seconds,
+            speed_m_s,
+            NodeTraversalMode::Simplest,
+        ))
     }
 
     #[pyo3(signature = (src_idx, max_seconds, speed_m_s))]
@@ -1088,35 +1075,15 @@ impl NetworkStructure {
             .iter()
             .max()
             .expect("Seconds vector should not be empty");
-        let sampling_weights = match sampling_weights {
-            Some(w) => Some(self.expand_sampling_weights(&w)?),
-            None => None,
-        };
-        if let Some(prob) = sample_probability {
-            if prob <= 0.0 || prob > 1.0 {
-                return Err(exceptions::PyValueError::new_err(
-                    "sample_probability must be in (0.0, 1.0]",
-                ));
-            }
-        }
-        if source_indices.is_some() && sampling_weights.is_some() {
-            return Err(exceptions::PyValueError::new_err(
-                "source_indices and sampling_weights are mutually exclusive",
-            ));
-        }
-        if let Some(ref indices) = source_indices {
-            self.validate_source_indices_exist(indices)?;
-        }
-
-        // Count live nodes for betweenness scaling (needed for backwards-compat path)
-        let n_live: usize = self
-            .node_indices()
-            .iter()
-            .filter(|&&idx| self.is_node_live_unchecked(idx))
-            .count();
-
         let node_keys_py = self.node_keys_py(py);
         let node_indices = self.node_indices();
+        let sampling_plan = self.prepare_source_sampling(
+            sample_probability,
+            sampling_weights,
+            random_seed,
+            source_indices,
+            &node_indices,
+        )?;
         let n = self.node_bound();
         let mut res = CentralityShortestResult::new(
             distances.clone(),
@@ -1129,83 +1096,30 @@ impl NetworkStructure {
         let pbar_disabled = pbar_disabled.unwrap_or(false);
         self.progress_init();
 
-        // Pre-generate random samples from a single RNG to ensure uniform distribution.
-        // Only needed for stochastic path (no source_indices).
-        let sample_randoms: Vec<f32> = if sample_probability.is_some() && source_indices.is_none() {
-            let mut rng = if let Some(seed) = random_seed {
-                StdRng::seed_from_u64(seed)
-            } else {
-                StdRng::from_rng(&mut rand::rng())
-            };
-            (0..self.node_bound()).map(|_| rng.random()).collect()
-        } else {
-            Vec::new()
-        };
-
-        // Determine which sources to iterate
-        let is_source_indexed = source_indices.is_some();
-        let sources: Vec<usize> = if let Some(ref indices) = source_indices {
-            indices.clone()
-        } else {
-            node_indices.clone()
-        };
-        let n_sources = sources.len();
-        // Marks nodes that can contribute as sources under this run configuration.
-        // Used for direction-free pair weighting in undirected betweenness:
-        // - target can also be a source: 0.5 contribution from each direction
-        // - target cannot be a source: full 1.0 from the only possible direction
-        let source_eligible: Vec<bool> = if is_source_indexed {
-            let mut eligible = vec![false; n];
-            for &idx in &sources {
-                eligible[idx] = true;
-            }
-            eligible
-        } else {
-            let mut eligible = vec![false; n];
-            for &idx in &node_indices {
-                if self.is_node_live_unchecked(idx) {
-                    eligible[idx] = true;
-                }
-            }
-            eligible
-        };
-
         // Atomic counters for tracking source reachability when sampling
         let source_reachability_totals: Vec<AtomicU32> =
             distances.iter().map(|_| AtomicU32::new(0)).collect();
         let sampled_source_count = AtomicU32::new(0);
 
         let result = py.detach(move || {
-            sources.par_iter().for_each(|src_idx| {
+            sampling_plan.sources.par_iter().for_each(|src_idx| {
                 if !pbar_disabled {
                     self.progress.fetch_add(1, AtomicOrdering::Relaxed);
                 }
-                if !source_eligible[*src_idx] {
+                if !sampling_plan.source_eligible[*src_idx] {
                     return;
                 }
 
-                // Source sampling: Horvitz-Thompson (IPW) estimator scales by 1/p_src.
-                // This weight is used for closeness accumulation directly.
-                let mut wt = self.get_node_weight_unchecked(*src_idx);
-                if is_source_indexed {
-                    if let Some(prob) = sample_probability {
-                        wt /= prob;
-                    }
-                    sampled_source_count.fetch_add(1, AtomicOrdering::Relaxed);
-                } else if let Some(prob) = sample_probability {
-                    let mut p = prob;
-                    if let Some(ref weights) = sampling_weights {
-                        p *= weights[*src_idx];
-                    }
-                    if p <= 0.0 {
-                        return;
-                    }
-                    if sample_randoms[*src_idx] >= p {
-                        return;
-                    }
-                    sampled_source_count.fetch_add(1, AtomicOrdering::Relaxed);
-                    wt /= p;
-                }
+                let Some(wt) = self.sample_source_weight(
+                    *src_idx,
+                    sampling_plan.sample_probability,
+                    sampling_plan.sampling_weights.as_deref(),
+                    &sampling_plan.sample_randoms,
+                    sampling_plan.is_source_indexed,
+                    &sampled_source_count,
+                ) else {
+                    return;
+                };
 
                 // Single Dijkstra traversal serves both closeness and betweenness
                 let (visited_nodes, state) = self.dijkstra_brandes_shortest(
@@ -1227,7 +1141,9 @@ impl NetworkStructure {
                             continue;
                         }
                         // Track reachability per distance when sampling
-                        if sample_probability.is_some() || is_source_indexed {
+                        if sampling_plan.sample_probability.is_some()
+                            || sampling_plan.is_source_indexed
+                        {
                             for i in 0..distances.len() {
                                 if node_state.short_dist <= distances[i] as f32 {
                                     source_reachability_totals[i]
@@ -1297,7 +1213,11 @@ impl NetworkStructure {
                             // if target can also appear as a source, each direction
                             // contributes 0.5; otherwise this is the only direction
                             // and contributes 1.0.
-                            let pair_count = if source_eligible[w] { 0.5 } else { 1.0 };
+                            let pair_count = if sampling_plan.source_eligible[w] {
+                                0.5
+                            } else {
+                                1.0
+                            };
                             let pair_beta = pair_count * (-beta * state[w].short_dist as f64).exp();
                             for &v in &state[w].preds {
                                 let factor = state[v].sigma / sigma_w;
@@ -1314,7 +1234,7 @@ impl NetworkStructure {
             });
 
             // Closeness sampling metadata
-            if sample_probability.is_some() || is_source_indexed {
+            if sampling_plan.sample_probability.is_some() || sampling_plan.is_source_indexed {
                 res.sampled_source_count = sampled_source_count.load(AtomicOrdering::Relaxed);
                 res.reachability_totals = source_reachability_totals
                     .iter()
@@ -1328,11 +1248,11 @@ impl NetworkStructure {
             // without sampling, scale by n_live / n_sources to extrapolate from
             // the subset.
             if compute_betweenness {
-                let scale = if is_source_indexed {
-                    if sample_probability.is_some() {
+                let scale = if sampling_plan.is_source_indexed {
+                    if sampling_plan.sample_probability.is_some() {
                         1.0
                     } else {
-                        n_live as f64 / n_sources as f64
+                        sampling_plan.n_live as f64 / sampling_plan.n_sources as f64
                     }
                 } else {
                     1.0
@@ -1420,35 +1340,15 @@ impl NetworkStructure {
             .iter()
             .max()
             .expect("Seconds vector should not be empty");
-        let sampling_weights = match sampling_weights {
-            Some(w) => Some(self.expand_sampling_weights(&w)?),
-            None => None,
-        };
-        if let Some(prob) = sample_probability {
-            if prob <= 0.0 || prob > 1.0 {
-                return Err(exceptions::PyValueError::new_err(
-                    "sample_probability must be in (0.0, 1.0]",
-                ));
-            }
-        }
-        if source_indices.is_some() && sampling_weights.is_some() {
-            return Err(exceptions::PyValueError::new_err(
-                "source_indices and sampling_weights are mutually exclusive",
-            ));
-        }
-        if let Some(ref indices) = source_indices {
-            self.validate_source_indices_exist(indices)?;
-        }
-
-        // Count live nodes for betweenness scaling (needed for backwards-compat path)
-        let n_live: usize = self
-            .node_indices()
-            .iter()
-            .filter(|&&idx| self.is_node_live_unchecked(idx))
-            .count();
-
         let node_keys_py = self.node_keys_py(py);
         let node_indices = self.node_indices();
+        let sampling_plan = self.prepare_source_sampling(
+            sample_probability,
+            sampling_weights,
+            random_seed,
+            source_indices,
+            &node_indices,
+        )?;
         let n = self.node_bound();
         let mut res = CentralitySimplestResult::new(
             distances.clone(),
@@ -1461,85 +1361,38 @@ impl NetworkStructure {
         let pbar_disabled = pbar_disabled.unwrap_or(false);
         self.progress_init();
 
-        // Pre-generate random samples from a single RNG to ensure uniform distribution.
-        let sample_randoms: Vec<f32> = if sample_probability.is_some() && source_indices.is_none() {
-            let mut rng = if let Some(seed) = random_seed {
-                StdRng::seed_from_u64(seed)
-            } else {
-                StdRng::from_rng(&mut rand::rng())
-            };
-            (0..self.node_bound()).map(|_| rng.random()).collect()
-        } else {
-            Vec::new()
-        };
-
-        // Determine which sources to iterate
-        let is_source_indexed = source_indices.is_some();
-        let sources: Vec<usize> = if let Some(ref indices) = source_indices {
-            indices.clone()
-        } else {
-            node_indices.clone()
-        };
-        let n_sources = sources.len();
-        // Marks nodes that can contribute as sources under this run configuration.
-        // Used for direction-free pair weighting in undirected betweenness:
-        // - target can also be a source: 0.5 contribution from each direction
-        // - target cannot be a source: full 1.0 from the only possible direction
-        let source_eligible: Vec<bool> = if is_source_indexed {
-            let mut eligible = vec![false; n];
-            for &idx in &sources {
-                eligible[idx] = true;
-            }
-            eligible
-        } else {
-            let mut eligible = vec![false; n];
-            for &idx in &node_indices {
-                if self.is_node_live_unchecked(idx) {
-                    eligible[idx] = true;
-                }
-            }
-            eligible
-        };
-
         // Atomic counters for tracking source reachability when sampling
         let source_reachability_totals: Vec<AtomicU32> =
             seconds.iter().map(|_| AtomicU32::new(0)).collect();
         let sampled_source_count = AtomicU32::new(0);
 
         let result = py.detach(move || {
-            sources.par_iter().for_each(|src_idx| {
+            sampling_plan.sources.par_iter().for_each(|src_idx| {
                 if !pbar_disabled {
                     self.progress.fetch_add(1, AtomicOrdering::Relaxed);
                 }
-                if !source_eligible[*src_idx] {
+                if !sampling_plan.source_eligible[*src_idx] {
                     return;
                 }
 
-                // Source sampling: Horvitz-Thompson (IPW) estimator
-                let mut wt = self.get_node_weight_unchecked(*src_idx);
-                if is_source_indexed {
-                    if let Some(prob) = sample_probability {
-                        wt /= prob;
-                    }
-                    sampled_source_count.fetch_add(1, AtomicOrdering::Relaxed);
-                } else if let Some(prob) = sample_probability {
-                    let mut p = prob;
-                    if let Some(ref weights) = sampling_weights {
-                        p *= weights[*src_idx];
-                    }
-                    if p <= 0.0 {
-                        return;
-                    }
-                    if sample_randoms[*src_idx] >= p {
-                        return;
-                    }
-                    sampled_source_count.fetch_add(1, AtomicOrdering::Relaxed);
-                    wt /= p;
-                }
+                let Some(wt) = self.sample_source_weight(
+                    *src_idx,
+                    sampling_plan.sample_probability,
+                    sampling_plan.sampling_weights.as_deref(),
+                    &sampling_plan.sample_randoms,
+                    sampling_plan.is_source_indexed,
+                    &sampled_source_count,
+                ) else {
+                    return;
+                };
 
                 // Single Dijkstra traversal serves both closeness and betweenness
-                let (visited_nodes, state) =
-                    self.dijkstra_simplest(*src_idx, max_walk_seconds, speed_m_s);
+                let (visited_nodes, state) = self.dijkstra_tree_node(
+                    *src_idx,
+                    max_walk_seconds,
+                    speed_m_s,
+                    NodeTraversalMode::Simplest,
+                );
 
                 // --- Closeness accumulation ---
                 if compute_closeness {
@@ -1552,7 +1405,9 @@ impl NetworkStructure {
                             continue;
                         }
                         // Track reachability per time threshold when sampling
-                        if sample_probability.is_some() || is_source_indexed {
+                        if sampling_plan.sample_probability.is_some()
+                            || sampling_plan.is_source_indexed
+                        {
                             for i in 0..seconds.len() {
                                 if node_state.agg_seconds <= seconds[i] as f32 {
                                     source_reachability_totals[i]
@@ -1592,7 +1447,11 @@ impl NetworkStructure {
                         if to_idx == *src_idx {
                             continue;
                         }
-                        let pair_count = if source_eligible[to_idx] { 0.5 } else { 1.0 };
+                        let pair_count = if sampling_plan.source_eligible[to_idx] {
+                            0.5
+                        } else {
+                            1.0
+                        };
                         // Walk predecessor chain from target back to source.
                         let mut current_pred = state[to_idx].pred;
                         while let Some(inter_idx) = current_pred {
@@ -1612,7 +1471,7 @@ impl NetworkStructure {
             });
 
             // Closeness sampling metadata
-            if sample_probability.is_some() || is_source_indexed {
+            if sampling_plan.sample_probability.is_some() || sampling_plan.is_source_indexed {
                 res.sampled_source_count = sampled_source_count.load(AtomicOrdering::Relaxed);
                 res.reachability_totals = source_reachability_totals
                     .iter()
@@ -1623,11 +1482,11 @@ impl NetworkStructure {
             // Betweenness post-hoc scaling (pair weighting handled in-loop, see
             // centrality_shortest).
             if compute_betweenness {
-                let scale = if is_source_indexed {
-                    if sample_probability.is_some() {
+                let scale = if sampling_plan.is_source_indexed {
+                    if sampling_plan.sample_probability.is_some() {
                         1.0
                     } else {
-                        n_live as f64 / n_sources as f64
+                        sampling_plan.n_live as f64 / sampling_plan.n_sources as f64
                     }
                 } else {
                     1.0
