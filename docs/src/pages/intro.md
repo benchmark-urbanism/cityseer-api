@@ -26,6 +26,23 @@ A growing collection of recipes and examples is available via the [`Cityseer Exa
 - Granular evaluation of land-use accessibilities and mixed-uses requires that land uses be assigned to the street network in a contextually precise manner. `cityseer` assigns data-points to the nearest adjacent street segment and then allows access over the network from both sides, thereby allowing precise distances to be calculated dynamically based on the direction of approach.
 - Centrality methods are susceptible to topological distortions arising from 'messy' graph representations as well as due to the conflation of topological and geometrical properties of street networks. `cityseer` addresses these through the inclusion of graph cleaning functions and procedures for splitting geometrical properties from topological representations.
 
+## Elevation and Slope
+
+`cityseer` supports optional z (elevation) coordinates on network nodes. When elevation data is available, it is preserved throughout the full processing chain: graph construction, decomposition, consolidation, merging, dual graph conversion, CRS reprojection, and round-trip serialisation between `networkX`, `GeoDataFrames`, and the Rust `NetworkStructure`.
+
+When both endpoint nodes of an edge have z coordinates, `cityseer` automatically applies a slope-based walking impedance during shortest-path and simplest-path computations, using [Tobler's hiking function](https://en.wikipedia.org/wiki/Tobler%27s_hiking_function) (Tobler, 1993). This adjusts the effective traversal cost of each edge based on the gradient:
+
+- **Uphill** segments incur a penalty proportional to the grade (e.g. a 20% slope approximately doubles the effective distance).
+- **Steep downhill** segments are also penalised, reflecting the reduced walking speed on steep descents.
+- **Gentle downhill** slopes (~3%) receive a slight bonus, matching the empirically observed optimal walking gradient.
+- **Flat terrain** incurs no penalty (multiplier of 1.0).
+
+The slope penalty is computed dynamically and directionally during graph traversal, so the cost of walking uphill from A to B differs from the cost of walking downhill from B to A. This operates independently of the configured walking speed: the penalty is a dimensionless multiplier on effective distance, meaning it composes correctly regardless of whether the walking speed is set to 1.4 m/s or any other value.
+
+For simplest-path (angular) analysis, the slope penalty affects only the time budget (reachability cutoff), not the angular routing metric itself. This means the cognitively simplest path is still selected, but steep terrain reduces the distance a pedestrian can cover within the analysis threshold.
+
+When z coordinates are not present, all slope penalties default to 1.0 (no effect), ensuring full backward compatibility with existing 2D workflows.
+
 The broader emphasis on localised methods and how `cityseer` addresses these is broached in the [associated paper](https://journals.sagepub.com/doi/full/10.1177/23998083221133827). `cityseer` includes a variety of convenience methods for the general preparation of networks and their conversion into (and out of) the lower-level data structures used by the underlying algorithms. These graph utility methods are designed to work with `NetworkX` to facilitate ease of use. A complement of code tests has been developed to maintain the codebase's integrity through general package maintenance and upgrade cycles. Shortest-path algorithms, harmonic closeness, and betweenness algorithms are tested against `NetworkX`. Mock data and test plots have been used to visually confirm the intended behaviour for divergent simplest and shortest-path heuristics and for testing data assignment to network nodes given various scenarios.
 
 The best way to get started is to see the [`Cityseer Examples`](https://benchmark-urbanism.github.io/cityseer-examples/) site, which contains a number of recipes for a variety of use-cases.

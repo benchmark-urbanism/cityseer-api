@@ -18,6 +18,7 @@ class NodePayload:
     """Payload data associated with a network node."""
 
     node_key: Any  # In Rust: Py<PyAny>
+    z: float | None  # In Rust: Option<f64>
     live: bool
     weight: float  # In Rust: f32
     is_transport: bool
@@ -27,6 +28,10 @@ class NodePayload:
     @property
     def coord(self) -> tuple[float, float]:  # In Rust: getter returns (f64, f64)
         """Get the (x, y) coordinates of the node."""
+        ...
+    @property
+    def coord_z(self) -> tuple[float, float, float | None]:  # In Rust: getter returns (f64, f64, Option<f64>)
+        """Get the (x, y, z) coordinates of the node, where z may be None."""
         ...
 
 class EdgePayload:
@@ -99,7 +104,7 @@ class NetworkStructure:
         """Get the current value of the internal progress counter."""
         ...
     def add_street_node(
-        self, node_key: Any, x: float, y: float, live: bool, weight: float
+        self, node_key: Any, x: float, y: float, live: bool, weight: float, z: float | None = None
     ) -> int:  # Returns usize in Rust
         """
         Add a standard street network node.
@@ -116,6 +121,10 @@ class NetworkStructure:
             Indicates if the node is within the primary analysis area.
         weight: float
             Node weight (e.g., for weighted centrality calculations, >= 0).
+        z: float | None
+            Optional z-coordinate (elevation). Default None. When z is provided for both endpoints
+            of an edge, a slope-based walking impedance (Tobler's hiking function) is automatically
+            applied during shortest-path and simplest-path computations.
 
         Returns
         -------
@@ -130,6 +139,7 @@ class NetworkStructure:
         x: float,
         y: float,
         linking_radius: float | None = None,
+        z: float | None = None,
     ) -> int:  # Returns PyResult<usize> in Rust
         """
         Add a transport node (e.g., station, stop) and optionally link it to nearby street nodes.
@@ -149,6 +159,8 @@ class NetworkStructure:
             Node's y-coordinate.
         linking_radius: float | None
             Max distance (meters) to search for street nodes to link to (default: 100.0 from Rust).
+        z: float | None
+            Optional z-coordinate (elevation). Default None.
 
         Returns
         -------
@@ -197,6 +209,14 @@ class NetworkStructure:
     @property
     def node_xys(self) -> list[tuple[float, float]]:  # Getter returns Vec<(f64, f64)>
         """Get (x, y) coordinates for all nodes."""
+        ...
+    @property
+    def node_zs(self) -> list[float | None]:  # Getter returns Vec<Option<f64>>
+        """Get optional z-coordinates for all nodes."""
+        ...
+    @property
+    def node_xyzs(self) -> list[tuple[float, float, float | None]]:  # Getter returns Vec<(f64, f64, Option<f64>)>
+        """Get (x, y, z) coordinates for all nodes, where z may be None."""
         ...
     # street_node_xys removed as no direct public getter in Rust
     @property

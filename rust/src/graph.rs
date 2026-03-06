@@ -28,6 +28,8 @@ pub struct NodePayload {
     pub node_key: Py<PyAny>,
     pub point: Point<f64>,
     #[pyo3(get)]
+    pub z: Option<f64>,
+    #[pyo3(get)]
     pub live: bool,
     #[pyo3(get)]
     pub weight: f32,
@@ -40,6 +42,7 @@ impl Clone for NodePayload {
         Python::attach(|py| NodePayload {
             node_key: self.node_key.clone_ref(py),
             point: self.point.clone(),
+            z: self.z,                       // Option<f64> is Copy
             live: self.live,                 // bool is Copy
             weight: self.weight,             // f32 is Copy
             is_transport: self.is_transport, // bool is Copy
@@ -74,6 +77,11 @@ impl NodePayload {
     #[getter]
     pub fn coord(&self) -> (f64, f64) {
         (self.point.x(), self.point.y())
+    }
+
+    #[getter]
+    pub fn coord_z(&self) -> (f64, f64, Option<f64>) {
+        (self.point.x(), self.point.y(), self.z)
     }
 }
 
@@ -410,6 +418,7 @@ impl NetworkStructure {
         self.progress.load(AtomicOrdering::Relaxed)
     }
 
+    #[pyo3(signature = (node_key, x, y, live, weight, z=None))]
     pub fn add_street_node(
         &mut self,
         node_key: Py<PyAny>,
@@ -417,10 +426,12 @@ impl NetworkStructure {
         y: f64,
         live: bool,
         weight: f32,
+        z: Option<f64>,
     ) -> usize {
         let payload = NodePayload {
             node_key,
             point: Point::new(x, y),
+            z,
             live,
             weight,
             is_transport: false, // Explicitly false for street nodes
@@ -435,13 +446,14 @@ impl NetworkStructure {
         new_node_idx.index()
     }
 
-    #[pyo3(signature = (node_key, x, y, linking_radius=None))]
+    #[pyo3(signature = (node_key, x, y, linking_radius=None, z=None))]
     pub fn add_transport_node(
         &mut self,
         node_key: Py<PyAny>,
         x: f64,
         y: f64,
         linking_radius: Option<f64>,
+        z: Option<f64>,
         py: Python,
     ) -> PyResult<usize> {
         // Bind and clone node_key *before* moving it
@@ -453,6 +465,7 @@ impl NetworkStructure {
         let new_node_idx = self.graph.add_node(NodePayload {
             node_key, // Original Py<PyAny> moved here
             point: transport_point,
+            z,
             live: false, // Transport nodes are typically not "live" destinations themselves
             weight: 0.0, // Transport nodes usually don't have weights
             is_transport: true, // Explicitly true
@@ -640,6 +653,24 @@ impl NetworkStructure {
         self.graph
             .node_weights()
             .map(|payload| (payload.point.x(), payload.point.y()))
+            .collect()
+    }
+
+    /// Returns a list of optional `z` coordinates for all nodes (street and transport).
+    #[getter]
+    pub fn node_zs(&self) -> Vec<Option<f64>> {
+        self.graph
+            .node_weights()
+            .map(|payload| payload.z)
+            .collect()
+    }
+
+    /// Returns a list of `(x, y, z)` coordinates for all nodes (street and transport).
+    #[getter]
+    pub fn node_xyzs(&self) -> Vec<(f64, f64, Option<f64>)> {
+        self.graph
+            .node_weights()
+            .map(|payload| (payload.point.x(), payload.point.y(), payload.z))
             .collect()
     }
 

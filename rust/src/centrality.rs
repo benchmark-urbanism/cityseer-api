@@ -484,6 +484,33 @@ impl NetworkStructure {
         }
     }
 
+    /// Compute Tobler's hiking function slope penalty for an edge.
+    ///
+    /// Returns a multiplier on edge length: ~1.0 on flat ground, >1.0 uphill,
+    /// slightly <1.0 on gentle downhill (~-2.86° optimal).
+    /// If either node lacks z, returns 1.0 (no penalty).
+    ///
+    /// Based on: Tobler, W. (1993). "Three Presentations on Geographical Analysis and Modeling."
+    /// v = 6 * exp(-3.5 * |slope + 0.05|) km/h
+    #[inline]
+    fn slope_penalty(&self, from_idx: usize, to_idx: usize, length_2d: f32) -> f32 {
+        if length_2d <= 0.0 {
+            return 1.0;
+        }
+        let from_z = self.graph[NodeIndex::new(from_idx)].z;
+        let to_z = self.graph[NodeIndex::new(to_idx)].z;
+        match (from_z, to_z) {
+            (Some(z_from), Some(z_to)) => {
+                let slope = (z_to - z_from) as f32 / length_2d;
+                // Tobler flat reference: exp(-3.5 * |0 + 0.05|) = exp(-0.175)
+                const FLAT_FACTOR: f32 = 0.839_457;
+                let slope_factor = (-3.5_f32 * (slope + 0.05).abs()).exp();
+                FLAT_FACTOR / slope_factor
+            }
+            _ => 1.0,
+        }
+    }
+
     pub(crate) fn validate_dijkstra_inputs(&self, src_idx: usize, speed_m_s: f32) -> PyResult<()> {
         if src_idx >= self.node_bound() {
             return Err(exceptions::PyValueError::new_err(format!(
@@ -582,7 +609,8 @@ impl NetworkStructure {
                     continue;
                 }
                 let edge_seconds = if edge_payload.seconds.is_nan() {
-                    (edge_payload.length * edge_payload.imp_factor) / speed_m_s
+                    let slope_pen = self.slope_penalty(nb, node_idx, edge_payload.length);
+                    (edge_payload.length * edge_payload.imp_factor * slope_pen) / speed_m_s
                 } else {
                     edge_payload.seconds
                 };
@@ -684,7 +712,8 @@ impl NetworkStructure {
                 let simpl_preceding_dist = turn + edge_payload.angle_sum;
                 let candidate = state[node_idx].simpl_dist + simpl_preceding_dist;
                 let edge_seconds = if edge_payload.seconds.is_nan() {
-                    edge_payload.length / speed_m_s
+                    let slope_pen = self.slope_penalty(nb, node_idx, edge_payload.length);
+                    (edge_payload.length * slope_pen) / speed_m_s
                 } else {
                     edge_payload.seconds
                 };
@@ -772,7 +801,9 @@ impl NetworkStructure {
                     continue;
                 }
                 let edge_seconds = if edge_payload.seconds.is_nan() {
-                    (edge_payload.length * edge_payload.imp_factor) / speed_m_s
+                    let slope_pen =
+                        self.slope_penalty(nb_nd_idx.index(), node_idx, edge_payload.length);
+                    (edge_payload.length * edge_payload.imp_factor * slope_pen) / speed_m_s
                 } else {
                     edge_payload.seconds
                 };
@@ -864,7 +895,9 @@ impl NetworkStructure {
                 let simpl_preceding_dist = turn + edge_payload.angle_sum;
                 let simpl_total_dist = tree_map[node_idx].simpl_dist + simpl_preceding_dist;
                 let edge_seconds = if edge_payload.seconds.is_nan() {
-                    edge_payload.length / speed_m_s
+                    let slope_pen =
+                        self.slope_penalty(nb_nd_idx.index(), node_idx, edge_payload.length);
+                    (edge_payload.length * slope_pen) / speed_m_s
                 } else {
                     edge_payload.seconds
                 };
@@ -946,7 +979,9 @@ impl NetworkStructure {
                 edge_map[edge_idx.index()].edge_idx = Some(edge_payload.edge_idx);
 
                 let edge_seconds = if edge_payload.seconds.is_nan() {
-                    (edge_payload.length * edge_payload.imp_factor) / speed_m_s
+                    let slope_pen =
+                        self.slope_penalty(nb_nd_idx.index(), node_idx, edge_payload.length);
+                    (edge_payload.length * edge_payload.imp_factor * slope_pen) / speed_m_s
                 } else {
                     edge_payload.seconds
                 };
