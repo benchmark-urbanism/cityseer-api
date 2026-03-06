@@ -389,6 +389,7 @@ fn measure_cumulative_angle(coords: &[Coord<f64>]) -> f64 {
 #[derive(Clone)]
 pub struct NetworkStructure {
     pub graph: StableGraph<NodePayload, EdgePayload>,
+    pub is_dual: bool,
     pub progress: Arc<AtomicUsize>,
     pub edge_rtree: Option<RTree<EdgeRtreeItem>>,
     pub barrier_geoms: Option<Vec<Geometry<f64>>>,
@@ -401,6 +402,7 @@ impl NetworkStructure {
     pub fn new() -> Self {
         Self {
             graph: StableGraph::<NodePayload, EdgePayload>::default(),
+            is_dual: false,
             progress: Arc::new(AtomicUsize::new(0)),
             edge_rtree: None,
             barrier_geoms: None,
@@ -416,6 +418,15 @@ impl NetworkStructure {
     #[inline]
     pub fn progress(&self) -> usize {
         self.progress.load(AtomicOrdering::Relaxed)
+    }
+
+    #[getter]
+    pub fn is_dual(&self) -> bool {
+        self.is_dual
+    }
+
+    pub fn set_is_dual(&mut self, is_dual: bool) {
+        self.is_dual = is_dual;
     }
 
     #[pyo3(signature = (node_key, x, y, live, weight, z=None))]
@@ -1303,6 +1314,17 @@ impl NetworkStructure {
             .node_weight(NodeIndex::new(node_idx))
             .expect("No payload for requested node index.")
             .live
+    }
+
+    #[inline]
+    pub(crate) fn validate_dual_for_angular(&self, context: &str) -> PyResult<()> {
+        if !self.is_dual {
+            return Err(exceptions::PyValueError::new_err(format!(
+                "{} requires a dual graph for angular analysis. Convert the graph with cityseer.tools.graphs.nx_to_dual(...) before ingesting it into NetworkStructure.",
+                context
+            )));
+        }
+        Ok(())
     }
 
     /// Finds valid network node assignments for a single data entry.

@@ -16,6 +16,17 @@ MIN_THRESH_WT = config.MIN_THRESH_WT
 SPEED_M_S = config.SPEED_M_S
 
 
+def _require_dual_for_angular(
+    network_structure: rustalgos.graph.NetworkStructure,
+    context: str,
+) -> None:
+    if not network_structure.is_dual:
+        raise ValueError(
+            f"{context} requires a dual graph for angular analysis. "
+            "Convert the graph with cityseer.tools.graphs.nx_to_dual(...) before ingesting it."
+        )
+
+
 def build_data_map(
     data_gdf: gpd.GeoDataFrame,
     network_structure: rustalgos.graph.NetworkStructure,
@@ -218,6 +229,8 @@ def compute_accessibilities(
     ```
 
     """
+    if angular:
+        _require_dual_for_angular(network_structure, "compute_accessibilities")
     logger.info(f"Computing land-use accessibility for: {', '.join(accessibility_keys)}")
     # assign to network
     data_map = build_data_map(
@@ -455,6 +468,8 @@ def compute_mixed_uses(
     :::
 
     """
+    if angular:
+        _require_dual_for_angular(network_structure, "compute_mixed_uses")
     logger.info("Computing mixed-use measures.")
     # assign to network
     data_map = build_data_map(
@@ -656,6 +671,8 @@ def compute_stats(
     :::
 
     """
+    if angular:
+        _require_dual_for_angular(network_structure, "compute_stats")
     logger.info("Computing statistics.")
     # assign to network
     data_map = build_data_map(

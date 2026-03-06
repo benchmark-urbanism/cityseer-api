@@ -42,7 +42,8 @@ of roadway intersections or a proliferation of walking paths in greenspaces;
 together or where impedances otherwise approach zero, as may be the case for simplest-path measures or small
 distance thesholds. This happens because the outcome of the division step can balloon towards $\infty$ once
 impedances decrease below 1.
-- Note that `cityseer`'s implementation of simplest (angular) measures work on both primal and dual graphs (node only).
+- Simplest (angular) node measures require a dual graph representation. Convert primal graphs with
+  [`graphs.nx_to_dual`](/tools/graphs#nx-to-dual) before ingesting them.
 - Measures should only be directly compared on the same topology because different topologies can otherwise affect
 the expression of a measure. Accordingly, measures computed on dual graphs cannot be compared to measures computed
 on primal graphs because this does not account for the impact of differing topologies. Dual graph representations
@@ -686,7 +687,7 @@ may therefore be preferable when working at small thresholds on decomposed netwo
 </div>
 
 
- Compute node centrality using simplest (angular) paths with a single Dijkstra per source. When both `compute_closeness` and `compute_betweenness` are True, a single Brandes-style Dijkstra traversal per source produces the data for both closeness accumulation and betweenness backpropagation.
+ Compute node centrality using simplest (angular) paths with a single Dijkstra per source. When both `compute_closeness` and `compute_betweenness` are True, a single Brandes-style Dijkstra traversal per source produces the data for both closeness accumulation and betweenness backpropagation. Requires a dual graph representation.
 ### Parameters
 <div class="param-set">
   <div class="def">

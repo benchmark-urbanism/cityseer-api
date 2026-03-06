@@ -4,6 +4,7 @@ from __future__ import annotations
 import networkx as nx
 import numpy as np
 import numpy.typing as npt
+import pytest
 from cityseer import config, rustalgos
 from cityseer.tools import graphs, io
 
@@ -37,6 +38,32 @@ def make_single_edge_graph(z0: float | None = None, z1: float | None = None) -> 
     G.add_node("0", **node_0)
     G.add_node("1", **node_1)
     G.add_edge("0", "1")
+    return graphs.nx_simple_geoms(G)
+
+
+def make_two_segment_line_graph(
+    z0: float | None = None,
+    z1: float | None = None,
+    z2: float | None = None,
+) -> nx.MultiGraph:
+    from pyproj import CRS
+
+    G = nx.MultiGraph()
+    G.graph["crs"] = CRS(32630)
+    node_0 = {"x": 0.0, "y": 0.0}
+    node_1 = {"x": 100.0, "y": 0.0}
+    node_2 = {"x": 200.0, "y": 0.0}
+    if z0 is not None:
+        node_0["z"] = z0
+    if z1 is not None:
+        node_1["z"] = z1
+    if z2 is not None:
+        node_2["z"] = z2
+    G.add_node("0", **node_0)
+    G.add_node("1", **node_1)
+    G.add_node("2", **node_2)
+    G.add_edge("0", "1")
+    G.add_edge("1", "2")
     return graphs.nx_simple_geoms(G)
 
 
@@ -75,34 +102,11 @@ def test_shortest_path_trees(primal_graph, dual_graph):
             if str(target_idx) not in shortest_dists:
                 continue
             assert shortest_dists[str(target_idx)] - tree_map[target_idx].short_dist <= config.ATOL
+    with pytest.raises(ValueError, match="dual graph"):
+        network_structure_p.dijkstra_tree_simplest(0, int(max_seconds_5000), config.SPEED_M_S)
     # prepare dual graph
     nodes_gdf_d, edges_gdf_d, network_structure_d = io.network_structure_from_nx(dual_graph)
     assert len(nodes_gdf_d) > len(nodes_gdf_p)
-    # compare angular simplest paths for a selection of targets on primal vs. dual
-    # remember, this is angular change not distance travelled
-    # can be compared from primal to dual in this instance because edge segments are straight
-    # i.e. same amount of angular change whether primal or dual graph
-    # from cityseer.tools import plot
-    # plot.plot_nx_primal_or_dual(primal_graph, dual_graph, labels=True, primal_node_size=80, dpi=300)
-    p_source_idx = nodes_gdf_p.index.tolist().index("0")
-    primal_targets = ("15", "20", "37")
-    dual_sources = ("0_1_k0", "0_16_k0", "0_31_k0")
-    dual_targets = ("13_15_k0", "17_20_k0", "36_37_k0")
-    for p_target, d_source, d_target in zip(primal_targets, dual_sources, dual_targets, strict=True):
-        p_target_idx = nodes_gdf_p.index.tolist().index(p_target)
-        d_source_idx = nodes_gdf_d.index.tolist().index(d_source)  # dual source index changes depending on direction
-        d_target_idx = nodes_gdf_d.index.tolist().index(d_target)
-        _visited_nodes_p, tree_map_p = network_structure_p.dijkstra_tree_simplest(
-            p_source_idx,
-            int(max_seconds_5000),
-            config.SPEED_M_S,
-        )
-        _visited_nodes_d, tree_map_d = network_structure_d.dijkstra_tree_simplest(
-            d_source_idx,
-            int(max_seconds_5000),
-            config.SPEED_M_S,
-        )
-        assert tree_map_p[p_target_idx].simpl_dist - tree_map_d[d_target_idx].simpl_dist < config.ATOL
     # angular impedance should take a simpler but longer path - test basic case on dual
     # source and target are the same for either
     src_idx = nodes_gdf_d.index.tolist().index("11_6_k0")
@@ -169,6 +173,16 @@ def test_shortest_path_trees(primal_graph, dual_graph):
     path_transpose = [nodes_gdf_d.index[n] for n in path]
     # print(path_transpose)
     assert path_transpose == ["10_43_k0", "10_5_k0"]
+
+
+def test_simplest_requires_dual_graph(primal_graph):
+    _nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(primal_graph)
+    with pytest.raises(ValueError, match="dual graph"):
+        network_structure.centrality_simplest(
+            compute_closeness=True,
+            compute_betweenness=False,
+            distances=[500],
+        )
 
 
 def test_closeness_shortest(primal_graph):
@@ -327,20 +341,33 @@ def test_directional_slope_penalty_shortest_and_simplest():
     downhill_short_seconds = tree_short_0[idx_1].agg_seconds
     uphill_short_seconds = tree_short_1[idx_0].agg_seconds
 
-    _visited_simpl_0, tree_simpl_0 = network_structure.dijkstra_tree_simplest(idx_0, max_seconds, config.SPEED_M_S)
-    _visited_simpl_1, tree_simpl_1 = network_structure.dijkstra_tree_simplest(idx_1, max_seconds, config.SPEED_M_S)
-    downhill_simpl_seconds = tree_simpl_0[idx_1].agg_seconds
-    uphill_simpl_seconds = tree_simpl_1[idx_0].agg_seconds
-
     flat_seconds = 100.0 / config.SPEED_M_S
 
     assert downhill_short_seconds < flat_seconds < uphill_short_seconds
-    assert downhill_simpl_seconds < flat_seconds < uphill_simpl_seconds
-    assert np.isclose(downhill_short_seconds, downhill_simpl_seconds, atol=config.ATOL)
-    assert np.isclose(uphill_short_seconds, uphill_simpl_seconds, atol=config.ATOL)
-    # Simplest routing metric should remain angular-only; a single straight segment has zero angular cost.
-    assert np.isclose(tree_simpl_0[idx_1].simpl_dist, 0.0, atol=config.ATOL)
-    assert np.isclose(tree_simpl_1[idx_0].simpl_dist, 0.0, atol=config.ATOL)
+
+    with pytest.raises(ValueError, match="dual graph"):
+        network_structure.dijkstra_tree_simplest(idx_0, max_seconds, config.SPEED_M_S)
+
+    # On a dual graph, simplest routing should remain angular-only while slope
+    # still affects the metric/time cutoff accumulator.
+    elevated_line_graph = make_two_segment_line_graph(z0=0.0, z1=5.0, z2=10.0)
+    elevated_line_graph_dual = graphs.nx_to_dual(elevated_line_graph)
+    nodes_gdf_dual, _edges_gdf_dual, network_structure_dual = io.network_structure_from_nx(elevated_line_graph_dual)
+    dual_idx_01 = nodes_gdf_dual.index.tolist().index("0_1_k0")
+    dual_idx_12 = nodes_gdf_dual.index.tolist().index("1_2_k0")
+    _visited_simpl_01, tree_simpl_01 = network_structure_dual.dijkstra_tree_simplest(
+        dual_idx_01, max_seconds, config.SPEED_M_S
+    )
+    _visited_simpl_12, tree_simpl_12 = network_structure_dual.dijkstra_tree_simplest(
+        dual_idx_12, max_seconds, config.SPEED_M_S
+    )
+    simpl_seconds_01_to_12 = tree_simpl_01[dual_idx_12].agg_seconds
+    simpl_seconds_12_to_01 = tree_simpl_12[dual_idx_01].agg_seconds
+    assert not np.isclose(simpl_seconds_01_to_12, simpl_seconds_12_to_01, atol=config.ATOL)
+    assert min(simpl_seconds_01_to_12, simpl_seconds_12_to_01) < flat_seconds
+    assert max(simpl_seconds_01_to_12, simpl_seconds_12_to_01) > flat_seconds
+    assert np.isclose(tree_simpl_01[dual_idx_12].simpl_dist, 0.0, atol=config.ATOL)
+    assert np.isclose(tree_simpl_12[dual_idx_01].simpl_dist, 0.0, atol=config.ATOL)
 
     # Missing z on either endpoint should disable slope penalties entirely.
     partial_z_graph = make_single_edge_graph(z0=0.0, z1=None)
@@ -420,66 +447,12 @@ def test_local_centrality_all(diamond_graph):
     )
     # node shortest weights tested in previous function
 
-    # NODE SIMPLEST
-    node_result_simplest = network_structure.centrality_simplest(
-        distances=distances,
-        compute_closeness=True,
-        compute_betweenness=False,
-    )
-    node_result_simplest_0_180 = network_structure.centrality_simplest(
-        distances=distances,
-        compute_closeness=True,
-        compute_betweenness=False,
-        farness_scaling_offset=0,
-        angular_scaling_unit=180,
-    )
-    # node density
-    # additive nodes
-    assert np.allclose(node_result_simplest.node_density[50], [0, 0, 0, 0], atol=config.ATOL, rtol=config.RTOL)
-    assert np.allclose(node_result_simplest.node_density[150], [2, 3, 3, 2], atol=config.ATOL, rtol=config.RTOL)
-    assert np.allclose(node_result_simplest.node_density[250], [3, 3, 3, 3], atol=config.ATOL, rtol=config.RTOL)
-    # node farness
-    # additive angular distances
-    # additive 1 + (angle / 180)
-    assert np.allclose(node_result_simplest.node_farness[50], [0, 0, 0, 0], atol=config.ATOL, rtol=config.RTOL)
-    assert np.allclose(node_result_simplest.node_farness[150], [2, 3, 3, 2], atol=config.ATOL, rtol=config.RTOL)
-    assert np.allclose(node_result_simplest.node_farness[250], [3.333, 3, 3, 3.333], atol=config.ATOL, rtol=config.RTOL)
-    # custom scaling
-    assert np.allclose(node_result_simplest_0_180.node_farness[150], [0, 0, 0, 0], atol=config.ATOL, rtol=config.RTOL)
-    assert np.allclose(
-        node_result_simplest_0_180.node_farness[250], [0.333, 0, 0, 0.333], atol=config.ATOL, rtol=config.RTOL
-    )
-    # node harmonic angular
-    # additive 1 / (1 + (to_imp / 180))
-    assert np.allclose(node_result_simplest.node_harmonic[50], [0, 0, 0, 0], atol=config.ATOL, rtol=config.RTOL)
-    assert np.allclose(node_result_simplest.node_harmonic[150], [2, 3, 3, 2], atol=config.ATOL, rtol=config.RTOL)
-    assert np.allclose(node_result_simplest.node_harmonic[250], [2.75, 3, 3, 2.75], atol=config.ATOL, rtol=config.RTOL)
-    # should be the same
-    assert np.allclose(node_result_simplest_0_180.node_harmonic[150], [2, 3, 3, 2], atol=config.ATOL, rtol=config.RTOL)
-    assert np.allclose(
-        node_result_simplest_0_180.node_harmonic[250], [2.75, 3, 3, 2.75], atol=config.ATOL, rtol=config.RTOL
-    )
-    # node betweenness angular
-    # check weights
-    for wt in [0.5, 2]:
-        # for weighted checks
-        diamond_graph_wt = diamond_graph.copy()
-        for nd_idx in diamond_graph_wt.nodes():
-            diamond_graph_wt.nodes[nd_idx]["weight"] = wt
-        _nodes_gdf_wt, _edges_gdf_wt, network_structure_wt = io.network_structure_from_nx(diamond_graph_wt)
-        node_result_simplest_wt = network_structure_wt.centrality_simplest(
+    with pytest.raises(ValueError, match="dual graph"):
+        network_structure.centrality_simplest(
             distances=distances,
             compute_closeness=True,
             compute_betweenness=False,
         )
-        # check that weighted versions behave as anticipated
-        for dist in distances:
-            assert np.allclose(
-                node_result_simplest.node_harmonic[dist] * wt,
-                node_result_simplest_wt.node_harmonic[dist],
-                rtol=config.RTOL,
-                atol=config.ATOL,
-            )
     # NODE SIMPLEST ON DUAL network_structure_dual
     node_result_simplest = network_structure_dual.centrality_simplest(
         distances=distances,
@@ -638,14 +611,14 @@ def test_betweenness_vs_networkx(primal_graph):
         )
 
 
-def test_simplest_closeness_differs_from_shortest(primal_graph):
+def test_simplest_closeness_differs_from_shortest(dual_graph):
     """Simplest (angular) closeness produces different values from shortest closeness.
 
     On a non-trivial graph, angular impedance routes through geometrically simpler
     (straighter) paths, which differ from metrically shortest paths. This verifies
     that the simplest path algorithm is not accidentally using shortest-path routing.
     """
-    _nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(primal_graph)
+    _nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(dual_graph)
     # Use large distance to avoid cutoff differences between path types
     distances = [5000]
     res_shortest = network_structure.centrality_shortest(
@@ -702,6 +675,7 @@ def test_simplest_betweenness_invariant_to_node_order():
     results = []
     for ordering in orderings:
         label_to_idx = {label: str(i) for i, label in enumerate(ordering)}
+        idx_to_label = {idx: label for label, idx in label_to_idx.items()}
         G = nx.MultiGraph()
         G.graph["crs"] = CRS(32630)
         for label in ordering:
@@ -711,23 +685,25 @@ def test_simplest_betweenness_invariant_to_node_order():
         for a, b in base_edges:
             G.add_edge(label_to_idx[a], label_to_idx[b])
         G = graphs.nx_simple_geoms(G)
-        _nodes_gdf, _edges_gdf, net = io.network_structure_from_nx(G)
+        G_dual = graphs.nx_to_dual(G)
+        nodes_gdf, _edges_gdf, net = io.network_structure_from_nx(G_dual)
         res = net.centrality_simplest(
             compute_closeness=False,
             compute_betweenness=True,
             distances=[500],
         )
-        # Map back to canonical labels so we can compare across orderings
-        betw_by_label = {}
-        for label in ordering:
-            idx = int(label_to_idx[label])
-            betw_by_label[label] = res.node_betweenness[500][idx]
-        results.append(betw_by_label)
+        # Map dual nodes back to canonical primal edges so we can compare across orderings
+        betw_by_edge = {}
+        for node_pos, node_key in enumerate(nodes_gdf.index):
+            row = nodes_gdf.loc[node_key]
+            edge_label = tuple(sorted((idx_to_label[row["primal_edge_node_a"]], idx_to_label[row["primal_edge_node_b"]])))
+            betw_by_edge[edge_label] = res.node_betweenness[500][node_pos]
+        results.append(betw_by_edge)
     # All orderings must agree
-    for label in ["A", "B", "C", "D"]:
-        vals = [r[label] for r in results]
+    for edge_label in [("A", "B"), ("B", "C"), ("B", "D")]:
+        vals = [r[edge_label] for r in results]
         assert all(abs(v - vals[0]) < config.ATOL for v in vals), (
-            f"Node {label}: betweenness varies with insertion order: {vals}"
+            f"Edge {edge_label}: betweenness varies with insertion order: {vals}"
         )
 
 
@@ -756,6 +732,7 @@ def test_betweenness_mixed_live_non_live_invariant_to_node_order():
     simplest_results = []
     for ordering in orderings:
         label_to_idx = {label: str(i) for i, label in enumerate(ordering)}
+        idx_to_label = {idx: label for label, idx in label_to_idx.items()}
         G = nx.MultiGraph()
         G.graph["crs"] = CRS(32630)
         for label in ordering:
@@ -766,13 +743,15 @@ def test_betweenness_mixed_live_non_live_invariant_to_node_order():
             G.add_edge(label_to_idx[a], label_to_idx[b])
         G = graphs.nx_simple_geoms(G)
         _nodes_gdf, _edges_gdf, net = io.network_structure_from_nx(G)
+        G_dual = graphs.nx_to_dual(G)
+        nodes_gdf_dual, _edges_gdf_dual, net_dual = io.network_structure_from_nx(G_dual)
 
         res_shortest = net.centrality_shortest(
             compute_closeness=False,
             compute_betweenness=True,
             distances=[1000],
         )
-        res_simplest = net.centrality_simplest(
+        res_simplest = net_dual.centrality_simplest(
             compute_closeness=False,
             compute_betweenness=True,
             distances=[1000],
@@ -781,28 +760,32 @@ def test_betweenness_mixed_live_non_live_invariant_to_node_order():
         shortest_results.append(
             {label: res_shortest.node_betweenness[1000][int(label_to_idx[label])] for label in ordering}
         )
-        simplest_results.append(
-            {label: res_simplest.node_betweenness[1000][int(label_to_idx[label])] for label in ordering}
+        simplest_by_edge = {}
+        for node_pos, node_key in enumerate(nodes_gdf_dual.index):
+            row = nodes_gdf_dual.loc[node_key]
+            edge_label = tuple(sorted((idx_to_label[row["primal_edge_node_a"]], idx_to_label[row["primal_edge_node_b"]])))
+            simplest_by_edge[edge_label] = res_simplest.node_betweenness[1000][node_pos]
+        simplest_results.append(simplest_by_edge)
+
+    for label in ["A", "B", "C", "D"]:
+        vals = [r[label] for r in shortest_results]
+        assert all(abs(v - vals[0]) < config.ATOL for v in vals), (
+            f"shortest node {label}: betweenness varies with insertion order: {vals}"
+        )
+    for edge_label in [("A", "B"), ("B", "C"), ("C", "D")]:
+        vals = [r[edge_label] for r in simplest_results]
+        assert all(abs(v - vals[0]) < config.ATOL for v in vals), (
+            f"simplest edge {edge_label}: betweenness varies with insertion order: {vals}"
         )
 
-    for method_name, results in [
-        ("shortest", shortest_results),
-        ("simplest", simplest_results),
-    ]:
-        for label in ["A", "B", "C", "D"]:
-            vals = [r[label] for r in results]
-            assert all(abs(v - vals[0]) < config.ATOL for v in vals), (
-                f"{method_name} node {label}: betweenness varies with insertion order: {vals}"
-            )
 
-
-def test_simplest_betweenness_differs_from_shortest(primal_graph):
+def test_simplest_betweenness_differs_from_shortest(dual_graph):
     """Simplest (angular) betweenness produces different values from shortest betweenness.
 
     Verifies that the angular betweenness is not accidentally falling back to
     shortest-path routing, which would be a bug.
     """
-    _nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(primal_graph)
+    _nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(dual_graph)
     distances = [500, 2000]
     res_shortest = network_structure.centrality_shortest(
         compute_closeness=False, compute_betweenness=True, distances=distances

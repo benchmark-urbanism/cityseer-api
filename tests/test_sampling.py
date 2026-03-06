@@ -29,6 +29,16 @@ def network_structure():
     return ns, nodes_gdf
 
 
+@pytest.fixture
+def dual_network_structure():
+    """Create a mock dual network for angular testing."""
+    G = mock.mock_graph()
+    G = graphs.nx_simple_geoms(G)
+    G = graphs.nx_to_dual(G)
+    nodes_gdf, _edges_gdf, ns = io.network_structure_from_nx(G)
+    return ns, nodes_gdf
+
+
 class TestSamplingBasics:
     """Basic sampling functionality."""
 
@@ -340,9 +350,9 @@ class TestSamplingWeights:
 class TestSimplestCentrality:
     """Angular (simplest path) centrality sampling."""
 
-    def test_reproducibility(self, network_structure):
+    def test_reproducibility(self, dual_network_structure):
         """Simplest centrality sampling is reproducible."""
-        ns, _ = network_structure
+        ns, _ = dual_network_structure
 
         res1 = ns.centrality_simplest(
             compute_closeness=True,
@@ -363,9 +373,9 @@ class TestSimplestCentrality:
 
         assert np.allclose(res1.node_density[500], res2.node_density[500])
 
-    def test_averaged_samples_converge(self, network_structure):
+    def test_averaged_samples_converge(self, dual_network_structure):
         """Averaged simplest centrality samples converge to true values."""
-        ns, _ = network_structure
+        ns, _ = dual_network_structure
         distance = 500
         num_runs = 15
 

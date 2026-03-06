@@ -1067,6 +1067,7 @@ def network_structure_from_nx(
     g_multi_copy = util.validate_cityseer_networkx_graph(nx_multigraph)
     # prepare the network structure
     network_structure = rustalgos.graph.NetworkStructure()
+    network_structure.set_is_dual(bool(g_multi_copy.graph.get("is_dual", False)))
     # generate the network information
     agg_node_data: dict[str, tuple[Any, ...]] = {}
     agg_node_dual_data: dict[str, tuple[Any, Any, Any, Any]] = {}

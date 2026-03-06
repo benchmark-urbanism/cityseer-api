@@ -88,6 +88,7 @@ class NetworkStructure:
     """Manages the network graph, including nodes, edges, barriers, and spatial indexing."""
 
     graph: StableGraph  # Actual type is petgraph::stable_graph::StableGraph<NodePayload, EdgePayload>
+    is_dual: bool
     edge_rtree: (
         object | None
     )  # R-tree for efficient spatial queries on edges. Type in Rust: Option<RTree<EdgeRtreeItem>>
@@ -102,6 +103,13 @@ class NetworkStructure:
     @property
     def progress(self) -> int:  # In Rust: pub fn progress(&self) -> usize
         """Get the current value of the internal progress counter."""
+        ...
+    @property
+    def is_dual(self) -> bool:
+        """Whether this network structure was ingested from a dual graph."""
+        ...
+    def set_is_dual(self, is_dual: bool) -> None:
+        """Set whether this network structure represents a dual graph."""
         ...
     def add_street_node(
         self, node_key: Any, x: float, y: float, live: bool, weight: float, z: float | None = None
@@ -417,6 +425,10 @@ class NetworkStructure:
         -------
         tuple[list[int], list[NodeVisit]]
             (List of reachable node indices, List of NodeVisit states for all nodes).
+
+        Notes
+        -----
+        Requires `self.is_dual == True`.
         """
         ...
     def dijkstra_tree_segment(
@@ -558,6 +570,10 @@ class NetworkStructure:
         -------
         CentralitySimplestResult
             Object containing closeness and/or betweenness centrality metrics.
+
+        Notes
+        -----
+        Requires `self.is_dual == True`.
         """
         ...
     def betweenness_od_shortest(

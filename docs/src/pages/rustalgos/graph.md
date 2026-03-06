@@ -202,6 +202,8 @@ layout: ../../layouts/PageLayout.astro
 </div>
 </div>
 
+ Requires `self.is_dual == True`.
+
 </div>
 
  
@@ -365,7 +367,7 @@ layout: ../../layouts/PageLayout.astro
 </div>
 
 
- Compute node centrality using simplest (angular) paths with a single Dijkstra per source. When both `compute_closeness` and `compute_betweenness` are true, a single Brandes-style Dijkstra traversal per source produces the data for both closeness accumulation and betweenness backpropagation.
+ Compute node centrality using simplest (angular) paths with a single Dijkstra per source. When both `compute_closeness` and `compute_betweenness` are true, a single Brandes-style Dijkstra traversal per source produces the data for both closeness accumulation and betweenness backpropagation. Requires a dual graph representation.
 
 </div>
 

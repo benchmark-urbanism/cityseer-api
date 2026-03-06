@@ -45,7 +45,8 @@ of roadway intersections or a proliferation of walking paths in greenspaces;
 together or where impedances otherwise approach zero, as may be the case for simplest-path measures or small
 distance thesholds. This happens because the outcome of the division step can balloon towards $\infty$ once
 impedances decrease below 1.
-- Note that `cityseer`'s implementation of simplest (angular) measures work on both primal and dual graphs (node only).
+- Simplest (angular) node measures require a dual graph representation. Convert primal graphs with
+  [`graphs.nx_to_dual`](/tools/graphs#nx-to-dual) before ingesting them.
 - Measures should only be directly compared on the same topology because different topologies can otherwise affect
 the expression of a measure. Accordingly, measures computed on dual graphs cannot be compared to measures computed
 on primal graphs because this does not account for the impact of differing topologies. Dual graph representations
@@ -84,6 +85,17 @@ logger = logging.getLogger(__name__)
 # separate out so that ast parser can parse function def
 MIN_THRESH_WT = config.MIN_THRESH_WT
 SPEED_M_S = config.SPEED_M_S
+
+
+def _require_dual_for_angular(
+    network_structure: rustalgos.graph.NetworkStructure,
+    context: str,
+) -> None:
+    if not network_structure.is_dual:
+        raise ValueError(
+            f"{context} requires a dual graph for angular analysis. "
+            "Convert the graph with cityseer.tools.graphs.nx_to_dual(...) before ingesting it."
+        )
 
 
 def node_centrality_shortest(
@@ -496,6 +508,7 @@ def node_centrality_simplest(
     nodes_gdf: GeoDataFrame
         The input `nodes_gdf` parameter is returned with additional centrality columns.
     """
+    _require_dual_for_angular(network_structure, "node_centrality_simplest")
     logger.info("Computing node centrality (simplest).")
     resolved_distances, _betas, _seconds = rustalgos.pair_distances_betas_time(
         speed_m_s, distances, betas, minutes, min_threshold_wt=min_threshold_wt

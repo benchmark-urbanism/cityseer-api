@@ -511,6 +511,27 @@ impl NetworkStructure {
         }
     }
 
+    #[inline]
+    fn edge_travel_seconds(
+        &self,
+        from_idx: usize,
+        to_idx: usize,
+        edge_payload: &crate::graph::EdgePayload,
+        speed_m_s: f32,
+        use_impedance: bool,
+    ) -> f32 {
+        if !edge_payload.seconds.is_nan() {
+            return edge_payload.seconds;
+        }
+        let slope_pen = self.slope_penalty(from_idx, to_idx, edge_payload.length);
+        let imp_factor = if use_impedance {
+            edge_payload.imp_factor
+        } else {
+            1.0
+        };
+        (edge_payload.length * imp_factor * slope_pen) / speed_m_s
+    }
+
     pub(crate) fn validate_dijkstra_inputs(&self, src_idx: usize, speed_m_s: f32) -> PyResult<()> {
         if src_idx >= self.node_bound() {
             return Err(exceptions::PyValueError::new_err(format!(
@@ -608,12 +629,7 @@ impl NetworkStructure {
                 if state[nb].visited {
                     continue;
                 }
-                let edge_seconds = if edge_payload.seconds.is_nan() {
-                    let slope_pen = self.slope_penalty(nb, node_idx, edge_payload.length);
-                    (edge_payload.length * edge_payload.imp_factor * slope_pen) / speed_m_s
-                } else {
-                    edge_payload.seconds
-                };
+                let edge_seconds = self.edge_travel_seconds(nb, node_idx, edge_payload, speed_m_s, true);
                 let candidate = state[node_idx].agg_seconds + edge_seconds;
                 if candidate > max_seconds as f32 {
                     continue;
@@ -711,12 +727,7 @@ impl NetworkStructure {
                 }
                 let simpl_preceding_dist = turn + edge_payload.angle_sum;
                 let candidate = state[node_idx].simpl_dist + simpl_preceding_dist;
-                let edge_seconds = if edge_payload.seconds.is_nan() {
-                    let slope_pen = self.slope_penalty(nb, node_idx, edge_payload.length);
-                    (edge_payload.length * slope_pen) / speed_m_s
-                } else {
-                    edge_payload.seconds
-                };
+                let edge_seconds = self.edge_travel_seconds(nb, node_idx, edge_payload, speed_m_s, false);
                 let total_seconds = state[node_idx].agg_seconds + edge_seconds;
                 if total_seconds > max_seconds as f32 {
                     continue;
@@ -800,13 +811,13 @@ impl NetworkStructure {
                 if tree_map[nb_nd_idx.index()].visited {
                     continue;
                 }
-                let edge_seconds = if edge_payload.seconds.is_nan() {
-                    let slope_pen =
-                        self.slope_penalty(nb_nd_idx.index(), node_idx, edge_payload.length);
-                    (edge_payload.length * edge_payload.imp_factor * slope_pen) / speed_m_s
-                } else {
-                    edge_payload.seconds
-                };
+                let edge_seconds = self.edge_travel_seconds(
+                    nb_nd_idx.index(),
+                    node_idx,
+                    edge_payload,
+                    speed_m_s,
+                    true,
+                );
                 let total_seconds = tree_map[node_idx].agg_seconds + edge_seconds;
                 if total_seconds > max_seconds as f32 {
                     continue;
@@ -833,6 +844,7 @@ impl NetworkStructure {
         max_seconds: u32,
         speed_m_s: f32,
     ) -> PyResult<(Vec<usize>, Vec<NodeVisit>)> {
+        self.validate_dual_for_angular("dijkstra_tree_simplest")?;
         self.validate_dijkstra_inputs(src_idx, speed_m_s)?;
         let mut tree_map = vec![NodeVisit::new(); self.node_bound()];
         let mut visited_nodes = Vec::new();
@@ -894,13 +906,13 @@ impl NetworkStructure {
                 }
                 let simpl_preceding_dist = turn + edge_payload.angle_sum;
                 let simpl_total_dist = tree_map[node_idx].simpl_dist + simpl_preceding_dist;
-                let edge_seconds = if edge_payload.seconds.is_nan() {
-                    let slope_pen =
-                        self.slope_penalty(nb_nd_idx.index(), node_idx, edge_payload.length);
-                    (edge_payload.length * slope_pen) / speed_m_s
-                } else {
-                    edge_payload.seconds
-                };
+                let edge_seconds = self.edge_travel_seconds(
+                    nb_nd_idx.index(),
+                    node_idx,
+                    edge_payload,
+                    speed_m_s,
+                    false,
+                );
                 let total_seconds = tree_map[node_idx].agg_seconds + edge_seconds;
                 if total_seconds > max_seconds as f32 {
                     continue;
@@ -978,13 +990,13 @@ impl NetworkStructure {
                 edge_map[edge_idx.index()].end_nd_idx = Some(nb_nd_idx.index());
                 edge_map[edge_idx.index()].edge_idx = Some(edge_payload.edge_idx);
 
-                let edge_seconds = if edge_payload.seconds.is_nan() {
-                    let slope_pen =
-                        self.slope_penalty(nb_nd_idx.index(), node_idx, edge_payload.length);
-                    (edge_payload.length * edge_payload.imp_factor * slope_pen) / speed_m_s
-                } else {
-                    edge_payload.seconds
-                };
+                let edge_seconds = self.edge_travel_seconds(
+                    nb_nd_idx.index(),
+                    node_idx,
+                    edge_payload,
+                    speed_m_s,
+                    true,
+                );
                 let total_seconds = tree_map[node_idx].agg_seconds + edge_seconds;
                 if total_seconds > max_seconds as f32 {
                     continue;
@@ -1386,6 +1398,7 @@ impl NetworkStructure {
         pbar_disabled: Option<bool>,
         py: Python,
     ) -> PyResult<CentralitySimplestResult> {
+        self.validate_dual_for_angular("centrality_simplest")?;
         let compute_closeness = compute_closeness.unwrap_or(true);
         let compute_betweenness = compute_betweenness.unwrap_or(true);
         if !compute_closeness && !compute_betweenness {
