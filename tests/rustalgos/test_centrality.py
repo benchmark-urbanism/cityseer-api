@@ -23,6 +23,23 @@ def find_path(start_idx, target_idx, tree_map):
     return list(reversed(s_path))
 
 
+def make_single_edge_graph(z0: float | None = None, z1: float | None = None) -> nx.MultiGraph:
+    from pyproj import CRS
+
+    G = nx.MultiGraph()
+    G.graph["crs"] = CRS(32630)
+    node_0 = {"x": 0.0, "y": 0.0}
+    node_1 = {"x": 100.0, "y": 0.0}
+    if z0 is not None:
+        node_0["z"] = z0
+    if z1 is not None:
+        node_1["z"] = z1
+    G.add_node("0", **node_0)
+    G.add_node("1", **node_1)
+    G.add_edge("0", "1")
+    return graphs.nx_simple_geoms(G)
+
+
 def test_shortest_path_trees(primal_graph, dual_graph):
     nodes_gdf_p, edges_gdf_p, network_structure_p = io.network_structure_from_nx(primal_graph)
     # prepare round-trip graph for checks
@@ -292,6 +309,52 @@ def test_closeness_shortest(primal_graph):
                 rtol=config.RTOL,
                 atol=config.ATOL,
             )
+
+
+def test_directional_slope_penalty_shortest_and_simplest():
+    """Slope penalties should be directional while missing z falls back to flat cost."""
+    max_seconds = 1000
+
+    # Rising 5 m over 100 m: source=0 aggregates target 1 -> 0 (downhill),
+    # source=1 aggregates target 0 -> 1 (uphill).
+    elevated_graph = make_single_edge_graph(z0=0.0, z1=5.0)
+    nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(elevated_graph)
+    idx_0 = nodes_gdf.index.tolist().index("0")
+    idx_1 = nodes_gdf.index.tolist().index("1")
+
+    _visited_short_0, tree_short_0 = network_structure.dijkstra_tree_shortest(idx_0, max_seconds, config.SPEED_M_S)
+    _visited_short_1, tree_short_1 = network_structure.dijkstra_tree_shortest(idx_1, max_seconds, config.SPEED_M_S)
+    downhill_short_seconds = tree_short_0[idx_1].agg_seconds
+    uphill_short_seconds = tree_short_1[idx_0].agg_seconds
+
+    _visited_simpl_0, tree_simpl_0 = network_structure.dijkstra_tree_simplest(idx_0, max_seconds, config.SPEED_M_S)
+    _visited_simpl_1, tree_simpl_1 = network_structure.dijkstra_tree_simplest(idx_1, max_seconds, config.SPEED_M_S)
+    downhill_simpl_seconds = tree_simpl_0[idx_1].agg_seconds
+    uphill_simpl_seconds = tree_simpl_1[idx_0].agg_seconds
+
+    flat_seconds = 100.0 / config.SPEED_M_S
+
+    assert downhill_short_seconds < flat_seconds < uphill_short_seconds
+    assert downhill_simpl_seconds < flat_seconds < uphill_simpl_seconds
+    assert np.isclose(downhill_short_seconds, downhill_simpl_seconds, atol=config.ATOL)
+    assert np.isclose(uphill_short_seconds, uphill_simpl_seconds, atol=config.ATOL)
+    # Simplest routing metric should remain angular-only; a single straight segment has zero angular cost.
+    assert np.isclose(tree_simpl_0[idx_1].simpl_dist, 0.0, atol=config.ATOL)
+    assert np.isclose(tree_simpl_1[idx_0].simpl_dist, 0.0, atol=config.ATOL)
+
+    # Missing z on either endpoint should disable slope penalties entirely.
+    partial_z_graph = make_single_edge_graph(z0=0.0, z1=None)
+    nodes_gdf_partial, _edges_gdf_partial, network_structure_partial = io.network_structure_from_nx(partial_z_graph)
+    partial_idx_0 = nodes_gdf_partial.index.tolist().index("0")
+    partial_idx_1 = nodes_gdf_partial.index.tolist().index("1")
+    _visited_partial_0, tree_partial_0 = network_structure_partial.dijkstra_tree_shortest(
+        partial_idx_0, max_seconds, config.SPEED_M_S
+    )
+    _visited_partial_1, tree_partial_1 = network_structure_partial.dijkstra_tree_shortest(
+        partial_idx_1, max_seconds, config.SPEED_M_S
+    )
+    assert np.isclose(tree_partial_0[partial_idx_1].agg_seconds, flat_seconds, atol=config.ATOL)
+    assert np.isclose(tree_partial_1[partial_idx_0].agg_seconds, flat_seconds, atol=config.ATOL)
 
 
 def test_local_centrality_all(diamond_graph):

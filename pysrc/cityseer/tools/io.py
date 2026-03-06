@@ -1025,13 +1025,14 @@ def network_structure_from_nx(
     Transpose a `networkX` `MultiGraph` into a `gpd.GeoDataFrame` and `NetworkStructure` for use by `cityseer`.
 
     Calculates length and angle attributes, as well as in and out bearings, and stores this information in the returned
-    data maps.
+    data maps. Optional `z` node attributes (elevation) are supported; when present on both endpoints of an edge, a
+    slope-based walking impedance (Tobler's hiking function) is automatically applied during centrality computations.
 
     Parameters
     ----------
     nx_multigraph: nx.MultiGraph
         A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `y` node attributes, and `geom`
-        edge attributes containing `LineString` geoms.
+        edge attributes containing `LineString` geoms. Nodes may optionally include a `z` attribute for elevation.
     crs: None
         The `crs` parameter is deprecated and will be removed in a future release. If your network is
         generated via cityseer from OSM or GeoPandas then CRS handling is automatic. Otherwise, the CRS can be set

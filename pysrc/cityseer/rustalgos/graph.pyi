@@ -122,7 +122,9 @@ class NetworkStructure:
         weight: float
             Node weight (e.g., for weighted centrality calculations, >= 0).
         z: float | None
-            Optional z-coordinate (elevation). Default None.
+            Optional z-coordinate (elevation). Default None. When z is provided for both endpoints
+            of an edge, a slope-based walking impedance (Tobler's hiking function) is automatically
+            applied during shortest-path and simplest-path computations.
 
         Returns
         -------
