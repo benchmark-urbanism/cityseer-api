@@ -604,7 +604,7 @@ class TestTolerance:
             compute_closeness=False,
             compute_betweenness=True,
             distances=[500],
-            tolerance=0.1,
+            tolerance=10.0,
             pbar_disabled=True,
         )
 
@@ -612,6 +612,50 @@ class TestTolerance:
         betw_tolerant = np.array(res_tolerant.node_betweenness[500])
         # With tolerance, betweenness credit is spread across more near-equal paths,
         # so the values should differ from exact computation.
+        assert not np.allclose(betw_exact, betw_tolerant)
+
+    def test_simplest_tolerance_zero_matches_default(self, dual_network_structure):
+        """Explicit tolerance=0.0 matches the default simplest-path behaviour."""
+        ns, _ = dual_network_structure
+
+        res_default = ns.centrality_simplest(
+            compute_closeness=True,
+            compute_betweenness=True,
+            distances=[500],
+            pbar_disabled=True,
+        )
+        res_zero = ns.centrality_simplest(
+            compute_closeness=True,
+            compute_betweenness=True,
+            distances=[500],
+            tolerance=0.0,
+            pbar_disabled=True,
+        )
+
+        assert np.allclose(res_default.node_betweenness[500], res_zero.node_betweenness[500])
+        assert np.allclose(res_default.node_harmonic[500], res_zero.node_harmonic[500])
+
+    def test_simplest_tolerance_changes_betweenness(self, dual_network_structure):
+        """Positive simplest tolerance redistributes betweenness across near-equal angular paths."""
+        ns, _ = dual_network_structure
+
+        res_exact = ns.centrality_simplest(
+            compute_closeness=False,
+            compute_betweenness=True,
+            distances=[500],
+            tolerance=0.0,
+            pbar_disabled=True,
+        )
+        res_tolerant = ns.centrality_simplest(
+            compute_closeness=False,
+            compute_betweenness=True,
+            distances=[500],
+            tolerance=10.0,
+            pbar_disabled=True,
+        )
+
+        betw_exact = np.array(res_exact.node_betweenness[500])
+        betw_tolerant = np.array(res_tolerant.node_betweenness[500])
         assert not np.allclose(betw_exact, betw_tolerant)
 
 

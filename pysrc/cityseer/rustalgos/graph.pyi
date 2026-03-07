@@ -500,7 +500,9 @@ class NetworkStructure:
         speed_m_s: float | None
             Travel speed (m/s).
         tolerance: float | None
-            Relative tolerance for near-equal path detection in betweenness. 0.0 = exact shortest paths only.
+            Relative tolerance for near-equal path detection in betweenness, as a percentage
+            (e.g. 1.0 = 1%). A tiny internal epsilon is always enforced as a minimum for
+            floating-point stability.
         sample_probability: float | None
             Probability of sampling a node as a source. Used for IPW scaling.
         sampling_weights: list[float] | None
@@ -527,6 +529,7 @@ class NetworkStructure:
         compute_betweenness: bool | None = None,
         min_threshold_wt: float | None = None,
         speed_m_s: float | None = None,
+        tolerance: float | None = None,
         angular_scaling_unit: float | None = None,
         farness_scaling_offset: float | None = None,
         sample_probability: float | None = None,
@@ -557,6 +560,10 @@ class NetworkStructure:
             Minimum weight for beta/distance conversion.
         speed_m_s: float | None
             Travel speed (m/s).
+        tolerance: float | None
+            Relative tolerance for near-equal path detection in angular betweenness, as a
+            percentage (e.g. 1.0 = 1%). A tiny internal epsilon is always enforced as a minimum
+            for floating-point stability.
         angular_scaling_unit: float | None
             Scaling unit for angular cost (default: 180 degrees).
         farness_scaling_offset: float | None
@@ -610,6 +617,10 @@ class NetworkStructure:
             Minimum weight for beta/distance conversion.
         speed_m_s: float | None
             Travel speed (m/s).
+        tolerance: float | None
+            Relative tolerance for near-equal path detection in betweenness, as a percentage
+            (e.g. 1.0 = 1%). A tiny internal epsilon is always enforced as a minimum for
+            floating-point stability.
         pbar_disabled: bool | None
             Disable progress bar if True.
 

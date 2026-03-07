@@ -21,7 +21,30 @@ use std::sync::atomic::AtomicU32;
 use std::sync::atomic::Ordering as AtomicOrdering;
 
 const ANGULAR_ROUTE_TIE_BREAK_FACTOR: f32 = 1e-6;
-const ANGULAR_TIE_EPSILON: f32 = 1e-4;
+/// Minimum float-comparison tolerance for both shortest-path and angular routing.
+/// IMPORTANT: tolerance must always be >= this value to avoid missed ties from
+/// floating-point noise. All callers must default to at least this value.
+const TIE_EPSILON: f32 = 1e-4;
+/// Maximum tolerance percentage above which we warn the user.
+const TOLERANCE_WARN_PCT: f32 = 2.0;
+
+/// Validate and convert tolerance from user-facing percentage to a decimal multiplier.
+/// E.g. 1.0% → 0.01 internally, clamped to at least TIE_EPSILON.
+fn validate_tolerance(tolerance: Option<f32>) -> PyResult<f32> {
+    let pct = tolerance.unwrap_or(0.0);
+    if pct < 0.0 || pct > 100.0 {
+        return Err(exceptions::PyValueError::new_err(format!(
+            "Tolerance must be between 0 and 100 (percent), got {pct}"
+        )));
+    }
+    if pct > TOLERANCE_WARN_PCT {
+        log::warn!(
+            "Tolerance {pct:.1}% is high — values above {TOLERANCE_WARN_PCT}% increasingly \
+             diffuse route concentration, especially at larger distance thresholds."
+        );
+    }
+    Ok((pct / 100.0).max(TIE_EPSILON))
+}
 
 /// Sparse origin-destination weight matrix for OD-weighted centrality.
 ///
@@ -374,6 +397,7 @@ struct BrandesTraversalState {
     node_idx: usize,
     route_cost: f32,
     agg_seconds: f32,
+    cycles: f32,
 }
 
 impl BrandesTraversalState {
@@ -385,6 +409,7 @@ impl BrandesTraversalState {
             node_idx,
             route_cost: f32::INFINITY,
             agg_seconds: f32::INFINITY,
+            cycles: 0.0,
         }
     }
 }
@@ -486,8 +511,13 @@ impl NetworkStructure {
         src_idx: usize,
         max_seconds: u32,
         speed_m_s: f32,
+        tolerance: f32,
         endpoint_slots: &[SmallVec<[String; 2]>],
     ) -> BrandesTraversal {
+        assert!(
+            tolerance >= TIE_EPSILON,
+            "Tolerance must be >= TIE_EPSILON to avoid float-comparison bugs"
+        );
         let node_count = self.node_bound();
         let state_count = node_count * 2;
         let mut states = (0..state_count)
@@ -564,14 +594,17 @@ impl NetworkStructure {
                     + edge_payload.angle_sum
                     + (ANGULAR_ROUTE_TIE_BREAK_FACTOR * edge_payload.length);
 
-                let improved =
-                    candidate_route + ANGULAR_TIE_EPSILON < states[next_state_idx].route_cost;
-                let tied = (candidate_route - states[next_state_idx].route_cost).abs()
-                    <= ANGULAR_TIE_EPSILON;
+                let cur_cost = states[next_state_idx].route_cost;
+                let improved = candidate_route < cur_cost;
+                let tied = candidate_route <= cur_cost * (1.0 + tolerance);
 
                 if improved {
-                    states[next_state_idx].preds.clear();
-                    states[next_state_idx].sigma = states[state_idx].sigma;
+                    if candidate_route < cur_cost * (1.0 - tolerance) {
+                        states[next_state_idx].preds.clear();
+                        states[next_state_idx].sigma = states[state_idx].sigma;
+                    } else {
+                        states[next_state_idx].sigma += states[state_idx].sigma;
+                    }
                     states[next_state_idx].route_cost = candidate_route;
                     states[next_state_idx].agg_seconds = candidate_seconds;
                     states[next_state_idx].preds.push(state_idx);
@@ -590,12 +623,11 @@ impl NetworkStructure {
                 }
 
                 let next_node_idx = states[next_state_idx].node_idx;
-                if candidate_route + ANGULAR_TIE_EPSILON < best_route_cost[next_node_idx] {
+                let best_cost = best_route_cost[next_node_idx];
+                if candidate_route < best_cost * (1.0 - tolerance) {
                     best_route_cost[next_node_idx] = candidate_route;
                     best_agg_seconds[next_node_idx] = candidate_seconds;
-                } else if (candidate_route - best_route_cost[next_node_idx]).abs()
-                    <= ANGULAR_TIE_EPSILON
-                {
+                } else if candidate_route <= best_cost * (1.0 + tolerance) {
                     best_agg_seconds[next_node_idx] =
                         best_agg_seconds[next_node_idx].min(candidate_seconds);
                 }
@@ -633,6 +665,7 @@ impl NetworkStructure {
         traversal: &BrandesTraversal,
         node_idx: usize,
         sec_threshold: f32,
+        tolerance: f32,
     ) -> SmallVec<[usize; 2]> {
         let mut best_state_indices = SmallVec::<[usize; 2]>::new();
         let best_route_cost = traversal.best_route_cost[node_idx];
@@ -650,7 +683,7 @@ impl NetworkStructure {
             if state.sigma == 0.0 || state.agg_seconds > sec_threshold {
                 continue;
             }
-            if (state.route_cost - best_route_cost).abs() <= ANGULAR_TIE_EPSILON {
+            if state.route_cost <= best_route_cost * (1.0 + tolerance) {
                 best_state_indices.push(state_idx);
             }
         }
@@ -1125,9 +1158,9 @@ impl NetworkStructure {
                     candidate_simpl + (ANGULAR_ROUTE_TIE_BREAK_FACTOR * edge_payload.length);
 
                 let improved =
-                    candidate_metric + ANGULAR_TIE_EPSILON < states[next_state_idx].route_metric;
+                    candidate_metric + TIE_EPSILON < states[next_state_idx].route_metric;
                 let tied = (candidate_metric - states[next_state_idx].route_metric).abs()
-                    <= ANGULAR_TIE_EPSILON;
+                    <= TIE_EPSILON;
 
                 if improved
                     || (tied
@@ -1149,9 +1182,9 @@ impl NetworkStructure {
                         visited_nodes.push(next_node_idx);
                     }
                     let node_improved =
-                        candidate_simpl + ANGULAR_TIE_EPSILON < next_visit.simpl_dist;
+                        candidate_simpl + TIE_EPSILON < next_visit.simpl_dist;
                     let node_tied =
-                        (candidate_simpl - next_visit.simpl_dist).abs() <= ANGULAR_TIE_EPSILON;
+                        (candidate_simpl - next_visit.simpl_dist).abs() <= TIE_EPSILON;
                     if !next_visit.discovered
                         || node_improved
                         || (node_tied && candidate_seconds < next_visit.agg_seconds)
@@ -1179,6 +1212,10 @@ impl NetworkStructure {
         speed_m_s: f32,
         tolerance: f32,
     ) -> BrandesTraversal {
+        assert!(
+            tolerance >= TIE_EPSILON,
+            "Tolerance must be >= TIE_EPSILON to avoid float-comparison bugs"
+        );
         let node_count = self.node_bound();
         let mut states = (0..node_count)
             .map(BrandesTraversalState::new)
@@ -1234,6 +1271,12 @@ impl NetworkStructure {
                     continue;
                 }
                 if states[nb_idx].visited {
+                    // Non-tree edge: neighbor already settled and not our predecessor.
+                    // Attribute to both endpoints for deterministic, order-independent counting.
+                    if !states[state_idx].preds.contains(&nb_idx) {
+                        states[state_idx].cycles += 0.5;
+                        states[nb_idx].cycles += 0.5;
+                    }
                     continue;
                 }
                 let candidate_route = candidate_seconds * speed_m_s;
@@ -1448,7 +1491,7 @@ impl NetworkStructure {
             ));
         }
         let speed_m_s = speed_m_s.unwrap_or(WALKING_SPEED);
-        let tolerance = tolerance.unwrap_or(0.0);
+        let tolerance = validate_tolerance(tolerance)?;
         let (distances, betas, seconds) = common::pair_distances_betas_time(
             speed_m_s,
             distances,
@@ -1523,7 +1566,7 @@ impl NetworkStructure {
                             continue;
                         }
                         let node_state = &traversal.state[to_idx];
-                        let cycle_score = node_state.preds.len().saturating_sub(1) as f32;
+                        let cycle_score = node_state.cycles;
                         // Track reachability per distance when sampling
                         if sampling_plan.sample_probability.is_some()
                             || sampling_plan.is_source_indexed
@@ -1667,6 +1710,7 @@ impl NetworkStructure {
         compute_betweenness=None,
         min_threshold_wt=None,
         speed_m_s=None,
+        tolerance=None,
         angular_scaling_unit=None,
         farness_scaling_offset=None,
         sample_probability=None,
@@ -1684,6 +1728,7 @@ impl NetworkStructure {
         compute_betweenness: Option<bool>,
         min_threshold_wt: Option<f32>,
         speed_m_s: Option<f32>,
+        tolerance: Option<f32>,
         angular_scaling_unit: Option<f32>,
         farness_scaling_offset: Option<f32>,
         sample_probability: Option<f32>,
@@ -1696,6 +1741,7 @@ impl NetworkStructure {
         self.validate_dual_for_angular("centrality_simplest")?;
         let compute_closeness = compute_closeness.unwrap_or(true);
         let compute_betweenness = compute_betweenness.unwrap_or(true);
+        let tolerance = validate_tolerance(tolerance)?;
         if !compute_closeness && !compute_betweenness {
             return Err(exceptions::PyValueError::new_err(
                 "Either or both closeness and betweenness flags is required, but both parameters are False.",
@@ -1766,6 +1812,7 @@ impl NetworkStructure {
                     *src_idx,
                     max_walk_seconds,
                     speed_m_s,
+                    tolerance,
                     &angular_endpoint_slots,
                 );
 
@@ -1830,7 +1877,7 @@ impl NetworkStructure {
                                 continue;
                             }
                             let best_state_indices =
-                                Self::best_angular_target_states(&traversal, to_idx, sec_threshold);
+                                Self::best_angular_target_states(&traversal, to_idx, sec_threshold, tolerance);
                             if best_state_indices.is_empty() {
                                 continue;
                             }
@@ -2224,7 +2271,7 @@ impl NetworkStructure {
             .iter()
             .max()
             .expect("Seconds vector should not be empty");
-        let tolerance = tolerance.unwrap_or(0.0);
+        let tolerance = validate_tolerance(tolerance)?;
 
         let od_map = &od_matrix.map;
         let n = self.node_bound();

@@ -17,14 +17,12 @@ changelog=4.24.0b1
     - Endpoint-aware angular centrality using doubled state-space on dual graphs
     - Brandes multi-predecessor backpropagation for angular betweenness
     - Dynamic slope penalty using Tobler's hiking function for z-aware networks
-    - Cycles metric redefined as surplus equal-cost shortest-path predecessors
+    - Cycles metric redefined as non-tree edges (circuit rank) in the local reachable subgraph
+    - Add simplest-path tolerance using the same relative-percentage semantics as shortest path
+    - Remove beta-weighted betweenness from simplest path
     - Add early error when input layer yields no features in build_dual_network
 
     4.23.9
-    - Fix angular betweenness: replace Brandes backpropagation with single-predecessor path tracing
-    - Remove tolerance parameter from simplest path (only applies to shortest path)
-    - Remove beta-weighted betweenness from simplest path
-    - Use lightweight SimplestNodeState struct for angular Dijkstra
     - Fix betweenness threshold to use agg_seconds consistently with closeness
     - Use prepared boundary geometry for faster containment checks
 

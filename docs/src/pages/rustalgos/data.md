@@ -32,8 +32,6 @@ layout: ../../layouts/PageLayout.astro
 </div>
 </div>
 
- When `angular=True`, `network_structure` must be a dual graph.
-
 </div>
 
  
@@ -350,8 +348,6 @@ layout: ../../layouts/PageLayout.astro
   </div>
   <span class="pt">)</span>
 </div>
-
- When `angular=True`, `network_structure` must be a dual graph.
 </div>
 
 </div>

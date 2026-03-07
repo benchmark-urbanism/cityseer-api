@@ -255,23 +255,37 @@ def test_closeness_shortest(primal_graph):
     n_nodes: int = primal_graph.number_of_nodes()
     dens: npt.NDArray[np.float32] = np.full((d_n, n_nodes), 0.0, dtype=np.float32)
     far_short_dist: npt.NDArray[np.float32] = np.full((d_n, n_nodes), 0.0, dtype=np.float32)
-    cycles_surplus: npt.NDArray[np.float32] = np.full((d_n, n_nodes), 0.0, dtype=np.float32)
+    cycles_nontree: npt.NDArray[np.float32] = np.full((d_n, n_nodes), 0.0, dtype=np.float32)
     harmonic_cl: npt.NDArray[np.float32] = np.full((d_n, n_nodes), 0.0, dtype=np.float32)
     grav: npt.NDArray[np.float32] = np.full((d_n, n_nodes), 0.0, dtype=np.float32)
     #
     max_seconds_5000 = 5000 / config.SPEED_M_S
     for src_idx in range(n_nodes):
-        preds, dists = nx.dijkstra_predecessor_and_distance(G_round_trip, str(src_idx), weight="length")
+        src_key = str(src_idx)
+        preds, dists = nx.dijkstra_predecessor_and_distance(G_round_trip, src_key, weight="length")
+        # count non-tree edges per node for the full reachable subgraph
+        # attribute to both endpoints for deterministic, order-independent counting
+        node_cycles_full = np.zeros(n_nodes, dtype=np.float32)
+        for u_key, v_key, _edge_key in G_round_trip.edges(keys=True):
+            if u_key == v_key:
+                continue
+            if u_key not in dists or v_key not in dists:
+                continue
+            u_idx = int(u_key)
+            v_idx = int(v_key)
+            # check if edge is in the shortest-path DAG (either direction)
+            is_dag_edge = (v_key in preds.get(u_key, [])) or (u_key in preds.get(v_key, []))
+            if not is_dag_edge:
+                node_cycles_full[u_idx] += 0.5
+                node_cycles_full[v_idx] += 0.5
+        # accumulate: include each node's full cycle count if within distance threshold
         for to_idx in range(n_nodes):
-            if to_idx == src_idx:
-                continue
             to_key = str(to_idx)
-            if to_key not in dists:
+            if to_key not in dists or to_idx == src_idx:
                 continue
-            to_short_dist = dists[to_key]
             for d_idx, dist_cutoff in enumerate(distances):
-                if to_short_dist <= dist_cutoff:
-                    cycles_surplus[d_idx][to_idx] += max(0, len(preds[to_key]) - 1)
+                if dists[to_key] <= dist_cutoff:
+                    cycles_nontree[d_idx][to_idx] += node_cycles_full[to_idx]
         # get shortest path maps
         visited_nodes, tree_map = network_structure.dijkstra_tree_shortest(
             src_idx, int(max_seconds_5000), speed_m_s=config.SPEED_M_S
@@ -302,7 +316,7 @@ def test_closeness_shortest(primal_graph):
             node_result_short.node_farness[dist], far_short_dist[d_idx], atol=config.ATOL, rtol=config.RTOL
         )
         assert np.allclose(
-            node_result_short.node_cycles[dist], cycles_surplus[d_idx], atol=config.ATOL, rtol=config.RTOL
+            node_result_short.node_cycles[dist], cycles_nontree[d_idx], atol=config.ATOL, rtol=config.RTOL
         )
         assert np.allclose(
             node_result_short.node_harmonic[dist], harmonic_cl[d_idx], atol=config.ATOL, rtol=config.RTOL
@@ -446,10 +460,10 @@ def test_local_centrality_all(diamond_graph):
     assert np.allclose(node_result_short.node_farness[150], [200, 300, 300, 200], atol=config.ATOL, rtol=config.RTOL)
     assert np.allclose(node_result_short.node_farness[250], [400, 300, 300, 400], atol=config.ATOL, rtol=config.RTOL)
     # node cycles
-    # simplified cycle score from surplus shortest-path predecessors
+    # non-tree edges counted at both endpoints with 0.5 each (total = circuit rank)
     assert np.allclose(node_result_short.node_cycles[50], [0, 0, 0, 0], atol=config.ATOL, rtol=config.RTOL)
-    assert np.allclose(node_result_short.node_cycles[150], [0, 0, 0, 0], atol=config.ATOL, rtol=config.RTOL)
-    assert np.allclose(node_result_short.node_cycles[250], [1, 0, 0, 1], atol=config.ATOL, rtol=config.RTOL)
+    assert np.allclose(node_result_short.node_cycles[150], [1, 2, 2, 1], atol=config.ATOL, rtol=config.RTOL)
+    assert np.allclose(node_result_short.node_cycles[250], [1, 2, 2, 1], atol=config.ATOL, rtol=config.RTOL)
     # node harmonic
     # additive 1 / distances
     assert np.allclose(node_result_short.node_harmonic[50], [0, 0, 0, 0], atol=config.ATOL, rtol=config.RTOL)
@@ -464,14 +478,14 @@ def test_local_centrality_all(diamond_graph):
     # beta = 0.0
     assert np.allclose(node_result_short.node_beta[50], [0, 0, 0, 0], atol=config.ATOL, rtol=config.RTOL)
     # beta = 0.02666667
-    np.allclose(
+    assert np.allclose(
         node_result_short.node_beta[150],
         [0.1389669, 0.20845035, 0.20845035, 0.1389669],
         atol=config.ATOL,
         rtol=config.RTOL,
     )
     # beta = 0.016
-    np.allclose(
+    assert np.allclose(
         node_result_short.node_beta[250],
         [0.44455525, 0.6056895, 0.6056895, 0.44455522],
         atol=config.ATOL,
