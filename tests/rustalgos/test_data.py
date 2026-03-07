@@ -456,50 +456,50 @@ def test_aggregate_to_src_idx(primal_graph, dual_graph):
             data_map = mock.mock_data_map(data_gdf, dedupe_key_col=dedupe_key_col)
             data_map.assign_data_to_network(network_structure_d, 400, n_nearest_candidates=6)
             for netw_src_idx in network_structure_d.node_indices():
-                    # aggregate to src...
-                    reachable_entries = data_map.aggregate_to_src_idx(
-                        netw_src_idx, network_structure_d, int(max_seconds), config.SPEED_M_S, angular=True
-                    )
-                    # compare to manual checks on distances:
-                    # get the network distances
-                    _nodes, tree_map = network_structure_d.dijkstra_tree_simplest(
-                        netw_src_idx, int(max_seconds), config.SPEED_M_S
-                    )
-                    # check that reachable entries and respective distances are correct
-                    # should match against the network structure plus data_map.node_data_map distances
-                    manual_reachable = {}
-                    manual_not_reachable = {}
-                    for node_idx, node_visit in enumerate(tree_map):  # type: ignore
-                        if np.isfinite(node_visit.agg_seconds):
-                            if node_idx not in data_map.node_data_map:
-                                continue
-                            for assigned_data_idx, assigned_data_dist in data_map.node_data_map[node_idx]:
-                                dist = node_visit.agg_seconds * config.SPEED_M_S + assigned_data_dist
-                                if dist <= max_dist:
-                                    manual_reachable[assigned_data_idx] = dist
-                                else:
-                                    manual_not_reachable[assigned_data_idx] = dist
-                    # all reachable entries should be in manual reachable and distances should be the same
-                    for reachable_key, reachable_dist in reachable_entries.items():
-                        assert reachable_key in manual_reachable
-                        assert reachable_dist - manual_reachable[reachable_key] < config.ATOL
-                    # manual reachable shouldn't contain keys not in reachable entries
-                    # allow 1m tolerance for floating point errors
-                    # handle shadowed dupe id nodes in deduplication case
-                    shadowed_dupes = ["int:45", "int:46", "int:47", "int:48"]
-                    for reachable_key in manual_reachable:
-                        if deduplicate is True and reachable_key in shadowed_dupes:
-                            # if shadowed by closest dedupe node, then it should not be reachable
-                            # but if within max dist, then "int:49" should be reachable
-                            assert "int:49" in manual_reachable
-                            assert "int:49" in reachable_entries
-                            assert reachable_key not in reachable_entries
+                # aggregate to src...
+                reachable_entries = data_map.aggregate_to_src_idx(
+                    netw_src_idx, network_structure_d, int(max_seconds), config.SPEED_M_S, angular=True
+                )
+                # compare to manual checks on distances:
+                # get the network distances
+                _nodes, tree_map = network_structure_d.dijkstra_tree_simplest(
+                    netw_src_idx, int(max_seconds), config.SPEED_M_S
+                )
+                # check that reachable entries and respective distances are correct
+                # should match against the network structure plus data_map.node_data_map distances
+                manual_reachable = {}
+                manual_not_reachable = {}
+                for node_idx, node_visit in enumerate(tree_map):  # type: ignore
+                    if np.isfinite(node_visit.agg_seconds):
+                        if node_idx not in data_map.node_data_map:
                             continue
-                        try:
-                            assert reachable_key in reachable_entries
-                        except AssertionError:
-                            # If the key is not found, assert the distance condition
-                            assert max_dist - manual_reachable[reachable_key] < 1
+                        for assigned_data_idx, assigned_data_dist in data_map.node_data_map[node_idx]:
+                            dist = node_visit.agg_seconds * config.SPEED_M_S + assigned_data_dist
+                            if dist <= max_dist:
+                                manual_reachable[assigned_data_idx] = dist
+                            else:
+                                manual_not_reachable[assigned_data_idx] = dist
+                # all reachable entries should be in manual reachable and distances should be the same
+                for reachable_key, reachable_dist in reachable_entries.items():
+                    assert reachable_key in manual_reachable
+                    assert reachable_dist - manual_reachable[reachable_key] < config.ATOL
+                # manual reachable shouldn't contain keys not in reachable entries
+                # allow 1m tolerance for floating point errors
+                # handle shadowed dupe id nodes in deduplication case
+                shadowed_dupes = ["int:45", "int:46", "int:47", "int:48"]
+                for reachable_key in manual_reachable:
+                    if deduplicate is True and reachable_key in shadowed_dupes:
+                        # if shadowed by closest dedupe node, then it should not be reachable
+                        # but if within max dist, then "int:49" should be reachable
+                        assert "int:49" in manual_reachable
+                        assert "int:49" in reachable_entries
+                        assert reachable_key not in reachable_entries
+                        continue
+                    try:
+                        assert reachable_key in reachable_entries
+                    except AssertionError:
+                        # If the key is not found, assert the distance condition
+                        assert max_dist - manual_reachable[reachable_key] < 1
 
 
 def test_accessibility(primal_graph, dual_graph):

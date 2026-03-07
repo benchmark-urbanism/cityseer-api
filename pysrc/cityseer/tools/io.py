@@ -101,9 +101,7 @@ def nx_epsg_conversion(
             line_geom: geometry.LineString = edge_data["geom"]
             # convert, preserving z if present
             if line_geom.has_z:
-                edge_coords: ListCoordsType = [
-                    (*transformer.transform(c[0], c[1]), c[2]) for c in line_geom.coords
-                ]
+                edge_coords: ListCoordsType = [(*transformer.transform(c[0], c[1]), c[2]) for c in line_geom.coords]
             else:
                 edge_coords = [transformer.transform(x, y) for x, y in line_geom.coords]
             # snap ends
@@ -1269,7 +1267,11 @@ def network_structure_from_gpd(
     # process nodes and build mapping
     for nd_key, node_data in tqdm(nodes_gdf.iterrows(), total=len(nodes_gdf), disable=config.QUIET_MODE):
         node_z = None
-        if "z" in node_data and node_data["z"] is not None and not (isinstance(node_data["z"], float) and np.isnan(node_data["z"])):
+        if (
+            "z" in node_data
+            and node_data["z"] is not None
+            and not (isinstance(node_data["z"], float) and np.isnan(node_data["z"]))
+        ):
             node_z = float(node_data["z"])
         ns_node_idx = network_structure.add_street_node(
             str(nd_key),
@@ -1466,7 +1468,11 @@ def nx_from_cityseer_geopandas(
         live = nd_data.live if hasattr(nd_data, "live") else True
         weight = nd_data.weight if hasattr(nd_data, "weight") else 1
         node_kwargs: dict[str, Any] = {"x": nd_data.x, "y": nd_data.y, "live": live, "weight": weight}
-        if hasattr(nd_data, "z") and nd_data.z is not None and not (isinstance(nd_data.z, float) and np.isnan(nd_data.z)):
+        if (
+            hasattr(nd_data, "z")
+            and nd_data.z is not None
+            and not (isinstance(nd_data.z, float) and np.isnan(nd_data.z))
+        ):
             node_kwargs["z"] = nd_data.z
         g_multi_copy.add_node(str(nd_key), **node_kwargs)
     logger.info("Unpacking edge data.")

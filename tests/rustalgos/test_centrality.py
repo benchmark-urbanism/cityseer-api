@@ -759,7 +759,9 @@ def test_simplest_betweenness_invariant_to_node_order():
         betw_by_edge = {}
         for node_pos, node_key in enumerate(nodes_gdf.index):
             row = nodes_gdf.loc[node_key]
-            edge_label = tuple(sorted((idx_to_label[row["primal_edge_node_a"]], idx_to_label[row["primal_edge_node_b"]])))
+            edge_label = tuple(
+                sorted((idx_to_label[row["primal_edge_node_a"]], idx_to_label[row["primal_edge_node_b"]]))
+            )
             betw_by_edge[edge_label] = res.node_betweenness[500][node_pos]
         results.append(betw_by_edge)
     # All orderings must agree
@@ -826,7 +828,9 @@ def test_betweenness_mixed_live_non_live_invariant_to_node_order():
         simplest_by_edge = {}
         for node_pos, node_key in enumerate(nodes_gdf_dual.index):
             row = nodes_gdf_dual.loc[node_key]
-            edge_label = tuple(sorted((idx_to_label[row["primal_edge_node_a"]], idx_to_label[row["primal_edge_node_b"]])))
+            edge_label = tuple(
+                sorted((idx_to_label[row["primal_edge_node_a"]], idx_to_label[row["primal_edge_node_b"]]))
+            )
             simplest_by_edge[edge_label] = res_simplest.node_betweenness[1000][node_pos]
         simplest_results.append(simplest_by_edge)
 
@@ -910,12 +914,8 @@ def test_shortest_brandes_tolerance_clears_stale_predecessors():
         pbar_disabled=True,
     )
 
-    exact = {
-        node_key: res_exact.node_betweenness[distance][idx] for idx, node_key in enumerate(nodes_gdf.index)
-    }
-    tolerant = {
-        node_key: res_tolerant.node_betweenness[distance][idx] for idx, node_key in enumerate(nodes_gdf.index)
-    }
+    exact = {node_key: res_exact.node_betweenness[distance][idx] for idx, node_key in enumerate(nodes_gdf.index)}
+    tolerant = {node_key: res_tolerant.node_betweenness[distance][idx] for idx, node_key in enumerate(nodes_gdf.index)}
 
     assert np.isclose(exact["A"], 0.0, atol=config.ATOL)
     assert np.isclose(exact["B"], 0.0, atol=config.ATOL)

@@ -37,14 +37,19 @@ def _node_has_z(nd_data: NodeData) -> bool:
 def _make_geom_between(nd_data_a: NodeData, nd_data_b: NodeData) -> geometry.LineString:
     """Create a LineString between two nodes, using 3D coords only if both nodes have z."""
     if _node_has_z(nd_data_a) and _node_has_z(nd_data_b):
-        return geometry.LineString([
-            (nd_data_a["x"], nd_data_a["y"], nd_data_a["z"]),
-            (nd_data_b["x"], nd_data_b["y"], nd_data_b["z"]),
-        ])
-    return geometry.LineString([
-        (nd_data_a["x"], nd_data_a["y"]),
-        (nd_data_b["x"], nd_data_b["y"]),
-    ])
+        return geometry.LineString(
+            [
+                (nd_data_a["x"], nd_data_a["y"], nd_data_a["z"]),
+                (nd_data_b["x"], nd_data_b["y"], nd_data_b["z"]),
+            ]
+        )
+    return geometry.LineString(
+        [
+            (nd_data_a["x"], nd_data_a["y"]),
+            (nd_data_b["x"], nd_data_b["y"]),
+        ]
+    )
+
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
