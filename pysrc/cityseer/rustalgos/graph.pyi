@@ -60,10 +60,8 @@ class NodeVisit:
     pred: int | None  # In Rust: Option<usize>
     short_dist: float  # In Rust: f32
     simpl_dist: float  # In Rust: f32
-    cycles: float  # In Rust: f32
     origin_seg: int | None  # In Rust: Option<usize>
     last_seg: int | None  # In Rust: Option<usize>
-    out_bearing: float  # In Rust: f32
     agg_seconds: float  # In Rust: f32
     @classmethod
     def new(cls) -> NodeVisit:  # In Rust: #[new] pub fn new() -> Self
@@ -88,6 +86,7 @@ class NetworkStructure:
     """Manages the network graph, including nodes, edges, barriers, and spatial indexing."""
 
     graph: StableGraph  # Actual type is petgraph::stable_graph::StableGraph<NodePayload, EdgePayload>
+    is_dual: bool
     edge_rtree: (
         object | None
     )  # R-tree for efficient spatial queries on edges. Type in Rust: Option<RTree<EdgeRtreeItem>>
@@ -103,8 +102,21 @@ class NetworkStructure:
     def progress(self) -> int:  # In Rust: pub fn progress(&self) -> usize
         """Get the current value of the internal progress counter."""
         ...
+    @property
+    def is_dual(self) -> bool:
+        """Whether this network structure was ingested from a dual graph."""
+        ...
+    def set_is_dual(self, is_dual: bool) -> None:
+        """Set whether this network structure represents a dual graph."""
+        ...
     def add_street_node(
-        self, node_key: Any, x: float, y: float, live: bool, weight: float, z: float | None = None
+        self,
+        node_key: Any,
+        x: float,
+        y: float,
+        live: bool,
+        weight: float,
+        z: float | None = None,
     ) -> int:  # Returns usize in Rust
         """
         Add a standard street network node.
@@ -125,7 +137,6 @@ class NetworkStructure:
             Optional z-coordinate (elevation). Default None. When z is provided for both endpoints
             of an edge, a slope-based walking impedance (Tobler's hiking function) is automatically
             applied during shortest-path and simplest-path computations.
-
         Returns
         -------
         int
@@ -240,6 +251,7 @@ class NetworkStructure:
         end_nd_key_py: Any,
         geom_wkt: str,
         imp_factor: float | None = None,
+        shared_primal_node_key: str | None = None,
     ) -> int:  # Returns PyResult<usize>
         """
         Add a directed street edge with geometry.
@@ -261,6 +273,8 @@ class NetworkStructure:
             Original key of the ending node.
         geom_wkt: str
             Edge geometry in WKT format (must have >= 2 points).
+        shared_primal_node_key: str | None
+            Optional primal junction key for dual-graph transitions.
         imp_factor: float | None
             Impedance multiplier (> 0.0, default 1.0).
 
@@ -417,6 +431,10 @@ class NetworkStructure:
         -------
         tuple[list[int], list[NodeVisit]]
             (List of reachable node indices, List of NodeVisit states for all nodes).
+
+        Notes
+        -----
+        Requires `self.is_dual == True`.
         """
         ...
     def dijkstra_tree_segment(
@@ -482,7 +500,9 @@ class NetworkStructure:
         speed_m_s: float | None
             Travel speed (m/s).
         tolerance: float | None
-            Relative tolerance for near-equal path detection in betweenness. 0.0 = exact shortest paths only.
+            Relative tolerance for near-equal path detection in betweenness, as a percentage
+            (e.g. 1.0 = 1%). A tiny internal epsilon is always enforced as a minimum for
+            floating-point stability.
         sample_probability: float | None
             Probability of sampling a node as a source. Used for IPW scaling.
         sampling_weights: list[float] | None
@@ -509,6 +529,7 @@ class NetworkStructure:
         compute_betweenness: bool | None = None,
         min_threshold_wt: float | None = None,
         speed_m_s: float | None = None,
+        tolerance: float | None = None,
         angular_scaling_unit: float | None = None,
         farness_scaling_offset: float | None = None,
         sample_probability: float | None = None,
@@ -539,6 +560,10 @@ class NetworkStructure:
             Minimum weight for beta/distance conversion.
         speed_m_s: float | None
             Travel speed (m/s).
+        tolerance: float | None
+            Relative tolerance for near-equal path detection in angular betweenness, as a
+            percentage (e.g. 1.0 = 1%). A tiny internal epsilon is always enforced as a minimum
+            for floating-point stability.
         angular_scaling_unit: float | None
             Scaling unit for angular cost (default: 180 degrees).
         farness_scaling_offset: float | None
@@ -558,6 +583,10 @@ class NetworkStructure:
         -------
         CentralitySimplestResult
             Object containing closeness and/or betweenness centrality metrics.
+
+        Notes
+        -----
+        Requires `self.is_dual == True`.
         """
         ...
     def betweenness_od_shortest(
@@ -588,6 +617,10 @@ class NetworkStructure:
             Minimum weight for beta/distance conversion.
         speed_m_s: float | None
             Travel speed (m/s).
+        tolerance: float | None
+            Relative tolerance for near-equal path detection in betweenness, as a percentage
+            (e.g. 1.0 = 1%). A tiny internal epsilon is always enforced as a minimum for
+            floating-point stability.
         pbar_disabled: bool | None
             Disable progress bar if True.
 

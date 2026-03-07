@@ -6,6 +6,7 @@ import builtins
 import geopandas as gpd
 import networkx as nx
 import numpy as np
+import pytest
 from cityseer import config, rustalgos
 from cityseer.tools import graphs, io, mock
 from shapely import geometry, wkt
@@ -398,39 +399,72 @@ def test_assign_to_network(primal_graph):
         assert sorted(matches) == sorted(decomp_targets_with_barriers[node_idx])
 
 
-def test_aggregate_to_src_idx(primal_graph):
+def test_aggregate_to_src_idx(primal_graph, dual_graph):
     for deduplicate in [False, True]:
         for max_dist in [250, 750]:
             max_seconds = max_dist / config.SPEED_M_S
             # generate data
-            _nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(primal_graph)
             data_gdf = mock.mock_data_gdf(primal_graph)
-            if deduplicate is False:
-                data_map = mock.mock_data_map(data_gdf, dedupe_key_col=None)
-            else:
-                data_map = mock.mock_data_map(data_gdf, dedupe_key_col="data_id")
-            # nearest assigned distance is different to overall distance above
-            data_map.assign_data_to_network(network_structure, 400, n_nearest_candidates=6)
-            # in this case, use same assignment max dist as search max dist
-            # for debugging
-            # from cityseer.tools import plot
-            # plot.plot_network_structure(network_structure, data_map)
-            for angular in [False, True]:
-                for netw_src_idx in network_structure.node_indices():
+            dedupe_key_col = None if deduplicate is False else "data_id"
+            data_map = mock.mock_data_map(data_gdf, dedupe_key_col=dedupe_key_col)
+            _nodes_gdf_p, _edges_gdf_p, network_structure_p = io.network_structure_from_nx(primal_graph)
+            _nodes_gdf_d, _edges_gdf_d, network_structure_d = io.network_structure_from_nx(dual_graph)
+            data_map.assign_data_to_network(network_structure_p, 400, n_nearest_candidates=6)
+            for netw_src_idx in network_structure_p.node_indices():
+                reachable_entries = data_map.aggregate_to_src_idx(
+                    netw_src_idx, network_structure_p, int(max_seconds), config.SPEED_M_S, angular=False
+                )
+                _nodes, tree_map = network_structure_p.dijkstra_tree_shortest(
+                    netw_src_idx, int(max_seconds), config.SPEED_M_S
+                )
+                manual_reachable = {}
+                manual_not_reachable = {}
+                for node_idx, node_visit in enumerate(tree_map):  # type: ignore
+                    if np.isfinite(node_visit.agg_seconds):
+                        if node_idx not in data_map.node_data_map:
+                            continue
+                        for assigned_data_idx, assigned_data_dist in data_map.node_data_map[node_idx]:
+                            dist = node_visit.agg_seconds * config.SPEED_M_S + assigned_data_dist
+                            if dist <= max_dist:
+                                manual_reachable[assigned_data_idx] = dist
+                            else:
+                                manual_not_reachable[assigned_data_idx] = dist
+                for reachable_key, reachable_dist in reachable_entries.items():
+                    assert reachable_key in manual_reachable
+                    assert reachable_dist - manual_reachable[reachable_key] < config.ATOL
+                shadowed_dupes = ["int:45", "int:46", "int:47", "int:48"]
+                for reachable_key in manual_reachable:
+                    if deduplicate is True and reachable_key in shadowed_dupes:
+                        assert "int:49" in manual_reachable
+                        assert "int:49" in reachable_entries
+                        assert reachable_key not in reachable_entries
+                        continue
+                    try:
+                        assert reachable_key in reachable_entries
+                    except AssertionError:
+                        assert max_dist - manual_reachable[reachable_key] < 1
+
+            with pytest.raises(ValueError, match="dual graph"):
+                data_map.aggregate_to_src_idx(
+                    network_structure_p.node_indices()[0],
+                    network_structure_p,
+                    int(max_seconds),
+                    config.SPEED_M_S,
+                    angular=True,
+                )
+
+            data_map = mock.mock_data_map(data_gdf, dedupe_key_col=dedupe_key_col)
+            data_map.assign_data_to_network(network_structure_d, 400, n_nearest_candidates=6)
+            for netw_src_idx in network_structure_d.node_indices():
                     # aggregate to src...
                     reachable_entries = data_map.aggregate_to_src_idx(
-                        netw_src_idx, network_structure, int(max_seconds), config.SPEED_M_S, angular=angular
+                        netw_src_idx, network_structure_d, int(max_seconds), config.SPEED_M_S, angular=True
                     )
                     # compare to manual checks on distances:
                     # get the network distances
-                    if angular is False:
-                        _nodes, tree_map = network_structure.dijkstra_tree_shortest(
-                            netw_src_idx, int(max_seconds), config.SPEED_M_S
-                        )
-                    else:
-                        _nodes, tree_map = network_structure.dijkstra_tree_simplest(
-                            netw_src_idx, int(max_seconds), config.SPEED_M_S
-                        )
+                    _nodes, tree_map = network_structure_d.dijkstra_tree_simplest(
+                        netw_src_idx, int(max_seconds), config.SPEED_M_S
+                    )
                     # check that reachable entries and respective distances are correct
                     # should match against the network structure plus data_map.node_data_map distances
                     manual_reachable = {}
@@ -468,9 +502,10 @@ def test_aggregate_to_src_idx(primal_graph):
                             assert max_dist - manual_reachable[reachable_key] < 1
 
 
-def test_accessibility(primal_graph):
+def test_accessibility(primal_graph, dual_graph):
     # generate node and edge maps
     _nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(primal_graph)
+    _nodes_gdf_dual, _edges_gdf_dual, network_structure_dual = io.network_structure_from_nx(dual_graph)
     data_gdf = mock.mock_landuse_categorical_data(primal_graph, random_seed=13)
     for deduplicate in [False, True]:
         if deduplicate is False:
@@ -587,8 +622,25 @@ def test_accessibility(primal_graph):
                 if dist >= 800:
                     assert max(z_wts) >= 1
     # setup dual data
-    accessibilities_ang = data_map.accessibility(
-        network_structure,
+    with pytest.raises(ValueError, match="dual graph"):
+        data_map.accessibility(
+            network_structure,
+            landuses_map,
+            accessibility_keys,
+            distances,
+            angular=True,
+        )
+    data_map_dual = mock.mock_data_map(data_gdf, dedupe_key_col="data_id")
+    data_map_dual.assign_data_to_network(network_structure_dual, max_assignment_dist=400, n_nearest_candidates=6)
+    accessibilities_dual_short = data_map_dual.accessibility(
+        network_structure_dual,
+        landuses_map,
+        accessibility_keys,
+        distances,
+        angular=False,
+    )
+    accessibilities_ang = data_map_dual.accessibility(
+        network_structure_dual,
         landuses_map,
         accessibility_keys,
         distances,
@@ -599,14 +651,14 @@ def test_accessibility(primal_graph):
     for acc_key in accessibility_keys:
         for dist_key in distances:
             if not np.allclose(
-                accessibilities.result[acc_key].weighted[dist_key],
+                accessibilities_dual_short.result[acc_key].weighted[dist_key],
                 accessibilities_ang.result[acc_key].weighted[dist_key],
                 rtol=config.RTOL,
                 atol=config.ATOL,
             ):
                 some_false = True
             if not np.allclose(
-                accessibilities.result[acc_key].unweighted[dist_key],
+                accessibilities_dual_short.result[acc_key].unweighted[dist_key],
                 accessibilities_ang.result[acc_key].unweighted[dist_key],
                 rtol=config.RTOL,
                 atol=config.ATOL,
@@ -615,12 +667,15 @@ def test_accessibility(primal_graph):
     assert some_false is True
 
 
-def test_mixed_uses(primal_graph):
+def test_mixed_uses(primal_graph, dual_graph):
     # generate node and edge maps
     _nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(primal_graph)
+    _nodes_gdf_dual, _edges_gdf_dual, network_structure_dual = io.network_structure_from_nx(dual_graph)
     data_gdf = mock.mock_landuse_categorical_data(primal_graph, random_seed=13)
     data_map = mock.mock_data_map(data_gdf, dedupe_key_col="data_id")
     data_map.assign_data_to_network(network_structure, max_assignment_dist=400, n_nearest_candidates=6)
+    data_map_dual = mock.mock_data_map(data_gdf, dedupe_key_col="data_id")
+    data_map_dual.assign_data_to_network(network_structure_dual, max_assignment_dist=400, n_nearest_candidates=6)
     distances = [200, 400, 800, 1600]
     max_dist = max(distances)
     max_seconds = max_dist / config.SPEED_M_S
@@ -628,9 +683,11 @@ def test_mixed_uses(primal_graph):
     # test against various distances
     betas = rustalgos.betas_from_distances(distances)
     for angular in [False, True]:
+        active_network = network_structure_dual if angular else network_structure
+        active_data_map = data_map_dual if angular else data_map
         # generate
-        mixed_uses_data = data_map.mixed_uses(
-            network_structure,
+        mixed_uses_data = active_data_map.mixed_uses(
+            active_network,
             landuses_map,
             distances=distances,
             compute_hill=True,
@@ -639,9 +696,9 @@ def test_mixed_uses(primal_graph):
             compute_gini=True,
             angular=angular,
         )
-        for netw_src_idx in network_structure.street_node_indices():
-            reachable_entries = data_map.aggregate_to_src_idx(
-                netw_src_idx, network_structure, int(max_seconds), config.SPEED_M_S, angular=angular
+        for netw_src_idx in active_network.street_node_indices():
+            reachable_entries = active_data_map.aggregate_to_src_idx(
+                netw_src_idx, active_network, int(max_seconds), config.SPEED_M_S, angular=angular
             )
             for dist_cutoff, beta in zip(distances, betas, strict=True):
                 class_agg = dict()
@@ -713,6 +770,13 @@ def test_mixed_uses(primal_graph):
                     rtol=config.RTOL,
                     atol=config.ATOL,
                 )
+    with pytest.raises(ValueError, match="dual graph"):
+        data_map.mixed_uses(
+            network_structure,
+            landuses_map,
+            distances=distances,
+            angular=True,
+        )
 
 
 def test_stats(primal_graph):

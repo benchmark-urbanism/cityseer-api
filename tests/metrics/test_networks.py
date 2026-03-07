@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import numpy as np
+import pytest
 from cityseer import config, rustalgos
 from cityseer.metrics import networks
 from cityseer.tools import io
@@ -76,13 +77,13 @@ def test_node_centrality_shortest(primal_graph):
                         )
 
 
-def test_node_centrality_simplest(primal_graph):
+def test_node_centrality_simplest(dual_graph):
     """
     Underlying methods also tested via test_networks.test_network_centralities
     """
     distances = [400, 800]
     betas = rustalgos.betas_from_distances(distances)
-    nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(primal_graph)
+    nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(dual_graph)
     for _distances, _betas in [(distances, None), (None, betas)]:
         for _far_scale_off, _ang_scale_unit in [(0, 180), (0, 90), (1, 180)]:
             nodes_gdf = networks.node_centrality_simplest(
@@ -210,10 +211,10 @@ def test_closeness_shortest_seeded_determinism(primal_graph):
         assert np.allclose(r1[key].values, r2[key].values), f"Non-deterministic at {dist}m"
 
 
-def test_closeness_simplest(primal_graph):
+def test_closeness_simplest(dual_graph):
     """Test standalone closeness_simplest with adaptive sampling."""
     distances = [200, 400, 800]
-    nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(primal_graph)
+    nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(dual_graph)
     nodes_gdf_result = networks.closeness_simplest(
         network_structure=network_structure,
         nodes_gdf=nodes_gdf.copy(),
@@ -227,10 +228,10 @@ def test_closeness_simplest(primal_graph):
         assert config.prep_gdf_key("hillier", dist, angular=True) in nodes_gdf_result.columns
 
 
-def test_closeness_simplest_seeded_determinism(primal_graph):
+def test_closeness_simplest_seeded_determinism(dual_graph):
     """Same seed produces identical adaptive closeness_simplest results."""
     distances = [200, 400, 800]
-    nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(primal_graph)
+    nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(dual_graph)
     kwargs = dict(
         network_structure=network_structure,
         distances=distances,
@@ -241,3 +242,20 @@ def test_closeness_simplest_seeded_determinism(primal_graph):
     for dist in distances:
         key = config.prep_gdf_key("density", dist, angular=True)
         assert np.allclose(r1[key].values, r2[key].values), f"Non-deterministic at {dist}m"
+
+
+def test_simplest_wrappers_require_dual_graph(primal_graph):
+    distances = [200, 400]
+    nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(primal_graph)
+    with pytest.raises(ValueError, match="dual graph"):
+        networks.closeness_simplest(
+            network_structure=network_structure,
+            nodes_gdf=nodes_gdf.copy(),
+            distances=distances,
+        )
+    with pytest.raises(ValueError, match="dual graph"):
+        networks.betweenness_simplest(
+            network_structure=network_structure,
+            nodes_gdf=nodes_gdf.copy(),
+            distances=distances,
+        )

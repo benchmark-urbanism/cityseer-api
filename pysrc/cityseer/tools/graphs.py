@@ -326,7 +326,7 @@ def nx_remove_dangling_nodes(
     if "crs" in g_multi_copy.graph:
         g_multi_large.graph["crs"] = CRS(g_multi_copy.graph["crs"])
     if "is_dual" in g_multi_copy.graph:
-        g_multi_large.graph["is_dual"] = CRS(g_multi_copy.graph["is_dual"])
+        g_multi_large.graph["is_dual"] = bool(g_multi_copy.graph["is_dual"])
     for subgraph in large_subgraphs:
         g_multi_large.add_nodes_from(subgraph.nodes(data=True))
         g_multi_large.add_edges_from(subgraph.edges(data=True))
@@ -463,7 +463,7 @@ def nx_merge_parallel_edges(
     if "crs" in nx_multigraph.graph:
         deduped_graph.graph["crs"] = CRS(nx_multigraph.graph["crs"])
     if "is_dual" in nx_multigraph.graph:
-        deduped_graph.graph["is_dual"] = CRS(nx_multigraph.graph["is_dual"])
+        deduped_graph.graph["is_dual"] = bool(nx_multigraph.graph["is_dual"])
     deduped_graph.add_nodes_from(nx_multigraph.nodes(data=True))
     # if using OSM tags heuristic
     hwy_tags = _extract_tags_to_set(osm_hwy_target_tags)

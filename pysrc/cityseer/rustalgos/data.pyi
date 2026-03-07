@@ -206,7 +206,8 @@ class DataMap:
         speed_m_s: float
             Travel speed in meters per second.
         angular: bool | None
-            If True, use simplest path (angular distance); otherwise, use shortest path (metric distance).
+            If True, use simplest path (angular distance) on a dual graph; otherwise, use shortest path
+            (metric distance).
 
         Returns
         -------
@@ -249,7 +250,7 @@ class DataMap:
         minutes: list[float] | None
             Time thresholds (minutes).
         angular: bool | None
-            Use simplest path if True.
+            Use simplest path if True. Angular analysis requires `network_structure.is_dual == True`.
         spatial_tolerance: int | None
             Spatial uncertainty buffer for weight clipping.
         min_threshold_wt: float | None
@@ -309,7 +310,7 @@ class DataMap:
         compute_gini: bool | None
             Compute Gini-Simpson diversity if True. Default False.
         angular: bool | None
-            Use simplest path if True.
+            Use simplest path if True. Angular analysis requires `network_structure.is_dual == True`.
         spatial_tolerance: int | None
             Spatial uncertainty buffer for weight clipping.
         min_threshold_wt: float | None
@@ -357,7 +358,7 @@ class DataMap:
         minutes: list[float] | None
             Time thresholds (minutes).
         angular: bool | None
-            Use simplest path if True.
+            Use simplest path if True. Angular analysis requires `network_structure.is_dual == True`.
         spatial_tolerance: int | None
             Spatial uncertainty buffer for weight clipping.
         min_threshold_wt: float | None

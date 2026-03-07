@@ -26,7 +26,7 @@ _CLOSENESS_METRICS_SHORTEST = [
     ("DENSITY", "Density", "Number of nodes reachable within the distance threshold → cc_density_<d>", False),
     ("FARNESS", "Farness", "Sum of distances to all reachable nodes → cc_farness_<d>", False),
     ("BETA", "Beta-weighted", "Closeness with negative-exponential distance decay → cc_beta_<d>", False),
-    ("CYCLES", "Cycles", "Count of network cycles through each node → cc_cycles_<d>", False),
+    ("CYCLES", "Cycles", "Independent loops (circuit rank) in the local reachable subgraph → cc_cycles_<d>", False),
     ("HILLIER", "Hillier (n²/farness)", "Derived closeness variant (density² / farness) → cc_hillier_<d>", False),
 ]
 

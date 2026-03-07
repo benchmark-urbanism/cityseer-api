@@ -21,7 +21,7 @@ The following concepts apply to all three algorithms:
 - **Projected CRS**: All input layers must use a projected metre-based coordinate reference system (not geographic/degrees). All layers in a given analysis must share the same CRS.
 - **Distance thresholds**: Metrics are computed independently at each distance threshold. Shorter distances capture local patterns; longer distances capture wider-area structure.
 - **Boundary polygon**: An optional polygon layer. Nodes whose midpoints fall inside the boundary are "live" (used as analysis sources); nodes outside provide network context only. Multi-polygon layers are supported (features are merged automatically).
-- **Simplest path (angular)**: When enabled, paths minimise cumulative angular change instead of metric distance. This models route choice based on cognitive simplicity rather than physical distance.
+- **Simplest path (angular)**: When enabled, paths minimise cumulative angular change instead of metric distance. This models route choice based on cognitive simplicity rather than physical distance, and uses the plugin's internal dual graph representation.
 
 ### Network Centrality
 
@@ -93,7 +93,7 @@ Accessible via **Processing > Cityseer > Accessibility**. Computes land-use acce
 | **Land-use category field**     | Text column containing the land-use category for each feature. If not set, all features are treated as one category. | _(none)_     |
 | **Distance thresholds**         | Comma-separated distances in metres                                                                                  | `400,800`    |
 | **Max assignment distance**     | Maximum distance (metres) to snap data points to the nearest street segment                                          | `400`        |
-| **Use simplest path (angular)** | Use angular (simplest) paths instead of shortest (metric) paths                                                      | `False`      |
+| **Use simplest path (angular)** | Use angular (simplest) paths instead of shortest (metric) paths on the internally constructed dual graph             | `False`      |
 | **Boundary polygon**            | Optional polygon layer. Nodes inside the boundary are used as sources; nodes outside provide network context only.   | _(none)_     |
 
 #### Land-Use Categories
@@ -132,7 +132,7 @@ Accessible via **Processing > Cityseer > Statistics**. Computes localised statis
 | **Numerical field**             | Numeric column to compute statistics on                                                                            | _(required)_ |
 | **Distance thresholds**         | Comma-separated distances in metres                                                                                | `400,800`    |
 | **Max assignment distance**     | Maximum distance (metres) to snap data points to the nearest street segment                                        | `400`        |
-| **Use simplest path (angular)** | Use angular (simplest) paths instead of shortest (metric) paths                                                    | `False`      |
+| **Use simplest path (angular)** | Use angular (simplest) paths instead of shortest (metric) paths on the internally constructed dual graph          | `False`      |
 | **Boundary polygon**            | Optional polygon layer. Nodes inside the boundary are used as sources; nodes outside provide network context only. | _(none)_     |
 
 Only numeric columns are available for the numerical field selector. Features with missing, null, or non-finite values are skipped automatically.

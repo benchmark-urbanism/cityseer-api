@@ -1067,6 +1067,7 @@ def network_structure_from_nx(
     g_multi_copy = util.validate_cityseer_networkx_graph(nx_multigraph)
     # prepare the network structure
     network_structure = rustalgos.graph.NetworkStructure()
+    network_structure.set_is_dual(bool(g_multi_copy.graph.get("is_dual", False)))
     # generate the network information
     agg_node_data: dict[str, tuple[Any, ...]] = {}
     agg_node_dual_data: dict[str, tuple[Any, Any, Any, Any]] = {}
@@ -1088,7 +1089,14 @@ def network_structure_from_nx(
         if "weight" in node_data:
             weight = node_data["weight"]
         # set node
-        ns_node_idx = network_structure.add_street_node(node_key, node_x, node_y, is_live, weight, z=node_z)
+        ns_node_idx = network_structure.add_street_node(
+            node_key,
+            node_x,
+            node_y,
+            is_live,
+            weight,
+            z=node_z,
+        )
         node_geom = geometry.Point(node_x, node_y, node_z) if node_z is not None else geometry.Point(node_x, node_y)
         agg_node_data[node_key] = (ns_node_idx, node_x, node_y, node_z, is_live, weight, node_geom)
         if "is_dual" in g_multi_copy.graph and g_multi_copy.graph["is_dual"]:
@@ -1132,6 +1140,7 @@ def network_structure_from_nx(
                         end_node_key,
                         aligned_line_geom.wkt,
                         float(edge_data.get("imp_factor", 1.0)),
+                        shared_primal_node_key=edge_data.get("primal_node_id"),
                     )
                 except Exception:
                     logger.error(
@@ -1300,6 +1309,9 @@ def network_structure_from_gpd(
             edge_data["nx_end_node_key"],
             aligned_line_geom.wkt,  # geom_wkt is required
             float(edge_data["imp_factor"]),  # imp_factor
+            shared_primal_node_key=str(edge_data["primal_node_id"])
+            if "primal_node_id" in edge_data and pd.notna(edge_data["primal_node_id"])
+            else None,
         )
     network_structure.validate()
     network_structure.build_edge_rtree()
