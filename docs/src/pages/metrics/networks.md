@@ -42,7 +42,8 @@ of roadway intersections or a proliferation of walking paths in greenspaces;
 together or where impedances otherwise approach zero, as may be the case for simplest-path measures or small
 distance thesholds. This happens because the outcome of the division step can balloon towards $\infty$ once
 impedances decrease below 1.
-- Note that `cityseer`'s implementation of simplest (angular) measures work on both primal and dual graphs (node only).
+- Simplest (angular) node measures require a dual graph representation. Convert primal graphs with
+[`graphs.nx_to_dual`](/tools/graphs#nx-to-dual) before ingesting them.
 - Measures should only be directly compared on the same topology because different topologies can otherwise affect
 the expression of a measure. Accordingly, measures computed on dual graphs cannot be compared to measures computed
 on primal graphs because this does not account for the impact of differing topologies. Dual graph representations
@@ -119,7 +120,7 @@ may therefore be preferable when working at small thresholds on decomposed netwo
   <div class="param">
     <span class="pn">tolerance</span>
     <span class="pc">:</span>
-    <span class="pa"> float = 0.0</span>
+    <span class="pa"> float | None = None</span>
   </div>
   <div class="param">
     <span class="pn">random_seed</span>
@@ -145,7 +146,9 @@ may therefore be preferable when working at small thresholds on decomposed netwo
 
  Compute node centrality using shortest paths with a single Dijkstra per source. When both `compute_closeness` and `compute_betweenness` are True, a single Brandes-style Dijkstra traversal per source produces the data for both closeness accumulation and betweenness backpropagation, halving computation time compared to computing them separately.
 
- When ``sample=True``, sampling probability is derived from each distance threshold using a canonical grid network model (see ``config.compute_distance_p``). This produces deterministic, reach-agnostic sample fractions that are comparable across networks.
+ .. versionchanged:: 4.24.0 The `cycles` output now measures non-tree edges (circuit rank) in the locally reachable subgraph, counting each non-tree edge at both endpoints with a weight of 0.5. This replaces the previous tree-cycle heuristic and provides a well-defined measure of network meshedness (independent loops / city blocks).
+
+ When ``sample=True``, sampling probability is derived from each distance threshold using a canonical grid network model (see ``sampling.compute_distance_p``). This produces deterministic, reach-agnostic sample fractions that are comparable across networks.
 ### Parameters
 <div class="param-set">
   <div class="def">
@@ -204,7 +207,7 @@ may therefore be preferable when working at small thresholds on decomposed netwo
   </div>
   <div class="desc">
 
- Compute closeness centralities. True by default.</div>
+ Compute closeness centralities. True by default. The `cycles` output measures the number of non-tree edges (circuit rank) discovered per node during shortest-path traversal. This corresponds to the number of independent loops (city blocks) in the locally reachable subgraph.</div>
 </div>
 
 <div class="param-set">
@@ -244,7 +247,7 @@ may therefore be preferable when working at small thresholds on decomposed netwo
   </div>
   <div class="desc">
 
- Relative tolerance for betweenness path equality. Paths within `tolerance` fraction of the shortest are treated as near-equal for multi-predecessor Brandes betweenness. Set to 0.0 for exact shortest paths only.</div>
+ Relative tolerance for betweenness path equality, as a percentage (e.g. 1.0 = 1%). Paths within this percentage of the shortest are treated as near-equal for multi-predecessor Brandes betweenness. A tiny internal epsilon is always enforced as a minimum for floating-point stability.</div>
 </div>
 
 <div class="param-set">
@@ -274,7 +277,7 @@ may therefore be preferable when working at small thresholds on decomposed netwo
   </div>
   <div class="desc">
 
- Normalised additive error tolerance for sampling. Defaults to ``config.HOEFFDING_EPSILON``.</div>
+ Normalised additive error tolerance for sampling. Defaults to ``sampling.HOEFFDING_EPSILON``.</div>
 </div>
 
 ### Returns
@@ -492,6 +495,11 @@ may therefore be preferable when working at small thresholds on decomposed netwo
     <span class="pc">:</span>
     <span class="pa"> float = 1.33333</span>
   </div>
+  <div class="param">
+    <span class="pn">tolerance</span>
+    <span class="pc">:</span>
+    <span class="pa"> float | None = None</span>
+  </div>
   <span class="pt">)-&gt;[</span>
   <span class="pr">GeoDataFrame</span>
   <span class="pt">]</span>
@@ -650,6 +658,11 @@ may therefore be preferable when working at small thresholds on decomposed netwo
     <span class="pa"> float = 1.33333</span>
   </div>
   <div class="param">
+    <span class="pn">tolerance</span>
+    <span class="pc">:</span>
+    <span class="pa"> float | None = None</span>
+  </div>
+  <div class="param">
     <span class="pn">angular_scaling_unit</span>
     <span class="pc">:</span>
     <span class="pa"> float = 90</span>
@@ -658,11 +671,6 @@ may therefore be preferable when working at small thresholds on decomposed netwo
     <span class="pn">farness_scaling_offset</span>
     <span class="pc">:</span>
     <span class="pa"> float = 1</span>
-  </div>
-  <div class="param">
-    <span class="pn">tolerance</span>
-    <span class="pc">:</span>
-    <span class="pa"> float = 0.0</span>
   </div>
   <div class="param">
     <span class="pn">random_seed</span>
@@ -687,6 +695,8 @@ may therefore be preferable when working at small thresholds on decomposed netwo
 
 
  Compute node centrality using simplest (angular) paths with a single Dijkstra per source. When both `compute_closeness` and `compute_betweenness` are True, a single Brandes-style Dijkstra traversal per source produces the data for both closeness accumulation and betweenness backpropagation.
+
+ .. versionchanged:: 4.24.0 Angular routing now uses endpoint-aware dual-graph traversal instead of bearing-based angular costs. This requires a dual graph representation (convert with [`graphs.nx_to_dual`](/tools/graphs#nx-to-dual)). The `tolerance` parameter now uses the same relative-percentage semantics as shortest-path betweenness, but applies to angular route cost instead of metric distance. User-facing `tolerance=0.0` means no additional tolerance beyond a tiny internal epsilon used for floating-point stability. Closeness values are nearly identical; betweenness values may differ slightly.
 ### Parameters
 <div class="param-set">
   <div class="def">
@@ -780,6 +790,16 @@ may therefore be preferable when working at small thresholds on decomposed netwo
 
 <div class="param-set">
   <div class="def">
+    <div class="name">tolerance</div>
+    <div class="type">float</div>
+  </div>
+  <div class="desc">
+
+ Relative tolerance for angular betweenness path equality, as a percentage (e.g. 1.0 = 1%). Paths whose angular route cost is within this percentage of the best angular route are treated as near-equal for multi-predecessor Brandes betweenness. A tiny internal epsilon is always enforced as a minimum for floating-point stability.</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
     <div class="name">angular_scaling_unit</div>
     <div class="type">float</div>
   </div>
@@ -796,16 +816,6 @@ may therefore be preferable when working at small thresholds on decomposed netwo
   <div class="desc">
 
  Offset for farness calculation.</div>
-</div>
-
-<div class="param-set">
-  <div class="def">
-    <div class="name">tolerance</div>
-    <div class="type">float</div>
-  </div>
-  <div class="desc">
-
- Relative tolerance for betweenness path equality.</div>
 </div>
 
 <div class="param-set">
@@ -835,7 +845,7 @@ may therefore be preferable when working at small thresholds on decomposed netwo
   </div>
   <div class="desc">
 
- Normalised additive error tolerance for sampling. Defaults to ``config.HOEFFDING_EPSILON``.</div>
+ Normalised additive error tolerance for sampling. Defaults to ``sampling.HOEFFDING_EPSILON``.</div>
 </div>
 
 ### Returns
@@ -1076,6 +1086,11 @@ may therefore be preferable when working at small thresholds on decomposed netwo
     <span class="pa"> float = 1.33333</span>
   </div>
   <div class="param">
+    <span class="pn">tolerance</span>
+    <span class="pc">:</span>
+    <span class="pa"> float | None = None</span>
+  </div>
+  <div class="param">
     <span class="pn">random_seed</span>
     <span class="pc">:</span>
     <span class="pa"> int | None = None</span>
@@ -1144,6 +1159,11 @@ may therefore be preferable when working at small thresholds on decomposed netwo
     <span class="pn">speed_m_s</span>
     <span class="pc">:</span>
     <span class="pa"> float = 1.33333</span>
+  </div>
+  <div class="param">
+    <span class="pn">tolerance</span>
+    <span class="pc">:</span>
+    <span class="pa"> float | None = None</span>
   </div>
   <div class="param">
     <span class="pn">angular_scaling_unit</span>
@@ -1228,7 +1248,7 @@ may therefore be preferable when working at small thresholds on decomposed netwo
   <div class="param">
     <span class="pn">tolerance</span>
     <span class="pc">:</span>
-    <span class="pa"> float = 0.0</span>
+    <span class="pa"> float | None = None</span>
   </div>
   <div class="param">
     <span class="pn">random_seed</span>
@@ -1303,7 +1323,7 @@ may therefore be preferable when working at small thresholds on decomposed netwo
   <div class="param">
     <span class="pn">tolerance</span>
     <span class="pc">:</span>
-    <span class="pa"> float = 0.0</span>
+    <span class="pa"> float | None = None</span>
   </div>
   <div class="param">
     <span class="pn">random_seed</span>

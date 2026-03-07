@@ -57,12 +57,15 @@ def test_build_data_map(primal_graph):
         )
 
 
-def test_compute_accessibilities(primal_graph):
-    nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(primal_graph)
+def test_compute_accessibilities(primal_graph, dual_graph):
+    nodes_gdf_primal, _edges_gdf_primal, network_structure_primal = io.network_structure_from_nx(primal_graph)
+    nodes_gdf_dual, _edges_gdf_dual, network_structure_dual = io.network_structure_from_nx(dual_graph)
     data_gdf = mock.mock_landuse_categorical_data(primal_graph)
     distances = [400, 800]
     max_assign_dist = 400
     for angular in [False, True]:
+        nodes_gdf = nodes_gdf_dual.copy() if angular else nodes_gdf_primal.copy()
+        network_structure = network_structure_dual if angular else network_structure_primal
         for data_id_col in [None, "data_id"]:
             for key_set in (["a"], ["b"], ["a", "b"]):
                 nodes_gdf, data_gdf = layers.compute_accessibilities(
@@ -133,14 +136,17 @@ def test_compute_accessibilities(primal_graph):
                     )
 
 
-def test_compute_mixed_uses(primal_graph):
-    nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(primal_graph)
+def test_compute_mixed_uses(primal_graph, dual_graph):
+    nodes_gdf_primal, _edges_gdf_primal, network_structure_primal = io.network_structure_from_nx(primal_graph)
+    nodes_gdf_dual, _edges_gdf_dual, network_structure_dual = io.network_structure_from_nx(dual_graph)
     data_gdf = mock.mock_landuse_categorical_data(primal_graph)
     distances = [400, 800]
     max_assign_dist = 400
     # test against manual implementation over underlying method
     for data_id_col in [None, "data_id"]:
         for angular in [False, True]:
+            nodes_gdf = nodes_gdf_dual.copy() if angular else nodes_gdf_primal.copy()
+            network_structure = network_structure_dual if angular else network_structure_primal
             nodes_gdf, data_gdf = layers.compute_mixed_uses(
                 data_gdf,
                 "categorical_landuses",
@@ -205,22 +211,25 @@ def test_compute_mixed_uses(primal_graph):
                 )
 
 
-def test_compute_stats(primal_graph):
+def test_compute_stats(primal_graph, dual_graph):
     """
     Test stats component
     """
-    nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(primal_graph)
+    nodes_gdf_primal, _edges_gdf_primal, network_structure_primal = io.network_structure_from_nx(primal_graph)
+    nodes_gdf_dual, _edges_gdf_dual, network_structure_dual = io.network_structure_from_nx(dual_graph)
     data_gdf = mock.mock_numerical_data(primal_graph, num_arrs=2)
     max_assign_dist = 400
-    data_map = layers.build_data_map(
-        data_gdf,
-        network_structure,
-        max_netw_assign_dist=max_assign_dist,
-        data_id_col=None,
-    )  # test against manual implementation over underlying method
     distances = [400, 800]
     for _data_id_col in [None, "data_id"]:
         for angular in [False, True]:
+            nodes_gdf = nodes_gdf_dual.copy() if angular else nodes_gdf_primal.copy()
+            network_structure = network_structure_dual if angular else network_structure_primal
+            data_map = layers.build_data_map(
+                data_gdf,
+                network_structure,
+                max_netw_assign_dist=max_assign_dist,
+                data_id_col=None,
+            )
             nodes_gdf, data_gdf = layers.compute_stats(
                 data_gdf,
                 ["mock_numerical_1", "mock_numerical_2"],
@@ -320,4 +329,38 @@ def test_compute_stats(primal_graph):
             nodes_gdf,
             network_structure,
             distances=distances,
+        )
+
+
+def test_angular_layer_wrappers_require_dual_graph(primal_graph):
+    nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(primal_graph)
+    landuse_gdf = mock.mock_landuse_categorical_data(primal_graph)
+    numerical_gdf = mock.mock_numerical_data(primal_graph, num_arrs=1)
+    with pytest.raises(ValueError, match="dual graph"):
+        layers.compute_accessibilities(
+            landuse_gdf,
+            "categorical_landuses",
+            ["a"],
+            nodes_gdf.copy(),
+            network_structure,
+            distances=[400],
+            angular=True,
+        )
+    with pytest.raises(ValueError, match="dual graph"):
+        layers.compute_mixed_uses(
+            landuse_gdf,
+            "categorical_landuses",
+            nodes_gdf.copy(),
+            network_structure,
+            distances=[400],
+            angular=True,
+        )
+    with pytest.raises(ValueError, match="dual graph"):
+        layers.compute_stats(
+            numerical_gdf,
+            ["mock_numerical_1"],
+            nodes_gdf.copy(),
+            network_structure,
+            distances=[400],
+            angular=True,
         )
