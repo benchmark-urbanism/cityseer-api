@@ -103,7 +103,7 @@ def nx_epsg_conversion(
             if line_geom.has_z:
                 edge_coords: ListCoordsType = [(*transformer.transform(c[0], c[1]), c[2]) for c in line_geom.coords]
             else:
-                edge_coords = [transformer.transform(x, y) for x, y in line_geom.coords]
+                edge_coords: ListCoordsType = [transformer.transform(x, y) for x, y in line_geom.coords]
             # snap ends
             edge_coords = util.snap_linestring_endpoints(g_multi_copy, start_nd_key, end_nd_key, edge_coords)
             # write back to edge
