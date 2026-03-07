@@ -204,7 +204,7 @@ class TestTargetAggregation:
         assert coverage > 0.9, f"Density coverage {coverage:.1%} below 90%"
 
     def test_reasonable_coverage_cycles(self, network_structure):
-        """Cycles metric has reasonable coverage (sparser than density)."""
+        """Cycles (target-aggregated circuit rank with IPW): sampled should approximate full."""
         ns, _ = network_structure
         distance = 500
 
@@ -226,11 +226,14 @@ class TestTargetAggregation:
         )
         sampled_cycles = np.array(res_sampled.node_cycles[distance])
 
+        # Target-aggregated with IPW: sampled should approximate full result.
+        # Cycles are small discrete values (0.5 increments), so correlation is noisy
+        # at 50% sampling on a small graph. Use a relaxed threshold.
         mask = full_cycles > 0
-        zeros = np.sum((sampled_cycles == 0) & mask)
-        coverage = (np.sum(mask) - zeros) / np.sum(mask)
-
-        assert coverage > 0.5, f"Cycle coverage {coverage:.1%} below 50%"
+        if np.sum(mask) == 0:
+            pytest.skip("No nodes with cycles")
+        rho = np.corrcoef(full_cycles[mask], sampled_cycles[mask])[0, 1]
+        assert rho > 0.6, f"Cycles correlation too low: {rho:.3f}"
 
 
 class TestSamplingWeights:

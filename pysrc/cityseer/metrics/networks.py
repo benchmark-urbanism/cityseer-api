@@ -120,10 +120,10 @@ def node_centrality_shortest(
     time compared to computing them separately.
 
     .. versionchanged:: 4.24.0
-        The `cycles` output now measures non-tree edges (circuit rank) in the locally reachable
-        subgraph, counting each non-tree edge at both endpoints with a weight of 0.5. This
-        replaces the previous tree-cycle heuristic and provides a well-defined measure of
-        network meshedness (independent loops / city blocks).
+        The `cycles` output now measures the circuit rank of the locally reachable subgraph
+        (`m - n + c`), computed per source and then target-aggregated using the same source/IPW
+        framework as the other shortest-path metrics. This provides a more stable measure of
+        network meshedness (independent loops / city blocks) than the older tree-cycle heuristic.
 
     When ``sample=True``, sampling probability is derived from each distance threshold using a canonical grid network
     model (see ``sampling.compute_distance_p``). This produces deterministic, reach-agnostic sample fractions that are
@@ -144,9 +144,9 @@ def node_centrality_shortest(
         A list of walking times in minutes to be used for calculations.
     compute_closeness: bool
         Compute closeness centralities. True by default.
-        The `cycles` output measures the number of non-tree edges (circuit rank) discovered per node during
-        shortest-path traversal. This corresponds to the number of independent loops (city blocks) in the
-        locally reachable subgraph.
+        The `cycles` output measures the circuit rank of the source's locally reachable subgraph
+        and target-aggregates that loopiness contribution over all sources that can reach each
+        node within the threshold.
     compute_betweenness: bool
         Compute betweenness centralities. True by default.
     min_threshold_wt: float

@@ -97,6 +97,35 @@ def make_angular_plateau_graph() -> nx.MultiGraph:
     return graphs.nx_simple_geoms(G)
 
 
+def make_tolerance_drift_graph() -> nx.MultiGraph:
+    from pyproj import CRS
+
+    G = nx.MultiGraph()
+    G.graph["crs"] = CRS(32630)
+    # Source S and target T have three alternative two-edge routes:
+    # S-A-T = 10.0, S-B-T = 9.8, S-C-T = 9.0.
+    # Under 10% tolerance, A must be excluded because 10.0 > 9.0 * 1.1 = 9.9.
+    coords = {
+        "S": (0.0, 0.0),
+        "T": (8.0, 0.0),
+        "A": (4.0, 3.0),
+        "B": (4.0, 2.831960451701259),
+        "C": (4.0, 2.0615528128088303),
+    }
+    for node_key, (x, y) in coords.items():
+        G.add_node(node_key, x=x, y=y)
+    for start, end in [
+        ("S", "A"),
+        ("A", "T"),
+        ("S", "B"),
+        ("B", "T"),
+        ("S", "C"),
+        ("C", "T"),
+    ]:
+        G.add_edge(start, end)
+    return graphs.nx_simple_geoms(G)
+
+
 def test_shortest_path_trees(primal_graph, dual_graph):
     nodes_gdf_p, edges_gdf_p, network_structure_p = io.network_structure_from_nx(primal_graph)
     # prepare round-trip graph for checks
@@ -255,37 +284,26 @@ def test_closeness_shortest(primal_graph):
     n_nodes: int = primal_graph.number_of_nodes()
     dens: npt.NDArray[np.float32] = np.full((d_n, n_nodes), 0.0, dtype=np.float32)
     far_short_dist: npt.NDArray[np.float32] = np.full((d_n, n_nodes), 0.0, dtype=np.float32)
-    cycles_nontree: npt.NDArray[np.float32] = np.full((d_n, n_nodes), 0.0, dtype=np.float32)
+    cycles_circuit_rank: npt.NDArray[np.float32] = np.full((d_n, n_nodes), 0.0, dtype=np.float32)
     harmonic_cl: npt.NDArray[np.float32] = np.full((d_n, n_nodes), 0.0, dtype=np.float32)
     grav: npt.NDArray[np.float32] = np.full((d_n, n_nodes), 0.0, dtype=np.float32)
     #
     max_seconds_5000 = 5000 / config.SPEED_M_S
     for src_idx in range(n_nodes):
         src_key = str(src_idx)
-        preds, dists = nx.dijkstra_predecessor_and_distance(G_round_trip, src_key, weight="length")
-        # count non-tree edges per node for the full reachable subgraph
-        # attribute to both endpoints for deterministic, order-independent counting
-        node_cycles_full = np.zeros(n_nodes, dtype=np.float32)
-        for u_key, v_key, _edge_key in G_round_trip.edges(keys=True):
-            if u_key == v_key:
-                continue
-            if u_key not in dists or v_key not in dists:
-                continue
-            u_idx = int(u_key)
-            v_idx = int(v_key)
-            # check if edge is in the shortest-path DAG (either direction)
-            is_dag_edge = (v_key in preds.get(u_key, [])) or (u_key in preds.get(v_key, []))
-            if not is_dag_edge:
-                node_cycles_full[u_idx] += 0.5
-                node_cycles_full[v_idx] += 0.5
-        # accumulate: include each node's full cycle count if within distance threshold
-        for to_idx in range(n_nodes):
-            to_key = str(to_idx)
-            if to_key not in dists or to_idx == src_idx:
-                continue
-            for d_idx, dist_cutoff in enumerate(distances):
-                if dists[to_key] <= dist_cutoff:
-                    cycles_nontree[d_idx][to_idx] += node_cycles_full[to_idx]
+        _preds, dists = nx.dijkstra_predecessor_and_distance(G_round_trip, src_key, weight="length")
+        source_cycle_score = np.zeros(d_n, dtype=np.float32)
+        for d_idx, dist_cutoff in enumerate(distances):
+            nodes_in_subgraph = {k for k, d in dists.items() if d <= dist_cutoff}
+            edge_ids = set()
+            for u_key, v_key, edge_key in G_round_trip.edges(keys=True):
+                if u_key == v_key:
+                    continue
+                if u_key in nodes_in_subgraph and v_key in nodes_in_subgraph:
+                    edge_ids.add(tuple(sorted((u_key, v_key))) + (edge_key,))
+            n = len(nodes_in_subgraph)
+            if n > 0:
+                source_cycle_score[d_idx] = max(0, len(edge_ids) - n + 1)
         # get shortest path maps
         visited_nodes, tree_map = network_structure.dijkstra_tree_shortest(
             src_idx, int(max_seconds_5000), speed_m_s=config.SPEED_M_S
@@ -303,20 +321,19 @@ def test_closeness_shortest(primal_graph):
                 dist_cutoff = distances[d_idx]
                 beta = betas[d_idx]
                 if to_short_dist <= dist_cutoff:
-                    # don't exceed threshold
-                    # if to_dist <= dist_cutoff:
                     # aggregate values
                     dens[d_idx][src_idx] += 1
                     far_short_dist[d_idx][src_idx] += to_short_dist
                     harmonic_cl[d_idx][src_idx] += 1 / to_short_dist
                     grav[d_idx][src_idx] += np.exp(-beta * to_short_dist)
+                    cycles_circuit_rank[d_idx][to_idx] += source_cycle_score[d_idx]
     for d_idx, dist in enumerate(distances):
         assert np.allclose(node_result_short.node_density[dist], dens[d_idx], atol=config.ATOL, rtol=config.RTOL)
         assert np.allclose(
             node_result_short.node_farness[dist], far_short_dist[d_idx], atol=config.ATOL, rtol=config.RTOL
         )
         assert np.allclose(
-            node_result_short.node_cycles[dist], cycles_nontree[d_idx], atol=config.ATOL, rtol=config.RTOL
+            node_result_short.node_cycles[dist], cycles_circuit_rank[d_idx], atol=config.ATOL, rtol=config.RTOL
         )
         assert np.allclose(
             node_result_short.node_harmonic[dist], harmonic_cl[d_idx], atol=config.ATOL, rtol=config.RTOL
@@ -345,8 +362,9 @@ def test_closeness_shortest(primal_graph):
                 rtol=config.RTOL,
                 atol=config.ATOL,
             )
+            # circuit rank is a topological property — unaffected by node weights
             assert np.allclose(
-                node_result_short.node_cycles[dist] * wt,
+                node_result_short.node_cycles[dist],
                 node_result_short_wt.node_cycles[dist],
                 rtol=config.RTOL,
                 atol=config.ATOL,
@@ -459,11 +477,10 @@ def test_local_centrality_all(diamond_graph):
     assert np.allclose(node_result_short.node_farness[50], [0, 0, 0, 0], atol=config.ATOL, rtol=config.RTOL)
     assert np.allclose(node_result_short.node_farness[150], [200, 300, 300, 200], atol=config.ATOL, rtol=config.RTOL)
     assert np.allclose(node_result_short.node_farness[250], [400, 300, 300, 400], atol=config.ATOL, rtol=config.RTOL)
-    # node cycles
-    # non-tree edges counted at both endpoints with 0.5 each (total = circuit rank)
+    # node cycles (source-local circuit rank broadcast to reachable targets)
     assert np.allclose(node_result_short.node_cycles[50], [0, 0, 0, 0], atol=config.ATOL, rtol=config.RTOL)
-    assert np.allclose(node_result_short.node_cycles[150], [1, 2, 2, 1], atol=config.ATOL, rtol=config.RTOL)
-    assert np.allclose(node_result_short.node_cycles[250], [1, 2, 2, 1], atol=config.ATOL, rtol=config.RTOL)
+    assert np.allclose(node_result_short.node_cycles[150], [4, 4, 4, 4], atol=config.ATOL, rtol=config.RTOL)
+    assert np.allclose(node_result_short.node_cycles[250], [6, 6, 6, 6], atol=config.ATOL, rtol=config.RTOL)
     # node harmonic
     # additive 1 / distances
     assert np.allclose(node_result_short.node_harmonic[50], [0, 0, 0, 0], atol=config.ATOL, rtol=config.RTOL)
@@ -867,3 +884,47 @@ def test_simplest_brandes_handles_zero_angle_plateaus():
     # pairs respectively, so the stable corridor ratio should be 1.8 rather than
     # the old discontinuous spike.
     assert np.isclose(ratio, 1.8, atol=1e-6)
+
+
+def test_shortest_brandes_tolerance_clears_stale_predecessors():
+    graph = make_tolerance_drift_graph()
+    nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(graph)
+    idx_by_key = {node_key: idx for idx, node_key in enumerate(nodes_gdf.index)}
+    src_idx = idx_by_key["S"]
+    distance = 20
+
+    res_exact = network_structure.centrality_shortest(
+        compute_closeness=False,
+        compute_betweenness=True,
+        distances=[distance],
+        tolerance=0.0,
+        source_indices=[src_idx],
+        pbar_disabled=True,
+    )
+    res_tolerant = network_structure.centrality_shortest(
+        compute_closeness=False,
+        compute_betweenness=True,
+        distances=[distance],
+        tolerance=10.0,
+        source_indices=[src_idx],
+        pbar_disabled=True,
+    )
+
+    exact = {
+        node_key: res_exact.node_betweenness[distance][idx] for idx, node_key in enumerate(nodes_gdf.index)
+    }
+    tolerant = {
+        node_key: res_tolerant.node_betweenness[distance][idx] for idx, node_key in enumerate(nodes_gdf.index)
+    }
+
+    assert np.isclose(exact["A"], 0.0, atol=config.ATOL)
+    assert np.isclose(exact["B"], 0.0, atol=config.ATOL)
+    assert exact["C"] > 0.0
+
+    # Under 10% tolerance, B remains admissible but A must be cleared because
+    # its 10.0 path lies outside the final 9.0 * 1.1 tolerance band.
+    assert np.isclose(tolerant["A"], 0.0, atol=config.ATOL)
+    assert tolerant["B"] > 0.0
+    assert tolerant["C"] > 0.0
+    assert tolerant["A"] < tolerant["B"]
+    assert tolerant["A"] < tolerant["C"]

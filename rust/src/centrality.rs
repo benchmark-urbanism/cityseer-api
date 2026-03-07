@@ -17,6 +17,7 @@ use smallvec::SmallVec;
 use std::cmp::Ordering;
 use std::collections::BinaryHeap;
 use std::collections::HashMap;
+use std::collections::HashSet;
 use std::sync::atomic::AtomicU32;
 use std::sync::atomic::Ordering as AtomicOrdering;
 
@@ -397,7 +398,6 @@ struct BrandesTraversalState {
     node_idx: usize,
     route_cost: f32,
     agg_seconds: f32,
-    cycles: f32,
 }
 
 impl BrandesTraversalState {
@@ -409,7 +409,6 @@ impl BrandesTraversalState {
             node_idx,
             route_cost: f32::INFINITY,
             agg_seconds: f32::INFINITY,
-            cycles: 0.0,
         }
     }
 }
@@ -466,6 +465,66 @@ impl NetworkStructure {
             .collect()
     }
 
+    /// Compute circuit rank (edges - nodes + 1) for each distance threshold
+    /// using only the reachable subgraph from the traversal. O(reachable edges).
+    fn circuit_ranks_from_traversal(
+        &self,
+        traversal: &BrandesTraversal,
+        distances: &[u32],
+    ) -> Vec<f32> {
+        let d_n = distances.len();
+        let mut node_counts = vec![0usize; d_n];
+        for &node_idx in &traversal.reached_node_indices {
+            let cost = traversal.best_route_cost[node_idx];
+            for i in 0..d_n {
+                if cost <= distances[i] as f32 {
+                    node_counts[i] += 1;
+                }
+            }
+        }
+        let mut edge_counts = vec![0usize; d_n];
+        let mut seen = HashSet::new();
+        for &node_idx in &traversal.reached_node_indices {
+            let node_index = NodeIndex::new(node_idx);
+            for edge_ref in self
+                .graph
+                .edges_directed(node_index, Direction::Outgoing)
+            {
+                let nb_idx = edge_ref.target().index();
+                if nb_idx == node_idx {
+                    continue;
+                }
+                if !traversal.best_route_cost[nb_idx].is_finite() {
+                    continue;
+                }
+                let edge_key = (
+                    node_idx.min(nb_idx),
+                    node_idx.max(nb_idx),
+                    edge_ref.weight().edge_idx,
+                );
+                if !seen.insert(edge_key) {
+                    continue;
+                }
+                let edge_cost = traversal.best_route_cost[node_idx]
+                    .max(traversal.best_route_cost[nb_idx]);
+                for i in 0..d_n {
+                    if edge_cost <= distances[i] as f32 {
+                        edge_counts[i] += 1;
+                    }
+                }
+            }
+        }
+        (0..d_n)
+            .map(|i| {
+                if node_counts[i] == 0 {
+                    0.0
+                } else {
+                    (edge_counts[i] as isize - node_counts[i] as isize + 1).max(0) as f32
+                }
+            })
+            .collect()
+    }
+
     #[inline]
     fn angular_state_idx(node_idx: usize, endpoint_slot: usize) -> usize {
         (node_idx * 2) + endpoint_slot
@@ -506,6 +565,15 @@ impl NetworkStructure {
         Ok(endpoint_slots)
     }
 
+    /// Two-phase Brandes Dijkstra for angular (simplest-path) centrality with tolerance.
+    ///
+    /// Phase 1: Exact Dijkstra (TIE_EPSILON only) on the doubled state space to compute
+    /// final settled angular costs, visit order, and exact predecessors.
+    ///
+    /// Phase 2: Rebuild predecessors and sigma using the user's tolerance against final
+    /// (immutable) angular costs. Same correctness guarantee as the shortest-path variant:
+    /// processing in settled order ensures all predecessors are finalised before their
+    /// successors.
     fn dijkstra_brandes_angular(
         &self,
         src_idx: usize,
@@ -527,6 +595,7 @@ impl NetworkStructure {
         let mut best_route_cost = vec![f32::INFINITY; node_count];
         let mut best_agg_seconds = vec![f32::INFINITY; node_count];
 
+        // Phase 1: Exact Dijkstra — settled angular costs and predecessors (TIE_EPSILON).
         let mut active = BinaryHeap::new();
         best_route_cost[src_idx] = 0.0;
         best_agg_seconds[src_idx] = 0.0;
@@ -590,16 +659,19 @@ impl NetworkStructure {
                 if candidate_seconds > max_seconds as f32 {
                     continue;
                 }
+                if states[next_state_idx].visited {
+                    continue;
+                }
                 let candidate_route = states[state_idx].route_cost
                     + edge_payload.angle_sum
                     + (ANGULAR_ROUTE_TIE_BREAK_FACTOR * edge_payload.length);
 
                 let cur_cost = states[next_state_idx].route_cost;
                 let improved = candidate_route < cur_cost;
-                let tied = candidate_route <= cur_cost * (1.0 + tolerance);
+                let tied = candidate_route <= cur_cost * (1.0 + TIE_EPSILON);
 
                 if improved {
-                    if candidate_route < cur_cost * (1.0 - tolerance) {
+                    if candidate_route < cur_cost * (1.0 - TIE_EPSILON) {
                         states[next_state_idx].preds.clear();
                         states[next_state_idx].sigma = states[state_idx].sigma;
                     } else {
@@ -618,18 +690,75 @@ impl NetworkStructure {
                     }
                     states[next_state_idx].preds.push(state_idx);
                     states[next_state_idx].sigma += states[state_idx].sigma;
-                } else {
-                    continue;
                 }
 
                 let next_node_idx = states[next_state_idx].node_idx;
                 let best_cost = best_route_cost[next_node_idx];
-                if candidate_route < best_cost * (1.0 - tolerance) {
+                if candidate_route < best_cost * (1.0 - TIE_EPSILON) {
                     best_route_cost[next_node_idx] = candidate_route;
                     best_agg_seconds[next_node_idx] = candidate_seconds;
-                } else if candidate_route <= best_cost * (1.0 + tolerance) {
+                } else if candidate_route <= best_cost * (1.0 + TIE_EPSILON) {
                     best_agg_seconds[next_node_idx] =
                         best_agg_seconds[next_node_idx].min(candidate_seconds);
+                }
+            }
+        }
+
+        // Phase 2: Rebuild predecessors and sigma using user tolerance against final costs.
+        // Re-iterates edges using settled costs (immutable after Phase 1). Processing in
+        // settled order guarantees sigma accumulates correctly (all predecessors finalised first).
+        if tolerance > TIE_EPSILON {
+            let mut visit_pos = vec![usize::MAX; state_count];
+            for (pos, &idx) in visited_state_indices.iter().enumerate() {
+                visit_pos[idx] = pos;
+            }
+            // Clear Phase 1 predecessors and sigma (keep distances).
+            for &idx in &visited_state_indices {
+                states[idx].preds.clear();
+                states[idx].sigma = 0.0;
+            }
+            for slot in 0..2 {
+                let src_state_idx = Self::angular_state_idx(src_idx, slot);
+                states[src_state_idx].sigma = 1.0;
+            }
+            // Process settled states in order. For each state U, look at outgoing edges
+            // to find successors V that were settled later (visit_pos[V] > pos).
+            for (pos, &u_state_idx) in visited_state_indices.iter().enumerate() {
+                let u_node_idx = states[u_state_idx].node_idx;
+                let u_entry_slot = u_state_idx % 2;
+                let u_node_index = NodeIndex::new(u_node_idx);
+                for edge_ref in self.graph.edges_directed(u_node_index, Direction::Outgoing) {
+                    let next_node_idx = edge_ref.target().index();
+                    let edge_payload = edge_ref.weight();
+                    let shared_key = edge_payload
+                        .shared_primal_node_key
+                        .as_deref()
+                        .expect("validated dual edge is missing shared_primal_node_key metadata");
+                    let u_shared_slot = endpoint_slots[u_node_idx]
+                        .iter()
+                        .position(|slot_key| slot_key == shared_key)
+                        .expect("validated shared_primal_node_key missing from source dual node");
+                    if u_shared_slot != 1 - u_entry_slot {
+                        continue;
+                    }
+                    let next_shared_slot = endpoint_slots[next_node_idx]
+                        .iter()
+                        .position(|slot_key| slot_key == shared_key)
+                        .expect("validated shared_primal_node_key missing from target dual node");
+                    let v_state_idx = Self::angular_state_idx(next_node_idx, next_shared_slot);
+                    // Only consider successors settled after U.
+                    if visit_pos[v_state_idx] <= pos {
+                        continue;
+                    }
+                    let candidate_route = states[u_state_idx].route_cost
+                        + edge_payload.angle_sum
+                        + (ANGULAR_ROUTE_TIE_BREAK_FACTOR * edge_payload.length);
+                    if candidate_route <= states[v_state_idx].route_cost * (1.0 + tolerance)
+                        && !states[v_state_idx].preds.contains(&u_state_idx)
+                    {
+                        states[v_state_idx].preds.push(u_state_idx);
+                        states[v_state_idx].sigma += states[u_state_idx].sigma;
+                    }
                 }
             }
         }
@@ -1157,10 +1286,9 @@ impl NetworkStructure {
                 let candidate_metric =
                     candidate_simpl + (ANGULAR_ROUTE_TIE_BREAK_FACTOR * edge_payload.length);
 
-                let improved =
-                    candidate_metric + TIE_EPSILON < states[next_state_idx].route_metric;
-                let tied = (candidate_metric - states[next_state_idx].route_metric).abs()
-                    <= TIE_EPSILON;
+                let improved = candidate_metric + TIE_EPSILON < states[next_state_idx].route_metric;
+                let tied =
+                    (candidate_metric - states[next_state_idx].route_metric).abs() <= TIE_EPSILON;
 
                 if improved
                     || (tied
@@ -1181,10 +1309,8 @@ impl NetworkStructure {
                         reached_node_flags[next_node_idx] = true;
                         visited_nodes.push(next_node_idx);
                     }
-                    let node_improved =
-                        candidate_simpl + TIE_EPSILON < next_visit.simpl_dist;
-                    let node_tied =
-                        (candidate_simpl - next_visit.simpl_dist).abs() <= TIE_EPSILON;
+                    let node_improved = candidate_simpl + TIE_EPSILON < next_visit.simpl_dist;
+                    let node_tied = (candidate_simpl - next_visit.simpl_dist).abs() <= TIE_EPSILON;
                     if !next_visit.discovered
                         || node_improved
                         || (node_tied && candidate_seconds < next_visit.agg_seconds)
@@ -1205,6 +1331,16 @@ impl NetworkStructure {
         (visited_nodes, tree_map)
     }
 
+    /// Two-phase Brandes Dijkstra for shortest-path centrality with tolerance.
+    ///
+    /// Phase 1: Exact Dijkstra (TIE_EPSILON only) to compute final settled distances,
+    /// visit order, and exact predecessors.
+    ///
+    /// Phase 2: Rebuild predecessors and sigma using the user's tolerance against final
+    /// (immutable) distances. Processing in settled order guarantees correct sigma
+    /// accumulation because all predecessors of a node have lower cost and are processed
+    /// first. This eliminates the predecessor drift bug where single-pass tolerance
+    /// tracking accumulates stale predecessors against tentative distances.
     fn dijkstra_brandes_shortest(
         &self,
         src_idx: usize,
@@ -1224,6 +1360,7 @@ impl NetworkStructure {
         let mut best_route_cost = vec![f32::INFINITY; node_count];
         let mut best_agg_seconds = vec![f32::INFINITY; node_count];
 
+        // Phase 1: Exact Dijkstra — settled distances and predecessors (TIE_EPSILON).
         states[src_idx].sigma = 1.0;
         states[src_idx].route_cost = 0.0;
         states[src_idx].agg_seconds = 0.0;
@@ -1271,20 +1408,14 @@ impl NetworkStructure {
                     continue;
                 }
                 if states[nb_idx].visited {
-                    // Non-tree edge: neighbor already settled and not our predecessor.
-                    // Attribute to both endpoints for deterministic, order-independent counting.
-                    if !states[state_idx].preds.contains(&nb_idx) {
-                        states[state_idx].cycles += 0.5;
-                        states[nb_idx].cycles += 0.5;
-                    }
                     continue;
                 }
                 let candidate_route = candidate_seconds * speed_m_s;
                 let improved = candidate_seconds < states[nb_idx].agg_seconds;
-                let tied = candidate_seconds <= states[nb_idx].agg_seconds * (1.0 + tolerance);
+                let tied = candidate_seconds <= states[nb_idx].agg_seconds * (1.0 + TIE_EPSILON);
 
                 if improved {
-                    if candidate_seconds < states[nb_idx].agg_seconds * (1.0 - tolerance) {
+                    if candidate_seconds < states[nb_idx].agg_seconds * (1.0 - TIE_EPSILON) {
                         states[nb_idx].preds.clear();
                         states[nb_idx].sigma = states[state_idx].sigma;
                     } else {
@@ -1303,12 +1434,51 @@ impl NetworkStructure {
                     }
                     states[nb_idx].preds.push(state_idx);
                     states[nb_idx].sigma += states[state_idx].sigma;
-                } else {
-                    continue;
                 }
 
                 best_route_cost[nb_idx] = states[nb_idx].route_cost;
                 best_agg_seconds[nb_idx] = states[nb_idx].agg_seconds;
+            }
+        }
+
+        // Phase 2: Rebuild predecessors and sigma using user tolerance against final distances.
+        // Re-iterates edges using settled distances (immutable after Phase 1). Processing in
+        // settled order guarantees sigma accumulates correctly (all predecessors finalised first).
+        if tolerance > TIE_EPSILON {
+            let mut visit_pos = vec![usize::MAX; node_count];
+            for (pos, &idx) in visited_state_indices.iter().enumerate() {
+                visit_pos[idx] = pos;
+            }
+            for &idx in &visited_state_indices {
+                states[idx].preds.clear();
+                states[idx].sigma = 0.0;
+            }
+            states[src_idx].sigma = 1.0;
+            for (pos, &u_idx) in visited_state_indices.iter().enumerate() {
+                let u_node_index = NodeIndex::new(states[u_idx].node_idx);
+                for edge_ref in self.graph.edges_directed(u_node_index, Direction::Incoming) {
+                    let v_idx = edge_ref.source().index();
+                    if v_idx == u_idx {
+                        continue;
+                    }
+                    if visit_pos[v_idx] <= pos {
+                        continue;
+                    }
+                    let edge_seconds = self.edge_travel_seconds(
+                        v_idx,
+                        states[u_idx].node_idx,
+                        edge_ref.weight(),
+                        speed_m_s,
+                        true,
+                    );
+                    let path_seconds = states[u_idx].agg_seconds + edge_seconds;
+                    if path_seconds <= states[v_idx].agg_seconds * (1.0 + tolerance)
+                        && !states[v_idx].preds.contains(&u_idx)
+                    {
+                        states[v_idx].preds.push(u_idx);
+                        states[v_idx].sigma += states[u_idx].sigma;
+                    }
+                }
             }
         }
 
@@ -1556,8 +1726,13 @@ impl NetworkStructure {
                     tolerance,
                 );
 
+                // IPW-only weight for cycles (no node weight, just sampling correction).
+                let cycles_wt = wt / self.get_node_weight_unchecked(*src_idx);
+
                 // --- Closeness accumulation ---
                 if compute_closeness {
+                    let source_cycle_scores =
+                        self.circuit_ranks_from_traversal(&traversal, &distances);
                     for &to_idx in &traversal.reached_node_indices {
                         if to_idx == *src_idx {
                             continue;
@@ -1565,8 +1740,6 @@ impl NetworkStructure {
                         if !traversal.best_agg_seconds[to_idx].is_finite() {
                             continue;
                         }
-                        let node_state = &traversal.state[to_idx];
-                        let cycle_score = node_state.cycles;
                         // Track reachability per distance when sampling
                         if sampling_plan.sample_probability.is_some()
                             || sampling_plan.is_source_indexed
@@ -1589,8 +1762,10 @@ impl NetworkStructure {
                                     (traversal.best_route_cost[to_idx] * wt) as f64,
                                     AtomicOrdering::Relaxed,
                                 );
-                                res.node_cycles_vec.metric[i][to_idx]
-                                    .fetch_add((cycle_score * wt) as f64, AtomicOrdering::Relaxed);
+                                res.node_cycles_vec.metric[i][to_idx].fetch_add(
+                                    (source_cycle_scores[i] * cycles_wt) as f64,
+                                    AtomicOrdering::Relaxed,
+                                );
                                 res.node_harmonic_vec.metric[i][to_idx].fetch_add(
                                     ((1.0 / traversal.best_route_cost[to_idx]) * wt) as f64,
                                     AtomicOrdering::Relaxed,
@@ -1876,8 +2051,12 @@ impl NetworkStructure {
                             if to_idx == *src_idx {
                                 continue;
                             }
-                            let best_state_indices =
-                                Self::best_angular_target_states(&traversal, to_idx, sec_threshold, tolerance);
+                            let best_state_indices = Self::best_angular_target_states(
+                                &traversal,
+                                to_idx,
+                                sec_threshold,
+                                tolerance,
+                            );
                             if best_state_indices.is_empty() {
                                 continue;
                             }
