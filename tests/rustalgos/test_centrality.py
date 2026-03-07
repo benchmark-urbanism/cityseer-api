@@ -67,6 +67,36 @@ def make_two_segment_line_graph(
     return graphs.nx_simple_geoms(G)
 
 
+def make_angular_plateau_graph() -> nx.MultiGraph:
+    from pyproj import CRS
+
+    G = nx.MultiGraph()
+    G.graph["crs"] = CRS(32630)
+    coords = {
+        "A": (0.0, 0.0),
+        "B": (100.0, 0.0),
+        "C": (200.0, 0.0),
+        "D": (300.0, 0.0),
+        "E": (400.0, 0.0),
+        "BU": (100.0, 100.0),
+        "BD": (100.0, -100.0),
+        "CU": (200.0, 100.0),
+    }
+    for node_key, (x, y) in coords.items():
+        G.add_node(node_key, x=x, y=y)
+    for start, end in [
+        ("A", "B"),
+        ("B", "C"),
+        ("C", "D"),
+        ("D", "E"),
+        ("B", "BU"),
+        ("B", "BD"),
+        ("C", "CU"),
+    ]:
+        G.add_edge(start, end)
+    return graphs.nx_simple_geoms(G)
+
+
 def test_shortest_path_trees(primal_graph, dual_graph):
     nodes_gdf_p, edges_gdf_p, network_structure_p = io.network_structure_from_nx(primal_graph)
     # prepare round-trip graph for checks
@@ -225,13 +255,23 @@ def test_closeness_shortest(primal_graph):
     n_nodes: int = primal_graph.number_of_nodes()
     dens: npt.NDArray[np.float32] = np.full((d_n, n_nodes), 0.0, dtype=np.float32)
     far_short_dist: npt.NDArray[np.float32] = np.full((d_n, n_nodes), 0.0, dtype=np.float32)
+    cycles_surplus: npt.NDArray[np.float32] = np.full((d_n, n_nodes), 0.0, dtype=np.float32)
     harmonic_cl: npt.NDArray[np.float32] = np.full((d_n, n_nodes), 0.0, dtype=np.float32)
     grav: npt.NDArray[np.float32] = np.full((d_n, n_nodes), 0.0, dtype=np.float32)
-    cyc_to: npt.NDArray[np.float32] = np.full((d_n, n_nodes), 0.0, dtype=np.float32)
-    cyc_src: npt.NDArray[np.float32] = np.full((d_n, n_nodes), 0.0, dtype=np.float32)
     #
     max_seconds_5000 = 5000 / config.SPEED_M_S
     for src_idx in range(n_nodes):
+        preds, dists = nx.dijkstra_predecessor_and_distance(G_round_trip, str(src_idx), weight="length")
+        for to_idx in range(n_nodes):
+            if to_idx == src_idx:
+                continue
+            to_key = str(to_idx)
+            if to_key not in dists:
+                continue
+            to_short_dist = dists[to_key]
+            for d_idx, dist_cutoff in enumerate(distances):
+                if to_short_dist <= dist_cutoff:
+                    cycles_surplus[d_idx][to_idx] += max(0, len(preds[to_key]) - 1)
         # get shortest path maps
         visited_nodes, tree_map = network_structure.dijkstra_tree_shortest(
             src_idx, int(max_seconds_5000), speed_m_s=config.SPEED_M_S
@@ -242,7 +282,6 @@ def test_closeness_shortest(primal_graph):
                 continue
             # get shortest / simplest distances
             to_short_dist = tree_map[to_idx].short_dist
-            n_cycles = tree_map[to_idx].cycles
             # continue if exceeds max
             if np.isinf(to_short_dist):
                 continue
@@ -257,20 +296,13 @@ def test_closeness_shortest(primal_graph):
                     far_short_dist[d_idx][src_idx] += to_short_dist
                     harmonic_cl[d_idx][src_idx] += 1 / to_short_dist
                     grav[d_idx][src_idx] += np.exp(-beta * to_short_dist)
-                    # cycles - compute both source and target aggregation
-                    # Rust uses target aggregation; source aggregation verifies totals match
-                    cyc_to[d_idx][to_idx] += n_cycles
-                    cyc_src[d_idx][src_idx] += n_cycles
     for d_idx, dist in enumerate(distances):
         assert np.allclose(node_result_short.node_density[dist], dens[d_idx], atol=config.ATOL, rtol=config.RTOL)
         assert np.allclose(
             node_result_short.node_farness[dist], far_short_dist[d_idx], atol=config.ATOL, rtol=config.RTOL
         )
-        # Cycles: Rust uses target aggregation (cyc_to), check exact match
-        assert np.allclose(node_result_short.node_cycles[dist], cyc_to[d_idx], atol=config.ATOL, rtol=config.RTOL)
-        # Source aggregation (cyc_src) has different distribution but same total - verifies correctness
         assert np.allclose(
-            node_result_short.node_cycles[dist].sum(), cyc_src[d_idx].sum(), atol=config.ATOL, rtol=config.RTOL
+            node_result_short.node_cycles[dist], cycles_surplus[d_idx], atol=config.ATOL, rtol=config.RTOL
         )
         assert np.allclose(
             node_result_short.node_harmonic[dist], harmonic_cl[d_idx], atol=config.ATOL, rtol=config.RTOL
@@ -414,10 +446,10 @@ def test_local_centrality_all(diamond_graph):
     assert np.allclose(node_result_short.node_farness[150], [200, 300, 300, 200], atol=config.ATOL, rtol=config.RTOL)
     assert np.allclose(node_result_short.node_farness[250], [400, 300, 300, 400], atol=config.ATOL, rtol=config.RTOL)
     # node cycles
-    # additive cycles
+    # simplified cycle score from surplus shortest-path predecessors
     assert np.allclose(node_result_short.node_cycles[50], [0, 0, 0, 0], atol=config.ATOL, rtol=config.RTOL)
-    assert np.allclose(node_result_short.node_cycles[150], [1, 2, 2, 1], atol=config.ATOL, rtol=config.RTOL)
-    assert np.allclose(node_result_short.node_cycles[250], [2, 2, 2, 2], atol=config.ATOL, rtol=config.RTOL)
+    assert np.allclose(node_result_short.node_cycles[150], [0, 0, 0, 0], atol=config.ATOL, rtol=config.RTOL)
+    assert np.allclose(node_result_short.node_cycles[250], [1, 0, 0, 1], atol=config.ATOL, rtol=config.RTOL)
     # node harmonic
     # additive 1 / distances
     assert np.allclose(node_result_short.node_harmonic[50], [0, 0, 0, 0], atol=config.ATOL, rtol=config.RTOL)
@@ -800,3 +832,24 @@ def test_simplest_betweenness_differs_from_shortest(dual_graph):
             assert not np.allclose(betw_short, betw_simpl, atol=config.ATOL), (
                 f"Betweenness should differ at {d}m (angular vs metric path choice)"
             )
+
+
+def test_simplest_brandes_handles_zero_angle_plateaus():
+    """Angular Brandes should stay smooth across straight zero-angle runs.
+
+    This graph reproduces the old discontinuity where the upstream corridor
+    segment received a large spike while the next straight segment collapsed.
+    """
+    dual_graph = graphs.nx_to_dual(make_angular_plateau_graph())
+    nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(dual_graph)
+    res_simplest = network_structure.centrality_simplest(
+        compute_closeness=False,
+        compute_betweenness=True,
+        distances=[1000],
+    )
+    betw = {node_key: res_simplest.node_betweenness[1000][idx] for idx, node_key in enumerate(nodes_gdf.index)}
+    ratio = betw["B_C_k0"] / betw["C_D_k0"]
+    # On this topology the through-segments carry 18 and 10 ordered source-target
+    # pairs respectively, so the stable corridor ratio should be 1.8 rather than
+    # the old discontinuous spike.
+    assert np.isclose(ratio, 1.8, atol=1e-6)

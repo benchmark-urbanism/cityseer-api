@@ -60,10 +60,8 @@ class NodeVisit:
     pred: int | None  # In Rust: Option<usize>
     short_dist: float  # In Rust: f32
     simpl_dist: float  # In Rust: f32
-    cycles: float  # In Rust: f32
     origin_seg: int | None  # In Rust: Option<usize>
     last_seg: int | None  # In Rust: Option<usize>
-    out_bearing: float  # In Rust: f32
     agg_seconds: float  # In Rust: f32
     @classmethod
     def new(cls) -> NodeVisit:  # In Rust: #[new] pub fn new() -> Self
@@ -112,7 +110,13 @@ class NetworkStructure:
         """Set whether this network structure represents a dual graph."""
         ...
     def add_street_node(
-        self, node_key: Any, x: float, y: float, live: bool, weight: float, z: float | None = None
+        self,
+        node_key: Any,
+        x: float,
+        y: float,
+        live: bool,
+        weight: float,
+        z: float | None = None,
     ) -> int:  # Returns usize in Rust
         """
         Add a standard street network node.
@@ -133,7 +137,6 @@ class NetworkStructure:
             Optional z-coordinate (elevation). Default None. When z is provided for both endpoints
             of an edge, a slope-based walking impedance (Tobler's hiking function) is automatically
             applied during shortest-path and simplest-path computations.
-
         Returns
         -------
         int
@@ -248,6 +251,7 @@ class NetworkStructure:
         end_nd_key_py: Any,
         geom_wkt: str,
         imp_factor: float | None = None,
+        shared_primal_node_key: str | None = None,
     ) -> int:  # Returns PyResult<usize>
         """
         Add a directed street edge with geometry.
@@ -269,6 +273,8 @@ class NetworkStructure:
             Original key of the ending node.
         geom_wkt: str
             Edge geometry in WKT format (must have >= 2 points).
+        shared_primal_node_key: str | None
+            Optional primal junction key for dual-graph transitions.
         imp_factor: float | None
             Impedance multiplier (> 0.0, default 1.0).
 

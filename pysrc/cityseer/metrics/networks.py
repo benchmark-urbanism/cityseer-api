@@ -138,6 +138,8 @@ def node_centrality_shortest(
         A list of walking times in minutes to be used for calculations.
     compute_closeness: bool
         Compute closeness centralities. True by default.
+        The shortest-path `cycles` output now measures surplus equal-cost predecessors
+        per reachable target rather than the older tree-cycle heuristic.
     compute_betweenness: bool
         Compute betweenness centralities. True by default.
     min_threshold_wt: float
@@ -466,8 +468,9 @@ def node_centrality_simplest(
 ) -> gpd.GeoDataFrame:
     r"""Compute node centrality using simplest (angular) paths with a single Dijkstra per source.
 
-    When both `compute_closeness` and `compute_betweenness` are True, a single Dijkstra traversal
-    per source produces the data for both closeness accumulation and betweenness path tracing.
+    When both `compute_closeness` and `compute_betweenness` are True, a single Brandes-style
+    Dijkstra traversal per source produces the data for both closeness accumulation and
+    betweenness backpropagation.
 
     Parameters
     ----------

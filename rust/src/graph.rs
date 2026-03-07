@@ -8,9 +8,9 @@ use geo::geometry::{Coord, Line, LineString};
 use geo::BoundingRect;
 use geo::{Distance, Euclidean, Geometry, Length, Point};
 use log;
+use petgraph::prelude::*;
 use petgraph::stable_graph::{NodeIndex, StableGraph};
 use petgraph::visit::{EdgeIndexable, IntoEdgeReferences, NodeIndexable};
-use petgraph::prelude::*;
 use pyo3::exceptions;
 use pyo3::prelude::*;
 use rstar::primitives::{GeomWithData, Rectangle};
@@ -92,6 +92,7 @@ pub struct EdgePayload {
     pub start_nd_key_py: Option<Py<PyAny>>, // Made optional
     #[pyo3(get)]
     pub end_nd_key_py: Option<Py<PyAny>>, // Made optional
+    pub shared_primal_node_key: Option<String>,
     #[pyo3(get)]
     pub edge_idx: usize,
     #[pyo3(get)]
@@ -118,6 +119,7 @@ impl Clone for EdgePayload {
         Python::attach(|py| EdgePayload {
             start_nd_key_py: self.start_nd_key_py.as_ref().map(|k| k.clone_ref(py)),
             end_nd_key_py: self.end_nd_key_py.as_ref().map(|k| k.clone_ref(py)),
+            shared_primal_node_key: self.shared_primal_node_key.clone(),
             edge_idx: self.edge_idx,       // usize is Copy
             length: self.length,           // f32 is Copy
             angle_sum: self.angle_sum,     // f32 is Copy
@@ -261,15 +263,9 @@ pub struct NodeVisit {
     #[pyo3(get)]
     pub simpl_dist: f32,
     #[pyo3(get)]
-    pub cycles: f32,
-    #[pyo3(get)]
     pub origin_seg: Option<usize>,
     #[pyo3(get)]
     pub last_seg: Option<usize>,
-    #[pyo3(get)]
-    /// For reversed distance computation: stores the in_bearing (departure bearing)
-    /// from this node toward the source. Used for angular turn calculations.
-    pub prev_in_bearing: f32,
     #[pyo3(get)]
     pub agg_seconds: f32,
 }
@@ -284,10 +280,8 @@ impl NodeVisit {
             pred: None,
             short_dist: f32::INFINITY,
             simpl_dist: f32::INFINITY,
-            cycles: 0.0,
             origin_seg: None,
             last_seg: None,
-            prev_in_bearing: f32::NAN,
             agg_seconds: f32::INFINITY,
         }
     }
@@ -513,6 +507,7 @@ impl NetworkStructure {
             let link_payload = EdgePayload {
                 start_nd_key_py: None, // Linking edges don't have original keys
                 end_nd_key_py: None,
+                shared_primal_node_key: None,
                 edge_idx: 0,
                 length: dist as f32, // Store the geometric distance
                 angle_sum: f32::NAN, // No geometry
@@ -670,10 +665,7 @@ impl NetworkStructure {
     /// Returns a list of optional `z` coordinates for all nodes (street and transport).
     #[getter]
     pub fn node_zs(&self) -> Vec<Option<f64>> {
-        self.graph
-            .node_weights()
-            .map(|payload| payload.z)
-            .collect()
+        self.graph.node_weights().map(|payload| payload.z).collect()
     }
 
     /// Returns a list of `(x, y, z)` coordinates for all nodes (street and transport).
@@ -732,7 +724,7 @@ impl NetworkStructure {
 
     /// Adds a street edge with geometry. Calculates length, bearings, and angle sum from WKT.
     /// Sets seconds to NaN.
-    #[pyo3(signature = (start_nd_idx, end_nd_idx, edge_idx, start_nd_key_py, end_nd_key_py, geom_wkt, imp_factor=None))]
+    #[pyo3(signature = (start_nd_idx, end_nd_idx, edge_idx, start_nd_key_py, end_nd_key_py, geom_wkt, imp_factor=None, shared_primal_node_key=None))]
     pub fn add_street_edge(
         &mut self,
         start_nd_idx: usize,
@@ -742,11 +734,16 @@ impl NetworkStructure {
         end_nd_key_py: Py<PyAny>,
         geom_wkt: String, // Required geometry
         imp_factor: Option<f32>,
+        shared_primal_node_key: Option<String>,
         py: Python, // Add Python GIL token
     ) -> PyResult<usize> {
         // Truncate WKT for error messages if too long
         let wkt_preview: String = if geom_wkt.len() > 200 {
-            format!("{}... (truncated, {} chars total)", &geom_wkt[..200], geom_wkt.len())
+            format!(
+                "{}... (truncated, {} chars total)",
+                &geom_wkt[..200],
+                geom_wkt.len()
+            )
         } else {
             geom_wkt.clone()
         };
@@ -757,11 +754,7 @@ impl NetworkStructure {
                     "Failed to parse WKT for street edge (idx {}) between nodes {} and {}.\n\
                      Parse error: {}\n\
                      WKT: {}",
-                    edge_idx,
-                    start_nd_idx,
-                    end_nd_idx,
-                    e,
-                    wkt_preview
+                    edge_idx, start_nd_idx, end_nd_idx, e, wkt_preview
                 )));
             }
         };
@@ -787,8 +780,15 @@ impl NetworkStructure {
             log::warn!(
                 "Degenerate edge geometry (idx {}) between nodes {} and {}: \
                  length={:.2e}m, num_coords={}, first=({:.4}, {:.4}), last=({:.4}, {:.4})",
-                edge_idx, start_nd_idx, end_nd_idx, length, num_coords,
-                first_coord.x, first_coord.y, last_coord.x, last_coord.y
+                edge_idx,
+                start_nd_idx,
+                end_nd_idx,
+                length,
+                num_coords,
+                first_coord.x,
+                first_coord.y,
+                last_coord.x,
+                last_coord.y
             );
         }
 
@@ -869,6 +869,7 @@ impl NetworkStructure {
         let payload = EdgePayload {
             start_nd_key_py: Some(start_nd_key_py),
             end_nd_key_py: Some(end_nd_key_py),
+            shared_primal_node_key,
             edge_idx,
             length,
             angle_sum,
@@ -966,6 +967,7 @@ impl NetworkStructure {
         let payload = EdgePayload {
             start_nd_key_py: Some(start_nd_key_py),
             end_nd_key_py: Some(end_nd_key_py),
+            shared_primal_node_key: None,
             edge_idx,
             length: f32::NAN,
             angle_sum: f32::NAN,
@@ -1008,7 +1010,12 @@ impl NetworkStructure {
         Ok(payload)
     }
 
-    pub fn get_edge_length(&self, start_nd_idx: usize, end_nd_idx: usize, edge_idx: usize) -> PyResult<f32> {
+    pub fn get_edge_length(
+        &self,
+        start_nd_idx: usize,
+        end_nd_idx: usize,
+        edge_idx: usize,
+    ) -> PyResult<f32> {
         Ok(self
             ._get_edge_payload_checked(start_nd_idx, end_nd_idx, edge_idx)?
             .length)
@@ -1226,7 +1233,11 @@ impl NetworkStructure {
 
 impl NetworkStructure {
     #[inline]
-    fn _get_node_payload_checked(&self, node_idx: usize, param_name: &str) -> PyResult<&NodePayload> {
+    fn _get_node_payload_checked(
+        &self,
+        node_idx: usize,
+        param_name: &str,
+    ) -> PyResult<&NodePayload> {
         let ni = self.require_node_exists(node_idx, param_name)?;
         Ok(self
             .graph
@@ -1287,7 +1298,8 @@ impl NetworkStructure {
         end_nd_idx: usize,
         edge_idx: usize,
     ) -> f32 {
-        self._get_edge_payload(start_nd_idx, end_nd_idx, edge_idx).length
+        self._get_edge_payload(start_nd_idx, end_nd_idx, edge_idx)
+            .length
     }
 
     #[inline]
@@ -1297,7 +1309,8 @@ impl NetworkStructure {
         end_nd_idx: usize,
         edge_idx: usize,
     ) -> f32 {
-        self._get_edge_payload(start_nd_idx, end_nd_idx, edge_idx).imp_factor
+        self._get_edge_payload(start_nd_idx, end_nd_idx, edge_idx)
+            .imp_factor
     }
 
     #[inline]
