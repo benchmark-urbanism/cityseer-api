@@ -1277,7 +1277,7 @@ layout: ../../layouts/PageLayout.astro
 
  
 
-<span class="name">street_node_lives</span>
+<span class="name">node_zs</span>
 
 
  
@@ -1287,7 +1287,7 @@ layout: ../../layouts/PageLayout.astro
 
  
 
-<span class="name">node_zs</span>
+<span class="name">street_node_lives</span>
 
 
  
