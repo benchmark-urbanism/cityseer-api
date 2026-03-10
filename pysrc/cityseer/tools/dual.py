@@ -130,16 +130,12 @@ def extract_wkts(data: DualInput | Any) -> tuple[dict[Any, str], Any | None]:
     try:
         import geopandas as gpd
     except ImportError:
-        gpd = None
+        gpd = None  # type: ignore[assignment]
     if gpd is not None and isinstance(data, gpd.GeoDataFrame):
         if data.index.duplicated().any():
             raise ValueError("The GeoDataFrame index must contain unique entries.")
         geom_name = data.geometry.name
-        wkts = {
-            idx: geom.wkt
-            for idx, geom in data[geom_name].items()
-            if geom is not None and not geom.is_empty  # type: ignore[union-attr]
-        }
+        wkts = {idx: geom.wkt for idx, geom in data[geom_name].items() if geom is not None and not geom.is_empty}
         return wkts, data.crs
     wkts: dict[Any, str] = {}
     for key, value in data.items():
@@ -273,7 +269,7 @@ def _build_nodes_gdf(
 ) -> Any:
     import geopandas as gpd
 
-    return gpd.GeoDataFrame(
+    return gpd.GeoDataFrame(  # type: ignore[call-overload]
         {
             "ns_node_idx": [node_idx[fid] for fid in fid_list],
             "x": [midpoints[fid][0] for fid in fid_list],
@@ -383,7 +379,7 @@ def build_dual(
         from tqdm import tqdm
     else:
 
-        def tqdm(iterable, **_kwargs):  # type: ignore
+        def tqdm(iterable, **_kwargs):
             return iterable
 
     source_wkts, discovered_crs = extract_wkts(data)
@@ -550,9 +546,7 @@ def incremental_update(
         state["ns"] = ns
         return ns, _nodes_gdf, state
 
-    if (to_remove or to_add) and _requires_full_rebuild(
-        state, current_source_wkts, to_remove, to_add
-    ):
+    if (to_remove or to_add) and _requires_full_rebuild(state, current_source_wkts, to_remove, to_add):
         ns, nodes_gdf, rebuilt_state = build_dual(
             current_source_wkts,
             crs=crs,

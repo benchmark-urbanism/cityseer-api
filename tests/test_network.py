@@ -31,12 +31,12 @@ def test_citynetwork_lazy_import():
 def test_from_nx_matches_from_geopandas(primal_graph):
     streets_gdf = io.geopandas_from_nx(primal_graph)
     streets_gdf = streets_gdf.copy()
-    streets_gdf.index = [
-        f"{min(str(row.start_nd_key), str(row.end_nd_key))}"
-        f"_{max(str(row.start_nd_key), str(row.end_nd_key))}"
-        f"_k{int(row.edge_idx)}"
-        for _, row in streets_gdf.iterrows()
-    ]
+
+    def _edge_key(row):
+        a, b = str(row.start_nd_key), str(row.end_nd_key)
+        return f"{min(a, b)}_{max(a, b)}_k{int(row.edge_idx)}"
+
+    streets_gdf.index = [_edge_key(row) for _, row in streets_gdf.iterrows()]
     from_gdf = CityNetwork.from_geopandas(streets_gdf).centrality_simplest(distances=[400])
     from_nx = CityNetwork.from_nx(primal_graph).centrality_simplest(distances=[400])
 
