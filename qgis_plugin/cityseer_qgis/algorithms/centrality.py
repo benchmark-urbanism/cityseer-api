@@ -197,9 +197,8 @@ class CityseerCentralityAlgorithm(CityseerAlgorithmBase):
             self.TOLERANCE,
             self.tr(
                 "Shortest-path betweenness tolerance % (0 = exact shortest paths only). "
-                "Spreads betweenness across near-shortest routes. Keep below 1% "
-                "— higher values increasingly diffuse route concentration, "
-                "especially at larger distance thresholds."
+                "Spreads betweenness across near-shortest routes. "
+                "Recommend staying below 2%."
             ),
             type=QgsProcessingParameterNumber.Type.Double,
             defaultValue=0.0,
@@ -213,9 +212,8 @@ class CityseerCentralityAlgorithm(CityseerAlgorithmBase):
             self.tr(
                 "Simplest-path tolerance % of angular route cost "
                 "(0 = no added tolerance beyond the internal float-stability epsilon). "
-                "Spreads betweenness across near-simplest routes. Keep below 1% "
-                "— higher values increasingly diffuse route concentration, "
-                "especially at larger distance thresholds."
+                "Spreads betweenness across near-simplest routes. "
+                "Recommend staying below 20%."
             ),
             type=QgsProcessingParameterNumber.Type.Double,
             defaultValue=0.0,
