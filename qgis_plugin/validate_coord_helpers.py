@@ -15,7 +15,7 @@ from __future__ import annotations
 import argparse
 import sys
 
-from cityseer_qgis.utils.converters import (
+from cityseer.tools.dual import (
     _coords_to_wkt,
     _cumulative_lengths,
     _interpolate_at,

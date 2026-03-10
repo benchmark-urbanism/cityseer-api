@@ -105,6 +105,7 @@ def build_dual_network(
             crs=layer.crs().authid(),
             boundary=boundary,
             build_nodes_gdf=False,
+            progress=False,
         )
     else:
         ns, _nodes_gdf, state = dual.build_dual(
@@ -112,6 +113,7 @@ def build_dual_network(
             crs=layer.crs().authid(),
             boundary=boundary,
             build_nodes_gdf=False,
+            progress=False,
         )
 
     state["layer_cache_key"] = layer_cache_key
