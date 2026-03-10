@@ -100,7 +100,6 @@ _BETWEENNESS_SHORTEST_METRICS = [
 ]
 _BETWEENNESS_SIMPLEST_METRICS = [
     ("BETWEENNESS", "Betweenness (simplest)", True),
-    ("BETWEENNESS_BETA", "Beta-weighted betweenness (simplest)", False),
 ]
 
 
@@ -118,6 +117,7 @@ class CityseerCentralityAlgorithm(CityseerAlgorithmBase):
     BETWEENNESS_SHORTEST = "BETWEENNESS_SHORTEST"
     BETWEENNESS_SIMPLEST = "BETWEENNESS_SIMPLEST"
     TOLERANCE = "TOLERANCE"
+    ANGULAR_TOLERANCE = "ANGULAR_TOLERANCE"
     OUTPUT = "OUTPUT"
 
     def name(self) -> str:
@@ -197,10 +197,8 @@ class CityseerCentralityAlgorithm(CityseerAlgorithmBase):
             self.TOLERANCE,
             self.tr(
                 "Shortest-path betweenness tolerance % (0 = exact shortest paths only). "
-                "Spreads betweenness across near-shortest routes. Keep below 1% "
-                "— higher values increasingly diffuse route concentration, "
-                "especially at larger distance thresholds. "
-                "Does not apply to simplest (angular) path betweenness."
+                "Spreads betweenness across near-shortest routes. "
+                "Recommend staying below 2%."
             ),
             type=QgsProcessingParameterNumber.Type.Double,
             defaultValue=0.0,
@@ -209,6 +207,21 @@ class CityseerCentralityAlgorithm(CityseerAlgorithmBase):
             maxValue=20.0,
         )
         self.addParameter(tol_param)
+        ang_tol_param = QgsProcessingParameterNumber(
+            self.ANGULAR_TOLERANCE,
+            self.tr(
+                "Simplest-path tolerance % of angular route cost "
+                "(0 = no added tolerance beyond the internal float-stability epsilon). "
+                "Spreads betweenness across near-simplest routes. "
+                "Recommend staying below 20%."
+            ),
+            type=QgsProcessingParameterNumber.Type.Double,
+            defaultValue=0.0,
+            optional=False,
+            minValue=0.0,
+            maxValue=20.0,
+        )
+        self.addParameter(ang_tol_param)
         self.addParameter(
             QgsProcessingParameterVectorDestination(
                 self.OUTPUT,
@@ -312,7 +325,9 @@ class CityseerCentralityAlgorithm(CityseerAlgorithmBase):
         # Betweenness simplest (BA)
         ba_betweenness = self._get_metric(parameters, "BETWEENNESS", "BA", context)
 
-        tolerance = self.parameterAsDouble(parameters, self.TOLERANCE, context) / 100.0
+        tolerance = self.parameterAsDouble(parameters, self.TOLERANCE, context)
+        angular_tolerance = self.parameterAsDouble(parameters, self.ANGULAR_TOLERANCE, context)
+        angular_tolerance_val = angular_tolerance if angular_tolerance > 0 else None
 
         # Derive path types from category toggles
         do_shortest = closeness_shortest or betweenness_shortest
@@ -347,7 +362,9 @@ class CityseerCentralityAlgorithm(CityseerAlgorithmBase):
             categories.append("betweenness-simplest")
         feedback.pushInfo("Categories: " + ", ".join(categories))
         if betweenness_shortest and tolerance > 0:
-            feedback.pushInfo(f"Betweenness tolerance: {tolerance * 100:.1f}%")
+            feedback.pushInfo(f"Betweenness tolerance: {tolerance:.1f}%")
+        if do_simplest and angular_tolerance > 0:
+            feedback.pushInfo(f"Angular tolerance: {angular_tolerance:.1f}%")
 
         # Overall progress: divide 0–100% equally among steps.
         step_pct = 100.0 / n_steps
@@ -543,6 +560,7 @@ class CityseerCentralityAlgorithm(CityseerAlgorithmBase):
                     derive_hillier=ca_hillier and closeness_simplest,
                     compute_closeness=closeness_simplest,
                     compute_betweenness=betweenness_simplest,
+                    tolerance=angular_tolerance_val,
                 )
 
         if feedback.isCanceled():

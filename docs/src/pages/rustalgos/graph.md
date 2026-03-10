@@ -337,13 +337,13 @@ layout: ../../layouts/PageLayout.astro
     <span class="pn">speed_m_s=None</span>
   </div>
   <div class="param">
+    <span class="pn">tolerance=None</span>
+  </div>
+  <div class="param">
     <span class="pn">angular_scaling_unit=None</span>
   </div>
   <div class="param">
     <span class="pn">farness_scaling_offset=None</span>
-  </div>
-  <div class="param">
-    <span class="pn">tolerance=None</span>
   </div>
   <div class="param">
     <span class="pn">sample_probability=None</span>
@@ -365,7 +365,7 @@ layout: ../../layouts/PageLayout.astro
 </div>
 
 
- Compute node centrality using simplest (angular) paths with a single Dijkstra per source. When both `compute_closeness` and `compute_betweenness` are true, a single Brandes-style Dijkstra traversal per source produces the data for both closeness accumulation and betweenness backpropagation.
+ Compute node centrality using simplest (angular) paths on the dual graph. Angular routing is evaluated on two directed states per segment. Each source segment seeds both orientations into a single Brandes traversal.
 
 </div>
 
@@ -512,6 +512,31 @@ layout: ../../layouts/PageLayout.astro
 
 <div class="function">
 
+## set_is_dual
+
+
+<div class="content">
+<span class="name">set_is_dual</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">self</span>
+  </div>
+  <div class="param">
+    <span class="pn">/</span>
+  </div>
+  <div class="param">
+    <span class="pn">is_dual</span>
+  </div>
+  <span class="pt">)</span>
+</div>
+</div>
+
+</div>
+
+ 
+
+<div class="function">
+
 ## add_street_node
 
 
@@ -538,6 +563,9 @@ layout: ../../layouts/PageLayout.astro
   </div>
   <div class="param">
     <span class="pn">weight</span>
+  </div>
+  <div class="param">
+    <span class="pn">z=None</span>
   </div>
   <span class="pt">)</span>
 </div>
@@ -572,6 +600,9 @@ layout: ../../layouts/PageLayout.astro
   </div>
   <div class="param">
     <span class="pn">linking_radius=None</span>
+  </div>
+  <div class="param">
+    <span class="pn">z=None</span>
   </div>
   <span class="pt">)</span>
 </div>
@@ -896,6 +927,9 @@ layout: ../../layouts/PageLayout.astro
   </div>
   <div class="param">
     <span class="pn">imp_factor=None</span>
+  </div>
+  <div class="param">
+    <span class="pn">shared_primal_node_key=None</span>
   </div>
   <span class="pt">)</span>
 </div>
@@ -1233,7 +1267,7 @@ layout: ../../layouts/PageLayout.astro
 
  
 
-<span class="name">street_node_lives</span>
+<span class="name">node_ys</span>
 
 
  
@@ -1243,12 +1277,22 @@ layout: ../../layouts/PageLayout.astro
 
  
 
+<span class="name">street_node_lives</span>
+
+
+ 
+
 <span class="name">node_xs</span>
 
 
  
 
-<span class="name">node_ys</span>
+<span class="name">node_zs</span>
+
+
+ 
+
+<span class="name">node_xyzs</span>
 
 
  

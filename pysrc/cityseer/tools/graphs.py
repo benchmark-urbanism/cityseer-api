@@ -23,6 +23,34 @@ from .. import config
 from ..tools import util
 from ..tools.util import EdgeData, ListCoordsType, NodeData, NodeKey
 
+
+def _node_coord_2d(nd_data: NodeData) -> tuple[float, float]:
+    """Extract (x, y) coordinate tuple from node data."""
+    return (nd_data["x"], nd_data["y"])
+
+
+def _node_has_z(nd_data: NodeData) -> bool:
+    """Check if node data has a valid z coordinate."""
+    return "z" in nd_data and nd_data["z"] is not None
+
+
+def _make_geom_between(nd_data_a: NodeData, nd_data_b: NodeData) -> geometry.LineString:
+    """Create a LineString between two nodes, using 3D coords only if both nodes have z."""
+    if _node_has_z(nd_data_a) and _node_has_z(nd_data_b):
+        return geometry.LineString(
+            [
+                (nd_data_a["x"], nd_data_a["y"], nd_data_a["z"]),
+                (nd_data_b["x"], nd_data_b["y"], nd_data_b["z"]),
+            ]
+        )
+    return geometry.LineString(
+        [
+            (nd_data_a["x"], nd_data_a["y"]),
+            (nd_data_b["x"], nd_data_b["y"]),
+        ]
+    )
+
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -52,18 +80,21 @@ def nx_simple_geoms(nx_multigraph: nx.MultiGraph) -> nx.MultiGraph:
     logger.info("Generating interpolated edge geometries.")
     g_multi_copy = nx_multigraph.copy()  # skip validation as geoms not yet assigned
 
-    def _process_node(nd_key: NodeKey) -> tuple[float, float]:
-        return g_multi_copy.nodes[nd_key]["x"], g_multi_copy.nodes[nd_key]["y"]
-
     # unpack coordinates and build simple edge geoms
     remove_edges: list[tuple[NodeKey, NodeKey, int]] = []
     start_nd_key: NodeKey
     end_nd_key: NodeKey
     edge_idx: int
     for start_nd_key, end_nd_key, edge_idx in tqdm(g_multi_copy.edges(keys=True), disable=config.QUIET_MODE):
-        s_x, s_y = _process_node(start_nd_key)
-        e_x, e_y = _process_node(end_nd_key)
-        seg = geometry.LineString([[s_x, s_y], [e_x, e_y]])
+        s_nd = g_multi_copy.nodes[start_nd_key]
+        e_nd = g_multi_copy.nodes[end_nd_key]
+        s_has_z = "z" in s_nd and s_nd["z"] is not None
+        e_has_z = "z" in e_nd and e_nd["z"] is not None
+        # both must have z for 3D geometry, otherwise fall back to 2D
+        if s_has_z and e_has_z:
+            seg = geometry.LineString([(s_nd["x"], s_nd["y"], s_nd["z"]), (e_nd["x"], e_nd["y"], e_nd["z"])])
+        else:
+            seg = geometry.LineString([(s_nd["x"], s_nd["y"]), (e_nd["x"], e_nd["y"])])
         if seg.length == 0:
             if start_nd_key != end_nd_key:
                 logger.warning(f"Found zero length edge between {start_nd_key} and {end_nd_key}, removing from graph.")
@@ -300,7 +331,7 @@ def nx_remove_dangling_nodes(
     if "crs" in g_multi_copy.graph:
         g_multi_large.graph["crs"] = CRS(g_multi_copy.graph["crs"])
     if "is_dual" in g_multi_copy.graph:
-        g_multi_large.graph["is_dual"] = CRS(g_multi_copy.graph["is_dual"])
+        g_multi_large.graph["is_dual"] = bool(g_multi_copy.graph["is_dual"])
     for subgraph in large_subgraphs:
         g_multi_large.add_nodes_from(subgraph.nodes(data=True))
         g_multi_large.add_edges_from(subgraph.edges(data=True))
@@ -437,7 +468,7 @@ def nx_merge_parallel_edges(
     if "crs" in nx_multigraph.graph:
         deduped_graph.graph["crs"] = CRS(nx_multigraph.graph["crs"])
     if "is_dual" in nx_multigraph.graph:
-        deduped_graph.graph["is_dual"] = CRS(nx_multigraph.graph["is_dual"])
+        deduped_graph.graph["is_dual"] = bool(nx_multigraph.graph["is_dual"])
     deduped_graph.add_nodes_from(nx_multigraph.nodes(data=True))
     # if using OSM tags heuristic
     hwy_tags = _extract_tags_to_set(osm_hwy_target_tags)
@@ -501,6 +532,7 @@ def nx_merge_parallel_edges(
                 # iterate the coordinates along the shorter geom
                 # starting and endpoint geoms already match
                 new_coords = []
+                use_z = shortest_geom.has_z
                 for coord in shortest_geom.coords:
                     # from the current short_geom coordinate
                     short_point = geometry.Point(coord)
@@ -518,8 +550,14 @@ def nx_merge_parallel_edges(
                         # aggregate
                         multi_coords.append(longer_point)
                     # create a midpoint between the geoms and add to the new coordinate array
+                    # shapely centroid drops z, so compute 2D centroid and average z separately
                     mid_point: geometry.Point = geometry.MultiPoint(multi_coords).centroid
-                    new_coords.append((mid_point.x, mid_point.y))
+                    if use_z:
+                        z_vals = [c[2] for c in [p.coords[0] for p in multi_coords] if len(c) == 3]
+                        mid_z = float(np.mean(z_vals)) if z_vals else coord[2] if len(coord) == 3 else 0.0
+                        new_coords.append((mid_point.x, mid_point.y, mid_z))
+                    else:
+                        new_coords.append((mid_point.x, mid_point.y))
                 # generate the new mid-line geom
                 new_coords = util.snap_linestring_endpoints(deduped_graph, start_nd_key, end_nd_key, new_coords)
                 new_geom = geometry.LineString(new_coords)
@@ -920,8 +958,11 @@ def _squash_adjacent(
         return nx_multigraph
     # set the new centroid from the centroid of the node group's Multipoint:
     new_cent: geometry.Point = geometry.MultiPoint(node_geoms).centroid
+    # compute average z from source nodes if any have z
+    z_vals = [nx_multigraph.nodes[nk]["z"] for nk in centroid_nodes_filter if "z" in nx_multigraph.nodes[nk]]
+    new_z: float | None = float(np.mean(z_vals)) if z_vals else None
     # now that the centroid is known, add the new node
-    new_nd_name, is_dupe = util.add_node(nx_multigraph, node_group_set, x=new_cent.x, y=new_cent.y)  # type: ignore
+    new_nd_name, is_dupe = util.add_node(nx_multigraph, node_group_set, x=new_cent.x, y=new_cent.y, z=new_z)  # type: ignore
     if is_dupe:
         # an edge case: if the potential duplicate was one of the node group then it doesn't need adding
         if new_nd_name in node_group_set:
@@ -1322,12 +1363,7 @@ def nx_snap_gapped_endings(
                 if not nb_name_tags.intersection(edge_name_tags):
                     continue
             # create new geom
-            new_geom = geometry.LineString(
-                [
-                    [nd_data["x"], nd_data["y"]],
-                    [j_nd_data["x"], j_nd_data["y"]],
-                ]
-            )
+            new_geom = _make_geom_between(nd_data, j_nd_data)
             # Skip degenerate (zero-length) geometries
             if new_geom.length < 0.001:
                 continue
@@ -1603,11 +1639,13 @@ def nx_split_opposing_geoms(
                 logger.warning("Degenerate (zero-length) LineString produced when splitting opposing geom, skipping.")
                 continue
             # add the new node and edges to _multi_graph (don't modify nx_multigraph because of iter in place)
+            split_z: float | None = nearest_point.z if nearest_point.has_z else None
             new_nd_name, is_dupe = util.add_node(
                 _multi_graph,
                 [start_nd_key, nd_key, end_nd_key],
                 x=nearest_point.x,
                 y=nearest_point.y,
+                z=split_z,
             )
             # continue if a node already exists at this location
             if is_dupe:
@@ -1738,12 +1776,7 @@ def nx_split_opposing_geoms(
             affected_nodes: set[NodeKey] = {origin_nd_key}
             for new_nd_key in node_group:
                 new_nd_data = _multi_graph.nodes[new_nd_key]
-                new_geom = geometry.LineString(
-                    [
-                        [origin_nd_data["x"], origin_nd_data["y"]],
-                        [new_nd_data["x"], new_nd_data["y"]],
-                    ]
-                )
+                new_geom = _make_geom_between(origin_nd_data, new_nd_data)
                 # Skip degenerate (zero-length) geometries
                 if new_geom.length < 0.001:
                     continue
@@ -1888,14 +1921,17 @@ def nx_decompose(
             # create the split LineString geom for measuring the new length
             # switch back to shapely once bug resolved
             line_segment: geometry.LineString = ops.substring(line_geom, step, step + step_size)
-            # get the x, y of the new end node
-            x, y = line_segment.coords[-1]
+            # get the coordinates of the new end node
+            end_coord = line_segment.coords[-1]
+            x, y = end_coord[0], end_coord[1]
+            decomp_z: float | None = end_coord[2] if len(end_coord) == 3 else None
             # add the new node and edge
             new_nd_name, is_dupe = util.add_node(
                 g_multi_copy,
                 [start_nd_key, sub_node_counter, end_nd_key],  # type: ignore
                 x=x,
                 y=y,
+                z=decomp_z,
             )
             if is_dupe:
                 raise ValueError(
@@ -2052,15 +2088,17 @@ def nx_to_dual(nx_multigraph: nx.MultiGraph) -> nx.MultiGraph:
         mid_point = primal_geom.interpolate(0.5, normalized=True)
         dual_node_key = prepare_dual_node_key(start_nd_key, end_nd_key, edge_idx)
         # create a new dual node corresponding to the current primal edge
-        g_dual.add_node(
-            dual_node_key,
-            x=mid_point.x,
-            y=mid_point.y,
-            primal_edge=primal_geom,
-            primal_edge_node_a=start_nd_key,
-            primal_edge_node_b=end_nd_key,
-            primal_edge_idx=edge_idx,
-        )
+        dual_node_kwargs: dict[str, Any] = {
+            "x": mid_point.x,
+            "y": mid_point.y,
+            "primal_edge": primal_geom,
+            "primal_edge_node_a": start_nd_key,
+            "primal_edge_node_b": end_nd_key,
+            "primal_edge_idx": edge_idx,
+        }
+        if mid_point.has_z:
+            dual_node_kwargs["z"] = mid_point.z
+        g_dual.add_node(dual_node_key, **dual_node_kwargs)
         # add and set live property if present in parent graph
         set_live(start_nd_key, end_nd_key, dual_node_key)
     # add dual edges

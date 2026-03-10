@@ -45,7 +45,8 @@ of roadway intersections or a proliferation of walking paths in greenspaces;
 together or where impedances otherwise approach zero, as may be the case for simplest-path measures or small
 distance thesholds. This happens because the outcome of the division step can balloon towards $\infty$ once
 impedances decrease below 1.
-- Note that `cityseer`'s implementation of simplest (angular) measures work on both primal and dual graphs (node only).
+- Simplest (angular) node measures require a dual graph representation. Convert primal graphs with
+  [`graphs.nx_to_dual`](/tools/graphs#nx-to-dual) before ingesting them.
 - Measures should only be directly compared on the same topology because different topologies can otherwise affect
 the expression of a measure. Accordingly, measures computed on dual graphs cannot be compared to measures computed
 on primal graphs because this does not account for the impact of differing topologies. Dual graph representations
@@ -86,6 +87,17 @@ MIN_THRESH_WT = config.MIN_THRESH_WT
 SPEED_M_S = config.SPEED_M_S
 
 
+def _require_dual_for_angular(
+    network_structure: rustalgos.graph.NetworkStructure,
+    context: str,
+) -> None:
+    if not network_structure.is_dual:
+        raise ValueError(
+            f"{context} requires a dual graph for angular analysis. "
+            "Convert the graph with cityseer.tools.graphs.nx_to_dual(...) before ingesting it."
+        )
+
+
 def node_centrality_shortest(
     network_structure: rustalgos.graph.NetworkStructure,
     nodes_gdf: gpd.GeoDataFrame,
@@ -96,7 +108,7 @@ def node_centrality_shortest(
     compute_betweenness: bool = True,
     min_threshold_wt: float = MIN_THRESH_WT,
     speed_m_s: float = SPEED_M_S,
-    tolerance: float = 0.0,
+    tolerance: float | None = None,
     random_seed: int | None = None,
     sample: bool = False,
     epsilon: float | None = None,
@@ -106,6 +118,12 @@ def node_centrality_shortest(
     When both `compute_closeness` and `compute_betweenness` are True, a single Brandes-style Dijkstra traversal
     per source produces the data for both closeness accumulation and betweenness backpropagation, halving computation
     time compared to computing them separately.
+
+    .. versionchanged:: 4.24.0
+        The `cycles` output now measures the circuit rank of the locally reachable subgraph
+        (`m - n + c`), computed per source and then target-aggregated using the same source/IPW
+        framework as the other shortest-path metrics. This provides a more stable measure of
+        network meshedness (independent loops / city blocks) than the older tree-cycle heuristic.
 
     When ``sample=True``, sampling probability is derived from each distance threshold using a canonical grid network
     model (see ``sampling.compute_distance_p``). This produces deterministic, reach-agnostic sample fractions that are
@@ -126,6 +144,9 @@ def node_centrality_shortest(
         A list of walking times in minutes to be used for calculations.
     compute_closeness: bool
         Compute closeness centralities. True by default.
+        The `cycles` output measures the circuit rank of the source's locally reachable subgraph
+        and target-aggregates that loopiness contribution over all sources that can reach each
+        node within the threshold.
     compute_betweenness: bool
         Compute betweenness centralities. True by default.
     min_threshold_wt: float
@@ -135,8 +156,10 @@ def node_centrality_shortest(
         The default `speed_m_s` parameter can be configured to generate custom mappings between walking times and
         distance thresholds $d_{max}$.
     tolerance: float
-        Relative tolerance for betweenness path equality. Paths within `tolerance` fraction of the shortest are
-        treated as near-equal for multi-predecessor Brandes betweenness. Set to 0.0 for exact shortest paths only.
+        Relative tolerance for betweenness path equality, as a percentage (e.g. 1.0 = 1%).
+        Paths within this percentage of the shortest are treated as near-equal for multi-predecessor
+        Brandes betweenness. A tiny internal epsilon is always enforced as a minimum for
+        floating-point stability.
     random_seed: int
         Optional seed for reproducible sampling.
     sample: bool
@@ -366,6 +389,7 @@ def betweenness_od(
     minutes: list[float] | None = None,
     min_threshold_wt: float = MIN_THRESH_WT,
     speed_m_s: float = SPEED_M_S,
+    tolerance: float | None = None,
 ) -> gpd.GeoDataFrame:
     """Compute OD-weighted betweenness centrality using the shortest path heuristic.
 
@@ -411,6 +435,7 @@ def betweenness_od(
         minutes=minutes,
         min_threshold_wt=min_threshold_wt,
         speed_m_s=speed_m_s,
+        tolerance=tolerance,
     )
     result = config.wrap_progress(
         total=network_structure.street_node_count(), rust_struct=network_structure, partial_func=partial_func
@@ -446,6 +471,7 @@ def node_centrality_simplest(
     compute_betweenness: bool = True,
     min_threshold_wt: float = MIN_THRESH_WT,
     speed_m_s: float = SPEED_M_S,
+    tolerance: float | None = None,
     angular_scaling_unit: float = 90,
     farness_scaling_offset: float = 1,
     random_seed: int | None = None,
@@ -454,8 +480,18 @@ def node_centrality_simplest(
 ) -> gpd.GeoDataFrame:
     r"""Compute node centrality using simplest (angular) paths with a single Dijkstra per source.
 
-    When both `compute_closeness` and `compute_betweenness` are True, a single Dijkstra traversal
-    per source produces the data for both closeness accumulation and betweenness path tracing.
+    When both `compute_closeness` and `compute_betweenness` are True, a single Brandes-style
+    Dijkstra traversal per source produces the data for both closeness accumulation and
+    betweenness backpropagation.
+
+    .. versionchanged:: 4.24.0
+        Angular routing now uses endpoint-aware dual-graph traversal instead of bearing-based
+        angular costs. This requires a dual graph representation (convert with
+        [`graphs.nx_to_dual`](/tools/graphs#nx-to-dual)). The `tolerance` parameter now uses
+        the same relative-percentage semantics as shortest-path betweenness, but applies to
+        angular route cost instead of metric distance. User-facing `tolerance=0.0` means no
+        additional tolerance beyond a tiny internal epsilon used for floating-point stability.
+        Closeness values are nearly identical; betweenness values may differ slightly.
 
     Parameters
     ----------
@@ -480,6 +516,11 @@ def node_centrality_simplest(
     speed_m_s: float
         The default `speed_m_s` parameter can be configured to generate custom mappings between walking times and
         distance thresholds $d_{max}$.
+    tolerance: float
+        Relative tolerance for angular betweenness path equality, as a percentage (e.g. 1.0 = 1%).
+        Paths whose angular route cost is within this percentage of the best angular route are treated
+        as near-equal for multi-predecessor Brandes betweenness. A tiny internal epsilon is always
+        enforced as a minimum for floating-point stability.
     angular_scaling_unit: float
         Scaling unit for angular cost normalisation.
     farness_scaling_offset: float
@@ -496,6 +537,7 @@ def node_centrality_simplest(
     nodes_gdf: GeoDataFrame
         The input `nodes_gdf` parameter is returned with additional centrality columns.
     """
+    _require_dual_for_angular(network_structure, "node_centrality_simplest")
     logger.info("Computing node centrality (simplest).")
     resolved_distances, _betas, _seconds = rustalgos.pair_distances_betas_time(
         speed_m_s, distances, betas, minutes, min_threshold_wt=min_threshold_wt
@@ -529,6 +571,7 @@ def node_centrality_simplest(
             compute_betweenness=compute_betweenness,
             min_threshold_wt=min_threshold_wt,
             speed_m_s=speed_m_s,
+            tolerance=tolerance,
             angular_scaling_unit=angular_scaling_unit,
             farness_scaling_offset=farness_scaling_offset,
             random_seed=random_seed,
@@ -551,6 +594,7 @@ def node_centrality_simplest(
             compute_betweenness=compute_betweenness,
             min_threshold_wt=min_threshold_wt,
             speed_m_s=speed_m_s,
+            tolerance=tolerance,
             angular_scaling_unit=angular_scaling_unit,
             farness_scaling_offset=farness_scaling_offset,
             sample_probability=p,
@@ -724,6 +768,7 @@ def closeness_shortest(
     minutes: list[float] | None = None,
     min_threshold_wt: float = MIN_THRESH_WT,
     speed_m_s: float = SPEED_M_S,
+    tolerance: float | None = None,
     random_seed: int | None = None,
     sample: bool = False,
     epsilon: float | None = None,
@@ -739,6 +784,7 @@ def closeness_shortest(
         compute_betweenness=False,
         min_threshold_wt=min_threshold_wt,
         speed_m_s=speed_m_s,
+        tolerance=tolerance,
         random_seed=random_seed,
         sample=sample,
         epsilon=epsilon,
@@ -753,6 +799,7 @@ def closeness_simplest(
     minutes: list[float] | None = None,
     min_threshold_wt: float = MIN_THRESH_WT,
     speed_m_s: float = SPEED_M_S,
+    tolerance: float | None = None,
     angular_scaling_unit: float = 90,
     farness_scaling_offset: float = 1,
     random_seed: int | None = None,
@@ -770,6 +817,7 @@ def closeness_simplest(
         compute_betweenness=False,
         min_threshold_wt=min_threshold_wt,
         speed_m_s=speed_m_s,
+        tolerance=tolerance,
         angular_scaling_unit=angular_scaling_unit,
         farness_scaling_offset=farness_scaling_offset,
         random_seed=random_seed,
@@ -786,7 +834,7 @@ def betweenness_shortest(
     minutes: list[float] | None = None,
     min_threshold_wt: float = MIN_THRESH_WT,
     speed_m_s: float = SPEED_M_S,
-    tolerance: float = 0.0,
+    tolerance: float | None = None,
     random_seed: int | None = None,
     sample: bool = False,
     epsilon: float | None = None,
@@ -817,6 +865,7 @@ def betweenness_simplest(
     minutes: list[float] | None = None,
     min_threshold_wt: float = MIN_THRESH_WT,
     speed_m_s: float = SPEED_M_S,
+    tolerance: float | None = None,
     random_seed: int | None = None,
     sample: bool = False,
     epsilon: float | None = None,
@@ -832,6 +881,7 @@ def betweenness_simplest(
         compute_betweenness=True,
         min_threshold_wt=min_threshold_wt,
         speed_m_s=speed_m_s,
+        tolerance=tolerance,
         random_seed=random_seed,
         sample=sample,
         epsilon=epsilon,

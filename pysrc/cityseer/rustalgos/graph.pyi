@@ -18,6 +18,7 @@ class NodePayload:
     """Payload data associated with a network node."""
 
     node_key: Any  # In Rust: Py<PyAny>
+    z: float | None  # In Rust: Option<f64>
     live: bool
     weight: float  # In Rust: f32
     is_transport: bool
@@ -27,6 +28,10 @@ class NodePayload:
     @property
     def coord(self) -> tuple[float, float]:  # In Rust: getter returns (f64, f64)
         """Get the (x, y) coordinates of the node."""
+        ...
+    @property
+    def coord_z(self) -> tuple[float, float, float | None]:  # In Rust: getter returns (f64, f64, Option<f64>)
+        """Get the (x, y, z) coordinates of the node, where z may be None."""
         ...
 
 class EdgePayload:
@@ -55,10 +60,8 @@ class NodeVisit:
     pred: int | None  # In Rust: Option<usize>
     short_dist: float  # In Rust: f32
     simpl_dist: float  # In Rust: f32
-    cycles: float  # In Rust: f32
     origin_seg: int | None  # In Rust: Option<usize>
     last_seg: int | None  # In Rust: Option<usize>
-    out_bearing: float  # In Rust: f32
     agg_seconds: float  # In Rust: f32
     @classmethod
     def new(cls) -> NodeVisit:  # In Rust: #[new] pub fn new() -> Self
@@ -83,6 +86,7 @@ class NetworkStructure:
     """Manages the network graph, including nodes, edges, barriers, and spatial indexing."""
 
     graph: StableGraph  # Actual type is petgraph::stable_graph::StableGraph<NodePayload, EdgePayload>
+    is_dual: bool
     edge_rtree: (
         object | None
     )  # R-tree for efficient spatial queries on edges. Type in Rust: Option<RTree<EdgeRtreeItem>>
@@ -98,8 +102,21 @@ class NetworkStructure:
     def progress(self) -> int:  # In Rust: pub fn progress(&self) -> usize
         """Get the current value of the internal progress counter."""
         ...
+    @property
+    def is_dual(self) -> bool:
+        """Whether this network structure was ingested from a dual graph."""
+        ...
+    def set_is_dual(self, is_dual: bool) -> None:
+        """Set whether this network structure represents a dual graph."""
+        ...
     def add_street_node(
-        self, node_key: Any, x: float, y: float, live: bool, weight: float
+        self,
+        node_key: Any,
+        x: float,
+        y: float,
+        live: bool,
+        weight: float,
+        z: float | None = None,
     ) -> int:  # Returns usize in Rust
         """
         Add a standard street network node.
@@ -116,7 +133,10 @@ class NetworkStructure:
             Indicates if the node is within the primary analysis area.
         weight: float
             Node weight (e.g., for weighted centrality calculations, >= 0).
-
+        z: float | None
+            Optional z-coordinate (elevation). Default None. When z is provided for both endpoints
+            of an edge, a slope-based walking impedance (Tobler's hiking function) is automatically
+            applied during shortest-path and simplest-path computations.
         Returns
         -------
         int
@@ -130,6 +150,7 @@ class NetworkStructure:
         x: float,
         y: float,
         linking_radius: float | None = None,
+        z: float | None = None,
     ) -> int:  # Returns PyResult<usize> in Rust
         """
         Add a transport node (e.g., station, stop) and optionally link it to nearby street nodes.
@@ -149,6 +170,8 @@ class NetworkStructure:
             Node's y-coordinate.
         linking_radius: float | None
             Max distance (meters) to search for street nodes to link to (default: 100.0 from Rust).
+        z: float | None
+            Optional z-coordinate (elevation). Default None.
 
         Returns
         -------
@@ -198,6 +221,14 @@ class NetworkStructure:
     def node_xys(self) -> list[tuple[float, float]]:  # Getter returns Vec<(f64, f64)>
         """Get (x, y) coordinates for all nodes."""
         ...
+    @property
+    def node_zs(self) -> list[float | None]:  # Getter returns Vec<Option<f64>>
+        """Get optional z-coordinates for all nodes."""
+        ...
+    @property
+    def node_xyzs(self) -> list[tuple[float, float, float | None]]:  # Getter returns Vec<(f64, f64, Option<f64>)>
+        """Get (x, y, z) coordinates for all nodes, where z may be None."""
+        ...
     # street_node_xys removed as no direct public getter in Rust
     @property
     def node_lives(self) -> list[bool]:  # Getter returns Vec<bool>
@@ -220,6 +251,7 @@ class NetworkStructure:
         end_nd_key_py: Any,
         geom_wkt: str,
         imp_factor: float | None = None,
+        shared_primal_node_key: str | None = None,
     ) -> int:  # Returns PyResult<usize>
         """
         Add a directed street edge with geometry.
@@ -241,6 +273,8 @@ class NetworkStructure:
             Original key of the ending node.
         geom_wkt: str
             Edge geometry in WKT format (must have >= 2 points).
+        shared_primal_node_key: str | None
+            Optional primal junction key for dual-graph transitions.
         imp_factor: float | None
             Impedance multiplier (> 0.0, default 1.0).
 
@@ -397,6 +431,10 @@ class NetworkStructure:
         -------
         tuple[list[int], list[NodeVisit]]
             (List of reachable node indices, List of NodeVisit states for all nodes).
+
+        Notes
+        -----
+        Requires `self.is_dual == True`.
         """
         ...
     def dijkstra_tree_segment(
@@ -462,7 +500,9 @@ class NetworkStructure:
         speed_m_s: float | None
             Travel speed (m/s).
         tolerance: float | None
-            Relative tolerance for near-equal path detection in betweenness. 0.0 = exact shortest paths only.
+            Relative tolerance for near-equal path detection in betweenness, as a percentage
+            (e.g. 1.0 = 1%). A tiny internal epsilon is always enforced as a minimum for
+            floating-point stability.
         sample_probability: float | None
             Probability of sampling a node as a source. Used for IPW scaling.
         sampling_weights: list[float] | None
@@ -489,6 +529,7 @@ class NetworkStructure:
         compute_betweenness: bool | None = None,
         min_threshold_wt: float | None = None,
         speed_m_s: float | None = None,
+        tolerance: float | None = None,
         angular_scaling_unit: float | None = None,
         farness_scaling_offset: float | None = None,
         sample_probability: float | None = None,
@@ -519,6 +560,10 @@ class NetworkStructure:
             Minimum weight for beta/distance conversion.
         speed_m_s: float | None
             Travel speed (m/s).
+        tolerance: float | None
+            Relative tolerance for near-equal path detection in angular betweenness, as a
+            percentage (e.g. 1.0 = 1%). A tiny internal epsilon is always enforced as a minimum
+            for floating-point stability.
         angular_scaling_unit: float | None
             Scaling unit for angular cost (default: 180 degrees).
         farness_scaling_offset: float | None
@@ -538,6 +583,10 @@ class NetworkStructure:
         -------
         CentralitySimplestResult
             Object containing closeness and/or betweenness centrality metrics.
+
+        Notes
+        -----
+        Requires `self.is_dual == True`.
         """
         ...
     def betweenness_od_shortest(
@@ -568,6 +617,10 @@ class NetworkStructure:
             Minimum weight for beta/distance conversion.
         speed_m_s: float | None
             Travel speed (m/s).
+        tolerance: float | None
+            Relative tolerance for near-equal path detection in betweenness, as a percentage
+            (e.g. 1.0 = 1%). A tiny internal epsilon is always enforced as a minimum for
+            floating-point stability.
         pbar_disabled: bool | None
             Disable progress bar if True.
 

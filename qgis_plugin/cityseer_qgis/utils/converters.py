@@ -308,6 +308,17 @@ def build_dual_network(
     if feedback and (feat_count <= 0):
         feedback.setProgress(int(read_base + read_span))
 
+    if not current_wkts:
+        feat_total = layer.featureCount() if hasattr(layer, "featureCount") else 0
+        if feat_total > 0:
+            msg = (
+                f"Layer reports {feat_total} features but none could be read. "
+                "The data source may have moved or become unavailable."
+            )
+        else:
+            msg = "Input layer contains no features."
+        raise ValueError(msg)
+
     # ------------------------------------------------------------------
     # Incremental path — diff against previous state
     # ------------------------------------------------------------------
@@ -456,6 +467,7 @@ def build_dual_network(
                     if pair in seen:
                         continue
                     seen.add(pair)
+                    primal_key = str(key)
                     merged_wkt = _make_edge_wkt(fid, other_fid, key)
                     ns.add_street_edge(
                         node_idx[fid],
@@ -464,6 +476,7 @@ def build_dual_network(
                         fid,
                         other_fid,
                         merged_wkt,
+                        shared_primal_node_key=primal_key,
                     )
                     edge_counter += 1
                     merged_wkt_rev = _make_edge_wkt(other_fid, fid, key)
@@ -474,6 +487,7 @@ def build_dual_network(
                         other_fid,
                         fid,
                         merged_wkt_rev,
+                        shared_primal_node_key=primal_key,
                     )
                     edge_counter += 1
             if feedback and added_with_geom:
@@ -593,6 +607,7 @@ def build_dual_network(
 
     endpoint_to_fids: dict[tuple, list[int]] = collections.defaultdict(list)
     ns = rustalgos.graph.NetworkStructure()
+    ns.set_is_dual(True)
     node_idx: dict[int, int] = {}
     midpoints: dict[int, tuple] = {}
     _line_data: dict[int, tuple] = {}
@@ -640,6 +655,7 @@ def build_dual_network(
             if pair in seen:
                 continue
             seen.add(pair)
+            primal_key = str(endpoint)
             merged_wkt = _make_edge_wkt(fid_a, fid_b, endpoint)
             ns.add_street_edge(
                 node_idx[fid_a],
@@ -648,6 +664,7 @@ def build_dual_network(
                 fid_a,
                 fid_b,
                 merged_wkt,
+                shared_primal_node_key=primal_key,
             )
             edge_counter += 1
             merged_wkt_rev = _make_edge_wkt(fid_b, fid_a, endpoint)
@@ -658,6 +675,7 @@ def build_dual_network(
                 fid_b,
                 fid_a,
                 merged_wkt_rev,
+                shared_primal_node_key=primal_key,
             )
             edge_counter += 1
         if feedback and (j % edge_tick == 0 or j == n_endpoints - 1):

@@ -524,8 +524,11 @@ impl DataMap {
         max_walk_seconds: u32,
         speed_m_s: f32,
         angular: Option<bool>,
-    ) -> HashMap<String, f32> {
+    ) -> PyResult<HashMap<String, f32>> {
         let angular = angular.unwrap_or(false);
+        if angular {
+            network_structure.validate_dual_for_angular("aggregate_to_src_idx")?;
+        }
         let mut entries_result: HashMap<String, f32> = HashMap::new();
         let mut nearest_ids: HashMap<String, (String, f32)> = HashMap::new();
 
@@ -535,19 +538,11 @@ impl DataMap {
         // Perform Dijkstra search
         let (visited_nodes, tree_map) = if !angular {
             network_structure
-                .dijkstra_tree_shortest(
-                    netw_src_idx,
-                    max_walk_seconds,
-                    speed_m_s,
-                )
+                .dijkstra_tree_shortest(netw_src_idx, max_walk_seconds, speed_m_s)
                 .expect("pre-validated Dijkstra inputs")
         } else {
             network_structure
-                .dijkstra_tree_simplest(
-                    netw_src_idx,
-                    max_walk_seconds,
-                    speed_m_s,
-                )
+                .dijkstra_tree_simplest(netw_src_idx, max_walk_seconds, speed_m_s)
                 .expect("pre-validated Dijkstra inputs")
         };
 
@@ -603,7 +598,7 @@ impl DataMap {
             }
         }
         // 12. Return the final result map (data_key -> min_distance)
-        entries_result
+        Ok(entries_result)
     }
 
     #[pyo3(signature = (
@@ -634,6 +629,9 @@ impl DataMap {
         pbar_disabled: Option<bool>,
         py: Python,
     ) -> PyResult<AccessibilityResult> {
+        if angular.unwrap_or(false) {
+            network_structure.validate_dual_for_angular("accessibility")?;
+        }
         let speed_m_s = speed_m_s.unwrap_or(WALKING_SPEED);
         let (distances, betas, seconds) =
             pair_distances_betas_time(speed_m_s, distances, betas, minutes, min_threshold_wt)?;
@@ -687,13 +685,15 @@ impl DataMap {
                 if !network_structure.is_node_live_unchecked(*netw_src_idx) {
                     return;
                 }
-                let reachable_entries = self.aggregate_to_src_idx(
-                    *netw_src_idx,
-                    network_structure,
-                    max_walk_seconds,
-                    speed_m_s,
-                    angular,
-                );
+                let reachable_entries = self
+                    .aggregate_to_src_idx(
+                        *netw_src_idx,
+                        network_structure,
+                        max_walk_seconds,
+                        speed_m_s,
+                        angular,
+                    )
+                    .expect("angular topology should be pre-validated");
                 for (data_key, data_dist) in reachable_entries {
                     if let Some(lu_class) = lu_map.get(&data_key) {
                         if !accessibility_keys_set.contains(lu_class) {
@@ -764,6 +764,9 @@ impl DataMap {
         pbar_disabled: Option<bool>,
         py: Python,
     ) -> PyResult<MixedUsesResult> {
+        if angular.unwrap_or(false) {
+            network_structure.validate_dual_for_angular("mixed_uses")?;
+        }
         let speed_m_s = speed_m_s.unwrap_or(WALKING_SPEED);
         let (distances, betas, seconds) =
             pair_distances_betas_time(speed_m_s, distances, betas, minutes, min_threshold_wt)?;
@@ -837,13 +840,15 @@ impl DataMap {
                 if !network_structure.is_node_live_unchecked(*netw_src_idx) {
                     return;
                 }
-                let reachable_entries = self.aggregate_to_src_idx(
-                    *netw_src_idx,
-                    network_structure,
-                    max_walk_seconds,
-                    speed_m_s,
-                    angular,
-                );
+                let reachable_entries = self
+                    .aggregate_to_src_idx(
+                        *netw_src_idx,
+                        network_structure,
+                        max_walk_seconds,
+                        speed_m_s,
+                        angular,
+                    )
+                    .expect("angular topology should be pre-validated");
                 // Flat arrays: [dist_idx * n_classes + class_idx]
                 let n_dists = distances.len();
                 let mut counts = vec![0u32; n_dists * n_classes];
@@ -926,7 +931,8 @@ impl DataMap {
                     }
                     if compute_gini {
                         res.gini_vec.metric[i][*netw_src_idx].fetch_add(
-                            diversity::gini_simpson_diversity_core(dist_counts).unwrap_or(0.0) as f64,
+                            diversity::gini_simpson_diversity_core(dist_counts).unwrap_or(0.0)
+                                as f64,
                             AtomicOrdering::Relaxed,
                         );
                     }
@@ -1018,6 +1024,9 @@ impl DataMap {
         pbar_disabled: Option<bool>,
         py: Python,
     ) -> PyResult<StatsResult> {
+        if angular.unwrap_or(false) {
+            network_structure.validate_dual_for_angular("stats")?;
+        }
         let speed_m_s = speed_m_s.unwrap_or(WALKING_SPEED);
         let (distances, betas, seconds) =
             pair_distances_betas_time(speed_m_s, distances, betas, minutes, min_threshold_wt)?;
@@ -1071,13 +1080,15 @@ impl DataMap {
                 if !network_structure.is_node_live_unchecked(*netw_src_idx) {
                     return;
                 }
-                let reachable_entries = self.aggregate_to_src_idx(
-                    *netw_src_idx,
-                    network_structure,
-                    max_walk_seconds,
-                    speed_m_s,
-                    angular,
-                );
+                let reachable_entries = self
+                    .aggregate_to_src_idx(
+                        *netw_src_idx,
+                        network_structure,
+                        max_walk_seconds,
+                        speed_m_s,
+                        angular,
+                    )
+                    .expect("angular topology should be pre-validated");
                 for (map_idx, num_map) in num_maps.iter().enumerate() {
                     for (i, (&d, (&b, &mcw))) in distances
                         .iter()

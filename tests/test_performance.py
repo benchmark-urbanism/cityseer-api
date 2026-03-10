@@ -62,6 +62,14 @@ def test_local_centrality_time(primal_graph):
     dijkstra_tree_segment_wrapper: 0.12999495898839086 for 10000 iterations
     node_cent_wrapper: 2.6186295949996747 for 10000 iterations
     segment_cent_wrapper: 5.181460560999767 for 10000 iterations
+
+    Brandes
+    SWITCHED TO DUAL GRAPH FOR SIMPLEST PATHS
+    dijkstra_tree_shortest_wrapper: 0.032350792083889246 for 10000 iterations
+    dijkstra_tree_simplest_wrapper: 0.2574775000102818 for 10000 iterations
+    dijkstra_tree_segment_wrapper: 0.07979470887221396 for 10000 iterations
+    node_cent_wrapper: 2.880786875030026 for 10000 iterations
+    segment_cent_wrapper: 2.579006958985701 for 10000 iterations
     """
 
     if "GITHUB_ACTIONS" in os.environ:
@@ -90,8 +98,12 @@ def test_local_centrality_time(primal_graph):
     print(f"dijkstra_tree_shortest_wrapper: {func_time} for {iters} iterations")
     assert func_time < 1
 
+    # simplest path operates on dual graph
+    dual_graph = graphs.nx_to_dual(primal_graph)
+    _dual_nodes_gdf, _dual_edges_gdf, dual_network_structure = io.network_structure_from_nx(dual_graph)
+
     def dijkstra_tree_simplest_wrapper():
-        network_structure.dijkstra_tree_simplest(
+        dual_network_structure.dijkstra_tree_simplest(
             src_idx=0,
             max_seconds=max_seconds,
             speed_m_s=speed_m_s,

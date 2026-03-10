@@ -845,7 +845,7 @@ out qt;
 </div>
 
 
- Transpose a `networkX` `MultiGraph` into a `gpd.GeoDataFrame` and `NetworkStructure` for use by `cityseer`. Calculates length and angle attributes, as well as in and out bearings, and stores this information in the returned data maps.
+ Transpose a `networkX` `MultiGraph` into a `gpd.GeoDataFrame` and `NetworkStructure` for use by `cityseer`. Calculates length and angle attributes, as well as in and out bearings, and stores this information in the returned data maps. Optional `z` node attributes (elevation) are supported; when present on both endpoints of an edge, a slope-based walking impedance (Tobler's hiking function) is automatically applied during centrality computations.
 ### Parameters
 <div class="param-set">
   <div class="def">
@@ -854,7 +854,7 @@ out qt;
   </div>
   <div class="desc">
 
- A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `y` node attributes, and `geom` edge attributes containing `LineString` geoms.</div>
+ A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `y` node attributes, and `geom` edge attributes containing `LineString` geoms. Nodes may optionally include a `z` attribute for elevation.</div>
 </div>
 
 <div class="param-set">

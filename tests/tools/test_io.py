@@ -232,6 +232,7 @@ def test_network_structure_from_nx(diamond_graph):
         # generate test maps
         nodes_gdf, edges_gdf, network_structure = io.network_structure_from_nx(G)
         network_structure.validate()
+        assert network_structure.is_dual is is_dual
         # check CRS
         assert nodes_gdf.crs.to_epsg() == 32630
         assert edges_gdf.crs.to_epsg() == 32630

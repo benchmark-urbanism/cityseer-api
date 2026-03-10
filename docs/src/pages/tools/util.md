@@ -712,6 +712,11 @@ layout: ../../layouts/PageLayout.astro
     <span class="pc">:</span>
     <span class="pa"> bool | None = None</span>
   </div>
+  <div class="param">
+    <span class="pn">z</span>
+    <span class="pc">:</span>
+    <span class="pa"> float | None = None</span>
+  </div>
   <span class="pt">)-&gt;[</span>
   <span class="pr">str</span>
   <span class="pr">bool</span>
