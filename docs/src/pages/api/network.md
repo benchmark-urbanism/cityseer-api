@@ -184,7 +184,7 @@ filtered and why.
   </div>
   <div class="desc">
 
- A mapping from feature identifiers to WKT strings or Shapely LineString geometries.</div>
+ A mapping from feature identifiers to WKT strings or Shapely LineString geometries. Input geometries may include z (elevation) coordinates, which are preserved and used for slope-based walking impedance calculations.</div>
 </div>
 
 <div class="param-set">
@@ -204,7 +204,7 @@ filtered and why.
   </div>
   <div class="desc">
 
- Optional polygon; nodes inside are marked as ``live``, nodes outside as ``dead``.</div>
+ Optional polygon in the same projected CRS; nodes inside are marked as ``live``, nodes outside as ``dead``.</div>
 </div>
 
 ### Returns
@@ -267,7 +267,7 @@ filtered and why.
   </div>
   <div class="desc">
 
- A GeoDataFrame with LineString or MultiLineString geometries. The index must be unique.</div>
+ A GeoDataFrame with LineString or MultiLineString geometries. The index must be unique. Input geometries may include z (elevation) coordinates, which are preserved and used for slope-based walking impedance calculations.</div>
 </div>
 
 <div class="param-set">
@@ -287,7 +287,7 @@ filtered and why.
   </div>
   <div class="desc">
 
- Optional polygon; nodes inside are marked as ``live``, nodes outside as ``dead``.</div>
+ Optional polygon in the same projected CRS; nodes inside are marked as ``live``, nodes outside as ``dead``.</div>
 </div>
 
 ### Returns
@@ -357,7 +357,7 @@ filtered and why.
   </div>
   <div class="desc">
 
- Optional polygon; nodes inside are marked as ``live``, nodes outside as ``dead``.</div>
+ Optional polygon in the same projected CRS; nodes inside are marked as ``live``, nodes outside as ``dead``.</div>
 </div>
 
 ### Returns

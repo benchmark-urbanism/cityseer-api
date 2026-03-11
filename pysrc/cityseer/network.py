@@ -173,7 +173,8 @@ class CityNetwork:
     def nodes_gdf(self) -> gpd.GeoDataFrame:
         """The internal nodes GeoDataFrame with point geometries at segment midpoints.
 
-        Columns include ``ns_node_idx``, ``x``, ``y``, ``live``, ``weight``, and any centrality or layer results
+        Columns include ``ns_node_idx``, ``x``, ``y``, ``z`` (if elevation data is present), ``live``, ``weight``,
+        and any centrality or layer results
         that have been computed. This is the *working* GeoDataFrame used by centrality and layer methods.
         Use [`to_geopandas`](#to-geopandas) to obtain a GeoDataFrame with the original LineString geometries.
         """
@@ -247,10 +248,13 @@ class CityNetwork:
         ----------
         wkts: dict[Any, str] | dict[Any, BaseGeometry]
             A mapping from feature identifiers to WKT strings or Shapely LineString geometries.
+            Input geometries may include z (elevation) coordinates, which are preserved and used
+            for slope-based walking impedance calculations.
         crs: Any
             A projected coordinate reference system (EPSG code, CRS object, or proj string).
         boundary: BaseGeometry
-            Optional polygon; nodes inside are marked as ``live``, nodes outside as ``dead``.
+            Optional polygon in the same projected CRS; nodes inside are marked as ``live``,
+            nodes outside as ``dead``.
 
         Returns
         -------
@@ -278,10 +282,13 @@ class CityNetwork:
         ----------
         gdf: GeoDataFrame
             A GeoDataFrame with LineString or MultiLineString geometries. The index must be unique.
+            Input geometries may include z (elevation) coordinates, which are preserved and used
+            for slope-based walking impedance calculations.
         crs: Any
             Optional projected CRS override. If ``None``, uses the GeoDataFrame's CRS.
         boundary: BaseGeometry
-            Optional polygon; nodes inside are marked as ``live``, nodes outside as ``dead``.
+            Optional polygon in the same projected CRS; nodes inside are marked as ``live``,
+            nodes outside as ``dead``.
 
         Returns
         -------
@@ -311,7 +318,8 @@ class CityNetwork:
         graph: nx.MultiGraph
             A cityseer-compatible primal NetworkX graph.
         boundary: BaseGeometry
-            Optional polygon; nodes inside are marked as ``live``, nodes outside as ``dead``.
+            Optional polygon in the same projected CRS; nodes inside are marked as ``live``,
+            nodes outside as ``dead``.
 
         Returns
         -------
