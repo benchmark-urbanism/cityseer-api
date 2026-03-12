@@ -361,6 +361,7 @@ class CityNetwork:
         if edge_attrs:
             attr_df = pd.DataFrame.from_dict(edge_attrs, orient="index")
             nodes_gdf.loc[attr_df.index, attr_df.columns] = attr_df.loc[attr_df.index, attr_df.columns]
+        state["nx_source_graph"] = graph
         return cls._from_dual_result(ns, nodes_gdf, state, normalized_crs)
 
     @classmethod
@@ -804,13 +805,31 @@ class CityNetwork:
         return self
 
     def to_nx(self) -> nx.MultiGraph:
-        """Convert the network to a cityseer-compatible NetworkX MultiGraph.
+        """Convert the network to a NetworkX MultiGraph.
+
+        If the network was built with :meth:`from_nx`, returns a copy of the original graph with computed
+        centrality and layer columns added to each edge's data dictionary. Otherwise builds a new
+        cityseer-compatible graph from the internal GeoDataFrame.
 
         Returns
         -------
         graph: nx.MultiGraph
-            A primal edge graph with ``geom`` attributes on edges and ``crs`` on the graph.
+            A primal edge graph with computed metrics added to edge data.
         """
+        source_graph: nx.MultiGraph | None = self._state.get("nx_source_graph")
+        if source_graph is not None:
+            g = source_graph.copy()
+            result = self.to_geopandas()
+            cc_cols = [c for c in result.columns if c.startswith("cc_")]
+            if cc_cols:
+                for _, row in result.iterrows():
+                    u = row["primal_edge_node_a"]
+                    v = row["primal_edge_node_b"]
+                    k = int(row["primal_edge_idx"])
+                    if g.has_edge(u, v, k):
+                        for col in cc_cols:
+                            g[u][v][k][col] = row[col]
+            return g
         return io.nx_from_generic_geopandas(self.to_geopandas())
 
     def __repr__(self) -> str:
