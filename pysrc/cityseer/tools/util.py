@@ -77,6 +77,9 @@ def validate_cityseer_networkx_graph(
             raise KeyError(f'Encountered node missing "y" coordinate attribute at node {nd_key}.')
     #
     for start_nd_key, end_nd_key, edge_data in g_multi_copy.edges(data=True):
+        # normalise "geometry" to "geom" for compatibility with momepy / geopandas conventions
+        if "geom" not in edge_data and "geometry" in edge_data:
+            edge_data["geom"] = edge_data.pop("geometry")
         # check if geom present
         if "geom" not in edge_data:
             raise KeyError(

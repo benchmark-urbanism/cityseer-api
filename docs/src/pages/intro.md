@@ -10,6 +10,10 @@ The github repository is available at [github.com/benchmark-urbanism/cityseer-ap
 
 Code tests are run against Python versions `3.10` - `3.13`.
 
+## CityNetwork API
+
+As of v4.25, `cityseer` provides a new [`CityNetwork`](/api/network) class that wraps network construction, centrality computation, and land-use analysis into a single high-level interface. It builds dual graphs directly from LineString geometries (via GeoDataFrames, WKT dictionaries, NetworkX graphs, or OSM), bypassing the previous NetworkX-based construction pipeline for substantially faster builds. The existing lower-level API (individual functions in the `metrics`, `tools`, and `rustalgos` modules) remains fully available and unchanged for backwards compatibility.
+
 ## Getting Started
 
 A growing collection of recipes and examples is available via the [`Cityseer Examples`](https://benchmark-urbanism.github.io/cityseer-examples/) site. The example notebooks include workflows showing how to run graph cleaning, network centralities, and land-use accessibility analysis from data sources such as OSM or geospatial files (e.g. GeoPackages & Shapefiles).

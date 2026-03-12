@@ -2,7 +2,7 @@
 name=Cityseer
 qgisMinimumVersion=4.0
 description=Urban network analysis: centrality, accessibility, and statistics
-version=4.24.0b4
+version=4.25.0b2
 author=Benchmark Urbanism
 email=gareth.simons@ucl.ac.uk
 
@@ -13,7 +13,16 @@ about=Cityseer provides Processing algorithms for urban network analysis: networ
     (angular) paths, boundary polygons, and deterministic distance-based sampling.
     Requires the cityseer Python library: pip install cityseer
 
-changelog=4.24.0
+changelog=4.25.0
+    - New CityNetwork class-based API wrapping network construction, centrality, and layers
+    - Fast dual graph builder bypassing NetworkX for direct LineString-to-NetworkStructure construction
+    - Incremental diff-based network updates preserving unchanged node indices
+    - Feature status tracking (active, deleted, invalid_geometry, duplicate, short_self_loop)
+    - Save/load with parquet persistence and full state roundtrip
+    - Boundary polygon support for automatic live node assignment
+    - Construction from GeoDataFrame, WKTs, NetworkX, or OSM
+
+    4.24.0
     - Endpoint-aware angular centrality using doubled state-space on dual graphs
     - Brandes multi-predecessor backpropagation for angular betweenness
     - Dynamic slope penalty using Tobler's hiking function for z-aware networks

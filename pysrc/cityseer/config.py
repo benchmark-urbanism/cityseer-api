@@ -114,10 +114,11 @@ def wrap_progress(
         total=total,
         disable=QUIET_MODE,
         desc=desc,
+        mininterval=0.1,
     )
     thread.start()
     while thread.is_alive():
-        time.sleep(0.1)
+        time.sleep(0.01)
         pbar.update(rust_struct.progress() - pbar.n)  # type: ignore
     pbar.update(total - pbar.n)
     pbar.close()
