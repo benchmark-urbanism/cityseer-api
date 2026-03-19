@@ -186,9 +186,13 @@ def node_centrality_shortest(
         full_distances = sorted(resolved_distances)
     else:
         logger.warning("Sampling is experimental: API and behaviour may change in future releases.")
+        # Sampling runs dead buffer nodes as sources, so the break-even point
+        # is p < n_live / n_total. Above this threshold exact mode is faster.
+        lives = network_structure.node_lives
+        live_fraction = sum(lives) / len(lives) if lives else 1.0
         for d in sorted(resolved_distances):
             p = sampling.compute_distance_p(d, epsilon=eps)
-            if p >= 1.0:
+            if p >= live_fraction:
                 full_distances.append(d)
             else:
                 sampled_distances.append((d, p))
@@ -552,9 +556,13 @@ def node_centrality_simplest(
         full_distances = sorted(resolved_distances)
     else:
         logger.warning("Sampling is experimental: API and behaviour may change in future releases.")
+        # Sampling runs dead buffer nodes as sources, so the break-even point
+        # is p < n_live / n_total. Above this threshold exact mode is faster.
+        lives = network_structure.node_lives
+        live_fraction = sum(lives) / len(lives) if lives else 1.0
         for d in sorted(resolved_distances):
             p = sampling.compute_distance_p(d, epsilon=eps)
-            if p >= 1.0:
+            if p >= live_fraction:
                 full_distances.append(d)
             else:
                 sampled_distances.append((d, p))

@@ -22,6 +22,9 @@ changelog=4.25.0
     - Boundary polygon support for automatic live node assignment
     - Construction from GeoDataFrame, WKTs, NetworkX, or OSM
 
+    4.24.1
+    - Fixes sampling behaviour for live vs dead nodes
+
     4.24.0
     - Endpoint-aware angular centrality using doubled state-space on dual graphs
     - Brandes multi-predecessor backpropagation for angular betweenness
