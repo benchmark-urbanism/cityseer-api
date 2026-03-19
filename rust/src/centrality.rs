@@ -450,9 +450,17 @@ struct SourceSamplingPlan {
     sample_randoms: Vec<f32>,
     sources: Vec<usize>,
     source_eligible: Vec<bool>,
+    node_live: Vec<bool>,
     is_source_indexed: bool,
     n_sources: usize,
     n_live: usize,
+}
+
+impl SourceSamplingPlan {
+    #[inline]
+    fn is_sampling(&self) -> bool {
+        self.sample_probability.is_some() || self.is_source_indexed
+    }
 }
 
 impl NetworkStructure {
@@ -486,10 +494,7 @@ impl NetworkStructure {
         let mut seen = HashSet::new();
         for &node_idx in &traversal.reached_node_indices {
             let node_index = NodeIndex::new(node_idx);
-            for edge_ref in self
-                .graph
-                .edges_directed(node_index, Direction::Outgoing)
-            {
+            for edge_ref in self.graph.edges_directed(node_index, Direction::Outgoing) {
                 let nb_idx = edge_ref.target().index();
                 if nb_idx == node_idx {
                     continue;
@@ -505,8 +510,8 @@ impl NetworkStructure {
                 if !seen.insert(edge_key) {
                     continue;
                 }
-                let edge_cost = traversal.best_route_cost[node_idx]
-                    .max(traversal.best_route_cost[nb_idx]);
+                let edge_cost =
+                    traversal.best_route_cost[node_idx].max(traversal.best_route_cost[nb_idx]);
                 for i in 0..d_n {
                     if edge_cost <= distances[i] as f32 {
                         edge_counts[i] += 1;
@@ -581,11 +586,17 @@ impl NetworkStructure {
         speed_m_s: f32,
         tolerance: f32,
         endpoint_slots: &[SmallVec<[String; 2]>],
+        upstream: bool,
     ) -> BrandesTraversal {
         assert!(
             tolerance >= TIE_EPSILON,
             "Tolerance must be >= TIE_EPSILON to avoid float-comparison bugs"
         );
+        let direction = if upstream {
+            Direction::Incoming
+        } else {
+            Direction::Outgoing
+        };
         let node_count = self.node_bound();
         let state_count = node_count * 2;
         let mut states = (0..state_count)
@@ -625,11 +636,12 @@ impl NetworkStructure {
             let current_entry_slot = state_idx % 2;
             let current_node_index = NodeIndex::new(current_node_idx);
 
-            for edge_ref in self
-                .graph
-                .edges_directed(current_node_index, Direction::Outgoing)
-            {
-                let next_node_idx = edge_ref.target().index();
+            for edge_ref in self.graph.edges_directed(current_node_index, direction) {
+                let next_node_idx = if upstream {
+                    edge_ref.source().index()
+                } else {
+                    edge_ref.target().index()
+                };
                 let edge_payload = edge_ref.weight();
                 let shared_key = edge_payload
                     .shared_primal_node_key
@@ -639,22 +651,35 @@ impl NetworkStructure {
                     .iter()
                     .position(|slot_key| slot_key == shared_key)
                     .expect("validated shared_primal_node_key missing from source dual node");
-                if current_shared_slot != 1 - current_entry_slot {
+                // Downstream: edge must connect at exit slot (opposite of entry).
+                // Upstream: edge must connect at entry slot (same as entry).
+                let slot_mismatch = if upstream {
+                    current_shared_slot != current_entry_slot
+                } else {
+                    current_shared_slot != 1 - current_entry_slot
+                };
+                if slot_mismatch {
                     continue;
                 }
                 let next_shared_slot = endpoint_slots[next_node_idx]
                     .iter()
                     .position(|slot_key| slot_key == shared_key)
                     .expect("validated shared_primal_node_key missing from target dual node");
-                let next_state_idx = Self::angular_state_idx(next_node_idx, next_shared_slot);
+                // Downstream: neighbor entered from shared slot.
+                // Upstream: neighbor entered from opposite of shared slot.
+                let next_state_idx = if upstream {
+                    Self::angular_state_idx(next_node_idx, 1 - next_shared_slot)
+                } else {
+                    Self::angular_state_idx(next_node_idx, next_shared_slot)
+                };
 
-                let edge_seconds = self.edge_travel_seconds(
-                    current_node_idx,
-                    next_node_idx,
-                    edge_payload,
-                    speed_m_s,
-                    false,
-                );
+                let (from, to) = if upstream {
+                    (next_node_idx, current_node_idx)
+                } else {
+                    (current_node_idx, next_node_idx)
+                };
+                let edge_seconds =
+                    self.edge_travel_seconds(from, to, edge_payload, speed_m_s, false);
                 let candidate_seconds = states[state_idx].agg_seconds + edge_seconds;
                 if candidate_seconds > max_seconds as f32 {
                     continue;
@@ -721,14 +746,16 @@ impl NetworkStructure {
                 let src_state_idx = Self::angular_state_idx(src_idx, slot);
                 states[src_state_idx].sigma = 1.0;
             }
-            // Process settled states in order. For each state U, look at outgoing edges
-            // to find successors V that were settled later (visit_pos[V] > pos).
             for (pos, &u_state_idx) in visited_state_indices.iter().enumerate() {
                 let u_node_idx = states[u_state_idx].node_idx;
                 let u_entry_slot = u_state_idx % 2;
                 let u_node_index = NodeIndex::new(u_node_idx);
-                for edge_ref in self.graph.edges_directed(u_node_index, Direction::Outgoing) {
-                    let next_node_idx = edge_ref.target().index();
+                for edge_ref in self.graph.edges_directed(u_node_index, direction) {
+                    let next_node_idx = if upstream {
+                        edge_ref.source().index()
+                    } else {
+                        edge_ref.target().index()
+                    };
                     let edge_payload = edge_ref.weight();
                     let shared_key = edge_payload
                         .shared_primal_node_key
@@ -738,14 +765,23 @@ impl NetworkStructure {
                         .iter()
                         .position(|slot_key| slot_key == shared_key)
                         .expect("validated shared_primal_node_key missing from source dual node");
-                    if u_shared_slot != 1 - u_entry_slot {
+                    let slot_mismatch = if upstream {
+                        u_shared_slot != u_entry_slot
+                    } else {
+                        u_shared_slot != 1 - u_entry_slot
+                    };
+                    if slot_mismatch {
                         continue;
                     }
                     let next_shared_slot = endpoint_slots[next_node_idx]
                         .iter()
                         .position(|slot_key| slot_key == shared_key)
                         .expect("validated shared_primal_node_key missing from target dual node");
-                    let v_state_idx = Self::angular_state_idx(next_node_idx, next_shared_slot);
+                    let v_state_idx = if upstream {
+                        Self::angular_state_idx(next_node_idx, 1 - next_shared_slot)
+                    } else {
+                        Self::angular_state_idx(next_node_idx, next_shared_slot)
+                    };
                     // Only consider successors settled after U.
                     if visit_pos[v_state_idx] <= pos {
                         continue;
@@ -1058,10 +1094,14 @@ impl NetworkStructure {
         }
 
         let n = self.node_bound();
-        let n_live = node_indices
-            .iter()
-            .filter(|&&idx| self.is_node_live_unchecked(idx))
-            .count();
+        let node_live: Vec<bool> = {
+            let mut live = vec![false; n];
+            for &idx in node_indices {
+                live[idx] = self.is_node_live_unchecked(idx);
+            }
+            live
+        };
+        let n_live = node_live.iter().filter(|&&v| v).count();
         let is_source_indexed = source_indices.is_some();
         let sources = source_indices.unwrap_or_else(|| node_indices.to_vec());
         let n_sources = sources.len();
@@ -1071,10 +1111,19 @@ impl NetworkStructure {
                 eligible[idx] = true;
             }
             eligible
-        } else {
+        } else if sample_probability.is_some() {
+            // Sampling: all nodes (live + dead) are source-eligible.
+            // Dead buffer nodes contribute via IPW to prevent edge roll-off.
             let mut eligible = vec![false; n];
             for &idx in node_indices {
-                if self.is_node_live_unchecked(idx) {
+                eligible[idx] = true;
+            }
+            eligible
+        } else {
+            // No sampling: only live nodes are sources.
+            let mut eligible = vec![false; n];
+            for &idx in node_indices {
+                if node_live[idx] {
                     eligible[idx] = true;
                 }
             }
@@ -1097,6 +1146,7 @@ impl NetworkStructure {
             sample_randoms,
             sources,
             source_eligible,
+            node_live,
             is_source_indexed,
             n_sources,
             n_live,
@@ -1162,11 +1212,12 @@ impl NetworkStructure {
             tree_map[node_idx].visited = true;
             visited_nodes.push(node_idx);
             let current_node_index = NodeIndex::new(node_idx);
+            // Downstream (Outgoing): forward paths from source to targets.
             for edge_ref in self
                 .graph
-                .edges_directed(current_node_index, Direction::Incoming)
+                .edges_directed(current_node_index, Direction::Outgoing)
             {
-                let nb_nd_idx = edge_ref.source();
+                let nb_nd_idx = edge_ref.target();
                 let nb_idx = nb_nd_idx.index();
                 let edge_payload = edge_ref.weight();
                 if nb_idx == node_idx || tree_map[nb_idx].visited {
@@ -1178,7 +1229,7 @@ impl NetworkStructure {
                     }
                 }
                 let edge_seconds =
-                    self.edge_travel_seconds(nb_idx, node_idx, edge_payload, speed_m_s, true);
+                    self.edge_travel_seconds(node_idx, nb_idx, edge_payload, speed_m_s, true);
                 let total_seconds = tree_map[node_idx].agg_seconds + edge_seconds;
                 if total_seconds > max_seconds as f32 {
                     continue;
@@ -1347,11 +1398,17 @@ impl NetworkStructure {
         max_seconds: u32,
         speed_m_s: f32,
         tolerance: f32,
+        upstream: bool,
     ) -> BrandesTraversal {
         assert!(
             tolerance >= TIE_EPSILON,
             "Tolerance must be >= TIE_EPSILON to avoid float-comparison bugs"
         );
+        let direction = if upstream {
+            Direction::Incoming
+        } else {
+            Direction::Outgoing
+        };
         let node_count = self.node_bound();
         let mut states = (0..node_count)
             .map(BrandesTraversalState::new)
@@ -1386,23 +1443,23 @@ impl NetworkStructure {
 
             let current_node_idx = states[state_idx].node_idx;
             let current_node_index = NodeIndex::new(current_node_idx);
-            for edge_ref in self
-                .graph
-                .edges_directed(current_node_index, Direction::Incoming)
-            {
-                let nb_nd_idx = edge_ref.source();
-                let nb_idx = nb_nd_idx.index();
+            for edge_ref in self.graph.edges_directed(current_node_index, direction) {
+                let nb_idx = if upstream {
+                    edge_ref.source().index()
+                } else {
+                    edge_ref.target().index()
+                };
                 let edge_payload = edge_ref.weight();
                 if nb_idx == current_node_idx {
                     continue;
                 }
-                let edge_seconds = self.edge_travel_seconds(
-                    nb_idx,
-                    current_node_idx,
-                    edge_payload,
-                    speed_m_s,
-                    true,
-                );
+                let (from, to) = if upstream {
+                    (nb_idx, current_node_idx)
+                } else {
+                    (current_node_idx, nb_idx)
+                };
+                let edge_seconds =
+                    self.edge_travel_seconds(from, to, edge_payload, speed_m_s, true);
                 let candidate_seconds = states[state_idx].agg_seconds + edge_seconds;
                 if candidate_seconds > max_seconds as f32 {
                     continue;
@@ -1456,21 +1513,25 @@ impl NetworkStructure {
             states[src_idx].sigma = 1.0;
             for (pos, &u_idx) in visited_state_indices.iter().enumerate() {
                 let u_node_index = NodeIndex::new(states[u_idx].node_idx);
-                for edge_ref in self.graph.edges_directed(u_node_index, Direction::Incoming) {
-                    let v_idx = edge_ref.source().index();
+                for edge_ref in self.graph.edges_directed(u_node_index, direction) {
+                    let v_idx = if upstream {
+                        edge_ref.source().index()
+                    } else {
+                        edge_ref.target().index()
+                    };
                     if v_idx == u_idx {
                         continue;
                     }
                     if visit_pos[v_idx] <= pos {
                         continue;
                     }
-                    let edge_seconds = self.edge_travel_seconds(
-                        v_idx,
-                        states[u_idx].node_idx,
-                        edge_ref.weight(),
-                        speed_m_s,
-                        true,
-                    );
+                    let (from, to) = if upstream {
+                        (v_idx, states[u_idx].node_idx)
+                    } else {
+                        (states[u_idx].node_idx, v_idx)
+                    };
+                    let edge_seconds =
+                        self.edge_travel_seconds(from, to, edge_ref.weight(), speed_m_s, true);
                     let path_seconds = states[u_idx].agg_seconds + edge_seconds;
                     if path_seconds <= states[v_idx].agg_seconds * (1.0 + tolerance)
                         && !states[v_idx].preds.contains(&u_idx)
@@ -1547,16 +1608,13 @@ impl NetworkStructure {
             tree_map[node_idx].visited = true;
             visited_nodes.push(node_idx);
             let current_node_index = NodeIndex::new(node_idx);
-            // Use Incoming direction to discover neighbors via edges pointing INTO current node.
-            // Edge Y→X (neighbor→current) gives us the distance FROM Y TO X, which is what we
-            // want for reversed/flipped aggregation where we accumulate TO the target node.
+            // Downstream (Outgoing): forward paths from source to targets.
             for edge_ref in self
                 .graph
-                .edges_directed(current_node_index, Direction::Incoming)
+                .edges_directed(current_node_index, Direction::Outgoing)
             {
-                let nb_nd_idx = edge_ref.source();
+                let nb_nd_idx = edge_ref.target();
                 let edge_idx = edge_ref.id();
-                // Use incoming edge directly - it has the correct distance for Y→X
                 let edge_payload = edge_ref.weight();
                 if nb_nd_idx.index() == node_idx {
                     visited_edges.push(edge_idx.index());
@@ -1576,8 +1634,8 @@ impl NetworkStructure {
                 edge_map[edge_idx.index()].edge_idx = Some(edge_payload.edge_idx);
 
                 let edge_seconds = self.edge_travel_seconds(
-                    nb_nd_idx.index(),
                     node_idx,
+                    nb_nd_idx.index(),
                     edge_payload,
                     speed_m_s,
                     true,
@@ -1724,15 +1782,28 @@ impl NetworkStructure {
                     max_walk_seconds,
                     speed_m_s,
                     tolerance,
+                    sampling_plan.is_sampling(),
                 );
 
                 // IPW-only weight for cycles (no node weight, just sampling correction).
                 let cycles_wt = wt / self.get_node_weight_unchecked(*src_idx);
 
                 // --- Closeness accumulation ---
+                // Source-based when not sampling (accumulate to src_idx, prevents
+                // edge roll-off because dead buffer nodes contribute as targets).
+                // Target-based when sampling (accumulate to to_idx with IPW weight
+                // so non-sampled nodes still receive metrics).
                 if compute_closeness {
+                    let is_sampling = sampling_plan.is_sampling();
                     let source_cycle_scores =
                         self.circuit_ranks_from_traversal(&traversal, &distances);
+                    // Cycles: source-based — circuit rank of source's reachable subgraph.
+                    if !is_sampling {
+                        for i in 0..distances.len() {
+                            res.node_cycles_vec.metric[i][*src_idx]
+                                .fetch_add(source_cycle_scores[i] as f64, AtomicOrdering::Relaxed);
+                        }
+                    }
                     for &to_idx in &traversal.reached_node_indices {
                         if to_idx == *src_idx {
                             continue;
@@ -1740,10 +1811,13 @@ impl NetworkStructure {
                         if !traversal.best_agg_seconds[to_idx].is_finite() {
                             continue;
                         }
-                        // Track reachability per distance when sampling
-                        if sampling_plan.sample_probability.is_some()
-                            || sampling_plan.is_source_indexed
-                        {
+                        // Target-based: skip dead targets (dead nodes don't get
+                        // closeness in exact mode either).
+                        if is_sampling && !sampling_plan.node_live[to_idx] {
+                            continue;
+                        }
+                        // Track reachability per distance when sampling.
+                        if is_sampling {
                             for i in 0..distances.len() {
                                 if traversal.best_route_cost[to_idx] <= distances[i] as f32 {
                                     source_reachability_totals[i]
@@ -1751,26 +1825,31 @@ impl NetworkStructure {
                                 }
                             }
                         }
-                        // Flipped aggregation: accumulate to target (to_idx) not source.
+                        // Source-based: accumulate to src_idx (always live).
+                        // Target-based: accumulate to to_idx (live only, dead skipped above).
+                        let agg_idx = if is_sampling { to_idx } else { *src_idx };
                         for i in 0..distances.len() {
                             let distance = distances[i];
                             let beta = betas[i];
                             if traversal.best_route_cost[to_idx] <= distance as f32 {
-                                res.node_density_vec.metric[i][to_idx]
+                                res.node_density_vec.metric[i][agg_idx]
                                     .fetch_add(wt as f64, AtomicOrdering::Relaxed);
-                                res.node_farness_vec.metric[i][to_idx].fetch_add(
+                                res.node_farness_vec.metric[i][agg_idx].fetch_add(
                                     (traversal.best_route_cost[to_idx] * wt) as f64,
                                     AtomicOrdering::Relaxed,
                                 );
-                                res.node_cycles_vec.metric[i][to_idx].fetch_add(
-                                    (source_cycle_scores[i] * cycles_wt) as f64,
-                                    AtomicOrdering::Relaxed,
-                                );
-                                res.node_harmonic_vec.metric[i][to_idx].fetch_add(
+                                // Cycles: target-based broadcast when sampling.
+                                if is_sampling {
+                                    res.node_cycles_vec.metric[i][to_idx].fetch_add(
+                                        (source_cycle_scores[i] * cycles_wt) as f64,
+                                        AtomicOrdering::Relaxed,
+                                    );
+                                }
+                                res.node_harmonic_vec.metric[i][agg_idx].fetch_add(
                                     ((1.0 / traversal.best_route_cost[to_idx]) * wt) as f64,
                                     AtomicOrdering::Relaxed,
                                 );
-                                res.node_beta_vec.metric[i][to_idx].fetch_add(
+                                res.node_beta_vec.metric[i][agg_idx].fetch_add(
                                     ((-beta * traversal.best_route_cost[to_idx]).exp() * wt) as f64,
                                     AtomicOrdering::Relaxed,
                                 );
@@ -1799,9 +1878,26 @@ impl NetworkStructure {
                                 continue;
                             }
 
-                            let pair_count = if sampling_plan.source_eligible[to_idx] {
+                            // Dead-to-dead pairs are excluded: exact mode never counts
+                            // them (neither dead node runs as source). When both endpoints
+                            // are live (or one live, one dead), 0.5 per direction sums to
+                            // the correct total. Dead targets get 1.0 from live sources
+                            // since the reverse direction (dead as source) is absent in
+                            // exact mode.
+                            // NOTE: with asymmetric edge weights (e.g. slope), the 1.0
+                            // factor for dead targets approximates the reverse by doubling
+                            // the forward credit; exact treatment would require running
+                            // Dijkstra from dead nodes.
+                            let pair_count = if !sampling_plan.node_live[*src_idx]
+                                && !sampling_plan.node_live[to_idx]
+                            {
+                                // Dead-to-dead: not counted in exact mode.
+                                0.0
+                            } else if sampling_plan.source_eligible[to_idx] {
+                                // Both endpoints run as sources → counted in both directions.
                                 0.5
                             } else {
+                                // Target won't run as source → count full pair.
                                 1.0
                             };
                             let pair_beta = pair_count
@@ -1989,10 +2085,13 @@ impl NetworkStructure {
                     speed_m_s,
                     tolerance,
                     &angular_endpoint_slots,
+                    sampling_plan.is_sampling(),
                 );
 
                 // --- Closeness accumulation ---
+                // Source-based when not sampling; target-based when sampling.
                 if compute_closeness {
+                    let is_sampling = sampling_plan.is_sampling();
                     for &to_idx in &traversal.reached_node_indices {
                         if to_idx == *src_idx {
                             continue;
@@ -2002,10 +2101,10 @@ impl NetworkStructure {
                         if !best_simpl_dist.is_finite() || !best_agg_seconds.is_finite() {
                             continue;
                         }
-                        // Track reachability per time threshold when sampling
-                        if sampling_plan.sample_probability.is_some()
-                            || sampling_plan.is_source_indexed
-                        {
+                        if is_sampling && !sampling_plan.node_live[to_idx] {
+                            continue;
+                        }
+                        if is_sampling {
                             for i in 0..seconds.len() {
                                 if best_agg_seconds <= seconds[i] as f32 {
                                     source_reachability_totals[i]
@@ -2013,18 +2112,18 @@ impl NetworkStructure {
                                 }
                             }
                         }
-                        // Flipped aggregation: accumulate to target (to_idx) not source.
+                        let agg_idx = if is_sampling { to_idx } else { *src_idx };
                         for i in 0..seconds.len() {
                             let sec = seconds[i];
                             if best_agg_seconds <= sec as f32 {
-                                res.node_density_vec.metric[i][to_idx]
+                                res.node_density_vec.metric[i][agg_idx]
                                     .fetch_add(wt as f64, AtomicOrdering::Relaxed);
                                 let far_ang = farness_scaling_offset
                                     + (best_simpl_dist / angular_scaling_unit);
-                                res.node_farness_vec.metric[i][to_idx]
+                                res.node_farness_vec.metric[i][agg_idx]
                                     .fetch_add((far_ang * wt) as f64, AtomicOrdering::Relaxed);
                                 let harm_ang = 1.0 + (best_simpl_dist / angular_scaling_unit);
-                                res.node_harmonic_vec.metric[i][to_idx].fetch_add(
+                                res.node_harmonic_vec.metric[i][agg_idx].fetch_add(
                                     ((1.0 / harm_ang) * wt) as f64,
                                     AtomicOrdering::Relaxed,
                                 );
@@ -2060,7 +2159,13 @@ impl NetworkStructure {
                             if best_state_indices.is_empty() {
                                 continue;
                             }
-                            let pair_count = if sampling_plan.source_eligible[to_idx] {
+                            // See note in centrality_shortest: dead-to-dead excluded,
+                            // 0.5 for bidirectional pairs, 1.0 for dead targets.
+                            let pair_count = if !sampling_plan.node_live[*src_idx]
+                                && !sampling_plan.node_live[to_idx]
+                            {
+                                0.0
+                            } else if sampling_plan.source_eligible[to_idx] {
                                 0.5
                             } else {
                                 1.0
@@ -2487,6 +2592,7 @@ impl NetworkStructure {
                     max_walk_seconds,
                     speed_m_s,
                     tolerance,
+                    false, // OD betweenness: always downstream
                 );
 
                 // Sort visited by distance (farthest first) for backpropagation
