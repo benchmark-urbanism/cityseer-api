@@ -308,6 +308,9 @@ def test_closeness_shortest(primal_graph):
         visited_nodes, tree_map = network_structure.dijkstra_tree_shortest(
             src_idx, int(max_seconds_5000), speed_m_s=config.SPEED_M_S
         )
+        # cycles: source-based (circuit rank of source's reachable subgraph)
+        for d_idx in range(len(distances)):
+            cycles_circuit_rank[d_idx][src_idx] += source_cycle_score[d_idx]
         for to_idx in visited_nodes:
             # skip self nodes
             if to_idx == src_idx:
@@ -326,7 +329,6 @@ def test_closeness_shortest(primal_graph):
                     far_short_dist[d_idx][src_idx] += to_short_dist
                     harmonic_cl[d_idx][src_idx] += 1 / to_short_dist
                     grav[d_idx][src_idx] += np.exp(-beta * to_short_dist)
-                    cycles_circuit_rank[d_idx][to_idx] += source_cycle_score[d_idx]
     for d_idx, dist in enumerate(distances):
         assert np.allclose(node_result_short.node_density[dist], dens[d_idx], atol=config.ATOL, rtol=config.RTOL)
         assert np.allclose(
@@ -393,8 +395,8 @@ def test_directional_slope_penalty_shortest_and_simplest():
     """Slope penalties should be directional while missing z falls back to flat cost."""
     max_seconds = 1000
 
-    # Rising 5 m over 100 m: source=0 aggregates target 1 -> 0 (downhill),
-    # source=1 aggregates target 0 -> 1 (uphill).
+    # Rising 5 m over 100 m: source=0 forward to target=1 is uphill (0→1),
+    # source=1 forward to target=0 is downhill (1→0).
     elevated_graph = make_single_edge_graph(z0=0.0, z1=5.0)
     nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(elevated_graph)
     idx_0 = nodes_gdf.index.tolist().index("0")
@@ -402,8 +404,8 @@ def test_directional_slope_penalty_shortest_and_simplest():
 
     _visited_short_0, tree_short_0 = network_structure.dijkstra_tree_shortest(idx_0, max_seconds, config.SPEED_M_S)
     _visited_short_1, tree_short_1 = network_structure.dijkstra_tree_shortest(idx_1, max_seconds, config.SPEED_M_S)
-    downhill_short_seconds = tree_short_0[idx_1].agg_seconds
-    uphill_short_seconds = tree_short_1[idx_0].agg_seconds
+    uphill_short_seconds = tree_short_0[idx_1].agg_seconds
+    downhill_short_seconds = tree_short_1[idx_0].agg_seconds
 
     flat_seconds = 100.0 / config.SPEED_M_S
 
@@ -477,10 +479,10 @@ def test_local_centrality_all(diamond_graph):
     assert np.allclose(node_result_short.node_farness[50], [0, 0, 0, 0], atol=config.ATOL, rtol=config.RTOL)
     assert np.allclose(node_result_short.node_farness[150], [200, 300, 300, 200], atol=config.ATOL, rtol=config.RTOL)
     assert np.allclose(node_result_short.node_farness[250], [400, 300, 300, 400], atol=config.ATOL, rtol=config.RTOL)
-    # node cycles (source-local circuit rank broadcast to reachable targets)
+    # node cycles (source-based circuit rank of reachable subgraph)
     assert np.allclose(node_result_short.node_cycles[50], [0, 0, 0, 0], atol=config.ATOL, rtol=config.RTOL)
-    assert np.allclose(node_result_short.node_cycles[150], [4, 4, 4, 4], atol=config.ATOL, rtol=config.RTOL)
-    assert np.allclose(node_result_short.node_cycles[250], [6, 6, 6, 6], atol=config.ATOL, rtol=config.RTOL)
+    assert np.allclose(node_result_short.node_cycles[150], [1, 2, 2, 1], atol=config.ATOL, rtol=config.RTOL)
+    assert np.allclose(node_result_short.node_cycles[250], [2, 2, 2, 2], atol=config.ATOL, rtol=config.RTOL)
     # node harmonic
     # additive 1 / distances
     assert np.allclose(node_result_short.node_harmonic[50], [0, 0, 0, 0], atol=config.ATOL, rtol=config.RTOL)
@@ -928,3 +930,263 @@ def test_shortest_brandes_tolerance_clears_stale_predecessors():
     assert tolerant["C"] > 0.0
     assert tolerant["A"] < tolerant["B"]
     assert tolerant["A"] < tolerant["C"]
+
+
+def test_closeness_no_edge_rolloff_at_boundary():
+    """Closeness for live nodes near the live/dead boundary must include
+    contributions from dead buffer nodes as reachable targets."""
+    from pyproj import CRS
+
+    # Linear corridor: D1 -- A -- B -- C -- D2
+    # D1, D2 are dead (buffer), A, B, C are live.
+    # At distance 500m (covers entire 400m graph), each live node should see
+    # all 4 other nodes (2 live + 2 dead) as reachable targets.
+    coords = {
+        "D1": (500000.0, 0.0),
+        "A": (500000.0, 100.0),
+        "B": (500000.0, 200.0),
+        "C": (500000.0, 300.0),
+        "D2": (500000.0, 400.0),
+    }
+    edges = [("D1", "A"), ("A", "B"), ("B", "C"), ("C", "D2")]
+    live_map = {"D1": False, "A": True, "B": True, "C": True, "D2": False}
+
+    G = nx.MultiGraph()
+    G.graph["crs"] = CRS(32630)
+    for label, (x, y) in coords.items():
+        G.add_node(label, x=x, y=y, live=live_map[label])
+    for a, b in edges:
+        G.add_edge(a, b)
+    G = graphs.nx_simple_geoms(G)
+    nodes_gdf, _edges_gdf, net = io.network_structure_from_nx(G)
+
+    res = net.centrality_shortest(
+        compute_closeness=True,
+        compute_betweenness=False,
+        distances=[500],
+    )
+
+    node_idx_map = {label: int(nodes_gdf.at[label, "ns_node_idx"]) for label in live_map}
+    # Each live node should reach 4 targets (including dead buffer nodes).
+    assert res.node_density[500][node_idx_map["A"]] == 4
+    assert res.node_density[500][node_idx_map["B"]] == 4
+    assert res.node_density[500][node_idx_map["C"]] == 4
+    # Dead nodes should have zero (not computed as sources).
+    assert res.node_density[500][node_idx_map["D1"]] == 0
+    assert res.node_density[500][node_idx_map["D2"]] == 0
+    # Symmetry: A and C are mirror positions, should have equal closeness.
+    assert np.isclose(
+        res.node_harmonic[500][node_idx_map["A"]],
+        res.node_harmonic[500][node_idx_map["C"]],
+        atol=config.ATOL,
+    )
+
+    # Manual harmonic check: A is at distances 100, 100, 200, 300 from D1, B, C, D2.
+    expected_harmonic_A = 1 / 100.0 + 1 / 100.0 + 1 / 200.0 + 1 / 300.0
+    assert np.isclose(
+        res.node_harmonic[500][node_idx_map["A"]],
+        expected_harmonic_A,
+        atol=config.ATOL,
+    )
+
+
+def test_betweenness_with_dead_buffer_nodes():
+    """Dead buffer nodes should contribute to betweenness of live intermediate nodes.
+
+    On D1--A--B--C--D2 with D1/D2 dead, the pair (D1, D2) passes through
+    A, B, C — but only A and C run as sources (not D1/D2). The betweenness
+    of B should reflect paths between ALL pairs involving at least one live node,
+    including live-to-dead pairs like (A, D2) which pass through B.
+    """
+    from pyproj import CRS
+
+    coords = {
+        "D1": (500000.0, 0.0),
+        "A": (500000.0, 100.0),
+        "B": (500000.0, 200.0),
+        "C": (500000.0, 300.0),
+        "D2": (500000.0, 400.0),
+    }
+    edges = [("D1", "A"), ("A", "B"), ("B", "C"), ("C", "D2")]
+    live_map = {"D1": False, "A": True, "B": True, "C": True, "D2": False}
+
+    G = nx.MultiGraph()
+    G.graph["crs"] = CRS(32630)
+    for label, (x, y) in coords.items():
+        G.add_node(label, x=x, y=y, live=live_map[label])
+    for a, b in edges:
+        G.add_edge(a, b)
+    G = graphs.nx_simple_geoms(G)
+    nodes_gdf, _edges_gdf, net = io.network_structure_from_nx(G)
+    node_idx_map = {label: int(nodes_gdf.at[label, "ns_node_idx"]) for label in live_map}
+
+    res = net.centrality_shortest(
+        compute_closeness=False,
+        compute_betweenness=True,
+        distances=[500],
+    )
+
+    # B sits on the only path between every pair that spans it.
+    # Live sources: A, B, C. Pairs from each source:
+    #   A→D1: passes through nothing between A and D1 (adjacent) → no betweenness for B
+    #   A→B: adjacent → no betweenness for B
+    #   A→C: passes through B → betweenness for B
+    #   A→D2: passes through B, C → betweenness for B
+    #   B→D1: passes through A → no betweenness for B (B is source)
+    #   B→A: adjacent → no betweenness for B (B is source)
+    #   B→C: adjacent → no betweenness for B (B is source)
+    #   B→D2: passes through C → no betweenness for B (B is source)
+    #   C→D1: passes through B, A → betweenness for B
+    #   C→A: passes through B → betweenness for B
+    #   C→B: adjacent → no betweenness for B
+    #   C→D2: adjacent → no betweenness for B
+    # Pairs contributing to B's betweenness: (A,C), (A,D2), (C,D1), (C,A)
+    # pair_count for (A,C) and (C,A): both live → 0.5 each, total 1.0
+    # pair_count for (A,D2): D2 dead → 1.0
+    # pair_count for (C,D1): D1 dead → 1.0
+    # Total betweenness for B = 1.0 + 1.0 + 1.0 = 3.0
+    assert np.isclose(res.node_betweenness[500][node_idx_map["B"]], 3.0, atol=config.ATOL)
+    # B must have more betweenness than A or C (B is central).
+    assert res.node_betweenness[500][node_idx_map["B"]] > res.node_betweenness[500][node_idx_map["A"]]
+    assert res.node_betweenness[500][node_idx_map["B"]] > res.node_betweenness[500][node_idx_map["C"]]
+    # Dead nodes should have zero betweenness (not sources, and not intermediates for live pairs).
+    # D1 is only an intermediate on paths that start beyond it (nothing beyond D1), so betweenness=0.
+    assert np.isclose(res.node_betweenness[500][node_idx_map["D1"]], 0.0, atol=config.ATOL)
+    assert np.isclose(res.node_betweenness[500][node_idx_map["D2"]], 0.0, atol=config.ATOL)
+
+
+def test_sampling_p1_matches_exact_with_dead_nodes():
+    """sample_probability=1.0 must reproduce exact results on mixed live/dead graphs.
+
+    On D1--A--B--C--D2 (D1/D2 dead), p=1.0 uses target-based accumulation
+    with all nodes as sources. Dead targets must stay zero, and live node
+    values must match exact (source-based) mode.
+    """
+    from pyproj import CRS
+
+    coords = {
+        "D1": (500000.0, 0.0),
+        "A": (500000.0, 100.0),
+        "B": (500000.0, 200.0),
+        "C": (500000.0, 300.0),
+        "D2": (500000.0, 400.0),
+    }
+    edges = [("D1", "A"), ("A", "B"), ("B", "C"), ("C", "D2")]
+    live_map = {"D1": False, "A": True, "B": True, "C": True, "D2": False}
+
+    G = nx.MultiGraph()
+    G.graph["crs"] = CRS(32630)
+    for label, (x, y) in coords.items():
+        G.add_node(label, x=x, y=y, live=live_map[label])
+    for a, b in edges:
+        G.add_edge(a, b)
+    G = graphs.nx_simple_geoms(G)
+    nodes_gdf, _edges_gdf, net = io.network_structure_from_nx(G)
+    node_idx_map = {label: int(nodes_gdf.at[label, "ns_node_idx"]) for label in live_map}
+
+    exact = net.centrality_shortest(
+        compute_closeness=True,
+        compute_betweenness=True,
+        distances=[500],
+    )
+    sampled = net.centrality_shortest(
+        compute_closeness=True,
+        compute_betweenness=True,
+        distances=[500],
+        sample_probability=1.0,
+        random_seed=0,
+    )
+
+    for label in live_map:
+        idx = node_idx_map[label]
+        assert np.isclose(
+            exact.node_density[500][idx],
+            sampled.node_density[500][idx],
+            atol=config.ATOL,
+        ), (
+            f"density mismatch at {label}: "
+            f"exact={exact.node_density[500][idx]}, sampled={sampled.node_density[500][idx]}"
+        )
+        assert np.isclose(
+            exact.node_harmonic[500][idx],
+            sampled.node_harmonic[500][idx],
+            atol=config.ATOL,
+        ), f"harmonic mismatch at {label}"
+        assert np.isclose(
+            exact.node_betweenness[500][idx],
+            sampled.node_betweenness[500][idx],
+            atol=config.ATOL,
+        ), (
+            f"betweenness mismatch at {label}: "
+            f"exact={exact.node_betweenness[500][idx]}, sampled={sampled.node_betweenness[500][idx]}"
+        )
+
+
+def test_slope_with_dead_boundary_uses_forward_costs():
+    """Source-based closeness must use forward (downstream) slope costs.
+
+    Corridor D1(z=10) -- A(z=5) -- B(z=0), D1 dead. Each edge is 100m.
+    Forward from A: A→B is downhill (z=5→0, fast), A→D1 is uphill (z=5→10, slow).
+    Forward from B: B→A is uphill (z=0→5, slow), B→D1 is all uphill via A.
+    If the Dijkstra incorrectly used reverse paths, A→B would appear uphill and
+    A→D1 would appear downhill — the opposite of reality.
+    """
+    from pyproj import CRS
+
+    G = nx.MultiGraph()
+    G.graph["crs"] = CRS(32630)
+    G.add_node("D1", x=500000.0, y=0.0, z=10.0, live=False)
+    G.add_node("A", x=500000.0, y=100.0, z=5.0, live=True)
+    G.add_node("B", x=500000.0, y=200.0, z=0.0, live=True)
+    G.add_edges_from([("D1", "A"), ("A", "B")])
+    G = graphs.nx_simple_geoms(G)
+    nodes_gdf, _edges_gdf, net = io.network_structure_from_nx(G)
+    node_idx_map = {label: int(nodes_gdf.at[label, "ns_node_idx"]) for label in ["D1", "A", "B"]}
+
+    # Verify individual path costs via Dijkstra trees.
+    max_seconds = 1000
+    _, tree_A = net.dijkstra_tree_shortest(node_idx_map["A"], max_seconds, config.SPEED_M_S)
+    _, tree_B = net.dijkstra_tree_shortest(node_idx_map["B"], max_seconds, config.SPEED_M_S)
+    flat_seconds = 100.0 / config.SPEED_M_S
+
+    # A→B (z=5→0): downhill, should be faster than flat.
+    assert tree_A[node_idx_map["B"]].agg_seconds < flat_seconds
+    # A→D1 (z=5→10): uphill, should be slower than flat.
+    assert tree_A[node_idx_map["D1"]].agg_seconds > flat_seconds
+    # B→A (z=0→5): uphill, should be slower than flat.
+    assert tree_B[node_idx_map["A"]].agg_seconds > flat_seconds
+    # Symmetry check: A→B downhill cost == B→A uphill cost would indicate
+    # reverse paths (wrong). They must differ.
+    assert not np.isclose(
+        tree_A[node_idx_map["B"]].agg_seconds,
+        tree_A[node_idx_map["D1"]].agg_seconds,
+        atol=config.ATOL,
+    )
+
+    # Closeness farness must reflect forward slope costs.
+    res = net.centrality_shortest(
+        compute_closeness=True,
+        compute_betweenness=False,
+        distances=[500],
+    )
+    farness_A = res.node_farness[500][node_idx_map["A"]]
+    farness_B = res.node_farness[500][node_idx_map["B"]]
+    # A: one downhill + one uphill. B: all uphill. B's farness must exceed A's.
+    assert farness_B > farness_A
+    # Dead D1 must contribute to both A and B's farness (no edge roll-off).
+    assert res.node_density[500][node_idx_map["A"]] == 2
+    assert res.node_density[500][node_idx_map["B"]] == 2
+
+    # p=1.0 (all sources sampled, target-based) must match exact mode for live
+    # nodes and keep dead nodes at zero. Dead sources run but only contribute
+    # to live targets — dead targets are skipped.
+    res_sampled = net.centrality_shortest(
+        compute_closeness=True,
+        compute_betweenness=False,
+        distances=[500],
+        sample_probability=1.0,
+        random_seed=0,
+    )
+    assert np.isclose(res_sampled.node_farness[500][node_idx_map["A"]], farness_A, atol=config.ATOL)
+    assert np.isclose(res_sampled.node_farness[500][node_idx_map["B"]], farness_B, atol=config.ATOL)
+    assert res_sampled.node_farness[500][node_idx_map["D1"]] == 0.0
