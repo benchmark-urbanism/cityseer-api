@@ -23,7 +23,6 @@ Outputs:
 import argparse
 import math
 import pickle
-import random as _random
 import sys
 import time
 import warnings
@@ -180,9 +179,7 @@ def generate_synthetic_cache(force: bool = False):
                     # Synthetic experiment: use actual reach (not canonical)
                     eps_val = math.sqrt(math.log(2 * mean_reach / HOEFFDING_DELTA) / (2 * effective_n))
 
-                    rust_result = rust_fn(
-                        distances=[dist], sample_probability=target_p, random_seed=SEED
-                    )
+                    rust_result = rust_fn(distances=[dist], sample_probability=target_p, random_seed=SEED)
                     est = np.array(getattr(rust_result, result_attr)[dist])[live_mask]
                     sp, prec, scale, iqr, mae = compute_accuracy_metrics(true_arr, est)
 
@@ -256,9 +253,7 @@ def generate_synthetic_cache(force: bool = False):
                 actual_p = det_p
                 effective_n = r_canonical * det_p
 
-                rust_result = rust_fn(
-                    distances=[dist], sample_probability=det_p, random_seed=SEED
-                )
+                rust_result = rust_fn(distances=[dist], sample_probability=det_p, random_seed=SEED)
                 est = np.array(getattr(rust_result, result_attr)[dist])[live_mask]
                 sp, prec, scale, iqr, mae = compute_accuracy_metrics(true_arr, est)
 

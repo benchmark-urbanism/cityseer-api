@@ -394,10 +394,7 @@ def generate_validation_table(
             )
 
         rho_c = f"{row['rho_closeness']:.4f}"
-        if np.isfinite(row.get("rho_betweenness", float("nan"))):
-            rho_b = f"{row['rho_betweenness']:.4f}"
-        else:
-            rho_b = "---"
+        rho_b = f"{row['rho_betweenness']:.4f}" if np.isfinite(row.get("rho_betweenness", float("nan"))) else "---"
 
         latex += f"{int(row['distance'] // 1000)}\\,km & "
         latex += f"{p_pct} & {rho_c} & {spd_c} & "

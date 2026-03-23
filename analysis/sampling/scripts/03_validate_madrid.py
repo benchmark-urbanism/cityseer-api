@@ -28,8 +28,8 @@ import osmnx as ox
 import pandas as pd
 import shapely
 from cityseer.metrics import networks
-from cityseer.sampling import GRID_SPACING, compute_distance_p
 from cityseer.sampling import HOEFFDING_EPSILON as CITYSEER_HOEFFDING_EPSILON
+from cityseer.sampling import compute_distance_p
 from cityseer.tools import graphs, io
 from shapely.geometry import Point
 from utilities import (
