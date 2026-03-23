@@ -474,7 +474,6 @@ class NetworkStructure:
         sample_probability: float | None = None,
         sampling_weights: list[float] | None = None,
         random_seed: int | None = None,
-        source_indices: list[int] | None = None,
         pbar_disabled: bool | None = None,
     ) -> CentralityShortestResult:
         """
@@ -504,13 +503,13 @@ class NetworkStructure:
             (e.g. 1.0 = 1%). A tiny internal epsilon is always enforced as a minimum for
             floating-point stability.
         sample_probability: float | None
-            Probability of sampling a node as a source. Used for IPW scaling.
+            Bernoulli sampling probability. Each node is independently included as a source
+            with this probability, with inverse-probability weighting (IPW) applied.
         sampling_weights: list[float] | None
-            Per-node sampling weights in range [0.0, 1.0]. Mutually exclusive with source_indices.
+            Per-node sampling weights in range [0.0, 1.0]. Modulates the base
+            sample_probability per node.
         random_seed: int | None
             Optional seed for reproducible sampling.
-        source_indices: list[int] | None
-            Subset of node indices to use as sources. Mutually exclusive with sampling_weights.
         pbar_disabled: bool | None
             Disable progress bar if True.
 
@@ -535,7 +534,6 @@ class NetworkStructure:
         sample_probability: float | None = None,
         sampling_weights: list[float] | None = None,
         random_seed: int | None = None,
-        source_indices: list[int] | None = None,
         pbar_disabled: bool | None = None,
     ) -> CentralitySimplestResult:
         """
@@ -569,13 +567,13 @@ class NetworkStructure:
         farness_scaling_offset: float | None
             Offset for farness calculation (default: 1.0).
         sample_probability: float | None
-            Probability of sampling a node as a source.
+            Bernoulli sampling probability. Each node is independently included as a source
+            with this probability, with inverse-probability weighting (IPW) applied.
         sampling_weights: list[float] | None
-            Per-node sampling weights in range [0.0, 1.0]. Mutually exclusive with source_indices.
+            Per-node sampling weights in range [0.0, 1.0]. Modulates the base
+            sample_probability per node.
         random_seed: int | None
             Optional seed for reproducible sampling.
-        source_indices: list[int] | None
-            Subset of node indices to use as sources. Mutually exclusive with sampling_weights.
         pbar_disabled: bool | None
             Disable progress bar if True.
 

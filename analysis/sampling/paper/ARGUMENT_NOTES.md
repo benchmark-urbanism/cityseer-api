@@ -51,6 +51,22 @@ Specifically:
 5. **Validation**: Two large real-world networks confirm rank preservation and demonstrate meaningful speedups.
 6. **Implementation**: Released in the open-source cityseer package with user-configurable epsilon.
 
+## Buffer Nodes and the Break-Even Threshold
+
+A critical implementation detail: when networks include boundary buffer nodes (dead nodes surrounding the analysis area to mitigate edge effects), sampling must include these buffer nodes in the source pool. This is because:
+
+1. **Why buffer nodes must be sampled**: Under sampling, the estimator uses target-based aggregation with IPW. A live target node near the boundary receives contributions from dead buffer sources in exact mode (via the target's own traversal). Under sampling, those buffer nodes must have a chance of being selected as sources; otherwise, boundary live nodes systematically underestimate closeness ("edge roll-off").
+
+2. **Break-even threshold**: Since sampling runs `p * n_total` traversals (where n_total includes buffer nodes) and exact mode runs only `n_live` traversals, sampling is only beneficial when `p < phi` where `phi = n_live / n_total` (the live fraction). The implementation falls back to exact mode when `p >= phi`.
+
+3. **Effective speedup**: The speedup is `phi / p`, not `1/p`. For a network spanning L km with buffer d_max km, `phi ≈ (1 - 2*d_max/L)^2`. Larger networks benefit more; analyses with large d_max relative to network extent see reduced benefit.
+
+4. **Aggregation direction**:
+   - Exact mode: source-based aggregation (closeness accumulates to source node)
+   - Sampling mode: target-based aggregation with IPW (closeness accumulates to target node with 1/p scaling)
+
+5. **Betweenness pair weighting**: Dead-to-dead pairs excluded (pair_count=0); bidirectional live pairs weighted 0.5; dead targets from live sources weighted 1.0.
+
 ## Key Messages
 
 - **Rank preservation, not absolute accuracy**: The goal is rho >= 0.95, not matching exact centrality values. This is appropriate because urban morphological analysis uses centrality for relative comparison.

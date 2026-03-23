@@ -151,9 +151,31 @@ def generate_fig4_accuracy(gla: pd.DataFrame, madrid: pd.DataFrame):
 # =============================================================================
 
 
+def _load_live_fraction(network: str) -> float:
+    """Load live fraction from cached node info JSON."""
+    import json
+
+    path = CACHE_DIR / f"{network}_n_nodes.json"
+    if path.exists():
+        with open(path) as f:
+            info = json.load(f)
+            return info.get("live_fraction", 1.0)
+    return 1.0
+
+
 def generate_fig5_speedup(gla: pd.DataFrame, madrid: pd.DataFrame):
-    """Figure 5: Speedup vs distance for GLA and Madrid, closeness and betweenness."""
+    """Figure 5: Speedup vs distance for GLA and Madrid, closeness and betweenness.
+
+    Only distances where sampling was actually used (p < live_fraction) are shown.
+    """
     print("\nGenerating Figure 5: validation speedup...")
+
+    gla_phi = _load_live_fraction("gla")
+    madrid_phi = _load_live_fraction("madrid")
+
+    # Filter to distances where sampling actually engaged
+    gla_sampled = gla[gla["hoeffding_p_close"] < gla_phi].copy()
+    madrid_sampled = madrid[madrid["hoeffding_p_close"] < madrid_phi].copy()
 
     fig, axes = plt.subplots(1, 2, figsize=(11, 5))
 
@@ -163,43 +185,35 @@ def generate_fig5_speedup(gla: pd.DataFrame, madrid: pd.DataFrame):
     ]
 
     for ax, (col, title, colour) in zip(axes, panels, strict=True):
-        gla_valid = gla.dropna(subset=[col])
-        madrid_valid = madrid.dropna(subset=[col])
-
-        # Clip to ≥1 — sub-1 values are timing noise at distances where p=1
-        gla_plot = gla_valid.copy()
-        madrid_plot = madrid_valid.copy()
-        gla_plot[col] = gla_plot[col].clip(lower=1.0)
-        madrid_plot[col] = madrid_plot[col].clip(lower=1.0)
+        gla_valid = gla_sampled.dropna(subset=[col])
+        madrid_valid = madrid_sampled.dropna(subset=[col])
 
         ax.plot(
-            gla_plot["distance_km"],
-            gla_plot[col],
+            gla_valid["distance_km"],
+            gla_valid[col],
             "o-",
             color=colour,
             linewidth=1.8,
             markersize=7,
-            label="Greater London",
+            label=f"Greater London ($\\varphi$={gla_phi:.2f})",
         )
         ax.plot(
-            madrid_plot["distance_km"],
-            madrid_plot[col],
+            madrid_valid["distance_km"],
+            madrid_valid[col],
             "s--",
             color=colour,
             linewidth=1.8,
             markersize=7,
             alpha=0.75,
-            label="Madrid",
+            label=f"Madrid ($\\varphi$={madrid_phi:.2f})",
         )
 
         ax.axhline(1.0, color="grey", linestyle=":", linewidth=1.0, alpha=0.7)
-        ax.text(0.5, 1.05, "1× (no speedup)", fontsize=8, color="grey", va="bottom", transform=ax.get_yaxis_transform())
 
         ax.set_yscale("log")
         ax.set_xlabel("Distance (km)")
         ax.set_ylabel("Speedup (×)")
         ax.set_title(title)
-        ax.set_xticks(DISTANCES_KM)
         ax.set_xlim(0, 22)
         ax.legend(loc="upper left")
         ax.grid(True, alpha=0.3, which="both")
@@ -376,10 +390,13 @@ def generate_fig2_error_vs_reach(gla_full: pd.DataFrame, madrid_full: pd.DataFra
     records_abs = []
     records_rel = []
 
+    gla_phi = _load_live_fraction("gla")
+    madrid_phi = _load_live_fraction("madrid")
+
     # --- GLA ---
     for _, row in gla_full.iterrows():
         p_row = row.get("budget_param", np.nan)
-        if not np.isfinite(p_row) or p_row >= 1.0:
+        if not np.isfinite(p_row) or p_row >= gla_phi:
             continue
         metric = row["metric"]
         colour = COLOUR_CLOSENESS if metric == "harmonic" else COLOUR_BETWEENNESS
@@ -397,7 +414,7 @@ def generate_fig2_error_vs_reach(gla_full: pd.DataFrame, madrid_full: pd.DataFra
         for prefix, colour in [("h", COLOUR_CLOSENESS), ("b", COLOUR_BETWEENNESS)]:
             p_col = "hoeffding_p_close" if prefix == "h" else "hoeffding_p_betw"
             p_val = row.get(p_col, np.nan)
-            if not np.isfinite(p_val) or p_val >= 1.0:
+            if not np.isfinite(p_val) or p_val >= madrid_phi:
                 continue
             for q in [1, 2, 3, 4]:
                 reach = row.get(f"{prefix}_reach_q{q}", None)

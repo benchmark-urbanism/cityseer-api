@@ -163,7 +163,10 @@ def node_centrality_shortest(
     random_seed: int
         Optional seed for reproducible sampling.
     sample: bool
-        If True, uses distance-based sampling. If False, computes exact centrality.
+        If True, uses distance-based Bernoulli sampling with inverse-probability weighting (IPW). The
+        sampling probability is derived from each distance threshold using a canonical grid model (see
+        ``sampling.compute_distance_p``). At distances where the sampling probability exceeds the live
+        fraction, exact computation is used instead.
     epsilon: float
         Normalised additive error tolerance for sampling. Defaults to ``sampling.HOEFFDING_EPSILON``.
 
@@ -532,7 +535,10 @@ def node_centrality_simplest(
     random_seed: int
         Optional seed for reproducible sampling.
     sample: bool
-        If True, uses distance-based sampling. If False, computes exact centrality.
+        If True, uses distance-based Bernoulli sampling with inverse-probability weighting (IPW). The
+        sampling probability is derived from each distance threshold using a canonical grid model (see
+        ``sampling.compute_distance_p``). At distances where the sampling probability exceeds the live
+        fraction, exact computation is used instead.
     epsilon: float
         Normalised additive error tolerance for sampling. Defaults to ``sampling.HOEFFDING_EPSILON``.
 

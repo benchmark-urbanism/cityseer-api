@@ -895,8 +895,6 @@ def test_simplest_brandes_handles_zero_angle_plateaus():
 def test_shortest_brandes_tolerance_clears_stale_predecessors():
     graph = make_tolerance_drift_graph()
     nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(graph)
-    idx_by_key = {node_key: idx for idx, node_key in enumerate(nodes_gdf.index)}
-    src_idx = idx_by_key["S"]
     distance = 20
 
     res_exact = network_structure.centrality_shortest(
@@ -904,7 +902,6 @@ def test_shortest_brandes_tolerance_clears_stale_predecessors():
         compute_betweenness=True,
         distances=[distance],
         tolerance=0.0,
-        source_indices=[src_idx],
         pbar_disabled=True,
     )
     res_tolerant = network_structure.centrality_shortest(
@@ -912,21 +909,20 @@ def test_shortest_brandes_tolerance_clears_stale_predecessors():
         compute_betweenness=True,
         distances=[distance],
         tolerance=10.0,
-        source_indices=[src_idx],
         pbar_disabled=True,
     )
 
     exact = {node_key: res_exact.node_betweenness[distance][idx] for idx, node_key in enumerate(nodes_gdf.index)}
     tolerant = {node_key: res_tolerant.node_betweenness[distance][idx] for idx, node_key in enumerate(nodes_gdf.index)}
 
-    assert np.isclose(exact["A"], 0.0, atol=config.ATOL)
-    assert np.isclose(exact["B"], 0.0, atol=config.ATOL)
-    assert exact["C"] > 0.0
+    # C lies on the unique shortest path (S-C-T = 9.0); A and B are longer.
+    # With exact tolerance, only C gets betweenness from S-T paths.
+    assert exact["C"] > exact["A"]
+    assert exact["C"] > exact["B"]
 
-    # Under 10% tolerance, B remains admissible but A must be cleared because
-    # its 10.0 path lies outside the final 9.0 * 1.1 tolerance band.
-    assert np.isclose(tolerant["A"], 0.0, atol=config.ATOL)
-    assert tolerant["B"] > 0.0
+    # Under 10% tolerance, B becomes admissible (9.8 < 9.0 * 1.1 = 9.9)
+    # but A is still excluded (10.0 > 9.9). So B gains betweenness, A does not.
+    assert tolerant["B"] > exact["B"]
     assert tolerant["C"] > 0.0
     assert tolerant["A"] < tolerant["B"]
     assert tolerant["A"] < tolerant["C"]

@@ -130,7 +130,6 @@ def generate_synthetic_cache(force: bool = False):
             if mean_reach < 5:
                 continue
 
-            live_indices = [i for i in net.node_indices() if net.is_node_live(i)]
             print(f"  d={dist}m, reach={mean_reach:.0f}: ", end="", flush=True)
 
             eps_spec = [
@@ -176,16 +175,14 @@ def generate_synthetic_cache(force: bool = False):
                         results.append(row)
                         continue
 
-                    rng = _random.Random(SEED)
-                    sources = [idx for idx in live_indices if rng.random() < target_p]
-                    if not sources and n_live > 0:
-                        sources = [rng.choice(live_indices)]
-                    actual_p = len(sources) / n_live if n_live > 0 else 1.0
+                    actual_p = target_p
                     effective_n = mean_reach * target_p
                     # Synthetic experiment: use actual reach (not canonical)
                     eps_val = math.sqrt(math.log(2 * mean_reach / HOEFFDING_DELTA) / (2 * effective_n))
 
-                    rust_result = rust_fn(distances=[dist], source_indices=sources, sample_probability=target_p)
+                    rust_result = rust_fn(
+                        distances=[dist], sample_probability=target_p, random_seed=SEED
+                    )
                     est = np.array(getattr(rust_result, result_attr)[dist])[live_mask]
                     sp, prec, scale, iqr, mae = compute_accuracy_metrics(true_arr, est)
 
@@ -256,14 +253,12 @@ def generate_synthetic_cache(force: bool = False):
                     results.append(row)
                     continue
 
-                rng = _random.Random(SEED)
-                sources = [idx for idx in live_indices if rng.random() < det_p]
-                if not sources and n_live > 0:
-                    sources = [rng.choice(live_indices)]
-                actual_p = len(sources) / n_live if n_live > 0 else 1.0
+                actual_p = det_p
                 effective_n = r_canonical * det_p
 
-                rust_result = rust_fn(distances=[dist], source_indices=sources, sample_probability=det_p)
+                rust_result = rust_fn(
+                    distances=[dist], sample_probability=det_p, random_seed=SEED
+                )
                 est = np.array(getattr(rust_result, result_attr)[dist])[live_mask]
                 sp, prec, scale, iqr, mae = compute_accuracy_metrics(true_arr, est)
 

@@ -404,9 +404,14 @@ class CityseerCentralityAlgorithm(CityseerAlgorithmBase):
             full_distances = sorted(distances)
             feedback.pushInfo("Sampling disabled: all thresholds will run exactly.")
         else:
+            # Sampling runs buffer nodes as sources, so it's only faster when
+            # p < live_fraction. Above this threshold exact mode is cheaper.
+            lives = ns.node_lives
+            live_fraction = sum(lives) / len(lives) if lives else 1.0
+            feedback.pushInfo(f"Live fraction: {live_fraction:.2f}")
             for d in sorted(distances):
                 p = cs_sampling.compute_distance_p(d)
-                if p >= 1.0:
+                if p >= live_fraction:
                     full_distances.append(d)
                 else:
                     sampled_distances.append((d, p))

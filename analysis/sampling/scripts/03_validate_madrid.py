@@ -36,7 +36,6 @@ from utilities import (
     CACHE_DIR,
     HOEFFDING_DELTA,
     OUTPUT_DIR,
-    TABLES_DIR,
     canonical_reach,
     compute_accuracy_metrics,
     compute_quartile_accuracy,
@@ -410,22 +409,29 @@ def generate_validation_data(net, nodes_gdf, live_mask, force: bool = False) -> 
 # =============================================================================
 
 
-def get_n_nodes(force: bool = False) -> int | None:
-    """Get live node count from cached Madrid graph."""
+def get_n_nodes(force: bool = False) -> dict | None:
+    """Get live and total node counts from cached Madrid graph.
+
+    Returns dict with 'n_nodes' (live), 'n_total', and 'live_fraction'.
+    """
     n_nodes_cache = CACHE_DIR / "madrid_n_nodes.json"
     if n_nodes_cache.exists() and not force:
         with open(n_nodes_cache) as f:
-            return json.load(f)["n_nodes"]
+            data = json.load(f)
+            if "n_total" in data:
+                return data
     madrid_cache = CACHE_DIR / "madrid_graph.pkl"
     if not madrid_cache.exists():
         return None
     with open(madrid_cache, "rb") as f:
         G = pickle.load(f)
     madrid_boundary, _ = get_madrid_mask(force=force)
+    n_total = G.number_of_nodes()
     n_nodes = sum(1 for _n, d in G.nodes(data=True) if madrid_boundary.contains(Point(d["x"], d["y"])))
+    data = {"n_nodes": n_nodes, "n_total": n_total, "live_fraction": n_nodes / n_total if n_total > 0 else 1.0}
     with open(n_nodes_cache, "w") as f:
-        json.dump({"n_nodes": n_nodes}, f)
-    return n_nodes
+        json.dump(data, f)
+    return data
 
 
 def compute_theoretical_bounds(df: pd.DataFrame, n_nodes: int):
@@ -519,58 +525,6 @@ def compute_bound_analysis(df: pd.DataFrame):
     bound_df.to_csv(csv_path, index=False)
     print(f"\n  Saved: {csv_path}")
     return bound_df
-
-
-def generate_validation_table(df: pd.DataFrame, n_nodes: int | None):
-    """Generate LaTeX table of Madrid validation results (both metrics)."""
-    print("\nGenerating Table: Madrid validation results...")
-
-    eps_c = MADRID_EPSILON_CLOSENESS
-
-    latex = rf"""\begin{{table}}[htbp]
-\centering
-\caption{{Sampling validation on Greater Madrid network
-  ($\varepsilon = {eps_c}$, $\delta = 0.1$, $s = {GRID_SPACING:.0f}\,$m).}}
-\label{{tab:madrid_validation}}
-\begin{{tabular}}{{rrrrrrr}}
-\toprule
-\textbf{{Dist.}} &
-\textbf{{$p$}} & \textbf{{$\rho_c$}} & \textbf{{Spd$_c$}} &
-& \textbf{{$\rho_b$}} & \textbf{{Spd$_b$}} \\
-\midrule
-"""
-
-    for _, row in df.iterrows():
-        p_pct = f"{row['hoeffding_p_close'] * 100:.1f}\\%"
-        rho_c = f"{row['rho_closeness']:.4f}"
-        spd_c = f"{row['speedup_closeness']:.1f}$\\times$" if np.isfinite(row["speedup_closeness"]) else "---"
-
-        if np.isfinite(row.get("rho_betweenness", float("nan"))):
-            rho_b = f"{row['rho_betweenness']:.4f}"
-            spd_b = f"{row['speedup_betweenness']:.1f}$\\times$" if np.isfinite(row["speedup_betweenness"]) else "---"
-        else:
-            rho_b = "---"
-            spd_b = "---"
-
-        latex += f"{int(row['distance'] // 1000)}\\,km & "
-        latex += f"{p_pct} & {rho_c} & {spd_c} & "
-        latex += f"& {rho_b} & {spd_b} \\\\\n"
-
-    latex += r"""\bottomrule
-\end{tabular}
-
-\vspace{0.5em}
-\footnotesize
-Network: Greater Madrid, \madridNnodes{} nodes. Deterministic distance-based schedule:
-same $p$ for both metrics at each distance.
-Subscripts: $c$ = closeness, $b$ = betweenness.
-\end{table}
-"""
-
-    output_path = TABLES_DIR / "tab4_madrid_validation.tex"
-    with open(output_path, "w") as f:
-        f.write(latex)
-    print(f"  Saved: {output_path}")
 
 
 # =============================================================================
@@ -728,13 +682,12 @@ def main():
     print(f"\nValidation data: {len(df)} rows")
 
     # Theoretical bounds comparison
-    n_nodes = get_n_nodes(force=args.force)
-    if n_nodes is not None:
-        print(f"\nMadrid network: {n_nodes} live nodes")
+    node_info = get_n_nodes(force=args.force)
+    n_nodes = None
+    if node_info is not None:
+        n_nodes = node_info["n_nodes"]
+        print(f"\nMadrid network: {n_nodes} live / {node_info['n_total']} total (φ={node_info['live_fraction']:.3f})")
         compute_theoretical_bounds(df, n_nodes)
-
-    # Generate validation table
-    generate_validation_table(df, n_nodes)
 
     # Bound analysis
     compute_bound_analysis(df)
@@ -783,9 +736,8 @@ def main():
     print("OUTPUTS")
     print("=" * 70)
     print(f"  1. {OUTPUT_DIR / 'madrid_validation.csv'}")
-    print(f"  2. {TABLES_DIR / 'tab4_madrid_validation.tex'}")
-    print(f"  3. {OUTPUT_DIR / 'madrid_theoretical_bounds_comparison.csv'}")
-    print(f"  4. {OUTPUT_DIR / 'madrid_bound_analysis.csv'}")
+    print(f"  2. {OUTPUT_DIR / 'madrid_theoretical_bounds_comparison.csv'}")
+    print(f"  3. {OUTPUT_DIR / 'madrid_bound_analysis.csv'}")
 
     # Sensitivity analysis (optional)
     if args.sensitivity:

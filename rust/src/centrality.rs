@@ -451,15 +451,14 @@ struct SourceSamplingPlan {
     sources: Vec<usize>,
     source_eligible: Vec<bool>,
     node_live: Vec<bool>,
-    is_source_indexed: bool,
-    n_sources: usize,
     n_live: usize,
 }
 
 impl SourceSamplingPlan {
+    /// Returns true when Bernoulli sampling with IPW is active.
     #[inline]
     fn is_sampling(&self) -> bool {
-        self.sample_probability.is_some() || self.is_source_indexed
+        self.sample_probability.is_some()
     }
 }
 
@@ -941,14 +940,6 @@ impl NetworkStructure {
         Ok(())
     }
 
-    #[inline]
-    fn validate_source_indices_exist(&self, source_indices: &[usize]) -> PyResult<()> {
-        for &src_idx in source_indices {
-            self.validate_node_exists(src_idx)?;
-        }
-        Ok(())
-    }
-
     /// Validate and expand compact sampling_weights to node_bound() length.
     ///
     /// Accepts either node_count() (compact, one per live node in node_indices order)
@@ -1070,7 +1061,6 @@ impl NetworkStructure {
         sample_probability: Option<f32>,
         sampling_weights: Option<Vec<f32>>,
         random_seed: Option<u64>,
-        source_indices: Option<Vec<usize>>,
         node_indices: &[usize],
     ) -> PyResult<SourceSamplingPlan> {
         let sampling_weights = match sampling_weights {
@@ -1084,14 +1074,6 @@ impl NetworkStructure {
                 ));
             }
         }
-        if source_indices.is_some() && sampling_weights.is_some() {
-            return Err(exceptions::PyValueError::new_err(
-                "source_indices and sampling_weights are mutually exclusive",
-            ));
-        }
-        if let Some(ref indices) = source_indices {
-            self.validate_source_indices_exist(indices)?;
-        }
 
         let n = self.node_bound();
         let node_live: Vec<bool> = {
@@ -1102,16 +1084,8 @@ impl NetworkStructure {
             live
         };
         let n_live = node_live.iter().filter(|&&v| v).count();
-        let is_source_indexed = source_indices.is_some();
-        let sources = source_indices.unwrap_or_else(|| node_indices.to_vec());
-        let n_sources = sources.len();
-        let source_eligible = if is_source_indexed {
-            let mut eligible = vec![false; n];
-            for &idx in &sources {
-                eligible[idx] = true;
-            }
-            eligible
-        } else if sample_probability.is_some() {
+        let sources = node_indices.to_vec();
+        let source_eligible = if sample_probability.is_some() {
             // Sampling: all nodes (live + dead) are source-eligible.
             // Dead buffer nodes contribute via IPW to prevent edge roll-off.
             let mut eligible = vec![false; n];
@@ -1120,7 +1094,7 @@ impl NetworkStructure {
             }
             eligible
         } else {
-            // No sampling: only live nodes are sources.
+            // Exact mode: only live nodes are sources.
             let mut eligible = vec![false; n];
             for &idx in node_indices {
                 if node_live[idx] {
@@ -1129,7 +1103,7 @@ impl NetworkStructure {
             }
             eligible
         };
-        let sample_randoms = if sample_probability.is_some() && !is_source_indexed {
+        let sample_randoms = if sample_probability.is_some() {
             let mut rng = if let Some(seed) = random_seed {
                 StdRng::seed_from_u64(seed)
             } else {
@@ -1147,12 +1121,14 @@ impl NetworkStructure {
             sources,
             source_eligible,
             node_live,
-            is_source_indexed,
-            n_sources,
             n_live,
         })
     }
 
+    /// Determine whether a source should run and compute its IPW weight.
+    ///
+    /// - Bernoulli sampling: include with probability p, weight by 1/p.
+    /// - Exact mode: always runs with unit weight.
     #[inline]
     fn sample_source_weight(
         &self,
@@ -1160,17 +1136,9 @@ impl NetworkStructure {
         sample_probability: Option<f32>,
         sampling_weights: Option<&[f32]>,
         sample_randoms: &[f32],
-        is_source_indexed: bool,
         sampled_source_count: &AtomicU32,
     ) -> Option<f32> {
         let mut wt = self.get_node_weight_unchecked(src_idx);
-        if is_source_indexed {
-            if let Some(prob) = sample_probability {
-                wt /= prob;
-            }
-            sampled_source_count.fetch_add(1, AtomicOrdering::Relaxed);
-            return Some(wt);
-        }
         if let Some(prob) = sample_probability {
             let mut p = prob;
             if let Some(weights) = sampling_weights {
@@ -1679,6 +1647,12 @@ impl NetworkStructure {
     /// closeness accumulation and betweenness backpropagation, halving computation
     /// time compared to calling `closeness_shortest` and `betweenness_shortest`
     /// separately.
+    ///
+    /// When `sample_probability` is set, Bernoulli sampling with inverse-probability
+    /// weighting (IPW) is used. Each node is independently included as a source with
+    /// the given probability. Both live and buffer nodes are sampled to prevent edge
+    /// roll-off. Use `random_seed` for reproducibility. Sampling weights can further
+    /// modulate per-node inclusion via `sampling_weights`.
     #[pyo3(signature = (
         distances=None,
         betas=None,
@@ -1691,7 +1665,6 @@ impl NetworkStructure {
         sample_probability=None,
         sampling_weights=None,
         random_seed=None,
-        source_indices=None,
         pbar_disabled=None
     ))]
     pub fn centrality_shortest(
@@ -1707,7 +1680,6 @@ impl NetworkStructure {
         sample_probability: Option<f32>,
         sampling_weights: Option<Vec<f32>>,
         random_seed: Option<u64>,
-        source_indices: Option<Vec<usize>>,
         pbar_disabled: Option<bool>,
         py: Python,
     ) -> PyResult<CentralityShortestResult> {
@@ -1737,7 +1709,6 @@ impl NetworkStructure {
             sample_probability,
             sampling_weights,
             random_seed,
-            source_indices,
             &node_indices,
         )?;
         let n = self.node_bound();
@@ -1771,7 +1742,6 @@ impl NetworkStructure {
                     sampling_plan.sample_probability,
                     sampling_plan.sampling_weights.as_deref(),
                     &sampling_plan.sample_randoms,
-                    sampling_plan.is_source_indexed,
                     &sampled_source_count,
                 ) else {
                     return;
@@ -1931,8 +1901,8 @@ impl NetworkStructure {
                 }
             });
 
-            // Closeness sampling metadata
-            if sampling_plan.sample_probability.is_some() || sampling_plan.is_source_indexed {
+            // Sampling metadata
+            if sampling_plan.is_sampling() {
                 res.sampled_source_count = sampled_source_count.load(AtomicOrdering::Relaxed);
                 res.reachability_totals = source_reachability_totals
                     .iter()
@@ -1940,28 +1910,10 @@ impl NetworkStructure {
                     .collect();
             }
 
-            // Betweenness post-hoc scaling.
-            // Pair weighting is already handled in-loop (0.5 for source-eligible
-            // targets, 1.0 otherwise), so no /2 is required here. For source-indexed
-            // without sampling, scale by n_live / n_sources to extrapolate from
-            // the subset.
-            if compute_betweenness {
-                let scale = if sampling_plan.is_source_indexed {
-                    if sampling_plan.sample_probability.is_some() {
-                        1.0
-                    } else {
-                        sampling_plan.n_live as f64 / sampling_plan.n_sources as f64
-                    }
-                } else {
-                    1.0
-                };
-                Self::scale_metric_results(
-                    &[&res.node_betweenness_vec, &res.node_betweenness_beta_vec],
-                    distances.len(),
-                    &node_indices,
-                    scale,
-                );
-            }
+            // Betweenness: pair weighting is already handled in-loop (0.5 for
+            // source-eligible targets, 1.0 otherwise), so no post-hoc scaling
+            // is needed. Source-indexed mode computes exact betweenness from
+            // the given subset; sampling mode applies IPW per-source.
 
             res
         });
@@ -1973,6 +1925,7 @@ impl NetworkStructure {
     ///
     /// Angular routing is evaluated on two directed states per segment. Each
     /// source segment seeds both orientations into a single Brandes traversal.
+    ///
     #[pyo3(signature = (
         distances=None,
         betas=None,
@@ -1987,7 +1940,6 @@ impl NetworkStructure {
         sample_probability=None,
         sampling_weights=None,
         random_seed=None,
-        source_indices=None,
         pbar_disabled=None
     ))]
     pub fn centrality_simplest(
@@ -2005,7 +1957,6 @@ impl NetworkStructure {
         sample_probability: Option<f32>,
         sampling_weights: Option<Vec<f32>>,
         random_seed: Option<u64>,
-        source_indices: Option<Vec<usize>>,
         pbar_disabled: Option<bool>,
         py: Python,
     ) -> PyResult<CentralitySimplestResult> {
@@ -2038,7 +1989,6 @@ impl NetworkStructure {
             sample_probability,
             sampling_weights,
             random_seed,
-            source_indices,
             &node_indices,
         )?;
         let n = self.node_bound();
@@ -2073,7 +2023,6 @@ impl NetworkStructure {
                     sampling_plan.sample_probability,
                     sampling_plan.sampling_weights.as_deref(),
                     &sampling_plan.sample_randoms,
-                    sampling_plan.is_source_indexed,
                     &sampled_source_count,
                 ) else {
                     return;
@@ -2201,8 +2150,8 @@ impl NetworkStructure {
                 }
             });
 
-            // Closeness sampling metadata
-            if sampling_plan.sample_probability.is_some() || sampling_plan.is_source_indexed {
+            // Sampling metadata
+            if sampling_plan.is_sampling() {
                 res.sampled_source_count = sampled_source_count.load(AtomicOrdering::Relaxed);
                 res.reachability_totals = source_reachability_totals
                     .iter()
@@ -2210,25 +2159,7 @@ impl NetworkStructure {
                     .collect();
             }
 
-            // Betweenness post-hoc scaling (pair weighting handled in-loop, see
-            // centrality_shortest).
-            if compute_betweenness {
-                let scale = if sampling_plan.is_source_indexed {
-                    if sampling_plan.sample_probability.is_some() {
-                        1.0
-                    } else {
-                        sampling_plan.n_live as f64 / sampling_plan.n_sources as f64
-                    }
-                } else {
-                    1.0
-                };
-                Self::scale_metric_results(
-                    &[&res.node_betweenness_vec],
-                    seconds.len(),
-                    &node_indices,
-                    scale,
-                );
-            }
+            // Betweenness: no post-hoc scaling needed (see centrality_shortest).
 
             res
         });

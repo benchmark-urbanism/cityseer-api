@@ -36,7 +36,6 @@ from utilities import (
     CACHE_DIR,
     HOEFFDING_DELTA,
     OUTPUT_DIR,
-    TABLES_DIR,
     canonical_reach,
     compute_accuracy_metrics,
     compute_quartile_accuracy,
@@ -520,79 +519,35 @@ def generate_validation_summary(df: pd.DataFrame) -> pd.DataFrame:
 # =============================================================================
 
 
-def generate_validation_table(summary_df: pd.DataFrame):
-    """Generate LaTeX table of validation results (both metrics)."""
-    print("\nGenerating Table 2: Validation results...")
-
-    eps_c = GLA_EPSILON_CLOSENESS
-
-    latex = rf"""\begin{{table}}[htbp]
-\centering
-\caption{{Sampling validation on Greater London network
-  ($\varepsilon = {eps_c}$, $\delta = 0.1$, $s = {GRID_SPACING:.0f}\,$m).}}
-\label{{tab:validation}}
-\begin{{tabular}}{{rrrrrrr}}
-\toprule
-\textbf{{Dist.}} &
-\textbf{{$p$}} & \textbf{{$\rho_c$}} & \textbf{{Spd$_c$}} &
-& \textbf{{$\rho_b$}} & \textbf{{Spd$_b$}} \\
-\midrule
-"""
-
-    for _, row in summary_df.iterrows():
-        p_pct = f"{row['hoeffding_p_close'] * 100:.1f}\\%"
-        rho_c = f"{row['rho_closeness']:.4f}"
-        spd_c = f"{row['speedup_closeness']:.1f}$\\times$" if np.isfinite(row["speedup_closeness"]) else "---"
-
-        if np.isfinite(row.get("rho_betweenness", float("nan"))):
-            rho_b = f"{row['rho_betweenness']:.4f}"
-            spd_b = f"{row['speedup_betweenness']:.1f}$\\times$" if np.isfinite(row["speedup_betweenness"]) else "---"
-        else:
-            rho_b = "---"
-            spd_b = "---"
-
-        latex += f"{int(row['distance'] // 1000)}\\,km & "
-        latex += f"{p_pct} & {rho_c} & {spd_c} & "
-        latex += f"& {rho_b} & {spd_b} \\\\\n"
-
-    latex += r"""\bottomrule
-\end{tabular}
-
-\vspace{0.5em}
-\footnotesize
-Network: Greater London Authority, \glaNnodes{} nodes. Deterministic distance-based schedule:
-same $p$ for both metrics at each distance.
-Subscripts: $c$ = closeness, $b$ = betweenness.
-\end{table}
-"""
-
-    output_path = TABLES_DIR / "tab2_validation.tex"
-    with open(output_path, "w") as f:
-        f.write(latex)
-    print(f"  Saved: {output_path}")
-
-
 # =============================================================================
 # THEORETICAL BOUNDS COMPARISON
 # =============================================================================
 
 
-def get_n_nodes(force: bool = False) -> int | None:
-    """Get live node count from cached GLA graph."""
+def get_n_nodes(force: bool = False) -> dict | None:
+    """Get live and total node counts from cached GLA graph.
+
+    Returns dict with 'n_nodes' (live), 'n_total', and 'live_fraction'.
+    """
     n_nodes_cache = CACHE_DIR / "gla_n_nodes.json"
     if n_nodes_cache.exists() and not force:
         with open(n_nodes_cache) as f:
-            return json.load(f)["n_nodes"]
+            data = json.load(f)
+            # Backwards compat: old cache may lack n_total
+            if "n_total" in data:
+                return data
     gla_cache = CACHE_DIR / "gla_graph.pkl"
     if not gla_cache.exists():
         return None
     with open(gla_cache, "rb") as f:
         G = pickle.load(f)
     gla_boundary, _ = get_gla_mask(force=force)
+    n_total = G.number_of_nodes()
     n_nodes = sum(1 for _n, d in G.nodes(data=True) if gla_boundary.contains(Point(d["x"], d["y"])))
+    data = {"n_nodes": n_nodes, "n_total": n_total, "live_fraction": n_nodes / n_total if n_total > 0 else 1.0}
     with open(n_nodes_cache, "w") as f:
-        json.dump({"n_nodes": n_nodes}, f)
-    return n_nodes
+        json.dump(data, f)
+    return data
 
 
 def compute_theoretical_bounds(summary_df: pd.DataFrame, n_nodes: int, raw_df: pd.DataFrame):
@@ -907,14 +862,12 @@ def main():
     # Generate summary
     summary_df = generate_validation_summary(raw_df)
 
-    # Generate LaTeX table
-    generate_validation_table(summary_df)
-
     # Theoretical bounds comparison
-    n_nodes = get_n_nodes(force=args.force)
+    node_info = get_n_nodes(force=args.force)
     bounds_df = None
-    if n_nodes is not None:
-        print(f"\nGLA network: {n_nodes} live nodes")
+    if node_info is not None:
+        n_nodes = node_info["n_nodes"]
+        print(f"\nGLA network: {n_nodes} live / {node_info['n_total']} total (φ={node_info['live_fraction']:.3f})")
         bounds_df = compute_theoretical_bounds(summary_df, n_nodes, raw_df)
     else:
         print("\n  Skipping theoretical bounds comparison (graph cache not found)")
@@ -965,11 +918,10 @@ def main():
     print("=" * 70)
     print(f"  1. {OUTPUT_DIR / 'gla_validation.csv'}")
     print(f"  2. {OUTPUT_DIR / 'gla_validation_summary.csv'}")
-    print(f"  3. {TABLES_DIR / 'tab2_validation.tex'}")
     if bounds_df is not None:
-        print(f"  4. {OUTPUT_DIR / 'gla_theoretical_bounds_comparison.csv'}")
+        print(f"  3. {OUTPUT_DIR / 'gla_theoretical_bounds_comparison.csv'}")
     if ew_df is not None:
-        print(f"  5. {OUTPUT_DIR / 'gla_ew_analysis.csv'}")
+        print(f"  4. {OUTPUT_DIR / 'gla_ew_analysis.csv'}")
 
     # Sensitivity analysis (optional)
     if args.sensitivity:

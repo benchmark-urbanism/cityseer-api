@@ -37,36 +37,6 @@ class TestGraphMutationRobustness:
         with pytest.raises(ValueError, match="node_idx .* does not exist"):
             ns.is_node_live(node_idx)
 
-    def test_closeness_rejects_removed_source_index(self, network_structure):
-        ns, _ = network_structure
-        node_idx = ns.street_node_indices()[0]
-        ns.remove_street_node(node_idx)
-
-        with pytest.raises(ValueError, match="does not exist"):
-            ns.centrality_shortest(
-                compute_closeness=True,
-                compute_betweenness=False,
-                distances=[500],
-                source_indices=[node_idx],
-                sample_probability=1.0,
-                pbar_disabled=True,
-            )
-
-    def test_betweenness_rejects_removed_source_index(self, network_structure):
-        ns, _ = network_structure
-        node_idx = ns.street_node_indices()[0]
-        ns.remove_street_node(node_idx)
-
-        with pytest.raises(ValueError, match="does not exist"):
-            ns.centrality_shortest(
-                compute_closeness=False,
-                compute_betweenness=True,
-                distances=[500],
-                source_indices=[node_idx],
-                sample_probability=1.0,
-                pbar_disabled=True,
-            )
-
     def test_add_street_edge_rejects_removed_endpoint(self, network_structure):
         ns, _ = network_structure
         valid_idx, removed_idx = ns.street_node_indices()[:2]

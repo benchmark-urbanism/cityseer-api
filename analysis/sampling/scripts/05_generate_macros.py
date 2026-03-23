@@ -117,12 +117,17 @@ def generate_macros() -> str:
     gla_betw_rhos = gla_df["rho_betweenness"].dropna()
     gla_min_rho_b = gla_betw_rhos.min() if len(gla_betw_rhos) > 0 else float("nan")
 
-    # Load GLA node count from cache (written by 02_validate_gla.py)
+    # Load GLA node counts from cache (written by 02_validate_gla.py)
     gla_n_nodes_path = CACHE_DIR / "gla_n_nodes.json"
     gla_n_nodes = None
+    gla_n_total = None
+    gla_live_fraction = None
     if gla_n_nodes_path.exists():
         with open(gla_n_nodes_path) as f:
-            gla_n_nodes = json.load(f)["n_nodes"]
+            gla_node_info = json.load(f)
+            gla_n_nodes = gla_node_info["n_nodes"]
+            gla_n_total = gla_node_info.get("n_total")
+            gla_live_fraction = gla_node_info.get("live_fraction")
 
     # -------------------------------------------------------------------------
     # Generate LaTeX content
@@ -182,6 +187,10 @@ def generate_macros() -> str:
 
     if gla_n_nodes is not None:
         macros += f"\\newcommand{{\\glaNnodes}}{{{format_number(gla_n_nodes, 0)}}}\n"
+    if gla_n_total is not None:
+        macros += f"\\newcommand{{\\glaNtotal}}{{{format_number(gla_n_total, 0)}}}\n"
+    if gla_live_fraction is not None:
+        macros += f"\\newcommand{{\\glaLiveFraction}}{{{gla_live_fraction:.2f}}}\n"
 
     if not np.isnan(gla_min_rho_b):
         macros += f"\\newcommand{{\\glaMinRhoBetweenness}}{{{gla_min_rho_b:.4f}}}\n"
@@ -231,9 +240,14 @@ def generate_macros() -> str:
 
         madrid_n_nodes_path = CACHE_DIR / "madrid_n_nodes.json"
         madrid_n_nodes = None
+        madrid_n_total = None
+        madrid_live_fraction = None
         if madrid_n_nodes_path.exists():
             with open(madrid_n_nodes_path) as f:
-                madrid_n_nodes = json.load(f)["n_nodes"]
+                madrid_node_info = json.load(f)
+                madrid_n_nodes = madrid_node_info["n_nodes"]
+                madrid_n_total = madrid_node_info.get("n_total")
+                madrid_live_fraction = madrid_node_info.get("live_fraction")
 
         macros += """
 % -----------------------------------------------------------------------------
@@ -243,6 +257,10 @@ def generate_macros() -> str:
 """
         if madrid_n_nodes is not None:
             macros += f"\\newcommand{{\\madridNnodes}}{{{format_number(madrid_n_nodes, 0)}}}\n"
+        if madrid_n_total is not None:
+            macros += f"\\newcommand{{\\madridNtotal}}{{{format_number(madrid_n_total, 0)}}}\n"
+        if madrid_live_fraction is not None:
+            macros += f"\\newcommand{{\\madridLiveFraction}}{{{madrid_live_fraction:.2f}}}\n"
         macros += f"\\newcommand{{\\madridMinRho}}{{{madrid_min_rho_c:.4f}}}\n"
         if not np.isnan(madrid_min_rho_b):
             macros += f"\\newcommand{{\\madridMinRhoBetweenness}}{{{madrid_min_rho_b:.4f}}}\n"
@@ -317,6 +335,127 @@ def generate_macros() -> str:
 
 
 # =============================================================================
+# VALIDATION TABLES (GLA + MADRID)
+# =============================================================================
+
+
+def _load_live_fraction(network: str) -> float:
+    """Load live fraction from cached node info JSON."""
+    path = CACHE_DIR / f"{network}_n_nodes.json"
+    if path.exists():
+        with open(path) as f:
+            info = json.load(f)
+            return info.get("live_fraction", 1.0)
+    return 1.0
+
+
+def generate_validation_table(
+    df: pd.DataFrame,
+    network_name: str,
+    network_key: str,
+    label: str,
+    nnodes_macro: str,
+    epsilon: float,
+) -> str:
+    """Generate a LaTeX validation table for one network.
+
+    Only requires the summary/validation CSV and the n_nodes JSON cache.
+    """
+    live_fraction = _load_live_fraction(network_key)
+
+    latex = rf"""\begin{{table}}[htbp]
+\centering
+\caption{{Sampling validation on {network_name}
+  ($\varepsilon = {epsilon}$, $\delta = 0.1$, $s = {GRID_SPACING:.0f}\,$m, $\varphi = {live_fraction:.2f}$).}}
+\label{{{label}}}
+\begin{{tabular}}{{rrrrrrr}}
+\toprule
+\textbf{{Dist.}} &
+\textbf{{$p$}} & \textbf{{$\rho_c$}} & \textbf{{Spd$_c$}} &
+& \textbf{{$\rho_b$}} & \textbf{{Spd$_b$}} \\
+\midrule
+"""
+
+    for _, row in df.iterrows():
+        p_val = row["hoeffding_p_close"]
+        is_exact = p_val >= live_fraction
+
+        if is_exact:
+            p_pct = "exact"
+            spd_c = "---"
+            spd_b = "---"
+        else:
+            p_pct = f"{p_val * 100:.1f}\\%"
+            spd_c = f"{row['speedup_closeness']:.1f}$\\times$" if np.isfinite(row["speedup_closeness"]) else "---"
+            spd_b = (
+                f"{row['speedup_betweenness']:.1f}$\\times$"
+                if np.isfinite(row.get("speedup_betweenness", float("nan")))
+                else "---"
+            )
+
+        rho_c = f"{row['rho_closeness']:.4f}"
+        if np.isfinite(row.get("rho_betweenness", float("nan"))):
+            rho_b = f"{row['rho_betweenness']:.4f}"
+        else:
+            rho_b = "---"
+
+        latex += f"{int(row['distance'] // 1000)}\\,km & "
+        latex += f"{p_pct} & {rho_c} & {spd_c} & "
+        latex += f"& {rho_b} & {spd_b} \\\\\n"
+
+    latex += rf"""\bottomrule
+\end{{tabular}}
+
+\vspace{{0.5em}}
+\footnotesize
+Network: {network_name}, {nnodes_macro} nodes.
+Rows marked ``exact'' have $p \geq \varphi$ and fall back to exact computation.
+Subscripts: $c$ = closeness, $b$ = betweenness.
+\end{{table}}
+"""
+    return latex
+
+
+def generate_validation_tables():
+    """Generate validation tables for GLA and Madrid from cached CSVs."""
+    print("\nGenerating validation tables...")
+
+    # GLA
+    gla_summary_path = OUTPUT_DIR / "gla_validation_summary.csv"
+    if gla_summary_path.exists():
+        gla_df = pd.read_csv(gla_summary_path)
+        latex = generate_validation_table(
+            gla_df,
+            network_name="Greater London network",
+            network_key="gla",
+            label="tab:validation",
+            nnodes_macro=r"\glaNnodes{}",
+            epsilon=PAPER_EPSILON_CLOSENESS,
+        )
+        path = TABLES_DIR / "tab2_validation.tex"
+        with open(path, "w") as f:
+            f.write(latex)
+        print(f"  Saved: {path}")
+
+    # Madrid
+    madrid_path = OUTPUT_DIR / "madrid_validation.csv"
+    if madrid_path.exists():
+        madrid_df = pd.read_csv(madrid_path)
+        latex = generate_validation_table(
+            madrid_df,
+            network_name="Greater Madrid network",
+            network_key="madrid",
+            label="tab:madrid_validation",
+            nnodes_macro=r"\madridNnodes{}",
+            epsilon=PAPER_EPSILON_CLOSENESS,
+        )
+        path = TABLES_DIR / "tab4_madrid_validation.tex"
+        with open(path, "w") as f:
+            f.write(latex)
+        print(f"  Saved: {path}")
+
+
+# =============================================================================
 # DISTANCE-BASED LOOKUP TABLE
 # =============================================================================
 
@@ -351,9 +490,9 @@ def generate_tab_distance_lookup() -> str:
         + f"{GRID_SPACING:.0f}"
         + r"\,\text{m}$). "
         r"Both closeness and betweenness use the same schedule. "
-        r"Sampling is exact ($p = 100\%$) for distances up to 2\,km. "
-        r"Speedup shown is theoretical ($1/p$); measured wall-clock speedup is lower "
-        r"at near-unity $p$ due to sampling overhead and emerges at 10\,km and beyond.}"
+        r"At distances where $p \geq \varphi$ (the live fraction), exact computation is used instead. "
+        r"Speedup shown is the theoretical upper bound ($1/p$); "
+        r"effective speedup is $\varphi/p$ due to buffer node overhead (Section~\ref{sec:buffer}).}"
     )
     lines.append(r"\label{tab:distance_lookup}")
     lines.append(r"\begin{tabular}{rrrrr}")
@@ -490,8 +629,8 @@ def generate_fig3_practical_guide():
 
     ax.set_yscale("log")
     ax.set_xlabel("Analysis Distance (km)")
-    ax.set_ylabel("Speedup (1/p)")
-    ax.set_title("B) Theoretical Speedup")
+    ax.set_ylabel("Theoretical upper bound (1/p)")
+    ax.set_title(r"B) Theoretical Speedup (effective: $\varphi$/p)")
     ax.set_xlim(0, 25)
     ax.set_ylim(1, 100)
     ax.grid(True, alpha=0.3, which="both")
@@ -537,6 +676,7 @@ def main():
         f.write(table)
     print(f"Generated: {table_path}")
 
+    generate_validation_tables()
     generate_fig3_practical_guide()
 
     # Print summary
