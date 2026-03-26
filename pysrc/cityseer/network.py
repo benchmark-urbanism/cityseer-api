@@ -63,6 +63,8 @@ def _rebuild_dual_network(
 ) -> tuple[rustalgos.graph.NetworkStructure, gpd.GeoDataFrame, dict[str, Any]]:
     network_structure = rustalgos.graph.NetworkStructure()
     network_structure.set_is_dual(True)
+    if state.get("directions") is not None:
+        network_structure.set_is_directed(True)
     node_idx: dict[Any, int] = {}
     rebuilt_nodes_gdf = nodes_gdf.copy()
     for node_key, row in rebuilt_nodes_gdf.iterrows():
@@ -204,6 +206,11 @@ class CityNetwork:
         return bool(self._network_structure.is_dual)
 
     @property
+    def is_directed(self) -> bool:
+        """Whether the network is a directed graph respecting one-way streets."""
+        return bool(self._network_structure.is_directed)
+
+    @property
     def crs(self) -> CRS | None:
         """The projected coordinate reference system."""
         return self._crs
@@ -241,6 +248,8 @@ class CityNetwork:
         *,
         crs: Any,
         boundary: BaseGeometry | None = None,
+        directed: bool = False,
+        oneway_fids: set[Any] | None = None,
     ) -> CityNetwork:
         """Construct a CityNetwork from a dictionary of WKT strings or Shapely geometries.
 
@@ -255,14 +264,30 @@ class CityNetwork:
         boundary: BaseGeometry
             Optional polygon in the same projected CRS; nodes inside are marked as ``live``,
             nodes outside as ``dead``.
+        directed: bool
+            If ``True``, build a directed network. Requires ``oneway_fids``. Features in
+            ``oneway_fids`` are one-way (in LineString coordinate order); all other features
+            are bidirectional.
+        oneway_fids: set[Any] | None
+            Feature IDs that are one-way when ``directed=True``. Ignored if ``directed=False``.
 
         Returns
         -------
         network: CityNetwork
             A new CityNetwork instance.
+
+        Raises
+        ------
+        ValueError
+            If ``directed=True`` but ``oneway_fids`` is not provided.
         """
         normalized_crs = _require_projected_crs(crs)
-        ns, nodes_gdf, state = dual.build_dual(wkts, crs=normalized_crs, boundary=boundary)
+        directions = None
+        if directed:
+            if oneway_fids is None:
+                raise ValueError("directed=True requires oneway_fids specifying which features are one-way.")
+            directions = {fid: (True, False) if fid in oneway_fids else (True, True) for fid in wkts}
+        ns, nodes_gdf, state = dual.build_dual(wkts, crs=normalized_crs, boundary=boundary, directions=directions)
         return cls._from_dual_result(ns, nodes_gdf, state, normalized_crs)
 
     @classmethod
@@ -272,6 +297,7 @@ class CityNetwork:
         *,
         crs: Any | None = None,
         boundary: BaseGeometry | None = None,
+        directed: bool = False,
     ) -> CityNetwork:
         """Construct a CityNetwork from a GeoDataFrame of LineString geometries.
 
@@ -289,14 +315,34 @@ class CityNetwork:
         boundary: BaseGeometry
             Optional polygon in the same projected CRS; nodes inside are marked as ``live``,
             nodes outside as ``dead``.
+        directed: bool
+            If ``True``, build a directed network. Requires a boolean ``oneway`` column in the
+            GeoDataFrame. Features with ``oneway=True`` are one-way in LineString coordinate
+            order; features with ``oneway=False`` are bidirectional.
 
         Returns
         -------
         network: CityNetwork
             A new CityNetwork instance.
+
+        Raises
+        ------
+        ValueError
+            If ``directed=True`` but the GeoDataFrame has no ``oneway`` column.
         """
         normalized_crs = _require_projected_crs(crs if crs is not None else gdf.crs)
-        ns, nodes_gdf, state = dual.build_dual(gdf, crs=normalized_crs, boundary=boundary)
+        directions = None
+        if directed:
+            if "oneway" not in gdf.columns:
+                raise ValueError("directed=True requires a boolean 'oneway' column in the GeoDataFrame.")
+            oneway_raw = gdf["oneway"]
+            if oneway_raw.isna().any():
+                raise ValueError("The 'oneway' column contains NaN values.")
+            if not pd.api.types.is_bool_dtype(oneway_raw):
+                raise TypeError(f"The 'oneway' column must contain boolean values, but found dtype {oneway_raw.dtype}.")
+            oneway = oneway_raw.astype(bool)
+            directions = {fid: (True, False) if ow else (True, True) for fid, ow in oneway.items()}
+        ns, nodes_gdf, state = dual.build_dual(gdf, crs=normalized_crs, boundary=boundary, directions=directions)
         if nodes_gdf is not None:
             nodes_gdf = _merge_input_columns(nodes_gdf, gdf)
         return cls._from_dual_result(ns, nodes_gdf, state, normalized_crs)
@@ -308,15 +354,19 @@ class CityNetwork:
         *,
         boundary: BaseGeometry | None = None,
     ) -> CityNetwork:
-        """Construct a CityNetwork from a cityseer-compatible NetworkX MultiGraph.
+        """Construct a CityNetwork from a cityseer-compatible NetworkX graph.
 
         The input graph must be a *primal* edge graph (not a dual graph) with ``geom`` attributes on edges and a
         ``crs`` attribute on the graph. Node ``live`` attributes are preserved.
 
+        When a ``MultiDiGraph`` is passed, directed mode is enabled automatically: each directed edge becomes
+        its own one-way dual node (in the coordinate order of the directed edge). Two-way streets should be
+        represented as two reciprocal edges (A to B and B to A), which produce two separate dual nodes.
+
         Parameters
         ----------
-        graph: nx.MultiGraph
-            A cityseer-compatible primal NetworkX graph.
+        graph: nx.MultiGraph | nx.MultiDiGraph
+            A cityseer-compatible primal NetworkX graph. ``MultiDiGraph`` enables directed routing.
         boundary: BaseGeometry
             Optional polygon in the same projected CRS; nodes inside are marked as ``live``,
             nodes outside as ``dead``.
@@ -335,23 +385,37 @@ class CityNetwork:
         if primal_graph.graph.get("is_dual", False):
             raise ValueError("CityNetwork.from_nx expects a primal edge graph, not a dual graph.")
 
+        is_digraph = isinstance(primal_graph, nx.MultiDiGraph)
         wkts: dict[str, str] = {}
         live_overrides: dict[str, bool] = {}
         edge_attrs: dict[str, dict[str, Any]] = {}
-        for start_nd_key, end_nd_key, edge_idx, edge_data in primal_graph.edges(keys=True, data=True):
-            dual_node_key = _prepare_dual_node_key(start_nd_key, end_nd_key, int(edge_idx))
-            wkts[dual_node_key] = edge_data["geom"].wkt
-            if "live" in primal_graph.nodes[start_nd_key] and "live" in primal_graph.nodes[end_nd_key]:
-                live_overrides[dual_node_key] = bool(
-                    primal_graph.nodes[start_nd_key]["live"] or primal_graph.nodes[end_nd_key]["live"]
-                )
-            edge_attrs[dual_node_key] = {key: value for key, value in edge_data.items() if key != "geom"}
-            edge_attrs[dual_node_key]["primal_edge_node_a"] = start_nd_key
-            edge_attrs[dual_node_key]["primal_edge_node_b"] = end_nd_key
-            edge_attrs[dual_node_key]["primal_edge_idx"] = int(edge_idx)
+        directions: dict[str, tuple[bool, bool]] | None = None
+
+        def _collect_edge(dual_node_key: str, u: Any, v: Any, k: int, data: dict[str, Any]) -> None:
+            wkts[dual_node_key] = data["geom"].wkt
+            if "live" in primal_graph.nodes[u] and "live" in primal_graph.nodes[v]:
+                live_overrides[dual_node_key] = bool(primal_graph.nodes[u]["live"] or primal_graph.nodes[v]["live"])
+            edge_attrs[dual_node_key] = {key: value for key, value in data.items() if key != "geom"}
+            edge_attrs[dual_node_key]["primal_edge_node_a"] = u
+            edge_attrs[dual_node_key]["primal_edge_node_b"] = v
+            edge_attrs[dual_node_key]["primal_edge_idx"] = int(k)
+
+        if is_digraph:
+            # Each directed edge becomes its own dual node, marked one-way in its
+            # coordinate direction.  Using directed (unsorted) keys avoids collisions
+            # between distinct A->B and B->A edges that happen to share the same key.
+            directions = {}
+            for u, v, k, data in primal_graph.edges(keys=True, data=True):
+                dual_node_key = f"{u}_{v}_k{k}"
+                _collect_edge(dual_node_key, u, v, k, data)
+                directions[dual_node_key] = (True, False)
+        else:
+            for u, v, k, data in primal_graph.edges(keys=True, data=True):
+                dual_node_key = _prepare_dual_node_key(u, v, int(k))
+                _collect_edge(dual_node_key, u, v, k, data)
 
         normalized_crs = _require_projected_crs(primal_graph.graph["crs"])
-        ns, nodes_gdf, state = dual.build_dual(wkts, crs=normalized_crs, boundary=boundary)
+        ns, nodes_gdf, state = dual.build_dual(wkts, crs=normalized_crs, boundary=boundary, directions=directions)
         if nodes_gdf is None:
             raise RuntimeError("Fast dual build did not produce nodes GeoDataFrame.")
         for node_key, live in live_overrides.items():
@@ -360,7 +424,9 @@ class CityNetwork:
                 nodes_gdf.at[node_key, "live"] = live
         if edge_attrs:
             attr_df = pd.DataFrame.from_dict(edge_attrs, orient="index")
-            nodes_gdf.loc[attr_df.index, attr_df.columns] = attr_df.loc[attr_df.index, attr_df.columns]
+            shared_idx = attr_df.index.intersection(nodes_gdf.index)
+            if len(shared_idx) > 0:
+                nodes_gdf.loc[shared_idx, attr_df.columns] = attr_df.loc[shared_idx, attr_df.columns]
         state["nx_source_graph"] = graph
         return cls._from_dual_result(ns, nodes_gdf, state, normalized_crs)
 
@@ -377,7 +443,11 @@ class CityNetwork:
     ) -> CityNetwork:
         """Construct a CityNetwork from OpenStreetMap data within a bounding polygon.
 
-        Downloads the road network via OSMnx and converts it to a dual CityNetwork. Requires the ``osmnx`` package.
+        Downloads the road network and converts it to a dual CityNetwork.
+
+        For directed (one-way) routing with OSM data, fetch a directed graph via
+        `OSMnx <https://osmnx.readthedocs.io/>`_ and pass it to :meth:`from_nx`
+        or convert it with :func:`io.nx_from_osm_nx(directed=True) <cityseer.tools.io.nx_from_osm_nx>`.
 
         Parameters
         ----------
@@ -441,6 +511,9 @@ class CityNetwork:
         added features are inserted, and removed features are deleted. Previously computed centrality columns
         are cleared since they are invalidated by topology changes.
 
+        For directed networks built via ``from_geopandas(directed=True)``, the incoming GeoDataFrame must
+        include the ``oneway`` column. Direction changes (even without geometry changes) trigger a rebuild.
+
         Parameters
         ----------
         data: dict[Any, str] | dict[Any, BaseGeometry] | GeoDataFrame
@@ -451,17 +524,41 @@ class CityNetwork:
         self: CityNetwork
             Returns self for method chaining.
         """
+        # Rebuild directions from the incoming data when directed
+        directions = self._state.get("directions")
+        if directions is not None:
+            if not isinstance(data, gpd.GeoDataFrame) or "oneway" not in data.columns:
+                raise ValueError("Updating a directed network requires a GeoDataFrame with a boolean 'oneway' column.")
+            oneway_raw = data["oneway"]
+            if oneway_raw.isna().any():
+                raise ValueError("The 'oneway' column contains NaN values.")
+            if not pd.api.types.is_bool_dtype(oneway_raw):
+                raise TypeError(f"The 'oneway' column must contain boolean values, but found dtype {oneway_raw.dtype}.")
+            oneway = oneway_raw.astype(bool)
+            directions = {fid: (True, False) if ow else (True, True) for fid, ow in oneway.items()}
         new_wkts, _discovered_crs = dual.extract_wkts(data)
-        if new_wkts == self._state.get("source_wkts", self._state["wkts"]):
+        wkts_unchanged = new_wkts == self._state.get("source_wkts", self._state["wkts"])
+        directions_unchanged = directions == self._state.get("directions")
+        if wkts_unchanged and directions_unchanged:
             return self
         previous_nodes_gdf = self._nodes_gdf.copy()
         boundary = _load_boundary(self._state.get("boundary_wkt"))
-        ns, nodes_gdf, state = dual.incremental_update(
-            self._state,
-            data,
-            crs=self._crs,
-            boundary=boundary,
-        )
+        if not wkts_unchanged:
+            ns, nodes_gdf, state = dual.incremental_update(
+                self._state,
+                data,
+                crs=self._crs,
+                boundary=boundary,
+                directions=directions,
+            )
+        else:
+            # Geometry unchanged but directions changed — full rebuild needed
+            ns, nodes_gdf, state = dual.build_dual(
+                new_wkts,
+                crs=self._crs,
+                boundary=boundary,
+                directions=directions,
+            )
         if nodes_gdf is None:
             raise RuntimeError("Fast dual update did not produce nodes GeoDataFrame.")
         self._network_structure = ns
@@ -531,6 +628,7 @@ class CityNetwork:
             "source_wkts": dict(self._state.get("source_wkts", self._state["wkts"])),
             "boundary_wkt": self._state.get("boundary_wkt"),
             "feature_status": dict(self._state.get("feature_status", {})),
+            "directions": self._state.get("directions"),
         }
         with path.with_suffix(".state.pkl").open("wb") as file:
             pickle.dump(payload, file)
@@ -558,6 +656,7 @@ class CityNetwork:
             payload = pickle.load(file)
         boundary = _load_boundary(payload.get("boundary_wkt"))
         source_wkts = payload.get("source_wkts", payload.get("wkts"))
+        directions = payload.get("directions")
         # Build state (geoms, edge_records, endpoint_to_fids, etc.)
         # but skip building nodes_gdf — we'll use the saved one.
         _ns, _nodes_gdf, state = dual.build_dual(
@@ -565,6 +664,7 @@ class CityNetwork:
             crs=saved_nodes_gdf.crs,
             boundary=boundary,
             build_nodes_gdf=False,
+            directions=directions,
         )
         state["feature_status"] = payload.get("feature_status", state.get("feature_status", {}))
         # Merge saved columns (metrics, user attrs) onto fresh topology,
@@ -804,17 +904,22 @@ class CityNetwork:
         )
         return self
 
-    def to_nx(self) -> nx.MultiGraph:
-        """Convert the network to a NetworkX MultiGraph.
+    def to_nx(self) -> nx.MultiGraph | nx.MultiDiGraph:
+        """Convert the network to a NetworkX MultiGraph (or MultiDiGraph if directed).
 
         If the network was built with :meth:`from_nx`, returns a copy of the original graph with computed
         centrality and layer columns added to each edge's data dictionary. Otherwise builds a new
-        cityseer-compatible graph from the internal GeoDataFrame.
+        cityseer-compatible undirected graph from the internal GeoDataFrame.
 
         Returns
         -------
-        graph: nx.MultiGraph
+        graph: nx.MultiGraph | nx.MultiDiGraph
             A primal edge graph with computed metrics added to edge data.
+
+        Raises
+        ------
+        NotImplementedError
+            If the network is directed but was not built via :meth:`from_nx` (no source graph to export).
         """
         source_graph: nx.MultiGraph | None = self._state.get("nx_source_graph")
         if source_graph is not None:
@@ -830,8 +935,14 @@ class CityNetwork:
                         for col in cc_cols:
                             g[u][v][k][col] = row[col]
             return g
+        if self.is_directed:
+            raise NotImplementedError(
+                "to_nx() is not supported for directed networks built via from_geopandas or from_wkts. "
+                "Build from a MultiDiGraph via from_nx() to enable round-trip conversion."
+            )
         return io.nx_from_generic_geopandas(self.to_geopandas())
 
     def __repr__(self) -> str:
         crs_repr = None if self._crs is None else self._crs.to_string()
-        return f"CityNetwork(node_count={self.node_count}, is_dual={self.is_dual}, crs={crs_repr})"
+        parts = f"node_count={self.node_count}, is_dual={self.is_dual}, is_directed={self.is_directed}"
+        return f"CityNetwork({parts}, crs={crs_repr})"

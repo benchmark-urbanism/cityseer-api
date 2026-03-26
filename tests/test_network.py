@@ -143,3 +143,271 @@ def test_cleaned_and_deleted_features_are_tagged():
 
     assert city_network.feature_status["valid"] == "deleted"
     assert city_network.feature_status["invalid"] == "active"
+
+
+# --- Directed graph tests ---
+
+
+def _directed_streets_gdf() -> gpd.GeoDataFrame:
+    """A simple T-junction with one-way on the horizontal segment 'a'.
+
+    Layout:
+        (0,0) --a--> (20,0) --b-- (40,0)
+                        |
+                        c
+                        |
+                      (20,20)
+
+    'a' is one-way left-to-right. 'b' and 'c' are two-way.
+    """
+    return gpd.GeoDataFrame(
+        {
+            "geometry": [
+                LineString([(0, 0), (20, 0)]),
+                LineString([(20, 0), (40, 0)]),
+                LineString([(20, 0), (20, 20)]),
+            ],
+            "oneway": [True, False, False],
+        },
+        index=["a", "b", "c"],
+        crs=CRS(32630),
+    )
+
+
+def test_directed_from_geopandas():
+    """Directed network has fewer dual edges than undirected for the same topology."""
+    gdf = _directed_streets_gdf()
+    undirected = CityNetwork.from_geopandas(gdf)
+    directed = CityNetwork.from_geopandas(gdf, directed=True)
+
+    assert directed.is_directed is True
+    assert undirected.is_directed is False
+    # Directed should have fewer edges due to one-way constraint on 'a'
+    assert directed.network_structure.edge_count < undirected.network_structure.edge_count
+
+
+def test_directed_from_geopandas_missing_column():
+    """ValueError when directed=True but no 'oneway' column."""
+    gdf = _simple_streets_gdf()
+    import pytest
+
+    with pytest.raises(ValueError, match="oneway"):
+        CityNetwork.from_geopandas(gdf, directed=True)
+
+
+def test_directed_from_geopandas_bad_oneway_dtype():
+    """TypeError when oneway column has non-boolean values."""
+    import pytest
+
+    gdf = gpd.GeoDataFrame(
+        {"geometry": [LineString([(0, 0), (20, 0)])], "oneway": ["yes"]},
+        index=["a"],
+        crs=CRS(32630),
+    )
+    with pytest.raises(TypeError, match="boolean"):
+        CityNetwork.from_geopandas(gdf, directed=True)
+
+
+def test_directed_from_wkts():
+    """Directed network from WKTs with oneway_fids."""
+    wkts = {
+        "a": LineString([(0, 0), (20, 0)]).wkt,
+        "b": LineString([(20, 0), (40, 0)]).wkt,
+        "c": LineString([(20, 0), (20, 20)]).wkt,
+    }
+    undirected = CityNetwork.from_wkts(wkts, crs=CRS(32630))
+    directed = CityNetwork.from_wkts(wkts, crs=CRS(32630), directed=True, oneway_fids={"a"})
+
+    assert directed.is_directed is True
+    assert directed.network_structure.edge_count < undirected.network_structure.edge_count
+
+
+def test_directed_from_wkts_missing_oneway_fids():
+    """ValueError when directed=True but oneway_fids not provided."""
+    import pytest
+
+    wkts = {"a": LineString([(0, 0), (20, 0)]).wkt}
+    with pytest.raises(ValueError, match="oneway_fids"):
+        CityNetwork.from_wkts(wkts, crs=CRS(32630), directed=True)
+
+
+def test_directed_repr():
+    """Directed flag appears in repr."""
+    gdf = _directed_streets_gdf()
+    cn = CityNetwork.from_geopandas(gdf, directed=True)
+    assert "is_directed=True" in repr(cn)
+
+
+def test_directed_backward_compat():
+    """Default directed=False produces identical results to undirected construction."""
+    gdf = _simple_streets_gdf()
+    cn_default = CityNetwork.from_geopandas(gdf)
+    cn_explicit = CityNetwork.from_geopandas(gdf, directed=False)
+
+    assert cn_default.is_directed is False
+    assert cn_explicit.is_directed is False
+    assert cn_default.network_structure.edge_count == cn_explicit.network_structure.edge_count
+
+
+def test_directed_from_nx_multidigraph():
+    """Auto-detect directed mode from MultiDiGraph."""
+    import networkx as nx
+
+    # A -> B (one-way), B <-> C (two-way = two directed edges)
+    G = nx.MultiDiGraph()
+    G.graph["crs"] = CRS(32630)
+    G.add_node("A", x=0.0, y=0.0)
+    G.add_node("B", x=20.0, y=0.0)
+    G.add_node("C", x=40.0, y=0.0)
+    G.add_edge("A", "B", key=0, geom=LineString([(0, 0), (20, 0)]))
+    G.add_edge("B", "C", key=0, geom=LineString([(20, 0), (40, 0)]))
+    G.add_edge("C", "B", key=0, geom=LineString([(40, 0), (20, 0)]))
+
+    cn = CityNetwork.from_nx(G)
+    assert cn.is_directed is True
+    # 3 directed edges -> 3 dual nodes, each one-way
+    assert cn.node_count == 3
+
+
+def test_directed_from_nx_preserves_distinct_edges():
+    """Opposite-direction edges with the same key are kept as separate dual nodes."""
+    import networkx as nx
+
+    G = nx.MultiDiGraph()
+    G.graph["crs"] = CRS(32630)
+    G.add_node("A", x=0.0, y=0.0)
+    G.add_node("B", x=100.0, y=0.0)
+    # Two distinct edges sharing key=0 but with different attributes
+    G.add_edge("A", "B", key=0, geom=LineString([(0, 0), (100, 0)]), name="forward_road")
+    G.add_edge("B", "A", key=0, geom=LineString([(100, 0), (50, 10), (0, 0)]), name="reverse_road")
+
+    cn = CityNetwork.from_nx(G)
+    assert cn.is_directed is True
+    # Both edges must be preserved as separate dual nodes
+    assert cn.node_count == 2
+
+
+def test_directed_update_new_feature_with_oneway():
+    """Adding a one-way feature via GeoDataFrame update respects oneway column."""
+    gdf = _directed_streets_gdf()
+    cn = CityNetwork.from_geopandas(gdf, directed=True)
+
+    # Add a new one-way street 'd'
+    updated_gdf = gpd.GeoDataFrame(
+        {
+            "geometry": [
+                LineString([(0, 0), (20, 0)]),
+                LineString([(20, 0), (40, 0)]),
+                LineString([(20, 0), (20, 20)]),
+                LineString([(40, 0), (60, 0)]),
+            ],
+            "oneway": [True, False, False, True],
+        },
+        index=["a", "b", "c", "d"],
+        crs=CRS(32630),
+    )
+    cn.update(updated_gdf)
+
+    assert cn.is_directed is True
+    assert cn.node_count == 4
+
+
+def test_directed_update_flip_oneway():
+    """Changing oneway status without geometry change triggers rebuild."""
+    gdf = _directed_streets_gdf()
+    cn = CityNetwork.from_geopandas(gdf, directed=True)
+    edge_count_oneway = cn.network_structure.edge_count
+
+    # Flip 'a' from one-way to two-way (same geometry)
+    updated_gdf = gpd.GeoDataFrame(
+        {
+            "geometry": [
+                LineString([(0, 0), (20, 0)]),
+                LineString([(20, 0), (40, 0)]),
+                LineString([(20, 0), (20, 20)]),
+            ],
+            "oneway": [False, False, False],  # 'a' now two-way
+        },
+        index=["a", "b", "c"],
+        crs=CRS(32630),
+    )
+    cn.update(updated_gdf)
+
+    assert cn.is_directed is True
+    # More edges now that 'a' is two-way
+    assert cn.network_structure.edge_count > edge_count_oneway
+
+
+def test_directed_update_missing_oneway_column():
+    """ValueError when updating a directed network with a GeoDataFrame missing oneway."""
+    import pytest
+
+    gdf = _directed_streets_gdf()
+    cn = CityNetwork.from_geopandas(gdf, directed=True)
+    bad_gdf = gpd.GeoDataFrame(
+        {"geometry": [LineString([(0, 0), (20, 0)])]},
+        index=["a"],
+        crs=CRS(32630),
+    )
+    with pytest.raises(ValueError, match="oneway"):
+        cn.update(bad_gdf)
+
+
+def test_directed_update_bad_oneway_dtype():
+    """TypeError when updating a directed network with non-boolean oneway values."""
+    import pytest
+
+    gdf = _directed_streets_gdf()
+    cn = CityNetwork.from_geopandas(gdf, directed=True)
+    bad_gdf = gpd.GeoDataFrame(
+        {
+            "geometry": [
+                LineString([(0, 0), (20, 0)]),
+                LineString([(20, 0), (40, 0)]),
+                LineString([(20, 0), (20, 20)]),
+            ],
+            "oneway": ["False", "False", "False"],
+        },
+        index=["a", "b", "c"],
+        crs=CRS(32630),
+    )
+    with pytest.raises(TypeError, match="boolean"):
+        cn.update(bad_gdf)
+
+
+def test_directed_to_nx_raises_without_source_graph():
+    """to_nx() raises NotImplementedError for directed networks without a source graph."""
+    import pytest
+
+    gdf = _directed_streets_gdf()
+    cn = CityNetwork.from_geopandas(gdf, directed=True)
+    with pytest.raises(NotImplementedError, match="to_nx"):
+        cn.to_nx()
+
+
+def test_directed_to_nx_roundtrip_from_nx():
+    """to_nx() returns the original MultiDiGraph when built via from_nx()."""
+    import networkx as nx
+
+    G = nx.MultiDiGraph()
+    G.graph["crs"] = CRS(32630)
+    G.add_node("A", x=0.0, y=0.0)
+    G.add_node("B", x=20.0, y=0.0)
+    G.add_edge("A", "B", key=0, geom=LineString([(0, 0), (20, 0)]))
+
+    cn = CityNetwork.from_nx(G)
+    exported = cn.to_nx()
+    assert isinstance(exported, nx.MultiDiGraph)
+
+
+def test_directed_save_load_roundtrip(tmp_path):
+    """Directed flag and directions survive save/load."""
+    gdf = _directed_streets_gdf()
+    cn = CityNetwork.from_geopandas(gdf, directed=True)
+    edge_count_before = cn.network_structure.edge_count
+
+    cn.save(tmp_path / "directed_net")
+    cn_loaded = CityNetwork.load(tmp_path / "directed_net")
+
+    assert cn_loaded.is_directed is True
+    assert cn_loaded.network_structure.edge_count == edge_count_before

@@ -3,6 +3,16 @@ Convenience functions for the preparation and conversion of `networkX` graphs to
 
 Note that the `cityseer` network data structures can be created and manipulated directly, if so desired.
 
+:::note
+The graph simplification and cleaning functions in this module (e.g. ``nx_remove_filler_nodes``,
+``nx_remove_dangling_nodes``, ``nx_to_dual``) operate on undirected ``MultiGraph`` instances and do not preserve
+edge directionality. Do not pass a ``MultiDiGraph`` through these functions. For directed (one-way) network
+support, use [`CityNetwork.from_nx`](/api/network#from-nx) with a ``MultiDiGraph``,
+[`CityNetwork.from_geopandas`](/api/network#from-geopandas) with ``directed=True``, or build a directed
+``NetworkStructure`` via
+[`io.network_structure_from_nx`](/tools/io#network-structure-from-nx) with a ``MultiDiGraph``.
+:::
+
 """
 
 # workaround until networkx adopts types

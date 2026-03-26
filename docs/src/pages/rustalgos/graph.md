@@ -285,9 +285,6 @@ layout: ../../layouts/PageLayout.astro
     <span class="pn">random_seed=None</span>
   </div>
   <div class="param">
-    <span class="pn">source_indices=None</span>
-  </div>
-  <div class="param">
     <span class="pn">pbar_disabled=None</span>
   </div>
   <span class="pt">)</span>
@@ -296,6 +293,8 @@ layout: ../../layouts/PageLayout.astro
 
 
  Compute node centrality using shortest paths with a single Dijkstra per source. When both `compute_closeness` and `compute_betweenness` are true, a single Brandes-style Dijkstra traversal per source produces the data for both closeness accumulation and betweenness backpropagation, halving computation time compared to calling `closeness_shortest` and `betweenness_shortest` separately.
+
+ When `sample_probability` is set, Bernoulli sampling with inverse-probability weighting (IPW) is used. Each node is independently included as a source with the given probability. Both live and buffer nodes are sampled to prevent edge roll-off. Use `random_seed` for reproducibility. Sampling weights can further modulate per-node inclusion via `sampling_weights`.
 
 </div>
 
@@ -353,9 +352,6 @@ layout: ../../layouts/PageLayout.astro
   </div>
   <div class="param">
     <span class="pn">random_seed=None</span>
-  </div>
-  <div class="param">
-    <span class="pn">source_indices=None</span>
   </div>
   <div class="param">
     <span class="pn">pbar_disabled=None</span>
@@ -526,6 +522,31 @@ layout: ../../layouts/PageLayout.astro
   </div>
   <div class="param">
     <span class="pn">is_dual</span>
+  </div>
+  <span class="pt">)</span>
+</div>
+</div>
+
+</div>
+
+ 
+
+<div class="function">
+
+## set_is_directed
+
+
+<div class="content">
+<span class="name">set_is_directed</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">self</span>
+  </div>
+  <div class="param">
+    <span class="pn">/</span>
+  </div>
+  <div class="param">
+    <span class="pn">is_directed</span>
   </div>
   <span class="pt">)</span>
 </div>
@@ -1267,12 +1288,17 @@ layout: ../../layouts/PageLayout.astro
 
  
 
-<span class="name">node_xys</span>
+<span class="name">street_node_lives</span>
 
 
  
 
 <span class="name">node_xyzs</span>
+
+
+ 
+
+<span class="name">node_ys</span>
 
 
  
@@ -1287,12 +1313,7 @@ layout: ../../layouts/PageLayout.astro
 
  
 
-<span class="name">street_node_lives</span>
-
-
- 
-
-<span class="name">node_ys</span>
+<span class="name">node_xys</span>
 
 
  

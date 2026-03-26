@@ -30,6 +30,84 @@ A growing collection of recipes and examples is available via the [`Cityseer Exa
 - Granular evaluation of land-use accessibilities and mixed-uses requires that land uses be assigned to the street network in a contextually precise manner. `cityseer` assigns data-points to the nearest adjacent street segment and then allows access over the network from both sides, thereby allowing precise distances to be calculated dynamically based on the direction of approach.
 - Centrality methods are susceptible to topological distortions arising from 'messy' graph representations as well as due to the conflation of topological and geometrical properties of street networks. `cityseer` addresses these through the inclusion of graph cleaning functions and procedures for splitting geometrical properties from topological representations.
 
+## Directed Graphs and One-Way Streets
+
+By default, `cityseer` builds undirected networks where every street can be traversed in both directions. This is appropriate for pedestrian analysis but does not reflect the constraints of cycling or vehicular traffic, where one-way streets restrict the direction of travel.
+
+When directed mode is enabled, `cityseer` builds a directed graph where one-way streets are only traversable in their designated direction while two-way streets remain bidirectional. This affects all downstream computations: centrality metrics, accessibility, and mixed-use analyses all respect the directed topology.
+
+:::note
+The graph simplification and cleaning functions in the [`graphs`](/tools/graphs) module (e.g. `nx_remove_filler_nodes`, `nx_to_dual`) do not preserve edge directionality — do not pass a `MultiDiGraph` through them. The `from_osm` constructor also uses this undirected simplification pipeline internally. Directed graphs should be passed directly to [`CityNetwork.from_nx`](/api/network#from-nx), [`CityNetwork.from_geopandas`](/api/network#from-geopandas) (with `directed=True`), or [`io.network_structure_from_nx`](/tools/io#network-structure-from-nx). For directed OSM workflows, fetch a `MultiDiGraph` via [OSMnx](https://osmnx.readthedocs.io/) and pass it to `CityNetwork.from_nx`.
+:::
+
+### From a GeoDataFrame
+
+Provide a boolean `oneway` column following the [OSMnx](https://osmnx.readthedocs.io/) and [momepy](https://docs.momepy.org/) convention. Features with `oneway=True` are one-way in their LineString coordinate order; features with `oneway=False` are two-way.
+
+```python
+import geopandas as gpd
+from shapely.geometry import LineString
+
+gdf = gpd.GeoDataFrame(
+    {
+        "geometry": [
+            LineString([(0, 0), (100, 0)]),   # one-way left to right
+            LineString([(100, 0), (200, 0)]),  # two-way
+        ],
+        "oneway": [True, False],
+    },
+    crs="EPSG:32630",
+)
+cn = CityNetwork.from_geopandas(gdf, directed=True)
+```
+
+### From a NetworkX MultiDiGraph
+
+Passing a `MultiDiGraph` to [`from_nx`](/api/network#from-nx) automatically enables directed mode. Two-way streets are represented as two reciprocal edges (A&#x2192;B and B&#x2192;A) while one-way streets have a single directed edge. This is the format produced by [OSMnx](https://osmnx.readthedocs.io/).
+
+```python
+import networkx as nx
+from shapely.geometry import LineString
+
+G = nx.MultiDiGraph(crs="EPSG:32630")
+G.add_node("A", x=0.0, y=0.0)
+G.add_node("B", x=100.0, y=0.0)
+G.add_node("C", x=200.0, y=0.0)
+# One-way: A -> B only
+G.add_edge("A", "B", key=0, geom=LineString([(0, 0), (100, 0)]))
+# Two-way: B <-> C (reciprocal edges)
+G.add_edge("B", "C", key=0, geom=LineString([(100, 0), (200, 0)]))
+G.add_edge("C", "B", key=0, geom=LineString([(200, 0), (100, 0)]))
+
+cn = CityNetwork.from_nx(G)
+assert cn.is_directed
+```
+
+### From OpenStreetMap (via OSMnx)
+
+The built-in `from_osm` constructor uses an undirected simplification pipeline, so it always produces undirected networks. For directed routing with OSM data, fetch a directed `MultiDiGraph` via [OSMnx](https://osmnx.readthedocs.io/) and convert it with [`io.nx_from_osm_nx`](/tools/io#nx-from-osm-nx), then pass it to `from_nx`:
+
+```python
+import osmnx as ox
+from cityseer.tools import io
+
+# Fetch directed graph from OSMnx
+G_osmnx = ox.graph_from_polygon(polygon, network_type="drive")
+G_osmnx = ox.projection.project_graph(G_osmnx, to_crs="EPSG:32630")
+# Convert to cityseer-compatible MultiDiGraph (preserving direction)
+G_cityseer = io.nx_from_osm_nx(G_osmnx, directed=True)
+# Build directed CityNetwork
+cn = CityNetwork.from_nx(G_cityseer)
+```
+
+### Centrality semantics
+
+On directed networks, centrality metrics take on directional interpretations:
+
+- **Closeness** (harmonic, farness, etc.) becomes *out-closeness*: how efficiently each node can reach other nodes following the allowed traffic directions.
+- **Betweenness** uses directed shortest paths, counting only paths that respect one-way constraints.
+- **Accessibility and mixed-use** metrics respect direction when computing distances over the network. Data points are still assigned to the nearest street segment regardless of direction (the physical location of a shop does not depend on traffic flow).
+
 ## Elevation and Slope
 
 `cityseer` supports optional z (elevation) coordinates on network nodes. When elevation data is available, it is preserved throughout the full processing chain: graph construction, decomposition, consolidation, merging, dual graph conversion, CRS reprojection, and round-trip serialisation between `networkX`, `GeoDataFrames`, and the Rust `NetworkStructure`.

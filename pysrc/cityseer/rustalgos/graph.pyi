@@ -87,6 +87,7 @@ class NetworkStructure:
 
     graph: StableGraph  # Actual type is petgraph::stable_graph::StableGraph<NodePayload, EdgePayload>
     is_dual: bool
+    is_directed: bool
     edge_rtree: (
         object | None
     )  # R-tree for efficient spatial queries on edges. Type in Rust: Option<RTree<EdgeRtreeItem>>
@@ -108,6 +109,13 @@ class NetworkStructure:
         ...
     def set_is_dual(self, is_dual: bool) -> None:
         """Set whether this network structure represents a dual graph."""
+        ...
+    @property
+    def is_directed(self) -> bool:
+        """Whether this network structure represents a directed graph."""
+        ...
+    def set_is_directed(self, is_directed: bool) -> None:
+        """Set whether this network structure represents a directed graph."""
         ...
     def add_street_node(
         self,

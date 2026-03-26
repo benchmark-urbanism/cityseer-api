@@ -384,6 +384,7 @@ fn measure_cumulative_angle(coords: &[Coord<f64>]) -> f64 {
 pub struct NetworkStructure {
     pub graph: StableGraph<NodePayload, EdgePayload>,
     pub is_dual: bool,
+    pub is_directed: bool,
     pub progress: Arc<AtomicUsize>,
     pub edge_rtree: Option<RTree<EdgeRtreeItem>>,
     pub barrier_geoms: Option<Vec<Geometry<f64>>>,
@@ -397,6 +398,7 @@ impl NetworkStructure {
         Self {
             graph: StableGraph::<NodePayload, EdgePayload>::default(),
             is_dual: false,
+            is_directed: false,
             progress: Arc::new(AtomicUsize::new(0)),
             edge_rtree: None,
             barrier_geoms: None,
@@ -421,6 +423,15 @@ impl NetworkStructure {
 
     pub fn set_is_dual(&mut self, is_dual: bool) {
         self.is_dual = is_dual;
+    }
+
+    #[getter]
+    pub fn is_directed(&self) -> bool {
+        self.is_directed
+    }
+
+    pub fn set_is_directed(&mut self, is_directed: bool) {
+        self.is_directed = is_directed;
     }
 
     #[pyo3(signature = (node_key, x, y, live, weight, z=None))]

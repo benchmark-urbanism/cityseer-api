@@ -7,6 +7,14 @@ layout: ../../layouts/PageLayout.astro
 
 
  Functions for fetching and converting graphs and network structures.
+:::note
+``network_structure_from_nx`` and ``nx_from_osm_nx`` accept ``MultiDiGraph`` inputs and will produce directed
+``NetworkStructure`` instances. However, the graph simplification and cleaning pipeline
+(``osm_graph_from_poly``, ``nx_from_osm``, and the functions in the ``graphs`` module) does not preserve edge
+directionality. A ``MultiDiGraph`` should therefore not be passed through those functions before conversion.
+For the high-level API, use [`CityNetwork.from_nx`](/api/network#from-nx) with a ``MultiDiGraph`` or
+[`CityNetwork.from_geopandas`](/api/network#from-geopandas) with ``directed=True`` and an ``oneway`` column.
+:::
 
 
 <div class="function">
@@ -656,6 +664,11 @@ out qt;
     <span class="pc">:</span>
     <span class="pa"> float = 0.01</span>
   </div>
+  <div class="param">
+    <span class="pn">directed</span>
+    <span class="pc">:</span>
+    <span class="pa"> bool = False</span>
+  </div>
   <span class="pt">)-&gt;[</span>
   <span class="pr">MultiGraph</span>
   <span class="pt">]</span>
@@ -663,7 +676,9 @@ out qt;
 </div>
 
 
- Copy an [`OSMnx`](https://osmnx.readthedocs.io/) directed `MultiDiGraph` to an undirected `cityseer` `MultiGraph`. See the [`OSMnx`](/guide#osm-and-networkx) section of the guide for a more general discussion (and example) on workflows combining `OSMnx` with `cityseer`.
+ Copy an [`OSMnx`](https://osmnx.readthedocs.io/) directed `MultiDiGraph` to a `cityseer` compatible graph. When ``directed=False`` (default), converts to an undirected ``MultiGraph``. When ``directed=True``, preserves edge directionality as a ``MultiDiGraph``.
+
+ See the [`OSMnx`](/guide#osm-and-networkx) section of the guide for a more general discussion (and example) on workflows combining `OSMnx` with `cityseer`.
 
  `x` and `y` node attributes will be copied directly and `geometry` edge attributes will be copied to a `geom` edge attribute. The conversion process will snap the `shapely` `LineString` endpoints to the corresponding start and end node coordinates.
 
@@ -711,11 +726,21 @@ out qt;
  Tolerance at which to raise errors for mismatched geometry end-points vis-a-vis corresponding node coordinates. Prior to conversion, this method will check edge geometry end-points for alignment with the corresponding end-point nodes. Where these don't align within the given tolerance an exception will be raised. Otherwise, if within the tolerance, the conversion function will snap the geometry end-points to the corresponding node coordinates so that downstream exceptions are not subsequently raised. It is preferable to minimise graph manipulation prior to conversion to a `cityseer` compatible `MultiGraph` otherwise particularly large tolerances may be required, and this may lead to some unexpected or undesirable effects due to aggressive snapping.</div>
 </div>
 
+<div class="param-set">
+  <div class="def">
+    <div class="name">directed</div>
+    <div class="type">bool</div>
+  </div>
+  <div class="desc">
+
+ If ``True``, return a ``MultiDiGraph`` preserving one-way edge directionality from OSMnx. If ``False`` (default), return an undirected ``MultiGraph``.</div>
+</div>
+
 ### Returns
 <div class="param-set">
   <div class="def">
     <div class="name"></div>
-    <div class="type">nx.MultiGraph</div>
+    <div class="type">nx.MultiGraph | nx.MultiDiGraph</div>
   </div>
   <div class="desc">
 
@@ -845,7 +870,11 @@ out qt;
 </div>
 
 
- Transpose a `networkX` `MultiGraph` into a `gpd.GeoDataFrame` and `NetworkStructure` for use by `cityseer`. Calculates length and angle attributes, as well as in and out bearings, and stores this information in the returned data maps. Optional `z` node attributes (elevation) are supported; when present on both endpoints of an edge, a slope-based walking impedance (Tobler's hiking function) is automatically applied during centrality computations.
+ Transpose a `networkX` `MultiGraph` (or `MultiDiGraph`) into a `gpd.GeoDataFrame` and `NetworkStructure` for use by `cityseer`.
+
+ Calculates length and angle attributes, as well as in and out bearings, and stores this information in the returned data maps. Optional `z` node attributes (elevation) are supported; when present on both endpoints of an edge, a slope-based walking impedance (Tobler's hiking function) is automatically applied during centrality computations.
+
+ When a ``MultiDiGraph`` is passed, the resulting ``NetworkStructure`` will be marked as directed and edges will respect the graph's edge directionality. Note that the graph cleaning and simplification functions in the ``graphs`` module do not preserve directionality, so a ``MultiDiGraph`` should not be passed through those functions before calling this method.
 ### Parameters
 <div class="param-set">
   <div class="def">
@@ -854,7 +883,7 @@ out qt;
   </div>
   <div class="desc">
 
- A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `y` node attributes, and `geom` edge attributes containing `LineString` geoms. Nodes may optionally include a `z` attribute for elevation.</div>
+ A `networkX` `MultiGraph` or `MultiDiGraph` in a projected coordinate system, containing `x` and `y` node attributes, and `geom` edge attributes containing `LineString` geoms. Nodes may optionally include a `z` attribute for elevation. When a `MultiDiGraph` is provided, the resulting `NetworkStructure` is directed.</div>
 </div>
 
 <div class="param-set">

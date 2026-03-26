@@ -127,6 +127,11 @@ filtered and why.
 
  
 
+<span class="name">is_directed</span><span class="annotation">: bool</span>
+
+
+ 
+
 <span class="name">crs</span><span class="annotation">: pyproj.crs.crs.CRS | None</span>
 
 
@@ -168,6 +173,14 @@ filtered and why.
     <span class="pc">:</span>
     <span class="pa"> shapely.geometry.base.BaseGeometry | None = None</span>
   </div>
+  <div class="param">
+    <span class="pn">directed</span>
+    <span class="pc">:</span>
+    <span class="pa"> bool = False</span>
+  </div>
+  <div class="param">
+    <span class="pn">oneway_fids</span>
+  </div>
   <span class="pt">)-&gt;[</span>
   <span class="pr">CityNetwork</span>
   <span class="pt">]</span>
@@ -207,6 +220,26 @@ filtered and why.
  Optional polygon in the same projected CRS; nodes inside are marked as ``live``, nodes outside as ``dead``.</div>
 </div>
 
+<div class="param-set">
+  <div class="def">
+    <div class="name">directed</div>
+    <div class="type">bool</div>
+  </div>
+  <div class="desc">
+
+ If ``True``, build a directed network. Requires ``oneway_fids``. Features in ``oneway_fids`` are one-way (in LineString coordinate order); all other features are bidirectional.</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">oneway_fids</div>
+    <div class="type">set[Any] | None</div>
+  </div>
+  <div class="desc">
+
+ Feature IDs that are one-way when ``directed=True``. Ignored if ``directed=False``.</div>
+</div>
+
 ### Returns
 <div class="param-set">
   <div class="def">
@@ -216,6 +249,17 @@ filtered and why.
   <div class="desc">
 
  A new CityNetwork instance.</div>
+</div>
+
+### Raises
+<div class="param-set">
+  <div class="def">
+    <div class="name"></div>
+    <div class="type">ValueError</div>
+  </div>
+  <div class="desc">
+
+ If ``directed=True`` but ``oneway_fids`` is not provided.</div>
 </div>
 
 
@@ -250,6 +294,11 @@ filtered and why.
     <span class="pn">boundary</span>
     <span class="pc">:</span>
     <span class="pa"> shapely.geometry.base.BaseGeometry | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">directed</span>
+    <span class="pc">:</span>
+    <span class="pa"> bool = False</span>
   </div>
   <span class="pt">)-&gt;[</span>
   <span class="pr">CityNetwork</span>
@@ -290,6 +339,16 @@ filtered and why.
  Optional polygon in the same projected CRS; nodes inside are marked as ``live``, nodes outside as ``dead``.</div>
 </div>
 
+<div class="param-set">
+  <div class="def">
+    <div class="name">directed</div>
+    <div class="type">bool</div>
+  </div>
+  <div class="desc">
+
+ If ``True``, build a directed network. Requires a boolean ``oneway`` column in the GeoDataFrame. Features with ``oneway=True`` are one-way in LineString coordinate order; features with ``oneway=False`` are bidirectional.</div>
+</div>
+
 ### Returns
 <div class="param-set">
   <div class="def">
@@ -299,6 +358,17 @@ filtered and why.
   <div class="desc">
 
  A new CityNetwork instance.</div>
+</div>
+
+### Raises
+<div class="param-set">
+  <div class="def">
+    <div class="name"></div>
+    <div class="type">ValueError</div>
+  </div>
+  <div class="desc">
+
+ If ``directed=True`` but the GeoDataFrame has no ``oneway`` column.</div>
 </div>
 
 
@@ -338,16 +408,18 @@ filtered and why.
 </div>
 
 
- Construct a CityNetwork from a cityseer-compatible NetworkX MultiGraph. The input graph must be a *primal* edge graph (not a dual graph) with ``geom`` attributes on edges and a ``crs`` attribute on the graph. Node ``live`` attributes are preserved.
+ Construct a CityNetwork from a cityseer-compatible NetworkX graph. The input graph must be a *primal* edge graph (not a dual graph) with ``geom`` attributes on edges and a ``crs`` attribute on the graph. Node ``live`` attributes are preserved.
+
+ When a ``MultiDiGraph`` is passed, directed mode is enabled automatically: each directed edge becomes its own one-way dual node (in the coordinate order of the directed edge). Two-way streets should be represented as two reciprocal edges (A to B and B to A), which produce two separate dual nodes.
 ### Parameters
 <div class="param-set">
   <div class="def">
     <div class="name">graph</div>
-    <div class="type">nx.MultiGraph</div>
+    <div class="type">nx.MultiGraph | nx.MultiDiGraph</div>
   </div>
   <div class="desc">
 
- A cityseer-compatible primal NetworkX graph.</div>
+ A cityseer-compatible primal NetworkX graph. ``MultiDiGraph`` enables directed routing.</div>
 </div>
 
 <div class="param-set">
@@ -437,7 +509,9 @@ filtered and why.
 </div>
 
 
- Construct a CityNetwork from OpenStreetMap data within a bounding polygon. Downloads the road network via OSMnx and converts it to a dual CityNetwork. Requires the ``osmnx`` package.
+ Construct a CityNetwork from OpenStreetMap data within a bounding polygon. Downloads the road network and converts it to a dual CityNetwork.
+
+ For directed (one-way) routing with OSM data, fetch a directed graph via `OSMnx <https://osmnx.readthedocs.io/>`_ and pass it to :meth:`from_nx` or convert it with :func:`io.nx_from_osm_nx(directed=True) <cityseer.tools.io.nx_from_osm_nx>`.
 ### Parameters
 <div class="param-set">
   <div class="def">
@@ -537,6 +611,8 @@ filtered and why.
 
 
  Update the network topology with new or modified geometries. Performs an incremental diff against the current state: unchanged features retain their node indices, added features are inserted, and removed features are deleted. Previously computed centrality columns are cleared since they are invalidated by topology changes.
+
+ For directed networks built via ``from_geopandas(directed=True)``, the incoming GeoDataFrame must include the ``oneway`` column. Direction changes (even without geometry changes) trigger a rebuild.
 ### Parameters
 <div class="param-set">
   <div class="def">
@@ -1266,22 +1342,33 @@ filtered and why.
     <span class="pn">self</span>
   </div>
   <span class="pt">)-&gt;[</span>
-  <span class="pr">MultiGraph</span>
+  <span class="pr">MultiDiGraph</span>
   <span class="pt">]</span>
 </div>
 </div>
 
 
- Convert the network to a cityseer-compatible NetworkX MultiGraph.
+ Convert the network to a NetworkX MultiGraph (or MultiDiGraph if directed). If the network was built with :meth:`from_nx`, returns a copy of the original graph with computed centrality and layer columns added to each edge's data dictionary. Otherwise builds a new cityseer-compatible undirected graph from the internal GeoDataFrame.
 ### Returns
 <div class="param-set">
   <div class="def">
     <div class="name">graph</div>
-    <div class="type">nx.MultiGraph</div>
+    <div class="type">nx.MultiGraph | nx.MultiDiGraph</div>
   </div>
   <div class="desc">
 
- A primal edge graph with ``geom`` attributes on edges and ``crs`` on the graph.</div>
+ A primal edge graph with computed metrics added to edge data.</div>
+</div>
+
+### Raises
+<div class="param-set">
+  <div class="def">
+    <div class="name"></div>
+    <div class="type">NotImplementedError</div>
+  </div>
+  <div class="desc">
+
+ If the network is directed but was not built via :meth:`from_nx` (no source graph to export).</div>
 </div>
 
 

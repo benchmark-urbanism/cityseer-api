@@ -267,7 +267,7 @@ may therefore be preferable when working at small thresholds on decomposed netwo
   </div>
   <div class="desc">
 
- If True, uses distance-based sampling. If False, computes exact centrality.</div>
+ If True, uses distance-based Bernoulli sampling with inverse-probability weighting (IPW). The sampling probability is derived from each distance threshold using a canonical grid model (see ``sampling.compute_distance_p``). At distances where the sampling probability exceeds the live fraction, exact computation is used instead.</div>
 </div>
 
 <div class="param-set">
@@ -835,7 +835,7 @@ may therefore be preferable when working at small thresholds on decomposed netwo
   </div>
   <div class="desc">
 
- If True, uses distance-based sampling. If False, computes exact centrality.</div>
+ If True, uses distance-based Bernoulli sampling with inverse-probability weighting (IPW). The sampling probability is derived from each distance threshold using a canonical grid model (see ``sampling.compute_distance_p``). At distances where the sampling probability exceeds the live fraction, exact computation is used instead.</div>
 </div>
 
 <div class="param-set">

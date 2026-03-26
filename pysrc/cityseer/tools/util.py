@@ -61,7 +61,7 @@ def validate_cityseer_networkx_graph(
         return g_multi_copy
     # check graph type
     if not isinstance(g_multi_copy, nx.MultiGraph):
-        raise TypeError(f"Expected an undirected networkX MultiGraph but encountered {type(g_multi_copy)}.")
+        raise TypeError(f"Expected a networkX MultiGraph or MultiDiGraph but encountered {type(g_multi_copy)}.")
     # check CRS
     if "crs" not in g_multi_copy.graph:
         raise KeyError('No CRS code found in graph. Please specify a CRS code as a "crs" graph attribute.')

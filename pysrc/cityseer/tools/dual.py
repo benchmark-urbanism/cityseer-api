@@ -207,6 +207,7 @@ def _make_edge_wkt(
 
 def _clean_geometries(
     geoms: dict[Any, LineString],
+    directed: bool = False,
 ) -> tuple[dict[Any, LineString], dict[Any, str], int, int, int]:
     """Apply the same self-loop, duplicate, and dangler cleanup as the QGIS fast path."""
     geoms = dict(geoms)
@@ -222,20 +223,23 @@ def _clean_geometries(
             del geoms[fid]
             n_self_loops += 1
 
-    ep_pairs: dict[frozenset[tuple[float, float]], list[tuple[Any, float]]] = collections.defaultdict(list)
-    for fid, line in geoms.items():
-        coords = list(line.coords)
-        pair = frozenset({_ep_key(coords[0]), _ep_key(coords[-1])})
-        ep_pairs[pair].append((fid, line.length))
-    for items in ep_pairs.values():
-        if len(items) > 1:
-            items.sort(key=lambda x: x[1], reverse=True)
-            longest = items[0][1]
-            for fid, length in items[1:]:
-                if fid in geoms and length >= longest * DUPLICATE_LENGTH_RATIO:
-                    statuses[fid] = "duplicate"
-                    del geoms[fid]
-                    n_duplicates += 1
+    # Skip duplicate detection for directed graphs: reverse edges sharing the
+    # same endpoint pair are distinct traffic directions, not duplicates.
+    if not directed:
+        ep_pairs: dict[frozenset[tuple[float, float]], list[tuple[Any, float]]] = collections.defaultdict(list)
+        for fid, line in geoms.items():
+            coords = list(line.coords)
+            pair = frozenset({_ep_key(coords[0]), _ep_key(coords[-1])})
+            ep_pairs[pair].append((fid, line.length))
+        for items in ep_pairs.values():
+            if len(items) > 1:
+                items.sort(key=lambda x: x[1], reverse=True)
+                longest = items[0][1]
+                for fid, length in items[1:]:
+                    if fid in geoms and length >= longest * DUPLICATE_LENGTH_RATIO:
+                        statuses[fid] = "duplicate"
+                        del geoms[fid]
+                        n_duplicates += 1
 
     while True:
         temp_ep: dict[tuple[float, float], list[Any]] = collections.defaultdict(list)
@@ -366,6 +370,59 @@ def _requires_full_rebuild(
     return False
 
 
+def _can_traverse(
+    fid_from: Any,
+    fid_to: Any,
+    endpoint: tuple[float, float],
+    ep_keys: dict[Any, tuple[tuple[float, float], tuple[float, float]]],
+    directions: dict[Any, tuple[bool, bool]],
+) -> bool:
+    """Check if traffic can flow from fid_from to fid_to at a shared endpoint."""
+    start_from, end_from = ep_keys[fid_from]
+    start_to, end_to = ep_keys[fid_to]
+    fwd_from, rev_from = directions[fid_from]
+    fwd_to, rev_to = directions[fid_to]
+    can_exit = (end_from == endpoint and fwd_from) or (start_from == endpoint and rev_from)
+    can_enter = (start_to == endpoint and fwd_to) or (end_to == endpoint and rev_to)
+    return can_exit and can_enter
+
+
+def _try_add_edge(
+    ns: rustalgos.graph.NetworkStructure,
+    fid_from: Any,
+    fid_to: Any,
+    endpoint: tuple[float, float],
+    line_data: dict[Any, tuple[list[tuple[float, float]], list[float]]],
+    directions: dict[Any, tuple[bool, bool]] | None,
+    ep_keys: dict[Any, tuple[tuple[float, float], tuple[float, float]]],
+    node_idx: dict[Any, int],
+    edge_records: dict[tuple[Any, Any, int], dict[str, Any]],
+    edge_counter: int,
+    shared_key: str,
+) -> int:
+    """Add a single directed edge if traversal is allowed. Returns updated edge_counter."""
+    if directions is not None and not _can_traverse(fid_from, fid_to, endpoint, ep_keys, directions):
+        return edge_counter
+    merged_wkt = _make_edge_wkt(fid_from, fid_to, endpoint, line_data)
+    ns.add_street_edge(
+        node_idx[fid_from],
+        node_idx[fid_to],
+        edge_counter,
+        fid_from,
+        fid_to,
+        merged_wkt,
+        shared_primal_node_key=shared_key,
+    )
+    edge_records[(fid_from, fid_to, edge_counter)] = _edge_record(
+        fid_from,
+        fid_to,
+        edge_counter,
+        merged_wkt,
+        shared_key,
+    )
+    return edge_counter + 1
+
+
 def build_dual(
     data: DualInput | Any,
     *,
@@ -373,8 +430,18 @@ def build_dual(
     boundary: BaseGeometry | None = None,
     build_nodes_gdf: bool = True,
     progress: bool = True,
+    directions: dict[Any, tuple[bool, bool]] | None = None,
 ) -> tuple[rustalgos.graph.NetworkStructure, Any | None, DualState]:
-    """Build a dual NetworkStructure directly from line geometries."""
+    """Build a dual NetworkStructure directly from line geometries.
+
+    Parameters
+    ----------
+    directions: dict[Any, tuple[bool, bool]] | None
+        Optional mapping from feature ID to ``(forward_allowed, reverse_allowed)`` where forward
+        follows the LineString coordinate order. When provided, the graph is built as directed:
+        dual edges are only added where traffic flow permits. ``None`` (default) builds an
+        undirected graph with edges in both directions.
+    """
     if progress:
         from tqdm import tqdm
     else:
@@ -400,7 +467,9 @@ def build_dual(
     for fid in raw_geoms:
         feature_status[fid] = "active"
 
-    geoms, cleaned_status, _n_self_loops, _n_duplicates, _n_danglers = _clean_geometries(raw_geoms)
+    geoms, cleaned_status, _n_self_loops, _n_duplicates, _n_danglers = _clean_geometries(
+        raw_geoms, directed=directions is not None
+    )
     feature_status.update(cleaned_status)
     if not geoms:
         raise ValueError("No valid network geometries remained after cleanup.")
@@ -408,18 +477,24 @@ def build_dual(
     fid_list = sorted(geoms.keys())
     ns = rustalgos.graph.NetworkStructure()
     ns.set_is_dual(True)
+    if directions is not None:
+        ns.set_is_directed(True)
     endpoint_to_fids: dict[tuple[float, float], list[Any]] = collections.defaultdict(list)
     node_idx: dict[Any, int] = {}
     midpoints: dict[Any, tuple[float, float]] = {}
     line_data: dict[Any, tuple[list[tuple[float, float]], list[float]]] = {}
 
+    ep_keys: dict[Any, tuple[tuple[float, float], tuple[float, float]]] = {}
     for fid in tqdm(fid_list, desc="Building nodes", mininterval=0.1):
         line = geoms[fid]
         coords = [(c[0], c[1]) for c in line.coords]
         cum = _cumulative_lengths(coords)
         line_data[fid] = (coords, cum)
-        for pt in (coords[0], coords[-1]):
-            endpoint_to_fids[_ep_key(pt)].append(fid)
+        start_key = _ep_key(coords[0])
+        end_key = _ep_key(coords[-1])
+        ep_keys[fid] = (start_key, end_key)
+        for pt in (start_key, end_key):
+            endpoint_to_fids[pt].append(fid)
         mid = _interpolate_at(coords, cum, 0.5)
         live = prepared_boundary is None or prepared_boundary.contains(Point(mid))
         idx = ns.add_street_node(
@@ -435,7 +510,6 @@ def build_dual(
     edge_counter = 0
     seen: set[frozenset[Any]] = set()
     edge_records: dict[tuple[Any, Any, int], dict[str, Any]] = {}
-    # Pre-collect unique edge pairs for smooth progress tracking
     edge_pairs: list[tuple[Any, Any, tuple[float, float]]] = []
     for endpoint, fids in endpoint_to_fids.items():
         for fid_a, fid_b in itertools.combinations(fids, 2):
@@ -448,43 +522,32 @@ def build_dual(
         pair = frozenset({fid_a, fid_b})
         seen.add(pair)
         shared_key = str(endpoint)
-        merged_wkt = _make_edge_wkt(fid_a, fid_b, endpoint, line_data)
-        ns.add_street_edge(
-            node_idx[fid_a],
-            node_idx[fid_b],
-            edge_counter,
+        edge_counter = _try_add_edge(
+            ns,
             fid_a,
             fid_b,
-            merged_wkt,
-            shared_primal_node_key=shared_key,
-        )
-        edge_records[(fid_a, fid_b, edge_counter)] = _edge_record(
-            fid_a,
-            fid_b,
+            endpoint,
+            line_data,
+            directions,
+            ep_keys,
+            node_idx,
+            edge_records,
             edge_counter,
-            merged_wkt,
             shared_key,
         )
-        edge_counter += 1
-
-        merged_wkt_rev = _make_edge_wkt(fid_b, fid_a, endpoint, line_data)
-        ns.add_street_edge(
-            node_idx[fid_b],
-            node_idx[fid_a],
-            edge_counter,
+        edge_counter = _try_add_edge(
+            ns,
             fid_b,
             fid_a,
-            merged_wkt_rev,
-            shared_primal_node_key=shared_key,
-        )
-        edge_records[(fid_b, fid_a, edge_counter)] = _edge_record(
-            fid_b,
-            fid_a,
+            endpoint,
+            line_data,
+            directions,
+            ep_keys,
+            node_idx,
+            edge_records,
             edge_counter,
-            merged_wkt_rev,
             shared_key,
         )
-        edge_counter += 1
 
     ns.validate()
     ns.build_edge_rtree()
@@ -503,8 +566,10 @@ def build_dual(
         "seen": seen,
         "boundary_wkt": boundary_wkt,
         "_line_data": line_data,
+        "_ep_keys": ep_keys,
         "crs": crs,
         "edge_records": edge_records,
+        "directions": directions,
     }
     return ns, nodes_gdf, state
 
@@ -517,6 +582,7 @@ def incremental_update(
     boundary: BaseGeometry | None = None,
     build_nodes_gdf: bool = True,
     progress: bool = True,
+    directions: dict[Any, tuple[bool, bool]] | None = None,
 ) -> tuple[rustalgos.graph.NetworkStructure, Any | None, DualState]:
     """Apply an incremental diff to a previously built dual network."""
     current_source_wkts, discovered_crs = extract_wkts(data)
@@ -542,6 +608,7 @@ def incremental_update(
             boundary=boundary,
             build_nodes_gdf=build_nodes_gdf,
             progress=progress,
+            directions=directions,
         )
         state["ns"] = ns
         return ns, _nodes_gdf, state
@@ -553,6 +620,7 @@ def incremental_update(
             boundary=boundary,
             build_nodes_gdf=build_nodes_gdf,
             progress=progress,
+            directions=directions,
         )
         feature_status = rebuilt_state.get("feature_status", {})
         for fid in removed:
@@ -568,6 +636,7 @@ def incremental_update(
     edge_counter = state["edge_counter"]
     seen = state["seen"]
     line_data = state["_line_data"]
+    ep_keys: dict[Any, tuple[tuple[float, float], tuple[float, float]]] = state.get("_ep_keys", {})
     edge_records = state["edge_records"]
     feature_status = dict(state.get("feature_status", {}))
 
@@ -640,14 +709,16 @@ def incremental_update(
         node_idx[fid] = idx
         midpoints[fid] = mid
         feature_status[fid] = "active"
-        for pt in (clean_coords[0], clean_coords[-1]):
-            endpoint_to_fids[_ep_key(pt)].append(fid)
+        start_key = _ep_key(clean_coords[0])
+        end_key = _ep_key(clean_coords[-1])
+        ep_keys[fid] = (start_key, end_key)
+        for pt in (start_key, end_key):
+            endpoint_to_fids[pt].append(fid)
 
     fid_list.sort()
     for fid in [fid for fid in to_add if fid in geoms]:
-        coords, _cum = line_data[fid]
-        for pt in (coords[0], coords[-1]):
-            key = _ep_key(pt)
+        start_key, end_key = ep_keys[fid]
+        for key in (start_key, end_key):
             for other_fid in endpoint_to_fids.get(key, []):
                 if other_fid == fid:
                     continue
@@ -656,43 +727,32 @@ def incremental_update(
                     continue
                 seen.add(pair)
                 shared_key = str(key)
-                merged_wkt = _make_edge_wkt(fid, other_fid, key, line_data)
-                ns.add_street_edge(
-                    node_idx[fid],
-                    node_idx[other_fid],
-                    edge_counter,
+                edge_counter = _try_add_edge(
+                    ns,
                     fid,
                     other_fid,
-                    merged_wkt,
-                    shared_primal_node_key=shared_key,
-                )
-                edge_records[(fid, other_fid, edge_counter)] = _edge_record(
-                    fid,
-                    other_fid,
+                    key,
+                    line_data,
+                    directions,
+                    ep_keys,
+                    node_idx,
+                    edge_records,
                     edge_counter,
-                    merged_wkt,
                     shared_key,
                 )
-                edge_counter += 1
-
-                merged_wkt_rev = _make_edge_wkt(other_fid, fid, key, line_data)
-                ns.add_street_edge(
-                    node_idx[other_fid],
-                    node_idx[fid],
-                    edge_counter,
+                edge_counter = _try_add_edge(
+                    ns,
                     other_fid,
                     fid,
-                    merged_wkt_rev,
-                    shared_primal_node_key=shared_key,
-                )
-                edge_records[(other_fid, fid, edge_counter)] = _edge_record(
-                    other_fid,
-                    fid,
+                    key,
+                    line_data,
+                    directions,
+                    ep_keys,
+                    node_idx,
+                    edge_records,
                     edge_counter,
-                    merged_wkt_rev,
                     shared_key,
                 )
-                edge_counter += 1
 
     if boundary_changed:
         for fid in fid_list:
@@ -716,9 +776,11 @@ def incremental_update(
             "seen": seen,
             "boundary_wkt": boundary_wkt,
             "_line_data": line_data,
+            "_ep_keys": ep_keys,
             "crs": crs,
             "edge_records": edge_records,
             "ns": ns,
+            "directions": directions,
         }
     )
     nodes_gdf = _build_nodes_gdf(ns, fid_list, node_idx, midpoints, crs) if build_nodes_gdf else None

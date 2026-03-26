@@ -1,5 +1,14 @@
 """
 Functions for fetching and converting graphs and network structures.
+
+:::note
+``network_structure_from_nx`` and ``nx_from_osm_nx`` accept ``MultiDiGraph`` inputs and will produce directed
+``NetworkStructure`` instances. However, the graph simplification and cleaning pipeline
+(``osm_graph_from_poly``, ``nx_from_osm``, and the functions in the ``graphs`` module) does not preserve edge
+directionality. A ``MultiDiGraph`` should therefore not be passed through those functions before conversion.
+For the high-level API, use [`CityNetwork.from_nx`](/api/network#from-nx) with a ``MultiDiGraph`` or
+[`CityNetwork.from_geopandas`](/api/network#from-geopandas) with ``directed=True`` and an ``oneway`` column.
+:::
 """
 
 # workaround until networkx adopts types
@@ -777,9 +786,13 @@ def nx_from_osm_nx(
     node_attributes: list[str] | None = None,
     edge_attributes: list[str] | None = None,
     tolerance: float = config.ATOL,
+    directed: bool = False,
 ) -> nx.MultiGraph:
     """
-    Copy an [`OSMnx`](https://osmnx.readthedocs.io/) directed `MultiDiGraph` to an undirected `cityseer` `MultiGraph`.
+    Copy an [`OSMnx`](https://osmnx.readthedocs.io/) directed `MultiDiGraph` to a `cityseer` compatible graph.
+
+    When ``directed=False`` (default), converts to an undirected ``MultiGraph``.
+    When ``directed=True``, preserves edge directionality as a ``MultiDiGraph``.
 
     See the [`OSMnx`](/guide#osm-and-networkx) section of the guide for a more general discussion (and example) on
     workflows combining `OSMnx` with `cityseer`.
@@ -815,10 +828,13 @@ def nx_from_osm_nx(
         coordinates so that downstream exceptions are not subsequently raised. It is preferable to minimise graph
         manipulation prior to conversion to a `cityseer` compatible `MultiGraph` otherwise particularly large tolerances
         may be required, and this may lead to some unexpected or undesirable effects due to aggressive snapping.
+    directed: bool
+        If ``True``, return a ``MultiDiGraph`` preserving one-way edge directionality from OSMnx.
+        If ``False`` (default), return an undirected ``MultiGraph``.
 
     Returns
     -------
-    nx.MultiGraph
+    nx.MultiGraph | nx.MultiDiGraph
         A `cityseer` compatible `networkX` graph with `x` and `y` node attributes and `geom` edge attributes.
 
     """
@@ -829,9 +845,9 @@ def nx_from_osm_nx(
         raise TypeError("Node attributes to be copied should be provided as either a list or tuple of attribute keys.")
     if edge_attributes is not None and not isinstance(edge_attributes, list | tuple):
         raise TypeError("Edge attributes to be copied should be provided as either a list or tuple of attribute keys.")
-    logger.info("Converting OSMnx MultiDiGraph to cityseer MultiGraph.")
-    # target MultiGraph
-    g_multi = nx.MultiGraph()
+    logger.info("Converting OSMnx MultiDiGraph to cityseer %s.", "MultiDiGraph" if directed else "MultiGraph")
+    # target graph
+    g_multi: nx.MultiGraph = nx.MultiDiGraph() if directed else nx.MultiGraph()
     g_multi.graph["crs"] = CRS(nx_multidigraph.graph["crs"])
 
     def _process_node(nd_key: NodeKey) -> tuple[float, float]:
@@ -1020,17 +1036,24 @@ def network_structure_from_nx(
     crs: None = None,
 ) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame, rustalgos.graph.NetworkStructure]:
     """
-    Transpose a `networkX` `MultiGraph` into a `gpd.GeoDataFrame` and `NetworkStructure` for use by `cityseer`.
+    Transpose a `networkX` `MultiGraph` (or `MultiDiGraph`) into a `gpd.GeoDataFrame` and `NetworkStructure` for use
+    by `cityseer`.
 
     Calculates length and angle attributes, as well as in and out bearings, and stores this information in the returned
     data maps. Optional `z` node attributes (elevation) are supported; when present on both endpoints of an edge, a
     slope-based walking impedance (Tobler's hiking function) is automatically applied during centrality computations.
 
+    When a ``MultiDiGraph`` is passed, the resulting ``NetworkStructure`` will be marked as directed and edges will
+    respect the graph's edge directionality. Note that the graph cleaning and simplification functions in the
+    ``graphs`` module do not preserve directionality, so a ``MultiDiGraph`` should not be passed through those
+    functions before calling this method.
+
     Parameters
     ----------
     nx_multigraph: nx.MultiGraph
-        A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `y` node attributes, and `geom`
-        edge attributes containing `LineString` geoms. Nodes may optionally include a `z` attribute for elevation.
+        A `networkX` `MultiGraph` or `MultiDiGraph` in a projected coordinate system, containing `x` and `y` node
+        attributes, and `geom` edge attributes containing `LineString` geoms. Nodes may optionally include a `z`
+        attribute for elevation. When a `MultiDiGraph` is provided, the resulting `NetworkStructure` is directed.
     crs: None
         The `crs` parameter is deprecated and will be removed in a future release. If your network is
         generated via cityseer from OSM or GeoPandas then CRS handling is automatic. Otherwise, the CRS can be set
@@ -1066,6 +1089,7 @@ def network_structure_from_nx(
     # prepare the network structure
     network_structure = rustalgos.graph.NetworkStructure()
     network_structure.set_is_dual(bool(g_multi_copy.graph.get("is_dual", False)))
+    network_structure.set_is_directed(isinstance(g_multi_copy, nx.MultiDiGraph))
     # generate the network information
     agg_node_data: dict[str, tuple[Any, ...]] = {}
     agg_node_dual_data: dict[str, tuple[Any, Any, Any, Any]] = {}
