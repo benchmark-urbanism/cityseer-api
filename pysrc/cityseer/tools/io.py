@@ -860,17 +860,18 @@ def nx_from_osm_nx(
             raise KeyError(f'Encountered node missing "y" coordinate attribute for node {nd_key}.')
         y: float = nx_multidigraph.nodes[nd_key]["y"]
         # add node and attributes if necessary
+        orig_nd_key = nd_key
         nd_key = str(nd_key)
         if nd_key not in g_multi:
             node_kwargs: dict[str, Any] = {"x": x, "y": y}
-            if "z" in nx_multidigraph.nodes[nd_key]:
-                node_kwargs["z"] = nx_multidigraph.nodes[nd_key]["z"]
+            if "z" in nx_multidigraph.nodes[orig_nd_key]:
+                node_kwargs["z"] = nx_multidigraph.nodes[orig_nd_key]["z"]
             g_multi.add_node(nd_key, **node_kwargs)
             if node_attributes is not None:
                 for node_att in node_attributes:
-                    if node_att not in nx_multidigraph.nodes[nd_key]:
+                    if node_att not in nx_multidigraph.nodes[orig_nd_key]:
                         raise ValueError(f"Specified attribute {node_att} is not available for node {nd_key}.")
-                    g_multi.nodes[nd_key][node_att] = nx_multidigraph.nodes[nd_key][node_att]
+                    g_multi.nodes[nd_key][node_att] = nx_multidigraph.nodes[orig_nd_key][node_att]
 
         return x, y
 
