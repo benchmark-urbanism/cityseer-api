@@ -130,7 +130,7 @@ def extract_wkts(data: DualInput | Any) -> tuple[dict[Any, str], Any | None]:
     try:
         import geopandas as gpd
     except ImportError:
-        gpd = None  # type: ignore[assignment]
+        gpd = None  # type: ignore
     if gpd is not None and isinstance(data, gpd.GeoDataFrame):
         if data.index.duplicated().any():
             raise ValueError("The GeoDataFrame index must contain unique entries.")
@@ -273,7 +273,7 @@ def _build_nodes_gdf(
 ) -> Any:
     import geopandas as gpd
 
-    return gpd.GeoDataFrame(  # type: ignore[call-overload]
+    return gpd.GeoDataFrame(  # type: ignore
         {
             "ns_node_idx": [node_idx[fid] for fid in fid_list],
             "x": [midpoints[fid][0] for fid in fid_list],

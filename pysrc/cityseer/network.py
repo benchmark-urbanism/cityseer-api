@@ -193,7 +193,7 @@ class CityNetwork:
         gdf: GeoDataFrame
             A new GeoDataFrame indexed by feature id with LineString geometries.
         """
-        return gpd.GeoDataFrame(  # type: ignore[call-overload]
+        return gpd.GeoDataFrame(  # type: ignore
             {col: self._nodes_gdf[col] for col in self._nodes_gdf.columns if col != self._nodes_gdf.geometry.name},
             index=self._nodes_gdf.index,
             geometry=[self._state["geoms"][fid] for fid in self._nodes_gdf.index],

@@ -222,7 +222,7 @@ def node_centrality_shortest(
             desc=f"centrality full: {dist_label}",
         )
         for d in full_distances:
-            results[d] = result  # type: ignore[assignment]
+            results[d] = result  # type: ignore
 
     for d, p in sampled_distances:
         logger.info(f"  Sampled {d}m: p={p:.0%}")
@@ -243,7 +243,7 @@ def node_centrality_shortest(
             partial_func=partial_func,
             desc=f"centrality p={p:.0%}: {d}m",
         )
-        results[d] = result  # type: ignore[assignment]
+        results[d] = result  # type: ignore
 
     if not results:
         return nodes_gdf
@@ -336,7 +336,7 @@ def build_od_matrix(
         mean_x = np.mean([xy[0] for xy in node_xys[:100]])
         target_crs = 27700 if 100_000 < mean_x < 700_000 else 32630
         logger.info(f"Reprojecting zone centroids from EPSG:4326 to EPSG:{target_crs}")
-        centroid_gdf = gpd.GeoDataFrame({"geometry": zones_work["_centroid"]}, crs=zones_work.crs)  # type: ignore[no-matching-overload]
+        centroid_gdf = gpd.GeoDataFrame({"geometry": zones_work["_centroid"]}, crs=zones_work.crs)  # type: ignore
         centroid_gdf = centroid_gdf.to_crs(epsg=target_crs)
         zones_work["_centroid"] = centroid_gdf.geometry
 
@@ -597,7 +597,7 @@ def node_centrality_simplest(
             desc=f"centrality simplest full: {dist_label}",
         )
         for d in full_distances:
-            results[d] = result  # type: ignore[assignment]
+            results[d] = result  # type: ignore
 
     for d, p in sampled_distances:
         logger.info(f"  Sampled {d}m: p={p:.0%}")
@@ -620,7 +620,7 @@ def node_centrality_simplest(
             partial_func=partial_func,
             desc=f"centrality simplest p={p:.0%}: {d}m",
         )
-        results[d] = result  # type: ignore[assignment]
+        results[d] = result  # type: ignore
 
     if not results:
         return nodes_gdf
