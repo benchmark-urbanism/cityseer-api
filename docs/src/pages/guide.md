@@ -14,7 +14,7 @@ For practical, end-to-end worked examples with real-world data (Madrid case stud
 pip install --upgrade cityseer
 ```
 
-`cityseer` requires Python 3.10 or later. The underlying algorithms are implemented in Rust and distributed as pre-compiled wheels, so no Rust toolchain is needed. A projected coordinate reference system (CRS) is required for all analyses; coordinates must be in metres, not degrees. Use [epsg.io](https://epsg.io/) to find the appropriate EPSG code for your study area (e.g. EPSG:32630 for London, EPSG:32632 for central Europe, EPSG:2154 for France).
+`cityseer` requires Python 3.10 or later. The underlying algorithms are implemented in Rust and distributed as pre-compiled wheels, so no Rust toolchain is needed. A projected coordinate reference system (CRS) is required for all analyses; coordinates must be in metres, not degrees. Use [epsg.io](https://epsg.io/) to find the appropriate EPSG code for your study area (e.g. `EPSG:32630` for London, `EPSG:32632` for central Europe, `EPSG:2154` for France).
 
 :::note
 For users who prefer a GUI workflow, a [QGIS plugin](/plugin) is available for computing centrality metrics without writing Python code.

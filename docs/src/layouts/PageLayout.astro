@@ -9,12 +9,38 @@ import logoURL from '@src/assets/logos/cityseer_logo_light_red.png'
 import '@src/styles/yapper.css'
 
 const currentPath = Astro.url.pathname
+
+const pageDescriptions: Record<string, string> = {
+  '/intro': 'Cityseer is a Python/Rust library for fine-grained street-network and land-use analysis at the pedestrian scale.',
+  '/guide': 'Comprehensive guide to cityseer: installation, core concepts, CityNetwork API, centrality, decay functions, land-use analysis, and advanced features.',
+  '/api/network': 'API reference for the CityNetwork class: constructors, centrality, accessibility, mixed-use diversity, statistical aggregations, and export methods.',
+  '/api/decay': 'API reference for cityseer.decay: helper functions for generating exponential, linear, flat, Gaussian, and logistic decay expressions.',
+  '/plugin': 'QGIS plugin for computing localised network centrality metrics directly within QGIS without writing Python code.',
+  '/tools/io': 'API reference for cityseer.tools.io: network I/O, OSM graph construction, CRS conversion, and NetworkStructure creation.',
+  '/tools/graphs': 'API reference for cityseer.tools.graphs: graph cleaning, simplification, decomposition, consolidation, and dual graph conversion.',
+  '/tools/plot': 'API reference for cityseer.tools.plot: plotting utilities for network visualisation.',
+  '/tools/mock': 'API reference for cityseer.tools.mock: mock data generation for testing and examples.',
+  '/metrics/observe': 'API reference for cityseer.metrics.observe: street continuity analysis based on name, route, or highway classification.',
+  '/metrics/networks': 'API reference for cityseer.metrics.networks: shortest-path and simplest-path node centrality, segment centrality, and OD-weighted betweenness.',
+  '/metrics/sampling': 'Adaptive per-distance sampling for cityseer centrality computations using the Hoeffding bound.',
+  '/metrics/layers': 'API reference for cityseer.metrics.layers: land-use accessibility, mixed-use diversity, and statistical aggregations over street networks.',
+  '/metrics/visibility': 'API reference for cityseer.metrics.visibility: viewshed analysis from street-level observer locations.',
+  '/rustalgos/rustalgos': 'API reference for cityseer.rustalgos: low-level Rust-optimised algorithms and utility functions.',
+  '/rustalgos/graph': 'API reference for cityseer.rustalgos.graph: NetworkStructure, node and edge management, centrality computation.',
+  '/rustalgos/centrality': 'API reference for cityseer.rustalgos.centrality: centrality result structures.',
+  '/rustalgos/diversity': 'API reference for cityseer.rustalgos.diversity: Hill, Shannon, and Gini diversity computation.',
+  '/rustalgos/data': 'API reference for cityseer.rustalgos.data: DataMap, accessibility, mixed-use, and statistics computation.',
+  '/rustalgos/viewshed': 'API reference for cityseer.rustalgos.viewshed: viewshed data structures.',
+}
+
 const pageName = currentPath === '/intro'
   ? 'Introduction'
   : currentPath.split('/').filter(Boolean).pop()?.replace(/-/g, ' ') ?? ''
 const pageTitle = pageName
   ? `cityseer — ${pageName}`
   : 'cityseer'
+const pageDescription = pageDescriptions[currentPath]
+
 const navPaths = [
   '/intro',
   '/guide',
@@ -39,13 +65,7 @@ const navPaths = [
 ]
 ---
 
-<CommonLayout>
-  <Fragment slot="metaContent">
-    <title>{pageTitle}</title>
-    <meta property="og:title" content={pageTitle} />
-    <meta property="og:type" content="website" />
-    <meta property="og:url" content={`https://cityseer.benchmarkurbanism.com${currentPath}`} />
-  </Fragment>
+<CommonLayout title={pageTitle} description={pageDescription}>
   <div id="cols">
     <div id="nav-col">
       <div class="flex flex-col items-end object-contain">

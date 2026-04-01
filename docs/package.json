@@ -14,7 +14,7 @@
     "vue": "3.5.13"
   },
   "devDependencies": {
-    "@astrojs/markdown-component": "^1.0.5",
+    "@astrojs/check": "^0.9.4",
     "@astrojs/markdown-remark": "6.3.1",
     "@astrojs/sitemap": "^3.3.0",
     "@astrojs/vue": "^5.0.9",
@@ -24,7 +24,6 @@
     "@tailwindcss/vite": "^4.1.3",
     "@vue/language-plugin-pug": "^2.2.8",
     "astro": "^5.6.1",
-    "autoprefixer": "10.4.21",
     "eslint-config-prettier": "^10.1.1",
     "eslint-plugin-jsx-a11y": "^6.10.2",
     "eslint-plugin-simple-import-sort": "^12.1.1",
@@ -38,7 +37,6 @@
     "prettier-plugin-astro": "0.14.1",
     "prettier-plugin-tailwindcss": "^0.6.11",
     "pug": "3.0.3",
-    "pug-plain-loader": "1.1.0",
     "rehype-autolink-headings": "7.1.0",
     "rehype-citation": "^2.3.1",
     "rehype-katex": "7.0.1",
@@ -53,6 +51,7 @@
     "stylelint-config-standard": "37.0.0",
     "stylelint-config-tailwindcss": "^1.0.0",
     "tailwindcss": "^4.1.3",
+    "typescript": "^5.8.3",
     "typescript-eslint": "^8.29.0",
     "unist-util-visit": "5.0.0"
   }

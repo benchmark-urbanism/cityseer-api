@@ -9,7 +9,6 @@ import rehypeKatex from 'rehype-katex'
 import rehypeSlug from 'rehype-slug'
 import remarkDirective from 'remark-directive'
 import remarkEmoji from 'remark-emoji'
-import remarkGfm from 'remark-gfm'
 import remarkMath from 'remark-math'
 import remarkSmartypants from 'remark-smartypants'
 import { visit } from 'unist-util-visit'
@@ -71,14 +70,16 @@ export default defineConfig({
   },
 
   markdown: {
-    drafts: false,
+    // Astro 5 has built-in GFM support (no need for remark-gfm plugin)
+    gfm: true,
+    // Disable built-in smartypants since we use the plugin with custom dash options
+    smartypants: false,
     shikiConfig: {
       theme: 'material-theme-darker',
       langs: [],
       wrap: true,
     },
     remarkPlugins: [
-      remarkGfm,
       remarkEmoji,
       remarkAllyEmoji,
       [

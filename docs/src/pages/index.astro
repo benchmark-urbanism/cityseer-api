@@ -8,10 +8,10 @@ import StripeTitle from '@src/components/StripeTitle.astro'
 import logoURL from '@src/assets/logos/cityseer_logo_light_red.png'
 ---
 
-<CommonLayout>
-  <Fragment slot="metaContent">
-    <title>Cityseer API Docs</title>
-  </Fragment>
+<CommonLayout
+  title="cityseer — Computational tools for urban analysis"
+  description="Python/Rust library for fine-grained street-network and land-use analysis at the pedestrian scale. Compute centrality, accessibility, mixed-use diversity, and statistical aggregations over street networks."
+>
   <div id="home-container" class="w-full justify-center">
     <aside id="left-container">
       <div class="flex flex-auto flex-col items-center justify-center">
@@ -51,7 +51,7 @@ import logoURL from '@src/assets/logos/cityseer_logo_light_red.png'
       </p>
       <h2>Friendly & performant</h2>
       <p>
-        Python package with heavier algorithms implemented in paralellised `rust` code. I/O
+        Python package with heavier algorithms implemented in parallelised <code>rust</code> code. I/O
         convenience methods for NetworkX with advanced cleaning methods for OSM data. Generated
         metrics stored as GeoPandas for export to common geospatial formats.
       </p>
