@@ -9,6 +9,12 @@ import logoURL from '@src/assets/logos/cityseer_logo_light_red.png'
 import '@src/styles/yapper.css'
 
 const currentPath = Astro.url.pathname
+const pageName = currentPath === '/intro'
+  ? 'Introduction'
+  : currentPath.split('/').filter(Boolean).pop()?.replace(/-/g, ' ') ?? ''
+const pageTitle = pageName
+  ? `cityseer — ${pageName}`
+  : 'cityseer'
 const navPaths = [
   '/intro',
   '/guide',
@@ -35,7 +41,10 @@ const navPaths = [
 
 <CommonLayout>
   <Fragment slot="metaContent">
-    <title>{currentPath}</title>
+    <title>{pageTitle}</title>
+    <meta property="og:title" content={pageTitle} />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content={`https://cityseer.benchmarkurbanism.com${currentPath}`} />
   </Fragment>
   <div id="cols">
     <div id="nav-col">
