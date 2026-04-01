@@ -1,7 +1,7 @@
 use crate::common::MetricResult;
 use crate::common::WALKING_SPEED;
 use crate::common::{
-    pair_distances_betas_time, parse_decay_fn, py_key_to_composite, validate_decay_fn,
+    pair_distances_and_time, parse_decay_fn, py_key_to_composite, validate_decay_fn,
     DEFAULT_DECAY_EXPR,
 };
 use crate::diversity;
@@ -577,8 +577,8 @@ impl DataMap {
             network_structure.validate_dual_for_angular("accessibility")?;
         }
         let speed_m_s = speed_m_s.unwrap_or(WALKING_SPEED);
-        let (distances, _betas, seconds) =
-            pair_distances_betas_time(speed_m_s, distances, None, minutes, None)?;
+        let (distances, seconds) =
+            pair_distances_and_time(speed_m_s, distances, minutes)?;
         let max_walk_seconds = *seconds.iter().max().unwrap();
         let max_dist = *distances
             .iter()
@@ -704,8 +704,8 @@ impl DataMap {
             network_structure.validate_dual_for_angular("mixed_uses")?;
         }
         let speed_m_s = speed_m_s.unwrap_or(WALKING_SPEED);
-        let (distances, _betas, seconds) =
-            pair_distances_betas_time(speed_m_s, distances, None, minutes, None)?;
+        let (distances, seconds) =
+            pair_distances_and_time(speed_m_s, distances, minutes)?;
 
         let max_walk_seconds = *seconds.iter().max().unwrap();
         let landuses_map = landuses_map.bind(py).cast::<PyDict>()?;
@@ -930,8 +930,8 @@ impl DataMap {
             network_structure.validate_dual_for_angular("stats")?;
         }
         let speed_m_s = speed_m_s.unwrap_or(WALKING_SPEED);
-        let (distances, _betas, seconds) =
-            pair_distances_betas_time(speed_m_s, distances, None, minutes, None)?;
+        let (distances, seconds) =
+            pair_distances_and_time(speed_m_s, distances, minutes)?;
         let max_walk_seconds = *seconds.iter().max().unwrap();
         let mut num_maps: Vec<HashMap<String, f32>> = Vec::with_capacity(numerical_maps.len());
         for numerical_map in numerical_maps.iter() {

@@ -281,35 +281,28 @@ pub fn seconds_from_distances(distances: Vec<u32>, speed_m_s: f32) -> PyResult<V
         .collect()
 }
 
+/// Resolve distances and seconds from either distances or minutes.
+///
+/// Exactly one of `distances` or `minutes` must be provided.
 #[pyfunction]
-#[pyo3(signature = (speed_m_s, distances=None, betas=None, minutes=None, min_threshold_wt=None))]
-pub fn pair_distances_betas_time(
+#[pyo3(signature = (speed_m_s, distances=None, minutes=None))]
+pub fn pair_distances_and_time(
     speed_m_s: f32,
     distances: Option<Vec<u32>>,
-    betas: Option<Vec<f32>>,
     minutes: Option<Vec<f32>>,
-    min_threshold_wt: Option<f32>,
-) -> PyResult<(Vec<u32>, Vec<f32>, Vec<u32>)> {
-    let min_threshold_wt = min_threshold_wt.unwrap_or(MIN_THRESH_WT);
-    match (distances, betas, minutes) {
-        (Some(distances), None, None) => {
-            let betas = betas_from_distances(distances.clone(), Some(min_threshold_wt))?;
+) -> PyResult<(Vec<u32>, Vec<u32>)> {
+    match (distances, minutes) {
+        (Some(distances), None) => {
             let seconds = seconds_from_distances(distances.clone(), speed_m_s)?;
-            Ok((distances, betas, seconds))
+            Ok((distances, seconds))
         }
-        (None, Some(betas), None) => {
-            let distances = distances_from_betas(betas.clone(), Some(min_threshold_wt))?;
-            let seconds = seconds_from_distances(distances.clone(), speed_m_s)?;
-            Ok((distances, betas, seconds))
-        }
-        (None, None, Some(minutes)) => {
+        (None, Some(minutes)) => {
             let seconds: Vec<u32> = minutes.iter().map(|&x| (x * 60.0).round() as u32).collect();
             let distances = distances_from_seconds(seconds.clone(), speed_m_s)?;
-            let betas = betas_from_distances(distances.clone(), Some(min_threshold_wt))?;
-            Ok((distances, betas, seconds))
+            Ok((distances, seconds))
         }
         _ => Err(PyValueError::new_err(
-            "Please provide exactly one of the following arguments: 'distances', 'betas', or 'minutes'.",
+            "Please provide exactly one of 'distances' or 'minutes'.",
         )),
     }
 }

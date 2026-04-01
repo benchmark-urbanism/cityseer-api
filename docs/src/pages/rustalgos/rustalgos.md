@@ -398,11 +398,11 @@ Setting the `speed_m_s` to a higher or lower number will affect the walking time
 
 <div class="function">
 
-## pair_distances_betas_time
+## pair_distances_and_time
 
 
 <div class="content">
-<span class="name">pair_distances_betas_time</span><div class="signature multiline">
+<span class="name">pair_distances_and_time</span><div class="signature multiline">
   <span class="pt">(</span>
   <div class="param">
     <span class="pn">speed_m_s</span>
@@ -415,30 +415,19 @@ Setting the `speed_m_s` to a higher or lower number will affect the walking time
     <span class="pa"> list[int] | None = None</span>
   </div>
   <div class="param">
-    <span class="pn">betas</span>
-    <span class="pc">:</span>
-    <span class="pa"> list[float] | None = None</span>
-  </div>
-  <div class="param">
     <span class="pn">minutes</span>
     <span class="pc">:</span>
     <span class="pa"> list[float] | None = None</span>
   </div>
-  <div class="param">
-    <span class="pn">min_threshold_wt</span>
-    <span class="pc">:</span>
-    <span class="pa"> float | None = None</span>
-  </div>
   <span class="pt">)-&gt;[</span>
   <span class="pr">list[int]</span>
-  <span class="pr">list[float]</span>
   <span class="pr">list[int]</span>
   <span class="pt">]</span>
 </div>
 </div>
 
 
- Calculate distances, betas, and seconds, given exactly one of them. Requires exactly one of `distances`, `betas`, or `minutes` to be provided.
+ Resolve distances and seconds from either distances or minutes. Exactly one of `distances` or `minutes` must be provided.
 ### Parameters
 <div class="param-set">
   <div class="def">
@@ -457,17 +446,7 @@ Setting the `speed_m_s` to a higher or lower number will affect the walking time
   </div>
   <div class="desc">
 
- Distance thresholds ($d_{max}$).</div>
-</div>
-
-<div class="param-set">
-  <div class="def">
-    <div class="name">betas</div>
-    <div class="type">list[float] | None</div>
-  </div>
-  <div class="desc">
-
- Decay parameters ($\beta$).</div>
+ Distance thresholds in metres.</div>
 </div>
 
 <div class="param-set">
@@ -480,25 +459,15 @@ Setting the `speed_m_s` to a higher or lower number will affect the walking time
  Time in minutes.</div>
 </div>
 
-<div class="param-set">
-  <div class="def">
-    <div class="name">min_threshold_wt</div>
-    <div class="type">float | None</div>
-  </div>
-  <div class="desc">
-
- Optional cutoff weight $w_{min}$ for conversions.</div>
-</div>
-
 ### Returns
 <div class="param-set">
   <div class="def">
     <div class="name"></div>
-    <div class="type">tuple[list[int], list[float], list[int]]</div>
+    <div class="type">tuple[list[int], list[int]]</div>
   </div>
   <div class="desc">
 
- A tuple containing (distances, betas, seconds).</div>
+ A tuple containing (distances, seconds).</div>
 </div>
 
 ### Raises
@@ -509,18 +478,8 @@ Setting the `speed_m_s` to a higher or lower number will affect the walking time
   </div>
   <div class="desc">
 
- If not exactly one of `distances`, `betas`, `minutes` is provided, or if inputs are invalid.</div>
+ If not exactly one of `distances` or `minutes` is provided, or if inputs are invalid.</div>
 </div>
-
-### Notes
-
-:::warning
-Networks should be buffered according to the largest distance threshold that will be used for analysis. This
-protects nodes near network boundaries from edge falloffs. Nodes outside the area of interest but within these
-buffered extents should be set to 'dead' so that centralities or other forms of measures are not calculated.
-Whereas metrics are not calculated for 'dead' nodes, they can still be traversed by network analysis algorithms
-when calculating shortest paths and landuse accessibilities.
-:::
 
 </div>
 

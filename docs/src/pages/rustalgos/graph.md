@@ -208,37 +208,6 @@ layout: ../../layouts/PageLayout.astro
 
 <div class="function">
 
-## dijkstra_tree_segment
-
-
-<div class="content">
-<span class="name">dijkstra_tree_segment</span><div class="signature multiline">
-  <span class="pt">(</span>
-  <div class="param">
-    <span class="pn">self</span>
-  </div>
-  <div class="param">
-    <span class="pn">/</span>
-  </div>
-  <div class="param">
-    <span class="pn">src_idx</span>
-  </div>
-  <div class="param">
-    <span class="pn">max_seconds</span>
-  </div>
-  <div class="param">
-    <span class="pn">speed_m_s</span>
-  </div>
-  <span class="pt">)</span>
-</div>
-</div>
-
-</div>
-
- 
-
-<div class="function">
-
 ## centrality_shortest
 
 
@@ -353,52 +322,6 @@ layout: ../../layouts/PageLayout.astro
 
 
  Compute node centrality using simplest (angular) paths on the dual graph. Angular routing is evaluated on two directed states per segment. Each source segment seeds both orientations into a single Brandes traversal.
-
-</div>
-
- 
-
-<div class="function">
-
-## segment_centrality
-
-
-<div class="content">
-<span class="name">segment_centrality</span><div class="signature multiline">
-  <span class="pt">(</span>
-  <div class="param">
-    <span class="pn">self</span>
-  </div>
-  <div class="param">
-    <span class="pn">/</span>
-  </div>
-  <div class="param">
-    <span class="pn">distances=None</span>
-  </div>
-  <div class="param">
-    <span class="pn">betas=None</span>
-  </div>
-  <div class="param">
-    <span class="pn">minutes=None</span>
-  </div>
-  <div class="param">
-    <span class="pn">compute_closeness=None</span>
-  </div>
-  <div class="param">
-    <span class="pn">compute_betweenness=None</span>
-  </div>
-  <div class="param">
-    <span class="pn">min_threshold_wt=None</span>
-  </div>
-  <div class="param">
-    <span class="pn">speed_m_s=None</span>
-  </div>
-  <div class="param">
-    <span class="pn">pbar_disabled=None</span>
-  </div>
-  <span class="pt">)</span>
-</div>
-</div>
 
 </div>
 

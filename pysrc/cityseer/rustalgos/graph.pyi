@@ -6,7 +6,6 @@ from typing import Any
 
 from .centrality import (
     BetweennessShortestResult,
-    CentralitySegmentResult,
     CentralityShortestResult,
     CentralitySimplestResult,
     OdMatrix,
@@ -60,24 +59,10 @@ class NodeVisit:
     pred: int | None  # In Rust: Option<usize>
     short_dist: float  # In Rust: f32
     simpl_dist: float  # In Rust: f32
-    origin_seg: int | None  # In Rust: Option<usize>
-    last_seg: int | None  # In Rust: Option<usize>
     agg_seconds: float  # In Rust: f32
     @classmethod
     def new(cls) -> NodeVisit:  # In Rust: #[new] pub fn new() -> Self
         """Initialize a new NodeVisit state."""
-        ...
-
-class EdgeVisit:
-    """State information for an edge during a graph traversal."""
-
-    visited: bool
-    start_nd_idx: int | None  # In Rust: Option<usize>
-    end_nd_idx: int | None  # In Rust: Option<usize>
-    edge_idx: int | None  # In Rust: Option<usize>
-    @classmethod
-    def new(cls) -> EdgeVisit:  # In Rust: #[new] pub fn new() -> Self
-        """Initialize a new EdgeVisit state."""
         ...
 
 class StableGraph: ...  # Placeholder for the internal graph representation (petgraph::stable_graph::StableGraph)
@@ -193,6 +178,9 @@ class NetworkStructure:
         ...
     def get_node_weight(self, node_idx: int) -> float:  # Returns PyResult<f32>
         """Get the weight of a specific node index."""
+        ...
+    def set_node_weight(self, node_idx: int, weight: float) -> None:  # Returns PyResult<()>
+        """Set the weight of a specific node index."""
         ...
     def is_node_live(self, node_idx: int) -> bool:  # Returns PyResult<bool>
         """Check if a specific node index is marked as 'live'."""
@@ -445,30 +433,6 @@ class NetworkStructure:
         Requires `self.is_dual == True`.
         """
         ...
-    def dijkstra_tree_segment(
-        self,
-        src_idx: int,
-        max_seconds: int,
-        speed_m_s: float,
-    ) -> tuple[list[int], list[int], list[NodeVisit], list[EdgeVisit]]:
-        """
-        Compute shortest path tree for segment-based analysis.
-
-        Parameters
-        ----------
-        src_idx: int
-            Starting node index.
-        max_seconds: int
-            Maximum travel time cutoff.
-        speed_m_s: float
-            Travel speed (m/s).
-
-        Returns
-        -------
-        tuple[list[int], list[int], list[NodeVisit], list[EdgeVisit]]
-            (Reachable node indices, Visited edge indices, NodeVisit states, EdgeVisit states).
-        """
-        ...
     def centrality_shortest(
         self,
         distances: list[int] | None = None,
@@ -478,6 +442,7 @@ class NetworkStructure:
         decay_fn: str | None = None,
         speed_m_s: float | None = None,
         tolerance: float | None = None,
+        segment_weighted: bool | None = None,
         sample_probability: float | None = None,
         sampling_weights: list[float] | None = None,
         random_seed: int | None = None,
@@ -534,6 +499,7 @@ class NetworkStructure:
         tolerance: float | None = None,
         angular_scaling_unit: float | None = None,
         farness_scaling_offset: float | None = None,
+        segment_weighted: bool | None = None,
         sample_probability: float | None = None,
         sampling_weights: list[float] | None = None,
         random_seed: int | None = None,
@@ -623,47 +589,5 @@ class NetworkStructure:
         -------
         BetweennessShortestResult
             Object containing betweenness centrality metrics.
-        """
-        ...
-    def segment_centrality(
-        self,
-        distances: list[int] | None = None,
-        betas: list[float] | None = None,
-        minutes: list[float] | None = None,
-        compute_closeness: bool | None = True,
-        compute_betweenness: bool | None = True,
-        min_threshold_wt: float | None = None,
-        speed_m_s: float | None = None,
-        pbar_disabled: bool | None = None,
-    ) -> CentralitySegmentResult:
-        """
-        Calculate local segment centrality metrics based on shortest paths.
-
-        Computes closeness and/or betweenness centrality for network segments within specified thresholds.
-        Requires exactly one of `distances`, `betas`, or `minutes`.
-
-        Parameters
-        ----------
-        distances: list[int] | None
-            Distance thresholds (meters).
-        betas: list[float] | None
-            Decay parameters (beta).
-        minutes: list[float] | None
-            Time thresholds (minutes).
-        compute_closeness: bool | None
-            Compute closeness centrality if True.
-        compute_betweenness: bool | None
-            Compute betweenness centrality if True.
-        min_threshold_wt: float | None
-            Minimum weight for beta/distance conversion.
-        speed_m_s: float | None
-            Travel speed (m/s).
-        pbar_disabled: bool | None
-            Disable progress bar if True.
-
-        Returns
-        -------
-        CentralitySegmentResult
-            Object containing calculated segment centrality metrics.
         """
         ...

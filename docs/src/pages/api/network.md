@@ -1073,7 +1073,7 @@ print(cn_restored.nodes_gdf["cc_harmonic_800"])
 </div>
 
 
- Compute shortest-path (metric) node centrality. Wraps [`node_centrality_shortest`](/metrics/networks#node-centrality-shortest). All keyword arguments are forwarded; see that function for the full parameter list including ``distances``, ``minutes``, ``compute_closeness``, ``compute_betweenness``, ``decay_fn``, ``sample``, and ``epsilon``.
+ Compute shortest-path (metric) centrality. Wraps [`centrality_shortest`](/metrics/networks#centrality-shortest). All keyword arguments are forwarded; see that function for the full parameter list including ``distances``, ``minutes``, ``compute_closeness``, ``compute_betweenness``, ``decay_fn``, ``sample``, and ``epsilon``.
 ### Returns
 <div class="param-set">
   <div class="def">
@@ -1146,7 +1146,7 @@ cn.centrality_shortest(minutes=[5, 10, 20])
 </div>
 
 
- Compute simplest-path (angular) node centrality. Wraps [`node_centrality_simplest`](/metrics/networks#node-centrality-simplest). All keyword arguments are forwarded; see that function for the full parameter list.
+ Compute simplest-path (angular) centrality. Wraps [`centrality_simplest`](/metrics/networks#centrality-simplest). All keyword arguments are forwarded; see that function for the full parameter list.
 
  This method does not accept a ``decay_fn`` parameter; angular centralities use angular cost rather than distance-based decay.
 ### Returns
@@ -1175,44 +1175,6 @@ cn.centrality_simplest(distances=[400, 800, 1600])
 | ``cc_farness_{d}_ang`` | Sum of cumulative angular changes to reachable nodes. |
 | ``cc_hillier_{d}_ang`` | Hillier normalisation (density² / farness). |
 | ``cc_betweenness_{d}_ang`` | Betweenness (simplest angular paths). |
-
-</div>
-
- 
-
-<div class="function">
-
-## segment_centrality
-
-
-<div class="content">
-<span class="name">segment_centrality</span><div class="signature multiline">
-  <span class="pt">(</span>
-  <div class="param">
-    <span class="pn">self</span>
-  </div>
-  <div class="param">
-    <span class="pn">**kwargs</span>
-  </div>
-  <span class="pt">)-&gt;[</span>
-  <span class="pr">CityNetwork</span>
-  <span class="pt">]</span>
-</div>
-</div>
-
-
- Compute segment-based centrality. Wraps [`segment_centrality`](/metrics/networks#segment-centrality). All keyword arguments are forwarded; see that function for the full parameter list.
-### Returns
-<div class="param-set">
-  <div class="def">
-    <div class="name">self</div>
-    <div class="type">CityNetwork</div>
-  </div>
-  <div class="desc">
-
- Returns self for method chaining. Results are written to ``nodes_gdf``.</div>
-</div>
-
 
 </div>
 

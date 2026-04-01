@@ -26,7 +26,6 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # separate out so that ast parser can parse function def
-MIN_THRESH_WT = config.MIN_THRESH_WT
 SPEED_M_S = config.SPEED_M_S
 
 

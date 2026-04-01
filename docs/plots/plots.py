@@ -24,7 +24,7 @@ plot.plot_nx(G, labels=True, node_size=80, path=f"{IMAGES_PATH}/graph.{FORMAT}",
 G = graphs.nx_simple_geoms(G)
 G = graphs.nx_decompose(G, 20)
 nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(G)
-nodes_gdf = networks.segment_centrality(network_structure=network_structure, nodes_gdf=nodes_gdf, distances=[400, 800])
+nodes_gdf = networks.centrality_shortest(network_structure=network_structure, nodes_gdf=nodes_gdf, distances=[400, 800])
 data_gdf = mock.mock_landuse_categorical_data(G, random_seed=25)
 nodes_gdf, data_gdf = layers.compute_mixed_uses(
     data_gdf,
@@ -34,7 +34,7 @@ nodes_gdf, data_gdf = layers.compute_mixed_uses(
     distances=[400, 800],
 )
 # custom colourmap
-segment_harmonic_vals = nodes_gdf["cc_seg_harmonic_800"]
+segment_harmonic_vals = nodes_gdf["cc_harmonic_800"]
 mixed_uses_vals = nodes_gdf["cc_hill_q0_800"]
 cmap = colors.LinearSegmentedColormap.from_list("cityseer", ["#64c1ff", "#d32f2f"])
 segment_harmonic_vals = colors.Normalize()(segment_harmonic_vals)
@@ -157,7 +157,7 @@ G = mock.mock_graph()
 G = graphs.nx_simple_geoms(G)
 G = graphs.nx_decompose(G, 50)
 nodes_gdf, edges_gdf, network_structure = io.network_structure_from_nx(G)
-networks.node_centrality_shortest(network_structure=network_structure, nodes_gdf=nodes_gdf, distances=[800])
+networks.centrality_shortest(network_structure=network_structure, nodes_gdf=nodes_gdf, distances=[800])
 G_after = io.nx_from_cityseer_geopandas(nodes_gdf, edges_gdf)
 # let's extract and normalise the values
 vals = []

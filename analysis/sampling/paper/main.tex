@@ -429,7 +429,7 @@ The sampling model is implemented in the \cityseer{} Python package (version 4.2
 \begin{verbatim}
 from cityseer.metrics import networks
 
-gdf = networks.node_centrality_shortest(
+gdf = networks.centrality_shortest(
     network_structure,
     nodes_gdf,
     distances=[500,1000,2000,5000,10000,20000],

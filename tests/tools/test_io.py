@@ -727,7 +727,7 @@ def test_network_structure_from_gpd(primal_graph):
     assert network_structure_pruned.edge_count == 152
     # test robustness of centralities for pruned
     for netw_struct, nd_gdf in [(network_structure_round, nodes_gdf), (network_structure_pruned, nodes_pruned_gdf)]:
-        nd_gdf = networks.node_centrality_shortest(
+        nd_gdf = networks.centrality_shortest(
             network_structure=netw_struct,
             nodes_gdf=nd_gdf,
             distances=[400],
@@ -796,7 +796,7 @@ def test_add_transport_gtfs(primal_graph):
     distances = [1000]
     #
     nodes_gdf, edges_gdf, network_structure = io.network_structure_from_nx(primal_graph)
-    nodes_gdf = networks.node_centrality_shortest(
+    nodes_gdf = networks.centrality_shortest(
         network_structure=network_structure,
         nodes_gdf=nodes_gdf,
         distances=distances,
@@ -806,7 +806,7 @@ def test_add_transport_gtfs(primal_graph):
     network_structure_w_trans, stops, avg_stop_pairs = io.add_transport_gtfs(
         gtfs_data_path, network_structure_w_trans, nodes_gdf.crs
     )
-    nodes_gdf_w_trans = networks.node_centrality_shortest(
+    nodes_gdf_w_trans = networks.centrality_shortest(
         network_structure=network_structure_w_trans,
         nodes_gdf=nodes_gdf_w_trans,
         distances=distances,
@@ -848,7 +848,7 @@ def test_add_transport_gtfs(primal_graph):
     # dual
     dual_graph = graphs.nx_to_dual(primal_graph)
     nodes_gdf, edges_gdf, network_structure = io.network_structure_from_nx(dual_graph)
-    nodes_gdf = networks.node_centrality_shortest(
+    nodes_gdf = networks.centrality_shortest(
         network_structure=network_structure,
         nodes_gdf=nodes_gdf,
         distances=distances,
@@ -858,7 +858,7 @@ def test_add_transport_gtfs(primal_graph):
     network_structure_w_trans, stops, avg_stop_pairs = io.add_transport_gtfs(
         gtfs_data_path, network_structure_w_trans, nodes_gdf.crs
     )
-    nodes_gdf_w_trans = networks.node_centrality_shortest(
+    nodes_gdf_w_trans = networks.centrality_shortest(
         network_structure=network_structure_w_trans,
         nodes_gdf=nodes_gdf_w_trans,
         distances=distances,
@@ -925,7 +925,7 @@ def test_nx_from_cityseer_geopandas(primal_graph):
         assert "weight" in G_round_trip_miss.nodes["0"]
     # check with metrics
     nodes_gdf, edges_gdf, network_structure = io.network_structure_from_nx(primal_graph)
-    nodes_gdf = networks.node_centrality_shortest(
+    nodes_gdf = networks.centrality_shortest(
         network_structure=network_structure, nodes_gdf=nodes_gdf, compute_closeness=True, distances=[500, 1000]
     )
     data_gdf = mock.mock_landuse_categorical_data(primal_graph, length=50)

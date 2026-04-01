@@ -263,10 +263,6 @@ pub struct NodeVisit {
     #[pyo3(get)]
     pub simpl_dist: f32,
     #[pyo3(get)]
-    pub origin_seg: Option<usize>,
-    #[pyo3(get)]
-    pub last_seg: Option<usize>,
-    #[pyo3(get)]
     pub agg_seconds: f32,
 }
 
@@ -280,36 +276,7 @@ impl NodeVisit {
             pred: None,
             short_dist: f32::INFINITY,
             simpl_dist: f32::INFINITY,
-            origin_seg: None,
-            last_seg: None,
             agg_seconds: f32::INFINITY,
-        }
-    }
-}
-
-/// Visit state for an edge during traversal.
-#[pyclass(skip_from_py_object)]
-#[derive(Clone, Copy)]
-pub struct EdgeVisit {
-    #[pyo3(get)]
-    pub visited: bool,
-    #[pyo3(get)]
-    pub start_nd_idx: Option<usize>,
-    #[pyo3(get)]
-    pub end_nd_idx: Option<usize>,
-    #[pyo3(get)]
-    pub edge_idx: Option<usize>,
-}
-
-#[pymethods]
-impl EdgeVisit {
-    #[new]
-    pub fn new() -> Self {
-        Self {
-            visited: false,
-            start_nd_idx: None,
-            end_nd_idx: None,
-            edge_idx: None,
         }
     }
 }
@@ -575,6 +542,19 @@ impl NetworkStructure {
     // Unpack node weight directly from the payload to avoid cloning
     pub fn get_node_weight(&self, node_idx: usize) -> PyResult<f32> {
         Ok(self._get_node_payload_checked(node_idx, "node_idx")?.weight)
+    }
+
+    /// Set the weight of a node.
+    pub fn set_node_weight(&mut self, node_idx: usize, weight: f32) -> PyResult<()> {
+        let ni = NodeIndex::new(node_idx);
+        let payload = self.graph.node_weight_mut(ni).ok_or_else(|| {
+            exceptions::PyValueError::new_err(format!(
+                "Node index {} does not exist in the graph.",
+                node_idx
+            ))
+        })?;
+        payload.weight = weight;
+        Ok(())
     }
 
     // Unpack live directly from the payload to avoid cloning
@@ -1284,44 +1264,6 @@ impl NetworkStructure {
         edge_ref
             .map(|e| e.weight())
             .ok_or_else(|| exceptions::PyValueError::new_err("Edge not found"))
-    }
-
-    fn _get_edge_payload(
-        &self,
-        start_nd_idx: usize,
-        end_nd_idx: usize,
-        edge_idx: usize,
-    ) -> &EdgePayload {
-        let start_node_index = NodeIndex::new(start_nd_idx);
-        let end_node_index = NodeIndex::new(end_nd_idx);
-
-        let edge_ref = self
-            .graph
-            .edges_connecting(start_node_index, end_node_index)
-            .find(|edge_ref| edge_ref.weight().edge_idx == edge_idx);
-        edge_ref.expect("Edge not found").weight()
-    }
-
-    #[inline]
-    pub(crate) fn get_edge_length_unchecked(
-        &self,
-        start_nd_idx: usize,
-        end_nd_idx: usize,
-        edge_idx: usize,
-    ) -> f32 {
-        self._get_edge_payload(start_nd_idx, end_nd_idx, edge_idx)
-            .length
-    }
-
-    #[inline]
-    pub(crate) fn get_edge_impedance_unchecked(
-        &self,
-        start_nd_idx: usize,
-        end_nd_idx: usize,
-        edge_idx: usize,
-    ) -> f32 {
-        self._get_edge_payload(start_nd_idx, end_nd_idx, edge_idx)
-            .imp_factor
     }
 
     #[inline]

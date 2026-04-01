@@ -52,24 +52,9 @@ def test_local_centrality_time(primal_graph):
     segment_cent_wrapper: 5.971783181885257 for 10000 iterations
 
     Heap
-    shortest_path_tree_wrapper: 0.2747780899517238 for 10000 iterations
-    node_cent_wrapper: 3.095424270024523 for 10000 iterations
-    segment_cent_wrapper: 5.882331402972341 for 10000 iterations
-
-    Split functions
-    dijkstra_tree_shortest_wrapper: 0.04688391700619832 for 10000 iterations
-    dijkstra_tree_simplest_wrapper: 0.04833241600135807 for 10000 iterations
-    dijkstra_tree_segment_wrapper: 0.12999495898839086 for 10000 iterations
-    node_cent_wrapper: 2.6186295949996747 for 10000 iterations
-    segment_cent_wrapper: 5.181460560999767 for 10000 iterations
-
-    Brandes
-    SWITCHED TO DUAL GRAPH FOR SIMPLEST PATHS
     dijkstra_tree_shortest_wrapper: 0.032350792083889246 for 10000 iterations
     dijkstra_tree_simplest_wrapper: 0.2574775000102818 for 10000 iterations
-    dijkstra_tree_segment_wrapper: 0.07979470887221396 for 10000 iterations
     node_cent_wrapper: 2.880786875030026 for 10000 iterations
-    segment_cent_wrapper: 2.579006958985701 for 10000 iterations
     """
 
     if "GITHUB_ACTIONS" in os.environ:
@@ -77,8 +62,7 @@ def test_local_centrality_time(primal_graph):
     os.environ["CITYSEER_QUIET_MODE"] = "1"
     # load the test graph
     _nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(primal_graph)
-    # needs a large enough beta so that distance thresholds aren't encountered
-    distances, _betas, _seconds = rustalgos.pair_distances_betas_time(config.SPEED_M_S, distances=[5000])
+    distances, _seconds = rustalgos.pair_distances_and_time(config.SPEED_M_S, distances=[5000])
 
     speed_m_s = 1.3333
     max_seconds = int(5000 / speed_m_s)
@@ -117,21 +101,6 @@ def test_local_centrality_time(primal_graph):
     print(f"dijkstra_tree_simplest_wrapper: {func_time} for {iters} iterations")
     assert func_time < 1
 
-    def dijkstra_tree_segment_wrapper():
-        network_structure.dijkstra_tree_segment(
-            src_idx=0,
-            max_seconds=max_seconds,
-            speed_m_s=speed_m_s,
-        )
-
-    # prime the function
-    dijkstra_tree_segment_wrapper()
-    iters = 10000
-    # time and report
-    func_time = timeit.timeit(dijkstra_tree_segment_wrapper, number=iters)
-    print(f"dijkstra_tree_segment_wrapper: {func_time} for {iters} iterations")
-    assert func_time < 1
-
     def node_cent_wrapper():
         network_structure.centrality_shortest(
             compute_closeness=True,
@@ -149,24 +118,6 @@ def test_local_centrality_time(primal_graph):
     print(f"node_cent_wrapper: {func_time} for {iters} iterations")
     # assert func_time < 5
     # node_cent_wrapper: 3.5858502141200006 for 10000 iterations
-
-    def segment_cent_wrapper():
-        network_structure.segment_centrality(
-            distances=distances,
-            betas=None,
-            compute_closeness=True,
-            compute_betweenness=True,
-            pbar_disabled=True,
-        )
-
-    # prime the function
-    segment_cent_wrapper()
-    iters = 10000
-    # time and report - roughly 9.36s on 4.2GHz i7
-    func_time = timeit.timeit(segment_cent_wrapper, number=iters)
-    print(f"segment_cent_wrapper: {func_time} for {iters} iterations")
-    # assert func_time < 8
-    # segment_cent_wrapper: 6.134561971062794 for 10000 iterations
 
     print("Done!")
 

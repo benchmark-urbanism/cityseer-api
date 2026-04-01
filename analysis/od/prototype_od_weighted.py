@@ -96,7 +96,7 @@ print(f"OdMatrix: {od.len()} pairs, {od.n_origins()} unique origins")
 
 # %% Run standard centrality
 
-nodes_std = networks.node_centrality_shortest(
+nodes_std = networks.centrality_shortest(
     net,
     nodes_gdf.copy(),
     distances=DISTANCES,

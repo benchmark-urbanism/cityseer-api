@@ -166,31 +166,6 @@ layout: ../../layouts/PageLayout.astro
 </div>
 
 
-<div class="class">
-
-
-## CentralitySegmentResult
-
-
-
-
-<div class="function">
-
-## CentralitySegmentResult
-
-
-<div class="content">
-<span class="name">CentralitySegmentResult</span><div class="signature">
-  <span class="pt">(</span>
-  <span class="pt">)</span>
-</div>
-</div>
-
-</div>
-
- 
-</div>
-
 
 
 </section>

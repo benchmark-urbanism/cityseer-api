@@ -154,7 +154,7 @@ Centrality metrics quantify the structural importance of each location in the st
 
 ### Shortest-path centrality
 
-[`centrality_shortest`](/api/network#centrality-shortest) (or [`node_centrality_shortest`](/metrics/networks#node-centrality-shortest) in the lower-level API) computes the following metrics for each distance threshold `d`:
+[`centrality_shortest`](/api/network#centrality-shortest) (or [`centrality_shortest`](/metrics/networks#centrality-shortest) in the lower-level API) computes the following metrics for each distance threshold `d`:
 
 | Column | Description |
 | --- | --- |
@@ -169,7 +169,7 @@ Centrality metrics quantify the structural importance of each location in the st
 
 ### Simplest-path centrality
 
-[`centrality_simplest`](/api/network#centrality-simplest) (or [`node_centrality_simplest`](/metrics/networks#node-centrality-simplest)) computes angular centrality metrics. Note the `_ang` suffix:
+[`centrality_simplest`](/api/network#centrality-simplest) (or [`centrality_simplest`](/metrics/networks#centrality-simplest) in the lower-level API) computes angular centrality metrics. Note the `_ang` suffix:
 
 | Column | Description |
 | --- | --- |
@@ -372,13 +372,7 @@ The [`add_gtfs`](/api/network#add-gtfs) method integrates public transport stops
 
 ## Performance and Scale
 
-The underlying algorithms are parallelised in Rust and scale to large networks. Typical performance on a modern laptop (8 cores):
-
-- **10,000 edges** at 3 distance thresholds: seconds
-- **50,000 edges** at 5 distance thresholds: under a minute
-- **200,000+ edges** at long distances: minutes; consider [adaptive sampling](#adaptive-sampling) for 5 km+ thresholds
-
-Computation time scales with the number of edges, the number of distance thresholds, and the reachability at each threshold. Simplest-path (angular) centrality is typically faster than shortest-path because angular routing produces sparser traversal trees.
+The underlying algorithms are parallelised in Rust and scale to large networks. Computation scales with the number of edges, the number of distance thresholds, and the reachability at each threshold. Simplest-path (angular) centrality is typically faster than shortest-path because angular routing produces sparser traversal trees. For large networks at long distance thresholds, consider [adaptive sampling](#adaptive-sampling).
 
 ## Adaptive Sampling
 

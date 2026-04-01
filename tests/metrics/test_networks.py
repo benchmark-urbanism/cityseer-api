@@ -3,12 +3,12 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
-from cityseer import config, rustalgos
+from cityseer import config
 from cityseer.metrics import networks
 from cityseer.tools import io
 
 
-def test_node_centrality_shortest(primal_graph):
+def test_centrality_shortest(primal_graph):
     """
     Underlying methods also tested via test_networks.test_network_centralities
     """
@@ -16,7 +16,7 @@ def test_node_centrality_shortest(primal_graph):
     nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(primal_graph)
     # test different combinations of closeness and betweenness
     for _closeness, _betweenness in [(False, True), (True, False), (True, True)]:
-        nodes_gdf = networks.node_centrality_shortest(
+        nodes_gdf = networks.centrality_shortest(
             network_structure=network_structure,
             nodes_gdf=nodes_gdf,
             distances=distances,
@@ -73,14 +73,14 @@ def test_node_centrality_shortest(primal_graph):
                     )
 
 
-def test_node_centrality_simplest(dual_graph):
+def test_centrality_simplest(dual_graph):
     """
     Underlying methods also tested via test_networks.test_network_centralities
     """
     distances = [400, 800]
     nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(dual_graph)
     for _far_scale_off, _ang_scale_unit in [(0, 180), (0, 90), (1, 180)]:
-        nodes_gdf = networks.node_centrality_simplest(
+        nodes_gdf = networks.centrality_simplest(
             network_structure=network_structure,
             nodes_gdf=nodes_gdf,
             distances=distances,
@@ -131,42 +131,50 @@ def test_node_centrality_simplest(dual_graph):
             )
 
 
-def test_segment_centrality(primal_graph):
-    """
-    Tests segment centrality. As of v4 this is only implemented for shortest path.
-    """
+def test_segment_weighted(dual_graph):
+    """Test segment_weighted=True on a dual graph."""
     distances = [400, 800]
-    betas = rustalgos.betas_from_distances(distances)
-    # node_measures_ang = ["node_harmonic_angular", "node_betweenness_angular"]
-    nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(primal_graph)
-    # test different combinations of closeness and betweenness
-    for _closeness, _betweenness in [(False, True), (True, False), (True, True)]:
-        for _distances, _betas in [(distances, None), (None, betas)]:
-            # test shortest
-            nodes_gdf = networks.segment_centrality(
-                network_structure=network_structure,
-                nodes_gdf=nodes_gdf,
-                distances=_distances,
-                betas=_betas,
-                compute_closeness=_closeness,
-                compute_betweenness=_betweenness,
-            )
-            # test against underlying method
-            segment_result = network_structure.segment_centrality(
-                betas=betas, compute_closeness=_closeness, compute_betweenness=_betweenness
-            )
-            for dist_key in distances:
-                if _closeness is True:
-                    for measure_key, attr_key in [
-                        ("seg_density", "segment_density"),
-                        ("seg_harmonic", "segment_harmonic"),
-                        ("seg_beta", "segment_beta"),
-                    ]:
-                        data_key = config.prep_gdf_key(measure_key, dist_key)
-                        assert np.allclose(nodes_gdf[data_key], getattr(segment_result, attr_key)[dist_key])
-                if _betweenness is True:
-                    data_key = config.prep_gdf_key("seg_betweenness", dist_key)
-                    assert np.allclose(nodes_gdf[data_key], segment_result.segment_betweenness[dist_key])
+    nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(dual_graph)
+    # Verify it requires a dual graph
+    assert network_structure.is_dual
+    assert "primal_edge" in nodes_gdf.columns
+    # Compute with segment_weighted
+    nodes_gdf_sw = networks.centrality_shortest(
+        network_structure=network_structure,
+        nodes_gdf=nodes_gdf.copy(),
+        distances=distances,
+        segment_weighted=True,
+    )
+    # Compute without segment_weighted
+    nodes_gdf_plain = networks.centrality_shortest(
+        network_structure=network_structure,
+        nodes_gdf=nodes_gdf.copy(),
+        distances=distances,
+        segment_weighted=False,
+    )
+    for d in distances:
+        density_key = config.prep_gdf_key("density", d)
+        harmonic_key = config.prep_gdf_key("harmonic", d)
+        betw_key = config.prep_gdf_key("betweenness", d)
+        # Segment-weighted density should be total reachable street length (> node count)
+        assert nodes_gdf_sw[density_key].sum() > nodes_gdf_plain[density_key].sum()
+        # All expected columns should be present and non-null for live nodes
+        assert not nodes_gdf_sw[density_key].isna().all()
+        assert not nodes_gdf_sw[harmonic_key].isna().all()
+        assert not nodes_gdf_sw[betw_key].isna().all()
+    # Verify weights are restored after computation
+    for nd_idx in network_structure.node_indices():
+        assert network_structure.get_node_weight(nd_idx) == 1.0
+    # Test simplest path variant too
+    nodes_gdf_sw_ang = networks.centrality_simplest(
+        network_structure=network_structure,
+        nodes_gdf=nodes_gdf.copy(),
+        distances=distances,
+        segment_weighted=True,
+    )
+    for d in distances:
+        density_key = config.prep_gdf_key("density", d, angular=True)
+        assert not nodes_gdf_sw_ang[density_key].isna().all()
 
 
 def test_closeness_shortest(primal_graph):

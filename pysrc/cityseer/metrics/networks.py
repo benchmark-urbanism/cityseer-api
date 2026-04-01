@@ -1,16 +1,17 @@
 r"""
 Compute network centralities.
 
-There are three network centrality methods available depending on whether you're using a node-based or segment-based
-approach, with the former available in both shortest and simplest (angular) variants.
+Two centrality methods are available, using shortest-path (metric) or simplest-path (angular) heuristics:
 
-- [`node_centrality_shortest`](#node-centrality-shortest)
-- [`node_centrality_simplest`](#node-centrality-simplest)
-- [`segment_centrality`](#segment-centrality)
+- [`centrality_shortest`](#centrality-shortest)
+- [`centrality_simplest`](#centrality-simplest)
 
 These methods wrap the underlying `rust` optimised functions for computing centralities. Multiple classes of measures
 and distances are computed simultaneously to reduce the amount of time required for multi-variable and multi-scalar
 strategies.
+
+When `segment_weighted=True`, node weights are set to the primal edge (street segment) lengths so that centrality
+measures reflect total reachable street length rather than node counts. This requires a dual graph representation.
 
 When `sample=True`, adaptive sampling uses the Hoeffding bound to select a distance-dependent sampling probability.
 The `epsilon` parameter controls the error tolerance (lower = more samples, higher accuracy).
@@ -32,20 +33,16 @@ error tolerances and comparable sampling rates.
 :::note
 The reasons for picking one approach over another are varied:
 
-- Node based centralities compute the measures relative to each reachable node within the threshold distances. For
+- Centralities compute the measures relative to each reachable node within the threshold distances. For
 this reason, they can be susceptible to distortions caused by messy graph topologies such redundant and varied
 concentrations of degree=2 nodes (e.g. to describe roadway geometry) or needlessly complex representations of
 street intersections. In these cases, the network should first be cleaned using methods such as those available in
-the [`graph`](/tools/graphs) module (see the [network preparation guide](/guide#network-preparation) for examples). If a
-network topology has varied intensities of nodes but the street segments are less spurious, then segmentised methods
-can be preferable because they are based on segment distances: segment aggregations remain the same regardless of
-the number of intervening nodes, however, are not immune from situations such as needlessly complex representations
-of roadway intersections or a proliferation of walking paths in greenspaces;
-- Node-based `harmonic` centrality can be problematic on graphs where nodes are erroneously placed too close
+the [`graph`](/tools/graphs) module (see the [network preparation guide](/guide#network-preparation) for examples).
+- `harmonic` centrality can be problematic on graphs where nodes are erroneously placed too close
 together or where impedances otherwise approach zero, as may be the case for simplest-path measures or small
 distance thesholds. This happens because the outcome of the division step can balloon towards $\infty$ once
 impedances decrease below 1.
-- Simplest (angular) node measures require a dual graph representation. Convert primal graphs with
+- Simplest (angular) measures require a dual graph representation. Convert primal graphs with
   [`graphs.nx_to_dual`](/tools/graphs#nx-to-dual) before ingesting them.
 - Measures should only be directly compared on the same topology because different topologies can otherwise affect
 the expression of a measure. Accordingly, measures computed on dual graphs cannot be compared to measures computed
@@ -53,17 +50,9 @@ on primal graphs because this does not account for the impact of differing topol
 can have substantially greater numbers of nodes and edges for the same underlying street network; for example, a
 four-way intersection consisting of one node with four edges translates to four nodes and six edges on the dual.
 This effect is amplified for denser regions of the network.
-- Segmentised versions of centrality measures should not be computed on dual graph topologies because street segment
-lengths would be duplicated for each permutation of dual edge spanning street intersections. By way of example,
-the contribution of a single edge segment at a four-way intersection would be duplicated three times.
 - The usual formulations of closeness or normalised closeness are discouraged because these do not behave
 suitably for localised graphs. Harmonic closeness or Hillier normalisation (which resembles a simplified form of
 Improved Closeness Centrality proposed by Wasserman and Faust) should be used instead.
-- Network decomposition can be a useful strategy when working at small distance thresholds, and confers advantages
-such as more regularly spaced snapshots and fewer artefacts at small distance thresholds where street edges
-intersect distance thresholds. However, the regular spacing of the decomposed segments will introduce spikes in the
-distributions of node-based centrality measures when working at very small distance thresholds. Segmentised versions
-may therefore be preferable when working at small thresholds on decomposed networks.
 :::
 
 """
@@ -83,7 +72,6 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # separate out so that ast parser can parse function def
-MIN_THRESH_WT = config.MIN_THRESH_WT
 SPEED_M_S = config.SPEED_M_S
 
 
@@ -98,7 +86,44 @@ def _require_dual_for_angular(
         )
 
 
-def node_centrality_shortest(
+class _SegmentWeightContext:
+    """Context manager that sets node weights to segment lengths and restores them on exit."""
+
+    def __init__(
+        self,
+        network_structure: rustalgos.graph.NetworkStructure,
+        nodes_gdf: gpd.GeoDataFrame,
+        segment_weighted: bool,
+    ):
+        self.network_structure = network_structure
+        self.segment_weighted = segment_weighted
+        self._saved_weights: list[tuple[int, float]] | None = None
+        if segment_weighted:
+            if not network_structure.is_dual:
+                raise ValueError(
+                    "segment_weighted requires a dual graph where each node represents a street segment."
+                )
+            if "primal_edge" not in nodes_gdf.columns:
+                raise ValueError(
+                    "segment_weighted requires primal_edge geometries in nodes_gdf (from a dual graph)."
+                )
+            node_idxs = network_structure.node_indices()
+            self._saved_weights = [(i, network_structure.get_node_weight(i)) for i in node_idxs]
+            ns_indices = nodes_gdf["ns_node_idx"].values
+            seg_lengths = nodes_gdf["primal_edge"].length.values
+            for ns_idx, seg_len in zip(ns_indices, seg_lengths):
+                network_structure.set_node_weight(int(ns_idx), float(seg_len))
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_exc):
+        if self._saved_weights is not None:
+            for idx, w in self._saved_weights:
+                self.network_structure.set_node_weight(idx, w)
+
+
+def centrality_shortest(
     network_structure: rustalgos.graph.NetworkStructure,
     nodes_gdf: gpd.GeoDataFrame,
     distances: list[int] | None = None,
@@ -108,11 +133,16 @@ def node_centrality_shortest(
     decay_fn: str | None = None,
     speed_m_s: float = SPEED_M_S,
     tolerance: float | None = None,
+    segment_weighted: bool = False,
     random_seed: int | None = None,
     sample: bool = False,
     epsilon: float | None = None,
 ) -> gpd.GeoDataFrame:
-    r"""Compute node centrality using shortest paths with a single Dijkstra per source.
+    r"""Compute centrality using shortest paths with a single Dijkstra per source.
+
+    .. versionchanged:: 4.25.0
+        Renamed from ``node_centrality_shortest``. Added ``segment_weighted`` parameter.
+        The old ``segment_centrality`` function has been removed; use ``segment_weighted=True`` instead.
 
     When both `compute_closeness` and `compute_betweenness` are True, a single Brandes-style Dijkstra traversal
     per source produces the data for both closeness accumulation and betweenness backpropagation, halving computation
@@ -123,12 +153,6 @@ def node_centrality_shortest(
     (`p = 1`), where `p = cost / max_cost`. By default, `decay_fn` is `"exp(-4 * p)"` (exponential decay reaching
     ~1.8% at the threshold). Helper functions for constructing decay expressions are available in the
     `cityseer.decay` module.
-
-    .. versionchanged:: 4.24.0
-        The `cycles` output now measures the circuit rank of the locally reachable subgraph
-        (`m - n + c`), computed per source and then target-aggregated using the same source/IPW
-        framework as the other shortest-path metrics. This provides a more stable measure of
-        network meshedness (independent loops / city blocks) than the older tree-cycle heuristic.
 
     When ``sample=True``, sampling probability is derived from each distance threshold using a canonical grid network
     model (see ``sampling.compute_distance_p``). This produces deterministic, reach-agnostic sample fractions that are
@@ -147,9 +171,6 @@ def node_centrality_shortest(
         Walking times in minutes; converted to distance thresholds using `speed_m_s`.
     compute_closeness: bool
         Compute closeness centralities. True by default.
-        The `cycles` output measures the circuit rank of the source's locally reachable subgraph
-        and target-aggregates that loopiness contribution over all sources that can reach each
-        node within the threshold.
     compute_betweenness: bool
         Compute betweenness centralities. True by default.
     decay_fn: str
@@ -164,6 +185,10 @@ def node_centrality_shortest(
         Paths within this percentage of the shortest are treated as near-equal for multi-predecessor
         Brandes betweenness. A tiny internal epsilon is always enforced as a minimum for
         floating-point stability.
+    segment_weighted: bool
+        If True, set node weights to primal edge (street segment) lengths so that centrality
+        measures are proportional to street length rather than node count. Requires a dual graph.
+        Default is False.
     random_seed: int
         Optional seed for reproducible sampling.
     sample: bool
@@ -188,21 +213,16 @@ def node_centrality_shortest(
     G = mock.mock_graph()
     G = graphs.nx_simple_geoms(G)
     nodes_gdf, edges_gdf, network_structure = io.network_structure_from_nx(G)
-    nodes_gdf = networks.node_centrality_shortest(
+    nodes_gdf = networks.centrality_shortest(
         network_structure,
         nodes_gdf,
         distances=[400, 800],
     )
     print(nodes_gdf[["cc_harmonic_400", "cc_betweenness_800"]])
     ```
-
-    For worked examples with real-world data, see the
-    [Metric Centrality](https://benchmark-urbanism.github.io/cityseer-examples/recipes/centrality/gpd_metric_centrality.html)
-    and [OSM Centrality](https://benchmark-urbanism.github.io/cityseer-examples/recipes/centrality/osm_centrality.html)
-    recipes.
     """
-    logger.info("Computing node centrality (shortest).")
-    resolved_distances, _betas, _seconds = rustalgos.pair_distances_betas_time(speed_m_s, distances, None, minutes)
+    logger.info("Computing centrality (shortest).")
+    resolved_distances, _seconds = rustalgos.pair_distances_and_time(speed_m_s, distances, minutes)
     node_count = network_structure.street_node_count()
     temp_data: dict[str, object] = {}
 
@@ -226,48 +246,51 @@ def node_centrality_shortest(
 
     results: dict[int, rustalgos.centrality.CentralityShortestResult] = {}
 
-    if full_distances:
-        dist_label = ", ".join(f"{d}m" for d in full_distances)
-        logger.info(f"  Full: {dist_label}")
-        partial_func = partial(
-            network_structure.centrality_shortest,
-            distances=full_distances,
-            compute_closeness=compute_closeness,
-            compute_betweenness=compute_betweenness,
-            decay_fn=decay_fn,
-            speed_m_s=speed_m_s,
-            tolerance=tolerance,
-            random_seed=random_seed,
-        )
-        result = config.wrap_progress(
-            total=node_count,
-            rust_struct=network_structure,
-            partial_func=partial_func,
-            desc=f"centrality full: {dist_label}",
-        )
-        for d in full_distances:
-            results[d] = result  # type: ignore
+    with _SegmentWeightContext(network_structure, nodes_gdf, segment_weighted):
+        if full_distances:
+            dist_label = ", ".join(f"{d}m" for d in full_distances)
+            logger.info(f"  Full: {dist_label}")
+            partial_func = partial(
+                network_structure.centrality_shortest,
+                distances=full_distances,
+                compute_closeness=compute_closeness,
+                compute_betweenness=compute_betweenness,
+                decay_fn=decay_fn,
+                speed_m_s=speed_m_s,
+                tolerance=tolerance,
+                segment_weighted=segment_weighted,
+                random_seed=random_seed,
+            )
+            result = config.wrap_progress(
+                total=node_count,
+                rust_struct=network_structure,
+                partial_func=partial_func,
+                desc=f"centrality full: {dist_label}",
+            )
+            for d in full_distances:
+                results[d] = result  # type: ignore
 
-    for d, p in sampled_distances:
-        logger.info(f"  Sampled {d}m: p={p:.0%}")
-        partial_func = partial(
-            network_structure.centrality_shortest,
-            distances=[d],
-            compute_closeness=compute_closeness,
-            compute_betweenness=compute_betweenness,
-            decay_fn=decay_fn,
-            speed_m_s=speed_m_s,
-            tolerance=tolerance,
-            sample_probability=p,
-            random_seed=random_seed,
-        )
-        result = config.wrap_progress(
-            total=node_count,
-            rust_struct=network_structure,
-            partial_func=partial_func,
-            desc=f"centrality p={p:.0%}: {d}m",
-        )
-        results[d] = result  # type: ignore
+        for d, p in sampled_distances:
+            logger.info(f"  Sampled {d}m: p={p:.0%}")
+            partial_func = partial(
+                network_structure.centrality_shortest,
+                distances=[d],
+                compute_closeness=compute_closeness,
+                compute_betweenness=compute_betweenness,
+                decay_fn=decay_fn,
+                speed_m_s=speed_m_s,
+                tolerance=tolerance,
+                segment_weighted=segment_weighted,
+                sample_probability=p,
+                random_seed=random_seed,
+            )
+            result = config.wrap_progress(
+                total=node_count,
+                rust_struct=network_structure,
+                partial_func=partial_func,
+                desc=f"centrality p={p:.0%}: {d}m",
+            )
+            results[d] = result  # type: ignore
 
     if not results:
         return nodes_gdf
@@ -487,7 +510,7 @@ def betweenness_od(
     return nodes_gdf
 
 
-def node_centrality_simplest(
+def centrality_simplest(
     network_structure: rustalgos.graph.NetworkStructure,
     nodes_gdf: gpd.GeoDataFrame,
     distances: list[int] | None = None,
@@ -498,11 +521,15 @@ def node_centrality_simplest(
     tolerance: float | None = None,
     angular_scaling_unit: float = 90,
     farness_scaling_offset: float = 1,
+    segment_weighted: bool = False,
     random_seed: int | None = None,
     sample: bool = False,
     epsilon: float | None = None,
 ) -> gpd.GeoDataFrame:
-    r"""Compute node centrality using simplest (angular) paths with a single Dijkstra per source.
+    r"""Compute centrality using simplest (angular) paths with a single Dijkstra per source.
+
+    .. versionchanged:: 4.25.0
+        Renamed from ``node_centrality_simplest``. Added ``segment_weighted`` parameter.
 
     When both `compute_closeness` and `compute_betweenness` are True, a single Brandes-style
     Dijkstra traversal per source produces the data for both closeness accumulation and
@@ -510,15 +537,6 @@ def node_centrality_simplest(
 
     This function does not accept a `decay_fn` parameter; angular (simplest-path) centralities use
     angular cost rather than distance-based decay weighting.
-
-    .. versionchanged:: 4.24.0
-        Angular routing now uses endpoint-aware dual-graph traversal instead of bearing-based
-        angular costs. This requires a dual graph representation (convert with
-        [`graphs.nx_to_dual`](/tools/graphs#nx-to-dual)). The `tolerance` parameter now uses
-        the same relative-percentage semantics as shortest-path betweenness, but applies to
-        angular route cost instead of metric distance. User-facing `tolerance=0.0` means no
-        additional tolerance beyond a tiny internal epsilon used for floating-point stability.
-        Closeness values are nearly identical; betweenness values may differ slightly.
 
     Parameters
     ----------
@@ -539,20 +557,18 @@ def node_centrality_simplest(
         Speed in metres per second for converting `minutes` to distance thresholds.
     tolerance: float
         Relative tolerance for angular betweenness path equality, as a percentage (e.g. 1.0 = 1%).
-        Paths whose angular route cost is within this percentage of the best angular route are treated
-        as near-equal for multi-predecessor Brandes betweenness. A tiny internal epsilon is always
-        enforced as a minimum for floating-point stability.
     angular_scaling_unit: float
         Scaling unit for angular cost normalisation.
     farness_scaling_offset: float
         Offset for farness calculation.
+    segment_weighted: bool
+        If True, set node weights to primal edge (street segment) lengths so that centrality
+        measures are proportional to street length rather than node count. Requires a dual graph.
+        Default is False.
     random_seed: int
         Optional seed for reproducible sampling.
     sample: bool
-        If True, uses distance-based Bernoulli sampling with inverse-probability weighting (IPW). The
-        sampling probability is derived from each distance threshold using a canonical grid model (see
-        ``sampling.compute_distance_p``). At distances where the sampling probability exceeds the live
-        fraction, exact computation is used instead.
+        If True, uses distance-based Bernoulli sampling with inverse-probability weighting (IPW).
     epsilon: float
         Normalised additive error tolerance for sampling. Defaults to ``sampling.HOEFFDING_EPSILON``.
 
@@ -571,21 +587,17 @@ def node_centrality_simplest(
     G = graphs.nx_simple_geoms(G)
     G_dual = graphs.nx_to_dual(G)
     nodes_gdf, edges_gdf, network_structure = io.network_structure_from_nx(G_dual)
-    nodes_gdf = networks.node_centrality_simplest(
+    nodes_gdf = networks.centrality_simplest(
         network_structure,
         nodes_gdf,
         distances=[400, 800],
     )
     print(nodes_gdf[["cc_harmonic_400_ang", "cc_betweenness_800_ang"]])
     ```
-
-    For a worked example, see the
-    [Angular Centrality](https://benchmark-urbanism.github.io/cityseer-examples/recipes/centrality/gpd_angular_centrality.html)
-    recipe.
     """
-    _require_dual_for_angular(network_structure, "node_centrality_simplest")
-    logger.info("Computing node centrality (simplest).")
-    resolved_distances, _betas, _seconds = rustalgos.pair_distances_betas_time(speed_m_s, distances, None, minutes)
+    _require_dual_for_angular(network_structure, "centrality_simplest")
+    logger.info("Computing centrality (simplest).")
+    resolved_distances, _seconds = rustalgos.pair_distances_and_time(speed_m_s, distances, minutes)
     node_count = network_structure.street_node_count()
     temp_data: dict[str, object] = {}
 
@@ -596,8 +608,6 @@ def node_centrality_simplest(
         full_distances = sorted(resolved_distances)
     else:
         logger.warning("Sampling is experimental: API and behaviour may change in future releases.")
-        # Sampling runs dead buffer nodes as sources, so the break-even point
-        # is p < n_live / n_total. Above this threshold exact mode is faster.
         lives = network_structure.node_lives
         live_fraction = sum(lives) / len(lives) if lives else 1.0
         for d in sorted(resolved_distances):
@@ -609,50 +619,53 @@ def node_centrality_simplest(
 
     results: dict[int, rustalgos.centrality.CentralitySimplestResult] = {}
 
-    if full_distances:
-        dist_label = ", ".join(f"{d}m" for d in full_distances)
-        logger.info(f"  Full: {dist_label}")
-        partial_func = partial(
-            network_structure.centrality_simplest,
-            distances=full_distances,
-            compute_closeness=compute_closeness,
-            compute_betweenness=compute_betweenness,
-            speed_m_s=speed_m_s,
-            tolerance=tolerance,
-            angular_scaling_unit=angular_scaling_unit,
-            farness_scaling_offset=farness_scaling_offset,
-            random_seed=random_seed,
-        )
-        result = config.wrap_progress(
-            total=node_count,
-            rust_struct=network_structure,
-            partial_func=partial_func,
-            desc=f"centrality simplest full: {dist_label}",
-        )
-        for d in full_distances:
-            results[d] = result  # type: ignore
+    with _SegmentWeightContext(network_structure, nodes_gdf, segment_weighted):
+        if full_distances:
+            dist_label = ", ".join(f"{d}m" for d in full_distances)
+            logger.info(f"  Full: {dist_label}")
+            partial_func = partial(
+                network_structure.centrality_simplest,
+                distances=full_distances,
+                compute_closeness=compute_closeness,
+                compute_betweenness=compute_betweenness,
+                speed_m_s=speed_m_s,
+                tolerance=tolerance,
+                angular_scaling_unit=angular_scaling_unit,
+                farness_scaling_offset=farness_scaling_offset,
+                segment_weighted=segment_weighted,
+                random_seed=random_seed,
+            )
+            result = config.wrap_progress(
+                total=node_count,
+                rust_struct=network_structure,
+                partial_func=partial_func,
+                desc=f"centrality simplest full: {dist_label}",
+            )
+            for d in full_distances:
+                results[d] = result  # type: ignore
 
-    for d, p in sampled_distances:
-        logger.info(f"  Sampled {d}m: p={p:.0%}")
-        partial_func = partial(
-            network_structure.centrality_simplest,
-            distances=[d],
-            compute_closeness=compute_closeness,
-            compute_betweenness=compute_betweenness,
-            speed_m_s=speed_m_s,
-            tolerance=tolerance,
-            angular_scaling_unit=angular_scaling_unit,
-            farness_scaling_offset=farness_scaling_offset,
-            sample_probability=p,
-            random_seed=random_seed,
-        )
-        result = config.wrap_progress(
-            total=node_count,
-            rust_struct=network_structure,
-            partial_func=partial_func,
-            desc=f"centrality simplest p={p:.0%}: {d}m",
-        )
-        results[d] = result  # type: ignore
+        for d, p in sampled_distances:
+            logger.info(f"  Sampled {d}m: p={p:.0%}")
+            partial_func = partial(
+                network_structure.centrality_simplest,
+                distances=[d],
+                compute_closeness=compute_closeness,
+                compute_betweenness=compute_betweenness,
+                speed_m_s=speed_m_s,
+                tolerance=tolerance,
+                angular_scaling_unit=angular_scaling_unit,
+                farness_scaling_offset=farness_scaling_offset,
+                segment_weighted=segment_weighted,
+                sample_probability=p,
+                random_seed=random_seed,
+            )
+            result = config.wrap_progress(
+                total=node_count,
+                rust_struct=network_structure,
+                partial_func=partial_func,
+                desc=f"centrality simplest p={p:.0%}: {d}m",
+            )
+            results[d] = result  # type: ignore
 
     if not results:
         return nodes_gdf
@@ -681,126 +694,6 @@ def node_centrality_simplest(
     return nodes_gdf
 
 
-def segment_centrality(
-    network_structure: rustalgos.graph.NetworkStructure,
-    nodes_gdf: gpd.GeoDataFrame,
-    distances: list[int] | None = None,
-    betas: list[float] | None = None,
-    minutes: list[float] | None = None,
-    compute_closeness: bool | None = True,
-    compute_betweenness: bool | None = True,
-    min_threshold_wt: float = MIN_THRESH_WT,
-    speed_m_s: float = SPEED_M_S,
-) -> gpd.GeoDataFrame:
-    r"""
-    Compute segment-based network centrality using the shortest path heuristic.
-
-    > Simplest path heuristics introduce conceptual and practical complications and support is deprecated since v4.
-
-    > For conceptual and practical reasons, segment based centralities are not weighted by node weights.
-
-    Parameters
-    ----------
-    network_structure
-        A [`rustalgos.graph.NetworkStructure`](/rustalgos/rustalgos#networkstructure). Best generated with the
-        [`io.network_structure_from_nx`](/tools/io#network-structure-from-nx) method.
-    nodes_gdf
-        A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe)
-        representing nodes. Best generated with the
-        [`io.network_structure_from_nx`](/tools/io#network-structure-from-nx) method. The outputs of
-        calculations will be written to this `GeoDataFrame`, which is then returned from the method.
-    distances: list[int]
-        Distances corresponding to the local $d_{max}$ thresholds to be used for calculations. The $\beta$
-        for distance-weighted metrics will be determined implicitly using `min_threshold_wt`. If the `distances`
-        parameter is not provided, then the `beta` or `minutes` parameters must be provided instead.
-    betas: list[float]
-        A list of $\beta$ to be used for the exponential decay function for weighted metrics. The $d_{max}$ thresholds
-        for unweighted metrics will be determined implicitly. If the `betas` parameter is not provided, then the
-        `distances` or `minutes` parameter must be provided instead.
-    minutes: list[float]
-        A list of walking times in minutes to be used for calculations. The $d_{max}$ thresholds for unweighted metrics
-        and $\beta$ for distance-weighted metrics will be determined implicitly using the `speed_m_s` and
-        `min_threshold_wt` parameters. If the `minutes` parameter is not provided, then the `distances` or `betas`
-        parameters must be provided instead.
-    compute_closeness: bool
-        Compute closeness centralities. True by default.
-    compute_betweenness: bool
-        Compute betweenness centralities. True by default.
-    min_threshold_wt: float
-        The default `min_threshold_wt` parameter can be overridden to generate custom mappings between the
-        `distance` and `beta` parameters. See [`rustalgos.distances_from_beta`](/rustalgos#distances-from-betas)
-        for more information.
-    speed_m_s: float
-        The default `speed_m_s` parameter can be configured to generate custom mappings between walking times and
-        distance thresholds $d_{max}$.
-
-    Returns
-    -------
-    nodes_gdf: GeoDataFrame
-        The input `node_gdf` parameter is returned with additional columns populated with the calcualted metrics.
-
-    Examples
-    --------
-    Segment path centralities are available with the following keys:
-
-    | key                 | formula | notes |
-    | ------------------- | :-----: |------ |
-    | seg_density     | $$\sum_{(a, b)}^{edges}d_{b} - d_{a}$$ | A summation of edge lengths. |
-    | seg_harmonic    | $$\sum_{(a, b)}^{edges}\int_{a}^{b}\ln(b) -\ln(a)$$ | A continuous form of
-    harmonic closeness centrality applied to edge lengths. |
-    | seg_beta        | $$\sum_{(a, b)}^{edges}\int_{a}^{b}\frac{\exp(-\beta\cdot b) -\exp(-\beta\cdot a)}{-\beta}$$ | A
-    continuous form of beta-weighted (gravity index) centrality applied to edge lengths. |
-    | seg_betweenness | | A continuous form of betweenness: Resembles `segment_beta` applied to edges situated
-    on shortest paths between all nodes $j$ and $k$ passing through $i$. |
-
-    """
-    logger.info("Computing shortest path segment centrality.")
-    partial_func = partial(
-        network_structure.segment_centrality,
-        distances=distances,
-        betas=betas,
-        minutes=minutes,
-        compute_closeness=compute_closeness,
-        compute_betweenness=compute_betweenness,
-        min_threshold_wt=min_threshold_wt,
-        speed_m_s=speed_m_s,
-    )
-    # wraps progress bar
-    result = config.wrap_progress(
-        total=network_structure.street_node_count(), rust_struct=network_structure, partial_func=partial_func
-    )
-    # unpack
-    distances = config.log_thresholds(
-        distances=distances,
-        betas=betas,
-        minutes=minutes,
-        min_threshold_wt=min_threshold_wt,
-        speed_m_s=speed_m_s,
-    )
-    # intersect computed keys with those available in the gdf index (stations vs. streets)
-    gdf_idx = nodes_gdf.index.intersection(result.node_keys_py)
-    # create a dictionary to hold the data
-    temp_data = {}
-    if compute_closeness is True:
-        for measure_key, attr_key in [
-            ("seg_density", "segment_density"),
-            ("seg_harmonic", "segment_harmonic"),
-            ("seg_beta", "segment_beta"),
-        ]:
-            for distance in distances:
-                data_key = config.prep_gdf_key(measure_key, distance)
-                temp_data[data_key] = getattr(result, attr_key)[distance]
-    if compute_betweenness is True:
-        for distance in distances:
-            data_key = config.prep_gdf_key("seg_betweenness", distance)
-            temp_data[data_key] = result.segment_betweenness[distance]  # type: ignore
-
-    temp_df = pd.DataFrame(temp_data, index=result.node_keys_py)
-    nodes_gdf.loc[gdf_idx, temp_df.columns] = temp_df.loc[gdf_idx, temp_df.columns]
-
-    return nodes_gdf
-
-
 # =============================================================================
 # Convenience wrappers — closeness-only and betweenness-only
 # =============================================================================
@@ -819,11 +712,11 @@ def closeness_shortest(
 ) -> gpd.GeoDataFrame:
     """Compute closeness centrality using shortest paths.
 
-    Wraps `node_centrality_shortest` with `compute_closeness=True` and `compute_betweenness=False`.
+    Wraps `centrality_shortest` with `compute_closeness=True` and `compute_betweenness=False`.
     Uses exponential decay (`"exp(-4 * p)"`) by default; pass `decay_fn` to
-    `node_centrality_shortest` for a custom decay function.
+    `centrality_shortest` for a custom decay function.
     """
-    return node_centrality_shortest(
+    return centrality_shortest(
         network_structure=network_structure,
         nodes_gdf=nodes_gdf,
         distances=distances,
@@ -853,9 +746,9 @@ def closeness_simplest(
 ) -> gpd.GeoDataFrame:
     """Compute closeness centrality using simplest (angular) paths.
 
-    Wraps `node_centrality_simplest` with `compute_closeness=True` and `compute_betweenness=False`.
+    Wraps `centrality_simplest` with `compute_closeness=True` and `compute_betweenness=False`.
     """
-    return node_centrality_simplest(
+    return centrality_simplest(
         network_structure=network_structure,
         nodes_gdf=nodes_gdf,
         distances=distances,
@@ -885,11 +778,11 @@ def betweenness_shortest(
 ) -> gpd.GeoDataFrame:
     """Compute betweenness centrality using shortest paths.
 
-    Wraps `node_centrality_shortest` with `compute_closeness=False` and `compute_betweenness=True`.
+    Wraps `centrality_shortest` with `compute_closeness=False` and `compute_betweenness=True`.
     Uses exponential decay (`"exp(-4 * p)"`) by default; pass `decay_fn` to
-    `node_centrality_shortest` for a custom decay function.
+    `centrality_shortest` for a custom decay function.
     """
-    return node_centrality_shortest(
+    return centrality_shortest(
         network_structure=network_structure,
         nodes_gdf=nodes_gdf,
         distances=distances,
@@ -917,9 +810,9 @@ def betweenness_simplest(
 ) -> gpd.GeoDataFrame:
     """Compute betweenness centrality using simplest (angular) paths.
 
-    Wraps `node_centrality_simplest` with `compute_closeness=False` and `compute_betweenness=True`.
+    Wraps `centrality_simplest` with `compute_closeness=False` and `compute_betweenness=True`.
     """
-    return node_centrality_simplest(
+    return centrality_simplest(
         network_structure=network_structure,
         nodes_gdf=nodes_gdf,
         distances=distances,

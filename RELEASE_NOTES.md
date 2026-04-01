@@ -12,7 +12,7 @@ Supported in all IO methods: `nx_from_osm_nx`, `nx_from_open_roads`, `nx_from_ge
 
 ### Adaptive sampling (experimental)
 
-`node_centrality_shortest` and `node_centrality_simplest` accept `sample=True` to use distance-based Hoeffding/Eppstein-Wang sampling for approximate centrality, achieving 2-3x speedup while maintaining ρ ≥ 0.95. Sampling probability is derived deterministically from each distance threshold using a canonical grid network model.
+`centrality_shortest` and `centrality_simplest` accept `sample=True` to use distance-based Hoeffding/Eppstein-Wang sampling for approximate centrality, achieving 2-3x speedup while maintaining ρ ≥ 0.95. Sampling probability is derived deterministically from each distance threshold using a canonical grid network model.
 
 ### QGIS plugin updates
 
@@ -22,23 +22,23 @@ New accessibility and statistics processing algorithms. Expanded centrality algo
 
 ### Angular (simplest-path) analysis now requires a dual graph
 
-`node_centrality_simplest` (and the convenience wrappers `closeness_simplest`, `betweenness_simplest`) now raises `ValueError` if the input `NetworkStructure` was not ingested from a dual graph. Angular routing uses endpoint-aware dual-graph traversal instead of the previous bearing-based angular costs. Convert primal graphs with `graphs.nx_to_dual()` before calling `network_structure_from_nx()`.
+`centrality_simplest` (and the convenience wrappers `closeness_simplest`, `betweenness_simplest`) now raises `ValueError` if the input `NetworkStructure` was not ingested from a dual graph. Angular routing uses endpoint-aware dual-graph traversal instead of the previous bearing-based angular costs. Convert primal graphs with `graphs.nx_to_dual()` before calling `network_structure_from_nx()`.
 
 ### `tolerance` parameter semantics changed
 
-The `tolerance` parameter on `node_centrality_shortest`, `node_centrality_simplest`, `betweenness_shortest`, `betweenness_simplest`, and `betweenness_od` now uses **relative percentage** semantics (e.g. `1.0` = 1%) instead of the previous absolute fraction. The default changed from `0.0` to `None`. A tiny internal epsilon is always enforced for floating-point stability. To migrate: multiply old values by 100 (e.g. old `0.05` → new `5.0`).
+The `tolerance` parameter on `centrality_shortest`, `centrality_simplest`, `betweenness_shortest`, `betweenness_simplest`, and `betweenness_od` now uses **relative percentage** semantics (e.g. `1.0` = 1%) instead of the previous absolute fraction. The default changed from `0.0` to `None`. A tiny internal epsilon is always enforced for floating-point stability. To migrate: multiply old values by 100 (e.g. old `0.05` → new `5.0`).
 
-### `tolerance` parameter reordered in `node_centrality_simplest`
+### `tolerance` parameter reordered in `centrality_simplest`
 
 `tolerance` now appears before `angular_scaling_unit` and `farness_scaling_offset`. Code using positional arguments for these parameters will need updating.
 
 ### `betweenness_beta` removed from angular (simplest) results
 
-`CentralitySimplestResult` no longer exposes `node_betweenness_beta`. The `node_centrality_simplest` function no longer writes `cc_betweenness_beta_*` columns. Only `cc_betweenness_*` columns are produced.
+`CentralitySimplestResult` no longer exposes `node_betweenness_beta`. The `centrality_simplest` function no longer writes `cc_betweenness_beta_*` columns. Only `cc_betweenness_*` columns are produced.
 
 ### `cycles` metric changed
 
-The `cycles` output from `node_centrality_shortest` now measures the **circuit rank** of the locally reachable subgraph (m − n + c), providing a more stable measure of network meshedness than the older tree-cycle heuristic.
+The `cycles` output from `centrality_shortest` now measures the **circuit rank** of the locally reachable subgraph (m − n + c), providing a more stable measure of network meshedness than the older tree-cycle heuristic.
 
 ### Sampling functions moved from `config` to `sampling` module
 
@@ -46,7 +46,7 @@ The `cycles` output from `node_centrality_shortest` now measures the **circuit r
 
 ## Other Changes
 
-- All result arrays (`CentralityShortestResult`, `CentralitySimplestResult`, `CentralitySegmentResult`, `Stats`, etc.) now return `np.float64` instead of `np.float32`.
+- All result arrays (`CentralityShortestResult`, `CentralitySimplestResult`, `Stats`, etc.) now return `np.float64` instead of `np.float32`.
 - `betweenness_od` now accepts an optional `tolerance` parameter.
 - `closeness_shortest` and `closeness_simplest` now accept an optional `tolerance` parameter.
 - Bug fix: `is_dual` graph attribute was incorrectly cast via `CRS()` instead of `bool()` in `nx_remove_dangling_nodes` and `nx_merge_parallel_edges`.

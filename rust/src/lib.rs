@@ -51,7 +51,7 @@ fn rustalgos(py_module: &Bound<'_, PyModule>) -> PyResult<()> {
     py_module.add_function(wrap_pyfunction!(common::distances_from_seconds, py_module)?)?;
     py_module.add_function(wrap_pyfunction!(common::seconds_from_distances, py_module)?)?;
     py_module.add_function(wrap_pyfunction!(
-        common::pair_distances_betas_time,
+        common::pair_distances_and_time,
         py_module
     )?)?;
     py_module.add_function(wrap_pyfunction!(
@@ -146,7 +146,6 @@ fn register_centrality_module(py_module: &Bound<'_, PyModule>) -> PyResult<()> {
     submodule.add_class::<centrality::BetweennessShortestResult>()?;
     submodule.add_class::<centrality::CentralityShortestResult>()?;
     submodule.add_class::<centrality::CentralitySimplestResult>()?;
-    submodule.add_class::<centrality::CentralitySegmentResult>()?;
     py_module.add_submodule(&submodule)?;
     Ok(())
 }

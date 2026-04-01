@@ -219,52 +219,34 @@ def seconds_from_distances(
     """
     ...
 
-def pair_distances_betas_time(
+def pair_distances_and_time(
     speed_m_s: float,
     distances: list[int] | None = None,
-    betas: list[float] | None = None,
     minutes: list[float] | None = None,
-    min_threshold_wt: float | None = None,
-) -> tuple[list[int], list[float], list[int]]:
+) -> tuple[list[int], list[int]]:
     r"""
-    Calculate distances, betas, and seconds, given exactly one of them.
+    Resolve distances and seconds from either distances or minutes.
 
-    Requires exactly one of `distances`, `betas`, or `minutes` to be provided.
+    Exactly one of `distances` or `minutes` must be provided.
 
     Parameters
     ----------
     speed_m_s: float
         Walking speed in meters per second.
     distances: list[int] | None
-        Distance thresholds ($d_{max}$).
-    betas: list[float] | None
-        Decay parameters ($\beta$).
+        Distance thresholds in metres.
     minutes: list[float] | None
         Time in minutes.
-    min_threshold_wt: float | None
-        Optional cutoff weight $w_{min}$ for conversions.
 
     Returns
     -------
-    tuple[list[int], list[float], list[int]]
-        A tuple containing (distances, betas, seconds).
+    tuple[list[int], list[int]]
+        A tuple containing (distances, seconds).
 
     Raises
     ------
     ValueError
-        If not exactly one of `distances`, `betas`, `minutes` is provided, or if inputs are invalid.
-
-
-    Examples
-    --------
-    :::warning
-    Networks should be buffered according to the largest distance threshold that will be used for analysis. This
-    protects nodes near network boundaries from edge falloffs. Nodes outside the area of interest but within these
-    buffered extents should be set to 'dead' so that centralities or other forms of measures are not calculated.
-    Whereas metrics are not calculated for 'dead' nodes, they can still be traversed by network analysis algorithms
-    when calculating shortest paths and landuse accessibilities.
-    :::
-
+        If not exactly one of `distances` or `minutes` is provided, or if inputs are invalid.
     """
     ...
 

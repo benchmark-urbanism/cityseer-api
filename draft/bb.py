@@ -77,7 +77,7 @@ stops
 nodes_gdf_w_trans, edges_gdf_w_trans, network_structure, _, _ = io.add_transport_gtfs(
     gtfs_data_path, nodes_gdf_w_trans, edges_gdf_w_trans, network_structure, graph_crs
 )
-nodes_gdf_w_trans = networks.node_centrality_shortest(
+nodes_gdf_w_trans = networks.centrality_shortest(
     network_structure=network_structure,
     nodes_gdf=nodes_gdf_w_trans,
     distances=distances,

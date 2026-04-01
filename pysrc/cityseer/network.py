@@ -933,11 +933,12 @@ class CityNetwork:
         return cls(ns, nodes_gdf, _state=state, _crs=nodes_gdf.crs)
 
     def centrality_shortest(self, **kwargs: Any) -> CityNetwork:
-        """Compute shortest-path (metric) node centrality.
+        """Compute shortest-path (metric) centrality.
 
-        Wraps [`node_centrality_shortest`](/metrics/networks#node-centrality-shortest). All keyword arguments
+        Wraps [`centrality_shortest`](/metrics/networks#centrality-shortest). All keyword arguments
         are forwarded; see that function for the full parameter list including ``distances``,
-        ``minutes``, ``compute_closeness``, ``compute_betweenness``, ``decay_fn``, ``sample``, and ``epsilon``.
+        ``minutes``, ``compute_closeness``, ``compute_betweenness``, ``decay_fn``, ``segment_weighted``,
+        ``sample``, and ``epsilon``.
 
         Returns
         -------
@@ -952,6 +953,9 @@ class CityNetwork:
         # Multiple distance thresholds
         cn.centrality_shortest(distances=[400, 800, 1600])
 
+        # With segment-length weighting
+        cn.centrality_shortest(distances=[400, 800], segment_weighted=True)
+
         # With custom decay and sampling for large networks
         cn.centrality_shortest(
             distances=[800, 2000, 5000],
@@ -959,19 +963,13 @@ class CityNetwork:
             sample=True,
             epsilon=0.06,
         )
-
-        # Closeness only (skip betweenness for speed)
-        cn.centrality_shortest(distances=[800], compute_betweenness=False)
-
-        # Using walking time thresholds instead of distances
-        cn.centrality_shortest(minutes=[5, 10, 20])
         ```
 
         Output columns per distance ``d`` (see [Column Naming Conventions](/intro#column-naming-conventions)):
 
         | Column | Description |
         | --- | --- |
-        | ``cc_density_{d}`` | Count of reachable nodes. |
+        | ``cc_density_{d}`` | Count of reachable nodes (or total reachable street length if segment_weighted). |
         | ``cc_harmonic_{d}`` | Harmonic closeness. |
         | ``cc_farness_{d}`` | Sum of distances to reachable nodes. |
         | ``cc_hillier_{d}`` | Hillier normalisation (density² / farness). |
@@ -980,7 +978,7 @@ class CityNetwork:
         | ``cc_betweenness_{d}`` | Betweenness centrality. |
         | ``cc_betweenness_decay_{d}`` | Decay-weighted betweenness. |
         """
-        self._nodes_gdf = networks.node_centrality_shortest(
+        self._nodes_gdf = networks.centrality_shortest(
             network_structure=self._network_structure,
             nodes_gdf=self._nodes_gdf,
             **kwargs,
@@ -988,13 +986,10 @@ class CityNetwork:
         return self
 
     def centrality_simplest(self, **kwargs: Any) -> CityNetwork:
-        """Compute simplest-path (angular) node centrality.
+        """Compute simplest-path (angular) centrality.
 
-        Wraps [`node_centrality_simplest`](/metrics/networks#node-centrality-simplest). All keyword arguments
+        Wraps [`centrality_simplest`](/metrics/networks#centrality-simplest). All keyword arguments
         are forwarded; see that function for the full parameter list.
-
-        This method does not accept a ``decay_fn`` parameter; angular centralities use angular cost rather
-        than distance-based decay.
 
         Returns
         -------
@@ -1011,31 +1006,13 @@ class CityNetwork:
 
         | Column | Description |
         | --- | --- |
-        | ``cc_density_{d}_ang`` | Count of reachable nodes (angular routing). |
+        | ``cc_density_{d}_ang`` | Count of reachable nodes (or total reachable street length if segment_weighted). |
         | ``cc_harmonic_{d}_ang`` | Harmonic closeness (cumulative angular change as impedance). |
         | ``cc_farness_{d}_ang`` | Sum of cumulative angular changes to reachable nodes. |
         | ``cc_hillier_{d}_ang`` | Hillier normalisation (density² / farness). |
         | ``cc_betweenness_{d}_ang`` | Betweenness (simplest angular paths). |
         """
-        self._nodes_gdf = networks.node_centrality_simplest(
-            network_structure=self._network_structure,
-            nodes_gdf=self._nodes_gdf,
-            **kwargs,
-        )
-        return self
-
-    def segment_centrality(self, **kwargs: Any) -> CityNetwork:
-        """Compute segment-based centrality.
-
-        Wraps [`segment_centrality`](/metrics/networks#segment-centrality). All keyword arguments
-        are forwarded; see that function for the full parameter list.
-
-        Returns
-        -------
-        self: CityNetwork
-            Returns self for method chaining. Results are written to ``nodes_gdf``.
-        """
-        self._nodes_gdf = networks.segment_centrality(
+        self._nodes_gdf = networks.centrality_simplest(
             network_structure=self._network_structure,
             nodes_gdf=self._nodes_gdf,
             **kwargs,

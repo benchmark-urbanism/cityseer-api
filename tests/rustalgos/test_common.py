@@ -152,36 +152,23 @@ def test_seconds_from_distances():
         rustalgos.seconds_from_distances([100, 50], config.SPEED_M_S)
 
 
-def test_pair_distances_betas_time():
+def test_pair_distances_and_time():
     distances = [400, 600, 800, 1600, 2000, 10000, 20000]
     minutes = [5.0, 7.5, 10.0, 20.0, 25.0, 125.0, 250.0]
     seconds = [round(t * 60) for t in minutes]
-    betas = [0.01, 0.00667, 0.005, 0.0025, 0.002, 0.0004, 0.0002]
-    # should raise
+    # should raise when neither provided
     with pytest.raises(ValueError):
-        rustalgos.pair_distances_betas_time(config.SPEED_M_S, None, None, None)
+        rustalgos.pair_distances_and_time(config.SPEED_M_S)
+    # should raise when both provided
     with pytest.raises(ValueError):
-        rustalgos.pair_distances_betas_time(config.SPEED_M_S, distances, betas, None)
-    with pytest.raises(ValueError):
-        rustalgos.pair_distances_betas_time(config.SPEED_M_S, distances, None, minutes)
-    with pytest.raises(ValueError):
-        rustalgos.pair_distances_betas_time(config.SPEED_M_S, None, betas, minutes)
-    with pytest.raises(ValueError):
-        rustalgos.pair_distances_betas_time(config.SPEED_M_S, distances, betas, minutes)
-    # should match
-    ds, bs, ts = rustalgos.pair_distances_betas_time(config.SPEED_M_S, distances, None, None)
+        rustalgos.pair_distances_and_time(config.SPEED_M_S, distances, minutes)
+    # from distances
+    ds, ts = rustalgos.pair_distances_and_time(config.SPEED_M_S, distances=distances)
     assert np.allclose(ds, distances, atol=config.ATOL, rtol=config.RTOL)
-    assert np.allclose(bs, betas, atol=config.ATOL, rtol=config.RTOL)
     assert np.allclose(ts, seconds, atol=config.ATOL, rtol=config.RTOL)
-    #
-    ds, bs, ts = rustalgos.pair_distances_betas_time(config.SPEED_M_S, None, betas, None)
+    # from minutes
+    ds, ts = rustalgos.pair_distances_and_time(config.SPEED_M_S, minutes=minutes)
     assert np.allclose(ds, distances, atol=config.ATOL, rtol=config.RTOL)
-    assert np.allclose(bs, betas, atol=config.ATOL, rtol=config.RTOL)
-    assert np.allclose(ts, seconds, atol=config.ATOL, rtol=config.RTOL)
-    #
-    ds, bs, ts = rustalgos.pair_distances_betas_time(config.SPEED_M_S, None, None, minutes)
-    assert np.allclose(ds, distances, atol=config.ATOL, rtol=config.RTOL)
-    assert np.allclose(bs, betas, atol=config.ATOL, rtol=config.RTOL)
     assert np.allclose(ts, seconds, atol=config.ATOL, rtol=config.RTOL)
 
 

@@ -101,18 +101,3 @@ class BetweennessShortestResult:
         """Number of sources that were sampled."""
         ...
 
-class CentralitySegmentResult:
-    """Holds results for segment-based centrality calculations."""
-
-    distances: list[int]
-    node_keys_py: list[Any]
-    node_indices: list[int]
-
-    @property
-    def segment_density(self) -> dict[int, npt.NDArray[np.float64]]: ...
-    @property
-    def segment_harmonic(self) -> dict[int, npt.NDArray[np.float64]]: ...
-    @property
-    def segment_beta(self) -> dict[int, npt.NDArray[np.float64]]: ...
-    @property
-    def segment_betweenness(self) -> dict[int, npt.NDArray[np.float64]]: ...
