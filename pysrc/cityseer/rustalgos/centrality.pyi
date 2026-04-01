@@ -100,4 +100,3 @@ class BetweennessShortestResult:
     def sampled_source_count(self) -> int:
         """Number of sources that were sampled."""
         ...
-
