@@ -103,8 +103,8 @@ def test_local_centrality_time(primal_graph):
 
     def node_cent_wrapper():
         network_structure.centrality_shortest(
-            compute_closeness=True,
-            compute_betweenness=False,
+            closeness_exprs=[("density", "1"), ("harmonic", "1/c")],
+            betweenness_exprs=[],
             distances=distances,
             pbar_disabled=True,
         )

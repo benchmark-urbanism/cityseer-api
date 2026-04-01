@@ -481,6 +481,7 @@ Setting the `speed_m_s` to a higher or lower number will affect the walking time
  If not exactly one of `distances` or `minutes` is provided, or if inputs are invalid.</div>
 </div>
 
+
 </div>
 
 

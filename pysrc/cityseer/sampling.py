@@ -37,6 +37,10 @@ def compute_hoeffding_p(
     """
     Compute sampling probability from the Hoeffding/Eppstein-Wang bound.
 
+    Given a reachability estimate (how many nodes each source can reach), this function
+    determines the minimum sampling probability needed to guarantee that results stay
+    within ``epsilon`` of the exact computation with ``1 - delta`` confidence.
+
     k = log(2r / δ) / (2ε²)
     p = min(1, k / r)
 
@@ -47,7 +51,8 @@ def compute_hoeffding_p(
     epsilon : float
         Normalised additive error tolerance. Default 0.06 (via HOEFFDING_EPSILON).
     delta : float
-        Failure probability (1 - confidence). Default 0.1 (via HOEFFDING_DELTA).
+        Failure probability (1 - confidence). Default 0.1 (via HOEFFDING_DELTA), meaning
+        90% confidence that the error stays within epsilon.
 
     Returns
     -------
@@ -78,20 +83,28 @@ def compute_distance_p(
     """
     Compute sampling probability from distance using a canonical grid network model.
 
-    Estimates reachability as r = π * d² / s² for grid spacing s, then applies
-    the Hoeffding/Eppstein-Wang bound. This produces deterministic p values for
-    any distance, independent of the actual network, enabling cross-network comparison.
+    Rather than requiring knowledge of the actual network, this function estimates
+    reachability from the distance threshold alone using a regular grid model with
+    spacing ``grid_spacing``. The estimated reachability is r = π * d² / s², which is
+    then passed to ``compute_hoeffding_p`` to determine the sampling probability.
+
+    This produces deterministic, network-independent sampling probabilities: the same
+    distance always yields the same probability, enabling consistent comparison across
+    different networks.
 
     Parameters
     ----------
     distance : float
         Distance threshold in metres.
     epsilon : float
-        Normalised additive error tolerance. Default 0.06 (unified for closeness and betweenness).
+        Normalised additive error tolerance. Default 0.06.
     delta : float
         Failure probability (1 - confidence). Default 0.1.
     grid_spacing : float
-        Canonical inter-node spacing in metres. Default 175m (sparse street network).
+        Canonical inter-node spacing in metres. The default 175m represents a sparse urban
+        network. Denser networks (closer intersection spacing) will have more reachable nodes
+        than the model predicts, so the computed sampling probability will be higher than
+        strictly necessary — safe but slightly slower than optimal.
 
     Returns
     -------

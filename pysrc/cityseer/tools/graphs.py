@@ -119,18 +119,17 @@ def nx_simple_geoms(nx_multigraph: nx.MultiGraph) -> nx.MultiGraph:
 
 def nx_remove_filler_nodes(nx_multigraph: nx.MultiGraph) -> nx.MultiGraph:
     """
-    Remove nodes of degree=2.
+    Remove nodes of degree=2 (intermediate points that are not junctions).
 
-    Nodes of degree=2 represent no route-choice options other than traversal to the next edge. These are frequently
-    found on network topologies as a means of describing roadway geometry, but are meaningless from a network topology
-    point of view. This method will find and deleted these nodes, and replaces the two edges on either side with a new
-    spliced edge. The new edge's `geom` attribute will retain the geometric properties of the original edges.
+    A degree-2 node has exactly one road in and one road out — it is a waypoint along a street, not an intersection or
+    decision point. These are common in datasets where curved roads are represented by sequences of nodes tracing the
+    road geometry. This method removes such nodes and merges the two edges on either side into a single edge whose
+    `geom` attribute retains the geometric detail of the originals.
 
     :::note
-    Filler nodes may be prevalent in poor quality datasets, or in situations where curved roadways have been represented
-    through the addition of nodes to describe arced geometries. `cityseer` uses `shapely` `Linestrings` to describe
-    arbitrary road geometries without the need for filler nodes. Filler nodes can therefore be removed, thus reducing
-    side-effects as a function of varied node intensities when computing network centralities.
+    Since `cityseer` uses `shapely` `Linestrings` to describe arbitrary road curvature, intermediate nodes are
+    unnecessary. Removing them produces cleaner networks and prevents variations in node density from distorting
+    centrality calculations.
     :::
 
     Parameters
@@ -1858,8 +1857,9 @@ def nx_decompose(
     """
     Decomposes a graph so that no edge is longer than a set maximum.
 
-    Decomposition provides a more granular representation of potential variations along street lengths, while reducing
-    network centrality side-effects that arise as a consequence of varied node densities.
+    Long street segments are split into shorter pieces of uniform length. This ensures that variations along a
+    street (e.g. land uses at the 100m mark vs. the 300m mark) are captured at finer resolution, and prevents
+    long streets from having disproportionate influence on centrality calculations due to uneven node spacing.
 
     :::note
     Setting the `decompose` parameter too small in relation to the size of the graph may increase the computation time

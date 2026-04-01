@@ -731,43 +731,37 @@ def test_network_structure_from_gpd(primal_graph):
             network_structure=netw_struct,
             nodes_gdf=nd_gdf,
             distances=[400],
-            compute_closeness=True,
-            compute_betweenness=True,
         )
-        # test closeness against underlying source-sampling method
+        # test closeness against underlying Rust method
+        from cityseer.metrics.networks import DEFAULT_SHORTEST_BETWEENNESS, DEFAULT_SHORTEST_CLOSENESS
+
         node_result = netw_struct.centrality_shortest(
-            compute_closeness=True,
-            compute_betweenness=False,
+            closeness_exprs=list(DEFAULT_SHORTEST_CLOSENESS.items()),
+            betweenness_exprs=[],
+            compute_cycles=True,
             distances=[400],
         )
-        for measure_key, attr_key in [
-            ("decay", "node_decay"),
-            ("cycles", "node_cycles"),
-            ("density", "node_density"),
-            ("farness", "node_farness"),
-            ("harmonic", "node_harmonic"),
-        ]:
+        metrics = node_result.metrics
+        for measure_key in ["decay", "cycles", "density", "farness", "harmonic"]:
             data_key = config.prep_gdf_key(measure_key, 400)
             assert np.allclose(
                 nd_gdf[data_key],
-                getattr(node_result, attr_key)[400],
+                metrics[measure_key][400],
                 atol=config.ATOL,
                 rtol=config.RTOL,
             )
-        # test betweenness against exact method
+        # test betweenness against Rust method
         betweenness_result = netw_struct.centrality_shortest(
-            compute_closeness=False,
-            compute_betweenness=True,
+            closeness_exprs=[],
+            betweenness_exprs=list(DEFAULT_SHORTEST_BETWEENNESS.items()),
             distances=[400],
         )
-        for measure_key, attr_key in [
-            ("betweenness", "node_betweenness"),
-            ("betweenness_decay", "node_betweenness_decay"),
-        ]:
+        betw_metrics = betweenness_result.metrics
+        for measure_key in ["betweenness", "betweenness_decay"]:
             data_key = config.prep_gdf_key(measure_key, 400)
             assert np.allclose(
                 nd_gdf[data_key],
-                getattr(betweenness_result, attr_key)[400],
+                betw_metrics[measure_key][400],
                 atol=config.ATOL,
                 rtol=config.RTOL,
             )
@@ -926,7 +920,7 @@ def test_nx_from_cityseer_geopandas(primal_graph):
     # check with metrics
     nodes_gdf, edges_gdf, network_structure = io.network_structure_from_nx(primal_graph)
     nodes_gdf = networks.centrality_shortest(
-        network_structure=network_structure, nodes_gdf=nodes_gdf, compute_closeness=True, distances=[500, 1000]
+        network_structure=network_structure, nodes_gdf=nodes_gdf, betweenness={}, distances=[500, 1000]
     )
     data_gdf = mock.mock_landuse_categorical_data(primal_graph, length=50)
     nodes_gdf, data_gdf = layers.compute_accessibilities(

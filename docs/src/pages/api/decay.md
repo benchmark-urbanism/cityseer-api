@@ -6,7 +6,7 @@ layout: ../../layouts/PageLayout.astro
 # decay
 
 
- Helper functions for generating decay expression strings. Decay expressions use a single variable `p` representing normalised progress from 0 (source) to 1 (distance/time cutoff). The helpers below produce expression strings that can be passed directly to the `decay_fn` parameter of [`compute_stats`](/metrics/layers#compute-stats), [`compute_accessibilities`](/metrics/layers#compute-accessibilities), and similar functions.
+ Functions for generating decay expression strings. Decay expressions control how feature importance decreases with distance from an analysis point. They use a single variable `p` that ranges from 0 at the analysis point (source) to 1 at the distance threshold (cutoff), where `p = network_distance / max_distance`. The functions below produce expression strings that can be passed directly to the `decay_fn` parameter of [`centrality_shortest`](/metrics/networks#centrality-shortest), [`compute_stats`](/metrics/layers#compute-stats), [`compute_accessibilities`](/metrics/layers#compute-accessibilities), and other analysis functions.
 
 ```python
 from cityseer import decay

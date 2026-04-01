@@ -227,19 +227,22 @@ layout: ../../layouts/PageLayout.astro
     <span class="pn">minutes=None</span>
   </div>
   <div class="param">
-    <span class="pn">compute_closeness=None</span>
+    <span class="pn">closeness_exprs=None</span>
   </div>
   <div class="param">
-    <span class="pn">compute_betweenness=None</span>
+    <span class="pn">betweenness_exprs=None</span>
   </div>
   <div class="param">
-    <span class="pn">decay_fn=None</span>
+    <span class="pn">compute_cycles=None</span>
   </div>
   <div class="param">
     <span class="pn">speed_m_s=None</span>
   </div>
   <div class="param">
     <span class="pn">tolerance=None</span>
+  </div>
+  <div class="param">
+    <span class="pn">segment_weighted=None</span>
   </div>
   <div class="param">
     <span class="pn">sample_probability=None</span>
@@ -258,9 +261,9 @@ layout: ../../layouts/PageLayout.astro
 </div>
 
 
- Compute node centrality using shortest paths with a single Dijkstra per source. When both `compute_closeness` and `compute_betweenness` are true, a single Brandes-style Dijkstra traversal per source produces the data for both closeness accumulation and betweenness backpropagation, halving computation time compared to calling `closeness_shortest` and `betweenness_shortest` separately.
+ Compute node centrality using shortest paths with a single Dijkstra per source. Closeness and betweenness metrics are specified as lists of (name, expression) pairs. Expressions use variables `c` (metric distance) and `p` (normalised progress = c / threshold). Each expression is parsed once per thread via `meval` and evaluated per reached node (closeness) or per shortest path (betweenness).
 
- When `sample_probability` is set, Bernoulli sampling with inverse-probability weighting (IPW) is used. Each node is independently included as a source with the given probability. Both live and buffer nodes are sampled to prevent edge roll-off. Use `random_seed` for reproducibility. Sampling weights can further modulate per-node inclusion via `sampling_weights`.
+ When `sample_probability` is set, Bernoulli sampling with inverse-probability weighting (IPW) is used.
 
 </div>
 
@@ -287,10 +290,10 @@ layout: ../../layouts/PageLayout.astro
     <span class="pn">minutes=None</span>
   </div>
   <div class="param">
-    <span class="pn">compute_closeness=None</span>
+    <span class="pn">closeness_exprs=None</span>
   </div>
   <div class="param">
-    <span class="pn">compute_betweenness=None</span>
+    <span class="pn">betweenness_exprs=None</span>
   </div>
   <div class="param">
     <span class="pn">speed_m_s=None</span>
@@ -299,10 +302,7 @@ layout: ../../layouts/PageLayout.astro
     <span class="pn">tolerance=None</span>
   </div>
   <div class="param">
-    <span class="pn">angular_scaling_unit=None</span>
-  </div>
-  <div class="param">
-    <span class="pn">farness_scaling_offset=None</span>
+    <span class="pn">segment_weighted=None</span>
   </div>
   <div class="param">
     <span class="pn">sample_probability=None</span>
@@ -322,6 +322,8 @@ layout: ../../layouts/PageLayout.astro
 
 
  Compute node centrality using simplest (angular) paths on the dual graph. Angular routing is evaluated on two directed states per segment. Each source segment seeds both orientations into a single Brandes traversal.
+
+ Expressions use `c` (angular cost) and `p` (normalised time progress = agg_seconds / max_seconds).
 
 </div>
 
@@ -351,7 +353,7 @@ layout: ../../layouts/PageLayout.astro
     <span class="pn">minutes=None</span>
   </div>
   <div class="param">
-    <span class="pn">decay_fn=None</span>
+    <span class="pn">betweenness_exprs=None</span>
   </div>
   <div class="param">
     <span class="pn">speed_m_s=None</span>
@@ -367,7 +369,7 @@ layout: ../../layouts/PageLayout.astro
 </div>
 
 
- Compute OD-weighted betweenness centrality using shortest paths. Uses Brandes multi-predecessor Dijkstra from each source that has outbound OD trips. For each OD destination, backpropagates credit through all equal shortest paths, weighted by the OD flow weight and split by sigma (path count).
+ Compute OD-weighted betweenness centrality using shortest paths. Uses Brandes multi-predecessor Dijkstra from each source that has outbound OD trips. Betweenness expressions use `c` (metric distance) and `p` (normalised progress = c / threshold).
 
 </div>
 
@@ -589,6 +591,37 @@ layout: ../../layouts/PageLayout.astro
   <span class="pt">)</span>
 </div>
 </div>
+
+</div>
+
+ 
+
+<div class="function">
+
+## set_node_weight
+
+
+<div class="content">
+<span class="name">set_node_weight</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">self</span>
+  </div>
+  <div class="param">
+    <span class="pn">/</span>
+  </div>
+  <div class="param">
+    <span class="pn">node_idx</span>
+  </div>
+  <div class="param">
+    <span class="pn">weight</span>
+  </div>
+  <span class="pt">)</span>
+</div>
+</div>
+
+
+ Set the weight of a node.
 
 </div>
 
@@ -1199,12 +1232,17 @@ layout: ../../layouts/PageLayout.astro
 
  
 
-<span class="name">node_zs</span>
+<span class="name">node_xys</span>
 
 
  
 
-<span class="name">node_xyzs</span>
+<span class="name">node_ys</span>
+
+
+ 
+
+<span class="name">node_zs</span>
 
 
  
@@ -1219,12 +1257,7 @@ layout: ../../layouts/PageLayout.astro
 
  
 
-<span class="name">node_ys</span>
-
-
- 
-
-<span class="name">node_xys</span>
+<span class="name">node_xyzs</span>
 
 
  

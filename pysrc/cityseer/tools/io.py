@@ -1,5 +1,7 @@
 """
-Functions for fetching and converting graphs and network structures.
+Functions for fetching and converting between different network formats and data structures. Use these functions
+to load networks from OpenStreetMap, convert between NetworkX graphs and cityseer's internal structures, and
+prepare networks for analysis.
 
 :::note
 ``network_structure_from_nx`` and ``nx_from_osm_nx`` accept ``MultiDiGraph`` inputs and will produce directed

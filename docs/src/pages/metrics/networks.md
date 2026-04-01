@@ -6,51 +6,44 @@ layout: ../../layouts/PageLayout.astro
 # networks
 
 
- Compute network centralities. There are two network centrality methods available in both shortest and simplest (angular) variants.
+ Compute network centralities. Two centrality methods are available, using shortest-path (metric) or simplest-path (angular) heuristics:
 
 - [`centrality_shortest`](#centrality-shortest)
 - [`centrality_simplest`](#centrality-simplest)
 
- These methods wrap the underlying `rust` optimised functions for computing centralities. Multiple classes of measures and distances are computed simultaneously to reduce the amount of time required for multi-variable and multi-scalar strategies.
+ Metrics are specified as ``{name: expression}`` dicts using variables ``c`` (cost) and ``p`` (normalised progress). For shortest paths, ``c`` is metric distance and ``p = c / threshold``. For simplest paths, ``c`` is angular cost and ``p`` is normalised time progress.
 
- When `sample=True`, adaptive sampling uses the Hoeffding bound to select a distance-dependent sampling probability. The `epsilon` parameter controls the error tolerance (lower = more samples, higher accuracy). The default for when sampling is enabled is 0.06.
+ Four categories of metrics are supported:
 
-| Distance | ε=0.02 | ε=0.04 | ε=0.06 | ε=0.08 | ε=0.1 |
-|----------|--------|--------|--------|--------|-------|
-| 1 km     | 100%   | 100%   | 100%   | 100%   | 100%  |
-| 2 km     | 100%   | 100%   | 100%   | 100%   | 100%  |
-| 5 km     | 100%   | 100%   | 58.7%  | 33.0%  | 21.1% |
-| 10 km    | 100%   | 37.3%  | 16.6%  | 9.3%   | 6.0%  |
-| 20 km    | 41.5%  | 10.4%  | 4.6%   | 2.6%   | 1.7%  |
+- **closeness**: per-reached-node accumulation (e.g. ``{"harmonic": "1/c", "density": "1"}``)
+- **betweenness**: target seed weight in Brandes backpropagation (e.g. ``{"betweenness": "1"}``)
+- **cycles**: circuit rank (boolean flag)
+- **postprocess**: derived from computed columns in Python (e.g. ``{"hillier": "density**2 / farness"}``)
 
-Sampling is exact (100%) at short distances and becomes progressively sparser at longer distances where reachability is high enough to maintain relative accuracy. The theoretical speedup is approximately 1/p. When comparing centrality values across different locations, use the same epsilon to ensure consistent error tolerances and comparable sampling rates.
+ Pass ``None`` for defaults or ``{}`` to skip a category.
+
+ When `segment_weighted=True`, node weights are set to the primal edge (street segment) lengths so that centrality measures reflect total reachable street length rather than node counts. This requires a dual graph representation.
+
+ When `sample=True`, only a subset of nodes are used as sources for centrality computation, with results corrected to approximate the full computation.
 
 :::note
 The reasons for picking one approach over another are varied:
 
-- Centralities compute the measures relative to each reachable node within the threshold distances. For
-this reason, they can be susceptible to distortions caused by messy graph topologies such redundant and varied
-concentrations of degree=2 nodes (e.g. to describe roadway geometry) or needlessly complex representations of
-street intersections. In these cases, the network should first be cleaned using methods such as those available in
-the [`graph`](/tools/graphs) module (see the [network preparation guide](/guide#network-preparation) for examples).
-- `harmonic` centrality can be problematic on graphs where nodes are erroneously placed too close
-together or where impedances otherwise approach zero, as may be the case for simplest-path measures or small
-distance thesholds. This happens because the outcome of the division step can balloon towards $\infty$ once
-impedances decrease below 1.
+- Centralities can be distorted by messy graph topologies such as unnecessary intermediate points along streets
+(used to describe road curvature) or overly complex representations of street intersections. Clean the network
+first using the [`graph`](/tools/graphs) module (see the
+[automatic graph cleaning](/guide#automatic-graph-cleaning) for examples).
+- `harmonic` centrality can produce inflated values when nodes are very close together, because the
+inverse-distance calculation amplifies small distances. This is more likely with simplest-path measures or short
+distance thresholds.
 - Simplest (angular) measures require a dual graph representation. Convert primal graphs with
 [`graphs.nx_to_dual`](/tools/graphs#nx-to-dual) before ingesting them.
-- Measures should only be directly compared on the same topology because different topologies can otherwise affect
-the expression of a measure. Accordingly, measures computed on dual graphs cannot be compared to measures computed
-on primal graphs because this does not account for the impact of differing topologies. Dual graph representations
-can have substantially greater numbers of nodes and edges for the same underlying street network; for example, a
-four-way intersection consisting of one node with four edges translates to four nodes and six edges on the dual.
-This effect is amplified for denser regions of the network.
-- The usual formulations of closeness or normalised closeness are discouraged because these do not behave
-suitably for localised graphs. Harmonic closeness or Hillier normalisation (which resembles a simplified form of
-Improved Closeness Centrality proposed by Wasserman and Faust) should be used instead.
-- Network decomposition can be a useful strategy when working at small distance thresholds, and confers advantages
-such as more regularly spaced snapshots and fewer artefacts at small distance thresholds where street edges
-intersect distance thresholds.
+- Metrics should only be compared across networks that use the same graph representation (both primal or both
+dual), because the differing number of nodes and edges between representations affects the metric values. For
+example, a four-way intersection consisting of one node with four edges on a primal graph translates to four
+nodes and six edges on the dual. This effect is amplified for denser regions of the network.
+- Standard closeness and normalised closeness do not work well with distance-bounded analysis. Use harmonic
+closeness or Hillier normalisation instead.
 :::
 
 
@@ -83,19 +76,24 @@ intersect distance thresholds.
     <span class="pa"> list[float] | None = None</span>
   </div>
   <div class="param">
-    <span class="pn">compute_closeness</span>
+    <span class="pn">closeness</span>
+    <span class="pc">:</span>
+    <span class="pa"> dict[str, str] | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">betweenness</span>
+    <span class="pc">:</span>
+    <span class="pa"> dict[str, str] | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">cycles</span>
     <span class="pc">:</span>
     <span class="pa"> bool = True</span>
   </div>
   <div class="param">
-    <span class="pn">compute_betweenness</span>
+    <span class="pn">postprocess</span>
     <span class="pc">:</span>
-    <span class="pa"> bool = True</span>
-  </div>
-  <div class="param">
-    <span class="pn">decay_fn</span>
-    <span class="pc">:</span>
-    <span class="pa"> str | None = None</span>
+    <span class="pa"> dict[str, str] | None = None</span>
   </div>
   <div class="param">
     <span class="pn">speed_m_s</span>
@@ -106,6 +104,11 @@ intersect distance thresholds.
     <span class="pn">tolerance</span>
     <span class="pc">:</span>
     <span class="pa"> float | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">segment_weighted</span>
+    <span class="pc">:</span>
+    <span class="pa"> bool = False</span>
   </div>
   <div class="param">
     <span class="pn">random_seed</span>
@@ -129,13 +132,12 @@ intersect distance thresholds.
 </div>
 
 
- Compute centrality using shortest paths with a single Dijkstra per source. When both `compute_closeness` and `compute_betweenness` are True, a single Brandes-style Dijkstra traversal per source produces the data for both closeness accumulation and betweenness backpropagation, halving computation time compared to computing them separately.
+ Compute centrality using shortest paths with a single Dijkstra per source. Metrics are specified as ``{name: expression}`` dicts. Expressions use two variables:
 
- The decay closeness and betweenness decay metrics are computed using a decay function expressed as a string with the variable `p`, which represents normalised progress from the source (`p = 0`) to the distance threshold (`p = 1`), where `p = cost / max_cost`. By default, `decay_fn` is `"exp(-4 * p)"` (exponential decay reaching ~1.8% at the threshold). Helper functions for constructing decay expressions are available in the `cityseer.decay` module.
+- ``c``: the raw cost (metric distance in metres for shortest-path analysis)
+- ``p``: normalised progress from 0 at the source to 1 at the distance threshold (``p = c / threshold``)
 
- .. versionchanged:: 4.24.0 The `cycles` output now measures the circuit rank of the locally reachable subgraph (`m - n + c`), computed per source and then target-aggregated using the same source/IPW framework as the other shortest-path metrics. This provides a more stable measure of network meshedness (independent loops / city blocks) than the older tree-cycle heuristic.
-
- When ``sample=True``, sampling probability is derived from each distance threshold using a canonical grid network model (see ``sampling.compute_distance_p``). This produces deterministic, reach-agnostic sample fractions that are comparable across networks.
+ Pass ``None`` for defaults or ``{}`` to skip a category.
 ### Parameters
 <div class="param-set">
   <div class="def">
@@ -179,32 +181,42 @@ intersect distance thresholds.
 
 <div class="param-set">
   <div class="def">
-    <div class="name">compute_closeness</div>
-    <div class="type">bool</div>
+    <div class="name">closeness</div>
+    <div class="type">dict[str, str]</div>
   </div>
   <div class="desc">
 
- Compute closeness centralities. True by default. The `cycles` output measures the circuit rank of the source's locally reachable subgraph and target-aggregates that loopiness contribution over all sources that can reach each node within the threshold.</div>
+ Closeness metric expressions. Each entry is ``{name: expr(c, p)}``, accumulated per reached node. ``None`` uses defaults: density, farness, harmonic, decay.</div>
 </div>
 
 <div class="param-set">
   <div class="def">
-    <div class="name">compute_betweenness</div>
-    <div class="type">bool</div>
+    <div class="name">betweenness</div>
+    <div class="type">dict[str, str]</div>
   </div>
   <div class="desc">
 
- Compute betweenness centralities. True by default.</div>
+ Betweenness metric expressions. Each entry is ``{name: expr(c, p)}``, used as the weight assigned to each destination when accumulating betweenness contributions along shortest paths. ``None`` uses defaults: betweenness, betweenness_decay.</div>
 </div>
 
 <div class="param-set">
   <div class="def">
-    <div class="name">decay_fn</div>
-    <div class="type">str</div>
+    <div class="name">cycles</div>
+    <div class="type">bool</div>
   </div>
   <div class="desc">
 
- An expression string for the decay function, using the variable `p` (normalised progress from 0 to 1, where `p = cost / max_cost`). At the source `p = 0` and at the distance threshold `p = 1`. Default is `&quot;exp(-4 * p)&quot;` (exponential decay reaching ~1.8% at the threshold). Use `&quot;1&quot;` for flat (unweighted) decay metrics, or provide a custom expression. Helper functions are available in the `cityseer.decay` module.</div>
+ If True, compute circuit rank (cycle count) for each node. Default True.</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">postprocess</div>
+    <div class="type">dict[str, str]</div>
+  </div>
+  <div class="desc">
+
+ Derived metrics computed in Python from the closeness/betweenness results. ``None`` uses default: ``{&quot;hillier&quot;: &quot;density**2 / farness&quot;}``.</div>
 </div>
 
 <div class="param-set">
@@ -224,7 +236,17 @@ intersect distance thresholds.
   </div>
   <div class="desc">
 
- Relative tolerance for betweenness path equality, as a percentage (e.g. 1.0 = 1%). Paths within this percentage of the shortest are treated as near-equal for multi-predecessor Brandes betweenness. A tiny internal epsilon is always enforced as a minimum for floating-point stability.</div>
+ Relative tolerance for betweenness path equality, as a percentage (e.g. 1.0 = 1%).</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">segment_weighted</div>
+    <div class="type">bool</div>
+  </div>
+  <div class="desc">
+
+ If True, weight by primal edge (street segment) lengths. Requires a dual graph.</div>
 </div>
 
 <div class="param-set">
@@ -244,7 +266,7 @@ intersect distance thresholds.
   </div>
   <div class="desc">
 
- If True, uses distance-based Bernoulli sampling with inverse-probability weighting (IPW). The sampling probability is derived from each distance threshold using a canonical grid model (see ``sampling.compute_distance_p``). At distances where the sampling probability exceeds the live fraction, exact computation is used instead.</div>
+ If True, enables adaptive sampling at longer distance thresholds.</div>
 </div>
 
 <div class="param-set">
@@ -254,7 +276,7 @@ intersect distance thresholds.
   </div>
   <div class="desc">
 
- Normalised additive error tolerance for sampling. Defaults to ``sampling.HOEFFDING_EPSILON``.</div>
+ Error tolerance for sampling. Defaults to ``sampling.HOEFFDING_EPSILON`` (0.06).</div>
 </div>
 
 ### Returns
@@ -285,7 +307,6 @@ nodes_gdf = networks.centrality_shortest(
 print(nodes_gdf[["cc_harmonic_400", "cc_betweenness_800"]])
 ```
 
- For worked examples with real-world data, see the [Metric Centrality](https://benchmark-urbanism.github.io/cityseer-examples/recipes/centrality/gpd_metric_centrality.html) and [OSM Centrality](https://benchmark-urbanism.github.io/cityseer-examples/recipes/centrality/osm_centrality.html) recipes.
 
 </div>
 
@@ -476,9 +497,9 @@ print(nodes_gdf[["cc_harmonic_400", "cc_betweenness_800"]])
     <span class="pa"> list[float] | None = None</span>
   </div>
   <div class="param">
-    <span class="pn">decay_fn</span>
+    <span class="pn">betweenness</span>
     <span class="pc">:</span>
-    <span class="pa"> str | None = None</span>
+    <span class="pa"> dict[str, str] | None = None</span>
   </div>
   <div class="param">
     <span class="pn">speed_m_s</span>
@@ -497,7 +518,7 @@ print(nodes_gdf[["cc_harmonic_400", "cc_betweenness_800"]])
 </div>
 
 
- Compute OD-weighted betweenness centrality using the shortest path heuristic. Weights betweenness by origin-destination trip counts from a sparse OD matrix. Only source nodes with outbound trips are traversed, and each shortest-path contribution is scaled by the corresponding OD weight. Closeness metrics are not computed.
+ Compute OD-weighted betweenness centrality using the shortest path heuristic.
 ### Parameters
 <div class="param-set">
   <div class="def">
@@ -551,12 +572,12 @@ print(nodes_gdf[["cc_harmonic_400", "cc_betweenness_800"]])
 
 <div class="param-set">
   <div class="def">
-    <div class="name">decay_fn</div>
-    <div class="type">str</div>
+    <div class="name">betweenness</div>
+    <div class="type">dict[str, str]</div>
   </div>
   <div class="desc">
 
- An expression string for the decay function, using the variable `p` (normalised progress from 0 to 1, where `p = cost / max_cost`). At the source `p = 0` and at the distance threshold `p = 1`. Default is `&quot;exp(-4 * p)&quot;` (exponential decay reaching ~1.8% at the threshold). Use `&quot;1&quot;` for flat (unweighted) decay metrics, or provide a custom expression. Helper functions are available in the `cityseer.decay` module.</div>
+ Betweenness metric expressions. ``None`` uses defaults: betweenness, betweenness_decay.</div>
 </div>
 
 <div class="param-set">
@@ -567,6 +588,16 @@ print(nodes_gdf[["cc_harmonic_400", "cc_betweenness_800"]])
   <div class="desc">
 
  Speed in metres per second for converting `minutes` to distance thresholds.</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">tolerance</div>
+    <div class="type">float</div>
+  </div>
+  <div class="desc">
+
+ Relative tolerance for path equality, as a percentage.</div>
 </div>
 
 ### Returns
@@ -613,14 +644,19 @@ print(nodes_gdf[["cc_harmonic_400", "cc_betweenness_800"]])
     <span class="pa"> list[float] | None = None</span>
   </div>
   <div class="param">
-    <span class="pn">compute_closeness</span>
+    <span class="pn">closeness</span>
     <span class="pc">:</span>
-    <span class="pa"> bool = True</span>
+    <span class="pa"> dict[str, str] | None = None</span>
   </div>
   <div class="param">
-    <span class="pn">compute_betweenness</span>
+    <span class="pn">betweenness</span>
     <span class="pc">:</span>
-    <span class="pa"> bool = True</span>
+    <span class="pa"> dict[str, str] | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">postprocess</span>
+    <span class="pc">:</span>
+    <span class="pa"> dict[str, str] | None = None</span>
   </div>
   <div class="param">
     <span class="pn">speed_m_s</span>
@@ -633,14 +669,9 @@ print(nodes_gdf[["cc_harmonic_400", "cc_betweenness_800"]])
     <span class="pa"> float | None = None</span>
   </div>
   <div class="param">
-    <span class="pn">angular_scaling_unit</span>
+    <span class="pn">segment_weighted</span>
     <span class="pc">:</span>
-    <span class="pa"> float = 90</span>
-  </div>
-  <div class="param">
-    <span class="pn">farness_scaling_offset</span>
-    <span class="pc">:</span>
-    <span class="pa"> float = 1</span>
+    <span class="pa"> bool = False</span>
   </div>
   <div class="param">
     <span class="pn">random_seed</span>
@@ -664,11 +695,7 @@ print(nodes_gdf[["cc_harmonic_400", "cc_betweenness_800"]])
 </div>
 
 
- Compute centrality using simplest (angular) paths with a single Dijkstra per source. When both `compute_closeness` and `compute_betweenness` are True, a single Brandes-style Dijkstra traversal per source produces the data for both closeness accumulation and betweenness backpropagation.
-
- This function does not accept a `decay_fn` parameter; angular (simplest-path) centralities use angular cost rather than distance-based decay weighting.
-
- .. versionchanged:: 4.24.0 Angular routing now uses endpoint-aware dual-graph traversal instead of bearing-based angular costs. This requires a dual graph representation (convert with [`graphs.nx_to_dual`](/tools/graphs#nx-to-dual)). The `tolerance` parameter now uses the same relative-percentage semantics as shortest-path betweenness, but applies to angular route cost instead of metric distance. User-facing `tolerance=0.0` means no additional tolerance beyond a tiny internal epsilon used for floating-point stability. Closeness values are nearly identical; betweenness values may differ slightly.
+ Compute centrality using simplest (angular) paths with a single Dijkstra per source. Expressions use ``c`` (angular cost) and ``p`` (normalised time progress).
 ### Parameters
 <div class="param-set">
   <div class="def">
@@ -712,22 +739,32 @@ print(nodes_gdf[["cc_harmonic_400", "cc_betweenness_800"]])
 
 <div class="param-set">
   <div class="def">
-    <div class="name">compute_closeness</div>
-    <div class="type">bool</div>
+    <div class="name">closeness</div>
+    <div class="type">dict[str, str]</div>
   </div>
   <div class="desc">
 
- Compute closeness centralities. True by default.</div>
+ Closeness metric expressions. ``None`` uses defaults: density, farness, harmonic.</div>
 </div>
 
 <div class="param-set">
   <div class="def">
-    <div class="name">compute_betweenness</div>
-    <div class="type">bool</div>
+    <div class="name">betweenness</div>
+    <div class="type">dict[str, str]</div>
   </div>
   <div class="desc">
 
- Compute betweenness centralities. True by default.</div>
+ Betweenness metric expressions. ``None`` uses defaults: betweenness.</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">postprocess</div>
+    <div class="type">dict[str, str]</div>
+  </div>
+  <div class="desc">
+
+ Derived metrics. ``None`` uses default: ``{&quot;hillier&quot;: &quot;density**2 / farness&quot;}``.</div>
 </div>
 
 <div class="param-set">
@@ -747,27 +784,17 @@ print(nodes_gdf[["cc_harmonic_400", "cc_betweenness_800"]])
   </div>
   <div class="desc">
 
- Relative tolerance for angular betweenness path equality, as a percentage (e.g. 1.0 = 1%). Paths whose angular route cost is within this percentage of the best angular route are treated as near-equal for multi-predecessor Brandes betweenness. A tiny internal epsilon is always enforced as a minimum for floating-point stability.</div>
+ Relative tolerance for angular betweenness path equality, as a percentage.</div>
 </div>
 
 <div class="param-set">
   <div class="def">
-    <div class="name">angular_scaling_unit</div>
-    <div class="type">float</div>
+    <div class="name">segment_weighted</div>
+    <div class="type">bool</div>
   </div>
   <div class="desc">
 
- Scaling unit for angular cost normalisation.</div>
-</div>
-
-<div class="param-set">
-  <div class="def">
-    <div class="name">farness_scaling_offset</div>
-    <div class="type">float</div>
-  </div>
-  <div class="desc">
-
- Offset for farness calculation.</div>
+ If True, weight by primal edge (street segment) lengths. Requires a dual graph.</div>
 </div>
 
 <div class="param-set">
@@ -787,7 +814,7 @@ print(nodes_gdf[["cc_harmonic_400", "cc_betweenness_800"]])
   </div>
   <div class="desc">
 
- If True, uses distance-based Bernoulli sampling with inverse-probability weighting (IPW). The sampling probability is derived from each distance threshold using a canonical grid model (see ``sampling.compute_distance_p``). At distances where the sampling probability exceeds the live fraction, exact computation is used instead.</div>
+ If True, enables adaptive sampling at longer distance thresholds.</div>
 </div>
 
 <div class="param-set">
@@ -797,7 +824,7 @@ print(nodes_gdf[["cc_harmonic_400", "cc_betweenness_800"]])
   </div>
   <div class="desc">
 
- Normalised additive error tolerance for sampling. Defaults to ``sampling.HOEFFDING_EPSILON``.</div>
+ Error tolerance for sampling. Defaults to ``sampling.HOEFFDING_EPSILON`` (0.06).</div>
 </div>
 
 ### Returns
@@ -829,7 +856,6 @@ nodes_gdf = networks.centrality_simplest(
 print(nodes_gdf[["cc_harmonic_400_ang", "cc_betweenness_800_ang"]])
 ```
 
- For a worked example, see the [Angular Centrality](https://benchmark-urbanism.github.io/cityseer-examples/recipes/centrality/gpd_angular_centrality.html) recipe.
 
 </div>
 
@@ -894,7 +920,7 @@ print(nodes_gdf[["cc_harmonic_400_ang", "cc_betweenness_800_ang"]])
 </div>
 
 
- Compute closeness centrality using shortest paths. Wraps `centrality_shortest` with `compute_closeness=True` and `compute_betweenness=False`. Uses exponential decay (`"exp(-4 * p)"`) by default; pass `decay_fn` to `centrality_shortest` for a custom decay function.
+ Compute closeness centrality using shortest paths. Wraps `centrality_shortest` with betweenness disabled.
 
 </div>
 
@@ -938,16 +964,6 @@ print(nodes_gdf[["cc_harmonic_400_ang", "cc_betweenness_800_ang"]])
     <span class="pa"> float | None = None</span>
   </div>
   <div class="param">
-    <span class="pn">angular_scaling_unit</span>
-    <span class="pc">:</span>
-    <span class="pa"> float = 90</span>
-  </div>
-  <div class="param">
-    <span class="pn">farness_scaling_offset</span>
-    <span class="pc">:</span>
-    <span class="pa"> float = 1</span>
-  </div>
-  <div class="param">
     <span class="pn">random_seed</span>
     <span class="pc">:</span>
     <span class="pa"> int | None = None</span>
@@ -969,7 +985,7 @@ print(nodes_gdf[["cc_harmonic_400_ang", "cc_betweenness_800_ang"]])
 </div>
 
 
- Compute closeness centrality using simplest (angular) paths. Wraps `centrality_simplest` with `compute_closeness=True` and `compute_betweenness=False`.
+ Compute closeness centrality using simplest (angular) paths. Wraps `centrality_simplest` with betweenness disabled.
 
 </div>
 
@@ -1034,7 +1050,7 @@ print(nodes_gdf[["cc_harmonic_400_ang", "cc_betweenness_800_ang"]])
 </div>
 
 
- Compute betweenness centrality using shortest paths. Wraps `centrality_shortest` with `compute_closeness=False` and `compute_betweenness=True`. Uses exponential decay (`"exp(-4 * p)"`) by default; pass `decay_fn` to `centrality_shortest` for a custom decay function.
+ Compute betweenness centrality using shortest paths. Wraps `centrality_shortest` with closeness disabled.
 
 </div>
 
@@ -1099,7 +1115,7 @@ print(nodes_gdf[["cc_harmonic_400_ang", "cc_betweenness_800_ang"]])
 </div>
 
 
- Compute betweenness centrality using simplest (angular) paths. Wraps `centrality_simplest` with `compute_closeness=False` and `compute_betweenness=True`.
+ Compute betweenness centrality using simplest (angular) paths. Wraps `centrality_simplest` with closeness disabled.
 
 </div>
 

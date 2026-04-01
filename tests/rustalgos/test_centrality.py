@@ -238,8 +238,8 @@ def test_simplest_requires_dual_graph(primal_graph):
     _nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(primal_graph)
     with pytest.raises(ValueError, match="dual graph"):
         network_structure.centrality_simplest(
-            compute_closeness=True,
-            compute_betweenness=False,
+            closeness_exprs=[("density", "1")],
+            betweenness_exprs=[],
             distances=[500],
         )
 
@@ -263,10 +263,10 @@ def test_closeness_shortest(primal_graph):
     distances = rustalgos.distances_from_betas(betas)
     # generate the measures
     node_result_short = network_structure.centrality_shortest(
-        compute_closeness=True,
-        compute_betweenness=False,
+        closeness_exprs=[("density", "1"), ("farness", "c"), ("harmonic", "1/c"), ("decay", "exp(-4 * p)")],
+        betweenness_exprs=[],
+        compute_cycles=True,
         distances=distances,
-        decay_fn="exp(-4 * p)",
     )
     # test node density
     # node density count doesn't include self-node
@@ -274,12 +274,12 @@ def test_closeness_shortest(primal_graph):
     # isolated looping component == 3
     # isolated edge == 1
     # isolated node == 0
-    for n in node_result_short.node_density[5000]:  # large distance - exceeds cutoff clashes
+    for n in node_result_short.metrics["density"][5000]:  # large distance - exceeds cutoff clashes
         assert n in [49, 3, 1, 0]
     # test harmonic closeness vs NetworkX
     nx_harm_cl = nx.harmonic_centrality(G_round_trip, distance="length")
     for src_idx in range(len(G_round_trip)):
-        assert nx_harm_cl[str(src_idx)] - node_result_short.node_harmonic[5000][src_idx] < config.ATOL
+        assert nx_harm_cl[str(src_idx)] - node_result_short.metrics["harmonic"][5000][src_idx] < config.ATOL
     # do the comparisons array-wise so that closeness metrics can be verified
     d_n = len(distances)
     n_nodes: int = primal_graph.number_of_nodes()
@@ -331,17 +331,17 @@ def test_closeness_shortest(primal_graph):
                     harmonic_cl[d_idx][src_idx] += 1 / to_short_dist
                     grav[d_idx][src_idx] += np.exp(-beta * to_short_dist)
     for d_idx, dist in enumerate(distances):
-        assert np.allclose(node_result_short.node_density[dist], dens[d_idx], atol=config.ATOL, rtol=config.RTOL)
+        assert np.allclose(node_result_short.metrics["density"][dist], dens[d_idx], atol=config.ATOL, rtol=config.RTOL)
         assert np.allclose(
-            node_result_short.node_farness[dist], far_short_dist[d_idx], atol=config.ATOL, rtol=config.RTOL
+            node_result_short.metrics["farness"][dist], far_short_dist[d_idx], atol=config.ATOL, rtol=config.RTOL
         )
         assert np.allclose(
-            node_result_short.node_cycles[dist], cycles_circuit_rank[d_idx], atol=config.ATOL, rtol=config.RTOL
+            node_result_short.metrics["cycles"][dist], cycles_circuit_rank[d_idx], atol=config.ATOL, rtol=config.RTOL
         )
         assert np.allclose(
-            node_result_short.node_harmonic[dist], harmonic_cl[d_idx], atol=config.ATOL, rtol=config.RTOL
+            node_result_short.metrics["harmonic"][dist], harmonic_cl[d_idx], atol=config.ATOL, rtol=config.RTOL
         )
-        assert np.allclose(node_result_short.node_decay[dist], grav[d_idx], atol=config.ATOL, rtol=config.RTOL)
+        assert np.allclose(node_result_short.metrics["decay"][dist], grav[d_idx], atol=config.ATOL, rtol=config.RTOL)
     # check weights
     for wt in [0.5, 2]:
         # create a weighted version fo the graph
@@ -353,41 +353,41 @@ def test_closeness_shortest(primal_graph):
         # weights should persists to the nodes GDF
         assert np.all(nodes_gdf_wt.weight == wt)
         node_result_short_wt = network_structure_wt.centrality_shortest(
-            compute_closeness=True,
-            compute_betweenness=False,
+            closeness_exprs=[("density", "1"), ("farness", "c"), ("harmonic", "1/c"), ("decay", "exp(-4 * p)")],
+            betweenness_exprs=[],
+            compute_cycles=True,
             distances=distances,
-            decay_fn="exp(-4 * p)",
         )
         # check that weighted versions behave as anticipated
         for dist in distances:
             assert np.allclose(
-                node_result_short.node_decay[dist] * wt,
-                node_result_short_wt.node_decay[dist],
+                node_result_short.metrics["decay"][dist] * wt,
+                node_result_short_wt.metrics["decay"][dist],
                 rtol=config.RTOL,
                 atol=config.ATOL,
             )
             # circuit rank is a topological property — unaffected by node weights
             assert np.allclose(
-                node_result_short.node_cycles[dist],
-                node_result_short_wt.node_cycles[dist],
+                node_result_short.metrics["cycles"][dist],
+                node_result_short_wt.metrics["cycles"][dist],
                 rtol=config.RTOL,
                 atol=config.ATOL,
             )
             assert np.allclose(
-                node_result_short.node_density[dist] * wt,
-                node_result_short_wt.node_density[dist],
+                node_result_short.metrics["density"][dist] * wt,
+                node_result_short_wt.metrics["density"][dist],
                 rtol=config.RTOL,
                 atol=config.ATOL,
             )
             assert np.allclose(
-                node_result_short.node_farness[dist] * wt,
-                node_result_short_wt.node_farness[dist],
+                node_result_short.metrics["farness"][dist] * wt,
+                node_result_short_wt.metrics["farness"][dist],
                 rtol=config.RTOL,
                 atol=config.ATOL,
             )
             assert np.allclose(
-                node_result_short.node_harmonic[dist] * wt,
-                node_result_short_wt.node_harmonic[dist],
+                node_result_short.metrics["harmonic"][dist] * wt,
+                node_result_short_wt.metrics["harmonic"][dist],
                 rtol=config.RTOL,
                 atol=config.ATOL,
             )
@@ -467,48 +467,52 @@ def test_local_centrality_all(diamond_graph):
     rustalgos.betas_from_distances(distances)
     # NODE SHORTEST
     node_result_short = network_structure.centrality_shortest(
+        closeness_exprs=[("density", "1"), ("farness", "c"), ("harmonic", "1/c"), ("decay", "exp(-4 * p)")],
+        betweenness_exprs=[],
+        compute_cycles=True,
         distances=distances,
-        compute_closeness=True,
-        compute_betweenness=False,
-        decay_fn="exp(-4 * p)",
     )
     # node density
     # additive nodes
-    assert np.allclose(node_result_short.node_density[50], [0, 0, 0, 0], atol=config.ATOL, rtol=config.RTOL)
-    assert np.allclose(node_result_short.node_density[150], [2, 3, 3, 2], atol=config.ATOL, rtol=config.RTOL)
-    assert np.allclose(node_result_short.node_density[250], [3, 3, 3, 3], atol=config.ATOL, rtol=config.RTOL)
+    assert np.allclose(node_result_short.metrics["density"][50], [0, 0, 0, 0], atol=config.ATOL, rtol=config.RTOL)
+    assert np.allclose(node_result_short.metrics["density"][150], [2, 3, 3, 2], atol=config.ATOL, rtol=config.RTOL)
+    assert np.allclose(node_result_short.metrics["density"][250], [3, 3, 3, 3], atol=config.ATOL, rtol=config.RTOL)
     # node farness
     # additive distances
-    assert np.allclose(node_result_short.node_farness[50], [0, 0, 0, 0], atol=config.ATOL, rtol=config.RTOL)
-    assert np.allclose(node_result_short.node_farness[150], [200, 300, 300, 200], atol=config.ATOL, rtol=config.RTOL)
-    assert np.allclose(node_result_short.node_farness[250], [400, 300, 300, 400], atol=config.ATOL, rtol=config.RTOL)
-    # node cycles (source-based circuit rank of reachable subgraph)
-    assert np.allclose(node_result_short.node_cycles[50], [0, 0, 0, 0], atol=config.ATOL, rtol=config.RTOL)
-    assert np.allclose(node_result_short.node_cycles[150], [1, 2, 2, 1], atol=config.ATOL, rtol=config.RTOL)
-    assert np.allclose(node_result_short.node_cycles[250], [2, 2, 2, 2], atol=config.ATOL, rtol=config.RTOL)
-    # node harmonic
-    # additive 1 / distances
-    assert np.allclose(node_result_short.node_harmonic[50], [0, 0, 0, 0], atol=config.ATOL, rtol=config.RTOL)
+    assert np.allclose(node_result_short.metrics["farness"][50], [0, 0, 0, 0], atol=config.ATOL, rtol=config.RTOL)
     assert np.allclose(
-        node_result_short.node_harmonic[150], [0.02, 0.03, 0.03, 0.02], atol=config.ATOL, rtol=config.RTOL
+        node_result_short.metrics["farness"][150], [200, 300, 300, 200], atol=config.ATOL, rtol=config.RTOL
     )
     assert np.allclose(
-        node_result_short.node_harmonic[250], [0.025, 0.03, 0.03, 0.025], atol=config.ATOL, rtol=config.RTOL
+        node_result_short.metrics["farness"][250], [400, 300, 300, 400], atol=config.ATOL, rtol=config.RTOL
+    )
+    # node cycles (source-based circuit rank of reachable subgraph)
+    assert np.allclose(node_result_short.metrics["cycles"][50], [0, 0, 0, 0], atol=config.ATOL, rtol=config.RTOL)
+    assert np.allclose(node_result_short.metrics["cycles"][150], [1, 2, 2, 1], atol=config.ATOL, rtol=config.RTOL)
+    assert np.allclose(node_result_short.metrics["cycles"][250], [2, 2, 2, 2], atol=config.ATOL, rtol=config.RTOL)
+    # node harmonic
+    # additive 1 / distances
+    assert np.allclose(node_result_short.metrics["harmonic"][50], [0, 0, 0, 0], atol=config.ATOL, rtol=config.RTOL)
+    assert np.allclose(
+        node_result_short.metrics["harmonic"][150], [0.02, 0.03, 0.03, 0.02], atol=config.ATOL, rtol=config.RTOL
+    )
+    assert np.allclose(
+        node_result_short.metrics["harmonic"][250], [0.025, 0.03, 0.03, 0.025], atol=config.ATOL, rtol=config.RTOL
     )
     # node beta
     # additive exp(-beta * dist)
     # beta = 0.0
-    assert np.allclose(node_result_short.node_decay[50], [0, 0, 0, 0], atol=config.ATOL, rtol=config.RTOL)
+    assert np.allclose(node_result_short.metrics["decay"][50], [0, 0, 0, 0], atol=config.ATOL, rtol=config.RTOL)
     # beta = 0.02666667
     assert np.allclose(
-        node_result_short.node_decay[150],
+        node_result_short.metrics["decay"][150],
         [0.1389669, 0.20845035, 0.20845035, 0.1389669],
         atol=config.ATOL,
         rtol=config.RTOL,
     )
     # beta = 0.016
     assert np.allclose(
-        node_result_short.node_decay[250],
+        node_result_short.metrics["decay"][250],
         [0.44455525, 0.6056895, 0.6056895, 0.44455522],
         atol=config.ATOL,
         rtol=config.RTOL,
@@ -517,26 +521,28 @@ def test_local_centrality_all(diamond_graph):
 
     with pytest.raises(ValueError, match="dual graph"):
         network_structure.centrality_simplest(
+            closeness_exprs=[("density", "1")],
+            betweenness_exprs=[],
             distances=distances,
-            compute_closeness=True,
-            compute_betweenness=False,
         )
     # NODE SIMPLEST ON DUAL network_structure_dual
     node_result_simplest = network_structure_dual.centrality_simplest(
+        closeness_exprs=[("density", "1"), ("farness", "1 + c / 180"), ("harmonic", "1 / (1 + c / 180)")],
+        betweenness_exprs=[],
         distances=distances,
-        compute_closeness=True,
-        compute_betweenness=False,
     )
     # node_keys_dual = ('0_1', '0_2', '1_2', '1_3', '2_3')
     # node harmonic angular
     # make sure the angle is at least 1 to avoid infinity for 0 angular distance summation
     # additive 1 / (1 + to_imp / 180)
-    assert np.allclose(node_result_simplest.node_harmonic[50], [0, 0, 0, 0, 0], atol=config.ATOL, rtol=config.RTOL)
     assert np.allclose(
-        node_result_simplest.node_harmonic[150], [1.95, 1.95, 2.4, 1.95, 1.95], atol=config.ATOL, rtol=config.RTOL
+        node_result_simplest.metrics["harmonic"][50], [0, 0, 0, 0, 0], atol=config.ATOL, rtol=config.RTOL
     )
     assert np.allclose(
-        node_result_simplest.node_harmonic[250], [2.45, 2.45, 2.4, 2.45, 2.45], atol=config.ATOL, rtol=config.RTOL
+        node_result_simplest.metrics["harmonic"][150], [1.95, 1.95, 2.4, 1.95, 1.95], atol=config.ATOL, rtol=config.RTOL
+    )
+    assert np.allclose(
+        node_result_simplest.metrics["harmonic"][250], [2.45, 2.45, 2.4, 2.45, 2.45], atol=config.ATOL, rtol=config.RTOL
     )
 
 
@@ -555,13 +561,13 @@ def test_betweenness_vs_networkx(primal_graph):
         G_round_trip[start_nd_key][end_nd_key][edge_idx]["length"] = geom.length
     # Use a large distance so no cutoff interferes
     betw_result = network_structure.centrality_shortest(
-        compute_closeness=False, compute_betweenness=True, distances=[5000]
+        closeness_exprs=[], betweenness_exprs=[("betweenness", "1")], distances=[5000]
     )
     nx_betw = nx.betweenness_centrality(G_round_trip, normalized=False, weight="length")
     for src_idx in range(len(G_round_trip)):
-        assert abs(nx_betw[str(src_idx)] - betw_result.node_betweenness[5000][src_idx]) < config.ATOL, (
+        assert abs(nx_betw[str(src_idx)] - betw_result.metrics["betweenness"][5000][src_idx]) < config.ATOL, (
             f"Betweenness mismatch at node {src_idx}: "
-            f"NX={nx_betw[str(src_idx)]:.6f}, cityseer={betw_result.node_betweenness[5000][src_idx]:.6f}"
+            f"NX={nx_betw[str(src_idx)]:.6f}, cityseer={betw_result.metrics['betweenness'][5000][src_idx]:.6f}"
         )
 
 
@@ -576,26 +582,30 @@ def test_simplest_closeness_differs_from_shortest(dual_graph):
     # Use large distance to avoid cutoff differences between path types
     distances = [5000]
     res_shortest = network_structure.centrality_shortest(
-        compute_closeness=True, compute_betweenness=False, distances=distances
+        closeness_exprs=[("density", "1"), ("farness", "c"), ("harmonic", "1/c")],
+        betweenness_exprs=[],
+        distances=distances,
     )
     res_simplest = network_structure.centrality_simplest(
-        compute_closeness=True, compute_betweenness=False, distances=distances
+        closeness_exprs=[("density", "1"), ("farness", "1 + c / 180"), ("harmonic", "1 / (1 + c / 180)")],
+        betweenness_exprs=[],
+        distances=distances,
     )
     # At large distance, density should match (all nodes reachable either way)
     for d in distances:
         assert np.allclose(
-            res_shortest.node_density[d], res_simplest.node_density[d], atol=config.ATOL, rtol=config.RTOL
+            res_shortest.metrics["density"][d], res_simplest.metrics["density"][d], atol=config.ATOL, rtol=config.RTOL
         ), f"Density should match at {d}m when no cutoff applies"
     # Farness and harmonic should differ — angular impedance uses different cost metric
     for d in distances:
-        if np.sum(res_shortest.node_farness[d]) > 0:
-            assert not np.allclose(res_shortest.node_farness[d], res_simplest.node_farness[d], atol=config.ATOL), (
-                f"Farness should differ at {d}m (angular vs metric impedance)"
-            )
-        if np.sum(res_shortest.node_harmonic[d]) > 0:
-            assert not np.allclose(res_shortest.node_harmonic[d], res_simplest.node_harmonic[d], atol=config.ATOL), (
-                f"Harmonic should differ at {d}m (angular vs metric impedance)"
-            )
+        if np.sum(res_shortest.metrics["farness"][d]) > 0:
+            assert not np.allclose(
+                res_shortest.metrics["farness"][d], res_simplest.metrics["farness"][d], atol=config.ATOL
+            ), f"Farness should differ at {d}m (angular vs metric impedance)"
+        if np.sum(res_shortest.metrics["harmonic"][d]) > 0:
+            assert not np.allclose(
+                res_shortest.metrics["harmonic"][d], res_simplest.metrics["harmonic"][d], atol=config.ATOL
+            ), f"Harmonic should differ at {d}m (angular vs metric impedance)"
 
 
 def test_simplest_betweenness_invariant_to_node_order():
@@ -642,8 +652,8 @@ def test_simplest_betweenness_invariant_to_node_order():
         G_dual = graphs.nx_to_dual(G)
         nodes_gdf, _edges_gdf, net = io.network_structure_from_nx(G_dual)
         res = net.centrality_simplest(
-            compute_closeness=False,
-            compute_betweenness=True,
+            closeness_exprs=[],
+            betweenness_exprs=[("betweenness", "1")],
             distances=[500],
         )
         # Map dual nodes back to canonical primal edges so we can compare across orderings
@@ -653,7 +663,7 @@ def test_simplest_betweenness_invariant_to_node_order():
             edge_label = tuple(
                 sorted((idx_to_label[row["primal_edge_node_a"]], idx_to_label[row["primal_edge_node_b"]]))
             )
-            betw_by_edge[edge_label] = res.node_betweenness[500][node_pos]
+            betw_by_edge[edge_label] = res.metrics["betweenness"][500][node_pos]
         results.append(betw_by_edge)
     # All orderings must agree
     for edge_label in [("A", "B"), ("B", "C"), ("B", "D")]:
@@ -703,18 +713,18 @@ def test_betweenness_mixed_live_non_live_invariant_to_node_order():
         nodes_gdf_dual, _edges_gdf_dual, net_dual = io.network_structure_from_nx(G_dual)
 
         res_shortest = net.centrality_shortest(
-            compute_closeness=False,
-            compute_betweenness=True,
+            closeness_exprs=[],
+            betweenness_exprs=[("betweenness", "1")],
             distances=[1000],
         )
         res_simplest = net_dual.centrality_simplest(
-            compute_closeness=False,
-            compute_betweenness=True,
+            closeness_exprs=[],
+            betweenness_exprs=[("betweenness", "1")],
             distances=[1000],
         )
 
         shortest_results.append(
-            {label: res_shortest.node_betweenness[1000][int(label_to_idx[label])] for label in ordering}
+            {label: res_shortest.metrics["betweenness"][1000][int(label_to_idx[label])] for label in ordering}
         )
         simplest_by_edge = {}
         for node_pos, node_key in enumerate(nodes_gdf_dual.index):
@@ -722,7 +732,7 @@ def test_betweenness_mixed_live_non_live_invariant_to_node_order():
             edge_label = tuple(
                 sorted((idx_to_label[row["primal_edge_node_a"]], idx_to_label[row["primal_edge_node_b"]]))
             )
-            simplest_by_edge[edge_label] = res_simplest.node_betweenness[1000][node_pos]
+            simplest_by_edge[edge_label] = res_simplest.metrics["betweenness"][1000][node_pos]
         simplest_results.append(simplest_by_edge)
 
     for label in ["A", "B", "C", "D"]:
@@ -746,14 +756,14 @@ def test_simplest_betweenness_differs_from_shortest(dual_graph):
     _nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(dual_graph)
     distances = [500, 2000]
     res_shortest = network_structure.centrality_shortest(
-        compute_closeness=False, compute_betweenness=True, distances=distances
+        closeness_exprs=[], betweenness_exprs=[("betweenness", "1")], distances=distances
     )
     res_simplest = network_structure.centrality_simplest(
-        compute_closeness=False, compute_betweenness=True, distances=distances
+        closeness_exprs=[], betweenness_exprs=[("betweenness", "1")], distances=distances
     )
     for d in distances:
-        betw_short = np.array(res_shortest.node_betweenness[d])
-        betw_simpl = np.array(res_simplest.node_betweenness[d])
+        betw_short = np.array(res_shortest.metrics["betweenness"][d])
+        betw_simpl = np.array(res_simplest.metrics["betweenness"][d])
         if np.sum(betw_short) > 0 and np.sum(betw_simpl) > 0:
             assert not np.allclose(betw_short, betw_simpl, atol=config.ATOL), (
                 f"Betweenness should differ at {d}m (angular vs metric path choice)"
@@ -769,11 +779,11 @@ def test_simplest_brandes_handles_zero_angle_plateaus():
     dual_graph = graphs.nx_to_dual(make_angular_plateau_graph())
     nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(dual_graph)
     res_simplest = network_structure.centrality_simplest(
-        compute_closeness=False,
-        compute_betweenness=True,
+        closeness_exprs=[],
+        betweenness_exprs=[("betweenness", "1")],
         distances=[1000],
     )
-    betw = {node_key: res_simplest.node_betweenness[1000][idx] for idx, node_key in enumerate(nodes_gdf.index)}
+    betw = {node_key: res_simplest.metrics["betweenness"][1000][idx] for idx, node_key in enumerate(nodes_gdf.index)}
     ratio = betw["B_C_k0"] / betw["C_D_k0"]
     # On this topology the through-segments carry 18 and 10 ordered source-target
     # pairs respectively, so the stable corridor ratio should be 1.8 rather than
@@ -787,22 +797,24 @@ def test_shortest_brandes_tolerance_clears_stale_predecessors():
     distance = 20
 
     res_exact = network_structure.centrality_shortest(
-        compute_closeness=False,
-        compute_betweenness=True,
+        closeness_exprs=[],
+        betweenness_exprs=[("betweenness", "1")],
         distances=[distance],
         tolerance=0.0,
         pbar_disabled=True,
     )
     res_tolerant = network_structure.centrality_shortest(
-        compute_closeness=False,
-        compute_betweenness=True,
+        closeness_exprs=[],
+        betweenness_exprs=[("betweenness", "1")],
         distances=[distance],
         tolerance=10.0,
         pbar_disabled=True,
     )
 
-    exact = {node_key: res_exact.node_betweenness[distance][idx] for idx, node_key in enumerate(nodes_gdf.index)}
-    tolerant = {node_key: res_tolerant.node_betweenness[distance][idx] for idx, node_key in enumerate(nodes_gdf.index)}
+    exact = {node_key: res_exact.metrics["betweenness"][distance][idx] for idx, node_key in enumerate(nodes_gdf.index)}
+    tolerant = {
+        node_key: res_tolerant.metrics["betweenness"][distance][idx] for idx, node_key in enumerate(nodes_gdf.index)
+    }
 
     # C lies on the unique shortest path (S-C-T = 9.0); A and B are longer.
     # With exact tolerance, only C gets betweenness from S-T paths.
@@ -846,30 +858,30 @@ def test_closeness_no_edge_rolloff_at_boundary():
     nodes_gdf, _edges_gdf, net = io.network_structure_from_nx(G)
 
     res = net.centrality_shortest(
-        compute_closeness=True,
-        compute_betweenness=False,
+        closeness_exprs=[("density", "1"), ("harmonic", "1/c")],
+        betweenness_exprs=[],
         distances=[500],
     )
 
     node_idx_map = {label: int(nodes_gdf.at[label, "ns_node_idx"]) for label in live_map}
     # Each live node should reach 4 targets (including dead buffer nodes).
-    assert res.node_density[500][node_idx_map["A"]] == 4
-    assert res.node_density[500][node_idx_map["B"]] == 4
-    assert res.node_density[500][node_idx_map["C"]] == 4
+    assert res.metrics["density"][500][node_idx_map["A"]] == 4
+    assert res.metrics["density"][500][node_idx_map["B"]] == 4
+    assert res.metrics["density"][500][node_idx_map["C"]] == 4
     # Dead nodes should have zero (not computed as sources).
-    assert res.node_density[500][node_idx_map["D1"]] == 0
-    assert res.node_density[500][node_idx_map["D2"]] == 0
+    assert res.metrics["density"][500][node_idx_map["D1"]] == 0
+    assert res.metrics["density"][500][node_idx_map["D2"]] == 0
     # Symmetry: A and C are mirror positions, should have equal closeness.
     assert np.isclose(
-        res.node_harmonic[500][node_idx_map["A"]],
-        res.node_harmonic[500][node_idx_map["C"]],
+        res.metrics["harmonic"][500][node_idx_map["A"]],
+        res.metrics["harmonic"][500][node_idx_map["C"]],
         atol=config.ATOL,
     )
 
     # Manual harmonic check: A is at distances 100, 100, 200, 300 from D1, B, C, D2.
     expected_harmonic_A = 1 / 100.0 + 1 / 100.0 + 1 / 200.0 + 1 / 300.0
     assert np.isclose(
-        res.node_harmonic[500][node_idx_map["A"]],
+        res.metrics["harmonic"][500][node_idx_map["A"]],
         expected_harmonic_A,
         atol=config.ATOL,
     )
@@ -906,8 +918,8 @@ def test_betweenness_with_dead_buffer_nodes():
     node_idx_map = {label: int(nodes_gdf.at[label, "ns_node_idx"]) for label in live_map}
 
     res = net.centrality_shortest(
-        compute_closeness=False,
-        compute_betweenness=True,
+        closeness_exprs=[],
+        betweenness_exprs=[("betweenness", "1")],
         distances=[500],
     )
 
@@ -930,14 +942,14 @@ def test_betweenness_with_dead_buffer_nodes():
     # pair_count for (A,D2): D2 dead → 1.0
     # pair_count for (C,D1): D1 dead → 1.0
     # Total betweenness for B = 1.0 + 1.0 + 1.0 = 3.0
-    assert np.isclose(res.node_betweenness[500][node_idx_map["B"]], 3.0, atol=config.ATOL)
+    assert np.isclose(res.metrics["betweenness"][500][node_idx_map["B"]], 3.0, atol=config.ATOL)
     # B must have more betweenness than A or C (B is central).
-    assert res.node_betweenness[500][node_idx_map["B"]] > res.node_betweenness[500][node_idx_map["A"]]
-    assert res.node_betweenness[500][node_idx_map["B"]] > res.node_betweenness[500][node_idx_map["C"]]
+    assert res.metrics["betweenness"][500][node_idx_map["B"]] > res.metrics["betweenness"][500][node_idx_map["A"]]
+    assert res.metrics["betweenness"][500][node_idx_map["B"]] > res.metrics["betweenness"][500][node_idx_map["C"]]
     # Dead nodes should have zero betweenness (not sources, and not intermediates for live pairs).
     # D1 is only an intermediate on paths that start beyond it (nothing beyond D1), so betweenness=0.
-    assert np.isclose(res.node_betweenness[500][node_idx_map["D1"]], 0.0, atol=config.ATOL)
-    assert np.isclose(res.node_betweenness[500][node_idx_map["D2"]], 0.0, atol=config.ATOL)
+    assert np.isclose(res.metrics["betweenness"][500][node_idx_map["D1"]], 0.0, atol=config.ATOL)
+    assert np.isclose(res.metrics["betweenness"][500][node_idx_map["D2"]], 0.0, atol=config.ATOL)
 
 
 def test_sampling_p1_matches_exact_with_dead_nodes():
@@ -970,13 +982,13 @@ def test_sampling_p1_matches_exact_with_dead_nodes():
     node_idx_map = {label: int(nodes_gdf.at[label, "ns_node_idx"]) for label in live_map}
 
     exact = net.centrality_shortest(
-        compute_closeness=True,
-        compute_betweenness=True,
+        closeness_exprs=[("density", "1"), ("harmonic", "1/c")],
+        betweenness_exprs=[("betweenness", "1")],
         distances=[500],
     )
     sampled = net.centrality_shortest(
-        compute_closeness=True,
-        compute_betweenness=True,
+        closeness_exprs=[("density", "1"), ("harmonic", "1/c")],
+        betweenness_exprs=[("betweenness", "1")],
         distances=[500],
         sample_probability=1.0,
         random_seed=0,
@@ -985,25 +997,25 @@ def test_sampling_p1_matches_exact_with_dead_nodes():
     for label in live_map:
         idx = node_idx_map[label]
         assert np.isclose(
-            exact.node_density[500][idx],
-            sampled.node_density[500][idx],
+            exact.metrics["density"][500][idx],
+            sampled.metrics["density"][500][idx],
             atol=config.ATOL,
         ), (
             f"density mismatch at {label}: "
-            f"exact={exact.node_density[500][idx]}, sampled={sampled.node_density[500][idx]}"
+            f"exact={exact.metrics['density'][500][idx]}, sampled={sampled.metrics['density'][500][idx]}"
         )
         assert np.isclose(
-            exact.node_harmonic[500][idx],
-            sampled.node_harmonic[500][idx],
+            exact.metrics["harmonic"][500][idx],
+            sampled.metrics["harmonic"][500][idx],
             atol=config.ATOL,
         ), f"harmonic mismatch at {label}"
         assert np.isclose(
-            exact.node_betweenness[500][idx],
-            sampled.node_betweenness[500][idx],
+            exact.metrics["betweenness"][500][idx],
+            sampled.metrics["betweenness"][500][idx],
             atol=config.ATOL,
         ), (
             f"betweenness mismatch at {label}: "
-            f"exact={exact.node_betweenness[500][idx]}, sampled={sampled.node_betweenness[500][idx]}"
+            f"exact={exact.metrics['betweenness'][500][idx]}, sampled={sampled.metrics['betweenness'][500][idx]}"
         )
 
 
@@ -1050,28 +1062,28 @@ def test_slope_with_dead_boundary_uses_forward_costs():
 
     # Closeness farness must reflect forward slope costs.
     res = net.centrality_shortest(
-        compute_closeness=True,
-        compute_betweenness=False,
+        closeness_exprs=[("density", "1"), ("farness", "c")],
+        betweenness_exprs=[],
         distances=[500],
     )
-    farness_A = res.node_farness[500][node_idx_map["A"]]
-    farness_B = res.node_farness[500][node_idx_map["B"]]
+    farness_A = res.metrics["farness"][500][node_idx_map["A"]]
+    farness_B = res.metrics["farness"][500][node_idx_map["B"]]
     # A: one downhill + one uphill. B: all uphill. B's farness must exceed A's.
     assert farness_B > farness_A
     # Dead D1 must contribute to both A and B's farness (no edge roll-off).
-    assert res.node_density[500][node_idx_map["A"]] == 2
-    assert res.node_density[500][node_idx_map["B"]] == 2
+    assert res.metrics["density"][500][node_idx_map["A"]] == 2
+    assert res.metrics["density"][500][node_idx_map["B"]] == 2
 
     # p=1.0 (all sources sampled, target-based) must match exact mode for live
     # nodes and keep dead nodes at zero. Dead sources run but only contribute
     # to live targets — dead targets are skipped.
     res_sampled = net.centrality_shortest(
-        compute_closeness=True,
-        compute_betweenness=False,
+        closeness_exprs=[("density", "1"), ("farness", "c")],
+        betweenness_exprs=[],
         distances=[500],
         sample_probability=1.0,
         random_seed=0,
     )
-    assert np.isclose(res_sampled.node_farness[500][node_idx_map["A"]], farness_A, atol=config.ATOL)
-    assert np.isclose(res_sampled.node_farness[500][node_idx_map["B"]], farness_B, atol=config.ATOL)
-    assert res_sampled.node_farness[500][node_idx_map["D1"]] == 0.0
+    assert np.isclose(res_sampled.metrics["farness"][500][node_idx_map["A"]], farness_A, atol=config.ATOL)
+    assert np.isclose(res_sampled.metrics["farness"][500][node_idx_map["B"]], farness_B, atol=config.ATOL)
+    assert res_sampled.metrics["farness"][500][node_idx_map["D1"]] == 0.0

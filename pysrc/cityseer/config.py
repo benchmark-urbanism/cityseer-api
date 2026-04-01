@@ -92,9 +92,7 @@ def log_thresholds(
 
 
 RustResults = (
-    rustalgos.centrality.CentralityShortestResult
-    | rustalgos.centrality.CentralitySimplestResult
-    | rustalgos.centrality.BetweennessShortestResult
+    rustalgos.centrality.CentralityResult
     | rustalgos.data.AccessibilityResult
     | rustalgos.data.MixedUsesResult
     | rustalgos.data.StatsResult

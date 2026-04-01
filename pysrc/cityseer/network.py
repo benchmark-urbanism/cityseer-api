@@ -1,9 +1,9 @@
 """High-level CityNetwork API for urban network analysis.
 
 The [`CityNetwork`](#citynetwork) class wraps network construction, centrality computation, land-use analysis, and
-export into a single interface. It builds dual graphs directly from LineString geometries, enabling both
-shortest-path and simplest-path (angular) analysis. See the [Guide](/guide) for concepts, conventions, and worked
-examples.
+export into a single interface. It builds dual graphs (where street segments become nodes rather than intersections)
+directly from LineString geometries, enabling both shortest-path (metric distance) and simplest-path (angular change)
+analysis. See the [Guide](/guide) for concepts, conventions, and worked examples.
 """
 
 from __future__ import annotations
@@ -191,7 +191,7 @@ class CityNetwork:
     ```
 
     Column names follow the ``cc_{metric}_{distance}`` convention described in the
-    [Column Naming Conventions](/intro#column-naming-conventions) section.
+    [Column Naming Conventions](/guide#column-naming-conventions) section.
 
     ### Feature cleaning
 
@@ -938,8 +938,8 @@ class CityNetwork:
 
         Wraps [`centrality_shortest`](/metrics/networks#centrality-shortest). All keyword arguments
         are forwarded; see that function for the full parameter list including ``distances``,
-        ``minutes``, ``compute_closeness``, ``compute_betweenness``, ``decay_fn``, ``segment_weighted``,
-        ``sample``, and ``epsilon``.
+        ``minutes``, ``closeness``, ``betweenness``, ``cycles``, ``postprocess``,
+        ``segment_weighted``, ``sample``, and ``epsilon``.
 
         Returns
         -------
@@ -949,35 +949,39 @@ class CityNetwork:
         Examples
         --------
         ```python
-        from cityseer import decay
-
         # Multiple distance thresholds
         cn.centrality_shortest(distances=[400, 800, 1600])
 
         # With segment-length weighting
         cn.centrality_shortest(distances=[400, 800], segment_weighted=True)
 
-        # With custom decay and sampling for large networks
+        # With sampling for large networks
         cn.centrality_shortest(
             distances=[800, 2000, 5000],
-            decay_fn=decay.exponential(steepness=4),
             sample=True,
             epsilon=0.06,
         )
+
+        # Custom closeness metric
+        cn.centrality_shortest(
+            distances=[800],
+            closeness={"harmonic": "1/c", "gravity": "exp(-0.005 * c)"},
+            betweenness={},
+        )
         ```
 
-        Output columns per distance ``d`` (see [Column Naming Conventions](/intro#column-naming-conventions)):
+        Output columns per distance ``d`` (see [Column Naming Conventions](/guide#column-naming-conventions)):
 
         | Column | Description |
         | --- | --- |
         | ``cc_density_{d}`` | Count of reachable nodes (or total reachable street length if segment_weighted). |
-        | ``cc_harmonic_{d}`` | Harmonic closeness. |
+        | ``cc_harmonic_{d}`` | Harmonic closeness: sum of inverse distances to reachable nodes. |
         | ``cc_farness_{d}`` | Sum of distances to reachable nodes. |
         | ``cc_hillier_{d}`` | Hillier normalisation (density² / farness). |
-        | ``cc_cycles_{d}`` | Circuit rank (meshedness). |
-        | ``cc_decay_{d}`` | Decay-weighted closeness. |
-        | ``cc_betweenness_{d}`` | Betweenness centrality. |
-        | ``cc_betweenness_decay_{d}`` | Decay-weighted betweenness. |
+        | ``cc_cycles_{d}`` | Circuit rank: count of independent loops in the reachable subgraph. |
+        | ``cc_decay_{d}`` | Decay-weighted closeness (default: ``exp(-4 * p)``). |
+        | ``cc_betweenness_{d}`` | Betweenness: count of shortest paths passing through each node. |
+        | ``cc_betweenness_decay_{d}`` | Decay-weighted betweenness (default: ``exp(-4 * p)``). |
         """
         self._nodes_gdf = networks.centrality_shortest(
             network_structure=self._network_structure,
@@ -1008,10 +1012,10 @@ class CityNetwork:
         | Column | Description |
         | --- | --- |
         | ``cc_density_{d}_ang`` | Count of reachable nodes (or total reachable street length if segment_weighted). |
-        | ``cc_harmonic_{d}_ang`` | Harmonic closeness (cumulative angular change as impedance). |
-        | ``cc_farness_{d}_ang`` | Sum of cumulative angular changes to reachable nodes. |
+        | ``cc_harmonic_{d}_ang`` | Harmonic closeness using angular cost as impedance. |
+        | ``cc_farness_{d}_ang`` | Sum of angular costs to reachable nodes. |
         | ``cc_hillier_{d}_ang`` | Hillier normalisation (density² / farness). |
-        | ``cc_betweenness_{d}_ang`` | Betweenness (simplest angular paths). |
+        | ``cc_betweenness_{d}_ang`` | Betweenness using simplest angular paths (angular choice in space syntax). |
         """
         self._nodes_gdf = networks.centrality_simplest(
             network_structure=self._network_structure,
@@ -1026,7 +1030,11 @@ class CityNetwork:
         zones_gdf: gpd.GeoDataFrame,
         **kwargs: Any,
     ) -> rustalgos.centrality.OdMatrix:
-        """Build an origin-destination matrix for OD-weighted betweenness.
+        """Build an origin-destination (OD) matrix for OD-weighted betweenness.
+
+        In standard betweenness, every pair of nodes contributes equally. OD-weighted betweenness
+        instead weights each pair by observed trip counts between their respective zones (e.g.
+        commuter cycling counts), so streets carrying more actual traffic receive higher scores.
 
         Wraps [`build_od_matrix`](/metrics/networks#build-od-matrix). See that function for
         the full parameter list.
@@ -1034,9 +1042,9 @@ class CityNetwork:
         Parameters
         ----------
         od_df: pd.DataFrame
-            Origin-destination flow data.
+            Origin-destination flow data with columns for origin zone, destination zone, and trip weight.
         zones_gdf: GeoDataFrame
-            Zone polygons corresponding to the OD matrix.
+            Zone boundaries (polygons) or centroids (points) corresponding to the OD matrix.
 
         Returns
         -------
@@ -1056,6 +1064,10 @@ class CityNetwork:
         **kwargs: Any,
     ) -> CityNetwork:
         """Compute OD-weighted betweenness centrality.
+
+        Weights betweenness by actual origin-destination trip counts rather than treating all paths
+        equally. Only source nodes with outbound trips are traversed, and each shortest-path
+        contribution is scaled by the corresponding OD weight.
 
         Wraps [`betweenness_od`](/metrics/networks#betweenness-od). See that function for
         the full parameter list.
@@ -1082,6 +1094,9 @@ class CityNetwork:
         self, data_gdf: gpd.GeoDataFrame, **kwargs: Any
     ) -> tuple[CityNetwork, gpd.GeoDataFrame]:
         """Compute land-use accessibility metrics.
+
+        Counts how many instances of each specified land-use category (e.g. retail, parks) are reachable
+        within each distance threshold, and records the nearest distance to each category.
 
         Wraps [`compute_accessibilities`](/metrics/layers#compute-accessibilities). All additional keyword
         arguments are forwarded; see that function for the full parameter list including
@@ -1129,6 +1144,10 @@ class CityNetwork:
     def compute_mixed_uses(self, data_gdf: gpd.GeoDataFrame, **kwargs: Any) -> tuple[CityNetwork, gpd.GeoDataFrame]:
         """Compute mixed-use diversity metrics.
 
+        Measures the diversity of land-use categories reachable from each node using Hill numbers:
+        q=0 counts how many distinct types are present, q=1 measures diversity accounting for how
+        evenly types are represented, and q=2 gives greater weight to the most common types.
+
         Wraps [`compute_mixed_uses`](/metrics/layers#compute-mixed-uses). All additional keyword
         arguments are forwarded; see that function for the full parameter list including
         ``landuse_column_label``, ``distances``, ``minutes``, ``compute_hill``, ``compute_shannon``,
@@ -1154,7 +1173,7 @@ class CityNetwork:
             landuse_column_label="category",
             distances=[400, 800],
         )
-        # Hill diversity at q=0 (count of distinct land-uses) at 800m
+        # Hill q=0 (count of distinct land-use types) at 800m
         print(cn.nodes_gdf["cc_hill_q0_800"])
         ```
         """
@@ -1168,6 +1187,9 @@ class CityNetwork:
 
     def compute_stats(self, data_gdf: gpd.GeoDataFrame, **kwargs: Any) -> tuple[CityNetwork, gpd.GeoDataFrame]:
         """Compute statistical aggregations of numerical data over the network.
+
+        Aggregates numerical attributes (e.g. property prices, floor areas) within network-distance
+        thresholds, computing weighted statistics (mean, sum, min, max, variance, etc.) at each node.
 
         Wraps [`compute_stats`](/metrics/layers#compute-stats). All additional keyword arguments are forwarded;
         see that function for the full parameter list including ``stats_column_labels``, ``distances``,
@@ -1217,7 +1239,10 @@ class CityNetwork:
         crs: Any | None = None,
         max_netw_assign_dist: int = 400,
     ) -> CityNetwork:
-        """Add GTFS public transport data to the network.
+        """Add GTFS (General Transit Feed Specification) public transport data to the network.
+
+        Integrates transit stops and routes so that centrality and accessibility analyses account
+        for public transport connections.
 
         Wraps [`io.add_transport_gtfs`](/tools/io#add-transport-gtfs).
 
@@ -1228,7 +1253,8 @@ class CityNetwork:
         crs: Any
             Optional CRS override for the GTFS data.
         max_netw_assign_dist: int
-            Maximum distance (metres) for snapping stops to the network. Defaults to 400.
+            Maximum distance (metres) for snapping transit stops to the nearest network node.
+            Stops beyond this distance are excluded. Defaults to 400.
 
         Returns
         -------

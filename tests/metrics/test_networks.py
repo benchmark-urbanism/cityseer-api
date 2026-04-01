@@ -16,58 +16,58 @@ def test_centrality_shortest(primal_graph):
     nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(primal_graph)
     # test different combinations of closeness and betweenness
     for _closeness, _betweenness in [(False, True), (True, False), (True, True)]:
+        closeness_dict = None if _closeness else {}
+        betweenness_dict = None if _betweenness else {}
+        cycles_flag = _closeness
         nodes_gdf = networks.centrality_shortest(
             network_structure=network_structure,
             nodes_gdf=nodes_gdf,
             distances=distances,
-            compute_closeness=_closeness,
-            compute_betweenness=_betweenness,
+            closeness=closeness_dict,
+            betweenness=betweenness_dict,
+            cycles=cycles_flag,
         )
         for dist_key in distances:
             if _closeness is True:
-                # test closeness against underlying source-sampling method
+                # test closeness against underlying Rust method
+                closeness_items = list(networks.DEFAULT_SHORTEST_CLOSENESS.items())
                 node_result_short = network_structure.centrality_shortest(
-                    compute_closeness=True,
-                    compute_betweenness=False,
+                    closeness_exprs=closeness_items,
+                    betweenness_exprs=[],
+                    compute_cycles=True,
                     distances=distances,
                 )
-                for measure_key, attr_key in [
-                    ("decay", "node_decay"),
-                    ("cycles", "node_cycles"),
-                    ("density", "node_density"),
-                    ("farness", "node_farness"),
-                    ("harmonic", "node_harmonic"),
-                ]:
+                metrics = node_result_short.metrics
+                for measure_key in ["decay", "cycles", "density", "farness", "harmonic"]:
                     data_key = config.prep_gdf_key(measure_key, dist_key)
                     assert np.allclose(
                         nodes_gdf[data_key],
-                        getattr(node_result_short, attr_key)[dist_key],
+                        metrics[measure_key][dist_key],
                         atol=config.ATOL,
                         rtol=config.RTOL,
                     )
                 with np.errstate(divide="ignore", invalid="ignore"):
                     assert np.allclose(
                         nodes_gdf[config.prep_gdf_key("hillier", dist_key)],
-                        node_result_short.node_density[dist_key] ** 2 / node_result_short.node_farness[dist_key],
+                        metrics["density"][dist_key] ** 2 / metrics["farness"][dist_key],
                         equal_nan=True,
                         atol=config.ATOL,
                         rtol=config.RTOL,
                     )
             if _betweenness is True:
-                # test betweenness against underlying exact Brandes method
+                # test betweenness against underlying Rust method
+                betweenness_items = list(networks.DEFAULT_SHORTEST_BETWEENNESS.items())
                 betweenness_result = network_structure.centrality_shortest(
-                    compute_closeness=False,
-                    compute_betweenness=True,
+                    closeness_exprs=[],
+                    betweenness_exprs=betweenness_items,
                     distances=[dist_key],
                 )
-                for measure_key, attr_key in [
-                    ("betweenness", "node_betweenness"),
-                    ("betweenness_decay", "node_betweenness_decay"),
-                ]:
+                metrics = betweenness_result.metrics
+                for measure_key in ["betweenness", "betweenness_decay"]:
                     data_key = config.prep_gdf_key(measure_key, dist_key)
                     assert np.allclose(
                         nodes_gdf[data_key],
-                        getattr(betweenness_result, attr_key)[dist_key],
+                        metrics[measure_key][dist_key],
                         atol=config.ATOL,
                         rtol=config.RTOL,
                     )
@@ -79,33 +79,33 @@ def test_centrality_simplest(dual_graph):
     """
     distances = [400, 800]
     nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(dual_graph)
+    # Test with different farness scaling expressions
     for _far_scale_off, _ang_scale_unit in [(0, 180), (0, 90), (1, 180)]:
+        closeness_exprs = {
+            "density": "1",
+            "farness": f"{_far_scale_off} + c / {_ang_scale_unit}",
+            "harmonic": f"1 / (1 + c / {_ang_scale_unit})",
+        }
+        betweenness_exprs = {"betweenness": "1"}
         nodes_gdf = networks.centrality_simplest(
             network_structure=network_structure,
             nodes_gdf=nodes_gdf,
             distances=distances,
-            compute_closeness=True,
-            compute_betweenness=True,
-            farness_scaling_offset=_far_scale_off,
-            angular_scaling_unit=_ang_scale_unit,
+            closeness=closeness_exprs,
+            betweenness=betweenness_exprs,
         )
         for dist_key in distances:
-            # test closeness against underlying method
+            # test closeness against underlying Rust method
             node_result_simplest = network_structure.centrality_simplest(
-                compute_closeness=True,
-                compute_betweenness=False,
+                closeness_exprs=list(closeness_exprs.items()),
+                betweenness_exprs=[],
                 distances=distances,
-                farness_scaling_offset=_far_scale_off,
-                angular_scaling_unit=_ang_scale_unit,
             )
-            for measure_key, attr_key in [
-                ("density", "node_density"),
-                ("farness", "node_farness"),
-                ("harmonic", "node_harmonic"),
-            ]:
+            metrics = node_result_simplest.metrics
+            for measure_key in ["density", "farness", "harmonic"]:
                 assert np.allclose(
                     nodes_gdf[config.prep_gdf_key(measure_key, dist_key, angular=True)],
-                    getattr(node_result_simplest, attr_key)[dist_key],
+                    metrics[measure_key][dist_key],
                     equal_nan=True,
                     atol=config.ATOL,
                     rtol=config.RTOL,
@@ -113,18 +113,20 @@ def test_centrality_simplest(dual_graph):
             with np.errstate(divide="ignore", invalid="ignore"):
                 assert np.allclose(
                     nodes_gdf[config.prep_gdf_key("hillier", dist_key, angular=True)],
-                    node_result_simplest.node_density[dist_key] ** 2 / node_result_simplest.node_farness[dist_key],
+                    metrics["density"][dist_key] ** 2 / metrics["farness"][dist_key],
                     equal_nan=True,
                     atol=config.ATOL,
                     rtol=config.RTOL,
                 )
-            # test betweenness against underlying method
+            # test betweenness against underlying Rust method
             betw_result = network_structure.centrality_simplest(
-                compute_closeness=False, compute_betweenness=True, distances=distances
+                closeness_exprs=[],
+                betweenness_exprs=list(betweenness_exprs.items()),
+                distances=distances,
             )
             assert np.allclose(
                 nodes_gdf[config.prep_gdf_key("betweenness", dist_key, angular=True)],
-                betw_result.node_betweenness[dist_key],
+                betw_result.metrics["betweenness"][dist_key],
                 equal_nan=True,
                 atol=config.ATOL,
                 rtol=config.RTOL,

@@ -69,14 +69,9 @@ The lower-level API (`cityseer.tools`, `cityseer.metrics`) offers step-by-step c
 
 ### Localised analysis
 
-`cityseer` uses a moving-window methodology for network analysis. For each node, the surrounding subgraph is isolated up to a specified distance threshold, metrics are computed for that local context, and the process repeats for every other node. This avoids the edge roll-off effects inherent in global network measures, where nodes near the study area boundary receive artificially low scores.
+`cityseer` computes metrics locally rather than globally. For each node in the network, the surrounding subgraph is isolated up to a specified distance threshold (for example, all streets within 800m walking distance), metrics are computed within that local subgraph, and the process repeats for every node. This avoids the boundary effects inherent in global network measures, where nodes near the edge of the study area receive artificially low scores.
 
-Localised metrics are directly comparable across different locations and cities because the analysis window is defined by the distance threshold, not by the extent of the dataset. Common distance thresholds include:
-
-- **400m** -- walkable neighbourhood (approximately 5 minutes)
-- **800m** -- transit stop catchment (approximately 10 minutes)
-- **1600m** -- local area (approximately 20 minutes)
-- **5000m+** -- city-wide structure (consider using [adaptive sampling](#adaptive-sampling) at this scale)
+Localised metrics are directly comparable across different locations and cities because the analysis window is defined by the distance threshold, not by the extent of the dataset. Shorter distance thresholds capture local neighbourhood structure while longer thresholds reveal city-wide patterns.
 
 Nodes at the periphery of a study area can be marked as "dead" (non-live) using a boundary polygon. Dead nodes are still reachable as targets during network traversal, but do not serve as sources for metric computation. This prevents artificially depressed values at the edges of the study area without discarding network connectivity. See the [Live Nodes](https://benchmark-urbanism.github.io/cityseer-examples/recipes/live_nodes.html) recipe for a worked example.
 
@@ -87,7 +82,7 @@ Street networks can be represented in two complementary forms:
 - **Primal graph**: Intersections are nodes; streets connecting them are edges. This is the conventional representation used by most network analysis tools.
 - **Dual graph**: Streets (segments) become nodes; edges connect pairs of streets that meet at a common intersection. Each dual node is positioned at the midpoint of its corresponding street segment, so metrics are measured per street segment and can be visualised directly on street geometries.
 
-The dual representation is essential for angular (simplest-path) analysis because each street segment forms an explicit routing state, enabling the accumulation of angular change at each turn. It also produces more intuitive outputs: a map coloured by betweenness shows which streets carry the most through-movement, rather than which intersections do.
+The dual representation is needed for angular (simplest-path) analysis because each street segment becomes an explicit node in the graph, allowing the cumulative turning angle (the sum of directional changes at each junction along a route) to be tracked explicitly. It also produces more intuitive outputs: a map coloured by betweenness shows which streets carry the most through-movement, rather than which intersections do.
 
 The [`CityNetwork`](/api/network) class builds the dual graph automatically from input geometries; there is no need to call conversion functions manually. When using the lower-level API, convert a primal graph with [`graphs.nx_to_dual`](/tools/graphs#nx-to-dual) before computing angular centralities.
 
@@ -97,8 +92,8 @@ See the [Create Dual Graph](https://benchmark-urbanism.github.io/cityseer-exampl
 
 `cityseer` supports two routing heuristics:
 
-- **Shortest path (metric)**: Routes minimise cumulative metric distance. Reflects physical walking distance.
-- **Simplest path (angular)**: Routes minimise cumulative angular change along streets and at intersections. Reflects the cognitive simplicity of a route: a pedestrian following a simplest path prefers to continue straight ahead rather than turning, even if a shorter alternative exists.
+- **Shortest path**: Routes minimise cumulative physical distance along the network. A 400m route is preferred over a 600m route, regardless of how many turns are involved.
+- **Simplest path (angular)**: Routes minimise cumulative angular change — the total amount of turning at each junction. A pedestrian following a simplest path prefers to continue straight ahead rather than turning, even if a shorter alternative exists.
 
 When to use each:
 
@@ -150,7 +145,7 @@ Input geometries are automatically cleaned during construction: short self-loops
 
 ## Centrality
 
-Centrality metrics quantify the structural importance of each location in the street network. `cityseer` computes multiple centrality measures simultaneously for any combination of distance thresholds, leveraging Rust parallelism to minimise computation time.
+Centrality metrics quantify the structural importance of each location in the street network. `cityseer` computes multiple centrality measures simultaneously for any combination of distance thresholds in a single pass.
 
 ### Shortest-path centrality
 
@@ -160,12 +155,12 @@ Centrality metrics quantify the structural importance of each location in the st
 | --- | --- |
 | `cc_density_{d}` | Count of reachable nodes within distance `d`. |
 | `cc_harmonic_{d}` | Harmonic closeness: sum of inverse distances to reachable nodes. Higher values indicate better average proximity. |
-| `cc_farness_{d}` | Sum of distances to all reachable nodes. Lower values indicate closer integration. |
-| `cc_hillier_{d}` | Hillier normalisation (`density^2 / farness`), a space syntax closeness variant that normalises for the mathematical relationship between the count and cost of reachable destinations. |
-| `cc_cycles_{d}` | Circuit rank of the locally reachable subgraph: the number of independent loops (city blocks). |
-| `cc_decay_{d}` | Decay-weighted closeness using the [`decay_fn`](#decay-functions) expression. |
+| `cc_farness_{d}` | Sum of distances to all reachable nodes. Lower values indicate better proximity. |
+| `cc_hillier_{d}` | Hillier normalisation (`density^2 / farness`): rewards locations that are both well-connected (many reachable nodes) and proximate (low total distance). |
+| `cc_cycles_{d}` | Circuit rank: the number of independent loops in the locally reachable subgraph. In grid-like networks, each loop roughly corresponds to a city block; in less regular networks, it measures the overall redundancy of route choices. |
+| `cc_decay_{d}` | Decay-weighted closeness (default: `exp(-4 * p)`). |
 | `cc_betweenness_{d}` | Betweenness centrality: count of shortest paths passing through each node. High betweenness indicates through-movement potential. |
-| `cc_betweenness_decay_{d}` | Decay-weighted betweenness using the `decay_fn` expression. |
+| `cc_betweenness_decay_{d}` | Decay-weighted betweenness (default: `exp(-4 * p)`). |
 
 ### Simplest-path centrality
 
@@ -179,7 +174,7 @@ Centrality metrics quantify the structural importance of each location in the st
 | `cc_hillier_{d}_ang` | Hillier normalisation: `density^2 / farness`. |
 | `cc_betweenness_{d}_ang` | Betweenness using simplest angular paths (angular choice in space syntax terminology). |
 
-Simplest-path centrality does not accept a `decay_fn` parameter because angular centralities use cumulative angular change as the routing cost rather than distance-based decay.
+Simplest-path centrality uses angular cost as `c` in expressions rather than metric distance. Decay-weighted angular metrics can be added via custom expressions if needed.
 
 ### Centrality recipes
 
@@ -189,7 +184,7 @@ Simplest-path centrality does not accept a `decay_fn` parameter because angular 
 
 ## Decay Functions
 
-Centrality, accessibility, mixed-use, and statistical aggregation methods accept an optional `decay_fn` parameter that controls how distance affects metric weighting. The decay function is a string expression using a single variable `p`, representing normalised progress from the source (`p = 0`) to the distance cutoff (`p = 1`), where `p = network_distance / max_distance`. Decay applies to shortest-path (metric distance) computations only; simplest-path (angular) centralities do not use decay because angular change is not a distance measure.
+Centrality, accessibility, mixed-use, and statistical aggregation methods accept an optional `decay_fn` parameter that controls how distance affects metric weighting. The decay function is a string expression using a variable `p` that ranges from 0 at the source to 1 at the distance cutoff (`p = network_distance / max_distance`). Decay applies to shortest-path (metric distance) computations only; simplest-path (angular) centralities do not use decay because angular change is not a distance measure.
 
 ### When to use each preset
 
@@ -198,48 +193,43 @@ Centrality, accessibility, mixed-use, and statistical aggregation methods accept
 | Exponential | `decay.exponential()` | Pedestrian catchments where nearby destinations matter far more than distant ones. Default for centrality. |
 | Linear | `decay.linear()` | Uniform distance penalty with no abrupt boundary. |
 | Flat | `decay.flat()` | Simple counts within a threshold, with no distance weighting. Default for accessibility and stats. |
-| Gaussian | `decay.gaussian(peak, cutoff)` | Facilities with an optimal catchment distance (e.g. a park best accessed at 400m, not 0m). |
-| Logistic | `decay.logistic(midpoint, cutoff)` | Hard catchment boundaries with a soft transition (e.g. a 600m service area that tapers at the edges). |
+| Gaussian | `decay.gaussian(peak, cutoff)` | Use cases where peak relevance is at some distance from the source rather than immediately adjacent. |
+| Logistic | `decay.logistic(midpoint, cutoff)` | Catchment boundaries with a gradual transition rather than a hard cutoff. |
 
 ### Code examples
 
-Decay functions apply to any method that accepts a `decay_fn` parameter:
+**Centrality** metrics are specified as `{name: expression}` dicts using variables `c` (cost) and `p` (normalised progress). **Land-use methods** use `decay_fn` with the `p` variable:
 
 ```python
 from cityseer import decay
 
-# Exponential with custom steepness (default is 4)
-cn.centrality_shortest(distances=[800], decay_fn=decay.exponential(steepness=6))
+# Centrality: custom closeness metric using c (cost in metres)
+cn.centrality_shortest(
+    distances=[800],
+    closeness={"gravity": "exp(-0.005 * c)", "harmonic": "1/c"},
+)
 
-# Gaussian peaking at 400m within a 1200m cutoff
-# (land-use methods return both the network and the assigned data GeoDataFrame)
+# Gaussian decay for land-use stats
 cn, data_gdf = cn.compute_stats(
     data_gdf=prices_gdf,
     stats_column_labels=["price"],
     distances=[1200],
     decay_fn=decay.gaussian(peak=400, cutoff=1200, std=150),
 )
-
-# Custom expression using the p variable directly
-cn.centrality_shortest(distances=[800], decay_fn="max(0, 1 - p^2)")
 ```
 
 ### Default decay behaviour
 
-- **Centrality** (`centrality_shortest`): defaults to `"exp(-4 * p)"` (exponential decay reaching ~1.8% at the cutoff).
+- **Centrality** (`centrality_shortest`): default closeness includes `"decay": "exp(-4 * p)"` and default betweenness includes `"betweenness_decay": "exp(-4 * p)"`.
 - **Accessibility and stats** (`compute_accessibilities`, `compute_mixed_uses`, `compute_stats`): defaults to `"1"` (flat, no distance weighting). Pass a decay expression explicitly for distance-weighted aggregations.
 
 ### Expression syntax
 
-Expressions support: `+`, `-`, `*`, `/`, `^`, and functions `exp`, `ln`, `sqrt`, `abs`, `sin`, `cos`, `min`, `max`, `floor`, `ceil`, plus constants `pi` and `e`. Output values are automatically clamped to [0, 1]. See the [`cityseer.decay`](/api/decay) API reference for full details.
-
-:::note
-**Migrating from the old `betas` API:** The `betas` and `min_threshold_wt` parameters have been replaced by `decay_fn`. If you were using `distances=[800]` without specifying `betas`, your code continues to work unchanged. If you were passing explicit `betas` values for exponential decay, replace them with `decay_fn=decay.exponential()` (or a custom steepness). The old `_wt` and `_nw` column suffixes have been removed; all metrics now produce a single column controlled by `decay_fn`.
-:::
+Centrality expressions use two variables: `c` (raw cost) and `p` (normalised progress, `c / threshold`). Land-use decay expressions use `p` only. Both support: `+`, `-`, `*`, `/`, `^`, and functions `exp`, `ln`, `sqrt`, `abs`, `sin`, `cos`, `min`, `max`, `floor`, `ceil`, plus constants `pi` and `e`. Land-use decay output is clamped to [0, 1]; centrality expressions are not clamped. See the [`cityseer.decay`](/api/decay) API reference for full details.
 
 ## Land-Use Analysis
 
-`cityseer` computes land-use and statistical aggregations over the street network from the same node locations used for centrality analysis, enabling direct correlation between structural and functional characteristics. All land-use methods accept an `angular=True` parameter for simplest-path routing (`CityNetwork` handles the required dual graph automatically).
+`cityseer` computes land-use and statistical aggregations at the same node locations used for centrality. Because the results share a common spatial index, you can directly compare how well-connected a location is (centrality) with what amenities are reachable from it (accessibility). All land-use methods accept an `angular=True` parameter for simplest-path routing (`CityNetwork` handles the required dual graph automatically).
 
 ### Accessibility
 
@@ -262,9 +252,9 @@ See the [OSM Accessibility](https://benchmark-urbanism.github.io/cityseer-exampl
 
 [`compute_mixed_uses`](/metrics/layers#compute-mixed-uses) measures the diversity of land-use categories reachable from each node:
 
-- **Hill q=0** -- richness: count of distinct land-use categories. Best for granular classification schemas because evenness is irrelevant when categories are narrowly defined.
-- **Hill q=1** -- balances richness and evenness. Use for moderate classification granularity where both the number and distribution of categories matter.
-- **Hill q=2** -- emphasises the most frequent categories. Use for coarse schemas where the balance of dominant categories matters more than rare ones.
+- **Hill q=0** (equivalent to species richness) -- counts how many different land-use types are present. Best when using many fine-grained categories.
+- **Hill q=1** (equivalent to the exponential of Shannon entropy) -- accounts for both the number of land-use types and how evenly distributed they are.
+- **Hill q=2** (equivalent to the inverse Simpson concentration) -- focuses on the most common land-use types, downweighting rare ones. Best when using broad categories where the balance of dominant types matters most.
 
 See the [Mixed Uses](https://benchmark-urbanism.github.io/cityseer-examples/recipes/accessibility/gpd_mixed_uses.html) recipe.
 
@@ -315,9 +305,9 @@ Graph cleaning functions in the [`graphs`](/tools/graphs) module do not preserve
 
 ## Elevation and Slope
 
-`cityseer` supports optional z (elevation) coordinates on network geometries. When present, [Tobler's hiking function](https://en.wikipedia.org/wiki/Tobler%27s_hiking_function) automatically adjusts traversal costs: uphill segments incur a penalty proportional to the grade, steep downhill segments are also penalised, and gentle downhill slopes (~3%) receive a slight bonus. The penalty is computed directionally (A to B differs from B to A) and is applied on top of the configured walking speed.
+`cityseer` supports optional z (elevation) coordinates on network geometries. When present, elevation data is preserved through all processing steps (graph cleaning, decomposition, dual graph conversion, CRS reprojection, and serialisation). [Tobler's hiking function](https://en.wikipedia.org/wiki/Tobler%27s_hiking_function) automatically adjusts traversal costs based on the gradient: uphill segments incur a penalty proportional to the grade (for example, a 20% slope approximately doubles the effective distance), steep downhill segments are also penalised due to reduced walking speed, and gentle downhill slopes (~3%) receive a slight bonus matching the empirically observed optimal walking gradient. The penalty is a dimensionless multiplier on effective distance, computed directionally (A to B differs from B to A) and composing correctly with any configured walking speed.
 
-For angular analysis, the slope penalty affects only the reachability budget, not the angular routing metric itself.
+For angular analysis, the slope penalty affects only the reachability budget (the distance a pedestrian can cover within the analysis threshold), not the angular routing metric itself. The cognitively simplest path is still selected, but steep terrain reduces how far the walker can reach.
 
 When z coordinates are absent, all slope penalties default to 1.0 (no effect). To add elevation to a 2D network, drape it onto a digital elevation model (DEM) using a tool such as the [OSMnx elevation module](https://osmnx.readthedocs.io/en/stable/user-reference.html#osmnx.elevation) or [rasterio](https://rasterio.readthedocs.io/).
 
@@ -372,26 +362,25 @@ The [`add_gtfs`](/api/network#add-gtfs) method integrates public transport stops
 
 ## Performance and Scale
 
-The underlying algorithms are parallelised in Rust and scale to large networks. Computation scales with the number of edges, the number of distance thresholds, and the reachability at each threshold. Simplest-path (angular) centrality is typically faster than shortest-path because angular routing produces sparser traversal trees. For large networks at long distance thresholds, consider [adaptive sampling](#adaptive-sampling).
+The underlying algorithms are parallelised in Rust and scale to large networks. Computation scales with the number of edges, the number of distance thresholds, and the reachability at each threshold. Simplest-path (angular) centrality is typically faster than shortest-path because angular routing explores fewer paths. For large networks at long distance thresholds, consider [adaptive sampling](#adaptive-sampling).
 
 ## Adaptive Sampling
 
-For large networks at long distance thresholds (5 km+), `cityseer` offers an experimental adaptive sampling feature. Rather than using every node as a source, a distance-dependent subset is sampled using the Hoeffding bound, with inverse-probability weighting to correct for non-uniform inclusion probabilities. Sampling is exact at short distances and progressively sparser at longer distances.
+For large networks at long distance thresholds, `cityseer` offers an experimental adaptive sampling feature. Rather than using every node as a source, a distance-dependent subset is selected using the Hoeffding inequality, a statistical bound that determines the minimum sample size needed to guarantee the approximation error stays within a specified tolerance. Results are corrected using inverse-probability weighting (IPW): if a node had a 25% chance of being selected as a source, its contribution is multiplied by 4 (the reciprocal of 0.25), so that the subset of sampled nodes approximates the result of using all nodes.
 
-The `epsilon` parameter controls the error tolerance: `0.06` is a good starting point for most analyses, yielding Spearman rank correlations above 0.95 against exact computation. Use `0.03` for higher accuracy at the cost of more computation, or `0.1` for faster exploratory analysis:
+Sampling is applied per distance threshold. Short distances where few nodes are reachable run at full computation, since sampling offers no speedup. Longer distances automatically use sparser sampling as the number of reachable nodes increases. If the computed sampling rate offers no speedup for a given distance, that distance runs exactly.
+
+The `epsilon` parameter controls the error tolerance. The default of 0.06 is suitable for most analyses. Both `centrality_shortest` and `centrality_simplest` support sampling. Pass `sample=True` to enable:
 
 ```python
 cn.centrality_shortest(
     distances=[800, 2000, 5000],
     sample=True,
-    epsilon=0.06,
 )
 ```
 
-Both `centrality_shortest` and `centrality_simplest` support sampling.
-
 :::warning
-Adaptive sampling is experimental. When comparing centrality values across locations, use the same `epsilon` to ensure consistent error tolerances.
+Adaptive sampling is experimental: API and behaviour may change in future releases.
 :::
 
 For technical details, see the [`metrics.sampling`](/metrics/sampling) documentation.

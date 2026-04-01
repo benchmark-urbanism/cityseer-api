@@ -1,10 +1,11 @@
 """Compute land-use accessibility, mixed-use diversity, and statistical aggregations over the street network.
 
-Data points (land uses, numerical attributes) are assigned to the nearest street edges and then aggregated within
-network-distance catchments around each node. The aggregations are produced at the same node locations used for
-centrality computations, enabling direct correlation between structural and functional characteristics of the urban
-environment. An optional ``decay_fn`` parameter controls how distance affects the weighting; see the
-[`cityseer.decay`](/api/decay) module for preset helpers.
+Data points (land uses, numerical attributes) are assigned to the nearest street edges and then summarised within
+walking-distance catchments around each node, measured along the actual street network rather than as straight-line
+distances. Because these summaries are computed at the same node locations used for centrality, you can directly
+compare how well-connected a location is with how accessible different amenities are from that location. An optional
+``decay_fn`` parameter controls how distance affects the weighting; see the [`cityseer.decay`](/api/decay) module for
+preset helpers.
 
 For practical worked examples, see the [Cityseer Examples](https://benchmark-urbanism.github.io/cityseer-examples/)
 site, including the

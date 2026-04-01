@@ -6,7 +6,7 @@ layout: ../../layouts/PageLayout.astro
 # network
 
 
- High-level CityNetwork API for urban network analysis. The [`CityNetwork`](#citynetwork) class wraps network construction, centrality computation, land-use analysis, and export into a single interface. It builds dual graphs directly from LineString geometries, enabling both shortest-path and simplest-path (angular) analysis. See the [Guide](/guide) for concepts, conventions, and worked examples.
+ High-level CityNetwork API for urban network analysis. The [`CityNetwork`](#citynetwork) class wraps network construction, centrality computation, land-use analysis, and export into a single interface. It builds dual graphs (where street segments become nodes rather than intersections) directly from LineString geometries, enabling both shortest-path (metric distance) and simplest-path (angular change) analysis. See the [Guide](/guide) for concepts, conventions, and worked examples.
 
 
 <div class="class">
@@ -70,7 +70,7 @@ result_gdf = cn.to_geopandas()
 result_gdf["cc_harmonic_800"]
 ```
 
- Column names follow the ``cc_{metric}_{distance}`` convention described in the [Column Naming Conventions](/intro#column-naming-conventions) section.
+ Column names follow the ``cc_{metric}_{distance}`` convention described in the [Column Naming Conventions](/guide#column-naming-conventions) section.
 
  ### Feature cleaning
 
@@ -1073,7 +1073,7 @@ print(cn_restored.nodes_gdf["cc_harmonic_800"])
 </div>
 
 
- Compute shortest-path (metric) centrality. Wraps [`centrality_shortest`](/metrics/networks#centrality-shortest). All keyword arguments are forwarded; see that function for the full parameter list including ``distances``, ``minutes``, ``compute_closeness``, ``compute_betweenness``, ``decay_fn``, ``sample``, and ``epsilon``.
+ Compute shortest-path (metric) centrality. Wraps [`centrality_shortest`](/metrics/networks#centrality-shortest). All keyword arguments are forwarded; see that function for the full parameter list including ``distances``, ``minutes``, ``closeness``, ``betweenness``, ``cycles``, ``postprocess``, ``segment_weighted``, ``sample``, and ``epsilon``.
 ### Returns
 <div class="param-set">
   <div class="def">
@@ -1088,38 +1088,39 @@ print(cn_restored.nodes_gdf["cc_harmonic_800"])
 ### Notes
 
 ```python
-from cityseer import decay
-
 # Multiple distance thresholds
 cn.centrality_shortest(distances=[400, 800, 1600])
 
-# With custom decay and sampling for large networks
+# With segment-length weighting
+cn.centrality_shortest(distances=[400, 800], segment_weighted=True)
+
+# With sampling for large networks
 cn.centrality_shortest(
     distances=[800, 2000, 5000],
-    decay_fn=decay.exponential(steepness=4),
     sample=True,
     epsilon=0.06,
 )
 
-# Closeness only (skip betweenness for speed)
-cn.centrality_shortest(distances=[800], compute_betweenness=False)
-
-# Using walking time thresholds instead of distances
-cn.centrality_shortest(minutes=[5, 10, 20])
+# Custom closeness metric
+cn.centrality_shortest(
+    distances=[800],
+    closeness={"harmonic": "1/c", "gravity": "exp(-0.005 * c)"},
+    betweenness={},
+)
 ```
 
- Output columns per distance ``d`` (see [Column Naming Conventions](/intro#column-naming-conventions)):
+ Output columns per distance ``d`` (see [Column Naming Conventions](/guide#column-naming-conventions)):
 
 | Column | Description |
 | --- | --- |
-| ``cc_density_{d}`` | Count of reachable nodes. |
-| ``cc_harmonic_{d}`` | Harmonic closeness. |
+| ``cc_density_{d}`` | Count of reachable nodes (or total reachable street length if segment_weighted). |
+| ``cc_harmonic_{d}`` | Harmonic closeness: sum of inverse distances to reachable nodes. |
 | ``cc_farness_{d}`` | Sum of distances to reachable nodes. |
 | ``cc_hillier_{d}`` | Hillier normalisation (density² / farness). |
-| ``cc_cycles_{d}`` | Circuit rank (meshedness). |
-| ``cc_decay_{d}`` | Decay-weighted closeness. |
-| ``cc_betweenness_{d}`` | Betweenness centrality. |
-| ``cc_betweenness_decay_{d}`` | Decay-weighted betweenness. |
+| ``cc_cycles_{d}`` | Circuit rank: count of independent loops in the reachable subgraph. |
+| ``cc_decay_{d}`` | Decay-weighted closeness (default: ``exp(-4 * p)``). |
+| ``cc_betweenness_{d}`` | Betweenness: count of shortest paths passing through each node. |
+| ``cc_betweenness_decay_{d}`` | Decay-weighted betweenness (default: ``exp(-4 * p)``). |
 
 </div>
 
@@ -1147,8 +1148,6 @@ cn.centrality_shortest(minutes=[5, 10, 20])
 
 
  Compute simplest-path (angular) centrality. Wraps [`centrality_simplest`](/metrics/networks#centrality-simplest). All keyword arguments are forwarded; see that function for the full parameter list.
-
- This method does not accept a ``decay_fn`` parameter; angular centralities use angular cost rather than distance-based decay.
 ### Returns
 <div class="param-set">
   <div class="def">
@@ -1170,11 +1169,11 @@ cn.centrality_simplest(distances=[400, 800, 1600])
 
 | Column | Description |
 | --- | --- |
-| ``cc_density_{d}_ang`` | Count of reachable nodes (angular routing). |
-| ``cc_harmonic_{d}_ang`` | Harmonic closeness (cumulative angular change as impedance). |
-| ``cc_farness_{d}_ang`` | Sum of cumulative angular changes to reachable nodes. |
+| ``cc_density_{d}_ang`` | Count of reachable nodes (or total reachable street length if segment_weighted). |
+| ``cc_harmonic_{d}_ang`` | Harmonic closeness using cumulative angular change (total directional change along the route) as impedance. |
+| ``cc_farness_{d}_ang`` | Sum of cumulative angular changes to reachable nodes (angular integration in space syntax). |
 | ``cc_hillier_{d}_ang`` | Hillier normalisation (density² / farness). |
-| ``cc_betweenness_{d}_ang`` | Betweenness (simplest angular paths). |
+| ``cc_betweenness_{d}_ang`` | Betweenness using simplest angular paths (angular choice in space syntax). |
 
 </div>
 
@@ -1211,7 +1210,9 @@ cn.centrality_simplest(distances=[400, 800, 1600])
 </div>
 
 
- Build an origin-destination matrix for OD-weighted betweenness. Wraps [`build_od_matrix`](/metrics/networks#build-od-matrix). See that function for the full parameter list.
+ Build an origin-destination (OD) matrix for OD-weighted betweenness. In standard betweenness, every pair of nodes contributes equally. OD-weighted betweenness instead weights each pair by observed trip counts between their respective zones (e.g. commuter cycling counts), so streets carrying more actual traffic receive higher scores.
+
+ Wraps [`build_od_matrix`](/metrics/networks#build-od-matrix). See that function for the full parameter list.
 ### Parameters
 <div class="param-set">
   <div class="def">
@@ -1220,7 +1221,7 @@ cn.centrality_simplest(distances=[400, 800, 1600])
   </div>
   <div class="desc">
 
- Origin-destination flow data.</div>
+ Origin-destination flow data with columns for origin zone, destination zone, and trip weight.</div>
 </div>
 
 <div class="param-set">
@@ -1230,7 +1231,7 @@ cn.centrality_simplest(distances=[400, 800, 1600])
   </div>
   <div class="desc">
 
- Zone polygons corresponding to the OD matrix.</div>
+ Zone boundaries (polygons) or centroids (points) corresponding to the OD matrix.</div>
 </div>
 
 ### Returns
@@ -1275,7 +1276,9 @@ cn.centrality_simplest(distances=[400, 800, 1600])
 </div>
 
 
- Compute OD-weighted betweenness centrality. Wraps [`betweenness_od`](/metrics/networks#betweenness-od). See that function for the full parameter list.
+ Compute OD-weighted betweenness centrality. Weights betweenness by actual origin-destination trip counts rather than treating all paths equally. Only source nodes with outbound trips are traversed, and each shortest-path contribution is scaled by the corresponding OD weight.
+
+ Wraps [`betweenness_od`](/metrics/networks#betweenness-od). See that function for the full parameter list.
 ### Parameters
 <div class="param-set">
   <div class="def">
@@ -1330,7 +1333,9 @@ cn.centrality_simplest(distances=[400, 800, 1600])
 </div>
 
 
- Compute land-use accessibility metrics. Wraps [`compute_accessibilities`](/metrics/layers#compute-accessibilities). All additional keyword arguments are forwarded; see that function for the full parameter list including ``landuse_column_label``, ``accessibility_keys``, ``distances``, ``minutes``, ``decay_fn``, and ``angular``.
+ Compute land-use accessibility metrics. Counts how many instances of each specified land-use category (e.g. retail, parks) are reachable within each distance threshold, and records the nearest distance to each category.
+
+ Wraps [`compute_accessibilities`](/metrics/layers#compute-accessibilities). All additional keyword arguments are forwarded; see that function for the full parameter list including ``landuse_column_label``, ``accessibility_keys``, ``distances``, ``minutes``, ``decay_fn``, and ``angular``.
 ### Parameters
 <div class="param-set">
   <div class="def">
@@ -1413,7 +1418,9 @@ print(cn.nodes_gdf["cc_park_nearest_max_800"])
 </div>
 
 
- Compute mixed-use diversity metrics. Wraps [`compute_mixed_uses`](/metrics/layers#compute-mixed-uses). All additional keyword arguments are forwarded; see that function for the full parameter list including ``landuse_column_label``, ``distances``, ``minutes``, ``compute_hill``, ``compute_shannon``, ``compute_gini``, ``decay_fn``, and ``angular``.
+ Compute mixed-use diversity metrics. Measures the diversity of land-use categories reachable from each node using Hill numbers: q=0 counts how many distinct types are present, q=1 measures diversity accounting for how evenly types are represented, and q=2 gives greater weight to the most common types.
+
+ Wraps [`compute_mixed_uses`](/metrics/layers#compute-mixed-uses). All additional keyword arguments are forwarded; see that function for the full parameter list including ``landuse_column_label``, ``distances``, ``minutes``, ``compute_hill``, ``compute_shannon``, ``compute_gini``, ``decay_fn``, and ``angular``.
 ### Parameters
 <div class="param-set">
   <div class="def">
@@ -1454,7 +1461,7 @@ cn, landuses_gdf = cn.compute_mixed_uses(
     landuse_column_label="category",
     distances=[400, 800],
 )
-# Hill diversity at q=0 (count of distinct land-uses) at 800m
+# Hill q=0 (count of distinct land-use types) at 800m
 print(cn.nodes_gdf["cc_hill_q0_800"])
 ```
 
@@ -1490,7 +1497,9 @@ print(cn.nodes_gdf["cc_hill_q0_800"])
 </div>
 
 
- Compute statistical aggregations of numerical data over the network. Wraps [`compute_stats`](/metrics/layers#compute-stats). All additional keyword arguments are forwarded; see that function for the full parameter list including ``stats_column_labels``, ``distances``, ``minutes``, ``decay_fn``, and ``angular``.
+ Compute statistical aggregations of numerical data over the network. Aggregates numerical attributes (e.g. property prices, floor areas) within network-distance thresholds, computing weighted statistics (mean, sum, min, max, variance, etc.) at each node.
+
+ Wraps [`compute_stats`](/metrics/layers#compute-stats). All additional keyword arguments are forwarded; see that function for the full parameter list including ``stats_column_labels``, ``distances``, ``minutes``, ``decay_fn``, and ``angular``.
 ### Parameters
 <div class="param-set">
   <div class="def">
@@ -1579,7 +1588,9 @@ print(cn.nodes_gdf["cc_floor_area_sum_1600"])
 </div>
 
 
- Add GTFS public transport data to the network. Wraps [`io.add_transport_gtfs`](/tools/io#add-transport-gtfs).
+ Add GTFS (General Transit Feed Specification) public transport data to the network. Integrates transit stops and routes so that centrality and accessibility analyses account for public transport connections.
+
+ Wraps [`io.add_transport_gtfs`](/tools/io#add-transport-gtfs).
 ### Parameters
 <div class="param-set">
   <div class="def">
@@ -1608,7 +1619,7 @@ print(cn.nodes_gdf["cc_floor_area_sum_1600"])
   </div>
   <div class="desc">
 
- Maximum distance (metres) for snapping stops to the network. Defaults to 400.</div>
+ Maximum distance (metres) for snapping transit stops to the nearest network node. Stops beyond this distance are excluded. Defaults to 400.</div>
 </div>
 
 ### Returns

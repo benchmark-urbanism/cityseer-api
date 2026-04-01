@@ -14,10 +14,6 @@ pub static WALKING_SPEED: f32 = 1.33333;
 /// Default decay expression: flat (no decay). All data points within the distance threshold
 /// receive equal weight. Use a custom `decay_fn` for distance-weighted metrics.
 pub static DEFAULT_DECAY_EXPR: &str = "1";
-/// Default decay expression for centrality metrics: exponential decay where p is normalised
-/// progress (0 at source, 1 at cutoff). The constant 4 ≈ -ln(0.018).
-pub static DEFAULT_CENTRALITY_DECAY_EXPR: &str = "exp(-4 * p)";
-
 /// Validates a decay function expression string by parsing it and test-evaluating at several
 /// points across the range p ∈ [0, 1]. Returns the expression string wrapped in an Arc for
 /// sharing across threads.
@@ -54,6 +50,55 @@ pub fn parse_decay_fn(expr_str: &str) -> impl Fn(f32) -> f32 {
     move |p: f32| -> f32 {
         f(p as f64).clamp(0.0, 1.0) as f32
     }
+}
+
+/// Validates a centrality metric expression string by parsing it and test-evaluating at several
+/// (c, p) pairs. Expressions use two variables: `c` (cost) and `p` (normalised progress).
+/// Returns the expression string wrapped in an Arc for sharing across threads.
+pub fn validate_metric_expr(expr_str: &str) -> PyResult<Arc<str>> {
+    let test_expr: meval::Expr = expr_str.parse().map_err(|e| {
+        PyValueError::new_err(format!(
+            "Failed to parse metric expression '{}': {}",
+            expr_str, e
+        ))
+    })?;
+    let test_fn = test_expr.bind2("c", "p").map_err(|e| {
+        PyValueError::new_err(format!(
+            "Metric expression must use 'c' and/or 'p' as variables: {}",
+            e
+        ))
+    })?;
+    for (test_c, test_p) in [(0.1, 0.0), (50.0, 0.25), (100.0, 0.5), (200.0, 1.0)] {
+        let test_val = test_fn(test_c, test_p);
+        if test_val.is_nan() || test_val.is_infinite() {
+            return Err(PyValueError::new_err(format!(
+                "Metric expression '{}' returns invalid value ({}) at c={}, p={}",
+                expr_str, test_val, test_c, test_p
+            )));
+        }
+    }
+    Ok(Arc::from(expr_str))
+}
+
+/// Parses a centrality metric expression per-thread and returns a closure that computes
+/// a value from cost `c` and normalised progress `p`. Output is NOT clamped.
+pub fn parse_metric_expr(expr_str: &str) -> impl Fn(f32, f32) -> f32 {
+    let expr: meval::Expr = expr_str.parse().unwrap();
+    let f = expr.bind2("c", "p").unwrap();
+    move |c: f32, p: f32| -> f32 { f(c as f64, p as f64) as f32 }
+}
+
+/// Validates a list of named metric expressions. Returns validated (name, Arc<str>) pairs.
+pub fn validate_metric_exprs(
+    exprs: &[(String, String)],
+) -> PyResult<Vec<(String, Arc<str>)>> {
+    exprs
+        .iter()
+        .map(|(name, expr)| {
+            let validated = validate_metric_expr(expr)?;
+            Ok((name.clone(), validated))
+        })
+        .collect()
 }
 
 /// Holds metric results, including distances and a 2D matrix of atomic floats.

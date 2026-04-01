@@ -425,23 +425,39 @@ class CityseerCentralityAlgorithm(CityseerAlgorithmBase):
         # ------------------------------------------------------------------
         results: dict[int, dict[str, float]] = {fid: {} for fid in fid_list}
 
-        def _store(result, col_prefix, attr_names):
-            """Unpack a Rust result object into the results dict."""
+        def _store(result, col_prefix, metric_names, derive_hillier=False):
+            """Unpack a CentralityResult's metrics dict into the results dict."""
+            metrics = result.metrics
             for d in result.distances:
-                for attr in attr_names:
-                    arr = getattr(result, attr)[d]
-                    base = attr.replace("node_", "")
-                    col = f"cc_{base}_{d}_{col_prefix}" if col_prefix else f"cc_{base}_{d}"
+                for name in metric_names:
+                    if name not in metrics or d not in metrics[name]:
+                        continue
+                    arr = metrics[name][d]
+                    col = f"cc_{name}_{d}_{col_prefix}" if col_prefix else f"cc_{name}_{d}"
                     for i, fid in enumerate(result.node_keys_py):
                         if fid in results:
                             val = float(arr[i])
                             results[fid][col] = val if math.isfinite(val) else None
+                if (
+                    derive_hillier
+                    and "density" in metrics
+                    and "farness" in metrics
+                    and d in metrics["density"]
+                    and d in metrics["farness"]
+                ):
+                        density = metrics["density"][d]
+                        farness = metrics["farness"][d]
+                        for i, fid in enumerate(result.node_keys_py):
+                            if fid in results and farness[i] > 0:
+                                val = float(density[i] ** 2 / farness[i])
+                                hcol = f"cc_hillier_{d}_{col_prefix}" if col_prefix else f"cc_hillier_{d}"
+                                results[fid][hcol] = val if math.isfinite(val) else None
 
         def _run_metric_batches(
             label,
             metric_func,
             total_exact,
-            attrs,
+            metric_names,
             col_prefix,
             derive_hillier=False,
             **extra_kwargs,
@@ -450,7 +466,6 @@ class CityseerCentralityAlgorithm(CityseerAlgorithmBase):
             nonlocal step
             base = (step - 1) * step_pct
             feedback.setProgressText(f"Step {step} of {n_steps}: Computing {label}…")
-            # Count sub-batches: 1 for exact (if any) + 1 per sampled distance
             n_batches = (1 if full_distances else 0) + len(sampled_distances)
             if n_batches == 0:
                 n_batches = 1
@@ -467,16 +482,7 @@ class CityseerCentralityAlgorithm(CityseerAlgorithmBase):
                     progress_base=base + batch_idx * batch_span,
                     progress_span=batch_span,
                 )
-                _store(r, col_prefix, attrs)
-                if derive_hillier:
-                    for d in r.distances:
-                        density = r.node_density[d]
-                        farness = r.node_farness[d]
-                        for i, fid in enumerate(r.node_keys_py):
-                            if fid in results and farness[i] > 0:
-                                val = float(density[i] ** 2 / farness[i])
-                                hcol = f"cc_hillier_{d}_{col_prefix}" if col_prefix else f"cc_hillier_{d}"
-                                results[fid][hcol] = val if math.isfinite(val) else None
+                _store(r, col_prefix, metric_names, derive_hillier=derive_hillier)
                 batch_idx += 1
             for d, p in sampled_distances:
                 _d, _p = [d], p
@@ -493,47 +499,49 @@ class CityseerCentralityAlgorithm(CityseerAlgorithmBase):
                     progress_base=base + batch_idx * batch_span,
                     progress_span=batch_span,
                 )
-                _store(r, col_prefix, attrs)
-                if derive_hillier:
-                    for dd in r.distances:
-                        density = r.node_density[dd]
-                        farness = r.node_farness[dd]
-                        for i, fid in enumerate(r.node_keys_py):
-                            if fid in results and farness[i] > 0:
-                                val = float(density[i] ** 2 / farness[i])
-                                hcol = f"cc_hillier_{dd}_{col_prefix}" if col_prefix else f"cc_hillier_{dd}"
-                                results[fid][hcol] = val if math.isfinite(val) else None
+                _store(r, col_prefix, metric_names, derive_hillier=derive_hillier)
                 batch_idx += 1
             step += 1
 
         if do_shortest:
-            # Build attr list for shortest path from per-category flags
-            shortest_attrs = []
+            # Build expression dicts from per-category metric flags
+            closeness_exprs = []
             if closeness_shortest:
                 if cs_harmonic:
-                    shortest_attrs.append("node_harmonic")
+                    closeness_exprs.append(("harmonic", "1/c"))
                 if cs_density:
-                    shortest_attrs.append("node_density")
+                    closeness_exprs.append(("density", "1"))
                 if cs_farness:
-                    shortest_attrs.append("node_farness")
+                    closeness_exprs.append(("farness", "c"))
                 if cs_decay:
-                    shortest_attrs.append("node_decay")
-                if cs_cycles:
-                    shortest_attrs.append("node_cycles")
+                    closeness_exprs.append(("decay", "exp(-4 * p)"))
+            betweenness_exprs = []
             if betweenness_shortest:
                 if bs_betweenness:
-                    shortest_attrs.append("node_betweenness")
+                    betweenness_exprs.append(("betweenness", "1"))
                 if bs_betweenness_decay:
-                    shortest_attrs.append("node_betweenness_decay")
+                    betweenness_exprs.append(("betweenness_decay", "exp(-4 * p)"))
+            # Collect metric names for _store
+            shortest_metric_names = [name for name, _ in closeness_exprs + betweenness_exprs]
+            if cs_cycles and closeness_shortest:
+                shortest_metric_names.append("cycles")
+            # Need density+farness for hillier derivation
+            derive_hillier = cs_hillier and closeness_shortest
+            if derive_hillier:
+                for needed in [("density", "1"), ("farness", "c")]:
+                    if needed not in closeness_exprs:
+                        closeness_exprs.append(needed)
+                        # Don't add to metric_names — hillier derivation reads them internally
             _run_metric_batches(
                 "centrality (shortest path)",
                 ns.centrality_shortest,
                 node_count,
-                shortest_attrs,
+                shortest_metric_names,
                 "",
-                derive_hillier=cs_hillier and closeness_shortest,
-                compute_closeness=closeness_shortest,
-                compute_betweenness=betweenness_shortest,
+                derive_hillier=derive_hillier,
+                closeness_exprs=closeness_exprs,
+                betweenness_exprs=betweenness_exprs,
+                compute_cycles=cs_cycles and closeness_shortest,
                 tolerance=tolerance,
             )
 
@@ -541,18 +549,25 @@ class CityseerCentralityAlgorithm(CityseerAlgorithmBase):
             return {}
 
         if do_simplest:
-            # Build attr list for simplest path from per-category flags
-            simplest_attrs = []
+            # Build expression dicts for simplest path
+            closeness_exprs = []
             if closeness_simplest:
                 if ca_harmonic:
-                    simplest_attrs.append("node_harmonic")
+                    closeness_exprs.append(("harmonic", "1 / (1 + c / 90)"))
                 if ca_density:
-                    simplest_attrs.append("node_density")
+                    closeness_exprs.append(("density", "1"))
                 if ca_farness:
-                    simplest_attrs.append("node_farness")
+                    closeness_exprs.append(("farness", "1 + c / 90"))
+            betweenness_exprs = []
             if betweenness_simplest and ba_betweenness:
-                simplest_attrs.append("node_betweenness")
-            if not simplest_attrs:
+                betweenness_exprs.append(("betweenness", "1"))
+            simplest_metric_names = [name for name, _ in closeness_exprs + betweenness_exprs]
+            derive_hillier = ca_hillier and closeness_simplest
+            if derive_hillier:
+                for needed in [("density", "1"), ("farness", "1 + c / 90")]:
+                    if needed not in closeness_exprs:
+                        closeness_exprs.append(needed)
+            if not closeness_exprs and not betweenness_exprs:
                 feedback.pushInfo("Simplest path: no applicable metrics selected. Skipping.")
                 step += 1
             else:
@@ -560,11 +575,11 @@ class CityseerCentralityAlgorithm(CityseerAlgorithmBase):
                     "centrality (simplest / angular path)",
                     ns.centrality_simplest,
                     node_count,
-                    simplest_attrs,
+                    simplest_metric_names,
                     "ang",
-                    derive_hillier=ca_hillier and closeness_simplest,
-                    compute_closeness=closeness_simplest,
-                    compute_betweenness=betweenness_simplest,
+                    derive_hillier=derive_hillier,
+                    closeness_exprs=closeness_exprs,
+                    betweenness_exprs=betweenness_exprs,
                     tolerance=angular_tolerance_val,
                 )
 

@@ -2,17 +2,17 @@
 layout: '@src/layouts/PageLayout.astro'
 ---
 
-`cityseer` is a collection of computational tools for fine-grained street-network and land-use analysis, useful for assessing the morphological precursors to vibrant neighbourhoods. It is underpinned by network-based methods that have been developed from the ground-up for micro-morphological urban analysis at the pedestrian scale, with the intention of providing contextually specific metrics for any given street-front location. Importantly, `cityseer` computes metrics directly over the street network and offers distance-weighted variants. The combination of these strategies makes `cityseer` more contextually sensitive than methods otherwise based on crow-flies aggregation methods that do not take the network structure and its affect on pedestrian walking distances into account.
+`cityseer` provides tools for street-network and land-use analysis at the pedestrian scale. It measures how central each street is in the walking network (centrality), how easily pedestrians can reach amenities like shops or parks (accessibility), and how numerical attributes such as property prices are distributed across neighbourhoods (statistical aggregation) — all computed along actual walking routes rather than straight-line distances.
 
-The use of `python` facilitates interaction with popular computational tools for network manipulation (e.g. [`networkX`](https://networkx.github.io/)), geospatial data processing (e.g. [`shapely`](https://shapely.readthedocs.io), etc.), Open Street Map workflows with [`OSMnx`](https://osmnx.readthedocs.io/), and interaction with the [`numpy`](http://www.numpy.org/), [`geopandas`](https://geopandas.org/en/stable/) (and [`momepy`](http://docs.momepy.org)) stack of packages. The underlying algorithms are parallelised and implemented in `rust` so that the methods can be scaled to large networks. In-out convenience methods are provided for interfacing with `networkX` and graph cleaning tools aid the incorporation of complex network representations such as those derived from [Open Street Map](https://www.openstreetmap.org).
+`cityseer` integrates with [`NetworkX`](https://networkx.github.io/), [`GeoPandas`](https://geopandas.org/en/stable/), [`OSMnx`](https://osmnx.readthedocs.io/), and the broader Python geospatial ecosystem including [`shapely`](https://shapely.readthedocs.io), [`numpy`](http://www.numpy.org/), and [`momepy`](http://docs.momepy.org). The underlying algorithms are implemented in Rust for performance and scale to large networks. Graph cleaning tools and convenience methods for [Open Street Map](https://www.openstreetmap.org) data are included.
 
-The github repository is available at [github.com/benchmark-urbanism/cityseer-api](https://github.com/benchmark-urbanism/cityseer-api). Please cite the [associated paper](https://journals.sagepub.com/doi/full/10.1177/23998083221133827) when using this package.
+The github repository is available at [github.com/benchmark-urbanism/cityseer-api](https://github.com/benchmark-urbanism/cityseer-api).
 
 Code tests are run against Python versions `3.10` - `3.13`.
 
 ## Getting Started
 
-The [Quickstart](https://benchmark-urbanism.github.io/cityseer-examples/recipes/quickstart.html) notebook is the fastest way to see `cityseer` in action. For a comprehensive walkthrough of concepts, conventions, and features, see the [Guide](/guide). For practical worked examples covering network preparation, centrality, accessibility, statistics, visibility, and continuity analysis, see the [Cityseer Examples](https://benchmark-urbanism.github.io/cityseer-examples/) site.
+The [Quickstart](https://benchmark-urbanism.github.io/cityseer-examples/recipes/quickstart.html) notebook is the fastest way to see `cityseer` in action. For a detailed explanation of how `cityseer` represents networks, computes metrics, and handles distance decay, see the [Guide](/guide). For practical worked examples covering network preparation, centrality, accessibility, statistics, visibility, and continuity analysis, see the [Cityseer Examples](https://benchmark-urbanism.github.io/cityseer-examples/) site.
 
 ```python
 from shapely.geometry import box
@@ -31,9 +31,7 @@ A [QGIS plugin](/plugin) is available for computing localised network centrality
 
 ## Support
 
-Please report bugs to the [github issues tracker](https://github.com/benchmark-urbanism/cityseer-api/issues) and direct more general questions to [Github Discussions](https://github.com/benchmark-urbanism/cityseer-api/discussions).
-
-Time permitting, for general help with workflows or feedback in support of research projects or papers, please start a new [discussion on Github](https://github.com/benchmark-urbanism/cityseer-api/discussions).
+Please report bugs to the [github issues tracker](https://github.com/benchmark-urbanism/cityseer-api/issues). For general questions, workflow help, or research feedback, start a [discussion on Github](https://github.com/benchmark-urbanism/cityseer-api/discussions).
 
 ## Attribution
 

@@ -91,18 +91,18 @@ layout: ../../layouts/PageLayout.astro
 <div class="class">
 
 
-## BetweennessShortestResult
+## CentralityResult
 
 
 
 
 <div class="function">
 
-## BetweennessShortestResult
+## CentralityResult
 
 
 <div class="content">
-<span class="name">BetweennessShortestResult</span><div class="signature">
+<span class="name">CentralityResult</span><div class="signature">
   <span class="pt">(</span>
   <span class="pt">)</span>
 </div>
@@ -111,60 +111,12 @@ layout: ../../layouts/PageLayout.astro
 </div>
 
  
-</div>
 
+<span class="name">metrics</span>
 
-<div class="class">
-
-
-## CentralityShortestResult
-
-
-
-
-<div class="function">
-
-## CentralityShortestResult
-
-
-<div class="content">
-<span class="name">CentralityShortestResult</span><div class="signature">
-  <span class="pt">(</span>
-  <span class="pt">)</span>
-</div>
-</div>
-
-</div>
 
  
 </div>
-
-
-<div class="class">
-
-
-## CentralitySimplestResult
-
-
-
-
-<div class="function">
-
-## CentralitySimplestResult
-
-
-<div class="content">
-<span class="name">CentralitySimplestResult</span><div class="signature">
-  <span class="pt">(</span>
-  <span class="pt">)</span>
-</div>
-</div>
-
-</div>
-
- 
-</div>
-
 
 
 

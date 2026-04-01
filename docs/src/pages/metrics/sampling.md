@@ -7,86 +7,40 @@ layout: ../../layouts/PageLayout.astro
 
 > **Experimental.** Adaptive sampling is under active development and its API or behaviour may change in future releases.
 
-Computing network centrality metrics across multiple distance thresholds (e.g., 500m to 20km) can be computationally expensive. `cityseer` provides **adaptive per-distance sampling** that automatically calibrates sampling probability for each distance threshold based on network reachability.
+Computing network centrality at long distance thresholds can be slow because each source node reaches a large portion of the network. Adaptive sampling reduces this cost by using only a subset of nodes as sources, then correcting the results using inverse-probability weighting (IPW) to produce unbiased estimates. The sample size for each distance threshold is determined by the Hoeffding inequality, a concentration bound that guarantees the approximation error stays within a specified tolerance `epsilon`.
 
-## The Problem
+## How It Works
 
-When using uniform sampling across all distance thresholds, a fundamental tension arises:
+Sampling is applied per distance threshold:
 
-| Distance | Typical Reach | With Uniform 20% Sampling |
-|----------|---------------|---------------------------|
-| 500m     | ~100 nodes    | eff_n = 20, poor accuracy |
-| 1000m    | ~300 nodes    | eff_n = 60, marginal accuracy |
-| 5000m    | ~2000 nodes   | eff_n = 400, good accuracy |
-| 20000m   | ~10000 nodes  | eff_n = 2000, excellent accuracy |
+1. **Determine sampling probability.** For each distance threshold, estimate how many nodes are reachable using a regular grid model with a default spacing of 175m between intersections (`r = pi * d^2 / s^2`). The Hoeffding bound then converts this reachability estimate into the minimum sampling probability needed to stay within `epsilon` error.
+2. **Select sources.** Each node is included as a source independently with the computed probability. Short distances where few nodes are reachable run at full computation, since sampling cannot reduce work. Longer distances use sparser sampling as reachability increases.
+3. **Correct results.** Each sampled source's contribution is reweighted by the reciprocal of its inclusion probability (inverse-probability weighting), producing an unbiased estimate of the full computation.
 
-- **Short distances** (low reach) have insufficient effective sample size, resulting in poor ranking accuracy
-- **Long distances** (high reach) are over-sampled, wasting computation that could be reduced
+If the computed sampling rate offers no speedup for a given distance, that distance runs at full (exact) computation.
 
-## The Solution: Adaptive Per-Distance Sampling
+## Accuracy
 
-The adaptive approach works in three steps:
+Separate accuracy models are fitted for closeness and betweenness centrality. Betweenness centrality is more sensitive to which nodes are included in the sample (its sampling error has higher variance than closeness), so the betweenness model requires more samples at the same distance threshold. When computing both metrics together, the betweenness model is used to ensure both achieve the target accuracy.
 
-1. **Probe reachability** at each distance threshold using a small sample of nodes
-2. **Compute required sampling probability** for each distance to achieve a target accuracy (Spearman ρ ≥ 0.95)
-3. **Run separate Dijkstra computations** for each distance with calibrated sampling
-
-This means:
-
-- Short distances use **full or near-full computation** (where reach is low, sampling doesn't help)
-- Long distances use **aggressive sampling** (where high reach provides statistical power)
+The `epsilon` parameter controls the error tolerance. The default of 0.06 is suitable for most analyses.
 
 ## Usage
 
 ```python
 from cityseer.metrics import networks
 
-# Closeness with adaptive per-distance sampling
-nodes_gdf = networks.closeness_shortest(
+nodes_gdf = networks.centrality_shortest(
     network_structure,
     nodes_gdf,
     distances=[500, 2000, 5000, 20000],
-)
-
-# Betweenness with adaptive per-distance sampling
-nodes_gdf = networks.betweenness_shortest(
-    network_structure,
-    nodes_gdf,
-    distances=[500, 2000, 5000, 20000],
+    sample=True,
 )
 ```
 
-## Empirical Models
-
-The expected Spearman ρ is predicted using fitted hyperbolic models of the form `ρ = 1 - A / (B + effective_n)`, where `effective_n = mean_reachability × sample_probability`.
-
-Separate models are fitted for harmonic (closeness) and betweenness centrality based on 10th percentile estimates across network topologies. Betweenness exhibits higher variance than harmonic, so its model is more conservative. When computing both metrics together, the betweenness model is used to ensure both achieve the target accuracy.
-
-## Performance Results
-
-Tests on synthetic network topologies show:
-
-| Topology | Full (s) | Adaptive (s) | Speedup | Harmonic ρ | Betweenness ρ |
-|----------|----------|--------------|---------|------------|---------------|
-| trellis  |     3.00 |         1.44 |    2.1x |       0.96 |          1.00 |
-| tree     |     1.39 |         0.76 |    1.8x |       1.00 |          0.99 |
-| linear   |     3.09 |         1.55 |    2.0x |       1.00 |          1.00 |
-
-Adaptive sampling achieves **consistent accuracy (ρ ≥ 0.95) across all distances** while providing **1.8-2.1x speedup**.
-
-## Recommendations
-
-1. **Use adaptive sampling for multi-scale analyses** spanning short to long distances
-2. **Tighten `epsilon`** (e.g. `epsilon=0.05`) if higher accuracy is required; betweenness defaults to `0.05` already
-3. **Use `sample=False`** for exact computation on small networks or ground-truth benchmarking
-4. **Use `sample_rate`** for reach-agnostic fixed-fraction sampling when comparing across graphs
-5. **For very large networks** (>50,000 nodes), adaptive sampling provides substantial speedups while maintaining accuracy guarantees
-
 ## API Reference
 
-- [`closeness_shortest`](/metrics/networks#closeness-shortest) - Closeness centrality (shortest paths, adaptive sampling)
-- [`closeness_simplest`](/metrics/networks#closeness-simplest) - Closeness centrality (simplest paths, adaptive sampling)
-- [`betweenness_shortest`](/metrics/networks#betweenness-shortest) - Betweenness centrality (shortest paths, adaptive sampling)
-- [`betweenness_simplest`](/metrics/networks#betweenness-simplest) - Betweenness centrality (simplest paths, adaptive sampling)
+- [`centrality_shortest`](/metrics/networks#centrality-shortest)
+- [`centrality_simplest`](/metrics/networks#centrality-simplest)
 
 </section>

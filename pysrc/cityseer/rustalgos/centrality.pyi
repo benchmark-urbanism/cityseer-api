@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-import numpy as np  # For np.float64
+import numpy as np
 import numpy.typing as npt
 
 class OdMatrix:
@@ -27,71 +27,18 @@ class OdMatrix:
         """Number of unique origin nodes."""
         ...
 
-class CentralityShortestResult:
-    """Holds combined closeness + betweenness results for shortest path centrality."""
+
+class CentralityResult:
+    """Holds centrality results from closeness, betweenness, and/or cycles computation."""
 
     distances: list[int]
     node_keys_py: list[Any]
     node_indices: list[int]
 
     @property
-    def node_density(self) -> dict[int, npt.NDArray[np.float64]]: ...
-    @property
-    def node_farness(self) -> dict[int, npt.NDArray[np.float64]]: ...
-    @property
-    def node_cycles(self) -> dict[int, npt.NDArray[np.float64]]: ...
-    @property
-    def node_harmonic(self) -> dict[int, npt.NDArray[np.float64]]: ...
-    @property
-    def node_decay(self) -> dict[int, npt.NDArray[np.float64]]: ...
-    @property
-    def node_betweenness(self) -> dict[int, npt.NDArray[np.float64]]: ...
-    @property
-    def node_betweenness_decay(self) -> dict[int, npt.NDArray[np.float64]]: ...
-    @property
-    def reachability_totals(self) -> list[int]:
-        """Total reachability counts per distance from sampled sources."""
+    def metrics(self) -> dict[str, dict[int, npt.NDArray[np.float64]]]:
+        """All computed metrics as {name: {distance: array}}."""
         ...
-    @property
-    def sampled_source_count(self) -> int:
-        """Number of sources that were sampled."""
-        ...
-
-class CentralitySimplestResult:
-    """Holds combined closeness + betweenness results for simplest (angular) path centrality."""
-
-    distances: list[int]
-    node_keys_py: list[Any]
-    node_indices: list[int]
-
-    @property
-    def node_density(self) -> dict[int, npt.NDArray[np.float64]]: ...
-    @property
-    def node_farness(self) -> dict[int, npt.NDArray[np.float64]]: ...
-    @property
-    def node_harmonic(self) -> dict[int, npt.NDArray[np.float64]]: ...
-    @property
-    def node_betweenness(self) -> dict[int, npt.NDArray[np.float64]]: ...
-    @property
-    def reachability_totals(self) -> list[int]:
-        """Total reachability counts per distance from sampled sources."""
-        ...
-    @property
-    def sampled_source_count(self) -> int:
-        """Number of sources that were sampled."""
-        ...
-
-class BetweennessShortestResult:
-    """Holds results for shortest path betweenness centrality calculations."""
-
-    distances: list[int]
-    node_keys_py: list[Any]
-    node_indices: list[int]
-
-    @property
-    def node_betweenness(self) -> dict[int, npt.NDArray[np.float64]]: ...
-    @property
-    def node_betweenness_decay(self) -> dict[int, npt.NDArray[np.float64]]: ...
     @property
     def reachability_totals(self) -> list[int]:
         """Total reachability counts per distance from sampled sources."""
