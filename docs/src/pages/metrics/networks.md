@@ -88,11 +88,6 @@ may therefore be preferable when working at small thresholds on decomposed netwo
     <span class="pa"> list[int] | None = None</span>
   </div>
   <div class="param">
-    <span class="pn">betas</span>
-    <span class="pc">:</span>
-    <span class="pa"> list[float] | None = None</span>
-  </div>
-  <div class="param">
     <span class="pn">minutes</span>
     <span class="pc">:</span>
     <span class="pa"> list[float] | None = None</span>
@@ -108,9 +103,9 @@ may therefore be preferable when working at small thresholds on decomposed netwo
     <span class="pa"> bool = True</span>
   </div>
   <div class="param">
-    <span class="pn">min_threshold_wt</span>
+    <span class="pn">decay_fn</span>
     <span class="pc">:</span>
-    <span class="pa"> float = 0.01831563888873418</span>
+    <span class="pa"> str | None = None</span>
   </div>
   <div class="param">
     <span class="pn">speed_m_s</span>
@@ -146,6 +141,8 @@ may therefore be preferable when working at small thresholds on decomposed netwo
 
  Compute node centrality using shortest paths with a single Dijkstra per source. When both `compute_closeness` and `compute_betweenness` are True, a single Brandes-style Dijkstra traversal per source produces the data for both closeness accumulation and betweenness backpropagation, halving computation time compared to computing them separately.
 
+ The decay closeness and betweenness decay metrics are computed using a decay function expressed as a string with the variable `p`, which represents normalised progress from the source (`p = 0`) to the distance threshold (`p = 1`), where `p = cost / max_cost`. By default, `decay_fn` is `"exp(-4 * p)"` (exponential decay reaching ~1.8% at the threshold). Helper functions for constructing decay expressions are available in the `cityseer.decay` module.
+
  .. versionchanged:: 4.24.0 The `cycles` output now measures the circuit rank of the locally reachable subgraph (`m - n + c`), computed per source and then target-aggregated using the same source/IPW framework as the other shortest-path metrics. This provides a more stable measure of network meshedness (independent loops / city blocks) than the older tree-cycle heuristic.
 
  When ``sample=True``, sampling probability is derived from each distance threshold using a canonical grid network model (see ``sampling.compute_distance_p``). This produces deterministic, reach-agnostic sample fractions that are comparable across networks.
@@ -177,17 +174,7 @@ may therefore be preferable when working at small thresholds on decomposed netwo
   </div>
   <div class="desc">
 
- Distances corresponding to the local $d_{max}$ thresholds to be used for calculations.</div>
-</div>
-
-<div class="param-set">
-  <div class="def">
-    <div class="name">betas</div>
-    <div class="type">list[float]</div>
-  </div>
-  <div class="desc">
-
- A list of $\beta$ to be used for the exponential decay function for weighted metrics.</div>
+ Distance thresholds in metres at which to compute centrality measures.</div>
 </div>
 
 <div class="param-set">
@@ -197,7 +184,7 @@ may therefore be preferable when working at small thresholds on decomposed netwo
   </div>
   <div class="desc">
 
- A list of walking times in minutes to be used for calculations.</div>
+ Walking times in minutes; converted to distance thresholds using `speed_m_s`.</div>
 </div>
 
 <div class="param-set">
@@ -222,12 +209,12 @@ may therefore be preferable when working at small thresholds on decomposed netwo
 
 <div class="param-set">
   <div class="def">
-    <div class="name">min_threshold_wt</div>
-    <div class="type">float</div>
+    <div class="name">decay_fn</div>
+    <div class="type">str</div>
   </div>
   <div class="desc">
 
- The default `min_threshold_wt` parameter can be overridden to generate custom mappings between the `distance` and `beta` parameters.</div>
+ An expression string for the decay function, using the variable `p` (normalised progress from 0 to 1, where `p = cost / max_cost`). At the source `p = 0` and at the distance threshold `p = 1`. Default is `&quot;exp(-4 * p)&quot;` (exponential decay reaching ~1.8% at the threshold). Use `&quot;1&quot;` for flat (unweighted) decay metrics, or provide a custom expression. Helper functions are available in the `cityseer.decay` module.</div>
 </div>
 
 <div class="param-set">
@@ -237,7 +224,7 @@ may therefore be preferable when working at small thresholds on decomposed netwo
   </div>
   <div class="desc">
 
- The default `speed_m_s` parameter can be configured to generate custom mappings between walking times and distance thresholds $d_{max}$.</div>
+ Speed in metres per second for converting `minutes` to distance thresholds.</div>
 </div>
 
 <div class="param-set">
@@ -476,19 +463,14 @@ may therefore be preferable when working at small thresholds on decomposed netwo
     <span class="pa"> list[int] | None = None</span>
   </div>
   <div class="param">
-    <span class="pn">betas</span>
-    <span class="pc">:</span>
-    <span class="pa"> list[float] | None = None</span>
-  </div>
-  <div class="param">
     <span class="pn">minutes</span>
     <span class="pc">:</span>
     <span class="pa"> list[float] | None = None</span>
   </div>
   <div class="param">
-    <span class="pn">min_threshold_wt</span>
+    <span class="pn">decay_fn</span>
     <span class="pc">:</span>
-    <span class="pa"> float = 0.01831563888873418</span>
+    <span class="pa"> str | None = None</span>
   </div>
   <div class="param">
     <span class="pn">speed_m_s</span>
@@ -546,17 +528,7 @@ may therefore be preferable when working at small thresholds on decomposed netwo
   </div>
   <div class="desc">
 
- Distances corresponding to the local $d_{max}$ thresholds to be used for calculations.</div>
-</div>
-
-<div class="param-set">
-  <div class="def">
-    <div class="name">betas</div>
-    <div class="type">list[float]</div>
-  </div>
-  <div class="desc">
-
- A list of $\beta$ to be used for the exponential decay function for weighted metrics.</div>
+ Distance thresholds in metres at which to compute betweenness.</div>
 </div>
 
 <div class="param-set">
@@ -566,17 +538,17 @@ may therefore be preferable when working at small thresholds on decomposed netwo
   </div>
   <div class="desc">
 
- A list of walking times in minutes to be used for calculations.</div>
+ Walking times in minutes; converted to distance thresholds using `speed_m_s`.</div>
 </div>
 
 <div class="param-set">
   <div class="def">
-    <div class="name">min_threshold_wt</div>
-    <div class="type">float</div>
+    <div class="name">decay_fn</div>
+    <div class="type">str</div>
   </div>
   <div class="desc">
 
- The default `min_threshold_wt` parameter can be overridden to generate custom mappings between the `distance` and `beta` parameters.</div>
+ An expression string for the decay function, using the variable `p` (normalised progress from 0 to 1, where `p = cost / max_cost`). At the source `p = 0` and at the distance threshold `p = 1`. Default is `&quot;exp(-4 * p)&quot;` (exponential decay reaching ~1.8% at the threshold). Use `&quot;1&quot;` for flat (unweighted) decay metrics, or provide a custom expression. Helper functions are available in the `cityseer.decay` module.</div>
 </div>
 
 <div class="param-set">
@@ -586,7 +558,7 @@ may therefore be preferable when working at small thresholds on decomposed netwo
   </div>
   <div class="desc">
 
- The default `speed_m_s` parameter can be configured to generate custom mappings between walking times and distance thresholds $d_{max}$.</div>
+ Speed in metres per second for converting `minutes` to distance thresholds.</div>
 </div>
 
 ### Returns
@@ -628,11 +600,6 @@ may therefore be preferable when working at small thresholds on decomposed netwo
     <span class="pa"> list[int] | None = None</span>
   </div>
   <div class="param">
-    <span class="pn">betas</span>
-    <span class="pc">:</span>
-    <span class="pa"> list[float] | None = None</span>
-  </div>
-  <div class="param">
     <span class="pn">minutes</span>
     <span class="pc">:</span>
     <span class="pa"> list[float] | None = None</span>
@@ -646,11 +613,6 @@ may therefore be preferable when working at small thresholds on decomposed netwo
     <span class="pn">compute_betweenness</span>
     <span class="pc">:</span>
     <span class="pa"> bool = True</span>
-  </div>
-  <div class="param">
-    <span class="pn">min_threshold_wt</span>
-    <span class="pc">:</span>
-    <span class="pa"> float = 0.01831563888873418</span>
   </div>
   <div class="param">
     <span class="pn">speed_m_s</span>
@@ -696,6 +658,8 @@ may therefore be preferable when working at small thresholds on decomposed netwo
 
  Compute node centrality using simplest (angular) paths with a single Dijkstra per source. When both `compute_closeness` and `compute_betweenness` are True, a single Brandes-style Dijkstra traversal per source produces the data for both closeness accumulation and betweenness backpropagation.
 
+ This function does not accept a `decay_fn` parameter; angular (simplest-path) centralities use angular cost rather than distance-based decay weighting.
+
  .. versionchanged:: 4.24.0 Angular routing now uses endpoint-aware dual-graph traversal instead of bearing-based angular costs. This requires a dual graph representation (convert with [`graphs.nx_to_dual`](/tools/graphs#nx-to-dual)). The `tolerance` parameter now uses the same relative-percentage semantics as shortest-path betweenness, but applies to angular route cost instead of metric distance. User-facing `tolerance=0.0` means no additional tolerance beyond a tiny internal epsilon used for floating-point stability. Closeness values are nearly identical; betweenness values may differ slightly.
 ### Parameters
 <div class="param-set">
@@ -725,17 +689,7 @@ may therefore be preferable when working at small thresholds on decomposed netwo
   </div>
   <div class="desc">
 
- Distances corresponding to the local $d_{max}$ thresholds to be used for calculations.</div>
-</div>
-
-<div class="param-set">
-  <div class="def">
-    <div class="name">betas</div>
-    <div class="type">list[float]</div>
-  </div>
-  <div class="desc">
-
- A list of $\beta$ to be used for the exponential decay function for weighted metrics.</div>
+ Distance thresholds in metres at which to compute centrality measures.</div>
 </div>
 
 <div class="param-set">
@@ -745,7 +699,7 @@ may therefore be preferable when working at small thresholds on decomposed netwo
   </div>
   <div class="desc">
 
- A list of walking times in minutes to be used for calculations.</div>
+ Walking times in minutes; converted to distance thresholds using `speed_m_s`.</div>
 </div>
 
 <div class="param-set">
@@ -770,22 +724,12 @@ may therefore be preferable when working at small thresholds on decomposed netwo
 
 <div class="param-set">
   <div class="def">
-    <div class="name">min_threshold_wt</div>
-    <div class="type">float</div>
-  </div>
-  <div class="desc">
-
- The default `min_threshold_wt` parameter can be overridden to generate custom mappings between the `distance` and `beta` parameters.</div>
-</div>
-
-<div class="param-set">
-  <div class="def">
     <div class="name">speed_m_s</div>
     <div class="type">float</div>
   </div>
   <div class="desc">
 
- The default `speed_m_s` parameter can be configured to generate custom mappings between walking times and distance thresholds $d_{max}$.</div>
+ Speed in metres per second for converting `minutes` to distance thresholds.</div>
 </div>
 
 <div class="param-set">
@@ -1066,19 +1010,9 @@ may therefore be preferable when working at small thresholds on decomposed netwo
     <span class="pa"> list[int] | None = None</span>
   </div>
   <div class="param">
-    <span class="pn">betas</span>
-    <span class="pc">:</span>
-    <span class="pa"> list[float] | None = None</span>
-  </div>
-  <div class="param">
     <span class="pn">minutes</span>
     <span class="pc">:</span>
     <span class="pa"> list[float] | None = None</span>
-  </div>
-  <div class="param">
-    <span class="pn">min_threshold_wt</span>
-    <span class="pc">:</span>
-    <span class="pa"> float = 0.01831563888873418</span>
   </div>
   <div class="param">
     <span class="pn">speed_m_s</span>
@@ -1112,7 +1046,7 @@ may therefore be preferable when working at small thresholds on decomposed netwo
 </div>
 
 
- Compute closeness centrality using shortest paths. Wraps `node_centrality_shortest`.
+ Compute closeness centrality using shortest paths. Wraps `node_centrality_shortest` with `compute_closeness=True` and `compute_betweenness=False`. Uses exponential decay (`"exp(-4 * p)"`) by default; pass `decay_fn` to `node_centrality_shortest` for a custom decay function.
 
 </div>
 
@@ -1141,19 +1075,9 @@ may therefore be preferable when working at small thresholds on decomposed netwo
     <span class="pa"> list[int] | None = None</span>
   </div>
   <div class="param">
-    <span class="pn">betas</span>
-    <span class="pc">:</span>
-    <span class="pa"> list[float] | None = None</span>
-  </div>
-  <div class="param">
     <span class="pn">minutes</span>
     <span class="pc">:</span>
     <span class="pa"> list[float] | None = None</span>
-  </div>
-  <div class="param">
-    <span class="pn">min_threshold_wt</span>
-    <span class="pc">:</span>
-    <span class="pa"> float = 0.01831563888873418</span>
   </div>
   <div class="param">
     <span class="pn">speed_m_s</span>
@@ -1197,7 +1121,7 @@ may therefore be preferable when working at small thresholds on decomposed netwo
 </div>
 
 
- Compute closeness centrality using simplest (angular) paths. Wraps `node_centrality_simplest`.
+ Compute closeness centrality using simplest (angular) paths. Wraps `node_centrality_simplest` with `compute_closeness=True` and `compute_betweenness=False`.
 
 </div>
 
@@ -1226,19 +1150,9 @@ may therefore be preferable when working at small thresholds on decomposed netwo
     <span class="pa"> list[int] | None = None</span>
   </div>
   <div class="param">
-    <span class="pn">betas</span>
-    <span class="pc">:</span>
-    <span class="pa"> list[float] | None = None</span>
-  </div>
-  <div class="param">
     <span class="pn">minutes</span>
     <span class="pc">:</span>
     <span class="pa"> list[float] | None = None</span>
-  </div>
-  <div class="param">
-    <span class="pn">min_threshold_wt</span>
-    <span class="pc">:</span>
-    <span class="pa"> float = 0.01831563888873418</span>
   </div>
   <div class="param">
     <span class="pn">speed_m_s</span>
@@ -1272,7 +1186,7 @@ may therefore be preferable when working at small thresholds on decomposed netwo
 </div>
 
 
- Compute betweenness centrality using shortest paths. Wraps `node_centrality_shortest`.
+ Compute betweenness centrality using shortest paths. Wraps `node_centrality_shortest` with `compute_closeness=False` and `compute_betweenness=True`. Uses exponential decay (`"exp(-4 * p)"`) by default; pass `decay_fn` to `node_centrality_shortest` for a custom decay function.
 
 </div>
 
@@ -1301,19 +1215,9 @@ may therefore be preferable when working at small thresholds on decomposed netwo
     <span class="pa"> list[int] | None = None</span>
   </div>
   <div class="param">
-    <span class="pn">betas</span>
-    <span class="pc">:</span>
-    <span class="pa"> list[float] | None = None</span>
-  </div>
-  <div class="param">
     <span class="pn">minutes</span>
     <span class="pc">:</span>
     <span class="pa"> list[float] | None = None</span>
-  </div>
-  <div class="param">
-    <span class="pn">min_threshold_wt</span>
-    <span class="pc">:</span>
-    <span class="pa"> float = 0.01831563888873418</span>
   </div>
   <div class="param">
     <span class="pn">speed_m_s</span>
@@ -1347,7 +1251,7 @@ may therefore be preferable when working at small thresholds on decomposed netwo
 </div>
 
 
- Compute betweenness centrality using simplest (angular) paths. Wraps `node_centrality_simplest`.
+ Compute betweenness centrality using simplest (angular) paths. Wraps `node_centrality_simplest` with `compute_closeness=False` and `compute_betweenness=True`.
 
 </div>
 

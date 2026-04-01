@@ -510,7 +510,7 @@ class TestBetweennessSampling:
         )
 
         assert np.allclose(res1.node_betweenness[500], res2.node_betweenness[500])
-        assert np.allclose(res1.node_betweenness_beta[500], res2.node_betweenness_beta[500])
+        assert np.allclose(res1.node_betweenness_decay[500], res2.node_betweenness_decay[500])
 
     def test_betweenness_full_sampling_matches_baseline(self, network_structure):
         """Betweenness with p=1.0 matches full computation."""

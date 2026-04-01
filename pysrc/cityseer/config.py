@@ -18,17 +18,13 @@ logger = logging.getLogger(__name__)
 np.seterr(invalid="ignore")
 
 
-def prep_gdf_key(key: str, dist: int, angular: bool = False, weighted: bool | None = None) -> str:
+def prep_gdf_key(key: str, dist: int, angular: bool = False) -> str:
     """Format a column label for GeoPandas."""
     key = key.replace(".0", "")
     key = key.replace(".0_", "_")
     key = f"cc_{key}_{dist}"
     if angular is True:
         key += "_ang"
-    if weighted is True:
-        key += "_wt"
-    elif weighted is False:
-        key += "_nw"
     return key
 
 
@@ -72,13 +68,16 @@ def log_thresholds(
     speed_m_s: float = SPEED_M_S,
 ):
     # pair distances, betas, and time for logging - DO AFTER PARTIAL FUNC
+    had_betas = betas is not None
     distances, betas, seconds = rustalgos.pair_distances_betas_time(
         speed_m_s, distances, betas, minutes, min_threshold_wt=min_threshold_wt
     )
-    # log distances, betas, minutes
     logger.info("Metrics computed for:")
     for distance, beta, walking_time in zip(distances, betas, seconds, strict=True):
-        logger.info(f"Distance: {distance}m, Beta: {round(beta, 5)}, Walking Time: {walking_time / 60} minutes.")
+        if had_betas:
+            logger.info(f"Distance: {distance}m, Beta: {round(beta, 5)}, Walking Time: {walking_time / 60} minutes.")
+        else:
+            logger.info(f"Distance: {distance}m, Walking Time: {walking_time / 60} minutes.")
     return distances
 
 

@@ -102,11 +102,10 @@ def node_centrality_shortest(
     network_structure: rustalgos.graph.NetworkStructure,
     nodes_gdf: gpd.GeoDataFrame,
     distances: list[int] | None = None,
-    betas: list[float] | None = None,
     minutes: list[float] | None = None,
     compute_closeness: bool = True,
     compute_betweenness: bool = True,
-    min_threshold_wt: float = MIN_THRESH_WT,
+    decay_fn: str | None = None,
     speed_m_s: float = SPEED_M_S,
     tolerance: float | None = None,
     random_seed: int | None = None,
@@ -118,6 +117,12 @@ def node_centrality_shortest(
     When both `compute_closeness` and `compute_betweenness` are True, a single Brandes-style Dijkstra traversal
     per source produces the data for both closeness accumulation and betweenness backpropagation, halving computation
     time compared to computing them separately.
+
+    The decay closeness and betweenness decay metrics are computed using a decay function expressed as a string with
+    the variable `p`, which represents normalised progress from the source (`p = 0`) to the distance threshold
+    (`p = 1`), where `p = cost / max_cost`. By default, `decay_fn` is `"exp(-4 * p)"` (exponential decay reaching
+    ~1.8% at the threshold). Helper functions for constructing decay expressions are available in the
+    `cityseer.decay` module.
 
     .. versionchanged:: 4.24.0
         The `cycles` output now measures the circuit rank of the locally reachable subgraph
@@ -137,11 +142,9 @@ def node_centrality_shortest(
         A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe)
         representing nodes. The outputs of calculations will be written to this `GeoDataFrame`.
     distances: list[int]
-        Distances corresponding to the local $d_{max}$ thresholds to be used for calculations.
-    betas: list[float]
-        A list of $\beta$ to be used for the exponential decay function for weighted metrics.
+        Distance thresholds in metres at which to compute centrality measures.
     minutes: list[float]
-        A list of walking times in minutes to be used for calculations.
+        Walking times in minutes; converted to distance thresholds using `speed_m_s`.
     compute_closeness: bool
         Compute closeness centralities. True by default.
         The `cycles` output measures the circuit rank of the source's locally reachable subgraph
@@ -149,12 +152,13 @@ def node_centrality_shortest(
         node within the threshold.
     compute_betweenness: bool
         Compute betweenness centralities. True by default.
-    min_threshold_wt: float
-        The default `min_threshold_wt` parameter can be overridden to generate custom mappings between the
-        `distance` and `beta` parameters.
+    decay_fn: str
+        An expression string for the decay function, using the variable `p` (normalised progress from 0 to 1, where
+        `p = cost / max_cost`). At the source `p = 0` and at the distance threshold `p = 1`. Default is
+        `"exp(-4 * p)"` (exponential decay reaching ~1.8% at the threshold). Use `"1"` for flat (unweighted) decay
+        metrics, or provide a custom expression. Helper functions are available in the `cityseer.decay` module.
     speed_m_s: float
-        The default `speed_m_s` parameter can be configured to generate custom mappings between walking times and
-        distance thresholds $d_{max}$.
+        Speed in metres per second for converting `minutes` to distance thresholds.
     tolerance: float
         Relative tolerance for betweenness path equality, as a percentage (e.g. 1.0 = 1%).
         Paths within this percentage of the shortest are treated as near-equal for multi-predecessor
@@ -176,9 +180,7 @@ def node_centrality_shortest(
         The input `nodes_gdf` parameter is returned with additional centrality columns.
     """
     logger.info("Computing node centrality (shortest).")
-    resolved_distances, _betas, _seconds = rustalgos.pair_distances_betas_time(
-        speed_m_s, distances, betas, minutes, min_threshold_wt=min_threshold_wt
-    )
+    resolved_distances, _betas, _seconds = rustalgos.pair_distances_betas_time(speed_m_s, distances, None, minutes)
     node_count = network_structure.street_node_count()
     temp_data: dict[str, object] = {}
 
@@ -210,7 +212,7 @@ def node_centrality_shortest(
             distances=full_distances,
             compute_closeness=compute_closeness,
             compute_betweenness=compute_betweenness,
-            min_threshold_wt=min_threshold_wt,
+            decay_fn=decay_fn,
             speed_m_s=speed_m_s,
             tolerance=tolerance,
             random_seed=random_seed,
@@ -231,7 +233,7 @@ def node_centrality_shortest(
             distances=[d],
             compute_closeness=compute_closeness,
             compute_betweenness=compute_betweenness,
-            min_threshold_wt=min_threshold_wt,
+            decay_fn=decay_fn,
             speed_m_s=speed_m_s,
             tolerance=tolerance,
             sample_probability=p,
@@ -254,7 +256,7 @@ def node_centrality_shortest(
 
     if compute_closeness:
         for measure_key, attr_key in [
-            ("beta", "node_beta"),
+            ("decay", "node_decay"),
             ("cycles", "node_cycles"),
             ("density", "node_density"),
             ("farness", "node_farness"),
@@ -271,7 +273,7 @@ def node_centrality_shortest(
     if compute_betweenness:
         for measure_key, attr_key in [
             ("betweenness", "node_betweenness"),
-            ("betweenness_beta", "node_betweenness_beta"),
+            ("betweenness_decay", "node_betweenness_decay"),
         ]:
             for d, res in results.items():
                 data_key = config.prep_gdf_key(measure_key, d)
@@ -392,9 +394,8 @@ def betweenness_od(
     nodes_gdf: gpd.GeoDataFrame,
     od_matrix: rustalgos.centrality.OdMatrix,
     distances: list[int] | None = None,
-    betas: list[float] | None = None,
     minutes: list[float] | None = None,
-    min_threshold_wt: float = MIN_THRESH_WT,
+    decay_fn: str | None = None,
     speed_m_s: float = SPEED_M_S,
     tolerance: float | None = None,
 ) -> gpd.GeoDataFrame:
@@ -415,17 +416,16 @@ def betweenness_od(
         An [`OdMatrix`](/rustalgos/centrality#odmatrix) mapping (origin, destination) node pairs to trip weights.
         Build with [`config.build_od_matrix`](/config#build-od-matrix).
     distances: list[int]
-        Distances corresponding to the local $d_{max}$ thresholds to be used for calculations.
-    betas: list[float]
-        A list of $\\beta$ to be used for the exponential decay function for weighted metrics.
+        Distance thresholds in metres at which to compute betweenness.
     minutes: list[float]
-        A list of walking times in minutes to be used for calculations.
-    min_threshold_wt: float
-        The default `min_threshold_wt` parameter can be overridden to generate custom mappings between the
-        `distance` and `beta` parameters.
+        Walking times in minutes; converted to distance thresholds using `speed_m_s`.
+    decay_fn: str
+        An expression string for the decay function, using the variable `p` (normalised progress from 0 to 1, where
+        `p = cost / max_cost`). At the source `p = 0` and at the distance threshold `p = 1`. Default is
+        `"exp(-4 * p)"` (exponential decay reaching ~1.8% at the threshold). Use `"1"` for flat (unweighted) decay
+        metrics, or provide a custom expression. Helper functions are available in the `cityseer.decay` module.
     speed_m_s: float
-        The default `speed_m_s` parameter can be configured to generate custom mappings between walking times and
-        distance thresholds $d_{max}$.
+        Speed in metres per second for converting `minutes` to distance thresholds.
 
     Returns
     -------
@@ -438,9 +438,8 @@ def betweenness_od(
         network_structure.betweenness_od_shortest,
         od_matrix=od_matrix,
         distances=distances,
-        betas=betas,
         minutes=minutes,
-        min_threshold_wt=min_threshold_wt,
+        decay_fn=decay_fn,
         speed_m_s=speed_m_s,
         tolerance=tolerance,
     )
@@ -449,16 +448,14 @@ def betweenness_od(
     )
     distances = config.log_thresholds(
         distances=distances,
-        betas=betas,
         minutes=minutes,
-        min_threshold_wt=min_threshold_wt,
         speed_m_s=speed_m_s,
     )
     gdf_idx = nodes_gdf.index.intersection(result.node_keys_py)
     temp_data = {}
     for measure_key, attr_key in [
         ("betweenness", "node_betweenness"),
-        ("betweenness_beta", "node_betweenness_beta"),
+        ("betweenness_decay", "node_betweenness_decay"),
     ]:
         for distance in distances:
             data_key = config.prep_gdf_key(measure_key, distance)
@@ -472,11 +469,9 @@ def node_centrality_simplest(
     network_structure: rustalgos.graph.NetworkStructure,
     nodes_gdf: gpd.GeoDataFrame,
     distances: list[int] | None = None,
-    betas: list[float] | None = None,
     minutes: list[float] | None = None,
     compute_closeness: bool = True,
     compute_betweenness: bool = True,
-    min_threshold_wt: float = MIN_THRESH_WT,
     speed_m_s: float = SPEED_M_S,
     tolerance: float | None = None,
     angular_scaling_unit: float = 90,
@@ -490,6 +485,9 @@ def node_centrality_simplest(
     When both `compute_closeness` and `compute_betweenness` are True, a single Brandes-style
     Dijkstra traversal per source produces the data for both closeness accumulation and
     betweenness backpropagation.
+
+    This function does not accept a `decay_fn` parameter; angular (simplest-path) centralities use
+    angular cost rather than distance-based decay weighting.
 
     .. versionchanged:: 4.24.0
         Angular routing now uses endpoint-aware dual-graph traversal instead of bearing-based
@@ -508,21 +506,15 @@ def node_centrality_simplest(
         A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe)
         representing nodes. The outputs of calculations will be written to this `GeoDataFrame`.
     distances: list[int]
-        Distances corresponding to the local $d_{max}$ thresholds to be used for calculations.
-    betas: list[float]
-        A list of $\beta$ to be used for the exponential decay function for weighted metrics.
+        Distance thresholds in metres at which to compute centrality measures.
     minutes: list[float]
-        A list of walking times in minutes to be used for calculations.
+        Walking times in minutes; converted to distance thresholds using `speed_m_s`.
     compute_closeness: bool
         Compute closeness centralities. True by default.
     compute_betweenness: bool
         Compute betweenness centralities. True by default.
-    min_threshold_wt: float
-        The default `min_threshold_wt` parameter can be overridden to generate custom mappings between the
-        `distance` and `beta` parameters.
     speed_m_s: float
-        The default `speed_m_s` parameter can be configured to generate custom mappings between walking times and
-        distance thresholds $d_{max}$.
+        Speed in metres per second for converting `minutes` to distance thresholds.
     tolerance: float
         Relative tolerance for angular betweenness path equality, as a percentage (e.g. 1.0 = 1%).
         Paths whose angular route cost is within this percentage of the best angular route are treated
@@ -549,9 +541,7 @@ def node_centrality_simplest(
     """
     _require_dual_for_angular(network_structure, "node_centrality_simplest")
     logger.info("Computing node centrality (simplest).")
-    resolved_distances, _betas, _seconds = rustalgos.pair_distances_betas_time(
-        speed_m_s, distances, betas, minutes, min_threshold_wt=min_threshold_wt
-    )
+    resolved_distances, _betas, _seconds = rustalgos.pair_distances_betas_time(speed_m_s, distances, None, minutes)
     node_count = network_structure.street_node_count()
     temp_data: dict[str, object] = {}
 
@@ -583,7 +573,6 @@ def node_centrality_simplest(
             distances=full_distances,
             compute_closeness=compute_closeness,
             compute_betweenness=compute_betweenness,
-            min_threshold_wt=min_threshold_wt,
             speed_m_s=speed_m_s,
             tolerance=tolerance,
             angular_scaling_unit=angular_scaling_unit,
@@ -606,7 +595,6 @@ def node_centrality_simplest(
             distances=[d],
             compute_closeness=compute_closeness,
             compute_betweenness=compute_betweenness,
-            min_threshold_wt=min_threshold_wt,
             speed_m_s=speed_m_s,
             tolerance=tolerance,
             angular_scaling_unit=angular_scaling_unit,
@@ -778,25 +766,26 @@ def closeness_shortest(
     network_structure: rustalgos.graph.NetworkStructure,
     nodes_gdf: gpd.GeoDataFrame,
     distances: list[int] | None = None,
-    betas: list[float] | None = None,
     minutes: list[float] | None = None,
-    min_threshold_wt: float = MIN_THRESH_WT,
     speed_m_s: float = SPEED_M_S,
     tolerance: float | None = None,
     random_seed: int | None = None,
     sample: bool = False,
     epsilon: float | None = None,
 ) -> gpd.GeoDataFrame:
-    """Compute closeness centrality using shortest paths. Wraps `node_centrality_shortest`."""
+    """Compute closeness centrality using shortest paths.
+
+    Wraps `node_centrality_shortest` with `compute_closeness=True` and `compute_betweenness=False`.
+    Uses exponential decay (`"exp(-4 * p)"`) by default; pass `decay_fn` to
+    `node_centrality_shortest` for a custom decay function.
+    """
     return node_centrality_shortest(
         network_structure=network_structure,
         nodes_gdf=nodes_gdf,
         distances=distances,
-        betas=betas,
         minutes=minutes,
         compute_closeness=True,
         compute_betweenness=False,
-        min_threshold_wt=min_threshold_wt,
         speed_m_s=speed_m_s,
         tolerance=tolerance,
         random_seed=random_seed,
@@ -809,9 +798,7 @@ def closeness_simplest(
     network_structure: rustalgos.graph.NetworkStructure,
     nodes_gdf: gpd.GeoDataFrame,
     distances: list[int] | None = None,
-    betas: list[float] | None = None,
     minutes: list[float] | None = None,
-    min_threshold_wt: float = MIN_THRESH_WT,
     speed_m_s: float = SPEED_M_S,
     tolerance: float | None = None,
     angular_scaling_unit: float = 90,
@@ -820,16 +807,17 @@ def closeness_simplest(
     sample: bool = False,
     epsilon: float | None = None,
 ) -> gpd.GeoDataFrame:
-    """Compute closeness centrality using simplest (angular) paths. Wraps `node_centrality_simplest`."""
+    """Compute closeness centrality using simplest (angular) paths.
+
+    Wraps `node_centrality_simplest` with `compute_closeness=True` and `compute_betweenness=False`.
+    """
     return node_centrality_simplest(
         network_structure=network_structure,
         nodes_gdf=nodes_gdf,
         distances=distances,
-        betas=betas,
         minutes=minutes,
         compute_closeness=True,
         compute_betweenness=False,
-        min_threshold_wt=min_threshold_wt,
         speed_m_s=speed_m_s,
         tolerance=tolerance,
         angular_scaling_unit=angular_scaling_unit,
@@ -844,25 +832,26 @@ def betweenness_shortest(
     network_structure: rustalgos.graph.NetworkStructure,
     nodes_gdf: gpd.GeoDataFrame,
     distances: list[int] | None = None,
-    betas: list[float] | None = None,
     minutes: list[float] | None = None,
-    min_threshold_wt: float = MIN_THRESH_WT,
     speed_m_s: float = SPEED_M_S,
     tolerance: float | None = None,
     random_seed: int | None = None,
     sample: bool = False,
     epsilon: float | None = None,
 ) -> gpd.GeoDataFrame:
-    """Compute betweenness centrality using shortest paths. Wraps `node_centrality_shortest`."""
+    """Compute betweenness centrality using shortest paths.
+
+    Wraps `node_centrality_shortest` with `compute_closeness=False` and `compute_betweenness=True`.
+    Uses exponential decay (`"exp(-4 * p)"`) by default; pass `decay_fn` to
+    `node_centrality_shortest` for a custom decay function.
+    """
     return node_centrality_shortest(
         network_structure=network_structure,
         nodes_gdf=nodes_gdf,
         distances=distances,
-        betas=betas,
         minutes=minutes,
         compute_closeness=False,
         compute_betweenness=True,
-        min_threshold_wt=min_threshold_wt,
         speed_m_s=speed_m_s,
         tolerance=tolerance,
         random_seed=random_seed,
@@ -875,25 +864,24 @@ def betweenness_simplest(
     network_structure: rustalgos.graph.NetworkStructure,
     nodes_gdf: gpd.GeoDataFrame,
     distances: list[int] | None = None,
-    betas: list[float] | None = None,
     minutes: list[float] | None = None,
-    min_threshold_wt: float = MIN_THRESH_WT,
     speed_m_s: float = SPEED_M_S,
     tolerance: float | None = None,
     random_seed: int | None = None,
     sample: bool = False,
     epsilon: float | None = None,
 ) -> gpd.GeoDataFrame:
-    """Compute betweenness centrality using simplest (angular) paths. Wraps `node_centrality_simplest`."""
+    """Compute betweenness centrality using simplest (angular) paths.
+
+    Wraps `node_centrality_simplest` with `compute_closeness=False` and `compute_betweenness=True`.
+    """
     return node_centrality_simplest(
         network_structure=network_structure,
         nodes_gdf=nodes_gdf,
         distances=distances,
-        betas=betas,
         minutes=minutes,
         compute_closeness=False,
         compute_betweenness=True,
-        min_threshold_wt=min_threshold_wt,
         speed_m_s=speed_m_s,
         tolerance=tolerance,
         random_seed=random_seed,

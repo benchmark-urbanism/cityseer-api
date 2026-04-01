@@ -255,9 +255,6 @@ layout: ../../layouts/PageLayout.astro
     <span class="pn">distances=None</span>
   </div>
   <div class="param">
-    <span class="pn">betas=None</span>
-  </div>
-  <div class="param">
     <span class="pn">minutes=None</span>
   </div>
   <div class="param">
@@ -267,7 +264,7 @@ layout: ../../layouts/PageLayout.astro
     <span class="pn">compute_betweenness=None</span>
   </div>
   <div class="param">
-    <span class="pn">min_threshold_wt=None</span>
+    <span class="pn">decay_fn=None</span>
   </div>
   <div class="param">
     <span class="pn">speed_m_s=None</span>
@@ -318,9 +315,6 @@ layout: ../../layouts/PageLayout.astro
     <span class="pn">distances=None</span>
   </div>
   <div class="param">
-    <span class="pn">betas=None</span>
-  </div>
-  <div class="param">
     <span class="pn">minutes=None</span>
   </div>
   <div class="param">
@@ -328,9 +322,6 @@ layout: ../../layouts/PageLayout.astro
   </div>
   <div class="param">
     <span class="pn">compute_betweenness=None</span>
-  </div>
-  <div class="param">
-    <span class="pn">min_threshold_wt=None</span>
   </div>
   <div class="param">
     <span class="pn">speed_m_s=None</span>
@@ -434,13 +425,10 @@ layout: ../../layouts/PageLayout.astro
     <span class="pn">distances=None</span>
   </div>
   <div class="param">
-    <span class="pn">betas=None</span>
-  </div>
-  <div class="param">
     <span class="pn">minutes=None</span>
   </div>
   <div class="param">
-    <span class="pn">min_threshold_wt=None</span>
+    <span class="pn">decay_fn=None</span>
   </div>
   <div class="param">
     <span class="pn">speed_m_s=None</span>
@@ -1293,12 +1281,7 @@ layout: ../../layouts/PageLayout.astro
 
  
 
-<span class="name">node_xyzs</span>
-
-
- 
-
-<span class="name">node_ys</span>
+<span class="name">node_zs</span>
 
 
  
@@ -1308,7 +1291,12 @@ layout: ../../layouts/PageLayout.astro
 
  
 
-<span class="name">node_zs</span>
+<span class="name">node_xyzs</span>
+
+
+ 
+
+<span class="name">node_ys</span>
 
 
  

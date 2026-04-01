@@ -35,7 +35,7 @@ nodes_gdf, data_gdf = layers.compute_mixed_uses(
 )
 # custom colourmap
 segment_harmonic_vals = nodes_gdf["cc_seg_harmonic_800"]
-mixed_uses_vals = nodes_gdf["cc_hill_q0_800_wt"]
+mixed_uses_vals = nodes_gdf["cc_hill_q0_800"]
 cmap = colors.LinearSegmentedColormap.from_list("cityseer", ["#64c1ff", "#d32f2f"])
 segment_harmonic_vals = colors.Normalize()(segment_harmonic_vals)
 segment_harmonic_cols = cmap(segment_harmonic_vals)

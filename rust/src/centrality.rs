@@ -104,7 +104,7 @@ pub struct BetweennessShortestResult {
     node_indices: Vec<usize>,
 
     node_betweenness_vec: MetricResult,
-    node_betweenness_beta_vec: MetricResult,
+    node_betweenness_decay_vec: MetricResult,
 
     #[pyo3(get)]
     pub reachability_totals: Vec<u32>,
@@ -125,7 +125,7 @@ impl BetweennessShortestResult {
             node_keys_py,
             node_indices: node_indices.clone(),
             node_betweenness_vec: MetricResult::new(&distances, capacity, init_val),
-            node_betweenness_beta_vec: MetricResult::new(&distances, capacity, init_val),
+            node_betweenness_decay_vec: MetricResult::new(&distances, capacity, init_val),
             reachability_totals: Vec::new(),
             sampled_source_count: 0,
         }
@@ -139,8 +139,8 @@ impl BetweennessShortestResult {
         self.node_betweenness_vec.load_compact(&self.node_indices)
     }
     #[getter]
-    pub fn node_betweenness_beta(&self) -> HashMap<u32, Py<PyArray1<f64>>> {
-        self.node_betweenness_beta_vec
+    pub fn node_betweenness_decay(&self) -> HashMap<u32, Py<PyArray1<f64>>> {
+        self.node_betweenness_decay_vec
             .load_compact(&self.node_indices)
     }
 }
@@ -163,11 +163,11 @@ pub struct CentralityShortestResult {
     node_farness_vec: MetricResult,
     node_cycles_vec: MetricResult,
     node_harmonic_vec: MetricResult,
-    node_beta_vec: MetricResult,
+    node_decay_vec: MetricResult,
 
     // Betweenness fields
     node_betweenness_vec: MetricResult,
-    node_betweenness_beta_vec: MetricResult,
+    node_betweenness_decay_vec: MetricResult,
 
     #[pyo3(get)]
     pub reachability_totals: Vec<u32>,
@@ -191,9 +191,9 @@ impl CentralityShortestResult {
             node_farness_vec: MetricResult::new(&distances, capacity, init_val),
             node_cycles_vec: MetricResult::new(&distances, capacity, init_val),
             node_harmonic_vec: MetricResult::new(&distances, capacity, init_val),
-            node_beta_vec: MetricResult::new(&distances, capacity, init_val),
+            node_decay_vec: MetricResult::new(&distances, capacity, init_val),
             node_betweenness_vec: MetricResult::new(&distances, capacity, init_val),
-            node_betweenness_beta_vec: MetricResult::new(&distances, capacity, init_val),
+            node_betweenness_decay_vec: MetricResult::new(&distances, capacity, init_val),
             reachability_totals: Vec::new(),
             sampled_source_count: 0,
         }
@@ -219,16 +219,16 @@ impl CentralityShortestResult {
         self.node_harmonic_vec.load_compact(&self.node_indices)
     }
     #[getter]
-    pub fn node_beta(&self) -> HashMap<u32, Py<PyArray1<f64>>> {
-        self.node_beta_vec.load_compact(&self.node_indices)
+    pub fn node_decay(&self) -> HashMap<u32, Py<PyArray1<f64>>> {
+        self.node_decay_vec.load_compact(&self.node_indices)
     }
     #[getter]
     pub fn node_betweenness(&self) -> HashMap<u32, Py<PyArray1<f64>>> {
         self.node_betweenness_vec.load_compact(&self.node_indices)
     }
     #[getter]
-    pub fn node_betweenness_beta(&self) -> HashMap<u32, Py<PyArray1<f64>>> {
-        self.node_betweenness_beta_vec
+    pub fn node_betweenness_decay(&self) -> HashMap<u32, Py<PyArray1<f64>>> {
+        self.node_betweenness_decay_vec
             .load_compact(&self.node_indices)
     }
 }
@@ -1655,11 +1655,10 @@ impl NetworkStructure {
     /// modulate per-node inclusion via `sampling_weights`.
     #[pyo3(signature = (
         distances=None,
-        betas=None,
         minutes=None,
         compute_closeness=None,
         compute_betweenness=None,
-        min_threshold_wt=None,
+        decay_fn=None,
         speed_m_s=None,
         tolerance=None,
         sample_probability=None,
@@ -1670,11 +1669,10 @@ impl NetworkStructure {
     pub fn centrality_shortest(
         &self,
         distances: Option<Vec<u32>>,
-        betas: Option<Vec<f32>>,
         minutes: Option<Vec<f32>>,
         compute_closeness: Option<bool>,
         compute_betweenness: Option<bool>,
-        min_threshold_wt: Option<f32>,
+        decay_fn: Option<String>,
         speed_m_s: Option<f32>,
         tolerance: Option<f32>,
         sample_probability: Option<f32>,
@@ -1692,12 +1690,11 @@ impl NetworkStructure {
         }
         let speed_m_s = speed_m_s.unwrap_or(WALKING_SPEED);
         let tolerance = validate_tolerance(tolerance)?;
-        let (distances, betas, seconds) = common::pair_distances_betas_time(
-            speed_m_s,
-            distances,
-            betas,
-            minutes,
-            min_threshold_wt,
+        let (distances, _betas, seconds) = common::pair_distances_betas_time(
+            speed_m_s, distances, None, minutes, None,
+        )?;
+        let decay_fn_str = common::validate_decay_fn(
+            decay_fn.as_deref().unwrap_or(common::DEFAULT_CENTRALITY_DECAY_EXPR),
         )?;
         let max_walk_seconds = *seconds
             .iter()
@@ -1754,6 +1751,7 @@ impl NetworkStructure {
                     tolerance,
                     sampling_plan.is_sampling(),
                 );
+                let decay = common::parse_decay_fn(&decay_fn_str);
 
                 // IPW-only weight for cycles (no node weight, just sampling correction).
                 let cycles_wt = wt / self.get_node_weight_unchecked(*src_idx);
@@ -1800,7 +1798,6 @@ impl NetworkStructure {
                         let agg_idx = if is_sampling { to_idx } else { *src_idx };
                         for i in 0..distances.len() {
                             let distance = distances[i];
-                            let beta = betas[i];
                             if traversal.best_route_cost[to_idx] <= distance as f32 {
                                 res.node_density_vec.metric[i][agg_idx]
                                     .fetch_add(wt as f64, AtomicOrdering::Relaxed);
@@ -1819,8 +1816,9 @@ impl NetworkStructure {
                                     ((1.0 / traversal.best_route_cost[to_idx]) * wt) as f64,
                                     AtomicOrdering::Relaxed,
                                 );
-                                res.node_beta_vec.metric[i][agg_idx].fetch_add(
-                                    ((-beta * traversal.best_route_cost[to_idx]).exp() * wt) as f64,
+                                let p = traversal.best_route_cost[to_idx] / distance as f32;
+                                res.node_decay_vec.metric[i][agg_idx].fetch_add(
+                                    (decay(p) * wt) as f64,
                                     AtomicOrdering::Relaxed,
                                 );
                             }
@@ -1836,7 +1834,6 @@ impl NetworkStructure {
 
                     for d_idx in 0..distances.len() {
                         let dist_threshold = distances[d_idx] as f32;
-                        let beta = betas[d_idx] as f64;
                         target_seed.fill(0.0);
                         target_seed_beta.fill(0.0);
 
@@ -1870,8 +1867,8 @@ impl NetworkStructure {
                                 // Target won't run as source → count full pair.
                                 1.0
                             };
-                            let pair_beta = pair_count
-                                * (-beta * traversal.best_route_cost[to_idx] as f64).exp();
+                            let p = traversal.best_route_cost[to_idx] / dist_threshold;
+                            let pair_beta = pair_count * decay(p) as f64;
                             target_seed[to_idx] += pair_count;
                             target_seed_beta[to_idx] += pair_beta;
                         }
@@ -1889,7 +1886,7 @@ impl NetworkStructure {
                                         .fetch_add(credit * wt as f64, AtomicOrdering::Relaxed);
                                 }
                                 if credit_beta > 0.0 {
-                                    res.node_betweenness_beta_vec.metric[d_idx][inter_node_idx]
+                                    res.node_betweenness_decay_vec.metric[d_idx][inter_node_idx]
                                         .fetch_add(
                                             credit_beta * wt as f64,
                                             AtomicOrdering::Relaxed,
@@ -1928,11 +1925,9 @@ impl NetworkStructure {
     ///
     #[pyo3(signature = (
         distances=None,
-        betas=None,
         minutes=None,
         compute_closeness=None,
         compute_betweenness=None,
-        min_threshold_wt=None,
         speed_m_s=None,
         tolerance=None,
         angular_scaling_unit=None,
@@ -1945,11 +1940,9 @@ impl NetworkStructure {
     pub fn centrality_simplest(
         &self,
         distances: Option<Vec<u32>>,
-        betas: Option<Vec<f32>>,
         minutes: Option<Vec<f32>>,
         compute_closeness: Option<bool>,
         compute_betweenness: Option<bool>,
-        min_threshold_wt: Option<f32>,
         speed_m_s: Option<f32>,
         tolerance: Option<f32>,
         angular_scaling_unit: Option<f32>,
@@ -1973,11 +1966,7 @@ impl NetworkStructure {
         let angular_scaling_unit = angular_scaling_unit.unwrap_or(180.0);
         let farness_scaling_offset = farness_scaling_offset.unwrap_or(1.0);
         let (distances, _betas, seconds) = common::pair_distances_betas_time(
-            speed_m_s,
-            distances,
-            betas,
-            minutes,
-            min_threshold_wt,
+            speed_m_s, distances, None, minutes, None,
         )?;
         let max_walk_seconds = *seconds
             .iter()
@@ -2455,9 +2444,8 @@ impl NetworkStructure {
     #[pyo3(signature = (
         od_matrix,
         distances=None,
-        betas=None,
         minutes=None,
-        min_threshold_wt=None,
+        decay_fn=None,
         speed_m_s=None,
         tolerance=None,
         pbar_disabled=None
@@ -2466,21 +2454,19 @@ impl NetworkStructure {
         &self,
         od_matrix: &OdMatrix,
         distances: Option<Vec<u32>>,
-        betas: Option<Vec<f32>>,
         minutes: Option<Vec<f32>>,
-        min_threshold_wt: Option<f32>,
+        decay_fn: Option<String>,
         speed_m_s: Option<f32>,
         tolerance: Option<f32>,
         pbar_disabled: Option<bool>,
         py: Python,
     ) -> PyResult<BetweennessShortestResult> {
         let speed_m_s = speed_m_s.unwrap_or(WALKING_SPEED);
-        let (distances, betas, seconds) = common::pair_distances_betas_time(
-            speed_m_s,
-            distances,
-            betas,
-            minutes,
-            min_threshold_wt,
+        let (distances, _betas, seconds) = common::pair_distances_betas_time(
+            speed_m_s, distances, None, minutes, None,
+        )?;
+        let decay_fn_str = common::validate_decay_fn(
+            decay_fn.as_deref().unwrap_or(common::DEFAULT_CENTRALITY_DECAY_EXPR),
         )?;
         let max_walk_seconds = *seconds
             .iter()
@@ -2525,6 +2511,7 @@ impl NetworkStructure {
                     tolerance,
                     false, // OD betweenness: always downstream
                 );
+                let decay = common::parse_decay_fn(&decay_fn_str);
 
                 // Sort visited by distance (farthest first) for backpropagation
                 let sorted_visited = Self::sorted_brandes_state_indices(&traversal);
@@ -2534,7 +2521,6 @@ impl NetworkStructure {
                 let mut target_seed_beta = vec![0.0f64; traversal.state.len()];
                 for d_idx in 0..distances.len() {
                     let dist_threshold = distances[d_idx] as f32;
-                    let beta = betas[d_idx] as f64;
                     target_seed.fill(0.0);
                     target_seed_beta.fill(0.0);
 
@@ -2543,8 +2529,8 @@ impl NetworkStructure {
                         if traversal.best_route_cost[dest] > dist_threshold {
                             continue;
                         }
-                        let od_beta =
-                            od_w as f64 * (-beta * traversal.best_route_cost[dest] as f64).exp();
+                        let p = traversal.best_route_cost[dest] / dist_threshold;
+                        let od_beta = od_w as f64 * decay(p) as f64;
                         target_seed[dest] += od_w as f64;
                         target_seed_beta[dest] += od_beta;
                     }
@@ -2562,7 +2548,7 @@ impl NetworkStructure {
                                     .fetch_add(credit, AtomicOrdering::Relaxed);
                             }
                             if credit_beta > 0.0 {
-                                res.node_betweenness_beta_vec.metric[d_idx][inter_node_idx]
+                                res.node_betweenness_decay_vec.metric[d_idx][inter_node_idx]
                                     .fetch_add(credit_beta, AtomicOrdering::Relaxed);
                             }
                         },

@@ -741,7 +741,7 @@ def test_network_structure_from_gpd(primal_graph):
             distances=[400],
         )
         for measure_key, attr_key in [
-            ("beta", "node_beta"),
+            ("decay", "node_decay"),
             ("cycles", "node_cycles"),
             ("density", "node_density"),
             ("farness", "node_farness"),
@@ -762,7 +762,7 @@ def test_network_structure_from_gpd(primal_graph):
         )
         for measure_key, attr_key in [
             ("betweenness", "node_betweenness"),
-            ("betweenness_beta", "node_betweenness_beta"),
+            ("betweenness_decay", "node_betweenness_decay"),
         ]:
             data_key = config.prep_gdf_key(measure_key, 400)
             assert np.allclose(
@@ -938,14 +938,10 @@ def test_nx_from_cityseer_geopandas(primal_graph):
         distances=[500, 1000],
     )
     column_labels: list[str] = [
-        "cc_a_500_nw",
-        "cc_a_1000_nw",
-        "cc_a_500_wt",
-        "cc_a_1000_wt",
-        "cc_c_500_nw",
-        "cc_c_1000_nw",
-        "cc_c_500_wt",
-        "cc_c_1000_wt",
+        "cc_a_500",
+        "cc_a_1000",
+        "cc_c_500",
+        "cc_c_1000",
     ]
     # without backbone
     G_round_trip_nx = io.nx_from_cityseer_geopandas(

@@ -89,22 +89,16 @@ layout: ../../layouts/PageLayout.astro
     <span class="pn">distances=None</span>
   </div>
   <div class="param">
-    <span class="pn">betas=None</span>
-  </div>
-  <div class="param">
     <span class="pn">minutes=None</span>
   </div>
   <div class="param">
     <span class="pn">angular=None</span>
   </div>
   <div class="param">
-    <span class="pn">spatial_tolerance=None</span>
-  </div>
-  <div class="param">
-    <span class="pn">min_threshold_wt=None</span>
-  </div>
-  <div class="param">
     <span class="pn">speed_m_s=None</span>
+  </div>
+  <div class="param">
+    <span class="pn">decay_fn=None</span>
   </div>
   <div class="param">
     <span class="pn">pbar_disabled=None</span>
@@ -381,22 +375,16 @@ layout: ../../layouts/PageLayout.astro
     <span class="pn">distances=None</span>
   </div>
   <div class="param">
-    <span class="pn">betas=None</span>
-  </div>
-  <div class="param">
     <span class="pn">minutes=None</span>
   </div>
   <div class="param">
     <span class="pn">angular=None</span>
   </div>
   <div class="param">
-    <span class="pn">spatial_tolerance=None</span>
-  </div>
-  <div class="param">
-    <span class="pn">min_threshold_wt=None</span>
-  </div>
-  <div class="param">
     <span class="pn">speed_m_s=None</span>
+  </div>
+  <div class="param">
+    <span class="pn">decay_fn=None</span>
   </div>
   <div class="param">
     <span class="pn">pbar_disabled=None</span>
@@ -433,16 +421,10 @@ layout: ../../layouts/PageLayout.astro
     <span class="pn">distances=None</span>
   </div>
   <div class="param">
-    <span class="pn">betas=None</span>
-  </div>
-  <div class="param">
     <span class="pn">minutes=None</span>
   </div>
   <div class="param">
     <span class="pn">compute_hill=None</span>
-  </div>
-  <div class="param">
-    <span class="pn">compute_hill_weighted=None</span>
   </div>
   <div class="param">
     <span class="pn">compute_shannon=None</span>
@@ -454,13 +436,10 @@ layout: ../../layouts/PageLayout.astro
     <span class="pn">angular=None</span>
   </div>
   <div class="param">
-    <span class="pn">spatial_tolerance=None</span>
-  </div>
-  <div class="param">
-    <span class="pn">min_threshold_wt=None</span>
-  </div>
-  <div class="param">
     <span class="pn">speed_m_s=None</span>
+  </div>
+  <div class="param">
+    <span class="pn">decay_fn=None</span>
   </div>
   <div class="param">
     <span class="pn">pbar_disabled=None</span>

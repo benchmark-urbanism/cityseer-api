@@ -84,7 +84,7 @@ _CLOSENESS_SHORTEST_METRICS = [
     ("HARMONIC", "Harmonic closeness (shortest)", True),
     ("DENSITY", "Density (shortest)", False),
     ("FARNESS", "Farness (shortest)", False),
-    ("BETA", "Beta-weighted closeness (shortest)", False),
+    ("DECAY", "Decay-weighted closeness (shortest)", False),
     ("CYCLES", "Cycles (shortest)", False),
     ("HILLIER", "Hillier closeness (shortest)", False),
 ]
@@ -96,7 +96,7 @@ _CLOSENESS_SIMPLEST_METRICS = [
 ]
 _BETWEENNESS_SHORTEST_METRICS = [
     ("BETWEENNESS", "Betweenness (shortest)", True),
-    ("BETWEENNESS_BETA", "Beta-weighted betweenness (shortest)", False),
+    ("BETWEENNESS_DECAY", "Decay-weighted betweenness (shortest)", False),
 ]
 _BETWEENNESS_SIMPLEST_METRICS = [
     ("BETWEENNESS", "Betweenness (simplest)", True),
@@ -311,7 +311,7 @@ class CityseerCentralityAlgorithm(CityseerAlgorithmBase):
         cs_harmonic = self._get_metric(parameters, "HARMONIC", "CS", context)
         cs_density = self._get_metric(parameters, "DENSITY", "CS", context)
         cs_farness = self._get_metric(parameters, "FARNESS", "CS", context)
-        cs_beta = self._get_metric(parameters, "BETA", "CS", context)
+        cs_decay = self._get_metric(parameters, "DECAY", "CS", context)
         cs_cycles = self._get_metric(parameters, "CYCLES", "CS", context)
         cs_hillier = self._get_metric(parameters, "HILLIER", "CS", context)
         # Closeness simplest (CA)
@@ -321,7 +321,7 @@ class CityseerCentralityAlgorithm(CityseerAlgorithmBase):
         ca_hillier = self._get_metric(parameters, "HILLIER", "CA", context)
         # Betweenness shortest (BS)
         bs_betweenness = self._get_metric(parameters, "BETWEENNESS", "BS", context)
-        bs_betweenness_beta = self._get_metric(parameters, "BETWEENNESS_BETA", "BS", context)
+        bs_betweenness_decay = self._get_metric(parameters, "BETWEENNESS_DECAY", "BS", context)
         # Betweenness simplest (BA)
         ba_betweenness = self._get_metric(parameters, "BETWEENNESS", "BA", context)
 
@@ -516,15 +516,15 @@ class CityseerCentralityAlgorithm(CityseerAlgorithmBase):
                     shortest_attrs.append("node_density")
                 if cs_farness:
                     shortest_attrs.append("node_farness")
-                if cs_beta:
-                    shortest_attrs.append("node_beta")
+                if cs_decay:
+                    shortest_attrs.append("node_decay")
                 if cs_cycles:
                     shortest_attrs.append("node_cycles")
             if betweenness_shortest:
                 if bs_betweenness:
                     shortest_attrs.append("node_betweenness")
-                if bs_betweenness_beta:
-                    shortest_attrs.append("node_betweenness_beta")
+                if bs_betweenness_decay:
+                    shortest_attrs.append("node_betweenness_decay")
             _run_metric_batches(
                 "centrality (shortest path)",
                 ns.centrality_shortest,

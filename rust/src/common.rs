@@ -5,11 +5,56 @@ use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use std::collections::HashMap;
 use std::sync::atomic::Ordering;
+use std::sync::Arc;
 
 /// Minimum threshold weight for distance and beta calculations.
 static MIN_THRESH_WT: f32 = 0.01831563888873418;
 /// Walking speed in meters per second.
 pub static WALKING_SPEED: f32 = 1.33333;
+/// Default decay expression: flat (no decay). All data points within the distance threshold
+/// receive equal weight. Use a custom `decay_fn` for distance-weighted metrics.
+pub static DEFAULT_DECAY_EXPR: &str = "1";
+/// Default decay expression for centrality metrics: exponential decay where p is normalised
+/// progress (0 at source, 1 at cutoff). The constant 4 ≈ -ln(0.018).
+pub static DEFAULT_CENTRALITY_DECAY_EXPR: &str = "exp(-4 * p)";
+
+/// Validates a decay function expression string by parsing it and test-evaluating at several
+/// points across the range p ∈ [0, 1]. Returns the expression string wrapped in an Arc for
+/// sharing across threads.
+pub fn validate_decay_fn(expr_str: &str) -> PyResult<Arc<str>> {
+    let test_expr: meval::Expr = expr_str.parse().map_err(|e| {
+        PyValueError::new_err(format!(
+            "Failed to parse decay_fn expression '{}': {}",
+            expr_str, e
+        ))
+    })?;
+    let test_fn = test_expr.bind("p").map_err(|e| {
+        PyValueError::new_err(format!(
+            "decay_fn expression must use 'p' as the variable: {}",
+            e
+        ))
+    })?;
+    for test_p in [0.0, 0.25, 0.5, 0.75, 1.0] {
+        let test_val = test_fn(test_p);
+        if test_val.is_nan() || test_val.is_infinite() {
+            return Err(PyValueError::new_err(format!(
+                "decay_fn expression '{}' returns invalid value ({}) at p={}",
+                expr_str, test_val, test_p
+            )));
+        }
+    }
+    Ok(Arc::from(expr_str))
+}
+
+/// Parses a decay function expression per-thread and returns a closure that computes
+/// a weight from normalised progress p ∈ [0, 1]. Output is clamped to [0, 1].
+pub fn parse_decay_fn(expr_str: &str) -> impl Fn(f32) -> f32 {
+    let expr: meval::Expr = expr_str.parse().unwrap();
+    let f = expr.bind("p").unwrap();
+    move |p: f32| -> f32 {
+        f(p as f64).clamp(0.0, 1.0) as f32
+    }
+}
 
 /// Holds metric results, including distances and a 2D matrix of atomic floats.
 /// Uses f64 internally for accumulation precision (f32 loses increments above 2^24),

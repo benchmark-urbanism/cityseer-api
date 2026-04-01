@@ -238,6 +238,7 @@ if __name__ == "__main__":
         ("cityseer.tools.mock", None, here / "src/pages/tools/mock.md"),
         ("cityseer.tools.util", None, here / "src/pages/tools/util.md"),
         ("cityseer.network", None, here / "src/pages/api/network.md"),
+        ("cityseer.decay", None, here / "src/pages/api/decay.md"),
     ]
     for module_name, module, output_path in module_file_maps:
         render.configure(template_directory=here / "pdoc_templates", docformat="numpy", math=True)

@@ -137,7 +137,6 @@ def test_local_centrality_time(primal_graph):
             compute_closeness=True,
             compute_betweenness=False,
             distances=distances,
-            betas=None,
             pbar_disabled=True,
         )
 

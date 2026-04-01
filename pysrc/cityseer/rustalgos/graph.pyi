@@ -472,11 +472,10 @@ class NetworkStructure:
     def centrality_shortest(
         self,
         distances: list[int] | None = None,
-        betas: list[float] | None = None,
         minutes: list[float] | None = None,
         compute_closeness: bool | None = None,
         compute_betweenness: bool | None = None,
-        min_threshold_wt: float | None = None,
+        decay_fn: str | None = None,
         speed_m_s: float | None = None,
         tolerance: float | None = None,
         sample_probability: float | None = None,
@@ -494,16 +493,14 @@ class NetworkStructure:
         ----------
         distances: list[int] | None
             Distance thresholds (meters).
-        betas: list[float] | None
-            Decay parameters (beta).
         minutes: list[float] | None
             Time thresholds (minutes).
         compute_closeness: bool | None
-            Compute closeness metrics (density, farness, cycles, harmonic, beta). Default True.
+            Compute closeness metrics (density, farness, cycles, harmonic, decay). Default True.
         compute_betweenness: bool | None
-            Compute betweenness metrics (betweenness, betweenness_beta). Default True.
-        min_threshold_wt: float | None
-            Minimum weight for beta/distance conversion.
+            Compute betweenness metrics (betweenness, betweenness_decay). Default True.
+        decay_fn: str | None
+            Optional decay function name for distance-weighted centrality.
         speed_m_s: float | None
             Travel speed (m/s).
         tolerance: float | None
@@ -530,11 +527,9 @@ class NetworkStructure:
     def centrality_simplest(
         self,
         distances: list[int] | None = None,
-        betas: list[float] | None = None,
         minutes: list[float] | None = None,
         compute_closeness: bool | None = None,
         compute_betweenness: bool | None = None,
-        min_threshold_wt: float | None = None,
         speed_m_s: float | None = None,
         tolerance: float | None = None,
         angular_scaling_unit: float | None = None,
@@ -554,16 +549,12 @@ class NetworkStructure:
         ----------
         distances: list[int] | None
             Distance thresholds (meters).
-        betas: list[float] | None
-            Decay parameters (beta).
         minutes: list[float] | None
             Time thresholds (minutes).
         compute_closeness: bool | None
             Compute closeness metrics (density, farness, harmonic). Default True.
         compute_betweenness: bool | None
-            Compute betweenness metrics (betweenness, betweenness_beta). Default True.
-        min_threshold_wt: float | None
-            Minimum weight for beta/distance conversion.
+            Compute betweenness metrics (betweenness). Default True.
         speed_m_s: float | None
             Travel speed (m/s).
         tolerance: float | None
@@ -599,9 +590,8 @@ class NetworkStructure:
         self,
         od_matrix: OdMatrix,
         distances: list[int] | None = None,
-        betas: list[float] | None = None,
         minutes: list[float] | None = None,
-        min_threshold_wt: float | None = None,
+        decay_fn: str | None = None,
         speed_m_s: float | None = None,
         tolerance: float | None = None,
         pbar_disabled: bool | None = None,
@@ -615,12 +605,11 @@ class NetworkStructure:
             Sparse OD weight matrix mapping (origin, destination) pairs to trip weights.
         distances: list[int] | None
             Distance thresholds (meters).
-        betas: list[float] | None
-            Decay parameters (beta).
         minutes: list[float] | None
             Time thresholds (minutes).
-        min_threshold_wt: float | None
-            Minimum weight for beta/distance conversion.
+        decay_fn: str | None
+            Decay function expression using variable `p` (normalised progress 0 to 1).
+            Default is `"exp(-4 * p)"` (exponential decay). Use `"1"` for flat (unweighted).
         speed_m_s: float | None
             Travel speed (m/s).
         tolerance: float | None

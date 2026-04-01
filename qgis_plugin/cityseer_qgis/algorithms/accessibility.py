@@ -404,24 +404,14 @@ class CityseerAccessibilityAlgorithm(CityseerAlgorithmBase):
                 continue
             lu_access = acc_result.result[acc_key]
             for dist_key in distances:
-                # Unweighted
-                col_nw = f"cc_{acc_key}_{dist_key}"
+                col = f"cc_{acc_key}_{dist_key}"
                 if angular:
-                    col_nw += "_ang"
-                col_nw += "_nw"
-                nw_arr = lu_access.unweighted[dist_key]
-                # Weighted
-                col_wt = f"cc_{acc_key}_{dist_key}"
-                if angular:
-                    col_wt += "_ang"
-                col_wt += "_wt"
-                wt_arr = lu_access.weighted[dist_key]
+                    col += "_ang"
+                count_arr = lu_access.count[dist_key]
                 for i, node_key in enumerate(acc_result.node_keys_py):
                     if node_key in results:
-                        val_nw = float(nw_arr[i])
-                        results[node_key][col_nw] = val_nw if math.isfinite(val_nw) else None
-                        val_wt = float(wt_arr[i])
-                        results[node_key][col_wt] = val_wt if math.isfinite(val_wt) else None
+                        val = float(count_arr[i])
+                        results[node_key][col] = val if math.isfinite(val) else None
                 # Nearest distance (only for max distance)
                 if dist_key == max_dist:
                     col_dist = f"cc_{acc_key}_nearest_max_{dist_key}"

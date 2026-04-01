@@ -14,6 +14,62 @@ Code tests are run against Python versions `3.10` - `3.13`.
 
 As of v4.25, `cityseer` provides a new [`CityNetwork`](/api/network) class that wraps network construction, centrality computation, and land-use analysis into a single high-level interface. It builds dual graphs directly from LineString geometries (via GeoDataFrames, WKT dictionaries, NetworkX graphs, or OSM), bypassing the previous NetworkX-based construction pipeline for substantially faster builds. The existing lower-level API (individual functions in the `metrics`, `tools`, and `rustalgos` modules) remains fully available and unchanged for backwards compatibility.
 
+## Decay Functions
+
+Centrality, accessibility, mixed-use, and statistical aggregation methods accept an optional `decay_fn` parameter that controls how distance affects metric weighting. The decay function is expressed as a string using a single variable `p`, which represents normalised progress from the source node (`p = 0`) to the distance cutoff (`p = 1`), computed as `p = cost / max_cost`.
+
+The [`cityseer.decay`](/api/decay) module provides helper functions for constructing common decay curves from absolute distance units (metres). Alternatively, expressions can be written directly using the `p` variable.
+
+### Available presets
+
+| Preset | Helper | Expression | Behaviour |
+| --- | --- | --- | --- |
+| Exponential | `decay.exponential()` | `"exp(-4 * p)"` | Steep initial decay, ~1.8% weight at cutoff. Default for centrality. |
+| Linear | `decay.linear()` | `"max(0, 1 - p)"` | Uniform decay from 1 to 0. |
+| Flat | `decay.flat()` | `"1"` | No decay: constant weight everywhere. Default for land-use and stats. |
+| Gaussian | `decay.gaussian(peak, cutoff)` | bell curve | Peaks at a specified distance, useful for modelling facilities with an optimal catchment range. |
+| Logistic | `decay.logistic(midpoint, cutoff)` | sigmoid | Sharp transition from full weight to zero, centred at a specified distance. |
+
+### Using decay functions
+
+```python
+from cityseer import decay
+from cityseer.metrics import layers
+
+# Flat (unweighted) — count everything within the threshold equally
+nodes_gdf, data_gdf = layers.compute_accessibilities(
+    ..., distances=[800], decay_fn=decay.flat()
+)
+
+# Exponential — weight nearby locations more heavily (default for centrality)
+nodes_gdf, data_gdf = layers.compute_stats(
+    ..., distances=[800], decay_fn=decay.exponential()
+)
+
+# Gaussian — model a facility with an optimal 400m catchment within 1200m
+nodes_gdf, data_gdf = layers.compute_stats(
+    ..., distances=[1200], decay_fn=decay.gaussian(peak=400, cutoff=1200, std=150)
+)
+
+# Custom expression — any valid math expression using the variable p
+nodes_gdf, data_gdf = layers.compute_stats(
+    ..., distances=[800], decay_fn="max(0, 1 - p^2)"  # quadratic decay
+)
+```
+
+### Centrality decay
+
+For [`node_centrality_shortest`](/metrics/networks#node-centrality-shortest), the `decay_fn` parameter defaults to `"exp(-4 * p)"` (exponential decay). This produces the `decay` and `betweenness_decay` output columns. Use `"1"` for flat (unweighted) decay metrics. The [`node_centrality_simplest`](/metrics/networks#node-centrality-simplest) function does not accept a `decay_fn` parameter because angular (simplest-path) centralities use angular cost rather than distance-based decay weighting.
+
+### Supported expression syntax
+
+Decay expressions are parsed by the `meval` crate and support the following:
+
+- **Arithmetic**: `+`, `-`, `*`, `/`, `^` (power)
+- **Functions**: `exp`, `ln`, `sqrt`, `abs`, `sin`, `cos`, `tan`, `asin`, `acos`, `atan`, `min`, `max`, `floor`, `ceil`
+- **Constants**: `pi`, `e`
+- **Clamping**: Output values are automatically clamped to the range [0, 1]
+
 ## Getting Started
 
 A growing collection of recipes and examples is available via the [`Cityseer Examples`](https://benchmark-urbanism.github.io/cityseer-examples/) site. The example notebooks include workflows showing how to run graph cleaning, network centralities, and land-use accessibility analysis from data sources such as OSM or geospatial files (e.g. GeoPackages & Shapefiles).
@@ -25,7 +81,7 @@ A growing collection of recipes and examples is available via the [`Cityseer Exa
 - It uses localised network analysis (as opposed to global forms of analysis) using a 'moving-window' methodology. A node is selected, the graph is then isolated at a selected distance threshold around the node, metrics are then computed, and then the process subsequently repeats for every other node in the network. `cityseer` exclusively uses localised methods for network analysis because they do not suffer from the same issues as global methods, which are inherently problematic because of edge roll-off effects. Localised methods have the distinct advantage of being comparable across different locations and cities, while also being capable of targeting both smaller and larger distance thresholds to reveal patterns at different scales of analysis.
 - It is common to use either shortest-distance (metric) or simplest-path (shortest angular or geometric distance) heuristics for network analysis. In `cityseer`, simplest-path (angular) analysis is performed on dual graphs so that each segment forms an explicit routing state.
 - `cityseer` supports analysis for both primal and dual graph representations, and contains methods for converting from primal (intersection-based) to dual (street-segment-based) representations. Shortest-path workflows support either topology. Angular workflows require the dual representation, which retains accurate street lengths and geometry (angles) while affording the opportunity to measure and visualise metrics relative to streets instead of intersections.
-- `cityseer` supports both unweighted and weighted (spatial impedance) forms of centrality, accessibility, and mixed-use methods.
+- `cityseer` supports customisable distance-decay weighting for centrality, accessibility, and mixed-use methods via the `decay_fn` parameter. See the [Decay Functions](#decay-functions) section for details.
 - To support the evaluation of measures at finely-spaced intervals along street fronts, `cityseer` includes support for network decomposition.
 - Granular evaluation of land-use accessibilities and mixed-uses requires that land uses be assigned to the street network in a contextually precise manner. `cityseer` assigns data-points to the nearest adjacent street segment and then allows access over the network from both sides, thereby allowing precise distances to be calculated dynamically based on the direction of approach.
 - Centrality methods are susceptible to topological distortions arising from 'messy' graph representations as well as due to the conflation of topological and geometrical properties of street networks. `cityseer` addresses these through the inclusion of graph cleaning functions and procedures for splitting geometrical properties from topological representations.
@@ -124,6 +180,118 @@ The slope penalty is computed dynamically and directionally during graph travers
 For simplest-path (angular) analysis, the slope penalty affects only the time budget (reachability cutoff), not the angular routing metric itself. This means the cognitively simplest path is still selected, but steep terrain reduces the distance a pedestrian can cover within the analysis threshold.
 
 When z coordinates are not present, all slope penalties default to 1.0 (no effect), ensuring full backward compatibility with existing 2D workflows.
+
+## Column Naming Conventions
+
+All computed metrics are written to columns on the `nodes_gdf` GeoDataFrame. Column names follow a consistent pattern:
+
+```text
+cc_{metric}_{distance}        — shortest-path metric
+cc_{metric}_{distance}_ang    — simplest-path (angular) metric
+```
+
+The `cc_` prefix identifies columns generated by `cityseer`. The `_ang` suffix is appended when `angular=True` (simplest-path heuristic). Examples:
+
+```text
+cc_harmonic_800         — harmonic closeness at 800m (shortest path)
+cc_betweenness_800_ang  — betweenness at 800m (angular / simplest path)
+cc_hill_q0_400          — Hill diversity q=0 at 400m
+cc_shop_200             — accessibility count for "shop" at 200m
+cc_price_mean_1200      — mean of "price" column at 1200m
+```
+
+### Centrality output columns
+
+[`node_centrality_shortest`](/metrics/networks#node-centrality-shortest) produces the following columns for each distance threshold:
+
+| Column | Description |
+| --- | --- |
+| `cc_density_{d}` | Count of reachable nodes within distance `d`. |
+| `cc_harmonic_{d}` | Harmonic closeness: sum of inverse distances to reachable nodes. |
+| `cc_farness_{d}` | Farness: sum of distances to reachable nodes. |
+| `cc_hillier_{d}` | Hillier normalisation: `density² / farness`. |
+| `cc_cycles_{d}` | Circuit rank of the locally reachable subgraph (meshedness). |
+| `cc_decay_{d}` | Decay-weighted closeness using the `decay_fn` expression. |
+| `cc_betweenness_{d}` | Betweenness centrality (shortest-path). |
+| `cc_betweenness_decay_{d}` | Decay-weighted betweenness using the `decay_fn` expression. |
+
+[`node_centrality_simplest`](/metrics/networks#node-centrality-simplest) produces the following columns (note the `_ang` suffix):
+
+| Column | Description |
+| --- | --- |
+| `cc_density_{d}_ang` | Count of reachable nodes within distance `d` (angular routing). |
+| `cc_harmonic_{d}_ang` | Harmonic closeness (cumulative angular change as impedance). |
+| `cc_farness_{d}_ang` | Farness (sum of cumulative angular changes to reachable nodes). |
+| `cc_hillier_{d}_ang` | Hillier normalisation: `density² / farness`. |
+| `cc_betweenness_{d}_ang` | Betweenness centrality (simplest angular paths). |
+
+### Accessibility output columns
+
+[`compute_accessibilities`](/metrics/layers#compute-accessibilities) produces columns for each land-use key and distance:
+
+| Column | Description |
+| --- | --- |
+| `cc_{key}_{d}` | Count of reachable instances of land-use `key` within distance `d`, weighted by `decay_fn`. |
+| `cc_{key}_nearest_max_{d}` | Shortest network distance to the nearest instance (only at the maximum distance). |
+
+### Mixed-use output columns
+
+[`compute_mixed_uses`](/metrics/layers#compute-mixed-uses) produces columns for each distance:
+
+| Column | Description |
+| --- | --- |
+| `cc_hill_q0_{d}` | Hill diversity at q=0 (richness: count of distinct land-uses). |
+| `cc_hill_q1_{d}` | Hill diversity at q=1 (exponential Shannon entropy). |
+| `cc_hill_q2_{d}` | Hill diversity at q=2 (inverse Simpson concentration). |
+| `cc_shannon_{d}` | Shannon entropy (if `compute_shannon=True`). |
+| `cc_gini_{d}` | Gini-Simpson index (if `compute_gini=True`). |
+
+### Statistical aggregation output columns
+
+[`compute_stats`](/metrics/layers#compute-stats) produces columns for each `stats_column_label` and distance:
+
+| Column | Description |
+| --- | --- |
+| `cc_{label}_sum_{d}` | Sum of values, weighted by `decay_fn`. |
+| `cc_{label}_mean_{d}` | Weighted mean. |
+| `cc_{label}_count_{d}` | Weighted count. |
+| `cc_{label}_median_{d}` | Weighted median. |
+| `cc_{label}_var_{d}` | Weighted variance. |
+| `cc_{label}_mad_{d}` | Weighted median absolute deviation. |
+| `cc_{label}_max_{d}` | Maximum value within distance. |
+| `cc_{label}_min_{d}` | Minimum value within distance. |
+
+### Working with output columns
+
+```python
+from cityseer.metrics import networks, layers
+from cityseer.tools import mock, graphs, io
+
+# Prepare network
+G = mock.mock_graph()
+G = graphs.nx_simple_geoms(G)
+nodes_gdf, edges_gdf, network_structure = io.network_structure_from_nx(G)
+
+# Compute centrality at multiple distances
+nodes_gdf = networks.node_centrality_shortest(
+    network_structure,
+    nodes_gdf,
+    distances=[400, 800, 1600],
+)
+
+# Access individual columns
+print(nodes_gdf["cc_harmonic_800"])
+print(nodes_gdf["cc_betweenness_1600"])
+
+# Select all cityseer columns
+cc_cols = [c for c in nodes_gdf.columns if c.startswith("cc_")]
+
+# Select all columns for a specific distance
+cols_800 = [c for c in nodes_gdf.columns if c.endswith("_800")]
+
+# Select all betweenness columns across distances
+bt_cols = [c for c in nodes_gdf.columns if "betweenness" in c]
+```
 
 The broader emphasis on localised methods and how `cityseer` addresses these is broached in the [associated paper](https://journals.sagepub.com/doi/full/10.1177/23998083221133827). `cityseer` includes a variety of convenience methods for the general preparation of networks and their conversion into (and out of) the lower-level data structures used by the underlying algorithms. These graph utility methods are designed to work with `NetworkX` to facilitate ease of use. A complement of code tests has been developed to maintain the codebase's integrity through general package maintenance and upgrade cycles. Shortest-path algorithms, harmonic closeness, and betweenness algorithms are tested against `NetworkX`. Mock data and test plots have been used to visually confirm the intended behaviour for divergent simplest and shortest-path heuristics and for testing data assignment to network nodes given various scenarios.
 

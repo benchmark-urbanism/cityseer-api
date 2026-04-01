@@ -25,7 +25,7 @@ _CLOSENESS_METRICS_SHORTEST = [
     ("HARMONIC", "Harmonic", "Sum of inverse distances to reachable nodes → cc_harmonic_<d>", True),
     ("DENSITY", "Density", "Number of nodes reachable within the distance threshold → cc_density_<d>", False),
     ("FARNESS", "Farness", "Sum of distances to all reachable nodes → cc_farness_<d>", False),
-    ("BETA", "Beta-weighted", "Closeness with negative-exponential distance decay → cc_beta_<d>", False),
+    ("DECAY", "Decay-weighted", "Closeness with distance decay weighting → cc_decay_<d>", False),
     ("CYCLES", "Cycles", "Independent loops (circuit rank) in the local reachable subgraph → cc_cycles_<d>", False),
     ("HILLIER", "Hillier (n²/farness)", "Derived closeness variant (density² / farness) → cc_hillier_<d>", False),
 ]
@@ -40,9 +40,9 @@ _CLOSENESS_METRICS_SIMPLEST = [
 _BETWEENNESS_METRICS_SHORTEST = [
     ("BETWEENNESS", "Betweenness", "Count of shortest paths passing through each node → cc_betweenness_<d>", True),
     (
-        "BETWEENNESS_BETA",
-        "Beta-weighted",
-        "Betweenness with negative-exponential distance decay → cc_betweenness_beta_<d>",
+        "BETWEENNESS_DECAY",
+        "Decay-weighted",
+        "Betweenness with distance decay weighting → cc_betweenness_decay_<d>",
         False,
     ),
 ]

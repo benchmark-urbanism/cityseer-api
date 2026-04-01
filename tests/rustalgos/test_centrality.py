@@ -266,6 +266,7 @@ def test_closeness_shortest(primal_graph):
         compute_closeness=True,
         compute_betweenness=False,
         distances=distances,
+        decay_fn="exp(-4 * p)",
     )
     # test node density
     # node density count doesn't include self-node
@@ -340,7 +341,7 @@ def test_closeness_shortest(primal_graph):
         assert np.allclose(
             node_result_short.node_harmonic[dist], harmonic_cl[d_idx], atol=config.ATOL, rtol=config.RTOL
         )
-        assert np.allclose(node_result_short.node_beta[dist], grav[d_idx], atol=config.ATOL, rtol=config.RTOL)
+        assert np.allclose(node_result_short.node_decay[dist], grav[d_idx], atol=config.ATOL, rtol=config.RTOL)
     # check weights
     for wt in [0.5, 2]:
         # create a weighted version fo the graph
@@ -355,12 +356,13 @@ def test_closeness_shortest(primal_graph):
             compute_closeness=True,
             compute_betweenness=False,
             distances=distances,
+            decay_fn="exp(-4 * p)",
         )
         # check that weighted versions behave as anticipated
         for dist in distances:
             assert np.allclose(
-                node_result_short.node_beta[dist] * wt,
-                node_result_short_wt.node_beta[dist],
+                node_result_short.node_decay[dist] * wt,
+                node_result_short_wt.node_decay[dist],
                 rtol=config.RTOL,
                 atol=config.ATOL,
             )
@@ -468,6 +470,7 @@ def test_local_centrality_all(diamond_graph):
         distances=distances,
         compute_closeness=True,
         compute_betweenness=False,
+        decay_fn="exp(-4 * p)",
     )
     # node density
     # additive nodes
@@ -495,17 +498,17 @@ def test_local_centrality_all(diamond_graph):
     # node beta
     # additive exp(-beta * dist)
     # beta = 0.0
-    assert np.allclose(node_result_short.node_beta[50], [0, 0, 0, 0], atol=config.ATOL, rtol=config.RTOL)
+    assert np.allclose(node_result_short.node_decay[50], [0, 0, 0, 0], atol=config.ATOL, rtol=config.RTOL)
     # beta = 0.02666667
     assert np.allclose(
-        node_result_short.node_beta[150],
+        node_result_short.node_decay[150],
         [0.1389669, 0.20845035, 0.20845035, 0.1389669],
         atol=config.ATOL,
         rtol=config.RTOL,
     )
     # beta = 0.016
     assert np.allclose(
-        node_result_short.node_beta[250],
+        node_result_short.node_decay[250],
         [0.44455525, 0.6056895, 0.6056895, 0.44455522],
         atol=config.ATOL,
         rtol=config.RTOL,

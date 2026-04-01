@@ -104,19 +104,18 @@ If no land-use field is selected, all features are counted together under a sing
 
 #### Accessibility Output
 
-The output is a line layer with the original street segments and computed accessibility values as attributes. For each land-use category and distance threshold, three types of columns are produced:
+The output is a line layer with the original street segments and computed accessibility values as attributes. For each land-use category and distance threshold, two types of columns are produced:
 
 ```text
-cc_<category>_<distance>[_ang]_nw    — unweighted count of reachable features
-cc_<category>_<distance>[_ang]_wt    — distance-weighted count (exponential decay)
+cc_<category>_<distance>[_ang]                  — decay-weighted count of reachable features
 cc_<category>_nearest_max_<max_distance>[_ang]  — distance to nearest feature
 ```
 
 For example, with a `type` field containing `pub` and `shop`, and distances `400,800`:
 
-- `cc_pub_400_nw`, `cc_pub_400_wt`, `cc_pub_800_nw`, `cc_pub_800_wt`
+- `cc_pub_400`, `cc_pub_800`
 - `cc_pub_nearest_max_800`
-- `cc_shop_400_nw`, `cc_shop_400_wt`, `cc_shop_800_nw`, `cc_shop_800_wt`
+- `cc_shop_400`, `cc_shop_800`
 - `cc_shop_nearest_max_800`
 
 ### Statistics
@@ -141,18 +140,18 @@ Only numeric columns are available for the numerical field selector. Features wi
 
 The algorithm dialog provides checkboxes for selecting which statistics to compute:
 
-| Statistic    | Description               | Weighted variant | Default |
-| ------------ | ------------------------- | :--------------: | :-----: |
-| **Sum**      | Sum of values             |       Yes        |   On    |
-| **Mean**     | Mean of values            |       Yes        |   On    |
-| **Count**    | Number of data points     |       Yes        |   On    |
-| **Median**   | Median of values          |       Yes        |   Off   |
-| **Variance** | Variance of values        |       Yes        |   Off   |
-| **MAD**      | Median Absolute Deviation |       Yes        |   Off   |
-| **Max**      | Maximum value             |        No        |   Off   |
-| **Min**      | Minimum value             |        No        |   Off   |
+| Statistic    | Description               | Default |
+| ------------ | ------------------------- | :-----: |
+| **Sum**      | Sum of values             |   On    |
+| **Mean**     | Mean of values            |   On    |
+| **Count**    | Number of data points     |   On    |
+| **Median**   | Median of values          |   Off   |
+| **Variance** | Variance of values        |   Off   |
+| **MAD**      | Median Absolute Deviation |   Off   |
+| **Max**      | Maximum value             |   Off   |
+| **Min**      | Minimum value             |   Off   |
 
-Statistics with weighted variants produce both unweighted (`_nw`) and distance-weighted (`_wt`) columns. The weighted variant uses exponential distance decay. Max and min have no weighted variant and produce a single column per distance.
+Each statistic produces one column per distance threshold. All statistics use the decay function to weight contributions by distance; the default is flat (no decay).
 
 To compute statistics for multiple numerical columns, run the algorithm once per column.
 
@@ -161,13 +160,11 @@ To compute statistics for multiple numerical columns, run the algorithm once per
 The output is a line layer with the original street segments and computed statistics as attributes. Output fields follow the naming convention:
 
 ```text
-cc_<field>_<statistic>_<distance>[_ang]_nw    — unweighted statistic
-cc_<field>_<statistic>_<distance>[_ang]_wt    — distance-weighted statistic
-cc_<field>_<statistic>_<distance>[_ang]       — for max/min (no weighted variant)
+cc_<field>_<statistic>_<distance>[_ang]    — computed statistic
 ```
 
 For example, with a `price` field and distances `400,800`:
 
-- `cc_price_sum_400_nw`, `cc_price_sum_400_wt`, `cc_price_sum_800_nw`, `cc_price_sum_800_wt`
-- `cc_price_mean_400_nw`, `cc_price_mean_400_wt`, `cc_price_mean_800_nw`, `cc_price_mean_800_wt`
+- `cc_price_sum_400`, `cc_price_sum_800`
+- `cc_price_mean_400`, `cc_price_mean_800`
 - `cc_price_max_400`, `cc_price_max_800`

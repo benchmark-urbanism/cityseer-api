@@ -149,6 +149,123 @@ class CityNetwork:
     edges, and short danglers. Use the [`feature_status`](#feature-status) property to inspect which input features were
     filtered and why.
     :::
+
+    ### Dual graph architecture
+
+    ``CityNetwork`` always constructs a dual graph internally. In the dual representation, each street segment becomes
+    a node (positioned at the segment midpoint) and edges connect segments that share a common intersection. This
+    enables both shortest-path and simplest-path (angular) analysis from a single topology:
+
+    - **Shortest-path** analysis uses metric distances along street segments.
+    - **Simplest-path** analysis uses cumulative angular change along streets and at intersections as the routing cost.
+
+    Because the dual is built automatically, there is no need to call ``nx_to_dual`` when using ``CityNetwork``.
+    Although the topology is dual internally, results are visualised and exported as the original street segment
+    geometries via [`to_geopandas`](#to-geopandas), so each row in the output corresponds to one input street.
+
+    ### Working with results
+
+    All computed metrics are written to the internal ``nodes_gdf`` GeoDataFrame. Since ``CityNetwork`` uses a dual
+    graph, each row in ``nodes_gdf`` represents a street segment, with a Point geometry at the segment midpoint.
+
+    To retrieve results with the original LineString geometries, use [`to_geopandas`](#to-geopandas):
+
+    ```python
+    cn = CityNetwork.from_geopandas(edges_gdf, crs=32632)
+    cn.centrality_shortest(distances=[800])
+
+    # Midpoint geometries (internal representation)
+    cn.nodes_gdf["cc_harmonic_800"]
+
+    # Original LineString geometries with the same computed columns
+    result_gdf = cn.to_geopandas()
+    result_gdf["cc_harmonic_800"]
+    ```
+
+    Column names follow the ``cc_{metric}_{distance}`` convention described in the
+    [Column Naming Conventions](/intro#column-naming-conventions) section.
+
+    ### Feature cleaning
+
+    Input geometries are automatically cleaned during construction. Short self-loops, near-duplicate edges, and
+    short danglers are removed. The ``feature_status`` property returns a Series indicating the status of each
+    input feature:
+
+    ```python
+    cn = CityNetwork.from_geopandas(edges_gdf, crs=32632)
+    print(cn.feature_status.value_counts())
+    # active              142
+    # short_dangler         3
+    # duplicate             1
+    ```
+
+    ### Saving and loading
+
+    Networks can be serialised to disk and restored later, preserving all computed metrics:
+
+    ```python
+    cn.save("my_network")
+    # Creates: my_network.nodes.parquet, my_network.state.pkl
+
+    cn_restored = CityNetwork.load("my_network")
+    ```
+
+    ### Incremental updates
+
+    The [`update`](#update) method performs an incremental topology diff: unchanged features keep their node
+    indices, added features are inserted, and removed features are deleted. Previously computed centrality columns
+    are cleared since they are invalidated by topology changes.
+
+    ```python
+    # Initial build
+    cn = CityNetwork.from_geopandas(edges_gdf, crs=32632)
+    cn.centrality_shortest(distances=[800])
+
+    # Update with modified geometries
+    cn.update(updated_edges_gdf)
+    cn.centrality_shortest(distances=[800])
+    ```
+
+    ### Typical workflow
+
+    ```python
+    import geopandas as gpd
+    from cityseer.network import CityNetwork
+    from cityseer import decay
+
+    # 1. Load street network edges
+    edges_gdf = gpd.read_file("streets.gpkg")
+
+    # 2. Build the network
+    cn = CityNetwork.from_geopandas(edges_gdf, crs="EPSG:32632")
+
+    # 3. Compute centrality at multiple scales
+    cn.centrality_shortest(distances=[400, 800, 1600])
+    cn.centrality_simplest(distances=[400, 800, 1600])
+
+    # 4. Compute land-use accessibility
+    landuses_gdf = gpd.read_file("landuses.gpkg")
+    cn, landuses_gdf = cn.compute_accessibilities(
+        data_gdf=landuses_gdf,
+        landuse_column_label="category",
+        accessibility_keys=["retail", "park"],
+        distances=[400, 800],
+        decay_fn=decay.exponential(),
+    )
+
+    # 5. Compute statistical aggregations
+    prices_gdf = gpd.read_file("property_prices.gpkg")
+    cn, prices_gdf = cn.compute_stats(
+        data_gdf=prices_gdf,
+        stats_column_labels=["price"],
+        distances=[800, 1600],
+        decay_fn=decay.gaussian(peak=400, cutoff=1600),
+    )
+
+    # 6. Export results with original LineString geometries
+    result_gdf = cn.to_geopandas()
+    result_gdf.to_file("results.gpkg")
+    ```
     """
 
     def __init__(
@@ -192,6 +309,22 @@ class CityNetwork:
         -------
         gdf: GeoDataFrame
             A new GeoDataFrame indexed by feature id with LineString geometries.
+
+        Examples
+        --------
+        ```python
+        cn.centrality_shortest(distances=[800])
+        result_gdf = cn.to_geopandas()
+
+        # result_gdf has LineString geometries (not midpoint Points)
+        print(result_gdf.geometry.geom_type.unique())  # ['LineString']
+
+        # All computed columns are present
+        print(result_gdf["cc_harmonic_800"])
+
+        # Export to file
+        result_gdf.to_file("centrality_results.gpkg")
+        ```
         """
         return gpd.GeoDataFrame(  # type: ignore
             {col: self._nodes_gdf[col] for col in self._nodes_gdf.columns if col != self._nodes_gdf.geometry.name},
@@ -280,6 +413,21 @@ class CityNetwork:
         ------
         ValueError
             If ``directed=True`` but ``oneway_fids`` is not provided.
+
+        Examples
+        --------
+        ```python
+        from shapely.geometry import LineString
+        from cityseer.network import CityNetwork
+
+        wkts = {
+            "street_a": LineString([(0, 0), (100, 0)]),
+            "street_b": LineString([(100, 0), (100, 100)]),
+            "street_c": LineString([(100, 0), (200, 0)]),
+        }
+        cn = CityNetwork.from_wkts(wkts, crs=32632)
+        cn.centrality_shortest(distances=[200])
+        ```
         """
         normalized_crs = _require_projected_crs(crs)
         directions = None
@@ -329,6 +477,44 @@ class CityNetwork:
         ------
         ValueError
             If ``directed=True`` but the GeoDataFrame has no ``oneway`` column.
+
+        Examples
+        --------
+        ```python
+        import geopandas as gpd
+        from shapely.geometry import LineString
+        from cityseer.network import CityNetwork
+
+        gdf = gpd.GeoDataFrame(
+            {
+                "geometry": [
+                    LineString([(0, 0), (100, 0)]),
+                    LineString([(100, 0), (100, 100)]),
+                    LineString([(100, 0), (200, 0)]),
+                ]
+            },
+            crs="EPSG:32632",
+        )
+        cn = CityNetwork.from_geopandas(gdf)
+        cn.centrality_shortest(distances=[200])
+        print(cn.nodes_gdf[["cc_harmonic_200", "cc_betweenness_200"]])
+        ```
+
+        With directed one-way streets:
+
+        ```python
+        gdf = gpd.GeoDataFrame(
+            {
+                "geometry": [
+                    LineString([(0, 0), (100, 0)]),
+                    LineString([(100, 0), (200, 0)]),
+                ],
+                "oneway": [True, False],
+            },
+            crs="EPSG:32632",
+        )
+        cn = CityNetwork.from_geopandas(gdf, directed=True)
+        ```
         """
         normalized_crs = _require_projected_crs(crs if crs is not None else gdf.crs)
         directions = None
@@ -380,6 +566,37 @@ class CityNetwork:
         ------
         ValueError
             If the input graph is a dual graph.
+
+        Examples
+        --------
+        From an undirected graph:
+
+        ```python
+        import networkx as nx
+        from shapely.geometry import LineString
+        from cityseer.network import CityNetwork
+
+        G = nx.MultiGraph(crs="EPSG:32632")
+        G.add_node("a", x=0.0, y=0.0)
+        G.add_node("b", x=100.0, y=0.0)
+        G.add_node("c", x=200.0, y=0.0)
+        G.add_edge("a", "b", geom=LineString([(0, 0), (100, 0)]))
+        G.add_edge("b", "c", geom=LineString([(100, 0), (200, 0)]))
+
+        cn = CityNetwork.from_nx(G)
+        ```
+
+        From a directed MultiDiGraph (e.g. via OSMnx):
+
+        ```python
+        G = nx.MultiDiGraph(crs="EPSG:32632")
+        G.add_node("a", x=0.0, y=0.0)
+        G.add_node("b", x=100.0, y=0.0)
+        # One-way: a -> b only
+        G.add_edge("a", "b", key=0, geom=LineString([(0, 0), (100, 0)]))
+        cn = CityNetwork.from_nx(G)
+        assert cn.is_directed
+        ```
         """
         primal_graph = util.validate_cityseer_networkx_graph(graph)
         if primal_graph.graph.get("is_dual", False):
@@ -469,6 +686,18 @@ class CityNetwork:
         -------
         network: CityNetwork
             A new CityNetwork instance.
+
+        Examples
+        --------
+        ```python
+        from shapely.geometry import box
+        from cityseer.network import CityNetwork
+
+        # Bounding box in WGS84 (lon/lat)
+        polygon = box(-0.13, 51.51, -0.12, 51.52)
+        cn = CityNetwork.from_osm(polygon, to_crs_code=32630)
+        cn.centrality_shortest(distances=[400, 800])
+        ```
         """
         graph = io.osm_graph_from_poly(
             poly_geom,
@@ -621,6 +850,18 @@ class CityNetwork:
         ----------
         path: str | Path
             Base file path. File extensions are replaced automatically.
+
+        Examples
+        --------
+        ```python
+        cn.centrality_shortest(distances=[800])
+        cn.save("my_network")
+        # Creates: my_network.nodes.parquet, my_network.state.pkl
+
+        # Later, restore the full network with all metrics
+        cn_restored = CityNetwork.load("my_network")
+        print(cn_restored.nodes_gdf["cc_harmonic_800"])
+        ```
         """
         path = Path(path)
         self._nodes_gdf.to_parquet(path.with_suffix(".nodes.parquet"))
@@ -684,13 +925,49 @@ class CityNetwork:
         """Compute shortest-path (metric) node centrality.
 
         Wraps [`node_centrality_shortest`](/metrics/networks#node-centrality-shortest). All keyword arguments
-        are forwarded; see that function for the full parameter list including ``distances``, ``betas``,
-        ``minutes``, ``compute_closeness``, ``compute_betweenness``, ``sample``, and ``epsilon``.
+        are forwarded; see that function for the full parameter list including ``distances``,
+        ``minutes``, ``compute_closeness``, ``compute_betweenness``, ``decay_fn``, ``sample``, and ``epsilon``.
 
         Returns
         -------
         self: CityNetwork
             Returns self for method chaining. Results are written to ``nodes_gdf``.
+
+        Examples
+        --------
+        ```python
+        from cityseer import decay
+
+        # Multiple distance thresholds
+        cn.centrality_shortest(distances=[400, 800, 1600])
+
+        # With custom decay and sampling for large networks
+        cn.centrality_shortest(
+            distances=[800, 2000, 5000],
+            decay_fn=decay.exponential(steepness=4),
+            sample=True,
+            epsilon=0.06,
+        )
+
+        # Closeness only (skip betweenness for speed)
+        cn.centrality_shortest(distances=[800], compute_betweenness=False)
+
+        # Using walking time thresholds instead of distances
+        cn.centrality_shortest(minutes=[5, 10, 20])
+        ```
+
+        Output columns per distance ``d`` (see [Column Naming Conventions](/intro#column-naming-conventions)):
+
+        | Column | Description |
+        | --- | --- |
+        | ``cc_density_{d}`` | Count of reachable nodes. |
+        | ``cc_harmonic_{d}`` | Harmonic closeness. |
+        | ``cc_farness_{d}`` | Sum of distances to reachable nodes. |
+        | ``cc_hillier_{d}`` | Hillier normalisation (density² / farness). |
+        | ``cc_cycles_{d}`` | Circuit rank (meshedness). |
+        | ``cc_decay_{d}`` | Decay-weighted closeness. |
+        | ``cc_betweenness_{d}`` | Betweenness centrality. |
+        | ``cc_betweenness_decay_{d}`` | Decay-weighted betweenness. |
         """
         self._nodes_gdf = networks.node_centrality_shortest(
             network_structure=self._network_structure,
@@ -705,10 +982,29 @@ class CityNetwork:
         Wraps [`node_centrality_simplest`](/metrics/networks#node-centrality-simplest). All keyword arguments
         are forwarded; see that function for the full parameter list.
 
+        This method does not accept a ``decay_fn`` parameter; angular centralities use angular cost rather
+        than distance-based decay.
+
         Returns
         -------
         self: CityNetwork
             Returns self for method chaining. Results are written to ``nodes_gdf``.
+
+        Examples
+        --------
+        ```python
+        cn.centrality_simplest(distances=[400, 800, 1600])
+        ```
+
+        Output columns per distance ``d`` (note the ``_ang`` suffix):
+
+        | Column | Description |
+        | --- | --- |
+        | ``cc_density_{d}_ang`` | Count of reachable nodes (angular routing). |
+        | ``cc_harmonic_{d}_ang`` | Harmonic closeness (cumulative angular change as impedance). |
+        | ``cc_farness_{d}_ang`` | Sum of cumulative angular changes to reachable nodes. |
+        | ``cc_hillier_{d}_ang`` | Hillier normalisation (density² / farness). |
+        | ``cc_betweenness_{d}_ang`` | Betweenness (simplest angular paths). |
         """
         self._nodes_gdf = networks.node_centrality_simplest(
             network_structure=self._network_structure,
@@ -798,7 +1094,10 @@ class CityNetwork:
     ) -> tuple[CityNetwork, gpd.GeoDataFrame]:
         """Compute land-use accessibility metrics.
 
-        Wraps [`compute_accessibilities`](/metrics/layers#compute-accessibilities).
+        Wraps [`compute_accessibilities`](/metrics/layers#compute-accessibilities). All additional keyword
+        arguments are forwarded; see that function for the full parameter list including
+        ``landuse_column_label``, ``accessibility_keys``, ``distances``, ``minutes``, ``decay_fn``,
+        and ``angular``.
 
         Parameters
         ----------
@@ -811,6 +1110,24 @@ class CityNetwork:
             Returns self with accessibility columns added to ``nodes_gdf``.
         data_gdf: GeoDataFrame
             The input data GeoDataFrame with nearest network assignments.
+
+        Examples
+        --------
+        ```python
+        from cityseer import decay
+
+        cn, landuses_gdf = cn.compute_accessibilities(
+            data_gdf=landuses_gdf,
+            landuse_column_label="category",
+            accessibility_keys=["retail", "cafe", "park"],
+            distances=[400, 800],
+            decay_fn=decay.exponential(),
+        )
+        # Count of reachable "retail" within 800m
+        print(cn.nodes_gdf["cc_retail_800"])
+        # Nearest distance to "park" at the maximum threshold
+        print(cn.nodes_gdf["cc_park_nearest_max_800"])
+        ```
         """
         self._nodes_gdf, data_gdf = layers.compute_accessibilities(
             data_gdf=data_gdf,
@@ -823,7 +1140,10 @@ class CityNetwork:
     def compute_mixed_uses(self, data_gdf: gpd.GeoDataFrame, **kwargs: Any) -> tuple[CityNetwork, gpd.GeoDataFrame]:
         """Compute mixed-use diversity metrics.
 
-        Wraps [`compute_mixed_uses`](/metrics/layers#compute-mixed-uses).
+        Wraps [`compute_mixed_uses`](/metrics/layers#compute-mixed-uses). All additional keyword
+        arguments are forwarded; see that function for the full parameter list including
+        ``landuse_column_label``, ``distances``, ``minutes``, ``compute_hill``, ``compute_shannon``,
+        ``compute_gini``, ``decay_fn``, and ``angular``.
 
         Parameters
         ----------
@@ -836,6 +1156,18 @@ class CityNetwork:
             Returns self with mixed-use columns added to ``nodes_gdf``.
         data_gdf: GeoDataFrame
             The input data GeoDataFrame with nearest network assignments.
+
+        Examples
+        --------
+        ```python
+        cn, landuses_gdf = cn.compute_mixed_uses(
+            data_gdf=landuses_gdf,
+            landuse_column_label="category",
+            distances=[400, 800],
+        )
+        # Hill diversity at q=0 (count of distinct land-uses) at 800m
+        print(cn.nodes_gdf["cc_hill_q0_800"])
+        ```
         """
         self._nodes_gdf, data_gdf = layers.compute_mixed_uses(
             data_gdf=data_gdf,
@@ -848,7 +1180,9 @@ class CityNetwork:
     def compute_stats(self, data_gdf: gpd.GeoDataFrame, **kwargs: Any) -> tuple[CityNetwork, gpd.GeoDataFrame]:
         """Compute statistical aggregations of numerical data over the network.
 
-        Wraps [`compute_stats`](/metrics/layers#compute-stats).
+        Wraps [`compute_stats`](/metrics/layers#compute-stats). All additional keyword arguments are forwarded;
+        see that function for the full parameter list including ``stats_column_labels``, ``distances``,
+        ``minutes``, ``decay_fn``, and ``angular``.
 
         Parameters
         ----------
@@ -861,6 +1195,23 @@ class CityNetwork:
             Returns self with statistical columns added to ``nodes_gdf``.
         data_gdf: GeoDataFrame
             The input data GeoDataFrame with nearest network assignments.
+
+        Examples
+        --------
+        ```python
+        from cityseer import decay
+
+        cn, prices_gdf = cn.compute_stats(
+            data_gdf=prices_gdf,
+            stats_column_labels=["price", "floor_area"],
+            distances=[800, 1600],
+            decay_fn=decay.exponential(),
+        )
+        # Weighted mean of "price" at 800m
+        print(cn.nodes_gdf["cc_price_mean_800"])
+        # Weighted sum of "floor_area" at 1600m
+        print(cn.nodes_gdf["cc_floor_area_sum_1600"])
+        ```
         """
         self._nodes_gdf, data_gdf = layers.compute_stats(
             data_gdf=data_gdf,
@@ -907,7 +1258,7 @@ class CityNetwork:
     def to_nx(self) -> nx.MultiGraph | nx.MultiDiGraph:
         """Convert the network to a NetworkX MultiGraph (or MultiDiGraph if directed).
 
-        If the network was built with :meth:`from_nx`, returns a copy of the original graph with computed
+        If the network was built with [`from_nx`](#from-nx), returns a copy of the original graph with computed
         centrality and layer columns added to each edge's data dictionary. Otherwise builds a new
         cityseer-compatible undirected graph from the internal GeoDataFrame.
 
@@ -919,7 +1270,19 @@ class CityNetwork:
         Raises
         ------
         NotImplementedError
-            If the network is directed but was not built via :meth:`from_nx` (no source graph to export).
+            If the network is directed but was not built via [`from_nx`](#from-nx) (no source graph to export).
+
+        Examples
+        --------
+        ```python
+        cn = CityNetwork.from_nx(G)
+        cn.centrality_shortest(distances=[800])
+
+        # Round-trip: get back a NetworkX graph with metrics on edges
+        G_with_metrics = cn.to_nx()
+        u, v, k, data = list(G_with_metrics.edges(keys=True, data=True))[0]
+        print(data["cc_harmonic_800"])
+        ```
         """
         source_graph: nx.MultiGraph | None = self._state.get("nx_source_graph")
         if source_graph is not None:
