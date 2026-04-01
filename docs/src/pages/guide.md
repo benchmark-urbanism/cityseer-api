@@ -315,7 +315,7 @@ Graph cleaning functions in the [`graphs`](/tools/graphs) module do not preserve
 
 ## Elevation and Slope
 
-`cityseer` supports optional z (elevation) coordinates on network geometries. When present, [Tobler's hiking function](https://en.wikipedia.org/wiki/Tobler%27s_hiking_function) automatically adjusts traversal costs: uphill segments incur a penalty proportional to the grade, steep downhill segments are also penalised, and gentle downhill slopes (~3%) receive a slight bonus. The penalty is computed directionally (A to B differs from B to A) and composes with the configured walking speed.
+`cityseer` supports optional z (elevation) coordinates on network geometries. When present, [Tobler's hiking function](https://en.wikipedia.org/wiki/Tobler%27s_hiking_function) automatically adjusts traversal costs: uphill segments incur a penalty proportional to the grade, steep downhill segments are also penalised, and gentle downhill slopes (~3%) receive a slight bonus. The penalty is computed directionally (A to B differs from B to A) and is applied on top of the configured walking speed.
 
 For angular analysis, the slope penalty affects only the reachability budget, not the angular routing metric itself.
 
@@ -364,7 +364,7 @@ The [`metrics.visibility`](/metrics/visibility) module computes line-of-sight vi
 
 ### Street continuity
 
-The [`metrics.observe`](/metrics/observe) module analyses street continuity: identifying coherent street sequences based on name, route number, or highway classification. See the [Street Continuity from OSM](https://benchmark-urbanism.github.io/cityseer-examples/recipes/continuity/continuity_osm.html) example.
+The [`metrics.observe`](/metrics/observe) module identifies coherent street sequences based on name, route number, or highway classification. See the [Street Continuity from OSM](https://benchmark-urbanism.github.io/cityseer-examples/recipes/continuity/continuity_osm.html) example.
 
 ### Public transport (GTFS)
 
@@ -382,7 +382,7 @@ Computation time scales with the number of edges, the number of distance thresho
 
 ## Adaptive Sampling
 
-For large networks at long distance thresholds (5 km+), `cityseer` offers an experimental adaptive sampling feature. Rather than using every node as a source, a distance-dependent subset is sampled using the Hoeffding bound, with inverse-probability weighting to maintain unbiased estimates. Sampling is exact at short distances and progressively sparser at longer distances.
+For large networks at long distance thresholds (5 km+), `cityseer` offers an experimental adaptive sampling feature. Rather than using every node as a source, a distance-dependent subset is sampled using the Hoeffding bound, with inverse-probability weighting to correct for non-uniform inclusion probabilities. Sampling is exact at short distances and progressively sparser at longer distances.
 
 The `epsilon` parameter controls the error tolerance: `0.06` is a good starting point for most analyses, yielding Spearman rank correlations above 0.95 against exact computation. Use `0.03` for higher accuracy at the cost of more computation, or `0.1` for faster exploratory analysis:
 
@@ -393,6 +393,8 @@ cn.centrality_shortest(
     epsilon=0.06,
 )
 ```
+
+Both `centrality_shortest` and `centrality_simplest` support sampling.
 
 :::warning
 Adaptive sampling is experimental. When comparing centrality values across locations, use the same `epsilon` to ensure consistent error tolerances.
