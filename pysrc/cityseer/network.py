@@ -5,6 +5,7 @@ export into a single interface. It builds dual graphs directly from LineString g
 shortest-path and simplest-path (angular) analysis. See the [Guide](/guide) for concepts, conventions, and worked
 examples.
 """
+
 from __future__ import annotations
 
 import pickle

@@ -12,6 +12,7 @@ site, including the
 [Mixed Uses](https://benchmark-urbanism.github.io/cityseer-examples/recipes/accessibility/gpd_mixed_uses.html), and
 [Statistical Aggregations](https://benchmark-urbanism.github.io/cityseer-examples/recipes/stats/gpd_stats.html) recipes.
 """
+
 from __future__ import annotations
 
 import logging
