@@ -116,6 +116,17 @@ side-effects as a function of varied node intensities when computing network cen
  A `networkX` `MultiGraph` with nodes of degree=2 removed. Adjacent edges will be combined into a unified new edge with associated `geom` attributes spliced together.</div>
 </div>
 
+### Notes
+
+```python
+from cityseer.tools import mock, graphs
+
+G = mock.mock_graph()
+G = graphs.nx_simple_geoms(G)
+G_clean = graphs.nx_remove_filler_nodes(G)
+```
+
+ For a worked example, see the [Network Simplification](https://benchmark-urbanism.github.io/cityseer-examples/recipes/networks/network_simplification.html) recipe.
 
 </div>
 

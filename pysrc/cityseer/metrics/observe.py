@@ -217,6 +217,12 @@ def street_continuity(
         An instance of [`StreetContinuityReport`](/metrics/observe#streetcontinuityreport) containing the computed
         state for the selected method.
 
+    Notes
+    -----
+    For worked examples, see the
+    [Street Continuity from OSM](https://benchmark-urbanism.github.io/cityseer-examples/recipes/continuity/continuity_osm.html)
+    recipe.
+
     """
     # NOTE: experimented with string cleaning and removal of generic descriptors but this worked contrary to intentions.
 

@@ -310,6 +310,9 @@ layout: ../../layouts/PageLayout.astro
  An instance of [`StreetContinuityReport`](/metrics/observe#streetcontinuityreport) containing the computed state for the selected method.</div>
 </div>
 
+### Notes
+
+ For worked examples, see the [Street Continuity from OSM](https://benchmark-urbanism.github.io/cityseer-examples/recipes/continuity/continuity_osm.html) recipe.
 
 </div>
 

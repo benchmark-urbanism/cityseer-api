@@ -6,6 +6,11 @@ layout: ../../layouts/PageLayout.astro
 # layers
 
 
+ Compute land-use accessibility, mixed-use diversity, and statistical aggregations over the street network. Data points (land uses, numerical attributes) are assigned to the nearest street edges and then aggregated within network-distance catchments around each node. The aggregations are produced at the same node locations used for centrality computations, enabling direct correlation between structural and functional characteristics of the urban environment. An optional ``decay_fn`` parameter controls how distance affects the weighting; see the [`cityseer.decay`](/api/decay) module for preset helpers.
+
+ For practical worked examples, see the [Cityseer Examples](https://benchmark-urbanism.github.io/cityseer-examples/) site, including the [OSM Accessibility](https://benchmark-urbanism.github.io/cityseer-examples/recipes/accessibility/osm_accessibility.html), [Mixed Uses](https://benchmark-urbanism.github.io/cityseer-examples/recipes/accessibility/gpd_mixed_uses.html), and [Statistical Aggregations](https://benchmark-urbanism.github.io/cityseer-examples/recipes/stats/gpd_stats.html) recipes.
+
+
 <div class="function">
 
 ## build_data_map
@@ -51,7 +56,7 @@ layout: ../../layouts/PageLayout.astro
 </div>
 
 
- Assign a `GeoDataFrame` to a [`rustalgos.graph.NetworkStructure`](/rustalgos/rustalgos#networkstructure). A `NetworkStructure` provides the backbone for the calculation of land-use and statistical aggregations over the network. Points will be assigned to the closest street edge. Polygons will be assigned to the closest `n_nearest_candidates` adjacent street edges. up to
+ Assign a `GeoDataFrame` to a [`rustalgos.graph.NetworkStructure`](/rustalgos/rustalgos#networkstructure). A `NetworkStructure` provides the backbone for the calculation of land-use and statistical aggregations over the network. Points will be assigned to the closest street edge. Polygons will be assigned to the closest `n_nearest_candidates` adjacent street edges.
 ### Parameters
 <div class="param-set">
   <div class="def">
@@ -405,6 +410,7 @@ print(nodes_gdf["cc_c_400"])
 print(nodes_gdf["cc_c_nearest_max_800"])
 ```
 
+ For worked examples with real-world data, see the [OSM Accessibility](https://benchmark-urbanism.github.io/cityseer-examples/recipes/accessibility/osm_accessibility.html) recipe.
 
 </div>
 
@@ -736,6 +742,8 @@ has been used. Meaningful comparisons from one location to another are only poss
 been applied.
 :::
 
+ For a worked example, see the [Mixed Uses](https://benchmark-urbanism.github.io/cityseer-examples/recipes/accessibility/gpd_mixed_uses.html) recipe.
+
 </div>
 
 
@@ -1056,6 +1064,8 @@ computed distances:
 The decay function (default exponential, or custom via `decay_fn`) controls how
 distance affects the weighting. Use `decay_fn="1"` for flat (unweighted) metrics.
 :::
+
+ For a worked example, see the [Statistical Aggregations](https://benchmark-urbanism.github.io/cityseer-examples/recipes/stats/gpd_stats.html) recipe.
 
 </div>
 

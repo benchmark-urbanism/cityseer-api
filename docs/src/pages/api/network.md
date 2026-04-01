@@ -6,6 +6,9 @@ layout: ../../layouts/PageLayout.astro
 # network
 
 
+ High-level CityNetwork API for urban network analysis. The [`CityNetwork`](#citynetwork) class wraps network construction, centrality computation, land-use analysis, and export into a single interface. It builds dual graphs directly from LineString geometries, enabling both shortest-path and simplest-path (angular) analysis. See the [Guide](/guide) for concepts, conventions, and worked examples.
+
+
 <div class="class">
 
 
@@ -147,6 +150,7 @@ result_gdf = cn.to_geopandas()
 result_gdf.to_file("results.gpkg")
 ```
 
+ For end-to-end worked examples with real-world data, see the [Cityseer Examples](https://benchmark-urbanism.github.io/cityseer-examples/) site, including the [Quickstart](https://benchmark-urbanism.github.io/cityseer-examples/recipes/quickstart.html) notebook.
 
 
 

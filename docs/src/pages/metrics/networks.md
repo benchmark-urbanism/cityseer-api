@@ -33,7 +33,7 @@ The reasons for picking one approach over another are varied:
 this reason, they can be susceptible to distortions caused by messy graph topologies such redundant and varied
 concentrations of degree=2 nodes (e.g. to describe roadway geometry) or needlessly complex representations of
 street intersections. In these cases, the network should first be cleaned using methods such as those available in
-the [`graph`](/tools/graphs) module (see the [graph cleaning guide](/guide#graph-cleaning) for examples). If a
+the [`graph`](/tools/graphs) module (see the [network preparation guide](/guide#network-preparation) for examples). If a
 network topology has varied intensities of nodes but the street segments are less spurious, then segmentised methods
 can be preferable because they are based on segment distances: segment aggregations remain the same regardless of
 the number of intervening nodes, however, are not immune from situations such as needlessly complex representations
@@ -278,6 +278,24 @@ may therefore be preferable when working at small thresholds on decomposed netwo
  The input `nodes_gdf` parameter is returned with additional centrality columns.</div>
 </div>
 
+### Notes
+
+```python
+from cityseer.tools import mock, graphs, io
+from cityseer.metrics import networks
+
+G = mock.mock_graph()
+G = graphs.nx_simple_geoms(G)
+nodes_gdf, edges_gdf, network_structure = io.network_structure_from_nx(G)
+nodes_gdf = networks.node_centrality_shortest(
+    network_structure,
+    nodes_gdf,
+    distances=[400, 800],
+)
+print(nodes_gdf[["cc_harmonic_400", "cc_betweenness_800"]])
+```
+
+ For worked examples with real-world data, see the [Metric Centrality](https://benchmark-urbanism.github.io/cityseer-examples/recipes/centrality/gpd_metric_centrality.html) and [OSM Centrality](https://benchmark-urbanism.github.io/cityseer-examples/recipes/centrality/osm_centrality.html) recipes.
 
 </div>
 
@@ -518,7 +536,7 @@ may therefore be preferable when working at small thresholds on decomposed netwo
   </div>
   <div class="desc">
 
- An [`OdMatrix`](/rustalgos/centrality#odmatrix) mapping (origin, destination) node pairs to trip weights. Build with [`config.build_od_matrix`](/config#build-od-matrix).</div>
+ An [`OdMatrix`](/rustalgos/centrality#odmatrix) mapping (origin, destination) node pairs to trip weights. Build with [`build_od_matrix`](/metrics/networks#build-od-matrix).</div>
 </div>
 
 <div class="param-set">
@@ -803,6 +821,25 @@ may therefore be preferable when working at small thresholds on decomposed netwo
  The input `nodes_gdf` parameter is returned with additional centrality columns.</div>
 </div>
 
+### Notes
+
+```python
+from cityseer.tools import mock, graphs, io
+from cityseer.metrics import networks
+
+G = mock.mock_graph()
+G = graphs.nx_simple_geoms(G)
+G_dual = graphs.nx_to_dual(G)
+nodes_gdf, edges_gdf, network_structure = io.network_structure_from_nx(G_dual)
+nodes_gdf = networks.node_centrality_simplest(
+    network_structure,
+    nodes_gdf,
+    distances=[400, 800],
+)
+print(nodes_gdf[["cc_harmonic_400_ang", "cc_betweenness_800_ang"]])
+```
+
+ For a worked example, see the [Angular Centrality](https://benchmark-urbanism.github.io/cityseer-examples/recipes/centrality/gpd_angular_centrality.html) recipe.
 
 </div>
 
