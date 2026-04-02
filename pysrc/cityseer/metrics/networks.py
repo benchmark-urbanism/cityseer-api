@@ -194,8 +194,9 @@ def _extract_results(
                 namespace: dict[str, np.ndarray] = {}
                 for name in next(iter(results.values())).metrics:
                     col_key = config.prep_gdf_key(name, d, angular=angular)
-                    if col_key in temp_data:
-                        namespace[name] = temp_data[col_key]
+                    val = temp_data.get(col_key)
+                    if val is not None:
+                        namespace[name] = val  # type: ignore[assignment]
                 try:
                     with np.errstate(divide="ignore", invalid="ignore"):
                         data_key = config.prep_gdf_key(pp_name, d, angular=angular)
@@ -527,7 +528,7 @@ def betweenness_od(
         speed_m_s=speed_m_s,
         tolerance=tolerance,
     )
-    result = config.wrap_progress(
+    result: rustalgos.centrality.CentralityResult = config.wrap_progress(  # type: ignore[assignment]
         total=network_structure.street_node_count(), rust_struct=network_structure, partial_func=partial_func
     )
     resolved_distances = config.log_thresholds(

@@ -445,13 +445,13 @@ class CityseerCentralityAlgorithm(CityseerAlgorithmBase):
                     and d in metrics["density"]
                     and d in metrics["farness"]
                 ):
-                        density = metrics["density"][d]
-                        farness = metrics["farness"][d]
-                        for i, fid in enumerate(result.node_keys_py):
-                            if fid in results and farness[i] > 0:
-                                val = float(density[i] ** 2 / farness[i])
-                                hcol = f"cc_hillier_{d}_{col_prefix}" if col_prefix else f"cc_hillier_{d}"
-                                results[fid][hcol] = val if math.isfinite(val) else None
+                    density = metrics["density"][d]
+                    farness = metrics["farness"][d]
+                    for i, fid in enumerate(result.node_keys_py):
+                        if fid in results and farness[i] > 0:
+                            val = float(density[i] ** 2 / farness[i])
+                            hcol = f"cc_hillier_{d}_{col_prefix}" if col_prefix else f"cc_hillier_{d}"
+                            results[fid][hcol] = val if math.isfinite(val) else None
 
         def _run_metric_batches(
             label,
