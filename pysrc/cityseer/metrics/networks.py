@@ -51,6 +51,7 @@ from __future__ import annotations
 
 import logging
 from functools import partial
+from typing import cast
 
 import geopandas as gpd
 import numpy as np
@@ -195,7 +196,7 @@ def _extract_results(
                 for name in next(iter(results.values())).metrics:
                     col_key = config.prep_gdf_key(name, d, angular=angular)
                     if col_key in temp_data:
-                        namespace[name] = temp_data[col_key]
+                        namespace[name] = cast(np.ndarray, temp_data[col_key])
                 try:
                     with np.errstate(divide="ignore", invalid="ignore"):
                         data_key = config.prep_gdf_key(pp_name, d, angular=angular)
@@ -527,8 +528,11 @@ def betweenness_od(
         speed_m_s=speed_m_s,
         tolerance=tolerance,
     )
-    result = config.wrap_progress(
-        total=network_structure.street_node_count(), rust_struct=network_structure, partial_func=partial_func
+    result = cast(
+        rustalgos.centrality.CentralityResult,
+        config.wrap_progress(
+            total=network_structure.street_node_count(), rust_struct=network_structure, partial_func=partial_func
+        ),
     )
     resolved_distances = config.log_thresholds(
         distances=distances,

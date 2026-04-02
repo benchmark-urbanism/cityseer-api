@@ -27,7 +27,6 @@ class OdMatrix:
         """Number of unique origin nodes."""
         ...
 
-
 class CentralityResult:
     """Holds centrality results from closeness, betweenness, and/or cycles computation."""
 
