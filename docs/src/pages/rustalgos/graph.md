@@ -1232,17 +1232,7 @@ layout: ../../layouts/PageLayout.astro
 
  
 
-<span class="name">node_xys</span>
-
-
- 
-
-<span class="name">node_ys</span>
-
-
- 
-
-<span class="name">node_zs</span>
+<span class="name">node_xyzs</span>
 
 
  
@@ -1252,12 +1242,22 @@ layout: ../../layouts/PageLayout.astro
 
  
 
+<span class="name">node_zs</span>
+
+
+ 
+
+<span class="name">node_ys</span>
+
+
+ 
+
 <span class="name">street_node_lives</span>
 
 
  
 
-<span class="name">node_xyzs</span>
+<span class="name">node_xys</span>
 
 
  

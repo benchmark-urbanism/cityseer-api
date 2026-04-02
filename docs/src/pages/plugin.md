@@ -43,8 +43,8 @@ The algorithm dialog provides a 2x2 grid of metric categories. Each category can
 
 |                 | Shortest path                                     | Simplest path (angular)             |
 | --------------- | ------------------------------------------------- | ----------------------------------- |
-| **Closeness**   | harmonic, density, farness, beta, cycles, hillier | harmonic, density, farness, hillier |
-| **Betweenness** | betweenness, betweenness_beta                     | betweenness, betweenness_beta       |
+| **Closeness**   | harmonic, density, farness, decay, cycles, hillier | harmonic, density, farness, hillier |
+| **Betweenness** | betweenness, betweenness_decay                     | betweenness                         |
 
 By default, harmonic closeness and betweenness are enabled for shortest paths. All simplest path categories are off by default.
 

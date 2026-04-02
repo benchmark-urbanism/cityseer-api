@@ -147,34 +147,121 @@ Input geometries are automatically cleaned during construction: short self-loops
 
 Centrality metrics quantify the structural importance of each location in the street network. `cityseer` computes multiple centrality measures simultaneously for any combination of distance thresholds in a single pass.
 
+### Expression-based metrics
+
+Metrics are defined as `{name: expression}` dictionaries using two variables:
+
+- **`c`** (cost): the raw routing cost to each reached node. For shortest paths, `c` is the metric distance in metres. For simplest paths, `c` is the cumulative angular change in degrees.
+- **`p`** (progress): normalised progress from 0 at the source to 1 at the distance threshold. For shortest paths, `p = c / threshold`. For simplest paths, `p = elapsed_time / max_time`.
+
+Metrics fall into four categories:
+
+| Category | Role | Example |
+| --- | --- | --- |
+| **Closeness** | Expression is evaluated once per reached node and summed across all reachable nodes. | `{"harmonic": "1/c"}` accumulates $\sum_j 1/c_j$ |
+| **Betweenness** | Expression weights the contribution of each destination during Brandes backpropagation. | `{"betweenness": "1"}` counts paths equally |
+| **Cycles** | Boolean flag; computes the circuit rank of the locally reachable subgraph (shortest-path only). | `cycles=True` |
+| **Postprocess** | Derives new columns from previously computed metrics using simple arithmetic (`+`, `-`, `*`, `/`, `**`). | `{"hillier": "density**2 / farness"}` |
+
+Pass `None` to use the defaults for a category, or `{}` to skip it entirely.
+
 ### Shortest-path centrality
 
-[`centrality_shortest`](/api/network#centrality-shortest) (or [`centrality_shortest`](/metrics/networks#centrality-shortest) in the lower-level API) computes the following metrics for each distance threshold `d`:
+[`centrality_shortest`](/api/network#centrality-shortest) (or [`centrality_shortest`](/metrics/networks#centrality-shortest) in the lower-level API) computes the following default metrics for each distance threshold `d`. In the formulas below, the sum is over all nodes $j$ reachable within $d$, $c_j$ is the shortest-path distance in metres to node $j$, and $p_j = c_j / d$.
+
+**Default closeness** (pass `closeness=None` or omit):
+
+| Column | Expression | Formula | Description |
+| --- | --- | --- | --- |
+| `cc_density_{d}` | `"1"` | $\sum_j 1$ | Count of nodes reachable within distance $d$. A simple measure of local connectivity. |
+| `cc_farness_{d}` | `"c"` | $\sum_j c_j$ | Sum of metric distances to all reachable nodes. Lower values indicate better average proximity. |
+| `cc_harmonic_{d}` | `"1/c"` | $\sum_j 1 / c_j$ | Harmonic closeness: sum of inverse distances. Higher values indicate better proximity. Unlike standard closeness, harmonic closeness handles distance-bounded analysis correctly because unreachable nodes contribute 0 rather than distorting the average. |
+| `cc_decay_{d}` | `"exp(-4 * p)"` | $\sum_j e^{-4 p_j}$ | Exponential decay-weighted closeness. Nearby nodes contribute most; at the distance threshold ($p = 1$), weight drops to $e^{-4} \approx 1.8\%$. This is the continuous equivalent of the historical $\beta$-weighted metric. |
+
+**Default betweenness** (pass `betweenness=None` or omit):
+
+| Column | Expression | Formula | Description |
+| --- | --- | --- | --- |
+| `cc_betweenness_{d}` | `"1"` | $\sum_{s,t} \sigma_{st}(v) / \sigma_{st}$ | Unweighted betweenness: for each origin–destination pair $(s, t)$, counts the fraction of shortest paths that pass through node $v$. High values indicate through-movement potential. |
+| `cc_betweenness_decay_{d}` | `"exp(-4 * p)"` | $\sum_{s,t} e^{-4 p_t} \cdot \sigma_{st}(v) / \sigma_{st}$ | Decay-weighted betweenness: each pair's contribution is downweighted by the exponential decay applied to the destination's normalised distance $p_t$. Paths to distant destinations count less. |
+
+**Default postprocess** (pass `postprocess=None` or omit):
+
+| Column | Expression | Formula | Description |
+| --- | --- | --- | --- |
+| `cc_hillier_{d}` | `"density**2 / farness"` | $n^2 / \sum_j c_j$ | Hillier normalisation: rewards locations that are both well-connected (high density $n$) and proximate (low farness). This is the standard normalisation used in space syntax research. |
+
+**Cycles** (`cycles=True` by default):
 
 | Column | Description |
 | --- | --- |
-| `cc_density_{d}` | Count of reachable nodes within distance `d`. |
-| `cc_harmonic_{d}` | Harmonic closeness: sum of inverse distances to reachable nodes. Higher values indicate better average proximity. |
-| `cc_farness_{d}` | Sum of distances to all reachable nodes. Lower values indicate better proximity. |
-| `cc_hillier_{d}` | Hillier normalisation (`density^2 / farness`): rewards locations that are both well-connected (many reachable nodes) and proximate (low total distance). |
-| `cc_cycles_{d}` | Circuit rank: the number of independent loops in the locally reachable subgraph. In grid-like networks, each loop roughly corresponds to a city block; in less regular networks, it measures the overall redundancy of route choices. |
-| `cc_decay_{d}` | Decay-weighted closeness (default: `exp(-4 * p)`). |
-| `cc_betweenness_{d}` | Betweenness centrality: count of shortest paths passing through each node. High betweenness indicates through-movement potential. |
-| `cc_betweenness_decay_{d}` | Decay-weighted betweenness (default: `exp(-4 * p)`). |
+| `cc_cycles_{d}` | Circuit rank of the locally reachable subgraph: the number of independent loops ($e - n + 1$ where $e$ is edges and $n$ is nodes in the subgraph). In grid-like networks, each loop roughly corresponds to a city block; in less regular networks, it measures the redundancy of route choices. |
 
 ### Simplest-path centrality
 
-[`centrality_simplest`](/api/network#centrality-simplest) (or [`centrality_simplest`](/metrics/networks#centrality-simplest) in the lower-level API) computes angular centrality metrics. Note the `_ang` suffix:
+[`centrality_simplest`](/api/network#centrality-simplest) (or [`centrality_simplest`](/metrics/networks#centrality-simplest) in the lower-level API) computes angular centrality metrics. For simplest paths, `c` is the cumulative angular change in degrees (the total turning at each junction along a route) rather than metric distance. The variable `p` is normalised elapsed time (not angular cost), so the distance reachability budget is still metric. Note the `_ang` suffix on all output columns.
 
-| Column | Description |
-| --- | --- |
-| `cc_density_{d}_ang` | Count of reachable nodes within distance `d` (angular routing). |
-| `cc_harmonic_{d}_ang` | Harmonic closeness using cumulative angular change as impedance. |
-| `cc_farness_{d}_ang` | Sum of cumulative angular changes to reachable nodes (angular integration in space syntax terminology). |
-| `cc_hillier_{d}_ang` | Hillier normalisation: `density^2 / farness`. |
-| `cc_betweenness_{d}_ang` | Betweenness using simplest angular paths (angular choice in space syntax terminology). |
+**Default closeness** (pass `closeness=None` or omit):
 
-Simplest-path centrality uses angular cost as `c` in expressions rather than metric distance. Decay-weighted angular metrics can be added via custom expressions if needed.
+| Column | Expression | Formula | Description |
+| --- | --- | --- | --- |
+| `cc_density_{d}_ang` | `"1"` | $\sum_j 1$ | Count of nodes reachable within distance $d$ via angular routing. |
+| `cc_farness_{d}_ang` | `"1 + c / 90"` | $\sum_j (1 + c_j / 90)$ | Angular farness. The $1 + c/90$ transform maps a straight-ahead path ($0°$) to 1 and a single $90°$ turn to 2, giving a meaningful scale that avoids division-by-zero at the source. Equivalent to angular integration in space syntax. |
+| `cc_harmonic_{d}_ang` | `"1 / (1 + c / 90)"` | $\sum_j 1 / (1 + c_j / 90)$ | Angular harmonic closeness: the inverse of the farness expression. Higher values indicate better angular proximity (straighter routes to more destinations). |
+
+**Default betweenness** (pass `betweenness=None` or omit):
+
+| Column | Expression | Formula | Description |
+| --- | --- | --- | --- |
+| `cc_betweenness_{d}_ang` | `"1"` | $\sum_{s,t} \sigma_{st}(v) / \sigma_{st}$ | Angular betweenness: fraction of simplest (minimum angular change) paths through each node. Equivalent to angular choice in space syntax. |
+
+**Default postprocess** (pass `postprocess=None` or omit):
+
+| Column | Expression | Formula | Description |
+| --- | --- | --- | --- |
+| `cc_hillier_{d}_ang` | `"density**2 / farness"` | $n^2 / \sum_j (1 + c_j / 90)$ | Hillier normalisation for angular metrics. |
+
+Simplest-path centrality does not include decay-weighted metrics by default because angular cost is not a distance measure. Decay-weighted angular metrics can be added via custom expressions if needed.
+
+### Custom metrics
+
+To define custom metrics, pass a dictionary of `{name: expression}` pairs. Expressions can use `c`, `p`, and the mathematical functions `exp`, `ln`, `sqrt`, `abs`, `sin`, `cos`, `min`, `max`, `floor`, `ceil`, plus constants `pi` and `e`.
+
+```python
+# Custom gravity model and linear-decay betweenness
+cn.centrality_shortest(
+    distances=[800],
+    closeness={"gravity": "1 / c^2", "reach": "1"},
+    betweenness={"bt_linear": "1 - p"},
+    postprocess={},  # skip hillier
+)
+
+# Angular centrality with decay-weighted betweenness
+cn.centrality_simplest(
+    distances=[800],
+    betweenness={"betweenness": "1", "bt_decay": "exp(-4 * p)"},
+)
+```
+
+### Segment-weighted centrality
+
+When `segment_weighted=True`, each node in the dual graph is weighted by its corresponding street segment length. This means:
+
+- **Closeness** metrics reflect total reachable street length rather than node counts (e.g. density becomes total metres of reachable street within the threshold).
+- **Betweenness** weights each origin–destination pair by both endpoint segment lengths, so longer streets contribute more to betweenness flows.
+
+This requires a dual graph representation (which `CityNetwork` builds automatically).
+
+```python
+cn.centrality_shortest(distances=[800], segment_weighted=True)
+```
+
+### Convenience wrappers
+
+For cases where only closeness or only betweenness is needed, convenience functions skip the unused category:
+
+- [`closeness_shortest`](/metrics/networks#closeness-shortest) / [`closeness_simplest`](/metrics/networks#closeness-simplest) — closeness only (betweenness disabled)
+- [`betweenness_shortest`](/metrics/networks#betweenness-shortest) / [`betweenness_simplest`](/metrics/networks#betweenness-simplest) — betweenness only (closeness and cycles disabled)
 
 ### Centrality recipes
 
@@ -184,7 +271,7 @@ Simplest-path centrality uses angular cost as `c` in expressions rather than met
 
 ## Decay Functions
 
-Centrality, accessibility, mixed-use, and statistical aggregation methods accept an optional `decay_fn` parameter that controls how distance affects metric weighting. The decay function is a string expression using a variable `p` that ranges from 0 at the source to 1 at the distance cutoff (`p = network_distance / max_distance`). Decay applies to shortest-path (metric distance) computations only; simplest-path (angular) centralities do not use decay because angular change is not a distance measure.
+Distance decay controls how feature importance or metric weighting decreases with distance from an analysis point. For **centrality**, decay is built into the metric expressions (e.g. the default `"exp(-4 * p)"` closeness and betweenness metrics described above). For **land-use methods** (`compute_accessibilities`, `compute_mixed_uses`, `compute_stats`), an optional `decay_fn` parameter accepts a string expression using a variable `p` that ranges from 0 at the source to 1 at the distance cutoff (`p = network_distance / max_distance`). The [`cityseer.decay`](/api/decay) module provides helper functions that return pre-built expression strings for common decay shapes.
 
 ### When to use each preset
 

@@ -1170,8 +1170,8 @@ cn.centrality_simplest(distances=[400, 800, 1600])
 | Column | Description |
 | --- | --- |
 | ``cc_density_{d}_ang`` | Count of reachable nodes (or total reachable street length if segment_weighted). |
-| ``cc_harmonic_{d}_ang`` | Harmonic closeness using cumulative angular change (total directional change along the route) as impedance. |
-| ``cc_farness_{d}_ang`` | Sum of cumulative angular changes to reachable nodes (angular integration in space syntax). |
+| ``cc_harmonic_{d}_ang`` | Harmonic closeness using angular cost as impedance. |
+| ``cc_farness_{d}_ang`` | Sum of angular costs to reachable nodes. |
 | ``cc_hillier_{d}_ang`` | Hillier normalisation (density² / farness). |
 | ``cc_betweenness_{d}_ang`` | Betweenness using simplest angular paths (angular choice in space syntax). |
 
