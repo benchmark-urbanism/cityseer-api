@@ -1311,7 +1311,7 @@ class CityNetwork:
                     k = int(row["primal_edge_idx"])
                     if g.has_edge(u, v, k):
                         for col in cc_cols:
-                            g[u][v][k][col] = row[col]
+                            g[u][v][k][col] = row[col]  # type: ignore
             return g
         if self.is_directed:
             raise NotImplementedError(

@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
-from cityseer import config
+from cityseer import config, rustalgos
 from cityseer.metrics import networks
 from cityseer.tools import io
 
@@ -262,3 +262,104 @@ def test_simplest_wrappers_require_dual_graph(primal_graph):
             nodes_gdf=nodes_gdf.copy(),
             distances=distances,
         )
+
+
+def _build_line(weights: list[float], spacing: float = 100.0) -> rustalgos.graph.NetworkStructure:
+    """Build a simple path graph 0-1-2-... with the given per-node weights."""
+    ns = rustalgos.graph.NetworkStructure()
+    coords = [(i * spacing, 0.0) for i in range(len(weights))]
+    for i, (x, y) in enumerate(coords):
+        ns.add_street_node(node_key=str(i), x=x, y=y, live=True, weight=weights[i])
+    for i in range(len(weights) - 1):
+        wkt = f"LINESTRING ({coords[i][0]} 0, {coords[i + 1][0]} 0)"
+        ns.add_street_edge(i, i + 1, i, str(i), str(i + 1), wkt)
+        ns.add_street_edge(i + 1, i, i, str(i + 1), str(i), wkt)
+    ns.validate()
+    ns.build_edge_rtree()
+    return ns
+
+
+def test_node_weight_closeness_is_gravity():
+    """Node weight should weight reachable destinations (gravity), not rescale the node's own score.
+
+    For density (f="1") with all nodes within the threshold, closeness[N] must equal the sum of the
+    OTHER nodes' weights, i.e. A(N) = sum_{j != N} w_j.
+    """
+    weights = [1.0, 1.0, 3.0, 1.0, 1.0]
+    ns = _build_line(weights)
+    res = ns.centrality_shortest(
+        distances=[1000],
+        closeness_exprs=[("density", "1")],
+        betweenness_exprs=[],
+        compute_cycles=False,
+        pbar_disabled=True,
+    )
+    total = sum(weights)
+    expected = [total - w for w in weights]  # [6, 6, 4, 6, 6]
+    assert np.allclose(res.metrics["density"][1000], expected)
+
+
+def test_node_weight_full_matches_sampled():
+    """Under non-uniform weights, the full computation must match sampling at p=1.0.
+
+    Regression guard: previously full closeness weighted by the source/self while sampling weighted
+    by the destination, so the two diverged whenever weights were non-uniform.
+    """
+    weights = [1.0, 2.0, 3.0, 1.0, 4.0]
+    closeness = [("density", "1"), ("harmonic", "1/c")]
+    full = _build_line(weights).centrality_shortest(
+        distances=[1000],
+        closeness_exprs=closeness,
+        betweenness_exprs=[],
+        compute_cycles=False,
+        pbar_disabled=True,
+    )
+    sampled = _build_line(weights).centrality_shortest(
+        distances=[1000],
+        closeness_exprs=closeness,
+        betweenness_exprs=[],
+        compute_cycles=False,
+        sample_probability=1.0,
+        random_seed=1,
+        pbar_disabled=True,
+    )
+    for name in ("density", "harmonic"):
+        assert np.allclose(full.metrics[name][1000], sampled.metrics[name][1000])
+
+
+def test_node_weight_betweenness_is_product():
+    """Betweenness should weight each O-D pair by the PRODUCT of endpoint weights (gravity flow).
+
+    On a 0-1-2 path the only intermediate node is 1, carrying the single pair {0, 2}, so its
+    betweenness must equal w_0 * w_2 (not the average 0.5 * (w_0 + w_2)).
+    """
+    for w0, w2 in [(1.0, 1.0), (3.0, 1.0), (1.0, 5.0), (3.0, 5.0)]:
+        ns = _build_line([w0, 1.0, w2])
+        res = ns.centrality_shortest(
+            distances=[1000],
+            closeness_exprs=[],
+            betweenness_exprs=[("b", "1")],
+            compute_cycles=False,
+            pbar_disabled=True,
+        )
+        assert res.metrics["b"][1000][1] == pytest.approx(w0 * w2)
+
+
+def test_zero_weight_node_no_nan_with_sampling_cycles():
+    """A zero-weight source under sampling + cycles must not produce NaN/inf.
+
+    Regression guard for cycles_wt = wt / weight(src), which was 0/0 = NaN for a zero-weight node.
+    """
+    ns = _build_line([1.0, 0.0, 1.0, 1.0, 1.0])
+    res = ns.centrality_shortest(
+        distances=[1000],
+        closeness_exprs=[("density", "1")],
+        betweenness_exprs=[("b", "1")],
+        compute_cycles=True,
+        sample_probability=0.5,
+        random_seed=1,
+        pbar_disabled=True,
+    )
+    for name in ("density", "b", "cycles"):
+        vals = np.asarray(res.metrics[name][1000], dtype=float)
+        assert np.isfinite(vals).all()

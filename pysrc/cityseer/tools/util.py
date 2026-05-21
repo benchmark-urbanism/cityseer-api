@@ -9,7 +9,7 @@ Note that the `cityseer` network data structures can be created and manipulated 
 from __future__ import annotations
 
 import logging
-from typing import Any
+from typing import Any, cast
 
 import networkx as nx
 import numpy as np
@@ -213,7 +213,7 @@ def _snap_linestring_idx(
     # handle 3D
     coord = list(list_linestring_coords[idx])  # tuples don't support indexed assignment
     coord[:2] = x_y
-    list_linestring_coords[idx] = tuple(coord)
+    list_linestring_coords[idx] = cast(CoordsType, tuple(coord))
 
     return list_linestring_coords
 

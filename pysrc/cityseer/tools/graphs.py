@@ -1015,7 +1015,7 @@ def _squash_adjacent(
                 for edge_data in nx_multigraph[nd_key][nb_nd_key].values():
                     if "geom" not in edge_data:
                         raise KeyError(f'Missing "geom" attribute for edge {nd_key}-{nb_nd_key}')
-                    line_geom: geometry.LineString | None = edge_data["geom"]
+                    line_geom: geometry.LineString = edge_data["geom"]
                     # orient the LineString so that the geom starts from the node's x_y
                     line_coords = util.align_linestring_coords(line_geom.coords, nd_xy)
                     # update geom starting point to new parent node's coordinates
@@ -1348,7 +1348,7 @@ def nx_snap_gapped_endings(
         # the spatial index using bounding boxes, so further filtering is required (see further down)
         n_point = geometry.Point(nd_data["x"], nd_data["y"])
         # spatial query from point returns all buffers with buffer_dist
-        node_hits: list[dict] = nodes_tree.query(n_point.buffer(buffer_dist))
+        node_hits = nodes_tree.query(n_point.buffer(buffer_dist))
         # extract the start node, end node, geom
         node_keys: list = []
         for node_hit_idx in node_hits:
@@ -1398,7 +1398,7 @@ def nx_snap_gapped_endings(
                 start_nd_key = edge_lookup["start_nd_key"]
                 end_nd_key = edge_lookup["end_nd_key"]
                 edge_idx = edge_lookup["edge_idx"]
-                edge_geom: dict = nx_multigraph[start_nd_key][end_nd_key][edge_idx]["geom"]
+                edge_geom: geometry.LineString = nx_multigraph[start_nd_key][end_nd_key][edge_idx]["geom"]
                 if edge_geom.crosses(new_geom):
                     bail = True
                     break
@@ -1819,7 +1819,7 @@ def nx_split_opposing_geoms(
                     start_nd_key = edge_lookup["start_nd_key"]
                     end_nd_key = edge_lookup["end_nd_key"]
                     edge_idx = edge_lookup["edge_idx"]
-                    edge_geom: dict = nx_multigraph[start_nd_key][end_nd_key][edge_idx]["geom"]
+                    edge_geom: geometry.LineString = nx_multigraph[start_nd_key][end_nd_key][edge_idx]["geom"]
                     # use distance to catch "crossing" where curved geoms lead to issues
                     if new_geom.crosses(edge_geom) and round(new_end_pnt.distance(edge_geom), 3) > 0:
                         bail = True

@@ -270,7 +270,6 @@ struct SourceSamplingPlan {
     sources: Vec<usize>,
     source_eligible: Vec<bool>,
     node_live: Vec<bool>,
-    n_live: usize,
 }
 
 impl SourceSamplingPlan {
@@ -895,7 +894,6 @@ impl NetworkStructure {
             }
             live
         };
-        let n_live = node_live.iter().filter(|&&v| v).count();
         let sources = node_indices.to_vec();
         let source_eligible = if sample_probability.is_some() {
             // Sampling: all nodes (live + dead) are source-eligible.
@@ -933,14 +931,18 @@ impl NetworkStructure {
             sources,
             source_eligible,
             node_live,
-            n_live,
         })
     }
 
-    /// Determine whether a source should run and compute its IPW weight.
+    /// Determine whether a source should run and return `(wt, ipw)`.
     ///
-    /// - Bernoulli sampling: include with probability p, weight by 1/p.
-    /// - Exact mode: always runs with unit weight.
+    /// - `wt` is the source node weight, IPW-corrected: `weight(src)` in exact mode,
+    ///   `weight(src) / p` under Bernoulli sampling.
+    /// - `ipw` is the pure inverse-probability factor (independent of node weight):
+    ///   `1.0` in exact mode, `1.0 / p` under sampling. Used for quantities that must be
+    ///   sampling-corrected but not node-weighted (e.g. circuit ranks).
+    ///
+    /// Returns `None` when the source is not sampled (Bernoulli rejection) or `p <= 0`.
     #[inline]
     fn sample_source_weight(
         &self,
@@ -949,8 +951,8 @@ impl NetworkStructure {
         sampling_weights: Option<&[f32]>,
         sample_randoms: &[f32],
         sampled_source_count: &AtomicU32,
-    ) -> Option<f32> {
-        let mut wt = self.get_node_weight_unchecked(src_idx);
+    ) -> Option<(f32, f32)> {
+        let node_weight = self.get_node_weight_unchecked(src_idx);
         if let Some(prob) = sample_probability {
             let mut p = prob;
             if let Some(weights) = sampling_weights {
@@ -963,9 +965,10 @@ impl NetworkStructure {
                 return None;
             }
             sampled_source_count.fetch_add(1, AtomicOrdering::Relaxed);
-            wt /= p;
+            Some((node_weight / p, 1.0 / p))
+        } else {
+            Some((node_weight, 1.0))
         }
-        Some(wt)
     }
 
     fn dijkstra_tree_shortest_inner(
@@ -1382,7 +1385,6 @@ impl NetworkStructure {
         compute_cycles=None,
         speed_m_s=None,
         tolerance=None,
-        segment_weighted=None,
         sample_probability=None,
         sampling_weights=None,
         random_seed=None,
@@ -1397,7 +1399,6 @@ impl NetworkStructure {
         compute_cycles: Option<bool>,
         speed_m_s: Option<f32>,
         tolerance: Option<f32>,
-        segment_weighted: Option<bool>,
         sample_probability: Option<f32>,
         sampling_weights: Option<Vec<f32>>,
         random_seed: Option<u64>,
@@ -1413,7 +1414,6 @@ impl NetworkStructure {
             ));
         }
         let speed_m_s = speed_m_s.unwrap_or(WALKING_SPEED);
-        let segment_weighted = segment_weighted.unwrap_or(false);
         let tolerance = validate_tolerance(tolerance)?;
         let (distances, seconds) = common::pair_distances_and_time(
             speed_m_s, distances, minutes,
@@ -1465,7 +1465,7 @@ impl NetworkStructure {
                     return;
                 }
 
-                let Some(wt) = self.sample_source_weight(
+                let Some((wt, ipw)) = self.sample_source_weight(
                     *src_idx,
                     sampling_plan.sample_probability,
                     sampling_plan.sampling_weights.as_deref(),
@@ -1494,7 +1494,7 @@ impl NetworkStructure {
                     .collect();
 
                 // IPW-only weight for cycles (no node weight, just sampling correction).
-                let cycles_wt = wt / self.get_node_weight_unchecked(*src_idx);
+                let cycles_wt = ipw;
 
                 // --- Closeness accumulation ---
                 if !closeness_fns.is_empty() || compute_cycles {
@@ -1534,10 +1534,14 @@ impl NetworkStructure {
                             }
                         }
                         let agg_idx = if is_sampling { to_idx } else { *src_idx };
-                        let cw = if segment_weighted && !is_sampling {
-                            self.get_node_weight_unchecked(to_idx)
-                        } else {
+                        // Gravity weighting. Non-sampling aggregates at the source, so
+                        // weight by the destination; sampling aggregates at the
+                        // destination, so weight by the (IPW-corrected) source `wt`.
+                        // Both yield A(N) = sum_j w_j * f(d(N, j)).
+                        let cw = if is_sampling {
                             wt
+                        } else {
+                            self.get_node_weight_unchecked(to_idx)
                         };
                         let cost = traversal.best_route_cost[to_idx];
                         for i in 0..distances.len() {
@@ -1597,11 +1601,10 @@ impl NetworkStructure {
                             } else {
                                 1.0
                             };
-                            let seg_scale = if segment_weighted {
-                                self.get_node_weight_unchecked(to_idx) as f64
-                            } else {
-                                1.0
-                            };
+                            // Destination weight; combined with the source weight `wt`
+                            // applied to the final credit, this gives product weighting
+                            // w_s * w_t per O-D pair.
+                            let seg_scale = self.get_node_weight_unchecked(to_idx) as f64;
                             let cost = traversal.best_route_cost[to_idx];
                             let p = cost / dist_threshold;
                             for (expr_idx, f) in betw_fns.iter().enumerate() {
@@ -1664,7 +1667,6 @@ impl NetworkStructure {
         betweenness_exprs=None,
         speed_m_s=None,
         tolerance=None,
-        segment_weighted=None,
         sample_probability=None,
         sampling_weights=None,
         random_seed=None,
@@ -1678,7 +1680,6 @@ impl NetworkStructure {
         betweenness_exprs: Option<Vec<(String, String)>>,
         speed_m_s: Option<f32>,
         tolerance: Option<f32>,
-        segment_weighted: Option<bool>,
         sample_probability: Option<f32>,
         sampling_weights: Option<Vec<f32>>,
         random_seed: Option<u64>,
@@ -1695,7 +1696,6 @@ impl NetworkStructure {
         }
         let tolerance = validate_tolerance(tolerance)?;
         let speed_m_s = speed_m_s.unwrap_or(WALKING_SPEED);
-        let segment_weighted = segment_weighted.unwrap_or(false);
         let (distances, seconds) = common::pair_distances_and_time(
             speed_m_s, distances, minutes,
         )?;
@@ -1746,7 +1746,7 @@ impl NetworkStructure {
                     return;
                 }
 
-                let Some(wt) = self.sample_source_weight(
+                let Some((wt, _ipw)) = self.sample_source_weight(
                     *src_idx,
                     sampling_plan.sample_probability,
                     sampling_plan.sampling_weights.as_deref(),
@@ -1799,10 +1799,14 @@ impl NetworkStructure {
                             }
                         }
                         let agg_idx = if is_sampling { to_idx } else { *src_idx };
-                        let cw = if segment_weighted && !is_sampling {
-                            self.get_node_weight_unchecked(to_idx)
-                        } else {
+                        // Gravity weighting. Non-sampling aggregates at the source, so
+                        // weight by the destination; sampling aggregates at the
+                        // destination, so weight by the (IPW-corrected) source `wt`.
+                        // Both yield A(N) = sum_j w_j * f(d(N, j)).
+                        let cw = if is_sampling {
                             wt
+                        } else {
+                            self.get_node_weight_unchecked(to_idx)
                         };
                         // c = angular cost, p = normalised time progress
                         let c = best_simpl_dist;
@@ -1856,11 +1860,10 @@ impl NetworkStructure {
                             } else {
                                 1.0
                             };
-                            let seg_scale = if segment_weighted {
-                                self.get_node_weight_unchecked(to_idx) as f64
-                            } else {
-                                1.0
-                            };
+                            // Destination weight; combined with the source weight `wt`
+                            // applied to the final credit, this gives product weighting
+                            // w_s * w_t per O-D pair.
+                            let seg_scale = self.get_node_weight_unchecked(to_idx) as f64;
                             let sigma_total: f64 = best_state_indices
                                 .iter()
                                 .map(|&state_idx| traversal.state[state_idx].sigma)

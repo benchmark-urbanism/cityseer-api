@@ -19,8 +19,16 @@ Four categories of metrics are supported:
 
 Pass ``None`` for defaults or ``{}`` to skip a category.
 
-When `segment_weighted=True`, node weights are set to the primal edge (street segment) lengths so that centrality
-measures reflect total reachable street length rather than node counts. This requires a dual graph representation.
+Per-node ``weight`` values (default ``1.0``, set on the nodes ``GeoDataFrame`` or read from NetworkX node
+attributes) apply gravity-style weighting to centrality: closeness weights each reachable node by its destination
+weight (so ``density`` becomes ``sum_j w_j`` rather than a plain count), and betweenness weights each
+origin-destination pair by the product of its endpoint weights. The same weighting is applied identically whether
+or not sampling is used. Land-use, mixed-use, and statistical aggregations are intentionally *not* node-weighted.
+
+When `segment_weighted=True`, node weights are temporarily set to the primal edge (street segment) lengths so that
+centrality measures reflect total reachable street length rather than node counts (closeness by destination length,
+betweenness by the product of endpoint lengths). This is a convenience preset over the per-node ``weight``
+mechanism and requires a dual graph representation.
 
 When `sample=True`, only a subset of nodes are used as sources for centrality computation, with results
 corrected to approximate the full computation.
@@ -334,7 +342,6 @@ def centrality_shortest(
                 compute_cycles=cycles,
                 speed_m_s=speed_m_s,
                 tolerance=tolerance,
-                segment_weighted=segment_weighted,
                 random_seed=random_seed,
             )
             result = config.wrap_progress(
@@ -356,7 +363,6 @@ def centrality_shortest(
                 compute_cycles=cycles,
                 speed_m_s=speed_m_s,
                 tolerance=tolerance,
-                segment_weighted=segment_weighted,
                 sample_probability=p,
                 random_seed=random_seed,
             )
@@ -658,7 +664,6 @@ def centrality_simplest(
                 betweenness_exprs=betweenness_items,
                 speed_m_s=speed_m_s,
                 tolerance=tolerance,
-                segment_weighted=segment_weighted,
                 random_seed=random_seed,
             )
             result = config.wrap_progress(
@@ -679,7 +684,6 @@ def centrality_simplest(
                 betweenness_exprs=betweenness_items,
                 speed_m_s=speed_m_s,
                 tolerance=tolerance,
-                segment_weighted=segment_weighted,
                 sample_probability=p,
                 random_seed=random_seed,
             )

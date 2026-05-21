@@ -266,11 +266,11 @@ def plot_nx_primal_or_dual(  # noqa
             font_color="w",
             font_weight="bold",
             nodelist=node_list,
-            node_color=_node_colour,
+            node_color=_node_colour,  # type: ignore
             node_size=_node_size,
             node_shape=_node_shape,
             edgelist=edge_list,
-            edge_color=_edge_colour,
+            edge_color=_edge_colour,  # type: ignore
             style=_edge_style,
             width=_edge_width,
             alpha=alpha,
@@ -499,7 +499,7 @@ def plot_assignment(
         font_size=5,
         font_color="w",
         font_weight="bold",
-        node_color=node_colour,
+        node_color=node_colour,  # type: ignore
         node_size=30,
         node_shape="o",
         edge_color="w",
@@ -761,8 +761,8 @@ def plot_scatter(
     v_shape = v_shape**shape_exp
     # normalise
     c_norm = mpl.colors.Normalize(vmin=v_min, vmax=v_max, clip=True)
-    colours: npt.ArrayLike = c_norm(v_shape)
-    sizes: npt.ArrayLike = _minmax_scale_manual(colours, (s_min, s_max))
+    colours: npt.NDArray[np.float64] = c_norm(v_shape)
+    sizes: npt.NDArray[np.float64] = _minmax_scale_manual(colours, (s_min, s_max))
     # plot
     img: Any = ax.scatter(
         xs[select_idx],
@@ -880,8 +880,8 @@ def plot_nx_edges(
     v_shape = v_shape**shape_exp
     # normalise
     c_norm = mpl.colors.Normalize(vmin=v_shape.min(), vmax=v_shape.max())
-    colours: npt.ArrayLike = c_norm(v_shape)
-    sizes: npt.ArrayLike = _minmax_scale_manual(colours, (lw_min, lw_max))
+    colours: npt.NDArray[np.float64] = c_norm(v_shape)
+    sizes: npt.NDArray[np.float64] = _minmax_scale_manual(colours, (lw_min, lw_max))
     # sort so that larger lines plot over smaller lines
     sort_idx: npt.ArrayLike = np.argsort(colours)
     if invert_plot_order:

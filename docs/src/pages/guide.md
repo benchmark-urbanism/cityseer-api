@@ -243,9 +243,22 @@ cn.centrality_simplest(
 )
 ```
 
+### Node weights
+
+Every node carries a `weight` (default `1.0`). Set it on the nodes `GeoDataFrame`, or add a `weight` attribute to your NetworkX nodes before ingestion, to apply gravity-style weighting to centrality:
+
+- **Closeness** weights each reachable node by its destination weight, so `density` becomes $\sum_j w_j$ (the sum of reachable node weights) rather than a plain count, and other closeness expressions are scaled accordingly. A node's own weight does **not** rescale its own score — weighting reflects the *opportunities it can reach*.
+- **Betweenness** weights each origin–destination pair by the **product** of its endpoint weights $w_s \cdot w_t$, the standard gravity-flow form.
+
+The same weighting is applied identically whether or not [adaptive sampling](#adaptive-sampling) is used. With the default weights of `1.0` the results are unchanged from an unweighted analysis.
+
+:::note
+Node weights affect **centrality only**. Land-use accessibility, mixed-use diversity, and statistical aggregations are intentionally *not* node-weighted — they weight reachable land-use data points (optionally by [distance decay](#decay-functions)), not network nodes.
+:::
+
 ### Segment-weighted centrality
 
-When `segment_weighted=True`, each node in the dual graph is weighted by its corresponding street segment length. This means:
+`segment_weighted=True` is a convenience preset over the node `weight` mechanism above: it temporarily sets each dual-graph node's weight to its corresponding street segment length, then restores the original weights afterwards. This means:
 
 - **Closeness** metrics reflect total reachable street length rather than node counts (e.g. density becomes total metres of reachable street within the threshold).
 - **Betweenness** weights each origin–destination pair by both endpoint segment lengths, so longer streets contribute more to betweenness flows.
