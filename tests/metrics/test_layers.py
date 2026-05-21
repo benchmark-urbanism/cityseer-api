@@ -524,3 +524,71 @@ def test_per_label_decay_fns(primal_graph):
             distances=distances,
             decay_fn={},
         )
+
+
+def test_stats_measures_selection(primal_graph):
+    """`measures` selects which statistics are computed; the subset matches the full run."""
+    from cityseer import decay
+
+    nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(primal_graph)
+    numerical_gdf = mock.mock_numerical_data(primal_graph, num_arrs=1)
+    distances = [400, 800]
+    all_measures = ["sum", "mean", "count", "var", "median", "mad", "max", "min"]
+
+    full, _ = layers.compute_stats(
+        numerical_gdf, ["mock_numerical_1"], nodes_gdf.copy(), network_structure, distances=distances
+    )
+    sub, _ = layers.compute_stats(
+        numerical_gdf,
+        ["mock_numerical_1"],
+        nodes_gdf.copy(),
+        network_structure,
+        distances=distances,
+        measures=["mean", "count"],
+    )
+    # selected measures match the full computation exactly
+    for measure in ["mean", "count"]:
+        for d in distances:
+            k = config.prep_gdf_key(f"mock_numerical_1_{measure}", d)
+            assert np.allclose(sub[k], full[k], equal_nan=True)
+    # only the requested measures are emitted
+    sub_cc = [c for c in sub.columns if c.startswith("cc_")]
+    for measure in all_measures:
+        present = any(f"_{measure}_" in c for c in sub_cc)
+        assert present == (measure in {"mean", "count"})
+    # default (None) computes all eight
+    full_cc = [c for c in full.columns if c.startswith("cc_")]
+    for measure in all_measures:
+        assert any(f"_{measure}_" in c for c in full_cc)
+    # invalid measure rejected
+    with pytest.raises(ValueError, match="Unknown stats measure"):
+        layers.compute_stats(
+            numerical_gdf,
+            ["mock_numerical_1"],
+            nodes_gdf.copy(),
+            network_structure,
+            distances=distances,
+            measures=["nope"],
+        )
+    # empty list rejected (use None for all)
+    with pytest.raises(ValueError, match="at least one measure"):
+        layers.compute_stats(
+            numerical_gdf,
+            ["mock_numerical_1"],
+            nodes_gdf.copy(),
+            network_structure,
+            distances=distances,
+            measures=[],
+        )
+    # composes with the decay dict
+    combo, _ = layers.compute_stats(
+        numerical_gdf,
+        ["mock_numerical_1"],
+        nodes_gdf.copy(),
+        network_structure,
+        distances=distances,
+        measures=["mean"],
+        decay_fn={"grav": decay.gaussian(peak=200, cutoff=800, std=150), "raw": decay.flat()},
+    )
+    assert config.prep_gdf_key("mock_numerical_1_mean_grav", 800) in combo.columns
+    assert config.prep_gdf_key("mock_numerical_1_mean_raw", 800) in combo.columns

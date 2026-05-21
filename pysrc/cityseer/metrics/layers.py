@@ -73,6 +73,32 @@ def _decay_suffix(label: str) -> str:
     return f"_{label}" if label else ""
 
 
+# Statistical measures produced by compute_stats, mapped to their `Stats` result accessor.
+# The dict key is both the user-facing token and the output column suffix.
+_STATS_ACCESSORS: dict[str, str] = {
+    "sum": "sum",
+    "mean": "mean",
+    "count": "count",
+    "var": "variance",
+    "median": "median",
+    "mad": "mad",
+    "max": "max",
+    "min": "min",
+}
+
+
+def _resolve_stats_measures(measures: list[str] | None) -> list[str]:
+    """Validate the ``measures`` selection for compute_stats; ``None`` means all measures."""
+    if measures is None:
+        return list(_STATS_ACCESSORS)
+    if not measures:
+        raise ValueError("measures must contain at least one measure, or be None for all.")
+    invalid = [m for m in measures if m not in _STATS_ACCESSORS]
+    if invalid:
+        raise ValueError(f"Unknown stats measure(s): {invalid}. Allowed: {list(_STATS_ACCESSORS)}.")
+    return list(measures)
+
+
 def build_data_map(
     data_gdf: gpd.GeoDataFrame,
     network_structure: rustalgos.graph.NetworkStructure,
@@ -565,6 +591,7 @@ def compute_stats(
     n_nearest_candidates: int = 50,
     speed_m_s: float = SPEED_M_S,
     decay_fn: str | dict[str, str] | None = None,
+    measures: list[str] | None = None,
 ) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
     r"""
     Compute numerical statistics over the street network.
@@ -626,6 +653,11 @@ def compute_stats(
         threshold. See [`cityseer.decay`](/decay) for details and examples. Pass a dict of
         `{label: expression}` to compute several decays in a single network traversal; each label
         is appended to that variant's output column names (a plain string or `None` adds no suffix).
+    measures: list[str]
+        An optional subset of statistical measures to compute, chosen from `"sum"`, `"mean"`,
+        `"count"`, `"var"`, `"median"`, `"mad"`, `"max"`, and `"min"`. Defaults to `None`, which
+        computes all of them. Restricting the set keeps the output `GeoDataFrame` smaller and skips
+        the weighted median / MAD sort when neither `"median"` nor `"mad"` is requested.
 
     Returns
     -------
@@ -742,6 +774,7 @@ def compute_stats(
         stats_maps.append(dict(data_gdf[stats_column_label]))
     # stats
     decay_labels, decay_exprs = _resolve_decay_fns(decay_fn)
+    selected_measures = _resolve_stats_measures(measures)
     partial_func = partial(
         data_map.stats_decays,
         network_structure=network_structure,
@@ -751,6 +784,7 @@ def compute_stats(
         minutes=minutes,
         angular=angular,
         speed_m_s=speed_m_s,
+        measures=measures,
     )
     # wraps progress bar (returns one StatsResult per decay label)
     stats_results = config.wrap_progress(
@@ -766,27 +800,17 @@ def compute_stats(
     gdf_idx = nodes_gdf.index.intersection(stats_results[0].node_keys_py)
     # create a dictionary to hold the data
     temp_data = {}
-    # unpack the numerical arrays (one result per decay label; empty label -> no suffix)
+    # unpack the numerical arrays (one result per decay label; empty label -> no suffix).
+    # Only the selected measures are emitted; each maps to its `Stats` result accessor.
     for decay_label, stats_result in zip(decay_labels, stats_results, strict=True):
         suffix = _decay_suffix(decay_label)
         for idx, stats_column_label in enumerate(stats_column_labels):
-            for dist_key in distances:
-                k = config.prep_gdf_key(f"{stats_column_label}_sum{suffix}", dist_key, angular=angular)
-                temp_data[k] = stats_result.result[idx].sum[dist_key]
-                k = config.prep_gdf_key(f"{stats_column_label}_mean{suffix}", dist_key, angular=angular)
-                temp_data[k] = stats_result.result[idx].mean[dist_key]
-                k = config.prep_gdf_key(f"{stats_column_label}_count{suffix}", dist_key, angular=angular)
-                temp_data[k] = stats_result.result[idx].count[dist_key]
-                k = config.prep_gdf_key(f"{stats_column_label}_median{suffix}", dist_key, angular=angular)
-                temp_data[k] = stats_result.result[idx].median[dist_key]
-                k = config.prep_gdf_key(f"{stats_column_label}_var{suffix}", dist_key, angular=angular)
-                temp_data[k] = stats_result.result[idx].variance[dist_key]
-                k = config.prep_gdf_key(f"{stats_column_label}_mad{suffix}", dist_key, angular=angular)
-                temp_data[k] = stats_result.result[idx].mad[dist_key]
-                k = config.prep_gdf_key(f"{stats_column_label}_max{suffix}", dist_key, angular=angular)
-                temp_data[k] = stats_result.result[idx].max[dist_key]
-                k = config.prep_gdf_key(f"{stats_column_label}_min{suffix}", dist_key, angular=angular)
-                temp_data[k] = stats_result.result[idx].min[dist_key]
+            stat_obj = stats_result.result[idx]
+            for measure in selected_measures:
+                measure_data = getattr(stat_obj, _STATS_ACCESSORS[measure])
+                for dist_key in distances:
+                    k = config.prep_gdf_key(f"{stats_column_label}_{measure}{suffix}", dist_key, angular=angular)
+                    temp_data[k] = measure_data[dist_key]
 
     temp_df = pd.DataFrame(temp_data, index=stats_results[0].node_keys_py)
     nodes_gdf.loc[gdf_idx, temp_df.columns] = temp_df.loc[gdf_idx, temp_df.columns]

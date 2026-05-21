@@ -412,7 +412,7 @@ See the [Mixed Uses](https://benchmark-urbanism.github.io/cityseer-examples/reci
 | MAD | `_mad` | Weighted median absolute deviation. |
 | Max / Min | `_max` / `_min` | Extremes of reachable values (not affected by `decay_fn`). |
 
-Pass a list of `stats_column_labels` to summarise several columns in one call, and a `decay_fn` to weight each value by distance — including the `{label: expression}` dict form for multiple weightings in a single traversal.
+Pass a list of `stats_column_labels` to summarise several columns in one call, and a `decay_fn` to weight each value by distance — including the `{label: expression}` dict form for multiple weightings in a single traversal. By default all eight measures are produced; pass `measures=[...]` (any subset of the suffixes above) to compute only the ones you need. This keeps the output `GeoDataFrame` smaller and skips the weighted median/MAD sort when neither is requested.
 
 ```python
 cn, prices_gdf = cn.compute_stats(

@@ -336,6 +336,7 @@ class DataMap:
         angular: bool | None = None,
         decay_fn: str | None = None,
         speed_m_s: float | None = None,
+        measures: list[str] | None = None,
         pbar_disabled: bool | None = None,
     ) -> StatsResult:
         """
@@ -360,6 +361,10 @@ class DataMap:
             Optional decay function name for distance-weighted statistics.
         speed_m_s: float | None
             Travel speed (m/s).
+        measures: list[str] | None
+            Optional subset of measures to compute (sum, mean, count, var, median, mad, max, min).
+            ``None`` computes all of them. Restricting to the measures you need avoids the weighted
+            median / MAD sort when neither is requested.
         pbar_disabled: bool | None
             Disable progress bar if True.
 
@@ -379,8 +384,10 @@ class DataMap:
         minutes: list[float] | None = None,
         angular: bool | None = None,
         speed_m_s: float | None = None,
+        measures: list[str] | None = None,
         pbar_disabled: bool | None = None,
     ) -> list[StatsResult]:
         """Like `stats`, but computes one `StatsResult` per decay expression in `decay_fns`,
-        sharing a single network traversal."""
+        sharing a single network traversal. ``measures`` optionally selects which statistics to
+        compute (subset of sum/mean/count/var/median/mad/max/min; ``None`` computes all)."""
         ...

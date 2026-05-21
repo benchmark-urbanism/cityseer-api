@@ -1033,6 +1033,7 @@ impl DataMap {
         angular=None,
         speed_m_s=None,
         decay_fn=None,
+        measures=None,
         pbar_disabled=None
     ))]
     fn stats(
@@ -1044,6 +1045,7 @@ impl DataMap {
         angular: Option<bool>,
         speed_m_s: Option<f32>,
         decay_fn: Option<String>,
+        measures: Option<Vec<String>>,
         pbar_disabled: Option<bool>,
         py: Python,
     ) -> PyResult<StatsResult> {
@@ -1058,6 +1060,7 @@ impl DataMap {
             minutes,
             angular,
             speed_m_s,
+            measures,
             pbar_disabled,
             py,
         )?;
@@ -1072,6 +1075,7 @@ impl DataMap {
         minutes=None,
         angular=None,
         speed_m_s=None,
+        measures=None,
         pbar_disabled=None
     ))]
     fn stats_decays(
@@ -1083,6 +1087,7 @@ impl DataMap {
         minutes: Option<Vec<f32>>,
         angular: Option<bool>,
         speed_m_s: Option<f32>,
+        measures: Option<Vec<String>>,
         pbar_disabled: Option<bool>,
         py: Python,
     ) -> PyResult<Vec<StatsResult>> {
@@ -1127,6 +1132,32 @@ impl DataMap {
             .iter()
             .map(|expr| validate_decay_fn(expr))
             .collect::<PyResult<Vec<_>>>()?;
+
+        // Determine which statistical measures to compute. None/empty => all of them.
+        const ALLOWED_MEASURES: [&str; 8] =
+            ["sum", "mean", "count", "var", "median", "mad", "max", "min"];
+        let measures = measures.unwrap_or_default();
+        for m in &measures {
+            if !ALLOWED_MEASURES.contains(&m.as_str()) {
+                return Err(exceptions::PyValueError::new_err(format!(
+                    "Unknown stats measure '{}'. Allowed: {}",
+                    m,
+                    ALLOWED_MEASURES.join(", ")
+                )));
+            }
+        }
+        let want = |m: &str| measures.is_empty() || measures.iter().any(|x| x == m);
+        let want_sum = want("sum");
+        let want_mean = want("mean");
+        let want_count = want("count");
+        let want_var = want("var");
+        let want_median = want("median");
+        let want_mad = want("mad");
+        let want_max = want("max");
+        let want_min = want("min");
+        // The weighted median (and the MAD that derives from it) is the only costly
+        // measure, so only collect the per-value pairs when one of them is requested.
+        let need_vals = want_median || want_mad;
 
         let node_keys_py = network_structure.node_keys_py(py);
         let node_indices = network_structure.node_indices();
@@ -1199,60 +1230,77 @@ impl DataMap {
                                         } else {
                                             min_val.min(num)
                                         };
-                                        // Median calcs (weighted)
-                                        vals_wts.push((num, wt));
+                                        // Per-value pairs only needed for the weighted median / MAD.
+                                        if need_vals {
+                                            vals_wts.push((num, wt));
+                                        }
                                     }
                                 }
                             }
                             let stats = &results[decay_idx].stats_vec[map_idx];
-                            // Sum
-                            stats.sum_vec.metric[i][*netw_src_idx]
-                                .store(sum_val as f64, AtomicOrdering::Relaxed);
-                            // Count
-                            stats.count_vec.metric[i][*netw_src_idx]
-                                .store(count_val as f64, AtomicOrdering::Relaxed);
-                            // Max
-                            stats.max_vec.metric[i][*netw_src_idx]
-                                .store(max_val as f64, AtomicOrdering::Relaxed);
-                            // Min
-                            stats.min_vec.metric[i][*netw_src_idx]
-                                .store(min_val as f64, AtomicOrdering::Relaxed);
-                            // Mean
+                            // Only the requested measures are written; unrequested ones keep
+                            // their initialised value and are not emitted on the Python side.
+                            if want_sum {
+                                stats.sum_vec.metric[i][*netw_src_idx]
+                                    .store(sum_val as f64, AtomicOrdering::Relaxed);
+                            }
+                            if want_count {
+                                stats.count_vec.metric[i][*netw_src_idx]
+                                    .store(count_val as f64, AtomicOrdering::Relaxed);
+                            }
+                            if want_max {
+                                stats.max_vec.metric[i][*netw_src_idx]
+                                    .store(max_val as f64, AtomicOrdering::Relaxed);
+                            }
+                            if want_min {
+                                stats.min_vec.metric[i][*netw_src_idx]
+                                    .store(min_val as f64, AtomicOrdering::Relaxed);
+                            }
+                            // Mean is needed for variance, so compute it whenever either is wanted.
                             let mean_val = if count_val > 0.0 {
                                 sum_val / count_val
                             } else {
                                 f32::NAN
                             };
-                            stats.mean_vec.metric[i][*netw_src_idx]
-                                .store(mean_val as f64, AtomicOrdering::Relaxed);
-                            // Variance
-                            // Ensure non-negative due to potential float inaccuracies
-                            let variance_val = if count_val > 0.0 {
-                                (sum_sq_val / count_val - mean_val.powi(2)).max(0.0)
-                            } else {
-                                f32::NAN
-                            };
-                            stats.variance_vec.metric[i][*netw_src_idx]
-                                .store(variance_val as f64, AtomicOrdering::Relaxed);
-                            // Median
-                            let median_val = weighted_median(&vals_wts, count_val);
-                            stats.median_vec.metric[i][*netw_src_idx]
-                                .store(median_val as f64, AtomicOrdering::Relaxed);
-                            // MAD: build abs deviations with same weights; use weighted median
-                            let mad_val = if !vals_wts.is_empty()
-                                && !median_val.is_nan()
-                                && count_val > 0.0
-                            {
-                                let abs_wt: Vec<(f32, f32)> = vals_wts
-                                    .iter()
-                                    .map(|(v, wt)| ((v - median_val).abs(), *wt))
-                                    .collect();
-                                weighted_median(&abs_wt, count_val)
-                            } else {
-                                f32::NAN
-                            };
-                            stats.mad_vec.metric[i][*netw_src_idx]
-                                .store(mad_val as f64, AtomicOrdering::Relaxed);
+                            if want_mean {
+                                stats.mean_vec.metric[i][*netw_src_idx]
+                                    .store(mean_val as f64, AtomicOrdering::Relaxed);
+                            }
+                            if want_var {
+                                // Ensure non-negative due to potential float inaccuracies
+                                let variance_val = if count_val > 0.0 {
+                                    (sum_sq_val / count_val - mean_val.powi(2)).max(0.0)
+                                } else {
+                                    f32::NAN
+                                };
+                                stats.variance_vec.metric[i][*netw_src_idx]
+                                    .store(variance_val as f64, AtomicOrdering::Relaxed);
+                            }
+                            if need_vals {
+                                // Median (weighted); MAD derives from it.
+                                let median_val = weighted_median(&vals_wts, count_val);
+                                if want_median {
+                                    stats.median_vec.metric[i][*netw_src_idx]
+                                        .store(median_val as f64, AtomicOrdering::Relaxed);
+                                }
+                                if want_mad {
+                                    // MAD: build abs deviations with same weights; weighted median.
+                                    let mad_val = if !vals_wts.is_empty()
+                                        && !median_val.is_nan()
+                                        && count_val > 0.0
+                                    {
+                                        let abs_wt: Vec<(f32, f32)> = vals_wts
+                                            .iter()
+                                            .map(|(v, wt)| ((v - median_val).abs(), *wt))
+                                            .collect();
+                                        weighted_median(&abs_wt, count_val)
+                                    } else {
+                                        f32::NAN
+                                    };
+                                    stats.mad_vec.metric[i][*netw_src_idx]
+                                        .store(mad_val as f64, AtomicOrdering::Relaxed);
+                                }
+                            }
                         }
                     }
                 }
