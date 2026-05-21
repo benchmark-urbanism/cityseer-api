@@ -6,7 +6,7 @@ layout: ../../layouts/PageLayout.astro
 # layers
 
 
- Compute land-use accessibility, mixed-use diversity, and statistical aggregations over the street network. Data points (land uses, numerical attributes) are assigned to the nearest street edges and then summarised within walking-distance catchments around each node, measured along the actual street network rather than as straight-line distances. Because these summaries are computed at the same node locations used for centrality, you can directly compare how well-connected a location is with how accessible different amenities are from that location. An optional ``decay_fn`` parameter controls how distance affects the weighting; see the [`cityseer.decay`](/api/decay) module for preset helpers.
+ Compute land-use accessibility, mixed-use diversity, and statistical aggregations over the street network. Data points (land uses, numerical attributes) are assigned to the nearest street edges and then summarised within walking-distance catchments around each node, measured along the actual street network rather than as straight-line distances. Because these summaries are computed at the same node locations used for centrality, you can directly compare how well-connected a location is with how accessible different amenities are from that location. An optional ``decay_fn`` parameter controls how distance affects the weighting; see the [`cityseer.decay`](/api/decay) module for preset helpers. ``decay_fn`` also accepts a ``{label: expression}`` dict to compute several decay variants in a single network traversal, with each label appended to that variant's output column names.
 
  For practical worked examples, see the [Cityseer Examples](https://benchmark-urbanism.github.io/cityseer-examples/) site, including the [OSM Accessibility](https://benchmark-urbanism.github.io/cityseer-examples/recipes/accessibility/osm_accessibility.html), [Mixed Uses](https://benchmark-urbanism.github.io/cityseer-examples/recipes/accessibility/gpd_mixed_uses.html), and [Statistical Aggregations](https://benchmark-urbanism.github.io/cityseer-examples/recipes/stats/gpd_stats.html) recipes.
 
@@ -209,7 +209,7 @@ layout: ../../layouts/PageLayout.astro
   <div class="param">
     <span class="pn">decay_fn</span>
     <span class="pc">:</span>
-    <span class="pa"> str | None = None</span>
+    <span class="pa"> str | dict[str, str] | None = None</span>
   </div>
   <span class="pt">)-&gt;[</span>
   <span class="pr">GeoDataFrame</span>
@@ -354,11 +354,11 @@ layout: ../../layouts/PageLayout.astro
 <div class="param-set">
   <div class="def">
     <div class="name">decay_fn</div>
-    <div class="type">str</div>
+    <div class="type">str | dict[str, str]</div>
   </div>
   <div class="desc">
 
- An optional decay function expression using the variable `p`, where `p` is the normalised distance from 0 (source) to 1 (cutoff threshold). Controls how distance affects the accessibility count weighting. Default is `&quot;1&quot;` (flat, no distance weighting). For distance-weighted metrics, provide an expression such as `&quot;exp(-4 * p)&quot;` for exponential decay, or use the `cityseer.decay` module helpers to generate expressions from absolute distance units; see [`cityseer.decay`](/decay) for details and examples.</div>
+ An optional decay function expression using the variable `p`, where `p` is the normalised distance from 0 (source) to 1 (cutoff threshold). Controls how distance affects the accessibility count weighting. Default is `&quot;1&quot;` (flat, no distance weighting). For distance-weighted metrics, provide an expression such as `&quot;exp(-4 * p)&quot;` for exponential decay, or use the `cityseer.decay` module helpers to generate expressions from absolute distance units; see [`cityseer.decay`](/decay) for details and examples. Pass a dict of `{label: expression}` to compute several decays in a single network traversal; each label is appended to that variant's output column names (a plain string or `None` adds no suffix).</div>
 </div>
 
 ### Returns
@@ -501,7 +501,7 @@ print(nodes_gdf["cc_c_nearest_max_800"])
   <div class="param">
     <span class="pn">decay_fn</span>
     <span class="pc">:</span>
-    <span class="pa"> str | None = None</span>
+    <span class="pa"> str | dict[str, str] | None = None</span>
   </div>
   <span class="pt">)-&gt;[</span>
   <span class="pr">GeoDataFrame</span>
@@ -670,11 +670,11 @@ print(nodes_gdf["cc_c_nearest_max_800"])
 <div class="param-set">
   <div class="def">
     <div class="name">decay_fn</div>
-    <div class="type">str</div>
+    <div class="type">str | dict[str, str]</div>
   </div>
   <div class="desc">
 
- An optional decay function expression using the variable `p`, where `p` is the normalised distance from 0 (source) to 1 (cutoff threshold). Controls how distance affects the Hill diversity weighting. Default is `&quot;1&quot;` (flat, no distance weighting). For distance-weighted metrics, provide an expression such as `&quot;exp(-4 * p)&quot;` for exponential decay, or use the `cityseer.decay` module helpers to generate expressions from absolute distance units; see [`cityseer.decay`](/decay) for details and examples.</div>
+ An optional decay function expression using the variable `p`, where `p` is the normalised distance from 0 (source) to 1 (cutoff threshold). Controls how distance affects the Hill diversity weighting. Default is `&quot;1&quot;` (flat, no distance weighting). For distance-weighted metrics, provide an expression such as `&quot;exp(-4 * p)&quot;` for exponential decay, or use the `cityseer.decay` module helpers to generate expressions from absolute distance units; see [`cityseer.decay`](/decay) for details and examples. Pass a dict of `{label: expression}` to compute several decays in a single network traversal; each label is appended to that variant's output column names (a plain string or `None` adds no suffix).</div>
 </div>
 
 ### Returns
@@ -818,7 +818,7 @@ been applied.
   <div class="param">
     <span class="pn">decay_fn</span>
     <span class="pc">:</span>
-    <span class="pa"> str | None = None</span>
+    <span class="pa"> str | dict[str, str] | None = None</span>
   </div>
   <span class="pt">)-&gt;[</span>
   <span class="pr">GeoDataFrame</span>
@@ -953,11 +953,11 @@ been applied.
 <div class="param-set">
   <div class="def">
     <div class="name">decay_fn</div>
-    <div class="type">str</div>
+    <div class="type">str | dict[str, str]</div>
   </div>
   <div class="desc">
 
- An optional decay function expression using the variable `p`, where `p` is the normalised distance from 0 (source) to 1 (cutoff threshold). Controls how distance affects the statistical weighting. Default is `&quot;1&quot;` (flat, no distance weighting). For distance-weighted metrics, provide an expression such as `&quot;exp(-4 * p)&quot;` for exponential decay, or use the `cityseer.decay` module helpers. Values are clamped to [0, 1]. Supported functions include `exp`, `ln`, `sqrt`, `abs`, `sin`, `cos`, `min`, `max`, and the `^` operator. When multiple distances are specified, `p` is normalised independently per threshold. See [`cityseer.decay`](/decay) for details and examples.</div>
+ An optional decay function expression using the variable `p`, where `p` is the normalised distance from 0 (source) to 1 (cutoff threshold). Controls how distance affects the statistical weighting. Default is `&quot;1&quot;` (flat, no distance weighting). For distance-weighted metrics, provide an expression such as `&quot;exp(-4 * p)&quot;` for exponential decay, or use the `cityseer.decay` module helpers. Values are clamped to [0, 1]. Supported functions include `exp`, `ln`, `sqrt`, `abs`, `sin`, `cos`, `min`, `max`, and the `^` operator. When multiple distances are specified, `p` is normalised independently per threshold. See [`cityseer.decay`](/decay) for details and examples. Pass a dict of `{label: expression}` to compute several decays in a single network traversal; each label is appended to that variant's output column names (a plain string or `None` adds no suffix).</div>
 </div>
 
 ### Returns

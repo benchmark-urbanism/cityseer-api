@@ -67,52 +67,6 @@ layout: ../../layouts/PageLayout.astro
 
 <div class="function">
 
-## stats
-
-
-<div class="content">
-<span class="name">stats</span><div class="signature multiline">
-  <span class="pt">(</span>
-  <div class="param">
-    <span class="pn">self</span>
-  </div>
-  <div class="param">
-    <span class="pn">/</span>
-  </div>
-  <div class="param">
-    <span class="pn">network_structure</span>
-  </div>
-  <div class="param">
-    <span class="pn">numerical_maps</span>
-  </div>
-  <div class="param">
-    <span class="pn">distances=None</span>
-  </div>
-  <div class="param">
-    <span class="pn">minutes=None</span>
-  </div>
-  <div class="param">
-    <span class="pn">angular=None</span>
-  </div>
-  <div class="param">
-    <span class="pn">speed_m_s=None</span>
-  </div>
-  <div class="param">
-    <span class="pn">decay_fn=None</span>
-  </div>
-  <div class="param">
-    <span class="pn">pbar_disabled=None</span>
-  </div>
-  <span class="pt">)</span>
-</div>
-</div>
-
-</div>
-
- 
-
-<div class="function">
-
 ## progress_init
 
 
@@ -128,6 +82,9 @@ layout: ../../layouts/PageLayout.astro
   <span class="pt">)</span>
 </div>
 </div>
+
+
+ The type of the None singleton.
 
 </div>
 
@@ -150,6 +107,9 @@ layout: ../../layouts/PageLayout.astro
   <span class="pt">)</span>
 </div>
 </div>
+
+
+ The type of the None singleton.
 
 </div>
 
@@ -182,6 +142,9 @@ layout: ../../layouts/PageLayout.astro
 </div>
 </div>
 
+
+ The type of the None singleton.
+
 </div>
 
  
@@ -203,6 +166,9 @@ layout: ../../layouts/PageLayout.astro
   <span class="pt">)</span>
 </div>
 </div>
+
+
+ The type of the None singleton.
 
 </div>
 
@@ -229,6 +195,9 @@ layout: ../../layouts/PageLayout.astro
 </div>
 </div>
 
+
+ The type of the None singleton.
+
 </div>
 
  
@@ -251,6 +220,9 @@ layout: ../../layouts/PageLayout.astro
 </div>
 </div>
 
+
+ The type of the None singleton.
+
 </div>
 
  
@@ -272,6 +244,9 @@ layout: ../../layouts/PageLayout.astro
   <span class="pt">)</span>
 </div>
 </div>
+
+
+ The type of the None singleton.
 
 </div>
 
@@ -344,6 +319,9 @@ layout: ../../layouts/PageLayout.astro
 </div>
 </div>
 
+
+ The type of the None singleton.
+
 </div>
 
  
@@ -392,6 +370,61 @@ layout: ../../layouts/PageLayout.astro
   <span class="pt">)</span>
 </div>
 </div>
+
+
+ The type of the None singleton.
+
+</div>
+
+ 
+
+<div class="function">
+
+## accessibility_decays
+
+
+<div class="content">
+<span class="name">accessibility_decays</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">self</span>
+  </div>
+  <div class="param">
+    <span class="pn">/</span>
+  </div>
+  <div class="param">
+    <span class="pn">network_structure</span>
+  </div>
+  <div class="param">
+    <span class="pn">landuses_map</span>
+  </div>
+  <div class="param">
+    <span class="pn">accessibility_keys</span>
+  </div>
+  <div class="param">
+    <span class="pn">decay_fns</span>
+  </div>
+  <div class="param">
+    <span class="pn">distances=None</span>
+  </div>
+  <div class="param">
+    <span class="pn">minutes=None</span>
+  </div>
+  <div class="param">
+    <span class="pn">angular=None</span>
+  </div>
+  <div class="param">
+    <span class="pn">speed_m_s=None</span>
+  </div>
+  <div class="param">
+    <span class="pn">pbar_disabled=None</span>
+  </div>
+  <span class="pt">)</span>
+</div>
+</div>
+
+
+ The type of the None singleton.
 
 </div>
 
@@ -447,6 +480,165 @@ layout: ../../layouts/PageLayout.astro
   <span class="pt">)</span>
 </div>
 </div>
+
+
+ The type of the None singleton.
+
+</div>
+
+ 
+
+<div class="function">
+
+## mixed_uses_decays
+
+
+<div class="content">
+<span class="name">mixed_uses_decays</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">self</span>
+  </div>
+  <div class="param">
+    <span class="pn">/</span>
+  </div>
+  <div class="param">
+    <span class="pn">network_structure</span>
+  </div>
+  <div class="param">
+    <span class="pn">landuses_map</span>
+  </div>
+  <div class="param">
+    <span class="pn">decay_fns</span>
+  </div>
+  <div class="param">
+    <span class="pn">distances=None</span>
+  </div>
+  <div class="param">
+    <span class="pn">minutes=None</span>
+  </div>
+  <div class="param">
+    <span class="pn">compute_hill=None</span>
+  </div>
+  <div class="param">
+    <span class="pn">compute_shannon=None</span>
+  </div>
+  <div class="param">
+    <span class="pn">compute_gini=None</span>
+  </div>
+  <div class="param">
+    <span class="pn">angular=None</span>
+  </div>
+  <div class="param">
+    <span class="pn">speed_m_s=None</span>
+  </div>
+  <div class="param">
+    <span class="pn">pbar_disabled=None</span>
+  </div>
+  <span class="pt">)</span>
+</div>
+</div>
+
+
+ The type of the None singleton.
+
+</div>
+
+ 
+
+<div class="function">
+
+## stats
+
+
+<div class="content">
+<span class="name">stats</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">self</span>
+  </div>
+  <div class="param">
+    <span class="pn">/</span>
+  </div>
+  <div class="param">
+    <span class="pn">network_structure</span>
+  </div>
+  <div class="param">
+    <span class="pn">numerical_maps</span>
+  </div>
+  <div class="param">
+    <span class="pn">distances=None</span>
+  </div>
+  <div class="param">
+    <span class="pn">minutes=None</span>
+  </div>
+  <div class="param">
+    <span class="pn">angular=None</span>
+  </div>
+  <div class="param">
+    <span class="pn">speed_m_s=None</span>
+  </div>
+  <div class="param">
+    <span class="pn">decay_fn=None</span>
+  </div>
+  <div class="param">
+    <span class="pn">pbar_disabled=None</span>
+  </div>
+  <span class="pt">)</span>
+</div>
+</div>
+
+
+ The type of the None singleton.
+
+</div>
+
+ 
+
+<div class="function">
+
+## stats_decays
+
+
+<div class="content">
+<span class="name">stats_decays</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">self</span>
+  </div>
+  <div class="param">
+    <span class="pn">/</span>
+  </div>
+  <div class="param">
+    <span class="pn">network_structure</span>
+  </div>
+  <div class="param">
+    <span class="pn">numerical_maps</span>
+  </div>
+  <div class="param">
+    <span class="pn">decay_fns</span>
+  </div>
+  <div class="param">
+    <span class="pn">distances=None</span>
+  </div>
+  <div class="param">
+    <span class="pn">minutes=None</span>
+  </div>
+  <div class="param">
+    <span class="pn">angular=None</span>
+  </div>
+  <div class="param">
+    <span class="pn">speed_m_s=None</span>
+  </div>
+  <div class="param">
+    <span class="pn">pbar_disabled=None</span>
+  </div>
+  <span class="pt">)</span>
+</div>
+</div>
+
+
+ The type of the None singleton.
 
 </div>
 
