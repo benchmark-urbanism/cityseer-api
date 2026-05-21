@@ -5,7 +5,8 @@ walking-distance catchments around each node, measured along the actual street n
 distances. Because these summaries are computed at the same node locations used for centrality, you can directly
 compare how well-connected a location is with how accessible different amenities are from that location. An optional
 ``decay_fn`` parameter controls how distance affects the weighting; see the [`cityseer.decay`](/api/decay) module for
-preset helpers.
+preset helpers. ``decay_fn`` also accepts a ``{label: expression}`` dict to compute several decay variants in a single
+network traversal, with each label appended to that variant's output column names.
 
 For practical worked examples, see the [Cityseer Examples](https://benchmark-urbanism.github.io/cityseer-examples/)
 site, including the
@@ -40,6 +41,36 @@ def _require_dual_for_angular(
             f"{context} requires a dual graph for angular analysis. "
             "Convert the graph with cityseer.tools.graphs.nx_to_dual(...) before ingesting it."
         )
+
+
+# Flat (no distance decay); mirrors the Rust DEFAULT_DECAY_EXPR.
+_DEFAULT_DECAY_EXPR = "1"
+
+
+def _resolve_decay_fns(decay_fn: str | dict[str, str] | None) -> tuple[list[str], list[str]]:
+    """Resolve the ``decay_fn`` argument into aligned ``(labels, expressions)`` lists.
+
+    - ``None``: a single flat decay with an empty label (so output columns are unsuffixed).
+    - ``str``: a single decay with an empty label (output columns unsuffixed; back-compatible).
+    - ``dict``: ``{label: expression}`` — each label suffixes its output columns, and all decays
+      are computed in a single shared network traversal.
+    """
+    if decay_fn is None:
+        return [""], [_DEFAULT_DECAY_EXPR]
+    if isinstance(decay_fn, str):
+        return [""], [decay_fn]
+    if isinstance(decay_fn, dict):
+        if not decay_fn:
+            raise ValueError("decay_fn dict must contain at least one {label: expression} entry.")
+        labels = [str(label) for label in decay_fn]
+        exprs = [str(expr) for expr in decay_fn.values()]
+        return labels, exprs
+    raise TypeError("decay_fn must be a string, a dict of {label: expression}, or None.")
+
+
+def _decay_suffix(label: str) -> str:
+    """Column-key suffix for a decay label; empty label yields no suffix (back-compatible)."""
+    return f"_{label}" if label else ""
 
 
 def build_data_map(
@@ -129,7 +160,7 @@ def compute_accessibilities(
     angular: bool = False,
     n_nearest_candidates: int = 50,
     speed_m_s: float = SPEED_M_S,
-    decay_fn: str | None = None,
+    decay_fn: str | dict[str, str] | None = None,
 ) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
     r"""
     Compute land-use accessibilities for the specified land-use classification keys over the street network.
@@ -182,13 +213,15 @@ def compute_accessibilities(
         streets.
     speed_m_s: float
         Walking speed in metres per second used to convert `minutes` to distance thresholds.
-    decay_fn: str
+    decay_fn: str | dict[str, str]
         An optional decay function expression using the variable `p`, where `p` is the normalised
         distance from 0 (source) to 1 (cutoff threshold). Controls how distance affects the
         accessibility count weighting. Default is `"1"` (flat, no distance weighting). For
         distance-weighted metrics, provide an expression such as `"exp(-4 * p)"` for exponential
         decay, or use the `cityseer.decay` module helpers to generate expressions from absolute
-        distance units; see [`cityseer.decay`](/decay) for details and examples.
+        distance units; see [`cityseer.decay`](/decay) for details and examples. Pass a dict of
+        `{label: expression}` to compute several decays in a single network traversal; each label
+        is appended to that variant's output column names (a plain string or `None` adds no suffix).
 
     Returns
     -------
@@ -249,19 +282,20 @@ def compute_accessibilities(
         raise ValueError("The specified landuse column name can't be found in the GeoDataFrame.")
     landuses_map = dict(data_gdf[landuse_column_label])
     # call the underlying function
+    decay_labels, decay_exprs = _resolve_decay_fns(decay_fn)
     partial_func = partial(
-        data_map.accessibility,
+        data_map.accessibility_decays,
         network_structure=network_structure,
         landuses_map=landuses_map,
         accessibility_keys=accessibility_keys,
+        decay_fns=decay_exprs,
         distances=distances,
         minutes=minutes,
         angular=angular,
         speed_m_s=speed_m_s,
-        decay_fn=decay_fn,
     )
-    # wraps progress bar
-    acc_result = config.wrap_progress(
+    # wraps progress bar (returns one AccessibilityResult per decay label)
+    acc_results = config.wrap_progress(
         total=network_structure.street_node_count(), rust_struct=data_map, partial_func=partial_func
     )
     # unpack
@@ -271,19 +305,21 @@ def compute_accessibilities(
         speed_m_s=speed_m_s,
     )
     # intersect computed keys with those available in the gdf index (stations vs. streets)
-    gdf_idx = nodes_gdf.index.intersection(acc_result.node_keys_py)
+    gdf_idx = nodes_gdf.index.intersection(acc_results[0].node_keys_py)
     # create a dictionary to hold the data
     temp_data = {}
-    # unpack accessibility data
-    for acc_key in accessibility_keys:
-        for dist_key in distances:
-            ac_data_key = config.prep_gdf_key(acc_key, dist_key, angular)
-            temp_data[ac_data_key] = acc_result.result[acc_key].count[dist_key]  # type: ignore
-            if dist_key == max(distances):
-                ac_dist_data_key = config.prep_gdf_key(f"{acc_key}_nearest_max", dist_key, angular)
-                temp_data[ac_dist_data_key] = acc_result.result[acc_key].distance[dist_key]  # type: ignore
+    # unpack accessibility data (one result per decay label; empty label -> no suffix)
+    for decay_label, acc_result in zip(decay_labels, acc_results, strict=True):
+        suffix = _decay_suffix(decay_label)
+        for acc_key in accessibility_keys:
+            for dist_key in distances:
+                ac_data_key = config.prep_gdf_key(f"{acc_key}{suffix}", dist_key, angular)
+                temp_data[ac_data_key] = acc_result.result[acc_key].count[dist_key]
+                if dist_key == max(distances):
+                    ac_dist_data_key = config.prep_gdf_key(f"{acc_key}_nearest_max{suffix}", dist_key, angular)
+                    temp_data[ac_dist_data_key] = acc_result.result[acc_key].distance[dist_key]
 
-    temp_df = pd.DataFrame(temp_data, index=acc_result.node_keys_py)
+    temp_df = pd.DataFrame(temp_data, index=acc_results[0].node_keys_py)
     nodes_gdf.loc[gdf_idx, temp_df.columns] = temp_df.loc[gdf_idx, temp_df.columns]
 
     return nodes_gdf, data_gdf
@@ -305,7 +341,7 @@ def compute_mixed_uses(
     angular: bool = False,
     n_nearest_candidates: int = 50,
     speed_m_s: float = SPEED_M_S,
-    decay_fn: str | None = None,
+    decay_fn: str | dict[str, str] | None = None,
 ) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
     r"""
     Compute landuse metrics.
@@ -372,13 +408,15 @@ def compute_mixed_uses(
         streets.
     speed_m_s: float
         Walking speed in metres per second used to convert `minutes` to distance thresholds.
-    decay_fn: str
+    decay_fn: str | dict[str, str]
         An optional decay function expression using the variable `p`, where `p` is the normalised
         distance from 0 (source) to 1 (cutoff threshold). Controls how distance affects the
         Hill diversity weighting. Default is `"1"` (flat, no distance weighting). For
         distance-weighted metrics, provide an expression such as `"exp(-4 * p)"` for exponential
         decay, or use the `cityseer.decay` module helpers to generate expressions from absolute
-        distance units; see [`cityseer.decay`](/decay) for details and examples.
+        distance units; see [`cityseer.decay`](/decay) for details and examples. Pass a dict of
+        `{label: expression}` to compute several decays in a single network traversal; each label
+        is appended to that variant's output column names (a plain string or `None` adds no suffix).
 
     Returns
     -------
@@ -463,10 +501,12 @@ def compute_mixed_uses(
     if landuse_column_label not in data_gdf.columns:
         raise ValueError("The specified landuse column name can't be found in the GeoDataFrame.")
     landuses_map = dict(data_gdf[landuse_column_label])
+    decay_labels, decay_exprs = _resolve_decay_fns(decay_fn)
     partial_func = partial(
-        data_map.mixed_uses,
+        data_map.mixed_uses_decays,
         network_structure=network_structure,
         landuses_map=landuses_map,
+        decay_fns=decay_exprs,
         distances=distances,
         minutes=minutes,
         compute_hill=compute_hill,
@@ -474,10 +514,9 @@ def compute_mixed_uses(
         compute_gini=compute_gini,
         angular=angular,
         speed_m_s=speed_m_s,
-        decay_fn=decay_fn,
     )
-    # wraps progress bar
-    result = config.wrap_progress(
+    # wraps progress bar (returns one MixedUsesResult per decay label)
+    results = config.wrap_progress(
         total=network_structure.street_node_count(), rust_struct=data_map, partial_func=partial_func
     )
     # unpack
@@ -487,23 +526,26 @@ def compute_mixed_uses(
         speed_m_s=speed_m_s,
     )
     # intersect computed keys with those available in the gdf index (stations vs. streets)
-    gdf_idx = nodes_gdf.index.intersection(result.node_keys_py)
+    gdf_idx = nodes_gdf.index.intersection(results[0].node_keys_py)
     # create a dictionary to hold the data
     temp_data = {}
-    # unpack mixed-uses data
-    for dist_key in distances:
-        for q_key in [0, 1, 2]:
-            if compute_hill:
-                hill_data_key = config.prep_gdf_key(f"hill_q{q_key}", dist_key, angular)
-                temp_data[hill_data_key] = result.hill[q_key][dist_key]  # type: ignore
-        if compute_shannon:
-            shannon_data_key = config.prep_gdf_key("shannon", dist_key, angular)
-            temp_data[shannon_data_key] = result.shannon[dist_key]  # type: ignore
-        if compute_gini:
-            gini_data_key = config.prep_gdf_key("gini", dist_key, angular)
-            temp_data[gini_data_key] = result.gini[dist_key]  # type: ignore
+    # unpack mixed-uses data (one result per decay label; empty label -> no suffix)
+    # note: shannon and gini are decay-independent, so they repeat across labels.
+    for decay_label, result in zip(decay_labels, results, strict=True):
+        suffix = _decay_suffix(decay_label)
+        for dist_key in distances:
+            for q_key in [0, 1, 2]:
+                if compute_hill:
+                    hill_data_key = config.prep_gdf_key(f"hill_q{q_key}{suffix}", dist_key, angular)
+                    temp_data[hill_data_key] = result.hill[q_key][dist_key]
+            if compute_shannon:
+                shannon_data_key = config.prep_gdf_key(f"shannon{suffix}", dist_key, angular)
+                temp_data[shannon_data_key] = result.shannon[dist_key]
+            if compute_gini:
+                gini_data_key = config.prep_gdf_key(f"gini{suffix}", dist_key, angular)
+                temp_data[gini_data_key] = result.gini[dist_key]
 
-    temp_df = pd.DataFrame(temp_data, index=result.node_keys_py)
+    temp_df = pd.DataFrame(temp_data, index=results[0].node_keys_py)
     nodes_gdf.loc[gdf_idx, temp_df.columns] = temp_df.loc[gdf_idx, temp_df.columns]
 
     return nodes_gdf, data_gdf
@@ -522,7 +564,7 @@ def compute_stats(
     angular: bool = False,
     n_nearest_candidates: int = 50,
     speed_m_s: float = SPEED_M_S,
-    decay_fn: str | None = None,
+    decay_fn: str | dict[str, str] | None = None,
 ) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
     r"""
     Compute numerical statistics over the street network.
@@ -573,7 +615,7 @@ def compute_stats(
         streets.
     speed_m_s: float
         Walking speed in metres per second used to convert `minutes` to distance thresholds.
-    decay_fn: str
+    decay_fn: str | dict[str, str]
         An optional decay function expression using the variable `p`, where `p` is the normalised
         distance from 0 (source) to 1 (cutoff threshold). Controls how distance affects the
         statistical weighting. Default is `"1"` (flat, no distance weighting). For
@@ -581,7 +623,9 @@ def compute_stats(
         decay, or use the `cityseer.decay` module helpers. Values are clamped to [0, 1]. Supported
         functions include `exp`, `ln`, `sqrt`, `abs`, `sin`, `cos`, `min`, `max`, and the `^`
         operator. When multiple distances are specified, `p` is normalised independently per
-        threshold. See [`cityseer.decay`](/decay) for details and examples.
+        threshold. See [`cityseer.decay`](/decay) for details and examples. Pass a dict of
+        `{label: expression}` to compute several decays in a single network traversal; each label
+        is appended to that variant's output column names (a plain string or `None` adds no suffix).
 
     Returns
     -------
@@ -697,18 +741,19 @@ def compute_stats(
             raise ValueError("The specified numerical stats column name can't be found in the GeoDataFrame.")
         stats_maps.append(dict(data_gdf[stats_column_label]))
     # stats
+    decay_labels, decay_exprs = _resolve_decay_fns(decay_fn)
     partial_func = partial(
-        data_map.stats,
+        data_map.stats_decays,
         network_structure=network_structure,
         numerical_maps=stats_maps,
+        decay_fns=decay_exprs,
         distances=distances,
         minutes=minutes,
         angular=angular,
         speed_m_s=speed_m_s,
-        decay_fn=decay_fn,
     )
-    # wraps progress bar
-    stats_result = config.wrap_progress(
+    # wraps progress bar (returns one StatsResult per decay label)
+    stats_results = config.wrap_progress(
         total=network_structure.street_node_count(), rust_struct=data_map, partial_func=partial_func
     )
     # unpack
@@ -718,30 +763,32 @@ def compute_stats(
         speed_m_s=speed_m_s,
     )
     # intersect computed keys with those available in the gdf index (stations vs. streets)
-    gdf_idx = nodes_gdf.index.intersection(stats_result.node_keys_py)
+    gdf_idx = nodes_gdf.index.intersection(stats_results[0].node_keys_py)
     # create a dictionary to hold the data
     temp_data = {}
-    # unpack the numerical arrays
-    for idx, stats_column_label in enumerate(stats_column_labels):
-        for dist_key in distances:
-            k = config.prep_gdf_key(f"{stats_column_label}_sum", dist_key, angular=angular)
-            temp_data[k] = stats_result.result[idx].sum[dist_key]  # type: ignore
-            k = config.prep_gdf_key(f"{stats_column_label}_mean", dist_key, angular=angular)
-            temp_data[k] = stats_result.result[idx].mean[dist_key]  # type: ignore
-            k = config.prep_gdf_key(f"{stats_column_label}_count", dist_key, angular=angular)
-            temp_data[k] = stats_result.result[idx].count[dist_key]  # type: ignore
-            k = config.prep_gdf_key(f"{stats_column_label}_median", dist_key, angular=angular)
-            temp_data[k] = stats_result.result[idx].median[dist_key]  # type: ignore
-            k = config.prep_gdf_key(f"{stats_column_label}_var", dist_key, angular=angular)
-            temp_data[k] = stats_result.result[idx].variance[dist_key]  # type: ignore
-            k = config.prep_gdf_key(f"{stats_column_label}_mad", dist_key, angular=angular)
-            temp_data[k] = stats_result.result[idx].mad[dist_key]  # type: ignore
-            k = config.prep_gdf_key(f"{stats_column_label}_max", dist_key, angular=angular)
-            temp_data[k] = stats_result.result[idx].max[dist_key]  # type: ignore
-            k = config.prep_gdf_key(f"{stats_column_label}_min", dist_key, angular=angular)
-            temp_data[k] = stats_result.result[idx].min[dist_key]  # type: ignore
+    # unpack the numerical arrays (one result per decay label; empty label -> no suffix)
+    for decay_label, stats_result in zip(decay_labels, stats_results, strict=True):
+        suffix = _decay_suffix(decay_label)
+        for idx, stats_column_label in enumerate(stats_column_labels):
+            for dist_key in distances:
+                k = config.prep_gdf_key(f"{stats_column_label}_sum{suffix}", dist_key, angular=angular)
+                temp_data[k] = stats_result.result[idx].sum[dist_key]
+                k = config.prep_gdf_key(f"{stats_column_label}_mean{suffix}", dist_key, angular=angular)
+                temp_data[k] = stats_result.result[idx].mean[dist_key]
+                k = config.prep_gdf_key(f"{stats_column_label}_count{suffix}", dist_key, angular=angular)
+                temp_data[k] = stats_result.result[idx].count[dist_key]
+                k = config.prep_gdf_key(f"{stats_column_label}_median{suffix}", dist_key, angular=angular)
+                temp_data[k] = stats_result.result[idx].median[dist_key]
+                k = config.prep_gdf_key(f"{stats_column_label}_var{suffix}", dist_key, angular=angular)
+                temp_data[k] = stats_result.result[idx].variance[dist_key]
+                k = config.prep_gdf_key(f"{stats_column_label}_mad{suffix}", dist_key, angular=angular)
+                temp_data[k] = stats_result.result[idx].mad[dist_key]
+                k = config.prep_gdf_key(f"{stats_column_label}_max{suffix}", dist_key, angular=angular)
+                temp_data[k] = stats_result.result[idx].max[dist_key]
+                k = config.prep_gdf_key(f"{stats_column_label}_min{suffix}", dist_key, angular=angular)
+                temp_data[k] = stats_result.result[idx].min[dist_key]
 
-    temp_df = pd.DataFrame(temp_data, index=stats_result.node_keys_py)
+    temp_df = pd.DataFrame(temp_data, index=stats_results[0].node_keys_py)
     nodes_gdf.loc[gdf_idx, temp_df.columns] = temp_df.loc[gdf_idx, temp_df.columns]
 
     return nodes_gdf, data_gdf

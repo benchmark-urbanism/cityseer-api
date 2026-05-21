@@ -244,6 +244,21 @@ class DataMap:
             Object containing the accessibility metrics. Access detailed results via its `result` attribute.
         """
         ...
+    def accessibility_decays(
+        self,
+        network_structure: NetworkStructure,
+        landuses_map: dict[Hashable, str],
+        accessibility_keys: list[str],
+        decay_fns: list[str],
+        distances: list[int] | None = None,
+        minutes: list[float] | None = None,
+        angular: bool | None = None,
+        speed_m_s: float | None = None,
+        pbar_disabled: bool | None = None,
+    ) -> list[AccessibilityResult]:
+        """Like `accessibility`, but computes one `AccessibilityResult` per decay expression in `decay_fns`,
+        sharing a single network traversal."""
+        ...
     def mixed_uses(
         self,
         network_structure: NetworkStructure,
@@ -295,6 +310,23 @@ class DataMap:
             Object containing the calculated diversity metrics.
         """
         ...
+    def mixed_uses_decays(
+        self,
+        network_structure: NetworkStructure,
+        landuses_map: dict[Hashable, str],
+        decay_fns: list[str],
+        distances: list[int] | None = None,
+        minutes: list[float] | None = None,
+        compute_hill: bool | None = True,
+        compute_shannon: bool | None = False,
+        compute_gini: bool | None = False,
+        angular: bool | None = None,
+        speed_m_s: float | None = None,
+        pbar_disabled: bool | None = None,
+    ) -> list[MixedUsesResult]:
+        """Like `mixed_uses`, but computes one `MixedUsesResult` per decay expression in `decay_fns`,
+        sharing a single network traversal."""
+        ...
     def stats(
         self,
         network_structure: NetworkStructure,
@@ -337,4 +369,18 @@ class DataMap:
             Object containing the statistical results. Access detailed results for each input map via its `result`
             attribute.
         """
+        ...
+    def stats_decays(
+        self,
+        network_structure: NetworkStructure,
+        numerical_maps: list[dict[Hashable, float]],
+        decay_fns: list[str],
+        distances: list[int] | None = None,
+        minutes: list[float] | None = None,
+        angular: bool | None = None,
+        speed_m_s: float | None = None,
+        pbar_disabled: bool | None = None,
+    ) -> list[StatsResult]:
+        """Like `stats`, but computes one `StatsResult` per decay expression in `decay_fns`,
+        sharing a single network traversal."""
         ...

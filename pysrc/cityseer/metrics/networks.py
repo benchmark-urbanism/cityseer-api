@@ -351,7 +351,7 @@ def centrality_shortest(
                 desc=f"centrality full: {dist_label}",
             )
             for d in full_distances:
-                results[d] = result  # type: ignore
+                results[d] = result
 
         for d, p in sampled_distances:
             logger.info(f"  Sampled {d}m: p={p:.0%}")
@@ -372,7 +372,7 @@ def centrality_shortest(
                 partial_func=partial_func,
                 desc=f"centrality p={p:.0%}: {d}m",
             )
-            results[d] = result  # type: ignore
+            results[d] = result
 
     return _extract_results(results, nodes_gdf, postprocess)
 
@@ -534,11 +534,8 @@ def betweenness_od(
         speed_m_s=speed_m_s,
         tolerance=tolerance,
     )
-    result = cast(
-        rustalgos.centrality.CentralityResult,
-        config.wrap_progress(
-            total=network_structure.street_node_count(), rust_struct=network_structure, partial_func=partial_func
-        ),
+    result = config.wrap_progress(
+        total=network_structure.street_node_count(), rust_struct=network_structure, partial_func=partial_func
     )
     resolved_distances = config.log_thresholds(
         distances=distances,
@@ -673,7 +670,7 @@ def centrality_simplest(
                 desc=f"centrality simplest full: {dist_label}",
             )
             for d in full_distances:
-                results[d] = result  # type: ignore
+                results[d] = result
 
         for d, p in sampled_distances:
             logger.info(f"  Sampled {d}m: p={p:.0%}")
@@ -693,7 +690,7 @@ def centrality_simplest(
                 partial_func=partial_func,
                 desc=f"centrality simplest p={p:.0%}: {d}m",
             )
-            results[d] = result  # type: ignore
+            results[d] = result
 
     return _extract_results(results, nodes_gdf, postprocess, angular=True)
 

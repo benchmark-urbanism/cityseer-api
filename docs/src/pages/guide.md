@@ -323,6 +323,24 @@ cn, data_gdf = cn.compute_stats(
 - **Centrality** (`centrality_shortest`): default closeness includes `"decay": "exp(-4 * p)"` and default betweenness includes `"betweenness_decay": "exp(-4 * p)"`.
 - **Accessibility and stats** (`compute_accessibilities`, `compute_mixed_uses`, `compute_stats`): defaults to `"1"` (flat, no distance weighting). Pass a decay expression explicitly for distance-weighted aggregations.
 
+### Multiple decays in one traversal
+
+The land-use methods (`compute_accessibilities`, `compute_mixed_uses`, `compute_stats`) accept `decay_fn` as either a single expression (or `None`) or a `{label: expression}` dict. The dict form computes every decay variant in a **single shared network traversal** — much faster than calling the method once per decay — and appends each label to that variant's output columns. A plain string or `None` adds no suffix, so existing column names are unchanged.
+
+```python
+# gravity-weighted AND plain-count accessibility to retail, in one pass
+cn, landuses_gdf = cn.compute_accessibilities(
+    data_gdf=landuses_gdf,
+    landuse_column_label="category",
+    accessibility_keys=["retail"],
+    distances=[800],
+    decay_fn={"grav": decay.gaussian(peak=200, cutoff=800, std=150), "raw": decay.flat()},
+)
+print(cn.nodes_gdf[["cc_retail_grav_800", "cc_retail_raw_800"]])
+```
+
+This mirrors how `centrality_shortest` accepts a `{name: expression}` dict of metrics evaluated in a single traversal. (Note: for `compute_mixed_uses`, only the Hill measures vary with decay; Shannon and Gini are decay-independent and so repeat across labels.)
+
 ### Expression syntax
 
 Centrality expressions use two variables: `c` (raw cost) and `p` (normalised progress, `c / threshold`). Land-use decay expressions use `p` only. Both support: `+`, `-`, `*`, `/`, `^`, and functions `exp`, `ln`, `sqrt`, `abs`, `sin`, `cos`, `min`, `max`, `floor`, `ceil`, plus constants `pi` and `e`. Land-use decay output is clamped to [0, 1]; centrality expressions are not clamped. See the [`cityseer.decay`](/api/decay) API reference for full details.

@@ -6,6 +6,7 @@ import threading
 import time
 from collections.abc import Callable
 from queue import Queue
+from typing import TypeVar
 
 import numpy as np
 from tqdm import tqdm
@@ -91,30 +92,26 @@ def log_thresholds(
     return distances
 
 
-RustResults = (
-    rustalgos.centrality.CentralityResult
-    | rustalgos.data.AccessibilityResult
-    | rustalgos.data.MixedUsesResult
-    | rustalgos.data.StatsResult
-)
+# Result type of the wrapped rust call; bound per-call (single result or a list of results).
+_RustResult = TypeVar("_RustResult")
 
 
 def wrap_progress(
     total: int,
     rust_struct: rustalgos.graph.NetworkStructure | rustalgos.data.DataMap | rustalgos.viewshed.Viewshed,
-    partial_func: Callable,
+    partial_func: Callable[[], _RustResult],
     desc: str | None = None,
-) -> RustResults:
+) -> _RustResult:
     """Wraps long running parallelised rust functions with a progress counter."""
 
-    def wrapper(queue: Queue[RustResults | Exception]):
+    def wrapper(queue: Queue[_RustResult | Exception]):
         try:
-            result: RustResults = partial_func()
+            result: _RustResult = partial_func()
             queue.put(result)
         except Exception as e:
             queue.put(e)
 
-    result_queue: Queue[RustResults | Exception] = Queue()
+    result_queue: Queue[_RustResult | Exception] = Queue()
     thread = threading.Thread(target=wrapper, args=(result_queue,))
     pbar = tqdm(
         total=total,

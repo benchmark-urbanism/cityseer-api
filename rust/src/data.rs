@@ -573,8 +573,55 @@ impl DataMap {
         pbar_disabled: Option<bool>,
         py: Python,
     ) -> PyResult<AccessibilityResult> {
+        // Single-decay wrapper retained for backwards compatibility; delegates to
+        // `accessibility_decays`, which computes one or more decays in a single traversal.
+        let decay_fns = vec![decay_fn.unwrap_or_else(|| DEFAULT_DECAY_EXPR.to_string())];
+        let mut results = self.accessibility_decays(
+            network_structure,
+            landuses_map,
+            accessibility_keys,
+            decay_fns,
+            distances,
+            minutes,
+            angular,
+            speed_m_s,
+            pbar_disabled,
+            py,
+        )?;
+        Ok(results.remove(0))
+    }
+
+    #[pyo3(signature = (
+        network_structure,
+        landuses_map,
+        accessibility_keys,
+        decay_fns,
+        distances=None,
+        minutes=None,
+        angular=None,
+        speed_m_s=None,
+        pbar_disabled=None,
+    ))]
+    fn accessibility_decays(
+        &self,
+        network_structure: &NetworkStructure,
+        landuses_map: Py<PyAny>,
+        accessibility_keys: Vec<String>,
+        decay_fns: Vec<String>,
+        distances: Option<Vec<u32>>,
+        minutes: Option<Vec<f32>>,
+        angular: Option<bool>,
+        speed_m_s: Option<f32>,
+        pbar_disabled: Option<bool>,
+        py: Python,
+    ) -> PyResult<Vec<AccessibilityResult>> {
         if angular.unwrap_or(false) {
             network_structure.validate_dual_for_angular("accessibility")?;
+        }
+        if decay_fns.is_empty() {
+            return Err(exceptions::PyValueError::new_err(
+                "At least one decay function must be provided.",
+            ));
         }
         let speed_m_s = speed_m_s.unwrap_or(WALKING_SPEED);
         let (distances, seconds) =
@@ -603,26 +650,31 @@ impl DataMap {
             lu_map.insert(comp_key, lu_val);
         }
 
-        let decay_fn_str = validate_decay_fn(
-            decay_fn.as_deref().unwrap_or(DEFAULT_DECAY_EXPR),
-        )?;
+        let decay_strs = decay_fns
+            .iter()
+            .map(|expr| validate_decay_fn(expr))
+            .collect::<PyResult<Vec<_>>>()?;
 
         let node_keys_py = network_structure.node_keys_py(py);
         let node_indices = network_structure.node_indices();
         let accessibility_keys_set: HashSet<String> = accessibility_keys.iter().cloned().collect();
-        let res = AccessibilityResult::new(
-            distances.clone(),
-            node_keys_py,
-            node_indices.clone(),
-            network_structure.node_bound(),
-            accessibility_keys.clone(),
-            max_dist,
-        );
+        let mut results: Vec<AccessibilityResult> = Vec::with_capacity(decay_strs.len());
+        for _ in 0..decay_strs.len() {
+            let nk: Vec<Py<PyAny>> = node_keys_py.iter().map(|k| k.clone_ref(py)).collect();
+            results.push(AccessibilityResult::new(
+                distances.clone(),
+                nk,
+                node_indices.clone(),
+                network_structure.node_bound(),
+                accessibility_keys.clone(),
+                max_dist,
+            ));
+        }
 
         let pbar_disabled = pbar_disabled.unwrap_or(false);
         self.progress_init();
 
-        let result = py.detach(move || {
+        let results = py.detach(move || {
             node_indices.par_iter().for_each(|netw_src_idx| {
                 if !pbar_disabled {
                     self.progress.fetch_add(1, AtomicOrdering::Relaxed);
@@ -639,27 +691,35 @@ impl DataMap {
                         angular,
                     )
                     .expect("angular topology should be pre-validated");
-                let decay = parse_decay_fn(&decay_fn_str);
-                for (data_key, data_dist) in reachable_entries {
-                    if let Some(lu_class) = lu_map.get(&data_key) {
-                        if !accessibility_keys_set.contains(lu_class) {
-                            continue;
-                        }
-                        for (i, &d) in distances.iter().enumerate()
-                        {
-                            if data_dist <= d as f32 {
-                                let p = data_dist / d as f32;
-                                let val_wt = decay(p);
-                                res.lu_map[lu_class].count_vec.metric[i][*netw_src_idx]
-                                    .fetch_add(val_wt as f64, AtomicOrdering::Relaxed);
-
-                                if d == max_dist {
-                                    let current_dist = res.lu_map[lu_class].distance_vec.metric[0]
+                // One shared traversal feeds every decay function.
+                for (decay_idx, decay_str) in decay_strs.iter().enumerate() {
+                    let decay = parse_decay_fn(decay_str);
+                    for (data_key, data_dist) in &reachable_entries {
+                        if let Some(lu_class) = lu_map.get(data_key) {
+                            if !accessibility_keys_set.contains(lu_class) {
+                                continue;
+                            }
+                            for (i, &d) in distances.iter().enumerate() {
+                                if *data_dist <= d as f32 {
+                                    let p = *data_dist / d as f32;
+                                    let val_wt = decay(p);
+                                    results[decay_idx].lu_map[lu_class].count_vec.metric[i]
                                         [*netw_src_idx]
-                                        .load(AtomicOrdering::Relaxed);
-                                    if current_dist.is_nan() || (data_dist as f64) < current_dist {
-                                        res.lu_map[lu_class].distance_vec.metric[0][*netw_src_idx]
-                                            .store(data_dist as f64, AtomicOrdering::Relaxed);
+                                        .fetch_add(val_wt as f64, AtomicOrdering::Relaxed);
+
+                                    if d == max_dist {
+                                        let current_dist = results[decay_idx].lu_map[lu_class]
+                                            .distance_vec
+                                            .metric[0][*netw_src_idx]
+                                            .load(AtomicOrdering::Relaxed);
+                                        if current_dist.is_nan()
+                                            || (*data_dist as f64) < current_dist
+                                        {
+                                            results[decay_idx].lu_map[lu_class]
+                                                .distance_vec
+                                                .metric[0][*netw_src_idx]
+                                                .store(*data_dist as f64, AtomicOrdering::Relaxed);
+                                        }
                                     }
                                 }
                             }
@@ -667,9 +727,9 @@ impl DataMap {
                     }
                 }
             });
-            res
+            results
         });
-        Ok(result)
+        Ok(results)
     }
 
     #[pyo3(signature = (
@@ -700,8 +760,61 @@ impl DataMap {
         pbar_disabled: Option<bool>,
         py: Python,
     ) -> PyResult<MixedUsesResult> {
+        // Single-decay wrapper retained for backwards compatibility; delegates to
+        // `mixed_uses_decays`, which computes one or more decays in a single traversal.
+        let decay_fns = vec![decay_fn.unwrap_or_else(|| DEFAULT_DECAY_EXPR.to_string())];
+        let mut results = self.mixed_uses_decays(
+            network_structure,
+            landuses_map,
+            decay_fns,
+            distances,
+            minutes,
+            compute_hill,
+            compute_shannon,
+            compute_gini,
+            angular,
+            speed_m_s,
+            pbar_disabled,
+            py,
+        )?;
+        Ok(results.remove(0))
+    }
+
+    #[pyo3(signature = (
+        network_structure,
+        landuses_map,
+        decay_fns,
+        distances=None,
+        minutes=None,
+        compute_hill=None,
+        compute_shannon=None,
+        compute_gini=None,
+        angular=None,
+        speed_m_s=None,
+        pbar_disabled=None
+    ))]
+    fn mixed_uses_decays(
+        &self,
+        network_structure: &NetworkStructure,
+        landuses_map: Py<PyAny>,
+        decay_fns: Vec<String>,
+        distances: Option<Vec<u32>>,
+        minutes: Option<Vec<f32>>,
+        compute_hill: Option<bool>,
+        compute_shannon: Option<bool>,
+        compute_gini: Option<bool>,
+        angular: Option<bool>,
+        speed_m_s: Option<f32>,
+        pbar_disabled: Option<bool>,
+        py: Python,
+    ) -> PyResult<Vec<MixedUsesResult>> {
         if angular.unwrap_or(false) {
             network_structure.validate_dual_for_angular("mixed_uses")?;
+        }
+        if decay_fns.is_empty() {
+            return Err(exceptions::PyValueError::new_err(
+                "At least one decay function must be provided.",
+            ));
         }
         let speed_m_s = speed_m_s.unwrap_or(WALKING_SPEED);
         let (distances, seconds) =
@@ -735,23 +848,28 @@ impl DataMap {
                 "One of the compute_<measure> flags must be True, but all are currently False.",
             ));
         }
-        let decay_fn_str = validate_decay_fn(
-            decay_fn.as_deref().unwrap_or(DEFAULT_DECAY_EXPR),
-        )?;
+        let decay_strs = decay_fns
+            .iter()
+            .map(|expr| validate_decay_fn(expr))
+            .collect::<PyResult<Vec<_>>>()?;
 
         let node_keys_py = network_structure.node_keys_py(py);
         let node_indices = network_structure.node_indices();
-        let res = MixedUsesResult::new(
-            distances.clone(),
-            node_keys_py,
-            node_indices.clone(),
-            network_structure.node_bound(),
-        );
+        let mut results: Vec<MixedUsesResult> = Vec::with_capacity(decay_strs.len());
+        for _ in 0..decay_strs.len() {
+            let nk: Vec<Py<PyAny>> = node_keys_py.iter().map(|k| k.clone_ref(py)).collect();
+            results.push(MixedUsesResult::new(
+                distances.clone(),
+                nk,
+                node_indices.clone(),
+                network_structure.node_bound(),
+            ));
+        }
 
         let pbar_disabled = pbar_disabled.unwrap_or(false);
         self.progress_init();
 
-        let result = py.detach(move || {
+        let results = py.detach(move || {
             // Build a stable ordering of unique classes for flat-Vec indexing
             let classes_vec: Vec<String> = {
                 let mut uniq: HashSet<String> = HashSet::new();
@@ -785,7 +903,8 @@ impl DataMap {
                         angular,
                     )
                     .expect("angular topology should be pre-validated");
-                let decay = parse_decay_fn(&decay_fn_str);
+                // Class counts and nearest distances are decay-independent, so they are
+                // built once from the shared traversal and reused across every decay.
                 // Flat arrays: [dist_idx * n_classes + class_idx]
                 let n_dists = distances.len();
                 let mut counts = vec![0u32; n_dists * n_classes];
@@ -803,65 +922,67 @@ impl DataMap {
                         }
                     }
                 }
-                for (i, &d) in distances.iter().enumerate()
-                {
-                    let offset = i * n_classes;
-                    let dist_counts = &counts[offset..offset + n_classes];
-                    let dist_nearest = &nearest[offset..offset + n_classes];
-                    let wt_fn = |dist: f32| {
-                        let p = dist / d as f32;
-                        decay(p)
-                    };
-                    if compute_hill {
-                        res.hill_vec[&0].metric[i][*netw_src_idx].fetch_add(
-                            diversity::hill_diversity_branch_distance_wt_core(
-                                dist_counts,
-                                dist_nearest,
-                                0.0,
-                                &wt_fn,
-                            )
-                            .unwrap_or(0.0) as f64,
-                            AtomicOrdering::Relaxed,
-                        );
-                        res.hill_vec[&1].metric[i][*netw_src_idx].fetch_add(
-                            diversity::hill_diversity_branch_distance_wt_core(
-                                dist_counts,
-                                dist_nearest,
-                                1.0,
-                                &wt_fn,
-                            )
-                            .unwrap_or(0.0) as f64,
-                            AtomicOrdering::Relaxed,
-                        );
-                        res.hill_vec[&2].metric[i][*netw_src_idx].fetch_add(
-                            diversity::hill_diversity_branch_distance_wt_core(
-                                dist_counts,
-                                dist_nearest,
-                                2.0,
-                                &wt_fn,
-                            )
-                            .unwrap_or(0.0) as f64,
-                            AtomicOrdering::Relaxed,
-                        );
-                    }
-                    if compute_shannon {
-                        res.shannon_vec.metric[i][*netw_src_idx].fetch_add(
-                            diversity::shannon_diversity_core(dist_counts).unwrap_or(0.0) as f64,
-                            AtomicOrdering::Relaxed,
-                        );
-                    }
-                    if compute_gini {
-                        res.gini_vec.metric[i][*netw_src_idx].fetch_add(
-                            diversity::gini_simpson_diversity_core(dist_counts).unwrap_or(0.0)
-                                as f64,
-                            AtomicOrdering::Relaxed,
-                        );
+                for (decay_idx, decay_str) in decay_strs.iter().enumerate() {
+                    let decay = parse_decay_fn(decay_str);
+                    for (i, &d) in distances.iter().enumerate() {
+                        let offset = i * n_classes;
+                        let dist_counts = &counts[offset..offset + n_classes];
+                        let dist_nearest = &nearest[offset..offset + n_classes];
+                        let wt_fn = |dist: f32| {
+                            let p = dist / d as f32;
+                            decay(p)
+                        };
+                        if compute_hill {
+                            results[decay_idx].hill_vec[&0].metric[i][*netw_src_idx].fetch_add(
+                                diversity::hill_diversity_branch_distance_wt_core(
+                                    dist_counts,
+                                    dist_nearest,
+                                    0.0,
+                                    &wt_fn,
+                                )
+                                .unwrap_or(0.0) as f64,
+                                AtomicOrdering::Relaxed,
+                            );
+                            results[decay_idx].hill_vec[&1].metric[i][*netw_src_idx].fetch_add(
+                                diversity::hill_diversity_branch_distance_wt_core(
+                                    dist_counts,
+                                    dist_nearest,
+                                    1.0,
+                                    &wt_fn,
+                                )
+                                .unwrap_or(0.0) as f64,
+                                AtomicOrdering::Relaxed,
+                            );
+                            results[decay_idx].hill_vec[&2].metric[i][*netw_src_idx].fetch_add(
+                                diversity::hill_diversity_branch_distance_wt_core(
+                                    dist_counts,
+                                    dist_nearest,
+                                    2.0,
+                                    &wt_fn,
+                                )
+                                .unwrap_or(0.0) as f64,
+                                AtomicOrdering::Relaxed,
+                            );
+                        }
+                        if compute_shannon {
+                            results[decay_idx].shannon_vec.metric[i][*netw_src_idx].fetch_add(
+                                diversity::shannon_diversity_core(dist_counts).unwrap_or(0.0) as f64,
+                                AtomicOrdering::Relaxed,
+                            );
+                        }
+                        if compute_gini {
+                            results[decay_idx].gini_vec.metric[i][*netw_src_idx].fetch_add(
+                                diversity::gini_simpson_diversity_core(dist_counts).unwrap_or(0.0)
+                                    as f64,
+                                AtomicOrdering::Relaxed,
+                            );
+                        }
                     }
                 }
             });
-            res
+            results
         });
-        Ok(result)
+        Ok(results)
     }
 }
 
@@ -926,8 +1047,52 @@ impl DataMap {
         pbar_disabled: Option<bool>,
         py: Python,
     ) -> PyResult<StatsResult> {
+        // Single-decay wrapper retained for backwards compatibility; delegates to
+        // `stats_decays`, which computes one or more decays in a single traversal.
+        let decay_fns = vec![decay_fn.unwrap_or_else(|| DEFAULT_DECAY_EXPR.to_string())];
+        let mut results = self.stats_decays(
+            network_structure,
+            numerical_maps,
+            decay_fns,
+            distances,
+            minutes,
+            angular,
+            speed_m_s,
+            pbar_disabled,
+            py,
+        )?;
+        Ok(results.remove(0))
+    }
+
+    #[pyo3(signature = (
+        network_structure,
+        numerical_maps,
+        decay_fns,
+        distances=None,
+        minutes=None,
+        angular=None,
+        speed_m_s=None,
+        pbar_disabled=None
+    ))]
+    fn stats_decays(
+        &self,
+        network_structure: &NetworkStructure,
+        numerical_maps: Vec<Py<PyAny>>,
+        decay_fns: Vec<String>,
+        distances: Option<Vec<u32>>,
+        minutes: Option<Vec<f32>>,
+        angular: Option<bool>,
+        speed_m_s: Option<f32>,
+        pbar_disabled: Option<bool>,
+        py: Python,
+    ) -> PyResult<Vec<StatsResult>> {
         if angular.unwrap_or(false) {
             network_structure.validate_dual_for_angular("stats")?;
+        }
+        if decay_fns.is_empty() {
+            return Err(exceptions::PyValueError::new_err(
+                "At least one decay function must be provided.",
+            ));
         }
         let speed_m_s = speed_m_s.unwrap_or(WALKING_SPEED);
         let (distances, seconds) =
@@ -958,24 +1123,29 @@ impl DataMap {
             num_maps.push(num_map);
         }
 
-        let decay_fn_str = validate_decay_fn(
-            decay_fn.as_deref().unwrap_or(DEFAULT_DECAY_EXPR),
-        )?;
+        let decay_strs = decay_fns
+            .iter()
+            .map(|expr| validate_decay_fn(expr))
+            .collect::<PyResult<Vec<_>>>()?;
 
         let node_keys_py = network_structure.node_keys_py(py);
         let node_indices = network_structure.node_indices();
-        let res = StatsResult::new(
-            distances.clone(),
-            node_keys_py,
-            node_indices.clone(),
-            network_structure.node_bound(),
-            num_maps.len(),
-        );
+        let mut results: Vec<StatsResult> = Vec::with_capacity(decay_strs.len());
+        for _ in 0..decay_strs.len() {
+            let nk: Vec<Py<PyAny>> = node_keys_py.iter().map(|k| k.clone_ref(py)).collect();
+            results.push(StatsResult::new(
+                distances.clone(),
+                nk,
+                node_indices.clone(),
+                network_structure.node_bound(),
+                num_maps.len(),
+            ));
+        }
 
         let pbar_disabled = pbar_disabled.unwrap_or(false);
         self.progress_init();
 
-        let result = py.detach(move || {
+        let results = py.detach(move || {
             node_indices.par_iter().for_each(|netw_src_idx| {
                 if !pbar_disabled {
                     self.progress.fetch_add(1, AtomicOrdering::Relaxed);
@@ -992,100 +1162,103 @@ impl DataMap {
                         angular,
                     )
                     .expect("angular topology should be pre-validated");
-                let decay = parse_decay_fn(&decay_fn_str);
-                for (map_idx, num_map) in num_maps.iter().enumerate() {
-                    for (i, &d) in distances.iter().enumerate()
-                    {
-                        let mut vals_wts = Vec::new();
-                        let mut sum_val = 0.0_f32;
-                        let mut count_val = 0.0_f32;
-                        let mut sum_sq_val = 0.0_f32;
-                        let mut min_val = f32::NAN;
-                        let mut max_val = f32::NAN;
-                        for (data_key, data_dist) in &reachable_entries {
-                            if *data_dist <= d as f32 {
-                                if let Some(&num) = num_map.get(data_key) {
-                                    if num.is_nan() {
-                                        continue; // Skip NaN values
+                // One shared traversal feeds every decay function.
+                for (decay_idx, decay_str) in decay_strs.iter().enumerate() {
+                    let decay = parse_decay_fn(decay_str);
+                    for (map_idx, num_map) in num_maps.iter().enumerate() {
+                        for (i, &d) in distances.iter().enumerate() {
+                            let mut vals_wts = Vec::new();
+                            let mut sum_val = 0.0_f32;
+                            let mut count_val = 0.0_f32;
+                            let mut sum_sq_val = 0.0_f32;
+                            let mut min_val = f32::NAN;
+                            let mut max_val = f32::NAN;
+                            for (data_key, data_dist) in &reachable_entries {
+                                if *data_dist <= d as f32 {
+                                    if let Some(&num) = num_map.get(data_key) {
+                                        if num.is_nan() {
+                                            continue; // Skip NaN values
+                                        }
+                                        // gather data
+                                        let p = *data_dist / d as f32;
+                                        let wt = decay(p);
+                                        let num_wt = num * wt;
+                                        // Accumulate sums and counts
+                                        sum_val += num_wt;
+                                        count_val += wt;
+                                        sum_sq_val += wt * num * num;
+                                        // Max
+                                        max_val = if max_val.is_nan() {
+                                            num
+                                        } else {
+                                            max_val.max(num)
+                                        };
+                                        // Min
+                                        min_val = if min_val.is_nan() {
+                                            num
+                                        } else {
+                                            min_val.min(num)
+                                        };
+                                        // Median calcs (weighted)
+                                        vals_wts.push((num, wt));
                                     }
-                                    // gather data
-                                    let p = *data_dist / d as f32;
-                                    let wt = decay(p);
-                                    let num_wt = num * wt;
-                                    // Accumulate sums and counts
-                                    sum_val += num_wt;
-                                    count_val += wt;
-                                    sum_sq_val += wt * num * num;
-                                    // Max
-                                    max_val = if max_val.is_nan() {
-                                        num
-                                    } else {
-                                        max_val.max(num)
-                                    };
-                                    // Min
-                                    min_val = if min_val.is_nan() {
-                                        num
-                                    } else {
-                                        min_val.min(num)
-                                    };
-                                    // Median calcs (weighted)
-                                    vals_wts.push((num, wt));
                                 }
                             }
+                            let stats = &results[decay_idx].stats_vec[map_idx];
+                            // Sum
+                            stats.sum_vec.metric[i][*netw_src_idx]
+                                .store(sum_val as f64, AtomicOrdering::Relaxed);
+                            // Count
+                            stats.count_vec.metric[i][*netw_src_idx]
+                                .store(count_val as f64, AtomicOrdering::Relaxed);
+                            // Max
+                            stats.max_vec.metric[i][*netw_src_idx]
+                                .store(max_val as f64, AtomicOrdering::Relaxed);
+                            // Min
+                            stats.min_vec.metric[i][*netw_src_idx]
+                                .store(min_val as f64, AtomicOrdering::Relaxed);
+                            // Mean
+                            let mean_val = if count_val > 0.0 {
+                                sum_val / count_val
+                            } else {
+                                f32::NAN
+                            };
+                            stats.mean_vec.metric[i][*netw_src_idx]
+                                .store(mean_val as f64, AtomicOrdering::Relaxed);
+                            // Variance
+                            // Ensure non-negative due to potential float inaccuracies
+                            let variance_val = if count_val > 0.0 {
+                                (sum_sq_val / count_val - mean_val.powi(2)).max(0.0)
+                            } else {
+                                f32::NAN
+                            };
+                            stats.variance_vec.metric[i][*netw_src_idx]
+                                .store(variance_val as f64, AtomicOrdering::Relaxed);
+                            // Median
+                            let median_val = weighted_median(&vals_wts, count_val);
+                            stats.median_vec.metric[i][*netw_src_idx]
+                                .store(median_val as f64, AtomicOrdering::Relaxed);
+                            // MAD: build abs deviations with same weights; use weighted median
+                            let mad_val = if !vals_wts.is_empty()
+                                && !median_val.is_nan()
+                                && count_val > 0.0
+                            {
+                                let abs_wt: Vec<(f32, f32)> = vals_wts
+                                    .iter()
+                                    .map(|(v, wt)| ((v - median_val).abs(), *wt))
+                                    .collect();
+                                weighted_median(&abs_wt, count_val)
+                            } else {
+                                f32::NAN
+                            };
+                            stats.mad_vec.metric[i][*netw_src_idx]
+                                .store(mad_val as f64, AtomicOrdering::Relaxed);
                         }
-                        // Sum
-                        res.stats_vec[map_idx].sum_vec.metric[i][*netw_src_idx]
-                            .store(sum_val as f64, AtomicOrdering::Relaxed);
-                        // Count
-                        res.stats_vec[map_idx].count_vec.metric[i][*netw_src_idx]
-                            .store(count_val as f64, AtomicOrdering::Relaxed);
-                        // Max
-                        res.stats_vec[map_idx].max_vec.metric[i][*netw_src_idx]
-                            .store(max_val as f64, AtomicOrdering::Relaxed);
-                        // Min
-                        res.stats_vec[map_idx].min_vec.metric[i][*netw_src_idx]
-                            .store(min_val as f64, AtomicOrdering::Relaxed);
-                        // Mean
-                        let mean_val = if count_val > 0.0 {
-                            sum_val / count_val
-                        } else {
-                            f32::NAN
-                        };
-                        res.stats_vec[map_idx].mean_vec.metric[i][*netw_src_idx]
-                            .store(mean_val as f64, AtomicOrdering::Relaxed);
-                        // Variance
-                        // Ensure non-negative due to potential float inaccuracies
-                        let variance_val = if count_val > 0.0 {
-                            (sum_sq_val / count_val - mean_val.powi(2)).max(0.0)
-                        } else {
-                            f32::NAN
-                        };
-                        res.stats_vec[map_idx].variance_vec.metric[i][*netw_src_idx]
-                            .store(variance_val as f64, AtomicOrdering::Relaxed);
-                        // Median
-                        let median_val = weighted_median(&vals_wts, count_val);
-                        res.stats_vec[map_idx].median_vec.metric[i][*netw_src_idx]
-                            .store(median_val as f64, AtomicOrdering::Relaxed);
-                        // MAD: build abs deviations with same weights; use weighted median
-                        let mad_val = if !vals_wts.is_empty()
-                            && !median_val.is_nan()
-                            && count_val > 0.0
-                        {
-                            let abs_wt: Vec<(f32, f32)> = vals_wts
-                                .iter()
-                                .map(|(v, wt)| ((v - median_val).abs(), *wt))
-                                .collect();
-                            weighted_median(&abs_wt, count_val)
-                        } else {
-                            f32::NAN
-                        };
-                        res.stats_vec[map_idx].mad_vec.metric[i][*netw_src_idx]
-                            .store(mad_val as f64, AtomicOrdering::Relaxed);
                     }
                 }
             });
-            res
+            results
         });
-        Ok(result)
+        Ok(results)
     }
 }

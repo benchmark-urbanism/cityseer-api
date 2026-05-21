@@ -198,7 +198,7 @@ def visibility_from_gpd(
             crs=to_crs_code,
             transform=transform,
         ) as dst:
-            dst.write(bands[band_idx], 1)  # type: ignore
+            dst.write(bands[band_idx], 1)
 
 
 def visibility_graph_from_osm(
