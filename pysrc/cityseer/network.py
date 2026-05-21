@@ -1101,7 +1101,8 @@ class CityNetwork:
         Wraps [`compute_accessibilities`](/metrics/layers#compute-accessibilities). All additional keyword
         arguments are forwarded; see that function for the full parameter list including
         ``landuse_column_label``, ``accessibility_keys``, ``distances``, ``minutes``, ``decay_fn``,
-        and ``angular``.
+        and ``angular``. ``decay_fn`` accepts a single expression or a ``{label: expression}`` dict that
+        computes several decay variants in one network traversal, each label suffixing its output columns.
 
         Parameters
         ----------
@@ -1151,7 +1152,9 @@ class CityNetwork:
         Wraps [`compute_mixed_uses`](/metrics/layers#compute-mixed-uses). All additional keyword
         arguments are forwarded; see that function for the full parameter list including
         ``landuse_column_label``, ``distances``, ``minutes``, ``compute_hill``, ``compute_shannon``,
-        ``compute_gini``, ``decay_fn``, and ``angular``.
+        ``compute_gini``, ``decay_fn``, and ``angular``. ``decay_fn`` accepts a single expression or a
+        ``{label: expression}`` dict that computes several decay variants in one network traversal, each
+        label suffixing its output columns (only the Hill measures vary with decay).
 
         Parameters
         ----------
@@ -1193,7 +1196,9 @@ class CityNetwork:
 
         Wraps [`compute_stats`](/metrics/layers#compute-stats). All additional keyword arguments are forwarded;
         see that function for the full parameter list including ``stats_column_labels``, ``distances``,
-        ``minutes``, ``decay_fn``, and ``angular``.
+        ``minutes``, ``decay_fn``, and ``angular``. ``decay_fn`` accepts a single expression or a
+        ``{label: expression}`` dict that computes several decay variants in one network traversal, each
+        label suffixing its output columns.
 
         Parameters
         ----------

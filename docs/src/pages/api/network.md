@@ -1335,7 +1335,7 @@ cn.centrality_simplest(distances=[400, 800, 1600])
 
  Compute land-use accessibility metrics. Counts how many instances of each specified land-use category (e.g. retail, parks) are reachable within each distance threshold, and records the nearest distance to each category.
 
- Wraps [`compute_accessibilities`](/metrics/layers#compute-accessibilities). All additional keyword arguments are forwarded; see that function for the full parameter list including ``landuse_column_label``, ``accessibility_keys``, ``distances``, ``minutes``, ``decay_fn``, and ``angular``.
+ Wraps [`compute_accessibilities`](/metrics/layers#compute-accessibilities). All additional keyword arguments are forwarded; see that function for the full parameter list including ``landuse_column_label``, ``accessibility_keys``, ``distances``, ``minutes``, ``decay_fn``, and ``angular``. ``decay_fn`` accepts a single expression or a ``{label: expression}`` dict that computes several decay variants in one network traversal, each label suffixing its output columns.
 ### Parameters
 <div class="param-set">
   <div class="def">
@@ -1420,7 +1420,7 @@ print(cn.nodes_gdf["cc_park_nearest_max_800"])
 
  Compute mixed-use diversity metrics. Measures the diversity of land-use categories reachable from each node using Hill numbers: q=0 counts how many distinct types are present, q=1 measures diversity accounting for how evenly types are represented, and q=2 gives greater weight to the most common types.
 
- Wraps [`compute_mixed_uses`](/metrics/layers#compute-mixed-uses). All additional keyword arguments are forwarded; see that function for the full parameter list including ``landuse_column_label``, ``distances``, ``minutes``, ``compute_hill``, ``compute_shannon``, ``compute_gini``, ``decay_fn``, and ``angular``.
+ Wraps [`compute_mixed_uses`](/metrics/layers#compute-mixed-uses). All additional keyword arguments are forwarded; see that function for the full parameter list including ``landuse_column_label``, ``distances``, ``minutes``, ``compute_hill``, ``compute_shannon``, ``compute_gini``, ``decay_fn``, and ``angular``. ``decay_fn`` accepts a single expression or a ``{label: expression}`` dict that computes several decay variants in one network traversal, each label suffixing its output columns (only the Hill measures vary with decay).
 ### Parameters
 <div class="param-set">
   <div class="def">
@@ -1499,7 +1499,7 @@ print(cn.nodes_gdf["cc_hill_q0_800"])
 
  Compute statistical aggregations of numerical data over the network. Aggregates numerical attributes (e.g. property prices, floor areas) within network-distance thresholds, computing weighted statistics (mean, sum, min, max, variance, etc.) at each node.
 
- Wraps [`compute_stats`](/metrics/layers#compute-stats). All additional keyword arguments are forwarded; see that function for the full parameter list including ``stats_column_labels``, ``distances``, ``minutes``, ``decay_fn``, and ``angular``.
+ Wraps [`compute_stats`](/metrics/layers#compute-stats). All additional keyword arguments are forwarded; see that function for the full parameter list including ``stats_column_labels``, ``distances``, ``minutes``, ``decay_fn``, and ``angular``. ``decay_fn`` accepts a single expression or a ``{label: expression}`` dict that computes several decay variants in one network traversal, each label suffixing its output columns.
 ### Parameters
 <div class="param-set">
   <div class="def">

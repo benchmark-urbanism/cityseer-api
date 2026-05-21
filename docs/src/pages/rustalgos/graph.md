@@ -171,6 +171,8 @@ layout: ../../layouts/PageLayout.astro
 </div>
 </div>
 
+
+
 </div>
 
  
@@ -201,6 +203,8 @@ layout: ../../layouts/PageLayout.astro
   <span class="pt">)</span>
 </div>
 </div>
+
+
 
 </div>
 
@@ -240,9 +244,6 @@ layout: ../../layouts/PageLayout.astro
   </div>
   <div class="param">
     <span class="pn">tolerance=None</span>
-  </div>
-  <div class="param">
-    <span class="pn">segment_weighted=None</span>
   </div>
   <div class="param">
     <span class="pn">sample_probability=None</span>
@@ -300,9 +301,6 @@ layout: ../../layouts/PageLayout.astro
   </div>
   <div class="param">
     <span class="pn">tolerance=None</span>
-  </div>
-  <div class="param">
-    <span class="pn">segment_weighted=None</span>
   </div>
   <div class="param">
     <span class="pn">sample_probability=None</span>
@@ -393,6 +391,8 @@ layout: ../../layouts/PageLayout.astro
 </div>
 </div>
 
+
+
 </div>
 
  
@@ -414,6 +414,8 @@ layout: ../../layouts/PageLayout.astro
   <span class="pt">)</span>
 </div>
 </div>
+
+
 
 </div>
 
@@ -440,6 +442,8 @@ layout: ../../layouts/PageLayout.astro
 </div>
 </div>
 
+
+
 </div>
 
  
@@ -464,6 +468,8 @@ layout: ../../layouts/PageLayout.astro
   <span class="pt">)</span>
 </div>
 </div>
+
+
 
 </div>
 
@@ -505,6 +511,8 @@ layout: ../../layouts/PageLayout.astro
 </div>
 </div>
 
+
+
 </div>
 
  
@@ -542,6 +550,8 @@ layout: ../../layouts/PageLayout.astro
 </div>
 </div>
 
+
+
 </div>
 
  
@@ -567,6 +577,8 @@ layout: ../../layouts/PageLayout.astro
 </div>
 </div>
 
+
+
 </div>
 
  
@@ -591,6 +603,8 @@ layout: ../../layouts/PageLayout.astro
   <span class="pt">)</span>
 </div>
 </div>
+
+
 
 </div>
 
@@ -647,6 +661,8 @@ layout: ../../layouts/PageLayout.astro
   <span class="pt">)</span>
 </div>
 </div>
+
+
 
 </div>
 
@@ -1035,6 +1051,8 @@ layout: ../../layouts/PageLayout.astro
 </div>
 </div>
 
+
+
 </div>
 
  
@@ -1065,6 +1083,8 @@ layout: ../../layouts/PageLayout.astro
   <span class="pt">)</span>
 </div>
 </div>
+
+
 
 </div>
 
@@ -1097,6 +1117,8 @@ layout: ../../layouts/PageLayout.astro
 </div>
 </div>
 
+
+
 </div>
 
  
@@ -1128,6 +1150,8 @@ layout: ../../layouts/PageLayout.astro
 </div>
 </div>
 
+
+
 </div>
 
  
@@ -1149,6 +1173,8 @@ layout: ../../layouts/PageLayout.astro
   <span class="pt">)</span>
 </div>
 </div>
+
+
 
 </div>
 
@@ -1232,7 +1258,17 @@ layout: ../../layouts/PageLayout.astro
 
  
 
+<span class="name">node_zs</span>
+
+
+ 
+
 <span class="name">node_xyzs</span>
+
+
+ 
+
+<span class="name">street_node_lives</span>
 
 
  
@@ -1242,17 +1278,7 @@ layout: ../../layouts/PageLayout.astro
 
  
 
-<span class="name">node_zs</span>
-
-
- 
-
 <span class="name">node_ys</span>
-
-
- 
-
-<span class="name">street_node_lives</span>
 
 
  
