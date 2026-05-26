@@ -2015,7 +2015,9 @@ def nx_to_dual(nx_multigraph: nx.MultiGraph) -> nx.MultiGraph:
         to `live=True`. Otherwise, all dual nodes wil be set to `live=True`. The primal edges will be split and welded
         to form the new dual `geom` edges. The primal `LineString` `geom` will be saved to the dual node's `primal_edge`
         attribute. `primal_edge_node_a`, `primal_edge_node_b`, and `primal_edge_idx` attributes will be added to the new
-        (dual) nodes, and a `primal_node_id` edge attribute will be added to the new (dual) edges.
+        (dual) nodes, and a `primal_node_id` edge attribute will be added to the new (dual) edges. Any per-edge
+        `imp_factor` on the primal graph is propagated to each dual edge as the length-weighted mean of the two
+        adjacent primal segments' impedances (default `1.0`).
 
     Examples
     --------
@@ -2127,13 +2129,18 @@ def nx_to_dual(nx_multigraph: nx.MultiGraph) -> nx.MultiGraph:
         set_live(start_nd_key, end_nd_key, dual_node_key)
     # add dual edges
     logger.info("Preparing dual edges (splitting and welding geoms)")
-    for start_nd_key, end_nd_key, edge_idx in tqdm(
+    for start_nd_key, end_nd_key, hub_edge_idx in tqdm(
         nx_multigraph.edges(data=False, keys=True),
         disable=config.QUIET_MODE,
     ):
-        hub_node_dual = prepare_dual_node_key(start_nd_key, end_nd_key, edge_idx)
+        hub_node_dual = prepare_dual_node_key(start_nd_key, end_nd_key, hub_edge_idx)
         # get the first and second half geoms
-        s_half_geom, e_half_geom = get_half_geoms(nx_multigraph, start_nd_key, end_nd_key, edge_idx)
+        s_half_geom, e_half_geom = get_half_geoms(nx_multigraph, start_nd_key, end_nd_key, hub_edge_idx)
+        # cache primal data for the hub edge — impedance will be propagated to each dual edge as
+        # the length-weighted mean of the two adjacent primal segments' imp_factors.
+        hub_edge_data: EdgeData = nx_multigraph[start_nd_key][end_nd_key][hub_edge_idx]
+        hub_len = float(hub_edge_data.get("geom").length)  # type: ignore
+        hub_imp = float(hub_edge_data.get("imp_factor", 1.0))
         # process either side
         for n_side, m_side, half_geom in zip(
             [start_nd_key, end_nd_key],
@@ -2148,13 +2155,13 @@ def nx_to_dual(nx_multigraph: nx.MultiGraph) -> nx.MultiGraph:
                 if nb_nd_key == m_side:
                     continue
                 # add the neighbouring primal edges as dual nodes
-                for edge_idx in nx_multigraph[n_side][nb_nd_key]:
-                    spoke_node_dual = prepare_dual_node_key(n_side, nb_nd_key, edge_idx)  # type: ignore
+                for spoke_edge_idx in nx_multigraph[n_side][nb_nd_key]:
+                    spoke_node_dual = prepare_dual_node_key(n_side, nb_nd_key, spoke_edge_idx)  # type: ignore
                     # skip if the edge has already been processed from another direction
                     if g_dual.has_edge(hub_node_dual, spoke_node_dual):
                         continue
                     # get the near and far half geoms
-                    spoke_half_geom, _discard_geom = get_half_geoms(nx_multigraph, n_side, nb_nd_key, edge_idx)  # type: ignore
+                    spoke_half_geom, _discard_geom = get_half_geoms(nx_multigraph, n_side, nb_nd_key, spoke_edge_idx)  # type: ignore
                     # weld the lines
                     merged_line: geometry.LineString = ops.linemerge([half_geom, spoke_half_geom])
                     if merged_line.geom_type != "LineString":
@@ -2162,12 +2169,20 @@ def nx_to_dual(nx_multigraph: nx.MultiGraph) -> nx.MultiGraph:
                             f'Found {merged_line.geom_type} instead of "LineString" for new geom {merged_line.wkt}. '
                             f"Check that the LineStrings for {start_nd_key}-{end_nd_key} & {n_side}-{nb_nd_key} touch."
                         )
+                    # length-weighted mean of the two primal segments' impedances (the dual edge
+                    # traverses half of each), so an all-1.0 primal yields 1.0 on the dual.
+                    spoke_edge_data: EdgeData = nx_multigraph[n_side][nb_nd_key][spoke_edge_idx]
+                    spoke_len = float(spoke_edge_data.get("geom").length)  # type: ignore
+                    spoke_imp = float(spoke_edge_data.get("imp_factor", 1.0))
+                    total_len = hub_len + spoke_len
+                    dual_imp = (hub_len * hub_imp + spoke_len * spoke_imp) / total_len if total_len > 0.0 else 1.0
                     # add the dual edge
                     g_dual.add_edge(
                         hub_node_dual,
                         spoke_node_dual,
                         primal_node_id=n_side,
                         geom=merged_line,
+                        imp_factor=dual_imp,
                     )
 
     return util.validate_cityseer_networkx_graph(g_dual)

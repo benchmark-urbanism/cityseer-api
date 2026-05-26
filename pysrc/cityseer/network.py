@@ -395,6 +395,7 @@ class CityNetwork:
         boundary: BaseGeometry | None = None,
         directed: bool = False,
         oneway_fids: set[Any] | None = None,
+        impedances: dict[Any, float] | None = None,
     ) -> CityNetwork:
         """Construct a CityNetwork from a dictionary of WKT strings or Shapely geometries.
 
@@ -415,6 +416,11 @@ class CityNetwork:
             are bidirectional.
         oneway_fids: set[Any] | None
             Feature IDs that are one-way when ``directed=True``. Ignored if ``directed=False``.
+        impedances: dict[Any, float] | None
+            Optional mapping from primal feature ID to its impedance factor. Each dual edge's
+            ``imp_factor`` becomes the length-weighted mean of its two adjacent primal segments'
+            impedances; missing entries default to ``1.0``. See the [Edge Impedance](/guide#edge-impedance)
+            section of the guide.
 
         Returns
         -------
@@ -447,7 +453,9 @@ class CityNetwork:
             if oneway_fids is None:
                 raise ValueError("directed=True requires oneway_fids specifying which features are one-way.")
             directions = {fid: (True, False) if fid in oneway_fids else (True, True) for fid in wkts}
-        ns, nodes_gdf, state = dual.build_dual(wkts, crs=normalized_crs, boundary=boundary, directions=directions)
+        ns, nodes_gdf, state = dual.build_dual(
+            wkts, crs=normalized_crs, boundary=boundary, directions=directions, impedances=impedances
+        )
         return cls._from_dual_result(ns, nodes_gdf, state, normalized_crs)
 
     @classmethod
@@ -479,6 +487,13 @@ class CityNetwork:
             If ``True``, build a directed network. Requires a boolean ``oneway`` column in the
             GeoDataFrame. Features with ``oneway=True`` are one-way in LineString coordinate
             order; features with ``oneway=False`` are bidirectional.
+
+        Notes
+        -----
+        An optional ``imp_factor`` column on the input ``GeoDataFrame`` is propagated to each
+        dual edge as the length-weighted mean of the two adjacent primal segments' impedances;
+        omit it to leave every dual edge at the default ``1.0``. See the
+        [Edge Impedance](/guide#edge-impedance) section of the guide.
 
         Returns
         -------
@@ -540,7 +555,13 @@ class CityNetwork:
                 raise TypeError(f"The 'oneway' column must contain boolean values, but found dtype {oneway_raw.dtype}.")
             oneway = oneway_raw.astype(bool)
             directions = {fid: (True, False) if ow else (True, True) for fid, ow in oneway.items()}
-        ns, nodes_gdf, state = dual.build_dual(gdf, crs=normalized_crs, boundary=boundary, directions=directions)
+        # Forward an optional `imp_factor` column on the input GeoDataFrame as per-fid impedance.
+        impedances: dict[Any, float] | None = None
+        if "imp_factor" in gdf.columns:
+            impedances = {fid: float(val) for fid, val in gdf["imp_factor"].items()}
+        ns, nodes_gdf, state = dual.build_dual(
+            gdf, crs=normalized_crs, boundary=boundary, directions=directions, impedances=impedances
+        )
         if nodes_gdf is not None:
             nodes_gdf = _merge_input_columns(nodes_gdf, gdf)
         return cls._from_dual_result(ns, nodes_gdf, state, normalized_crs)
@@ -565,6 +586,9 @@ class CityNetwork:
         ----------
         graph: nx.MultiGraph | nx.MultiDiGraph
             A cityseer-compatible primal NetworkX graph. ``MultiDiGraph`` enables directed routing.
+            Any ``imp_factor`` edge attribute is propagated to each dual edge as the length-weighted
+            mean of the two adjacent primal segments' impedances (default ``1.0`` if absent). See the
+            [Edge Impedance](/guide#edge-impedance) section of the guide.
         boundary: BaseGeometry
             Optional polygon in the same projected CRS; nodes inside are marked as ``live``,
             nodes outside as ``dead``.
@@ -618,6 +642,7 @@ class CityNetwork:
         wkts: dict[str, str] = {}
         live_overrides: dict[str, bool] = {}
         edge_attrs: dict[str, dict[str, Any]] = {}
+        impedances: dict[str, float] = {}
         directions: dict[str, tuple[bool, bool]] | None = None
 
         def _collect_edge(dual_node_key: str, u: Any, v: Any, k: int, data: dict[str, Any]) -> None:
@@ -628,6 +653,7 @@ class CityNetwork:
             edge_attrs[dual_node_key]["primal_edge_node_a"] = u
             edge_attrs[dual_node_key]["primal_edge_node_b"] = v
             edge_attrs[dual_node_key]["primal_edge_idx"] = int(k)
+            impedances[dual_node_key] = float(data.get("imp_factor", 1.0))
 
         if is_digraph:
             # Each directed edge becomes its own dual node, marked one-way in its
@@ -644,7 +670,9 @@ class CityNetwork:
                 _collect_edge(dual_node_key, u, v, k, data)
 
         normalized_crs = _require_projected_crs(primal_graph.graph["crs"])
-        ns, nodes_gdf, state = dual.build_dual(wkts, crs=normalized_crs, boundary=boundary, directions=directions)
+        ns, nodes_gdf, state = dual.build_dual(
+            wkts, crs=normalized_crs, boundary=boundary, directions=directions, impedances=impedances
+        )
         if nodes_gdf is None:
             raise RuntimeError("Fast dual build did not produce nodes GeoDataFrame.")
         for node_key, live in live_overrides.items():
@@ -799,6 +827,7 @@ class CityNetwork:
                 crs=self._crs,
                 boundary=boundary,
                 directions=directions,
+                impedances=self._state.get("impedances"),
             )
         if nodes_gdf is None:
             raise RuntimeError("Fast dual update did not produce nodes GeoDataFrame.")
@@ -882,6 +911,7 @@ class CityNetwork:
             "boundary_wkt": self._state.get("boundary_wkt"),
             "feature_status": dict(self._state.get("feature_status", {})),
             "directions": self._state.get("directions"),
+            "impedances": dict(self._state.get("impedances", {})),
         }
         with path.with_suffix(".state.pkl").open("wb") as file:
             pickle.dump(payload, file)
@@ -910,6 +940,7 @@ class CityNetwork:
         boundary = _load_boundary(payload.get("boundary_wkt"))
         source_wkts = payload.get("source_wkts", payload.get("wkts"))
         directions = payload.get("directions")
+        impedances = payload.get("impedances")
         # Build state (geoms, edge_records, endpoint_to_fids, etc.)
         # but skip building nodes_gdf — we'll use the saved one.
         _ns, _nodes_gdf, state = dual.build_dual(
@@ -918,6 +949,7 @@ class CityNetwork:
             boundary=boundary,
             build_nodes_gdf=False,
             directions=directions,
+            impedances=impedances,
         )
         state["feature_status"] = payload.get("feature_status", state.get("feature_status", {}))
         # Merge saved columns (metrics, user attrs) onto fresh topology,

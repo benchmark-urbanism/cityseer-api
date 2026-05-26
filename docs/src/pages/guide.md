@@ -475,6 +475,14 @@ When z coordinates are absent, all slope penalties default to 1.0 (no effect). T
 
 See the [3D Elevation](https://benchmark-urbanism.github.io/cityseer-examples/recipes/centrality/3d_elevation.html) example.
 
+## Edge Impedance
+
+Each network edge carries an `imp_factor` (default `1.0`) that multiplicatively scales its effective traversal cost — useful for representing road surface, road class, or any other static per-segment penalty. Impedance composes with the slope penalty above: the effective edge cost is `length × imp_factor × slope_pen`, so both factors apply together.
+
+Set per-edge impedance by including an `imp_factor` column on the `GeoDataFrame` passed to `CityNetwork.from_geopandas`, an `imp_factor` attribute on edges of a `NetworkX` graph passed to `CityNetwork.from_nx`, or via the `impedances={fid: value}` keyword on `CityNetwork.from_wkts`. The value is propagated through dual graph construction: each dual edge — which traverses half of each adjacent primal segment — receives the **length-weighted mean** of its two primal impedances, so an all-`1.0` primal yields `1.0` on the dual (fully backwards compatible).
+
+Impedance applies to **shortest-path** routing (and any equivalent time-converted budget), including the reachability budget used by simplest-path (angular) analysis. The angular cost itself is purely geometric (cumulative turning) and is **not** scaled by `imp_factor` — only how far an angular traversal can reach within the time budget.
+
 ## Column Naming Conventions
 
 All computed metrics are written to columns on the `nodes_gdf` GeoDataFrame following a consistent pattern:

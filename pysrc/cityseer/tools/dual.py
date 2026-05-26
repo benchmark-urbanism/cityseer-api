@@ -293,13 +293,14 @@ def _edge_record(
     edge_idx: int,
     geom_wkt: str,
     shared_primal_node_key: str | None,
+    imp_factor: float = 1.0,
 ) -> dict[str, Any]:
     return {
         "start_key": start_key,
         "end_key": end_key,
         "edge_idx": edge_idx,
         "geom_wkt": geom_wkt,
-        "imp_factor": 1.0,
+        "imp_factor": imp_factor,
         "shared_primal_node_key": shared_primal_node_key,
     }
 
@@ -399,11 +400,20 @@ def _try_add_edge(
     edge_records: dict[tuple[Any, Any, int], dict[str, Any]],
     edge_counter: int,
     shared_key: str,
+    impedances: dict[Any, float],
 ) -> int:
     """Add a single directed edge if traversal is allowed. Returns updated edge_counter."""
     if directions is not None and not _can_traverse(fid_from, fid_to, endpoint, ep_keys, directions):
         return edge_counter
     merged_wkt = _make_edge_wkt(fid_from, fid_to, endpoint, line_data)
+    # The dual edge traverses half of each adjacent primal segment, so propagate impedance as
+    # the length-weighted mean of the two primal imp_factors. All-1.0 primals -> 1.0 on the dual.
+    len_from = line_data[fid_from][1][-1]
+    len_to = line_data[fid_to][1][-1]
+    imp_from = impedances.get(fid_from, 1.0)
+    imp_to = impedances.get(fid_to, 1.0)
+    total_len = len_from + len_to
+    dual_imp = (len_from * imp_from + len_to * imp_to) / total_len if total_len > 0.0 else 1.0
     ns.add_street_edge(
         node_idx[fid_from],
         node_idx[fid_to],
@@ -411,6 +421,7 @@ def _try_add_edge(
         fid_from,
         fid_to,
         merged_wkt,
+        imp_factor=dual_imp,
         shared_primal_node_key=shared_key,
     )
     edge_records[(fid_from, fid_to, edge_counter)] = _edge_record(
@@ -419,6 +430,7 @@ def _try_add_edge(
         edge_counter,
         merged_wkt,
         shared_key,
+        imp_factor=dual_imp,
     )
     return edge_counter + 1
 
@@ -431,6 +443,7 @@ def build_dual(
     build_nodes_gdf: bool = True,
     progress: bool = True,
     directions: dict[Any, tuple[bool, bool]] | None = None,
+    impedances: dict[Any, float] | None = None,
 ) -> tuple[rustalgos.graph.NetworkStructure, Any | None, DualState]:
     """Build a dual NetworkStructure directly from line geometries.
 
@@ -441,7 +454,14 @@ def build_dual(
         follows the LineString coordinate order. When provided, the graph is built as directed:
         dual edges are only added where traffic flow permits. ``None`` (default) builds an
         undirected graph with edges in both directions.
+    impedances: dict[Any, float] | None
+        Optional mapping from primal feature ID to its impedance factor. Each dual edge's
+        ``imp_factor`` is computed as the length-weighted mean of the two adjacent primal
+        segments' impedances. Missing entries default to ``1.0``; ``None`` leaves every dual edge
+        at ``1.0``.
     """
+    if impedances is None:
+        impedances = {}
     if progress:
         from tqdm import tqdm
     else:
@@ -534,6 +554,7 @@ def build_dual(
             edge_records,
             edge_counter,
             shared_key,
+            impedances,
         )
         edge_counter = _try_add_edge(
             ns,
@@ -547,6 +568,7 @@ def build_dual(
             edge_records,
             edge_counter,
             shared_key,
+            impedances,
         )
 
     ns.validate()
@@ -570,6 +592,7 @@ def build_dual(
         "crs": crs,
         "edge_records": edge_records,
         "directions": directions,
+        "impedances": dict(impedances),
     }
     return ns, nodes_gdf, state
 
@@ -587,6 +610,8 @@ def incremental_update(
     """Apply an incremental diff to a previously built dual network."""
     current_source_wkts, discovered_crs = extract_wkts(data)
     crs = crs if crs is not None else discovered_crs if discovered_crs is not None else state.get("crs")
+    # Carry forward the impedances captured at the original build; new fids fall back to 1.0.
+    impedances: dict[Any, float] = state.get("impedances", {})
     prepared_boundary = prep(boundary) if boundary is not None else None
     boundary_wkt = boundary.wkt if boundary is not None else None
 
@@ -739,6 +764,7 @@ def incremental_update(
                     edge_records,
                     edge_counter,
                     shared_key,
+                    impedances,
                 )
                 edge_counter = _try_add_edge(
                     ns,
@@ -752,6 +778,7 @@ def incremental_update(
                     edge_records,
                     edge_counter,
                     shared_key,
+                    impedances,
                 )
 
     if boundary_changed:

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import geopandas as gpd
 import numpy as np
+import pytest
 from cityseer import CityNetwork
 from cityseer.tools import io
 from pyproj import CRS
@@ -411,3 +412,60 @@ def test_directed_save_load_roundtrip(tmp_path):
 
     assert cn_loaded.is_directed is True
     assert cn_loaded.network_structure.edge_count == edge_count_before
+
+
+def _dual_edge_imp_factors(cn: CityNetwork) -> list[float]:
+    """Collect the imp_factor of every edge in a CityNetwork's underlying dual structure."""
+    ns = cn.network_structure
+    return [ns.get_edge_payload_py(s, e, idx).imp_factor for s, e, idx in ns.edge_references()]
+
+
+def test_citynetwork_imp_factor_propagates_from_geopandas(tmp_path):
+    """A primal `imp_factor` column on the input GeoDataFrame flows through to each dual edge
+    as the length-weighted mean of the two adjacent primal segments' impedances, and survives
+    a save/load round-trip.
+    """
+    # Two primal segments joined at (100, 0): lengths 100 and 200, impedances 2.0 and 4.0.
+    gdf = gpd.GeoDataFrame(
+        {
+            "geometry": [
+                LineString([(0, 0), (100, 0)]),
+                LineString([(100, 0), (300, 0)]),
+            ],
+            "imp_factor": [2.0, 4.0],
+        },
+        crs="EPSG:32630",
+    )
+    cn = CityNetwork.from_geopandas(gdf)
+    # both dual edges (one per direction in this undirected graph) should carry the
+    # length-weighted mean of the two primal impedances.
+    expected = (100.0 * 2.0 + 200.0 * 4.0) / (100.0 + 200.0)
+    imps = _dual_edge_imp_factors(cn)
+    assert imps and all(abs(imp - expected) < 1e-4 for imp in imps)
+
+    # round-trip preserves the same dual impedances.
+    cn.save(tmp_path / "imp_net")
+    cn_loaded = CityNetwork.load(tmp_path / "imp_net")
+    imps_loaded = _dual_edge_imp_factors(cn_loaded)
+    assert sorted(imps) == pytest.approx(sorted(imps_loaded), rel=1e-4)
+
+    # back-compat: omitting the column leaves every dual edge at the 1.0 default.
+    gdf_default = gpd.GeoDataFrame({"geometry": gdf.geometry.tolist()}, crs="EPSG:32630")
+    cn_default = CityNetwork.from_geopandas(gdf_default)
+    assert all(abs(imp - 1.0) < 1e-6 for imp in _dual_edge_imp_factors(cn_default))
+
+
+def test_citynetwork_imp_factor_propagates_from_nx():
+    """A primal `imp_factor` edge attribute flows through `CityNetwork.from_nx` to the dual edges."""
+    import networkx as nx_
+
+    G = nx_.MultiGraph(crs="EPSG:32630")
+    G.add_node("a", x=0.0, y=0.0)
+    G.add_node("b", x=100.0, y=0.0)
+    G.add_node("c", x=300.0, y=0.0)
+    G.add_edge("a", "b", geom=LineString([(0, 0), (100, 0)]), imp_factor=2.0)
+    G.add_edge("b", "c", geom=LineString([(100, 0), (300, 0)]), imp_factor=4.0)
+    cn = CityNetwork.from_nx(G)
+    expected = (100.0 * 2.0 + 200.0 * 4.0) / (100.0 + 200.0)
+    imps = _dual_edge_imp_factors(cn)
+    assert imps and all(abs(imp - expected) < 1e-4 for imp in imps)
