@@ -4,6 +4,7 @@ import collections
 import contextlib
 import itertools
 import math
+from dataclasses import dataclass
 from typing import Any
 
 from shapely import wkt as shapely_wkt
@@ -17,6 +18,24 @@ from .. import rustalgos
 
 DualInput = dict[Any, str] | dict[Any, BaseGeometry]
 DualState = dict[str, Any]
+
+
+@dataclass
+class _DualBuildContext:
+    """Bundles the per-build shared state that `_try_add_edge` needs.
+
+    All fields hold mutable references that the caller (re)uses across many edge insertions;
+    the dataclass exists purely to keep `_try_add_edge`'s argument list manageable.
+    """
+
+    ns: rustalgos.graph.NetworkStructure
+    line_data: dict[Any, tuple[list[tuple[float, float]], list[float]]]
+    directions: dict[Any, tuple[bool, bool]] | None
+    ep_keys: dict[Any, tuple[tuple[float, float], tuple[float, float]]]
+    node_idx: dict[Any, int]
+    edge_records: dict[tuple[Any, Any, int], dict[str, Any]]
+    impedances: dict[Any, float]
+
 
 # Treat only tiny loops as corrupted geometry. Longer loops remain valid features.
 SELF_LOOP_MIN_LENGTH = 1.0
@@ -389,34 +408,28 @@ def _can_traverse(
 
 
 def _try_add_edge(
-    ns: rustalgos.graph.NetworkStructure,
+    ctx: _DualBuildContext,
     fid_from: Any,
     fid_to: Any,
     endpoint: tuple[float, float],
-    line_data: dict[Any, tuple[list[tuple[float, float]], list[float]]],
-    directions: dict[Any, tuple[bool, bool]] | None,
-    ep_keys: dict[Any, tuple[tuple[float, float], tuple[float, float]]],
-    node_idx: dict[Any, int],
-    edge_records: dict[tuple[Any, Any, int], dict[str, Any]],
     edge_counter: int,
     shared_key: str,
-    impedances: dict[Any, float],
 ) -> int:
     """Add a single directed edge if traversal is allowed. Returns updated edge_counter."""
-    if directions is not None and not _can_traverse(fid_from, fid_to, endpoint, ep_keys, directions):
+    if ctx.directions is not None and not _can_traverse(fid_from, fid_to, endpoint, ctx.ep_keys, ctx.directions):
         return edge_counter
-    merged_wkt = _make_edge_wkt(fid_from, fid_to, endpoint, line_data)
+    merged_wkt = _make_edge_wkt(fid_from, fid_to, endpoint, ctx.line_data)
     # The dual edge traverses half of each adjacent primal segment, so propagate impedance as
     # the length-weighted mean of the two primal imp_factors. All-1.0 primals -> 1.0 on the dual.
-    len_from = line_data[fid_from][1][-1]
-    len_to = line_data[fid_to][1][-1]
-    imp_from = impedances.get(fid_from, 1.0)
-    imp_to = impedances.get(fid_to, 1.0)
+    len_from = ctx.line_data[fid_from][1][-1]
+    len_to = ctx.line_data[fid_to][1][-1]
+    imp_from = ctx.impedances.get(fid_from, 1.0)
+    imp_to = ctx.impedances.get(fid_to, 1.0)
     total_len = len_from + len_to
     dual_imp = (len_from * imp_from + len_to * imp_to) / total_len if total_len > 0.0 else 1.0
-    ns.add_street_edge(
-        node_idx[fid_from],
-        node_idx[fid_to],
+    ctx.ns.add_street_edge(
+        ctx.node_idx[fid_from],
+        ctx.node_idx[fid_to],
         edge_counter,
         fid_from,
         fid_to,
@@ -424,7 +437,7 @@ def _try_add_edge(
         imp_factor=dual_imp,
         shared_primal_node_key=shared_key,
     )
-    edge_records[(fid_from, fid_to, edge_counter)] = _edge_record(
+    ctx.edge_records[(fid_from, fid_to, edge_counter)] = _edge_record(
         fid_from,
         fid_to,
         edge_counter,
@@ -530,6 +543,15 @@ def build_dual(
     edge_counter = 0
     seen: set[frozenset[Any]] = set()
     edge_records: dict[tuple[Any, Any, int], dict[str, Any]] = {}
+    ctx = _DualBuildContext(
+        ns=ns,
+        line_data=line_data,
+        directions=directions,
+        ep_keys=ep_keys,
+        node_idx=node_idx,
+        edge_records=edge_records,
+        impedances=impedances,
+    )
     edge_pairs: list[tuple[Any, Any, tuple[float, float]]] = []
     for endpoint, fids in endpoint_to_fids.items():
         for fid_a, fid_b in itertools.combinations(fids, 2):
@@ -542,34 +564,8 @@ def build_dual(
         pair = frozenset({fid_a, fid_b})
         seen.add(pair)
         shared_key = str(endpoint)
-        edge_counter = _try_add_edge(
-            ns,
-            fid_a,
-            fid_b,
-            endpoint,
-            line_data,
-            directions,
-            ep_keys,
-            node_idx,
-            edge_records,
-            edge_counter,
-            shared_key,
-            impedances,
-        )
-        edge_counter = _try_add_edge(
-            ns,
-            fid_b,
-            fid_a,
-            endpoint,
-            line_data,
-            directions,
-            ep_keys,
-            node_idx,
-            edge_records,
-            edge_counter,
-            shared_key,
-            impedances,
-        )
+        edge_counter = _try_add_edge(ctx, fid_a, fid_b, endpoint, edge_counter, shared_key)
+        edge_counter = _try_add_edge(ctx, fid_b, fid_a, endpoint, edge_counter, shared_key)
 
     ns.validate()
     ns.build_edge_rtree()
@@ -741,6 +737,15 @@ def incremental_update(
             endpoint_to_fids[pt].append(fid)
 
     fid_list.sort()
+    ctx = _DualBuildContext(
+        ns=ns,
+        line_data=line_data,
+        directions=directions,
+        ep_keys=ep_keys,
+        node_idx=node_idx,
+        edge_records=edge_records,
+        impedances=impedances,
+    )
     for fid in [fid for fid in to_add if fid in geoms]:
         start_key, end_key = ep_keys[fid]
         for key in (start_key, end_key):
@@ -752,34 +757,8 @@ def incremental_update(
                     continue
                 seen.add(pair)
                 shared_key = str(key)
-                edge_counter = _try_add_edge(
-                    ns,
-                    fid,
-                    other_fid,
-                    key,
-                    line_data,
-                    directions,
-                    ep_keys,
-                    node_idx,
-                    edge_records,
-                    edge_counter,
-                    shared_key,
-                    impedances,
-                )
-                edge_counter = _try_add_edge(
-                    ns,
-                    other_fid,
-                    fid,
-                    key,
-                    line_data,
-                    directions,
-                    ep_keys,
-                    node_idx,
-                    edge_records,
-                    edge_counter,
-                    shared_key,
-                    impedances,
-                )
+                edge_counter = _try_add_edge(ctx, fid, other_fid, key, edge_counter, shared_key)
+                edge_counter = _try_add_edge(ctx, other_fid, fid, key, edge_counter, shared_key)
 
     if boundary_changed:
         for fid in fid_list:

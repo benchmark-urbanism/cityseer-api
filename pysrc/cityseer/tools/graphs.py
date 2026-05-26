@@ -578,9 +578,11 @@ def nx_merge_parallel_edges(
                     if use_z:
                         z_vals = [c[2] for c in [p.coords[0] for p in multi_coords] if len(c) == 3]
                         mid_z = float(np.mean(z_vals)) if z_vals else coord[2] if len(coord) == 3 else 0.0
-                        new_coords.append((mid_point.x, mid_point.y, mid_z))
+                        # Cast shapely point coords to float so ty infers a stable tuple type
+                        # across shapely-stub versions (which otherwise leave `.x`/`.y` as Unknown).
+                        new_coords.append((float(mid_point.x), float(mid_point.y), float(mid_z)))
                     else:
-                        new_coords.append((mid_point.x, mid_point.y))
+                        new_coords.append((float(mid_point.x), float(mid_point.y)))
                 # generate the new mid-line geom
                 new_coords = util.snap_linestring_endpoints(deduped_graph, start_nd_key, end_nd_key, new_coords)
                 new_geom = geometry.LineString(new_coords)
