@@ -21,7 +21,7 @@ support, use [`CityNetwork.from_nx`](/api/network#from-nx) with a ``MultiDiGraph
 from __future__ import annotations
 
 import logging
-from typing import Any
+from typing import Any, cast
 
 import networkx as nx
 import numpy as np
@@ -553,8 +553,10 @@ def nx_merge_parallel_edges(
             # otherwise weld the geoms, using the shortest as a yardstick
             else:
                 # iterate the coordinates along the shorter geom
-                # starting and endpoint geoms already match
-                new_coords = []
+                # starting and endpoint geoms already match. Annotate so ty doesn't widen the
+                # list to `list[tuple[int|float, ...]]` when mixing 2- and 3-tuples, which would
+                # break the call to snap_linestring_endpoints below.
+                new_coords: list[tuple[float, float] | tuple[float, float, float]] = []
                 use_z = shortest_geom.has_z
                 for coord in shortest_geom.coords:
                     # from the current short_geom coordinate
@@ -583,9 +585,13 @@ def nx_merge_parallel_edges(
                         new_coords.append((float(mid_point.x), float(mid_point.y), float(mid_z)))
                     else:
                         new_coords.append((float(mid_point.x), float(mid_point.y)))
-                # generate the new mid-line geom
-                new_coords = util.snap_linestring_endpoints(deduped_graph, start_nd_key, end_nd_key, new_coords)
-                new_geom = geometry.LineString(new_coords)
+                # generate the new mid-line geom.
+                # `list` is invariant in ty, so the narrower `list[tuple[..] | tuple[..]]` annotation
+                # above isn't accepted where `list[CoordsType]` is required; cast to bridge it.
+                snapped_coords = util.snap_linestring_endpoints(
+                    deduped_graph, start_nd_key, end_nd_key, cast(util.ListCoordsType, new_coords)
+                )
+                new_geom = geometry.LineString(snapped_coords)
                 # Skip degenerate (zero-length) geometries - use shortest_geom as fallback
                 if new_geom.length < 0.001:
                     new_geom = shortest_geom
