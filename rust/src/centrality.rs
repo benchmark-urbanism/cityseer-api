@@ -2626,7 +2626,10 @@ impl NetworkStructure {
         let pbar_disabled = pbar_disabled.unwrap_or(false);
         self.progress_init();
 
-        let dest_weights: std::collections::HashMap<usize, f64> = destinations.into_iter().collect();
+        let mut dest_weights: std::collections::HashMap<usize, f64> = std::collections::HashMap::new();
+        for (node_idx, w) in destinations {
+            *dest_weights.entry(node_idx).or_insert(0.0) += w;
+        }
 
         let result = py.detach(move || {
             origins.par_iter().for_each(|&(src_idx, o_weight)| {
