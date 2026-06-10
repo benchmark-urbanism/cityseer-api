@@ -363,3 +363,54 @@ def test_zero_weight_node_no_nan_with_sampling_cycles():
     for name in ("density", "b", "cycles"):
         vals = np.asarray(res.metrics[name][1000], dtype=float)
         assert np.isfinite(vals).all()
+
+
+def test_betweenness_demand(primal_graph):
+    """Demand-weighted flow betweenness: aggregation invariant, allocation, closest mode, empties."""
+    import geopandas as gpd
+    from shapely.geometry import Point
+
+    nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(primal_graph)
+    pts = nodes_gdf.geometry
+    origins_gdf = gpd.GeoDataFrame({"geometry": pts, "pop": np.full(len(pts), 100.0)}, crs=nodes_gdf.crs)
+
+    def run(dests_gdf, **kwargs):
+        out = networks.betweenness_demand(
+            network_structure=network_structure,
+            nodes_gdf=nodes_gdf.copy(),
+            origins_gdf=origins_gdf,
+            destinations_gdf=dests_gdf,
+            origin_weight_col="pop",
+            destination_weight_col="w",
+            distances=[800],
+            decay_fn="exp(-0.002 * c)",
+            **kwargs,
+        )
+        return out["cc_demand_800"].to_numpy()
+
+    # The headline fix: two destinations snapped to the same node with weights (3, 7) must produce
+    # exactly the same flow as a single destination of weight 10 at that node (weights aggregated,
+    # not overwritten).
+    coord0 = pts.iloc[0]
+    two_dests = gpd.GeoDataFrame({"geometry": [coord0, coord0], "w": [3.0, 7.0]}, crs=nodes_gdf.crs)
+    one_dest = gpd.GeoDataFrame({"geometry": [coord0], "w": [10.0]}, crs=nodes_gdf.crs)
+    flow_two = run(two_dests)
+    flow_one = run(one_dest)
+    assert np.allclose(flow_two, flow_one, equal_nan=True, atol=config.ATOL, rtol=config.RTOL)
+
+    # output column present and non-negative; some flow is generated
+    assert np.nanmax(flow_one) > 0.0
+
+    # closest_destination is a distinct, valid code path
+    flow_closest = run(one_dest, closest_destination=True)
+    assert np.nanmax(flow_closest) > 0.0
+
+    # empty destinations: no crash, no flow
+    empty = gpd.GeoDataFrame({"geometry": [], "w": []}, crs=nodes_gdf.crs, geometry="geometry")
+    flow_empty = run(empty)
+    assert np.nansum(flow_empty) == 0.0
+
+    # a destination too far to snap is dropped -> no flow, no crash
+    far = gpd.GeoDataFrame({"geometry": [Point(1e7, 1e7)], "w": [10.0]}, crs=nodes_gdf.crs)
+    flow_far = run(far, max_snap_dist=50.0)
+    assert np.nansum(flow_far) == 0.0

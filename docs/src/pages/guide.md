@@ -276,6 +276,28 @@ For cases where only closeness or only betweenness is needed, convenience functi
 - [`closeness_shortest`](/metrics/networks#closeness-shortest) / [`closeness_simplest`](/metrics/networks#closeness-simplest) — closeness only (betweenness disabled)
 - [`betweenness_shortest`](/metrics/networks#betweenness-shortest) / [`betweenness_simplest`](/metrics/networks#betweenness-simplest) — betweenness only (closeness and cycles disabled)
 
+### Origin–destination and demand betweenness
+
+Standard betweenness treats every node pair equally. When you have real or modelled travel flows, two functions route those flows instead:
+
+- [`betweenness_od`](/metrics/networks#betweenness-od) takes an **explicit** origin–destination matrix (build one from flow data and zone centroids with [`build_od_matrix`](/metrics/networks#build-od-matrix)) and accumulates each pair's trip weight along shortest paths.
+- [`betweenness_demand`](/metrics/networks#betweenness-demand) takes weighted **origins** and **destinations** separately and *models* the matrix with a **singly (origin-)constrained spatial interaction model**: each origin distributes its full weight across reachable destinations in proportion to $W_d \cdot f(c_{od})$, where $f$ is a `decay_fn` expression. The classic gravity model is recovered with an exponential decay. The allocation is computed in the same traversal that routes the flows, so no explicit matrix is needed.
+
+```python
+from cityseer.metrics import networks
+
+# population blocks -> retail attractors, exponential distance decay
+nodes_gdf = networks.betweenness_demand(
+    network_structure, nodes_gdf,
+    origins_gdf=population_gdf, destinations_gdf=retail_gdf,
+    origin_weight_col="population", destination_weight_col="floorspace",
+    distances=[800], decay_fn="exp(-0.002 * c)",
+)
+print(nodes_gdf["cc_demand_800"])
+```
+
+Because both functions route flows through the same Brandes machinery, points that snap to the same network node have their weights **summed** (not overwritten), preserving total demand at each junction.
+
 ### Centrality recipes
 
 - [Metric Centrality from GeoDataFrame](https://benchmark-urbanism.github.io/cityseer-examples/recipes/centrality/gpd_metric_centrality.html) -- shortest-path centrality workflow

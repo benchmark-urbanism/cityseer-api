@@ -2065,4 +2065,181 @@ impl NetworkStructure {
 
         Ok(result)
     }
+
+    /// Demand-weighted (flow) betweenness from a singly / origin-constrained spatial interaction model.
+    ///
+    /// Each origin distributes its full weight across reachable destinations in proportion to
+    /// `W_d * decay(c)`, where `decay` is the supplied expression evaluated on `c` (metric cost)
+    /// and `p` (normalised progress to the threshold) — the gravity model is one instance of this
+    /// spatial interaction form. The allocated origin-destination flows are then routed along
+    /// shortest paths via Brandes back-propagation, accumulating flow betweenness at intermediate
+    /// nodes. Origins and destinations are each aggregated by node first, so several snapped points
+    /// sharing a node contribute their summed weight (and a node only triggers one Dijkstra). When
+    /// `closest_destination` is true, an origin routes its full weight to its single nearest
+    /// reachable destination instead of allocating across all of them.
+    #[pyo3(signature = (
+        origins,
+        destinations,
+        decay_fn,
+        distances=None,
+        minutes=None,
+        closest_destination=false,
+        metric_name=None,
+        speed_m_s=None,
+        tolerance=None,
+        pbar_disabled=None
+    ))]
+    #[allow(clippy::too_many_arguments)]
+    pub fn betweenness_demand_shortest(
+        &self,
+        origins: Vec<(usize, f64)>,
+        destinations: Vec<(usize, f64)>,
+        decay_fn: String,
+        distances: Option<Vec<u32>>,
+        minutes: Option<Vec<f32>>,
+        closest_destination: bool,
+        metric_name: Option<String>,
+        speed_m_s: Option<f32>,
+        tolerance: Option<f32>,
+        pbar_disabled: Option<bool>,
+        py: Python,
+    ) -> PyResult<CentralityResult> {
+        let speed_m_s = speed_m_s.unwrap_or(WALKING_SPEED);
+        let (distances, seconds) = common::pair_distances_and_time(speed_m_s, distances, minutes)?;
+        // Validate the decay expression up front via the shared metric-expression path.
+        let metric_name = metric_name.unwrap_or_else(|| "demand".to_string());
+        let decay_validated = common::validate_metric_exprs(&[(metric_name.clone(), decay_fn)])?;
+        let decay_expr = decay_validated[0].1.clone();
+        let max_walk_seconds = *seconds.iter().max().expect("Seconds vector should not be empty");
+        let tolerance = validate_tolerance(tolerance)?;
+
+        let n = self.node_bound();
+        // Aggregate weights by node so duplicate-snapped points are summed rather than discarded,
+        // and each node is only visited once.
+        let mut origin_weights: std::collections::HashMap<usize, f64> = std::collections::HashMap::new();
+        for (node_idx, w) in origins {
+            if node_idx >= n {
+                return Err(exceptions::PyValueError::new_err(format!(
+                    "Origin node index {} is out of bounds (max {})",
+                    node_idx,
+                    n - 1
+                )));
+            }
+            if w > 0.0 {
+                *origin_weights.entry(node_idx).or_insert(0.0) += w;
+            }
+        }
+        let mut dest_weights: std::collections::HashMap<usize, f64> = std::collections::HashMap::new();
+        for (node_idx, w) in destinations {
+            if node_idx >= n {
+                return Err(exceptions::PyValueError::new_err(format!(
+                    "Destination node index {} is out of bounds (max {})",
+                    node_idx,
+                    n - 1
+                )));
+            }
+            if w > 0.0 {
+                *dest_weights.entry(node_idx).or_insert(0.0) += w;
+            }
+        }
+        let origin_list: Vec<(usize, f64)> = origin_weights.into_iter().collect();
+
+        let node_keys_py = self.node_keys_py(py);
+        let node_indices = self.node_indices();
+        let res = CentralityResult::new(
+            distances.clone(),
+            node_keys_py,
+            node_indices.clone(),
+            &[],
+            std::slice::from_ref(&metric_name),
+            false,
+            n,
+            0.0,
+        );
+
+        let pbar_disabled = pbar_disabled.unwrap_or(false);
+        self.progress_init();
+
+        let result = py.detach(move || {
+            origin_list.par_iter().for_each(|&(src_idx, o_weight)| {
+                if !pbar_disabled {
+                    self.progress.fetch_add(1, AtomicOrdering::Relaxed);
+                }
+                if !self.is_node_live_unchecked(src_idx) {
+                    return;
+                }
+                let traversal =
+                    self.dijkstra_brandes_shortest(src_idx, max_walk_seconds, speed_m_s, tolerance, false);
+                let decay = common::parse_metric_expr(&decay_expr);
+                let sorted_visited = Self::sorted_brandes_state_indices(&traversal);
+                let mut seed = vec![0.0f64; traversal.state.len()];
+
+                for d_idx in 0..distances.len() {
+                    let dist_threshold = distances[d_idx] as f32;
+                    seed.fill(0.0);
+
+                    if closest_destination {
+                        // route the full origin weight to the single nearest reachable destination
+                        let mut nearest: Option<(usize, f32)> = None;
+                        for &dest in dest_weights.keys() {
+                            let cost = traversal.best_route_cost[dest];
+                            if cost > dist_threshold {
+                                continue;
+                            }
+                            if nearest.is_none_or(|(_, c)| cost < c) {
+                                nearest = Some((dest, cost));
+                            }
+                        }
+                        match nearest {
+                            Some((dest, _)) => seed[dest] = o_weight,
+                            None => continue,
+                        }
+                    } else {
+                        // single-constrained gravity: distribute o_weight in proportion to
+                        // W_d * decay(c), normalised over reachable destinations.
+                        let mut denom = 0.0f64;
+                        for (&dest, &w_d) in &dest_weights {
+                            let cost = traversal.best_route_cost[dest];
+                            if cost > dist_threshold {
+                                continue;
+                            }
+                            let p = cost / dist_threshold;
+                            denom += w_d * decay(cost, p) as f64;
+                        }
+                        if denom <= 0.0 {
+                            continue;
+                        }
+                        for (&dest, &w_d) in &dest_weights {
+                            let cost = traversal.best_route_cost[dest];
+                            if cost > dist_threshold {
+                                continue;
+                            }
+                            let p = cost / dist_threshold;
+                            seed[dest] = o_weight * (w_d * decay(cost, p) as f64) / denom;
+                        }
+                    }
+
+                    let seed_refs: [&[f64]; 1] = [seed.as_slice()];
+                    Self::brandes_backprop_multi(
+                        &traversal,
+                        &sorted_visited,
+                        src_idx,
+                        &seed_refs,
+                        |state| state.route_cost <= dist_threshold,
+                        |inter_node_idx, credits| {
+                            let credit = credits[0];
+                            if credit > 0.0 {
+                                res.betweenness_metrics[0].1.metric[d_idx][inter_node_idx]
+                                    .fetch_add(credit, AtomicOrdering::Relaxed);
+                            }
+                        },
+                    );
+                }
+            });
+
+            res
+        });
+
+        Ok(result)
+    }
 }

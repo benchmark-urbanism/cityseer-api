@@ -572,3 +572,52 @@ class NetworkStructure:
             Object with ``metrics`` dict: ``{name: {distance: array}}``.
         """
         ...
+    def betweenness_demand_shortest(
+        self,
+        origins: list[tuple[int, float]],
+        destinations: list[tuple[int, float]],
+        decay_fn: str,
+        distances: list[int] | None = None,
+        minutes: list[float] | None = None,
+        closest_destination: bool = False,
+        metric_name: str | None = None,
+        speed_m_s: float | None = None,
+        tolerance: float | None = None,
+        pbar_disabled: bool | None = None,
+    ) -> CentralityResult:
+        """
+        Demand-weighted (flow) betweenness from a singly / origin-constrained spatial interaction model.
+
+        Each origin distributes its full weight across reachable destinations in proportion to
+        ``W_d * decay_fn(c)`` and the allocated flows are routed along shortest paths. Origins and
+        destinations are aggregated by node first (duplicate-snapped points sum their weights).
+
+        Parameters
+        ----------
+        origins: list[tuple[int, float]]
+            ``(node_idx, weight)`` pairs for demand origins.
+        destinations: list[tuple[int, float]]
+            ``(node_idx, weight)`` pairs for demand destinations / attractors.
+        decay_fn: str
+            Distance-decay expression using ``c`` (metric cost) and ``p`` (normalised progress).
+        distances: list[int] | None
+            Distance thresholds (meters).
+        minutes: list[float] | None
+            Time thresholds (minutes).
+        closest_destination: bool
+            If True, route each origin's full weight to its single nearest reachable destination.
+        metric_name: str | None
+            Output metric name (default ``"demand"``).
+        speed_m_s: float | None
+            Travel speed (m/s).
+        tolerance: float | None
+            Relative tolerance for near-equal path detection in betweenness.
+        pbar_disabled: bool | None
+            Disable progress bar if True.
+
+        Returns
+        -------
+        CentralityResult
+            Object with ``metrics`` dict: ``{name: {distance: array}}``.
+        """
+        ...

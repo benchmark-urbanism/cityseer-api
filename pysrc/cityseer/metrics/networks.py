@@ -377,6 +377,58 @@ def centrality_shortest(
     return _extract_results(results, nodes_gdf, postprocess)
 
 
+def _snap_coords_to_nodes(
+    network_structure: rustalgos.graph.NetworkStructure,
+    coords: np.ndarray,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Snap ``(x, y)`` coordinates to their nearest network node via a KDTree.
+
+    Returns ``(node_indices, snap_distances)`` aligned to the input rows.
+    """
+    from scipy.spatial import KDTree
+
+    tree = KDTree(network_structure.node_xys)
+    snap_dists, indices = tree.query(coords)
+    return indices, snap_dists
+
+
+def _snap_weighted_points(
+    network_structure: rustalgos.graph.NetworkStructure,
+    points_gdf: gpd.GeoDataFrame,
+    weight_col: str,
+    max_snap_dist: float,
+    label: str,
+) -> list[tuple[int, float]]:
+    """Snap weighted point features to network nodes, returning ``(node_idx, weight)`` pairs.
+
+    Rows beyond ``max_snap_dist`` from any node, or with NaN / non-positive weight, are dropped
+    (with a logged count). Weights are not aggregated here; the Rust layer sums weights sharing a
+    node so a single Dijkstra is run per node.
+    """
+    if len(points_gdf) == 0:
+        return []
+    coords = np.array([(g.x, g.y) for g in points_gdf.geometry])
+    indices, snap_dists = _snap_coords_to_nodes(network_structure, coords)
+    pairs: list[tuple[int, float]] = []
+    n_far = 0
+    n_bad_weight = 0
+    weights = points_gdf[weight_col].to_numpy()
+    for i in range(len(points_gdf)):
+        if snap_dists[i] > max_snap_dist:
+            n_far += 1
+            continue
+        w = float(weights[i])
+        if np.isnan(w) or w <= 0:
+            n_bad_weight += 1
+            continue
+        pairs.append((int(indices[i]), w))
+    if n_far:
+        logger.warning(f"{n_far} {label} exceeded max_snap_dist={max_snap_dist}m and were excluded.")
+    if n_bad_weight:
+        logger.info(f"Dropped {n_bad_weight} {label} with NaN or non-positive weight.")
+    return pairs
+
+
 def build_od_matrix(
     od_df: pd.DataFrame,
     zones_gdf: gpd.GeoDataFrame,
@@ -419,8 +471,6 @@ def build_od_matrix(
     rustalgos.centrality.OdMatrix
         Sparse OD matrix ready for use with `betweenness_od`.
     """
-    from scipy.spatial import KDTree
-
     geom_types = set(zones_gdf.geometry.geom_type)
     centroids = zones_gdf.geometry.centroid if geom_types & {"Polygon", "MultiPolygon"} else zones_gdf.geometry
 
@@ -438,10 +488,8 @@ def build_od_matrix(
     zone_ids = zones_work[zone_id_col].values if zone_id_col is not None else zones_work.index.values
     centroid_coords = np.array([(g.x, g.y) for g in zones_work["_centroid"]])
 
-    # Snap centroids to nearest network nodes via KDTree
-    node_xys = network_structure.node_xys
-    tree = KDTree(node_xys)
-    distances_snap, indices = tree.query(centroid_coords)
+    # Snap centroids to nearest network nodes
+    indices, distances_snap = _snap_coords_to_nodes(network_structure, centroid_coords)
 
     zone_to_node: dict = {}
     n_excluded = 0
@@ -542,6 +590,107 @@ def betweenness_od(
         minutes=minutes,
         speed_m_s=speed_m_s,
     )
+    results = {d: result for d in resolved_distances}
+    return _extract_results(results, nodes_gdf, {})
+
+
+def betweenness_demand(
+    network_structure: rustalgos.graph.NetworkStructure,
+    nodes_gdf: gpd.GeoDataFrame,
+    origins_gdf: gpd.GeoDataFrame,
+    destinations_gdf: gpd.GeoDataFrame,
+    origin_weight_col: str,
+    destination_weight_col: str,
+    distances: list[int] | None = None,
+    minutes: list[float] | None = None,
+    decay_fn: str = "exp(-4 * p)",
+    closest_destination: bool = False,
+    metric_name: str = "demand",
+    max_snap_dist: float = 100.0,
+    speed_m_s: float = SPEED_M_S,
+    tolerance: float | None = None,
+) -> gpd.GeoDataFrame:
+    r"""Compute demand-weighted (flow) betweenness from a spatial interaction model.
+
+    Trips are allocated between weighted origins (e.g. population) and weighted destinations (e.g.
+    attractors) using a **singly (origin-)constrained** spatial interaction model, then routed along
+    shortest network paths so that intermediate nodes accumulate the flow that passes through them.
+    For each origin :math:`o` and reachable destination :math:`d` the allocated flow is
+
+    .. math::
+        W_{od} = W_o \cdot \frac{W_d \cdot f(c_{od})}{\sum_{d'} W_{d'} \cdot f(c_{od'})}
+
+    where :math:`f` is ``decay_fn`` and :math:`c_{od}` is the network distance. Each origin's full
+    weight is conserved and distributed across reachable destinations (destination totals are not
+    constrained — that would require a doubly-constrained / Furness model). The gravity model is the
+    classic instance of this form, recovered with an exponential ``decay_fn``.
+
+    This is the modelled-matrix counterpart to [`betweenness_od`](#betweenness-od): rather than
+    supplying an explicit OD matrix, the per-pair weights are derived from the network distances
+    revealed during routing, computed in a single traversal per origin.
+
+    Parameters
+    ----------
+    network_structure
+        A [`rustalgos.graph.NetworkStructure`](/rustalgos/rustalgos#networkstructure).
+    nodes_gdf
+        A nodes `GeoDataFrame`; flow betweenness columns are written to it and it is returned.
+    origins_gdf
+        A `GeoDataFrame` of demand origins (points or centroids).
+    destinations_gdf
+        A `GeoDataFrame` of demand destinations / attractors (points or centroids).
+    origin_weight_col
+        Column in `origins_gdf` giving each origin's weight (e.g. population).
+    destination_weight_col
+        Column in `destinations_gdf` giving each destination's attractiveness weight.
+    distances: list[int]
+        Distance thresholds in metres at which to compute flow betweenness.
+    minutes: list[float]
+        Walking times in minutes; converted to distance thresholds using `speed_m_s`.
+    decay_fn: str
+        Distance-decay expression for the allocation, using `c` (metric cost) and `p` (normalised
+        progress = `c / threshold`). Defaults to `"exp(-4 * p)"` (scale-free, re-normalised per
+        threshold). For a classic gravity model on absolute distance use e.g. `"exp(-0.002 * c)"`.
+    closest_destination: bool
+        If `True`, each origin routes its full weight to its single nearest reachable destination
+        instead of allocating across all of them.
+    metric_name: str
+        Name used for the output column (`cc_{metric_name}_{distance}`). Defaults to `"demand"`.
+    max_snap_dist: float
+        Maximum distance for snapping origin/destination points to network nodes. Points farther
+        than this are dropped (with a logged count).
+    speed_m_s: float
+        Speed in metres per second for converting `minutes` to distance thresholds.
+    tolerance: float
+        Relative tolerance for shortest-path equality, as a percentage.
+
+    Returns
+    -------
+    nodes_gdf: GeoDataFrame
+        The input `nodes_gdf` with a flow-betweenness column added per distance threshold.
+    """
+    logger.info("Computing demand-weighted (flow) betweenness centrality.")
+    origins = _snap_weighted_points(network_structure, origins_gdf, origin_weight_col, max_snap_dist, "origins")
+    destinations = _snap_weighted_points(
+        network_structure, destinations_gdf, destination_weight_col, max_snap_dist, "destinations"
+    )
+    logger.info(f"Snapped {len(origins)} origins and {len(destinations)} destinations.")
+    partial_func = partial(
+        network_structure.betweenness_demand_shortest,
+        origins=origins,
+        destinations=destinations,
+        decay_fn=decay_fn,
+        distances=distances,
+        minutes=minutes,
+        closest_destination=closest_destination,
+        metric_name=metric_name,
+        speed_m_s=speed_m_s,
+        tolerance=tolerance,
+    )
+    result = config.wrap_progress(
+        total=network_structure.street_node_count(), rust_struct=network_structure, partial_func=partial_func
+    )
+    resolved_distances = config.log_thresholds(distances=distances, minutes=minutes, speed_m_s=speed_m_s)
     results = {d: result for d in resolved_distances}
     return _extract_results(results, nodes_gdf, {})
 
