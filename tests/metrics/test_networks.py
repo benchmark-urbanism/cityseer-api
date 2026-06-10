@@ -259,3 +259,37 @@ def test_simplest_wrappers_require_dual_graph(primal_graph):
             nodes_gdf=nodes_gdf.copy(),
             distances=distances,
         )
+
+
+def test_betweenness_gravity_demand(primal_graph):
+    import geopandas as gpd
+    nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(primal_graph)
+
+    # Create origins and destinations as copies of nodes_gdf with dummy weights
+    origins_gdf = gpd.GeoDataFrame({
+        "geometry": nodes_gdf.geometry,
+        "population": np.ones(len(nodes_gdf)) * 100.0
+    }, crs=nodes_gdf.crs)
+
+    destinations_gdf = gpd.GeoDataFrame({
+        "geometry": nodes_gdf.geometry,
+        "attractor_weight": np.ones(len(nodes_gdf)) * 10.0
+    }, crs=nodes_gdf.crs)
+
+    # Compute gravity demand flow
+    res = networks.betweenness_gravity_demand(
+        network_structure=network_structure,
+        nodes_gdf=nodes_gdf.copy(),
+        origins_gdf=origins_gdf,
+        destinations_gdf=destinations_gdf,
+        origin_weight_col="population",
+        destination_weight_col="attractor_weight",
+        search_radius=800.0,
+        beta=0.002,
+        closest_destination=False,
+    )
+
+    flow_key = "cc_betweenness_gravity_800"
+    assert flow_key in res.columns
+    assert res[flow_key].max() >= 0.0
+

@@ -2575,4 +2575,140 @@ impl NetworkStructure {
 
         Ok(result)
     }
+
+    #[pyo3(signature = (
+        origins,
+        destinations,
+        search_radius,
+        beta,
+        closest_destination=false,
+        pbar_disabled=None
+    ))]
+    pub fn betweenness_gravity_demand_shortest(
+        &self,
+        origins: Vec<(usize, f64)>,
+        destinations: Vec<(usize, f64)>,
+        search_radius: f32,
+        beta: f32,
+        closest_destination: bool,
+        pbar_disabled: Option<bool>,
+        py: Python,
+    ) -> PyResult<BetweennessShortestResult> {
+        let n = self.node_bound();
+
+        for &(node_idx, _) in &origins {
+            if node_idx >= n {
+                return Err(exceptions::PyValueError::new_err(format!(
+                    "Origin node index {} is out of bounds (max {})",
+                    node_idx, n
+                )));
+            }
+        }
+        for &(node_idx, _) in &destinations {
+            if node_idx >= n {
+                return Err(exceptions::PyValueError::new_err(format!(
+                    "Destination node index {} is out of bounds (max {})",
+                    node_idx, n
+                )));
+            }
+        }
+
+        let node_keys_py = self.node_keys_py(py);
+        let node_indices = self.node_indices();
+        let res = BetweennessShortestResult::new(
+            vec![search_radius as u32],
+            node_keys_py,
+            node_indices.clone(),
+            n,
+            0.0,
+        );
+
+        let pbar_disabled = pbar_disabled.unwrap_or(false);
+        self.progress_init();
+
+        let dest_weights: std::collections::HashMap<usize, f64> = destinations.into_iter().collect();
+
+        let result = py.detach(move || {
+            origins.par_iter().for_each(|&(src_idx, o_weight)| {
+                if !pbar_disabled {
+                    self.progress.fetch_add(1, AtomicOrdering::Relaxed);
+                }
+                if !self.is_node_live_unchecked(src_idx) {
+                    return;
+                }
+
+                let traversal = self.dijkstra_brandes_shortest(
+                    src_idx,
+                    search_radius as u32,
+                    1.0,
+                    TIE_EPSILON,
+                    false,
+                );
+
+                let mut reachable_dests = Vec::new();
+                let mut denominator = 0.0f64;
+                let mut min_dist = f32::MAX;
+                let mut closest_dest_idx = None;
+
+                for &dest_idx in dest_weights.keys() {
+                    let cost = traversal.best_route_cost[dest_idx];
+                    if cost > search_radius {
+                        continue;
+                    }
+                    reachable_dests.push((dest_idx, cost));
+
+                    if closest_destination {
+                        if cost < min_dist {
+                            min_dist = cost;
+                            closest_dest_idx = Some(dest_idx);
+                        }
+                    } else {
+                        let decay_val = (-beta * cost).exp() as f64;
+                        let dest_w = dest_weights[&dest_idx];
+                        denominator += dest_w * decay_val;
+                    }
+                }
+
+                if reachable_dests.is_empty() {
+                    return;
+                }
+
+                let sorted_visited = Self::sorted_brandes_state_indices(&traversal);
+                let mut target_seed = vec![0.0f64; traversal.state.len()];
+
+                if closest_destination {
+                    if let Some(dest) = closest_dest_idx {
+                        target_seed[dest] = o_weight;
+                    }
+                } else if denominator > 0.0 {
+                    for &(dest, cost) in &reachable_dests {
+                        let decay_val = (-beta * cost).exp() as f64;
+                        let dest_w = dest_weights[&dest];
+                        let allocated_flow = o_weight * (dest_w * decay_val) / denominator;
+                        target_seed[dest] = allocated_flow;
+                    }
+                }
+
+                Self::brandes_backprop_with_beta(
+                    &traversal,
+                    &sorted_visited,
+                    src_idx,
+                    &target_seed,
+                    &target_seed,
+                    |state| state.route_cost <= search_radius,
+                    |inter_node_idx, credit, _| {
+                        if credit > 0.0 {
+                            res.node_betweenness_vec.metric[0][inter_node_idx]
+                                .fetch_add(credit, AtomicOrdering::Relaxed);
+                        }
+                    },
+                );
+            });
+
+            res
+        });
+
+        Ok(result)
+    }
 }
+

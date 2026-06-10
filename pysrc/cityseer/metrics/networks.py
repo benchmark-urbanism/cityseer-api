@@ -468,6 +468,105 @@ def betweenness_od(
     return nodes_gdf
 
 
+def betweenness_gravity_demand(
+    network_structure: rustalgos.graph.NetworkStructure,
+    nodes_gdf: gpd.GeoDataFrame,
+    origins_gdf: gpd.GeoDataFrame,
+    destinations_gdf: gpd.GeoDataFrame,
+    origin_weight_col: str,
+    destination_weight_col: str,
+    search_radius: float,
+    beta: float,
+    closest_destination: bool = False,
+    max_snap_dist: float = 500.0,
+) -> gpd.GeoDataFrame:
+    """Compute gravity-allocated betweenness flow centrality.
+
+    Allocates flows dynamically between origins (e.g. population blocks) and destinations
+    (e.g. attractors) using a single-constrained gravity model with exponential distance decay,
+    and routes the flows along shortest network paths in parallel.
+
+    Parameters
+    ----------
+    network_structure : rustalgos.graph.NetworkStructure
+        A NetworkStructure.
+    nodes_gdf : gpd.GeoDataFrame
+        GeoDataFrame representing nodes where flow outputs will be written.
+    origins_gdf : gpd.GeoDataFrame
+        GeoDataFrame of demand origins (points or centroids).
+    destinations_gdf : gpd.GeoDataFrame
+        GeoDataFrame of demand attractors/destinations (points or centroids).
+    origin_weight_col : str
+        Column in origins_gdf representing origin weight (e.g. population).
+    destination_weight_col : str
+        Column in destinations_gdf representing destination attractor weight.
+    search_radius : float
+        Maximum search radius in network distance units.
+    beta : float
+        Exponential distance decay parameter.
+    closest_destination : bool, default False
+        If True, routes flow only to the single closest destination (within search_radius).
+    max_snap_dist : float, default 500.0
+        Maximum distance for snapping origin/destination points to network nodes.
+
+    Returns
+    -------
+    gpd.GeoDataFrame
+        The input nodes_gdf with gravity betweenness columns added.
+    """
+    from scipy.spatial import KDTree
+
+    logger.info("Snapping origins and destinations to network nodes...")
+    node_xys = network_structure.node_xys
+    tree = KDTree(node_xys)
+
+    # Snap origins
+    o_coords = np.array([(g.x, g.y) for g in origins_gdf.geometry])
+    dist_o, idx_o = tree.query(o_coords)
+    origins_list = []
+    for i, (_, row) in enumerate(origins_gdf.iterrows()):
+        if dist_o[i] <= max_snap_dist:
+            w = float(row[origin_weight_col])
+            if not pd.isna(w) and w > 0:
+                origins_list.append((int(idx_o[i]), w))
+
+    # Snap destinations
+    d_coords = np.array([(g.x, g.y) for g in destinations_gdf.geometry])
+    dist_d, idx_d = tree.query(d_coords)
+    destinations_list = []
+    for i, (_, row) in enumerate(destinations_gdf.iterrows()):
+        if dist_d[i] <= max_snap_dist:
+            w = float(row[destination_weight_col])
+            if not pd.isna(w) and w > 0:
+                destinations_list.append((int(idx_d[i]), w))
+
+    logger.info(
+        f"Snapped {len(origins_list)} origins and {len(destinations_list)} destinations. "
+        "Running gravity demand model in Rust..."
+    )
+
+    partial_func = partial(
+        network_structure.betweenness_gravity_demand_shortest,
+        origins=origins_list,
+        destinations=destinations_list,
+        search_radius=search_radius,
+        beta=beta,
+        closest_destination=closest_destination,
+    )
+    result = config.wrap_progress(
+        total=len(origins_list), rust_struct=network_structure, partial_func=partial_func
+    )
+
+    gdf_idx = nodes_gdf.index.intersection(result.node_keys_py)
+    temp_data = {}
+    data_key = config.prep_gdf_key("betweenness_gravity", int(search_radius))
+    temp_data[data_key] = result.node_betweenness[int(search_radius)]
+
+    temp_df = pd.DataFrame(temp_data, index=result.node_keys_py)
+    nodes_gdf.loc[gdf_idx, temp_df.columns] = temp_df.loc[gdf_idx, temp_df.columns]
+    return nodes_gdf
+
+
 def node_centrality_simplest(
     network_structure: rustalgos.graph.NetworkStructure,
     nodes_gdf: gpd.GeoDataFrame,
