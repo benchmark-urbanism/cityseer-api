@@ -5,12 +5,17 @@ high-level **`CityNetwork`** class was added. This document records the contract
 already use stays behaviour-compatible by default**, and the new expression engine is **opt-in**. Nothing in the
 documented high-level API breaks.
 
-## One rule
+## Two surfaces
 
-**By default you get the classic 4.24 output — same columns, same numbers — everywhere** (both the
-`cityseer.metrics.networks` / `layers` functions and the new `cityseer.CityNetwork` class). To use the new
-expression engine, pass `decay_fn` / expression dicts; that is opt-in. Nothing in the documented high-level API
-breaks.
+| Surface | Default output |
+| --- | --- |
+| `cityseer.metrics.networks` / `layers` functions (the old API you already use) | **Classic 4.24** — the full metric set; land-use returns both `_nw` and `_wt` columns |
+| `cityseer.CityNetwork` (the new API) | **Lean** — a single harmonic closeness + a single betweenness, cycles off; land-use returns one column |
+
+The old functions are preserved exactly so existing scripts keep working. The new `CityNetwork` is a clean
+surface with no back-compat debt, so it defaults to a tidy, single-metric output. Either way the expression
+engine is opt-in: pass `closeness` / `betweenness` dicts (centrality) or `decay_fn` (land-use) to compute exactly
+what you want. Nothing in the documented old API breaks.
 
 Low-level surfaces (`rustalgos.*` `NetworkStructure`/`DataMap` methods, the result objects, `pair_distances_*`)
 **do** change in 4.25 — these were never the stable public contract.

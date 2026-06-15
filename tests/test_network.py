@@ -41,11 +41,9 @@ def test_from_nx_matches_from_geopandas(primal_graph):
     from_gdf = CityNetwork.from_geopandas(streets_gdf).centrality_simplest(distances=[400])
     from_nx = CityNetwork.from_nx(primal_graph).centrality_simplest(distances=[400])
 
+    # CityNetwork's lean default: a single (angular) harmonic closeness and a single betweenness
     for column in [
-        "cc_density_400_ang",
         "cc_harmonic_400_ang",
-        "cc_farness_400_ang",
-        "cc_hillier_400_ang",
         "cc_betweenness_400_ang",
     ]:
         np.testing.assert_allclose(
@@ -90,8 +88,8 @@ def test_save_load_roundtrip_preserves_metrics_and_fast_state(tmp_path):
     loaded = CityNetwork.load(path)
 
     np.testing.assert_allclose(
-        loaded.nodes_gdf["cc_density_50_ang"].sort_index(),
-        city_network.nodes_gdf["cc_density_50_ang"].sort_index(),
+        loaded.nodes_gdf["cc_harmonic_50_ang"].sort_index(),
+        city_network.nodes_gdf["cc_harmonic_50_ang"].sort_index(),
     )
     updated_gdf = streets_gdf.copy()
     updated_gdf.at["c", "geometry"] = LineString([(20, 0), (20, 40)])
@@ -469,3 +467,28 @@ def test_citynetwork_imp_factor_propagates_from_nx():
     expected = (100.0 * 2.0 + 200.0 * 4.0) / (100.0 + 200.0)
     imps = _dual_edge_imp_factors(cn)
     assert imps and all(abs(imp - expected) < 1e-4 for imp in imps)
+
+
+def test_citynetwork_centrality_lean_defaults(primal_graph):
+    """CityNetwork centrality defaults to a single harmonic closeness + single betweenness, cycles off."""
+    cn = CityNetwork.from_nx(primal_graph).centrality_shortest(distances=[400])
+    cols = cn.nodes_gdf.columns
+    assert "cc_harmonic_400" in cols
+    assert "cc_betweenness_400" in cols
+    # the fuller functional metrics are NOT emitted by default on the new API
+    for absent in ("cc_density_400", "cc_farness_400", "cc_decay_400", "cc_cycles_400", "cc_betweenness_decay_400"):
+        assert absent not in cols
+
+
+def test_citynetwork_accessibility_single_column_default(primal_graph):
+    """CityNetwork land-use defaults to a single (unweighted) column, not the legacy _nw + _wt pair."""
+    from cityseer.tools import mock
+
+    data_gdf = mock.mock_landuse_categorical_data(primal_graph)
+    cn, _ = CityNetwork.from_nx(primal_graph).compute_accessibilities(
+        data_gdf, landuse_column_label="categorical_landuses", accessibility_keys=["a"], distances=[400]
+    )
+    cols = cn.nodes_gdf.columns
+    assert "cc_a_400" in cols
+    assert "cc_a_400_nw" not in cols
+    assert "cc_a_400_wt" not in cols

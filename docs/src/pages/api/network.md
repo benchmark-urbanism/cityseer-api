@@ -1124,18 +1124,18 @@ cn.centrality_shortest(
 )
 ```
 
- Output columns per distance ``d`` (see [Column Naming Conventions](/guide#column-naming-conventions)):
+ By default this emits just ``cc_harmonic_{d}`` (closeness) and ``cc_betweenness_{d}``, with cycles off. Pass ``closeness`` / ``betweenness`` expression dicts (and ``cycles=True``) to compute any of the metrics below (see [Column Naming Conventions](/guide#column-naming-conventions)):
 
 | Column | Description |
 | --- | --- |
 | ``cc_density_{d}`` | Count of reachable nodes (or total reachable street length if segment_weighted). |
-| ``cc_harmonic_{d}`` | Harmonic closeness: sum of inverse distances to reachable nodes. |
+| ``cc_harmonic_{d}`` | Harmonic closeness: sum of inverse distances to reachable nodes (default). |
 | ``cc_farness_{d}`` | Sum of distances to reachable nodes. |
 | ``cc_hillier_{d}`` | Hillier normalisation (density² / farness). |
 | ``cc_cycles_{d}`` | Circuit rank: count of independent loops in the reachable subgraph. |
-| ``cc_decay_{d}`` | Decay-weighted closeness (default: ``exp(-4 * p)``). |
-| ``cc_betweenness_{d}`` | Betweenness: count of shortest paths passing through each node. |
-| ``cc_betweenness_decay_{d}`` | Decay-weighted betweenness (default: ``exp(-4 * p)``). |
+| ``cc_decay_{d}`` | Decay-weighted closeness (e.g. ``exp(-4 * p)``). |
+| ``cc_betweenness_{d}`` | Betweenness: count of shortest paths passing through each node (default). |
+| ``cc_betweenness_decay_{d}`` | Decay-weighted betweenness (e.g. ``exp(-4 * p)``). |
 
 </div>
 
@@ -1180,15 +1180,15 @@ cn.centrality_shortest(
 cn.centrality_simplest(distances=[400, 800, 1600])
 ```
 
- Output columns per distance ``d`` (note the ``_ang`` suffix):
+ By default this emits just ``cc_harmonic_{d}_ang`` (closeness) and ``cc_betweenness_{d}_ang``. Pass ``closeness`` / ``betweenness`` expression dicts to compute any of the metrics below (note the ``_ang`` suffix):
 
 | Column | Description |
 | --- | --- |
 | ``cc_density_{d}_ang`` | Count of reachable nodes (or total reachable street length if segment_weighted). |
-| ``cc_harmonic_{d}_ang`` | Harmonic closeness using angular cost as impedance. |
+| ``cc_harmonic_{d}_ang`` | Harmonic closeness using angular cost as impedance (default). |
 | ``cc_farness_{d}_ang`` | Sum of angular costs to reachable nodes. |
 | ``cc_hillier_{d}_ang`` | Hillier normalisation (density² / farness). |
-| ``cc_betweenness_{d}_ang`` | Betweenness using simplest angular paths (angular choice in space syntax). |
+| ``cc_betweenness_{d}_ang`` | Betweenness via simplest angular paths (angular choice; default). |
 
 </div>
 

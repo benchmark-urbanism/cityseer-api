@@ -1002,19 +1002,28 @@ class CityNetwork:
         )
         ```
 
-        Output columns per distance ``d`` (see [Column Naming Conventions](/guide#column-naming-conventions)):
+        By default this emits just ``cc_harmonic_{d}`` (closeness) and ``cc_betweenness_{d}``, with cycles
+        off. Pass ``closeness`` / ``betweenness`` expression dicts (and ``cycles=True``) to compute any of the
+        metrics below (see [Column Naming Conventions](/guide#column-naming-conventions)):
 
         | Column | Description |
         | --- | --- |
         | ``cc_density_{d}`` | Count of reachable nodes (or total reachable street length if segment_weighted). |
-        | ``cc_harmonic_{d}`` | Harmonic closeness: sum of inverse distances to reachable nodes. |
+        | ``cc_harmonic_{d}`` | Harmonic closeness: sum of inverse distances to reachable nodes (default). |
         | ``cc_farness_{d}`` | Sum of distances to reachable nodes. |
         | ``cc_hillier_{d}`` | Hillier normalisation (density² / farness). |
         | ``cc_cycles_{d}`` | Circuit rank: count of independent loops in the reachable subgraph. |
-        | ``cc_decay_{d}`` | Decay-weighted closeness (default: ``exp(-4 * p)``). |
-        | ``cc_betweenness_{d}`` | Betweenness: count of shortest paths passing through each node. |
-        | ``cc_betweenness_decay_{d}`` | Decay-weighted betweenness (default: ``exp(-4 * p)``). |
+        | ``cc_decay_{d}`` | Decay-weighted closeness (e.g. ``exp(-4 * p)``). |
+        | ``cc_betweenness_{d}`` | Betweenness: count of shortest paths passing through each node (default). |
+        | ``cc_betweenness_decay_{d}`` | Decay-weighted betweenness (e.g. ``exp(-4 * p)``). |
         """
+        # New-API defaults: a single closeness (harmonic) and a single betweenness, cycles off.
+        # The functional `networks.centrality_shortest` keeps its fuller default; pass
+        # closeness / betweenness / cycles here to override.
+        kwargs.setdefault("closeness", {"harmonic": "1/c"})
+        kwargs.setdefault("betweenness", {"betweenness": "1"})
+        kwargs.setdefault("cycles", False)
+        kwargs.setdefault("postprocess", {})
         self._nodes_gdf = networks.centrality_shortest(
             network_structure=self._network_structure,
             nodes_gdf=self._nodes_gdf,
@@ -1039,16 +1048,22 @@ class CityNetwork:
         cn.centrality_simplest(distances=[400, 800, 1600])
         ```
 
-        Output columns per distance ``d`` (note the ``_ang`` suffix):
+        By default this emits just ``cc_harmonic_{d}_ang`` (closeness) and ``cc_betweenness_{d}_ang``. Pass
+        ``closeness`` / ``betweenness`` expression dicts to compute any of the metrics below (note the
+        ``_ang`` suffix):
 
         | Column | Description |
         | --- | --- |
         | ``cc_density_{d}_ang`` | Count of reachable nodes (or total reachable street length if segment_weighted). |
-        | ``cc_harmonic_{d}_ang`` | Harmonic closeness using angular cost as impedance. |
+        | ``cc_harmonic_{d}_ang`` | Harmonic closeness using angular cost as impedance (default). |
         | ``cc_farness_{d}_ang`` | Sum of angular costs to reachable nodes. |
         | ``cc_hillier_{d}_ang`` | Hillier normalisation (density² / farness). |
-        | ``cc_betweenness_{d}_ang`` | Betweenness using simplest angular paths (angular choice in space syntax). |
+        | ``cc_betweenness_{d}_ang`` | Betweenness via simplest angular paths (angular choice; default). |
         """
+        # New-API defaults: a single (angular) harmonic closeness and a single betweenness.
+        kwargs.setdefault("closeness", {"harmonic": "1 / (1 + c / 90)"})
+        kwargs.setdefault("betweenness", {"betweenness": "1"})
+        kwargs.setdefault("postprocess", {})
         self._nodes_gdf = networks.centrality_simplest(
             network_structure=self._network_structure,
             nodes_gdf=self._nodes_gdf,
@@ -1166,6 +1181,9 @@ class CityNetwork:
         print(cn.nodes_gdf["cc_park_nearest_max_800"])
         ```
         """
+        # New-API default: a single (unweighted) column. The functional layers.* calls keep the
+        # legacy two-column (_nw + _wt) default; pass decay_fn here for weighting or both columns.
+        kwargs.setdefault("decay_fn", "1")
         self._nodes_gdf, data_gdf = layers.compute_accessibilities(
             data_gdf=data_gdf,
             nodes_gdf=self._nodes_gdf,
@@ -1212,6 +1230,7 @@ class CityNetwork:
         print(cn.nodes_gdf["cc_hill_q0_800"])
         ```
         """
+        kwargs.setdefault("decay_fn", "1")  # new-API single-column default (functional keeps _nw + _wt)
         self._nodes_gdf, data_gdf = layers.compute_mixed_uses(
             data_gdf=data_gdf,
             nodes_gdf=self._nodes_gdf,
@@ -1261,6 +1280,7 @@ class CityNetwork:
         print(cn.nodes_gdf["cc_floor_area_sum_1600"])
         ```
         """
+        kwargs.setdefault("decay_fn", "1")  # new-API single-column default (functional keeps _nw + _wt)
         self._nodes_gdf, data_gdf = layers.compute_stats(
             data_gdf=data_gdf,
             nodes_gdf=self._nodes_gdf,
