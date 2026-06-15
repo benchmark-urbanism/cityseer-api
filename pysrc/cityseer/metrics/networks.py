@@ -58,6 +58,7 @@ closeness or Hillier normalisation instead.
 from __future__ import annotations
 
 import logging
+import warnings
 from functools import partial
 from typing import cast
 
@@ -72,6 +73,7 @@ logger = logging.getLogger(__name__)
 
 # separate out so that ast parser can parse function def
 SPEED_M_S = config.SPEED_M_S
+MIN_THRESH_WT = config.MIN_THRESH_WT
 
 
 def _require_dual_for_angular(
@@ -958,6 +960,81 @@ def betweenness_simplest(
         distances=distances,
         minutes=minutes,
         closeness={},
+        speed_m_s=speed_m_s,
+        tolerance=tolerance,
+        random_seed=random_seed,
+        sample=sample,
+        epsilon=epsilon,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Deprecated 4.24 compatibility shims
+#
+# These reproduce the pre-4.25 functional API (names, parameters, output column
+# names and values) by translating old-style calls into the expression engine.
+# They add no algorithms of their own and are scheduled for removal a few major
+# releases on. See COMPATIBILITY.md.
+# ---------------------------------------------------------------------------
+
+
+def _legacy_decay_expr(min_threshold_wt: float) -> str:
+    """Reproduce legacy beta-weighting as a normalised-progress expression.
+
+    The old weighting was `exp(-beta * c)` with `beta` derived per distance as
+    `-ln(min_threshold_wt) / d`. Since `p = c / d`, this is exactly `exp(-k * p)`
+    with `k = -ln(min_threshold_wt)` (`k = 4` for the default `min_threshold_wt`).
+    """
+    k = -float(np.log(min_threshold_wt))
+    return f"exp(-{k} * p)"
+
+
+def node_centrality_shortest(
+    network_structure: rustalgos.graph.NetworkStructure,
+    nodes_gdf: gpd.GeoDataFrame,
+    distances: list[int] | None = None,
+    betas: list[float] | None = None,
+    minutes: list[float] | None = None,
+    compute_closeness: bool = True,
+    compute_betweenness: bool = True,
+    min_threshold_wt: float = MIN_THRESH_WT,
+    speed_m_s: float = SPEED_M_S,
+    tolerance: float | None = None,
+    random_seed: int | None = None,
+    sample: bool = False,
+    epsilon: float | None = None,
+) -> gpd.GeoDataFrame:
+    """Deprecated 4.24 alias for [`centrality_shortest`](#centrality-shortest).
+
+    .. deprecated:: 4.25
+        Use `centrality_shortest` with `closeness` / `betweenness` expression dicts.
+        This shim preserves the 4.24 output (columns `cc_density`, `cc_farness`,
+        `cc_harmonic`, `cc_beta`, `cc_cycles`, `cc_hillier`, `cc_betweenness`,
+        `cc_betweenness_beta`) and will be removed in a future major release. See
+        COMPATIBILITY.md.
+    """
+    warnings.warn(
+        "node_centrality_shortest is deprecated since 4.25; use centrality_shortest "
+        "with closeness/betweenness expression dicts. This shim will be removed in a "
+        "future major release.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    if betas is not None and distances is None:
+        distances = rustalgos.distances_from_betas(betas, min_threshold_wt)
+    decay_expr = _legacy_decay_expr(min_threshold_wt)
+    closeness = {"density": "1", "farness": "c", "harmonic": "1/c", "beta": decay_expr} if compute_closeness else {}
+    betweenness = {"betweenness": "1", "betweenness_beta": decay_expr} if compute_betweenness else {}
+    postprocess = {"hillier": "density**2 / farness"} if compute_closeness else {}
+    return centrality_shortest(
+        network_structure=network_structure,
+        nodes_gdf=nodes_gdf,
+        distances=distances,
+        minutes=minutes,
+        closeness=closeness,
+        betweenness=betweenness,
+        cycles=compute_closeness,
+        postprocess=postprocess,
         speed_m_s=speed_m_s,
         tolerance=tolerance,
         random_seed=random_seed,

@@ -414,3 +414,32 @@ def test_betweenness_demand(primal_graph):
     far = gpd.GeoDataFrame({"geometry": [Point(1e7, 1e7)], "w": [10.0]}, crs=nodes_gdf.crs)
     flow_far = run(far, max_snap_dist=50.0)
     assert np.nansum(flow_far) == 0.0
+
+
+def test_node_centrality_shortest_compat(primal_graph):
+    """The deprecated 4.24 shim reproduces centrality_shortest output under legacy column names."""
+    distances = [400, 800]
+    nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(primal_graph)
+    # modern defaults emit cc_decay_* / cc_betweenness_decay_*
+    modern = networks.centrality_shortest(
+        network_structure=network_structure,
+        nodes_gdf=nodes_gdf.copy(),
+        distances=distances,
+    )
+    # the deprecated shim emits the legacy cc_beta_* / cc_betweenness_beta_* names
+    with pytest.warns(DeprecationWarning):
+        legacy = networks.node_centrality_shortest(
+            network_structure=network_structure,
+            nodes_gdf=nodes_gdf.copy(),
+            distances=distances,
+        )
+    for d in distances:
+        assert f"cc_beta_{d}" in legacy
+        assert f"cc_betweenness_beta_{d}" in legacy
+        # legacy beta-weighting == modern normalised-progress decay, numerically
+        # (equal_nan: hillier is density**2 / farness, which is NaN at farness-zero nodes in both)
+        assert np.allclose(legacy[f"cc_beta_{d}"], modern[f"cc_decay_{d}"], equal_nan=True)
+        assert np.allclose(legacy[f"cc_betweenness_beta_{d}"], modern[f"cc_betweenness_decay_{d}"], equal_nan=True)
+        # every other metric is unchanged
+        for stem in ("cc_density", "cc_farness", "cc_harmonic", "cc_cycles", "cc_hillier", "cc_betweenness"):
+            assert np.allclose(legacy[f"{stem}_{d}"], modern[f"{stem}_{d}"], equal_nan=True)
