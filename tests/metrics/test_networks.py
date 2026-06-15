@@ -443,3 +443,26 @@ def test_node_centrality_shortest_compat(primal_graph):
         # every other metric is unchanged
         for stem in ("cc_density", "cc_farness", "cc_harmonic", "cc_cycles", "cc_hillier", "cc_betweenness"):
             assert np.allclose(legacy[f"{stem}_{d}"], modern[f"{stem}_{d}"], equal_nan=True)
+
+
+def test_node_centrality_simplest_compat(dual_graph):
+    """The deprecated 4.24 simplest shim reproduces centrality_simplest output (angular columns)."""
+    distances = [400, 800]
+    nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(dual_graph)
+    modern = networks.centrality_simplest(
+        network_structure=network_structure,
+        nodes_gdf=nodes_gdf.copy(),
+        distances=distances,
+    )
+    with pytest.warns(DeprecationWarning):
+        legacy = networks.node_centrality_simplest(
+            network_structure=network_structure,
+            nodes_gdf=nodes_gdf.copy(),
+            distances=distances,
+        )
+    # the shim produces exactly the same cc_ columns and values as the modern default
+    modern_cc = sorted(c for c in modern.columns if c.startswith("cc_"))
+    legacy_cc = sorted(c for c in legacy.columns if c.startswith("cc_"))
+    assert legacy_cc == modern_cc
+    for col in modern_cc:
+        assert np.allclose(legacy[col], modern[col], equal_nan=True)

@@ -20,8 +20,8 @@ Low-level surfaces (`rustalgos.*` `NetworkStructure`/`DataMap` methods, the resu
 The common path is preserved exactly. A call using only the everyday arguments (`distances`,
 `landuse_column_label`, …) returns the **same columns and the same numbers** as 4.24:
 
-- **Renamed / removed functions** — `node_centrality_shortest`, `node_centrality_simplest`, `segment_centrality`
-  are restored as deprecated aliases that emit `DeprecationWarning`.
+- **Renamed functions** — `node_centrality_shortest` and `node_centrality_simplest` are restored as deprecated
+  aliases that emit `DeprecationWarning`. (`segment_centrality` is *not* restored — see "Removed" below.)
 - **Default output** — legacy column names (`cc_beta_*`, `cc_betweenness_beta_*`, land-use `_wt` / `_nw`) and their
   values are reproduced. The old default β-weighting equals `exp(-k · p)` with `k = -ln(min_threshold_wt)` (= 4 by
   default, `p = c / threshold`), so the numbers are identical.
@@ -55,6 +55,18 @@ networks.compute_accessibilities(..., distances=[800])
 # new expression engine, opt-in: emits cc_..._800
 networks.compute_accessibilities(..., distances=[800], decay_fn="exp(-4 * p)")
 ```
+
+**Tip — save time by asking for one column.** The default restores *both* the unweighted and weighted columns
+(for back-compatibility), which is two calculations. If you only need one, pass a single `decay_fn` and you get
+just that one variant — less compute and tidier output. Use `"1"` for the plain (unweighted) result, or a decay
+expression for the weighted one.
+
+## Removed (not restored)
+
+- **`segment_centrality`** — the underlying continuous-segment routine (`segment_density` / `harmonic` / `beta` /
+  `betweenness`) was removed at the low level in 4.25, so the old numbers cannot be reproduced. The nearest modern
+  equivalent is `centrality_shortest(..., segment_weighted=True)`, which weights node centrality by street-segment
+  length — related, but a different calculation. Calling `segment_centrality` raises a clear error pointing here.
 
 ## Genuinely unavoidable (rare)
 

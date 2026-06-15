@@ -1041,3 +1041,74 @@ def node_centrality_shortest(
         sample=sample,
         epsilon=epsilon,
     )
+
+
+def node_centrality_simplest(
+    network_structure: rustalgos.graph.NetworkStructure,
+    nodes_gdf: gpd.GeoDataFrame,
+    distances: list[int] | None = None,
+    betas: list[float] | None = None,
+    minutes: list[float] | None = None,
+    compute_closeness: bool = True,
+    compute_betweenness: bool = True,
+    min_threshold_wt: float = MIN_THRESH_WT,
+    speed_m_s: float = SPEED_M_S,
+    angular_scaling_unit: float = 90,
+    farness_scaling_offset: float = 1,
+    tolerance: float | None = None,
+    random_seed: int | None = None,
+    sample: bool = False,
+    epsilon: float | None = None,
+) -> gpd.GeoDataFrame:
+    """Deprecated 4.24 alias for [`centrality_simplest`](#centrality-simplest).
+
+    .. deprecated:: 4.25
+        Use `centrality_simplest` with `closeness` / `betweenness` expression dicts. This shim preserves
+        the 4.24 output (angular columns `cc_density_ang`, `cc_farness_ang`, `cc_harmonic_ang`,
+        `cc_hillier_ang`, `cc_betweenness_ang`) and will be removed in a future major release. See
+        COMPATIBILITY.md.
+    """
+    warnings.warn(
+        "node_centrality_simplest is deprecated since 4.25; use centrality_simplest with "
+        "closeness/betweenness expression dicts. This shim will be removed in a future major release.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    if betas is not None and distances is None:
+        distances = rustalgos.distances_from_betas(betas, min_threshold_wt)
+    # old angular scaling: farness = offset + c / unit (defaults 1 and 90 match the modern defaults)
+    farness_expr = f"{farness_scaling_offset} + c / {angular_scaling_unit}"
+    closeness = (
+        {"density": "1", "farness": farness_expr, "harmonic": f"1 / ({farness_expr})"} if compute_closeness else {}
+    )
+    betweenness = {"betweenness": "1"} if compute_betweenness else {}
+    postprocess = {"hillier": "density**2 / farness"} if compute_closeness else {}
+    return centrality_simplest(
+        network_structure=network_structure,
+        nodes_gdf=nodes_gdf,
+        distances=distances,
+        minutes=minutes,
+        closeness=closeness,
+        betweenness=betweenness,
+        postprocess=postprocess,
+        speed_m_s=speed_m_s,
+        tolerance=tolerance,
+        random_seed=random_seed,
+        sample=sample,
+        epsilon=epsilon,
+    )
+
+
+def segment_centrality(*_args, **_kwargs) -> gpd.GeoDataFrame:
+    """Removed in 4.25; raises with guidance.
+
+    .. deprecated:: 4.25
+        The continuous-segment engine (`segment_density` / `harmonic` / `beta` / `betweenness`) was removed at
+        the low level, so the old numbers cannot be reproduced. The nearest equivalent is
+        `centrality_shortest(..., segment_weighted=True)` — a different calculation. See COMPATIBILITY.md.
+    """
+    raise NotImplementedError(
+        "segment_centrality was removed in 4.25: its continuous-segment engine is gone, so the old "
+        "segment_density/harmonic/beta/betweenness cannot be reproduced. Nearest equivalent: "
+        "centrality_shortest(..., segment_weighted=True) — a different calculation. See COMPATIBILITY.md."
+    )
