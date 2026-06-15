@@ -84,6 +84,7 @@ layout: ../../layouts/PageLayout.astro
 </div>
 
 
+ The type of the None singleton.
 
 </div>
 
@@ -108,6 +109,7 @@ layout: ../../layouts/PageLayout.astro
 </div>
 
 
+ The type of the None singleton.
 
 </div>
 
@@ -141,6 +143,7 @@ layout: ../../layouts/PageLayout.astro
 </div>
 
 
+ The type of the None singleton.
 
 </div>
 
@@ -165,6 +168,7 @@ layout: ../../layouts/PageLayout.astro
 </div>
 
 
+ The type of the None singleton.
 
 </div>
 
@@ -192,6 +196,7 @@ layout: ../../layouts/PageLayout.astro
 </div>
 
 
+ The type of the None singleton.
 
 </div>
 
@@ -216,6 +221,7 @@ layout: ../../layouts/PageLayout.astro
 </div>
 
 
+ The type of the None singleton.
 
 </div>
 
@@ -240,6 +246,7 @@ layout: ../../layouts/PageLayout.astro
 </div>
 
 
+ The type of the None singleton.
 
 </div>
 
@@ -313,6 +320,7 @@ layout: ../../layouts/PageLayout.astro
 </div>
 
 
+ The type of the None singleton.
 
 </div>
 
@@ -364,6 +372,7 @@ layout: ../../layouts/PageLayout.astro
 </div>
 
 
+ The type of the None singleton.
 
 </div>
 
@@ -415,6 +424,7 @@ layout: ../../layouts/PageLayout.astro
 </div>
 
 
+ The type of the None singleton.
 
 </div>
 
@@ -472,6 +482,7 @@ layout: ../../layouts/PageLayout.astro
 </div>
 
 
+ The type of the None singleton.
 
 </div>
 
@@ -529,6 +540,7 @@ layout: ../../layouts/PageLayout.astro
 </div>
 
 
+ The type of the None singleton.
 
 </div>
 
@@ -570,6 +582,9 @@ layout: ../../layouts/PageLayout.astro
     <span class="pn">decay_fn=None</span>
   </div>
   <div class="param">
+    <span class="pn">measures=None</span>
+  </div>
+  <div class="param">
     <span class="pn">pbar_disabled=None</span>
   </div>
   <span class="pt">)</span>
@@ -577,6 +592,7 @@ layout: ../../layouts/PageLayout.astro
 </div>
 
 
+ The type of the None singleton.
 
 </div>
 
@@ -618,6 +634,9 @@ layout: ../../layouts/PageLayout.astro
     <span class="pn">speed_m_s=None</span>
   </div>
   <div class="param">
+    <span class="pn">measures=None</span>
+  </div>
+  <div class="param">
     <span class="pn">pbar_disabled=None</span>
   </div>
   <span class="pt">)</span>
@@ -625,6 +644,7 @@ layout: ../../layouts/PageLayout.astro
 </div>
 
 
+ The type of the None singleton.
 
 </div>
 

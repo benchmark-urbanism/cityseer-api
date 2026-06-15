@@ -309,6 +309,9 @@ result_gdf.to_file("centrality_results.gpkg")
   <div class="param">
     <span class="pn">oneway_fids</span>
   </div>
+  <div class="param">
+    <span class="pn">impedances</span>
+  </div>
   <span class="pt">)-&gt;[</span>
   <span class="pr">CityNetwork</span>
   <span class="pt">]</span>
@@ -366,6 +369,16 @@ result_gdf.to_file("centrality_results.gpkg")
   <div class="desc">
 
  Feature IDs that are one-way when ``directed=True``. Ignored if ``directed=False``.</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">impedances</div>
+    <div class="type">dict[Any, float] | None</div>
+  </div>
+  <div class="desc">
+
+ Optional mapping from primal feature ID to its impedance factor. Each dual edge's ``imp_factor`` becomes the length-weighted mean of its two adjacent primal segments' impedances; missing entries default to ``1.0``. See the [Edge Impedance](/guide#edge-impedance) section of the guide.</div>
 </div>
 
 ### Returns
@@ -516,6 +529,8 @@ cn.centrality_shortest(distances=[200])
 
 ### Notes
 
+ An optional ``imp_factor`` column on the input ``GeoDataFrame`` is propagated to each dual edge as the length-weighted mean of the two adjacent primal segments' impedances; omit it to leave every dual edge at the default ``1.0``. See the [Edge Impedance](/guide#edge-impedance) section of the guide.
+
 ```python
 import geopandas as gpd
 from shapely.geometry import LineString
@@ -600,7 +615,7 @@ cn = CityNetwork.from_geopandas(gdf, directed=True)
   </div>
   <div class="desc">
 
- A cityseer-compatible primal NetworkX graph. ``MultiDiGraph`` enables directed routing.</div>
+ A cityseer-compatible primal NetworkX graph. ``MultiDiGraph`` enables directed routing. Any ``imp_factor`` edge attribute is propagated to each dual edge as the length-weighted mean of the two adjacent primal segments' impedances (default ``1.0`` if absent). See the [Edge Impedance](/guide#edge-impedance) section of the guide.</div>
 </div>
 
 <div class="param-set">
@@ -964,7 +979,7 @@ cn.centrality_shortest(distances=[400, 800])
   <div class="param">
     <span class="pn">path</span>
     <span class="pc">:</span>
-    <span class="pa"> str | pathlib.Path</span>
+    <span class="pa"> str | pathlib._local.Path</span>
   </div>
   <span class="pt">)</span>
 </div>
@@ -1015,7 +1030,7 @@ print(cn_restored.nodes_gdf["cc_harmonic_800"])
   <div class="param">
     <span class="pn">path</span>
     <span class="pc">:</span>
-    <span class="pa"> str | pathlib.Path</span>
+    <span class="pa"> str | pathlib._local.Path</span>
   </div>
   <span class="pt">)-&gt;[</span>
   <span class="pr">CityNetwork</span>

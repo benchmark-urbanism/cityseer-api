@@ -172,6 +172,7 @@ layout: ../../layouts/PageLayout.astro
 </div>
 
 
+ The type of the None singleton.
 
 </div>
 
@@ -205,6 +206,7 @@ layout: ../../layouts/PageLayout.astro
 </div>
 
 
+ The type of the None singleton.
 
 </div>
 
@@ -375,6 +377,61 @@ layout: ../../layouts/PageLayout.astro
 
 <div class="function">
 
+## betweenness_demand_shortest
+
+
+<div class="content">
+<span class="name">betweenness_demand_shortest</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">self</span>
+  </div>
+  <div class="param">
+    <span class="pn">/</span>
+  </div>
+  <div class="param">
+    <span class="pn">origins</span>
+  </div>
+  <div class="param">
+    <span class="pn">destinations</span>
+  </div>
+  <div class="param">
+    <span class="pn">decay_fn</span>
+  </div>
+  <div class="param">
+    <span class="pn">distances=None</span>
+  </div>
+  <div class="param">
+    <span class="pn">minutes=None</span>
+  </div>
+  <div class="param">
+    <span class="pn">closest_destination=False</span>
+  </div>
+  <div class="param">
+    <span class="pn">metric_name=None</span>
+  </div>
+  <div class="param">
+    <span class="pn">speed_m_s=None</span>
+  </div>
+  <div class="param">
+    <span class="pn">tolerance=None</span>
+  </div>
+  <div class="param">
+    <span class="pn">pbar_disabled=None</span>
+  </div>
+  <span class="pt">)</span>
+</div>
+</div>
+
+
+ Demand-weighted (flow) betweenness from a singly / origin-constrained spatial interaction model. Each origin distributes its full weight across reachable destinations in proportion to `W_d * decay(c)`, where `decay` is the supplied expression evaluated on `c` (metric cost) and `p` (normalised progress to the threshold) — the gravity model is one instance of this spatial interaction form. The allocated origin-destination flows are then routed along shortest paths via Brandes back-propagation, accumulating flow betweenness at intermediate nodes. Origins and destinations are each aggregated by node first, so several snapped points sharing a node contribute their summed weight (and a node only triggers one Dijkstra). When `closest_destination` is true, an origin routes its full weight to its single nearest reachable destination instead of allocating across all of them.
+
+</div>
+
+ 
+
+<div class="function">
+
 ## progress_init
 
 
@@ -392,6 +449,7 @@ layout: ../../layouts/PageLayout.astro
 </div>
 
 
+ The type of the None singleton.
 
 </div>
 
@@ -416,6 +474,7 @@ layout: ../../layouts/PageLayout.astro
 </div>
 
 
+ The type of the None singleton.
 
 </div>
 
@@ -443,6 +502,7 @@ layout: ../../layouts/PageLayout.astro
 </div>
 
 
+ The type of the None singleton.
 
 </div>
 
@@ -470,6 +530,7 @@ layout: ../../layouts/PageLayout.astro
 </div>
 
 
+ The type of the None singleton.
 
 </div>
 
@@ -512,6 +573,7 @@ layout: ../../layouts/PageLayout.astro
 </div>
 
 
+ The type of the None singleton.
 
 </div>
 
@@ -551,6 +613,7 @@ layout: ../../layouts/PageLayout.astro
 </div>
 
 
+ The type of the None singleton.
 
 </div>
 
@@ -578,6 +641,7 @@ layout: ../../layouts/PageLayout.astro
 </div>
 
 
+ The type of the None singleton.
 
 </div>
 
@@ -605,6 +669,7 @@ layout: ../../layouts/PageLayout.astro
 </div>
 
 
+ The type of the None singleton.
 
 </div>
 
@@ -663,6 +728,7 @@ layout: ../../layouts/PageLayout.astro
 </div>
 
 
+ The type of the None singleton.
 
 </div>
 
@@ -1052,6 +1118,7 @@ layout: ../../layouts/PageLayout.astro
 </div>
 
 
+ The type of the None singleton.
 
 </div>
 
@@ -1085,6 +1152,7 @@ layout: ../../layouts/PageLayout.astro
 </div>
 
 
+ The type of the None singleton.
 
 </div>
 
@@ -1118,6 +1186,7 @@ layout: ../../layouts/PageLayout.astro
 </div>
 
 
+ The type of the None singleton.
 
 </div>
 
@@ -1151,6 +1220,7 @@ layout: ../../layouts/PageLayout.astro
 </div>
 
 
+ The type of the None singleton.
 
 </div>
 
@@ -1175,6 +1245,7 @@ layout: ../../layouts/PageLayout.astro
 </div>
 
 
+ The type of the None singleton.
 
 </div>
 
@@ -1258,7 +1329,12 @@ layout: ../../layouts/PageLayout.astro
 
  
 
-<span class="name">node_zs</span>
+<span class="name">node_ys</span>
+
+
+ 
+
+<span class="name">node_xys</span>
 
 
  
@@ -1278,12 +1354,7 @@ layout: ../../layouts/PageLayout.astro
 
  
 
-<span class="name">node_ys</span>
-
-
- 
-
-<span class="name">node_xys</span>
+<span class="name">node_zs</span>
 
 
  

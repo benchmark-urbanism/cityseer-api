@@ -27,6 +27,9 @@ layout: ../../layouts/PageLayout.astro
 </div>
 </div>
 
+
+ The type of the None singleton.
+
 </div>
 
 
@@ -56,6 +59,9 @@ layout: ../../layouts/PageLayout.astro
   <span class="pt">)</span>
 </div>
 </div>
+
+
+ The type of the None singleton.
 
 </div>
 
@@ -87,6 +93,9 @@ layout: ../../layouts/PageLayout.astro
 </div>
 </div>
 
+
+ The type of the None singleton.
+
 </div>
 
 
@@ -105,6 +114,9 @@ layout: ../../layouts/PageLayout.astro
 </div>
 </div>
 
+
+ The type of the None singleton.
+
 </div>
 
 
@@ -122,6 +134,9 @@ layout: ../../layouts/PageLayout.astro
   <span class="pt">)</span>
 </div>
 </div>
+
+
+ The type of the None singleton.
 
 </div>
 
@@ -149,6 +164,9 @@ layout: ../../layouts/PageLayout.astro
   <span class="pt">)</span>
 </div>
 </div>
+
+
+ The type of the None singleton.
 
 </div>
 
