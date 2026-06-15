@@ -100,7 +100,7 @@ p=0                p=1            p=0            p=1
 </div>
 
 
- Linear decay from 1 at the source to 0 at the cutoff.
+ Linear decay from 1 at the source to 0 at the cutoff (output is clamped to [0, 1]).
 
 </div>
 

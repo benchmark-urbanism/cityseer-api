@@ -1455,7 +1455,13 @@ print(nodes_gdf[["cc_harmonic_400_ang", "cc_betweenness_800_ang"]])
 
 
  Deprecated 4.24 alias for [`centrality_shortest`](#centrality-shortest).
-**Deprecated since 4.25.** Use `centrality_shortest` with `closeness` / `betweenness` expression dicts. This shim preserves the 4.24 output (columns `cc_density`, `cc_farness`, `cc_harmonic`, `cc_beta`, `cc_cycles`, `cc_hillier`, `cc_betweenness`, `cc_betweenness_beta`) and will be removed in a future major release. See COMPATIBILITY.md.
+### Deprecated
+
+Since version 4.25. Use `centrality_shortest` with `closeness` / `betweenness` expression dicts. This shim preserves
+the 4.24 output (columns `cc_density`, `cc_farness`, `cc_harmonic`, `cc_beta`, `cc_cycles`,
+`cc_hillier`, `cc_betweenness`, `cc_betweenness_beta`) and will be removed in a future major release.
+See COMPATIBILITY.md.
+
 
 </div>
 
@@ -1551,7 +1557,12 @@ print(nodes_gdf[["cc_harmonic_400_ang", "cc_betweenness_800_ang"]])
 
 
  Deprecated 4.24 alias for [`centrality_simplest`](#centrality-simplest).
-**Deprecated since 4.25.** Use `centrality_simplest` with `closeness` / `betweenness` expression dicts. This shim preserves the 4.24 output (angular columns `cc_density_ang`, `cc_farness_ang`, `cc_harmonic_ang`, `cc_hillier_ang`, `cc_betweenness_ang`) and will be removed in a future major release. See COMPATIBILITY.md.
+### Deprecated
+
+Since version 4.25. Use `centrality_simplest` with `closeness` / `betweenness` expression dicts. This shim preserves the
+4.24 output (angular columns `cc_density_ang`, `cc_farness_ang`, `cc_harmonic_ang`, `cc_hillier_ang`,
+`cc_betweenness_ang`) and will be removed in a future major release. See COMPATIBILITY.md.
+
 
 </div>
 
@@ -1578,7 +1589,12 @@ print(nodes_gdf[["cc_harmonic_400_ang", "cc_betweenness_800_ang"]])
 
 
  Removed in 4.25; raises with guidance.
-**Removed in 4.25.** The continuous-segment engine (`segment_density` / `harmonic` / `beta` / `betweenness`) was removed at the low level, so the old numbers cannot be reproduced. The nearest equivalent is `centrality_shortest(..., segment_weighted=True)` — a different calculation. See COMPATIBILITY.md.
+### Deprecated
+
+Since version 4.25. The continuous-segment engine (`segment_density` / `harmonic` / `beta` / `betweenness`) was removed
+at the low level, so the old numbers cannot be reproduced. The nearest equivalent is
+`centrality_shortest(..., segment_weighted=True)` — a different calculation. See COMPATIBILITY.md.
+
 
 </div>
 

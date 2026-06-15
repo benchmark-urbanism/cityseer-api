@@ -138,7 +138,16 @@ def custom_process_docstring(doc_str: str) -> str:
                 param_description=raises.description,  # type: ignore
             )
     if parsed_doc_str.deprecation is not None:
-        raise NotImplementedError("Deprecation not implemented.")
+        dep = parsed_doc_str.deprecation
+        notice = " ".join(
+            part
+            for part in (
+                f"Since version {dep.version}." if dep.version else "",
+                dep.description or "",
+            )
+            if part
+        )
+        doc_str_frag += "\n### Deprecated\n\n" + (notice or "This API is deprecated.") + "\n"
     metas: list[docstring_parser.common.DocstringMeta] = []
     for met in parsed_doc_str.meta:
         if not isinstance(
