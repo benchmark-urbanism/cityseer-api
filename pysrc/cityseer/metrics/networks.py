@@ -243,6 +243,9 @@ def centrality_shortest(
 
     Pass ``None`` for defaults or ``{}`` to skip a category.
 
+    Tip: compute only what you need — a smaller ``closeness`` / ``betweenness`` dict, ``{}`` to skip a whole
+    category, or ``cycles=False`` — evaluates fewer expressions and emits fewer columns.
+
     Parameters
     ----------
     network_structure
@@ -716,6 +719,9 @@ def centrality_simplest(
 
     Expressions use ``c`` (angular cost) and ``p`` (normalised time progress).
 
+    Tip: compute only what you need — pass a smaller ``closeness`` / ``betweenness`` dict, or ``{}`` to skip a
+    whole category — to evaluate fewer expressions and emit fewer columns.
+
     Parameters
     ----------
     network_structure
@@ -1006,12 +1012,10 @@ def node_centrality_shortest(
 ) -> gpd.GeoDataFrame:
     """Deprecated 4.24 alias for [`centrality_shortest`](#centrality-shortest).
 
-    .. deprecated:: 4.25
-        Use `centrality_shortest` with `closeness` / `betweenness` expression dicts.
-        This shim preserves the 4.24 output (columns `cc_density`, `cc_farness`,
-        `cc_harmonic`, `cc_beta`, `cc_cycles`, `cc_hillier`, `cc_betweenness`,
-        `cc_betweenness_beta`) and will be removed in a future major release. See
-        COMPATIBILITY.md.
+    **Deprecated since 4.25.** Use `centrality_shortest` with `closeness` / `betweenness` expression dicts.
+    This shim preserves the 4.24 output (columns `cc_density`, `cc_farness`, `cc_harmonic`, `cc_beta`,
+    `cc_cycles`, `cc_hillier`, `cc_betweenness`, `cc_betweenness_beta`) and will be removed in a future major
+    release. See COMPATIBILITY.md.
     """
     warnings.warn(
         "node_centrality_shortest is deprecated since 4.25; use centrality_shortest "
@@ -1062,11 +1066,9 @@ def node_centrality_simplest(
 ) -> gpd.GeoDataFrame:
     """Deprecated 4.24 alias for [`centrality_simplest`](#centrality-simplest).
 
-    .. deprecated:: 4.25
-        Use `centrality_simplest` with `closeness` / `betweenness` expression dicts. This shim preserves
-        the 4.24 output (angular columns `cc_density_ang`, `cc_farness_ang`, `cc_harmonic_ang`,
-        `cc_hillier_ang`, `cc_betweenness_ang`) and will be removed in a future major release. See
-        COMPATIBILITY.md.
+    **Deprecated since 4.25.** Use `centrality_simplest` with `closeness` / `betweenness` expression dicts.
+    This shim preserves the 4.24 output (angular columns `cc_density_ang`, `cc_farness_ang`, `cc_harmonic_ang`,
+    `cc_hillier_ang`, `cc_betweenness_ang`) and will be removed in a future major release. See COMPATIBILITY.md.
     """
     warnings.warn(
         "node_centrality_simplest is deprecated since 4.25; use centrality_simplest with "
@@ -1102,10 +1104,10 @@ def node_centrality_simplest(
 def segment_centrality(*_args, **_kwargs) -> gpd.GeoDataFrame:
     """Removed in 4.25; raises with guidance.
 
-    .. deprecated:: 4.25
-        The continuous-segment engine (`segment_density` / `harmonic` / `beta` / `betweenness`) was removed at
-        the low level, so the old numbers cannot be reproduced. The nearest equivalent is
-        `centrality_shortest(..., segment_weighted=True)` — a different calculation. See COMPATIBILITY.md.
+    **Removed in 4.25.** The continuous-segment engine (`segment_density` / `harmonic` / `beta` /
+    `betweenness`) was removed at the low level, so the old numbers cannot be reproduced. The nearest
+    equivalent is `centrality_shortest(..., segment_weighted=True)` — a different calculation. See
+    COMPATIBILITY.md.
     """
     raise NotImplementedError(
         "segment_centrality was removed in 4.25: its continuous-segment engine is gone, so the old "

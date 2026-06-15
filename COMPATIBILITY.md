@@ -56,15 +56,9 @@ networks.compute_accessibilities(..., distances=[800])
 networks.compute_accessibilities(..., distances=[800], decay_fn="exp(-4 * p)")
 ```
 
-**Tip — save time by asking for one column.** The default restores *both* the unweighted and weighted columns
-(for back-compatibility), which is two calculations. If you only need one, pass a single `decay_fn` and you get
-just that one variant — less compute and tidier output. Use `"1"` for the plain (unweighted) result, or a decay
-expression for the weighted one.
-
-**Same for centrality.** The new `centrality_shortest` / `centrality_simplest` take `closeness=` and
-`betweenness=` expression dicts — pass a smaller dict (e.g. `closeness={"harmonic": "1/c"}`) to compute just the
-metrics you want, `{}` to skip a whole category, and `cycles=False` to drop cycles. The deprecated
-`node_centrality_*` shims always emit the full set; trim by calling the new names with a smaller dict.
+The efficiency tips for the new API (computing only the metrics/columns you need) live on the new functions'
+own docstrings — see `centrality_shortest` / `centrality_simplest` and `compute_accessibilities` /
+`compute_mixed_uses` / `compute_stats`.
 
 ## Removed (not restored)
 

@@ -140,6 +140,8 @@ closeness or Hillier normalisation instead.
 - ``p``: normalised progress from 0 at the source to 1 at the distance threshold (``p = c / threshold``)
 
  Pass ``None`` for defaults or ``{}`` to skip a category.
+
+ Tip: compute only what you need — a smaller ``closeness`` / ``betweenness`` dict, ``{}`` to skip a whole category, or ``cycles=False`` — evaluates fewer expressions and emits fewer columns.
 ### Parameters
 <div class="param-set">
   <div class="def">
@@ -946,6 +948,8 @@ print(nodes_gdf[["cc_harmonic_400", "cc_betweenness_800"]])
 
 
  Compute centrality using simplest (angular) paths with a single Dijkstra per source. Expressions use ``c`` (angular cost) and ``p`` (normalised time progress).
+
+ Tip: compute only what you need — pass a smaller ``closeness`` / ``betweenness`` dict, or ``{}`` to skip a whole category — to evaluate fewer expressions and emit fewer columns.
 ### Parameters
 <div class="param-set">
   <div class="def">
@@ -1366,6 +1370,215 @@ print(nodes_gdf[["cc_harmonic_400_ang", "cc_betweenness_800_ang"]])
 
 
  Compute betweenness centrality using simplest (angular) paths. Wraps `centrality_simplest` with closeness disabled.
+
+</div>
+
+
+<div class="function">
+
+## node_centrality_shortest
+
+
+<div class="content">
+<span class="name">node_centrality_shortest</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">network_structure</span>
+    <span class="pc">:</span>
+    <span class="pa"> NetworkStructure</span>
+  </div>
+  <div class="param">
+    <span class="pn">nodes_gdf</span>
+    <span class="pc">:</span>
+    <span class="pa"> geopandas.geodataframe.GeoDataFrame</span>
+  </div>
+  <div class="param">
+    <span class="pn">distances</span>
+    <span class="pc">:</span>
+    <span class="pa"> list[int] | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">betas</span>
+    <span class="pc">:</span>
+    <span class="pa"> list[float] | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">minutes</span>
+    <span class="pc">:</span>
+    <span class="pa"> list[float] | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">compute_closeness</span>
+    <span class="pc">:</span>
+    <span class="pa"> bool = True</span>
+  </div>
+  <div class="param">
+    <span class="pn">compute_betweenness</span>
+    <span class="pc">:</span>
+    <span class="pa"> bool = True</span>
+  </div>
+  <div class="param">
+    <span class="pn">min_threshold_wt</span>
+    <span class="pc">:</span>
+    <span class="pa"> float = 0.01831563888873418</span>
+  </div>
+  <div class="param">
+    <span class="pn">speed_m_s</span>
+    <span class="pc">:</span>
+    <span class="pa"> float = 1.33333</span>
+  </div>
+  <div class="param">
+    <span class="pn">tolerance</span>
+    <span class="pc">:</span>
+    <span class="pa"> float | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">random_seed</span>
+    <span class="pc">:</span>
+    <span class="pa"> int | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">sample</span>
+    <span class="pc">:</span>
+    <span class="pa"> bool = False</span>
+  </div>
+  <div class="param">
+    <span class="pn">epsilon</span>
+    <span class="pc">:</span>
+    <span class="pa"> float | None = None</span>
+  </div>
+  <span class="pt">)-&gt;[</span>
+  <span class="pr">GeoDataFrame</span>
+  <span class="pt">]</span>
+</div>
+</div>
+
+
+ Deprecated 4.24 alias for [`centrality_shortest`](#centrality-shortest).
+**Deprecated since 4.25.** Use `centrality_shortest` with `closeness` / `betweenness` expression dicts. This shim preserves the 4.24 output (columns `cc_density`, `cc_farness`, `cc_harmonic`, `cc_beta`, `cc_cycles`, `cc_hillier`, `cc_betweenness`, `cc_betweenness_beta`) and will be removed in a future major release. See COMPATIBILITY.md.
+
+</div>
+
+
+<div class="function">
+
+## node_centrality_simplest
+
+
+<div class="content">
+<span class="name">node_centrality_simplest</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">network_structure</span>
+    <span class="pc">:</span>
+    <span class="pa"> NetworkStructure</span>
+  </div>
+  <div class="param">
+    <span class="pn">nodes_gdf</span>
+    <span class="pc">:</span>
+    <span class="pa"> geopandas.geodataframe.GeoDataFrame</span>
+  </div>
+  <div class="param">
+    <span class="pn">distances</span>
+    <span class="pc">:</span>
+    <span class="pa"> list[int] | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">betas</span>
+    <span class="pc">:</span>
+    <span class="pa"> list[float] | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">minutes</span>
+    <span class="pc">:</span>
+    <span class="pa"> list[float] | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">compute_closeness</span>
+    <span class="pc">:</span>
+    <span class="pa"> bool = True</span>
+  </div>
+  <div class="param">
+    <span class="pn">compute_betweenness</span>
+    <span class="pc">:</span>
+    <span class="pa"> bool = True</span>
+  </div>
+  <div class="param">
+    <span class="pn">min_threshold_wt</span>
+    <span class="pc">:</span>
+    <span class="pa"> float = 0.01831563888873418</span>
+  </div>
+  <div class="param">
+    <span class="pn">speed_m_s</span>
+    <span class="pc">:</span>
+    <span class="pa"> float = 1.33333</span>
+  </div>
+  <div class="param">
+    <span class="pn">angular_scaling_unit</span>
+    <span class="pc">:</span>
+    <span class="pa"> float = 90</span>
+  </div>
+  <div class="param">
+    <span class="pn">farness_scaling_offset</span>
+    <span class="pc">:</span>
+    <span class="pa"> float = 1</span>
+  </div>
+  <div class="param">
+    <span class="pn">tolerance</span>
+    <span class="pc">:</span>
+    <span class="pa"> float | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">random_seed</span>
+    <span class="pc">:</span>
+    <span class="pa"> int | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">sample</span>
+    <span class="pc">:</span>
+    <span class="pa"> bool = False</span>
+  </div>
+  <div class="param">
+    <span class="pn">epsilon</span>
+    <span class="pc">:</span>
+    <span class="pa"> float | None = None</span>
+  </div>
+  <span class="pt">)-&gt;[</span>
+  <span class="pr">GeoDataFrame</span>
+  <span class="pt">]</span>
+</div>
+</div>
+
+
+ Deprecated 4.24 alias for [`centrality_simplest`](#centrality-simplest).
+**Deprecated since 4.25.** Use `centrality_simplest` with `closeness` / `betweenness` expression dicts. This shim preserves the 4.24 output (angular columns `cc_density_ang`, `cc_farness_ang`, `cc_harmonic_ang`, `cc_hillier_ang`, `cc_betweenness_ang`) and will be removed in a future major release. See COMPATIBILITY.md.
+
+</div>
+
+
+<div class="function">
+
+## segment_centrality
+
+
+<div class="content">
+<span class="name">segment_centrality</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">*_args</span>
+  </div>
+  <div class="param">
+    <span class="pn">**_kwargs</span>
+  </div>
+  <span class="pt">)-&gt;[</span>
+  <span class="pr">GeoDataFrame</span>
+  <span class="pt">]</span>
+</div>
+</div>
+
+
+ Removed in 4.25; raises with guidance.
+**Removed in 4.25.** The continuous-segment engine (`segment_density` / `harmonic` / `beta` / `betweenness`) was removed at the low level, so the old numbers cannot be reproduced. The nearest equivalent is `centrality_shortest(..., segment_weighted=True)` — a different calculation. See COMPATIBILITY.md.
 
 </div>
 

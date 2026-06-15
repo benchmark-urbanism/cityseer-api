@@ -404,9 +404,10 @@ nodes_gdf, landuses_gdf = layers.compute_accessibilities(
     distances=[200, 400, 800],
 )
 print(nodes_gdf.columns)
-# accessibility count
-print(nodes_gdf["cc_c_400"])
-# nearest distance to landuse
+# the default emits an unweighted (_nw) and a weighted (_wt) column;
+# pass a single decay_fn (e.g. "1") to compute just one and save time
+print(nodes_gdf["cc_c_400_nw"])
+# nearest distance to landuse (decay-independent: one column)
 print(nodes_gdf["cc_c_nearest_max_800"])
 ```
 
@@ -732,8 +733,8 @@ nodes_gdf, landuses_gdf = layers.compute_mixed_uses(
 )
 # the data is written to the GeoDataFrame
 print(nodes_gdf.columns)
-# access accordingly, e.g. hill diversity at q=0 and 800m
-print(nodes_gdf["cc_hill_q0_800"])
+# the default emits _nw and _wt; pass a single decay_fn to compute just one and save time
+print(nodes_gdf["cc_hill_q0_800_nw"])
 ```
 
 :::warning
@@ -1019,8 +1020,9 @@ nodes_gdf, numerical_gdf = layers.compute_stats(
     distances=[200, 400, 800],
 )
 print(nodes_gdf.columns)
-# mean of mock_numerical_1 at 400m
-print(nodes_gdf["cc_mock_numerical_1_mean_400"])
+# mean at 400m; the default emits _nw and _wt. Pass a single decay_fn for just one,
+# and measures=[...] to compute only the statistics you need — both save time
+print(nodes_gdf["cc_mock_numerical_1_mean_400_nw"])
 ```
 
  Custom decay using the `p` variable directly (Gaussian peaking at 400m within a 1200m cutoff):
