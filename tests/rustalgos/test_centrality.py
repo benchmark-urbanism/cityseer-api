@@ -888,12 +888,12 @@ def test_closeness_no_edge_rolloff_at_boundary():
 
 
 def test_betweenness_with_dead_buffer_nodes():
-    """Dead buffer nodes should contribute to betweenness of live intermediate nodes.
+    """Buffer (dead) nodes contribute to the betweenness of live intermediate nodes.
 
-    On D1--A--B--C--D2 with D1/D2 dead, the pair (D1, D2) passes through
-    A, B, C — but only A and C run as sources (not D1/D2). The betweenness
-    of B should reflect paths between ALL pairs involving at least one live node,
-    including live-to-dead pairs like (A, D2) which pass through B.
+    On D1--A--B--C--D2 with D1/D2 dead, every node is a source for betweenness
+    (``live`` is an output filter, not a source restriction). So the buffer-to-buffer
+    pair (D1, D2) — which passes through A, B, C — is counted, and B's betweenness
+    reflects ALL routes straddling it, including that through-route.
     """
     from pyproj import CRS
 
@@ -923,26 +923,11 @@ def test_betweenness_with_dead_buffer_nodes():
         distances=[500],
     )
 
-    # B sits on the only path between every pair that spans it.
-    # Live sources: A, B, C. Pairs from each source:
-    #   A→D1: passes through nothing between A and D1 (adjacent) → no betweenness for B
-    #   A→B: adjacent → no betweenness for B
-    #   A→C: passes through B → betweenness for B
-    #   A→D2: passes through B, C → betweenness for B
-    #   B→D1: passes through A → no betweenness for B (B is source)
-    #   B→A: adjacent → no betweenness for B (B is source)
-    #   B→C: adjacent → no betweenness for B (B is source)
-    #   B→D2: passes through C → no betweenness for B (B is source)
-    #   C→D1: passes through B, A → betweenness for B
-    #   C→A: passes through B → betweenness for B
-    #   C→B: adjacent → no betweenness for B
-    #   C→D2: adjacent → no betweenness for B
-    # Pairs contributing to B's betweenness: (A,C), (A,D2), (C,D1), (C,A)
-    # pair_count for (A,C) and (C,A): both live → 0.5 each, total 1.0
-    # pair_count for (A,D2): D2 dead → 1.0
-    # pair_count for (C,D1): D1 dead → 1.0
-    # Total betweenness for B = 1.0 + 1.0 + 1.0 = 3.0
-    assert np.isclose(res.metrics["betweenness"][500][node_idx_map["B"]], 3.0, atol=config.ATOL)
+    # All nodes are sources. B is straddled by the node sets {D1, A} and {C, D2}, i.e. the
+    # unordered pairs {D1, C}, {D1, D2}, {A, C}, {A, D2} — 4 pairs, each counted once (its two
+    # ordered orderings x 0.5). So B's betweenness = 4 x 1.0 = 4.0. The extra 1.0 over the old
+    # (rolled-off) value is exactly the buffer-to-buffer route D1<->D2 passing through B.
+    assert np.isclose(res.metrics["betweenness"][500][node_idx_map["B"]], 4.0, atol=config.ATOL)
     # B must have more betweenness than A or C (B is central).
     assert res.metrics["betweenness"][500][node_idx_map["B"]] > res.metrics["betweenness"][500][node_idx_map["A"]]
     assert res.metrics["betweenness"][500][node_idx_map["B"]] > res.metrics["betweenness"][500][node_idx_map["C"]]

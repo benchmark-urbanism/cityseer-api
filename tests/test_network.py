@@ -492,3 +492,21 @@ def test_citynetwork_accessibility_single_column_default(primal_graph):
     assert "cc_a_400" in cols
     assert "cc_a_400_nw" not in cols
     assert "cc_a_400_wt" not in cols
+
+
+def test_directed_betweenness_counts_ordered_pairs():
+    """Directed betweenness counts each ordered O-D pair fully, not halved as if undirected.
+
+    A one-way loop A->B->C->D->A: each node is the unique intermediate for exactly 3 ordered
+    pairs, so betweenness is 3.0 per node. The old undirected-halving assumption gave 1.5.
+    """
+    import networkx as nx
+
+    coords = {"A": (0.0, 0.0), "B": (100.0, 0.0), "C": (100.0, 100.0), "D": (0.0, 100.0)}
+    G = nx.MultiDiGraph(crs="EPSG:32630")
+    for k, (x, y) in coords.items():
+        G.add_node(k, x=x, y=y, live=True)
+    for u, v in [("A", "B"), ("B", "C"), ("C", "D"), ("D", "A")]:
+        G.add_edge(u, v, key=0, geom=LineString([coords[u], coords[v]]))
+    cn = CityNetwork.from_nx(G).centrality_shortest(distances=[500])
+    assert np.allclose(cn.nodes_gdf["cc_betweenness_500"].values, 3.0)

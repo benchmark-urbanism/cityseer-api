@@ -268,7 +268,6 @@ struct SourceSamplingPlan {
     sampling_weights: Option<Vec<f32>>,
     sample_randoms: Vec<f32>,
     sources: Vec<usize>,
-    source_eligible: Vec<bool>,
     node_live: Vec<bool>,
 }
 
@@ -895,24 +894,6 @@ impl NetworkStructure {
             live
         };
         let sources = node_indices.to_vec();
-        let source_eligible = if sample_probability.is_some() {
-            // Sampling: all nodes (live + dead) are source-eligible.
-            // Dead buffer nodes contribute via IPW to prevent edge roll-off.
-            let mut eligible = vec![false; n];
-            for &idx in node_indices {
-                eligible[idx] = true;
-            }
-            eligible
-        } else {
-            // Exact mode: only live nodes are sources.
-            let mut eligible = vec![false; n];
-            for &idx in node_indices {
-                if node_live[idx] {
-                    eligible[idx] = true;
-                }
-            }
-            eligible
-        };
         let sample_randoms = if sample_probability.is_some() {
             let mut rng = if let Some(seed) = random_seed {
                 StdRng::seed_from_u64(seed)
@@ -929,7 +910,6 @@ impl NetworkStructure {
             sampling_weights,
             sample_randoms,
             sources,
-            source_eligible,
             node_live,
         })
     }
@@ -1461,7 +1441,13 @@ impl NetworkStructure {
                 if !pbar_disabled {
                     self.progress.fetch_add(1, AtomicOrdering::Relaxed);
                 }
-                if !sampling_plan.source_eligible[*src_idx] {
+                // A buffer (non-live) source only needs a traversal when betweenness is being
+                // computed (it counts routes from every node) or when sampling (closeness/cycles
+                // target-aggregate onto live nodes via buffer sources). Otherwise skip Dijkstra.
+                if !sampling_plan.node_live[*src_idx]
+                    && betweenness_validated.is_empty()
+                    && !sampling_plan.is_sampling()
+                {
                     return;
                 }
 
@@ -1497,7 +1483,12 @@ impl NetworkStructure {
                 let cycles_wt = ipw;
 
                 // --- Closeness accumulation ---
-                if !closeness_fns.is_empty() || compute_cycles {
+                // In exact mode closeness/cycles aggregate at the source, so only live nodes
+                // contribute; when sampling they target-aggregate onto live nodes, so buffer
+                // sources are needed. (Buffer sources still run for betweenness above.)
+                if (!closeness_fns.is_empty() || compute_cycles)
+                    && (sampling_plan.is_sampling() || sampling_plan.node_live[*src_idx])
+                {
                     let is_sampling = sampling_plan.is_sampling();
                     // Cycles
                     let source_cycle_scores = if compute_cycles {
@@ -1592,15 +1583,11 @@ impl NetworkStructure {
                                 continue;
                             }
 
-                            let pair_count = if !sampling_plan.node_live[*src_idx]
-                                && !sampling_plan.node_live[to_idx]
-                            {
-                                0.0
-                            } else if sampling_plan.source_eligible[to_idx] {
-                                0.5
-                            } else {
-                                1.0
-                            };
+                            // Count every ordered pair, including routes that pass through the inner
+                            // area from buffer to buffer (`live` is an output filter, not a source
+                            // restriction). Directed pairs count fully; undirected pairs are halved,
+                            // which is exactly the global /2 for the two symmetric orderings.
+                            let pair_count = if self.is_directed { 1.0 } else { 0.5 };
                             // Destination weight; combined with the source weight `wt`
                             // applied to the final credit, this gives product weighting
                             // w_s * w_t per O-D pair.
@@ -1742,7 +1729,13 @@ impl NetworkStructure {
                 if !pbar_disabled {
                     self.progress.fetch_add(1, AtomicOrdering::Relaxed);
                 }
-                if !sampling_plan.source_eligible[*src_idx] {
+                // A buffer (non-live) source only needs a traversal when betweenness is being
+                // computed (it counts routes from every node) or when sampling (closeness/cycles
+                // target-aggregate onto live nodes via buffer sources). Otherwise skip Dijkstra.
+                if !sampling_plan.node_live[*src_idx]
+                    && betweenness_validated.is_empty()
+                    && !sampling_plan.is_sampling()
+                {
                     return;
                 }
 
@@ -1776,7 +1769,11 @@ impl NetworkStructure {
                     .collect();
 
                 // --- Closeness accumulation ---
-                if !closeness_fns.is_empty() {
+                // Exact mode aggregates at the source (live only); sampling target-aggregates
+                // onto live nodes (buffer sources needed). Buffer sources still run for betweenness.
+                if !closeness_fns.is_empty()
+                    && (sampling_plan.is_sampling() || sampling_plan.node_live[*src_idx])
+                {
                     let is_sampling = sampling_plan.is_sampling();
                     for &to_idx in &traversal.reached_node_indices {
                         if to_idx == *src_idx {
@@ -1851,15 +1848,11 @@ impl NetworkStructure {
                             if best_state_indices.is_empty() {
                                 continue;
                             }
-                            let pair_count = if !sampling_plan.node_live[*src_idx]
-                                && !sampling_plan.node_live[to_idx]
-                            {
-                                0.0
-                            } else if sampling_plan.source_eligible[to_idx] {
-                                0.5
-                            } else {
-                                1.0
-                            };
+                            // Count every ordered pair, including routes that pass through the inner
+                            // area from buffer to buffer (`live` is an output filter, not a source
+                            // restriction). Directed pairs count fully; undirected pairs are halved,
+                            // which is exactly the global /2 for the two symmetric orderings.
+                            let pair_count = if self.is_directed { 1.0 } else { 0.5 };
                             // Destination weight; combined with the source weight `wt`
                             // applied to the final credit, this gives product weighting
                             // w_s * w_t per O-D pair.
