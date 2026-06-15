@@ -941,6 +941,7 @@ def test_nx_from_cityseer_geopandas(primal_graph):
         nodes_gdf=nodes_gdf,
         network_structure=network_structure,
         distances=[500, 1000],
+        decay_fn="1",
     )
     column_labels: list[str] = [
         "cc_a_500",

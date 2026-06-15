@@ -78,6 +78,7 @@ def test_compute_accessibilities(primal_graph, dual_graph):
                     distances=distances,
                     data_id_col=data_id_col,
                     angular=angular,
+                    decay_fn="1",
                 )
                 # test against manual implementation over underlying method
                 landuses_map = dict(data_gdf["categorical_landuses"])  # type: ignore
@@ -151,6 +152,7 @@ def test_compute_mixed_uses(primal_graph, dual_graph):
                 data_id_col=data_id_col,
                 angular=angular,
                 max_netw_assign_dist=max_assign_dist,
+                decay_fn="1",
             )
             # generate manually
             data_map = layers.build_data_map(
@@ -221,6 +223,7 @@ def test_compute_stats(primal_graph, dual_graph):
                 distances=distances,
                 angular=angular,
                 max_netw_assign_dist=max_assign_dist,
+                decay_fn="1",
             )
             # compare to manual
             for stats_key in ["mock_numerical_1", "mock_numerical_2"]:
@@ -333,7 +336,7 @@ def test_custom_decay_fn(primal_graph):
     col_acc = config.prep_gdf_key("a", 800)
     # --- compute_stats ---
     n_default, _ = layers.compute_stats(
-        numerical_gdf, ["mock_numerical_1"], nodes_gdf.copy(), network_structure, distances=distances
+        numerical_gdf, ["mock_numerical_1"], nodes_gdf.copy(), network_structure, distances=distances, decay_fn="1"
     )
     n_exp, _ = layers.compute_stats(
         numerical_gdf,
@@ -359,7 +362,13 @@ def test_custom_decay_fn(primal_graph):
     assert not np.allclose(n_exp[col_mean].dropna(), n_linear[col_mean].dropna(), atol=0.1)
     # --- compute_accessibilities ---
     a_default, _ = layers.compute_accessibilities(
-        landuse_gdf, "categorical_landuses", ["a"], nodes_gdf.copy(), network_structure, distances=distances
+        landuse_gdf,
+        "categorical_landuses",
+        ["a"],
+        nodes_gdf.copy(),
+        network_structure,
+        distances=distances,
+        decay_fn="1",
     )
     a_linear, _ = layers.compute_accessibilities(
         landuse_gdf,
@@ -536,7 +545,7 @@ def test_stats_measures_selection(primal_graph):
     all_measures = ["sum", "mean", "count", "var", "median", "mad", "max", "min"]
 
     full, _ = layers.compute_stats(
-        numerical_gdf, ["mock_numerical_1"], nodes_gdf.copy(), network_structure, distances=distances
+        numerical_gdf, ["mock_numerical_1"], nodes_gdf.copy(), network_structure, distances=distances, decay_fn="1"
     )
     sub, _ = layers.compute_stats(
         numerical_gdf,
@@ -545,6 +554,7 @@ def test_stats_measures_selection(primal_graph):
         network_structure,
         distances=distances,
         measures=["mean", "count"],
+        decay_fn="1",
     )
     # selected measures match the full computation exactly
     for measure in ["mean", "count"]:
@@ -592,3 +602,30 @@ def test_stats_measures_selection(primal_graph):
     )
     assert config.prep_gdf_key("mock_numerical_1_mean_grav", 800) in combo.columns
     assert config.prep_gdf_key("mock_numerical_1_mean_raw", 800) in combo.columns
+
+
+def test_compute_accessibilities_default_back_compat(primal_graph):
+    """A bare compute_accessibilities call restores the pre-4.25 _nw + _wt columns and values."""
+    nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(primal_graph)
+    data_gdf = mock.mock_landuse_categorical_data(primal_graph)
+    distances = [400, 800]
+    common = dict(
+        data_gdf=data_gdf,
+        landuse_column_label="categorical_landuses",
+        accessibility_keys=["a"],
+        network_structure=network_structure,
+        distances=distances,
+    )
+    # bare default -> both legacy columns
+    default_gdf, _ = layers.compute_accessibilities(nodes_gdf=nodes_gdf.copy(), **common)
+    # explicit single-decay equivalents: "1" is the unweighted (_nw), exp(-4*p) is the weighted (_wt)
+    nw_gdf, _ = layers.compute_accessibilities(nodes_gdf=nodes_gdf.copy(), decay_fn="1", **common)
+    wt_gdf, _ = layers.compute_accessibilities(nodes_gdf=nodes_gdf.copy(), decay_fn="exp(-4 * p)", **common)
+    for d in distances:
+        assert f"cc_a_{d}_nw" in default_gdf
+        assert f"cc_a_{d}_wt" in default_gdf
+        assert np.allclose(default_gdf[f"cc_a_{d}_nw"], nw_gdf[f"cc_a_{d}"], equal_nan=True)
+        assert np.allclose(default_gdf[f"cc_a_{d}_wt"], wt_gdf[f"cc_a_{d}"], equal_nan=True)
+    # nearest distance is decay-independent: one unsuffixed column, not duplicated per variant
+    assert f"cc_a_nearest_max_{max(distances)}" in default_gdf
+    assert f"cc_a_nearest_max_{max(distances)}_nw" not in default_gdf

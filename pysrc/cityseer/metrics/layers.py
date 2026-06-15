@@ -43,34 +43,47 @@ def _require_dual_for_angular(
         )
 
 
-# Flat (no distance decay); mirrors the Rust DEFAULT_DECAY_EXPR.
-_DEFAULT_DECAY_EXPR = "1"
+def _resolve_decay_fns(decay_fn: str | dict[str, str] | None) -> tuple[list[str], list[str], bool]:
+    """Resolve ``decay_fn`` into aligned ``(labels, expressions, legacy_tail)``.
 
-
-def _resolve_decay_fns(decay_fn: str | dict[str, str] | None) -> tuple[list[str], list[str]]:
-    """Resolve the ``decay_fn`` argument into aligned ``(labels, expressions)`` lists.
-
-    - ``None``: a single flat decay with an empty label (so output columns are unsuffixed).
-    - ``str``: a single decay with an empty label (output columns unsuffixed; back-compatible).
+    - ``None``: the legacy default — both an unweighted (``_nw``) and a beta-weighted (``_wt``)
+      column, matching pre-4.25 behaviour. Pass a single ``decay_fn`` to get just one column.
+    - ``str``: a single decay with an empty label (output columns unsuffixed).
     - ``dict``: ``{label: expression}`` — each label suffixes its output columns, and all decays
       are computed in a single shared network traversal.
+
+    ``legacy_tail`` is True only for the ``None`` default; it places the ``_nw``/``_wt`` suffix at
+    the end of the column name (``cc_key_dist_nw``), as in pre-4.25. The dict form embeds the label
+    in the metric name instead (``cc_key_label_dist``).
     """
     if decay_fn is None:
-        return [""], [_DEFAULT_DECAY_EXPR]
+        # legacy default: unweighted (_nw) + beta-weighted (_wt), matching pre-4.25 output.
+        return ["nw", "wt"], ["1", "exp(-4 * p)"], True
     if isinstance(decay_fn, str):
-        return [""], [decay_fn]
+        return [""], [decay_fn], False
     if isinstance(decay_fn, dict):
         if not decay_fn:
             raise ValueError("decay_fn dict must contain at least one {label: expression} entry.")
         labels = [str(label) for label in decay_fn]
         exprs = [str(expr) for expr in decay_fn.values()]
-        return labels, exprs
+        return labels, exprs, False
     raise TypeError("decay_fn must be a string, a dict of {label: expression}, or None.")
 
 
 def _decay_suffix(label: str) -> str:
     """Column-key suffix for a decay label; empty label yields no suffix (back-compatible)."""
     return f"_{label}" if label else ""
+
+
+def _layer_col_key(metric_key: str, dist: int, angular: bool, decay_label: str, legacy_tail: bool) -> str:
+    """Build the output column key for a decay variant.
+
+    The legacy default appends the ``_nw``/``_wt`` suffix at the end (``cc_key_dist_nw``, pre-4.25);
+    the dict/per-label form embeds the label in the metric name (``cc_key_label_dist``).
+    """
+    if legacy_tail:
+        return config.prep_gdf_key(metric_key, dist, angular) + _decay_suffix(decay_label)
+    return config.prep_gdf_key(f"{metric_key}{_decay_suffix(decay_label)}", dist, angular)
 
 
 # Statistical measures produced by compute_stats, mapped to their `Stats` result accessor.
@@ -308,7 +321,7 @@ def compute_accessibilities(
         raise ValueError("The specified landuse column name can't be found in the GeoDataFrame.")
     landuses_map = dict(data_gdf[landuse_column_label])
     # call the underlying function
-    decay_labels, decay_exprs = _resolve_decay_fns(decay_fn)
+    decay_labels, decay_exprs, legacy_tail = _resolve_decay_fns(decay_fn)
     partial_func = partial(
         data_map.accessibility_decays,
         network_structure=network_structure,
@@ -336,13 +349,13 @@ def compute_accessibilities(
     temp_data = {}
     # unpack accessibility data (one result per decay label; empty label -> no suffix)
     for decay_label, acc_result in zip(decay_labels, acc_results, strict=True):
-        suffix = _decay_suffix(decay_label)
         for acc_key in accessibility_keys:
             for dist_key in distances:
-                ac_data_key = config.prep_gdf_key(f"{acc_key}{suffix}", dist_key, angular)
+                ac_data_key = _layer_col_key(acc_key, dist_key, angular, decay_label, legacy_tail)
                 temp_data[ac_data_key] = acc_result.result[acc_key].count[dist_key]
                 if dist_key == max(distances):
-                    ac_dist_data_key = config.prep_gdf_key(f"{acc_key}_nearest_max{suffix}", dist_key, angular)
+                    # nearest distance is decay-independent: one unsuffixed column
+                    ac_dist_data_key = config.prep_gdf_key(f"{acc_key}_nearest_max", dist_key, angular)
                     temp_data[ac_dist_data_key] = acc_result.result[acc_key].distance[dist_key]
 
     temp_df = pd.DataFrame(temp_data, index=acc_results[0].node_keys_py)
@@ -527,7 +540,7 @@ def compute_mixed_uses(
     if landuse_column_label not in data_gdf.columns:
         raise ValueError("The specified landuse column name can't be found in the GeoDataFrame.")
     landuses_map = dict(data_gdf[landuse_column_label])
-    decay_labels, decay_exprs = _resolve_decay_fns(decay_fn)
+    decay_labels, decay_exprs, legacy_tail = _resolve_decay_fns(decay_fn)
     partial_func = partial(
         data_map.mixed_uses_decays,
         network_structure=network_structure,
@@ -558,17 +571,18 @@ def compute_mixed_uses(
     # unpack mixed-uses data (one result per decay label; empty label -> no suffix)
     # note: shannon and gini are decay-independent, so they repeat across labels.
     for decay_label, result in zip(decay_labels, results, strict=True):
-        suffix = _decay_suffix(decay_label)
         for dist_key in distances:
             for q_key in [0, 1, 2]:
                 if compute_hill:
-                    hill_data_key = config.prep_gdf_key(f"hill_q{q_key}{suffix}", dist_key, angular)
+                    hill_data_key = _layer_col_key(f"hill_q{q_key}", dist_key, angular, decay_label, legacy_tail)
                     temp_data[hill_data_key] = result.hill[q_key][dist_key]
             if compute_shannon:
-                shannon_data_key = config.prep_gdf_key(f"shannon{suffix}", dist_key, angular)
+                # shannon is decay-independent: one unsuffixed column
+                shannon_data_key = config.prep_gdf_key("shannon", dist_key, angular)
                 temp_data[shannon_data_key] = result.shannon[dist_key]
             if compute_gini:
-                gini_data_key = config.prep_gdf_key(f"gini{suffix}", dist_key, angular)
+                # gini is decay-independent: one unsuffixed column
+                gini_data_key = config.prep_gdf_key("gini", dist_key, angular)
                 temp_data[gini_data_key] = result.gini[dist_key]
 
     temp_df = pd.DataFrame(temp_data, index=results[0].node_keys_py)
@@ -773,7 +787,7 @@ def compute_stats(
             raise ValueError("The specified numerical stats column name can't be found in the GeoDataFrame.")
         stats_maps.append(dict(data_gdf[stats_column_label]))
     # stats
-    decay_labels, decay_exprs = _resolve_decay_fns(decay_fn)
+    decay_labels, decay_exprs, legacy_tail = _resolve_decay_fns(decay_fn)
     selected_measures = _resolve_stats_measures(measures)
     partial_func = partial(
         data_map.stats_decays,
@@ -803,13 +817,12 @@ def compute_stats(
     # unpack the numerical arrays (one result per decay label; empty label -> no suffix).
     # Only the selected measures are emitted; each maps to its `Stats` result accessor.
     for decay_label, stats_result in zip(decay_labels, stats_results, strict=True):
-        suffix = _decay_suffix(decay_label)
         for idx, stats_column_label in enumerate(stats_column_labels):
             stat_obj = stats_result.result[idx]
             for measure in selected_measures:
                 measure_data = getattr(stat_obj, _STATS_ACCESSORS[measure])
                 for dist_key in distances:
-                    k = config.prep_gdf_key(f"{stats_column_label}_{measure}{suffix}", dist_key, angular=angular)
+                    k = _layer_col_key(f"{stats_column_label}_{measure}", dist_key, angular, decay_label, legacy_tail)
                     temp_data[k] = measure_data[dist_key]
 
     temp_df = pd.DataFrame(temp_data, index=stats_results[0].node_keys_py)

@@ -5,12 +5,12 @@ high-level **`CityNetwork`** class was added. This document records the contract
 already use stays behaviour-compatible by default**, and the new expression engine is **opt-in**. Nothing in the
 documented high-level API breaks.
 
-## Two surfaces
+## One rule
 
-| Surface | Default behaviour | Status |
-| --- | --- | --- |
-| `cityseer.metrics.networks` / `layers` functions | **Classic 4.24 output** — same columns, same numbers | Stable; deprecated names/params emit warnings; removed a few majors on |
-| `cityseer.CityNetwork` class | Modern expression defaults | The recommended API going forward |
+**By default you get the classic 4.24 output — same columns, same numbers — everywhere** (both the
+`cityseer.metrics.networks` / `layers` functions and the new `cityseer.CityNetwork` class). To use the new
+expression engine, pass `decay_fn` / expression dicts; that is opt-in. Nothing in the documented high-level API
+breaks.
 
 Low-level surfaces (`rustalgos.*` `NetworkStructure`/`DataMap` methods, the result objects, `pair_distances_*`)
 **do** change in 4.25 — these were never the stable public contract.
@@ -61,6 +61,11 @@ networks.compute_accessibilities(..., distances=[800], decay_fn="exp(-4 * p)")
 just that one variant — less compute and tidier output. Use `"1"` for the plain (unweighted) result, or a decay
 expression for the weighted one.
 
+**Same for centrality.** The new `centrality_shortest` / `centrality_simplest` take `closeness=` and
+`betweenness=` expression dicts — pass a smaller dict (e.g. `closeness={"harmonic": "1/c"}`) to compute just the
+metrics you want, `{}` to skip a whole category, and `cycles=False` to drop cycles. The deprecated
+`node_centrality_*` shims always emit the full set; trim by calling the new names with a smaller dict.
+
 ## Removed (not restored)
 
 - **`segment_centrality`** — the underlying continuous-segment routine (`segment_density` / `harmonic` / `beta` /
@@ -86,8 +91,8 @@ expression for the weighted one.
 Three contained moves, no duplicated algorithms (one source of truth), each pinned by a parity test against the
 4.24 result:
 
-- **Renamed / removed functions** → thin deprecated shims that translate into the new core and relabel outputs
-  (e.g. `node_centrality_shortest`, done).
-- **Kept-name functions** → their **default** reverts to classic output; the new expression engine is reached by
-  passing `decay_fn` / expression dicts (and is the default in `CityNetwork`).
-- **Removed parameters** → raise a clear error pointing at the table above; not reproduced.
+- **Renamed functions** → thin deprecated shims that translate into the new core and relabel outputs
+  (`node_centrality_shortest`, `node_centrality_simplest` — done).
+- **Kept-name functions** → their **default** reverts to classic output (the shared `_resolve_decay_fns` returns
+  the `_nw` + `_wt` pair); the new expression engine is reached by passing `decay_fn` / expression dicts.
+- **Removed parameters / functions** → raise a clear error pointing at the table above; not reproduced.
