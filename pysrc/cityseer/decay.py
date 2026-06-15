@@ -67,8 +67,8 @@ def exponential(steepness: float = 4.0) -> str:
 
 
 def linear() -> str:
-    """Linear decay from 1 at the source to 0 at the cutoff."""
-    return "max(0, 1 - p)"
+    """Linear decay from 1 at the source to 0 at the cutoff (output is clamped to [0, 1])."""
+    return "1 - p"
 
 
 def flat() -> str:
@@ -99,7 +99,8 @@ def gaussian(
         std = peak / 2
     peak_p = peak / cutoff
     std_p = std / cutoff
-    return f"exp(-(p - {peak_p:.6g})^2 / (2 * {std_p:.6g}^2))"
+    # parenthesise the squared term so the leading minus negates it (avoids unary-minus/^ ambiguity)
+    return f"exp(-((p - {peak_p:.6g})^2) / (2 * {std_p:.6g}^2))"
 
 
 def logistic(
