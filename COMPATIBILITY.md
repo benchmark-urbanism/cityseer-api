@@ -15,15 +15,34 @@ documented high-level API breaks.
 Low-level surfaces (`rustalgos.*` `NetworkStructure`/`DataMap` methods, the result objects, `pair_distances_*`)
 **do** change in 4.25 — these were never the stable public contract.
 
-## What's preserved (high-level functional API)
+## What's preserved — the default call
 
-- **Function names** — `node_centrality_shortest`, `node_centrality_simplest`, `segment_centrality` are restored
-  as deprecated aliases that emit `DeprecationWarning`.
-- **Parameters** — `betas`, `min_threshold_wt`, `compute_closeness` / `compute_betweenness`, `spatial_tolerance`,
-  `compute_hill_weighted`, and the angular scaling args are accepted and translated into the expression engine.
-- **Columns & numbers** — legacy column names (`cc_beta_*`, `cc_betweenness_beta_*`, land-use `_wt` / `_nw`) and
-  their values are reproduced exactly. The old default β-weighting equals `exp(-k · p)` with
-  `k = -ln(min_threshold_wt)` (= 4 by default and `p = c / threshold`), so the numbers are identical.
+The common path is preserved exactly. A call using only the everyday arguments (`distances`,
+`landuse_column_label`, …) returns the **same columns and the same numbers** as 4.24:
+
+- **Renamed / removed functions** — `node_centrality_shortest`, `node_centrality_simplest`, `segment_centrality`
+  are restored as deprecated aliases that emit `DeprecationWarning`.
+- **Default output** — legacy column names (`cc_beta_*`, `cc_betweenness_beta_*`, land-use `_wt` / `_nw`) and their
+  values are reproduced. The old default β-weighting equals `exp(-k · p)` with `k = -ln(min_threshold_wt)` (= 4 by
+  default, `p = c / threshold`), so the numbers are identical.
+
+We deliberately **do not** reproduce every removed *parameter*. Those are the rare calls and — unlike the default
+output — they fail **loudly** (a `TypeError`), never silently with wrong numbers. So they get a clear error and a
+documented migration, not a full shim.
+
+## Changed or removed parameters
+
+Pass one of these (beyond the everyday args) and here is exactly what to expect — every one fails loudly, so none
+can silently mislead:
+
+| Old parameter | 4.25 | If you pass it | Do this instead |
+| --- | --- | --- | --- |
+| `betas=[...]` | removed | `TypeError` | rely on `distances` (default weighting is unchanged), or `decay_fn="exp(-beta * c)"` |
+| `min_threshold_wt=` | removed | `TypeError` | only affected custom β scaling; fold into the `decay_fn` expression |
+| `spatial_tolerance=` | removed | `TypeError` | no direct equivalent — note per use |
+| `compute_hill_weighted=` | removed | `TypeError` | pass a `decay_fn` to weight Hill diversity |
+| `angular_scaling_unit=`, `farness_scaling_offset=` | removed | `TypeError` | bake into the simplest expression, e.g. `farness="1 + c / 90"` |
+| `source_indices=` | removed | `TypeError` | nearest equivalent is `sample=True` (subset of sources) |
 
 ## Opting into the new behaviour
 
@@ -52,6 +71,11 @@ networks.compute_accessibilities(..., distances=[800], decay_fn="exp(-4 * p)")
 
 ## How it's built (so it stays contained)
 
-A single clearly-delimited *Deprecated 4.24 compatibility* section in `networks.py` / `layers.py` that only
-**translates** old calls into the new core and **relabels** outputs — no duplicated algorithms, one source of
-truth. Each shim is pinned by a parity test asserting its output matches the 4.24 result.
+Three contained moves, no duplicated algorithms (one source of truth), each pinned by a parity test against the
+4.24 result:
+
+- **Renamed / removed functions** → thin deprecated shims that translate into the new core and relabel outputs
+  (e.g. `node_centrality_shortest`, done).
+- **Kept-name functions** → their **default** reverts to classic output; the new expression engine is reached by
+  passing `decay_fn` / expression dicts (and is the default in `CityNetwork`).
+- **Removed parameters** → raise a clear error pointing at the table above; not reproduced.
