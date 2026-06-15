@@ -22,13 +22,14 @@ pub static DEFAULT_DECAY_EXPR: &str = "1";
 struct CityseerOps;
 impl MakeOperators<f64> for CityseerOps {
     fn make<'a>() -> Vec<Operator<'a, f64>> {
+        // DefaultOpsFactory already provides ^ * / + -, exp, sqrt, log (= natural log), log2, the trig
+        // family, floor, ceil, trunc, fract, signum. Add the names meval supported that exmex lacks.
+        // (min/max are not supported: exmex has no comma-function syntax.)
         let mut ops = DefaultOpsFactory::<f64>::make();
-        ops.push(Operator::make_unary("sqrt", |a: f64| a.sqrt()));
+        ops.push(Operator::make_unary("ln", |a: f64| a.ln()));
+        ops.push(Operator::make_unary("log10", |a: f64| a.log10()));
         ops.push(Operator::make_unary("abs", |a: f64| a.abs()));
-        ops.push(Operator::make_unary("floor", |a: f64| a.floor()));
-        ops.push(Operator::make_unary("ceil", |a: f64| a.ceil()));
         ops.push(Operator::make_unary("round", |a: f64| a.round()));
-        ops.push(Operator::make_unary("signum", |a: f64| a.signum()));
         ops
     }
 }

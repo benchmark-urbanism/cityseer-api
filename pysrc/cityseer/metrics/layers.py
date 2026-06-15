@@ -663,8 +663,9 @@ def compute_stats(
         statistical weighting. Default is `"1"` (flat, no distance weighting). For
         distance-weighted metrics, provide an expression such as `"exp(-4 * p)"` for exponential
         decay, or use the `cityseer.decay` module helpers. Values are clamped to [0, 1]. Supported
-        functions include `exp`, `ln`, `sqrt`, `abs`, `sin`, `cos`, `min`, `max`, and the `^`
-        operator. When multiple distances are specified, `p` is normalised independently per
+        functions include `exp`, `ln`, `log`, `log10`, `sqrt`, `abs`, `floor`, `ceil`, `round`, `sin`,
+        `cos`, `tan`, and the `^` operator (`min`/`max` are not supported; to negate a power write
+        `-((x)^2)` not `-(x)^2`). When multiple distances are specified, `p` is normalised independently per
         threshold. See [`cityseer.decay`](/api/decay) for details and examples. Pass a dict of
         `{label: expression}` to compute several decays in a single network traversal; each label
         is appended to that variant's output column names (a plain string or `None` adds no suffix).
@@ -718,7 +719,7 @@ def compute_stats(
         nodes_gdf=nodes_gdf,
         network_structure=network_structure,
         distances=[1200],
-        decay_fn="exp(-(p - 0.333)^2 / (2 * 0.125^2))",  # Gaussian peaking at 400m
+        decay_fn="exp(-((p - 0.333)^2) / (2 * 0.125^2))",  # Gaussian peaking at 400m
     )
     ```
 
