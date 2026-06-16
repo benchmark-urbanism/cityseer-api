@@ -2,6 +2,12 @@
 
 How existing methods work, what they guarantee, and how they apply to localised (distance-bounded) centrality.
 
+> **Note — partly superseded.** The literature survey itself is current. But any sections that develop
+> or recommend an empirical fitted model (`k ≈ 10.16·√r`, `n_min`, `α̂`, the option A/B/C decision) are
+> **historical**: the shipped schedule and the paper use the pure Hoeffding/Eppstein–Wang form
+> (`k = log(2·r/δ)/(2·ε²)`, `p = min(1, k/r)`) with **no fitted √r constants**. Read √r-model passages
+> as background only, not as the current method.
+
 ---
 
 ## The computational constraint

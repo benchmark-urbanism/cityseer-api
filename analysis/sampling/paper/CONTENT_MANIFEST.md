@@ -1,145 +1,54 @@
 # Content Manifest
 
-**Last updated:** 2026-02-26
-**Status:** STALE (historical) - not authoritative after deterministic-schedule pipeline refactor
+**Model:** Hoeffding / Eppstein–Wang reach-based source sampling.
+`k = log(2·r_c/δ) / (2·ε²)`, `p = min(1, k/r_c)`, canonical reach `r_c = π·d²/s²`.
+Defaults: **ε = 0.05, δ = 0.1, s = 175 m** (single source of truth: `pysrc/cityseer/sampling.py`;
+mirrored in `scripts/utilities.py`, which the validation scripts assert against at runtime).
 
-> Note: This manifest predates the current consolidated script pipeline (`00_generate_cache.py` ... `05_generate_macros.py`)
-> and updated figure/table naming. Use `analysis/sampling/scripts/run_all.py` and script headers as the authoritative source.
+The grid spacing `s` is a **fixed** canonical reference (not fitted). The tolerance `ε` is the
+**single calibrated parameter**: it is tuned so the sparsest validated network (Cary, NC) preserves
+node rankings (ρ ≥ 0.95); denser networks then clear the target comfortably.
 
----
+> Authoritative pipeline = `scripts/run_all.py` + the individual script headers. This manifest is a
+> high-level index. Do not hardcode paper values — they all come from the generated macros in
+> `paper/tables/model_macros.tex`.
 
-## The Model
+## Validation networks (official road data; OSM boundaries)
 
-The paper presents the **Hoeffding/Eppstein--Wang (EW) reach-based sampling model**:
+| Network | Road source | Character |
+| ------- | ----------- | --------- |
+| Greater London | Ordnance Survey Open Roads | dense metro |
+| Greater Madrid | official *Red Viaria* network | dense metro |
+| Cary, NC       | US Census TIGER/Line **edges** (`ROADFLG=Y`) | low-density suburb (binding case for ε) |
 
-```text
-k = log(2r / δ) / (2ε²)
-p = min(1.0, k / r)
-```
+Each live study area is delimited by the administrative boundary geocoded from OpenStreetMap via
+OSMnx; only the road geometry differs by source.
 
-Where reach `r` is the mean number of reachable nodes at a given distance threshold, and `ε, δ` are user-chosen error / failure-probability conventions (current paper defaults: `ε = 0.05`, `δ = 0.1`).
+## Pipeline (`scripts/run_all.py`, in order)
 
----
+| #  | Script                     | Purpose                                            | Key outputs                                                                                         |
+| -- | -------------------------- | -------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| 01 | `01_validate_gla.py`       | Greater London validation                          | `output/gla_*.csv`, `.cache/gla_n_nodes.json`                                                        |
+| 02 | `02_validate_madrid.py`    | Greater Madrid validation                          | `output/madrid_*.csv`, `.cache/madrid_n_nodes.json`                                                  |
+| 03 | `03_validate_cary.py`      | Cary, NC (suburban) validation                     | `output/cary_*.csv`, `.cache/cary_n_nodes.json`                                                      |
+| 04 | `04_figures_validation.py` | Validation figures (accuracy, speedup, reach)      | `figures/fig2_error_vs_reach.pdf`, `fig4_validation_accuracy.pdf`, `fig5_validation_speedup.pdf`, `fig6_reach_comparison.pdf` |
+| 05 | `05_generate_macros.py`    | LaTeX macros, validation tables, practical-guide   | `tables/model_macros.tex`, `tab2/tab4/tab5_*.tex`, `tab_distance_lookup.tex`, `figures/fig3_practical_guide.pdf` |
+| 06 | `06_figures_spatial.py`    | Spatial-error figures (GLA + Madrid)               | `figures/fig7_spatial_error_gla.png`, `figures/fig11_decile_transition.pdf`                         |
+| –  | `utilities.py`             | Shared constants / utilities                       | (imported by the others)                                                                            |
+| –  | `fetch_tiger_cary.py`      | One-off: download TIGER edges for Cary + buffer    | `temp/tiger_cary/*.zip`                                                                              |
 
-## Script Pipeline
+Standalone calibration diagnostics (not part of `run_all.py`): `cary_epsilon_sweep.py`,
+`cary_s_sweep.py` — map ρ vs ε / s on Cary to locate the ρ = 0.95 crossing.
 
-All scripts live in `analysis/sampling/scripts/`:
+## Paper
 
-| #   | Script                         | Purpose                                              | Outputs                                                                                                                                                       |
-| --- | ------------------------------ | ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 0   | `00_generate_cache.py`         | Generate cached data                                 | caches under `analysis/sampling/.cache/`                                                                                                                      |
-| 1   | `01_fit_rank_model.py`         | Synthetic rank/accuracy analysis and headline figure | `paper/figures/fig1_headline.pdf`                                                                                                                             |
-| 2   | `02_fit_error_model.py`        | Synthetic error model vs Hoeffding/EW bound          | `output/error_model_synthetic.csv`, `output/error_model_synthetic.json`                                                                                       |
-| 3   | `03_validate_gla.py`           | Validate Hoeffding model on Greater London network   | `output/gla_validation.csv`, `output/gla_validation_summary.csv`, `output/gla_ew_analysis.csv`, `paper/tables/tab2_validation.tex`                            |
-| 4   | `04_validate_madrid.py`        | External validation on Greater Madrid network        | `output/madrid_validation.csv`, `output/madrid_ew_analysis.csv`, `output/madrid_theoretical_bounds_comparison.csv`, `paper/tables/tab4_madrid_validation.tex` |
-| 5   | `05_practical_guide.py`        | Practitioner-facing guidance                         | `paper/figures/fig4_practical_guide.pdf`, `paper/tables/tab3_practical_lookup.tex`                                                                            |
-| 6   | `06_generate_macros.py`        | Generate LaTeX macros from outputs                   | `paper/tables/model_macros.tex`                                                                                                                               |
-| 7   | `07_hoeffding_model_figure.py` | Hoeffding model derivation figure                    | `paper/figures/fig2_hoeffding_model.pdf`                                                                                                                      |
-| -   | `utilities.py`                 | Shared utilities/constants                           | (imported by other scripts)                                                                                                                                   |
+`paper/main.tex` `\input`s `tables/model_macros.tex` and the `tab*.tex` tables, and `\includegraphics`
+the `fig*` figures above. The build artifacts (`paper/figures/`, `paper/tables/`, and the `.cache/`
+network caches) are **generated, not committed** — run the pipeline before compiling.
 
----
-
-## Main Paper Figures
-
-| Figure | File                       | Generated By                   | Purpose                           | Status |
-| ------ | -------------------------- | ------------------------------ | --------------------------------- | ------ |
-| 1      | `fig1_headline.pdf`        | `01_fit_rank_model.py`         | Sampling opportunity / motivation | ✓      |
-| 2      | `fig2_hoeffding_model.pdf` | `07_hoeffding_model_figure.py` | Hoeffding/EW model derivation     | ✓      |
-| 3      | `fig3_error_crossover.pdf` | `01_fit_rank_model.py`         | Error structure / crossover       | ✓      |
-| 4      | `fig4_practical_guide.pdf` | `05_practical_guide.py`        | Practitioner lookup chart         | ✓      |
-
----
-
-## Main Paper Tables
-
-| Table | File                         | Generated By              | Purpose                                        | Status |
-| ----- | ---------------------------- | ------------------------- | ---------------------------------------------- | ------ |
-| 1     | `tab1_ew_comparison.tex`     | (hand-maintained in repo) | Compact comparison table for bounds/approaches | ✓      |
-| 2     | `tab2_validation.tex`        | `03_validate_gla.py`      | Greater London validation results              | ✓      |
-| 3     | `tab3_practical_lookup.tex`  | `05_practical_guide.py`   | Reach $\to$ sampling probability lookup        | ✓      |
-| 4     | `tab4_madrid_validation.tex` | `04_validate_madrid.py`   | Greater Madrid validation results              | ✓      |
-| -     | `model_macros.tex`           | `06_generate_macros.py`   | LaTeX macros from CSV outputs                  | ✓      |
-
----
-
-## LaTeX Macros
-
-All values in the paper are derived from data via LaTeX macros in `tables/model_macros.tex`.
-
-**IMPORTANT**: Do not hardcode values. Run `06_generate_macros.py` to regenerate macros from CSV outputs.
-
-Key macros (see `paper/tables/model_macros.tex`):
-
-- `\hoeffdingEpsilon`, `\hoeffdingDelta` - model conventions used in the paper
-- `\targetRho` - target Spearman correlation reported in figures/tables
-- `\hoeffdingKTenK`, `\hoeffdingPTenK`, `\hoeffdingSpeedupTenK` - illustrative reach scenarios
-- `\glaMinRho` and `\gla*` - Greater London validation summary
-
----
-
-## Data Sources
-
-### Synthetic Data
-
-- **Location**: `.cache/sampling_analysis_v21.pkl`
-- **Generated by**: `scripts/00_generate_cache.py`
-- **Contents**: 3 topologies × 7 distances × 12 probabilities
-
-### GLA/London Data
-
-- **Location**: `analysis/sampling/.cache/`
-- **Generated by**: `scripts/00_generate_cache.py`
-- **Contents**: 294k node network, ground truth centralities, sampled results
-- **Validation CSV**: `output/gla_validation_summary.csv`
-
-### Madrid Data
-
-- **Location**: `analysis/sampling/.cache/`
-- **Generated by**: `scripts/00_generate_cache.py`
-- **Contents**: Greater Madrid metropolitan network (downloaded from GitHub)
-- **Validation CSV**: `output/madrid_validation.csv`
-
----
-
-## Paper Sources
-
-The paper is a single LaTeX file:
-
-- `paper/main.tex`
-- `paper/tables/*.tex`
-- `paper/figures/*.pdf`
-
----
-
-## Verification Checklist
-
-- [x] Script pipeline matches `analysis/sampling/scripts/`
-- [x] Figures generated in `paper/figures/`
-- [x] Tables generated/maintained in `paper/tables/`
-- [x] No hardcoded values where macros exist
-- [x] No hardcoded values - all via macros
-- [x] Paper compiles with `pdflatex`
-
----
-
-## Running the Pipeline
+## Build
 
 ```bash
-cd analysis/sampling
-
-# Generate caches (if needed)
-python scripts/00_generate_cache.py
-
-# Generate figures/tables
-python scripts/01_fit_rank_model.py
-python scripts/07_hoeffding_model_figure.py
-python scripts/03_validate_gla.py
-python scripts/04_validate_madrid.py
-python scripts/05_practical_guide.py
-
-# Generate LaTeX macros (depends on validation outputs)
-python scripts/06_generate_macros.py
-
-# Compile paper
-cd paper && pdflatex main.tex && bibtex main && pdflatex main.tex && pdflatex main.tex
+cd analysis/sampling/scripts && python run_all.py            # regenerate all (needs network caches)
+cd ../paper && pdflatex main.tex && bibtex main && pdflatex main.tex && pdflatex main.tex
 ```

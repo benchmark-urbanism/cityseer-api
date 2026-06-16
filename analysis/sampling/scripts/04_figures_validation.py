@@ -1,12 +1,13 @@
 #!/usr/bin/env python
 """
-04_figures_validation.py - Generate validation figures for GLA and Madrid networks.
+04_figures_validation.py - Generate validation figures for the three real networks.
 
-Reads cached validation CSVs and produces publication figures:
-  - fig2_error_vs_reach.pdf:       Error vs per-node reach quartiles (GLA + Madrid)
+Reads cached validation CSVs and produces publication figures (Greater London,
+Madrid, and Cary, NC):
+  - fig2_error_vs_reach.pdf:       Error vs per-node reach quartiles
   - fig4_validation_accuracy.pdf:  Spearman rho vs distance (closeness + betweenness)
   - fig5_validation_speedup.pdf:   Speedup vs distance (closeness + betweenness)
-  - fig6_reach_comparison.pdf:     Canonical vs actual network reach
+  - fig6_reach_comparison.pdf:     Canonical grid reach vs actual network reach
 
 Usage:
     python 04_figures_validation.py
@@ -60,25 +61,30 @@ plt.rcParams.update(
 # =============================================================================
 
 
-def load_data() -> tuple[pd.DataFrame, pd.DataFrame]:
-    """Load GLA and Madrid validation CSVs."""
+def load_data() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame | None]:
+    """Load GLA, Madrid and Cary validation CSVs (Cary optional)."""
     gla_path = OUTPUT_DIR / "gla_validation_summary.csv"
     madrid_path = OUTPUT_DIR / "madrid_validation.csv"
+    cary_path = OUTPUT_DIR / "cary_validation.csv"
 
     if not gla_path.exists():
-        raise FileNotFoundError(f"GLA validation summary not found: {gla_path}\n  Run 02_validate_gla.py first.")
+        raise FileNotFoundError(f"GLA validation summary not found: {gla_path}\n  Run 01_validate_gla.py first.")
     if not madrid_path.exists():
-        raise FileNotFoundError(f"Madrid validation not found: {madrid_path}\n  Run 03_validate_madrid.py first.")
+        raise FileNotFoundError(f"Madrid validation not found: {madrid_path}\n  Run 02_validate_madrid.py first.")
 
     gla = pd.read_csv(gla_path)
     madrid = pd.read_csv(madrid_path)
+    cary = pd.read_csv(cary_path) if cary_path.exists() else None
 
     gla["distance_km"] = gla["distance"] / 1000
     madrid["distance_km"] = madrid["distance"] / 1000
+    if cary is not None:
+        cary["distance_km"] = cary["distance"] / 1000
 
     print(f"GLA:    {len(gla)} distance rows")
     print(f"Madrid: {len(madrid)} distance rows")
-    return gla, madrid
+    print(f"Cary:   {len(cary) if cary is not None else 0} distance rows")
+    return gla, madrid, cary
 
 
 # =============================================================================
@@ -86,8 +92,8 @@ def load_data() -> tuple[pd.DataFrame, pd.DataFrame]:
 # =============================================================================
 
 
-def generate_fig4_accuracy(gla: pd.DataFrame, madrid: pd.DataFrame):
-    """Figure 4: Spearman rho vs distance for GLA and Madrid, closeness and betweenness."""
+def generate_fig4_accuracy(gla: pd.DataFrame, madrid: pd.DataFrame, cary: pd.DataFrame | None = None):
+    """Figure 4: Spearman rho vs distance for the real networks, closeness and betweenness."""
     print("\nGenerating Figure 4: validation accuracy...")
 
     fig, axes = plt.subplots(1, 2, figsize=(11, 5), sharey=True)
@@ -97,31 +103,25 @@ def generate_fig4_accuracy(gla: pd.DataFrame, madrid: pd.DataFrame):
         ("rho_betweenness", "B) Betweenness", COLOUR_BETWEENNESS),
     ]
 
-    for ax, (col, title, colour) in zip(axes, panels, strict=True):
-        # GLA
-        gla_valid = gla.dropna(subset=[col])
-        ax.plot(
-            gla_valid["distance_km"],
-            gla_valid[col],
-            "o-",
-            color=colour,
-            linewidth=1.8,
-            markersize=7,
-            label="Greater London",
-        )
+    # (dataframe, marker, linestyle, alpha, label)
+    series = [(gla, "o", "-", 1.0, "Greater London"), (madrid, "s", "--", 0.75, "Madrid")]
+    if cary is not None:
+        series.append((cary, "^", ":", 0.7, "Cary (suburban)"))
 
-        # Madrid
-        madrid_valid = madrid.dropna(subset=[col])
-        ax.plot(
-            madrid_valid["distance_km"],
-            madrid_valid[col],
-            "s--",
-            color=colour,
-            linewidth=1.8,
-            markersize=7,
-            alpha=0.75,
-            label="Madrid",
-        )
+    for ax, (col, title, colour) in zip(axes, panels, strict=True):
+        for df, marker, ls, alpha, label in series:
+            valid = df.dropna(subset=[col])
+            ax.plot(
+                valid["distance_km"],
+                valid[col],
+                marker=marker,
+                linestyle=ls,
+                color=colour,
+                linewidth=1.8,
+                markersize=7,
+                alpha=alpha,
+                label=label,
+            )
 
         # Target line
         ax.axhline(0.95, color="green", linestyle="--", linewidth=1.2, alpha=0.7)
@@ -163,19 +163,24 @@ def _load_live_fraction(network: str) -> float:
     return 1.0
 
 
-def generate_fig5_speedup(gla: pd.DataFrame, madrid: pd.DataFrame):
-    """Figure 5: Speedup vs distance for GLA and Madrid, closeness and betweenness.
+def generate_fig5_speedup(gla: pd.DataFrame, madrid: pd.DataFrame, cary: pd.DataFrame | None = None):
+    """Figure 5: Speedup vs distance for the real networks, closeness and betweenness.
 
     Only distances where sampling was actually used (p < live_fraction) are shown.
     """
     print("\nGenerating Figure 5: validation speedup...")
 
-    gla_phi = _load_live_fraction("gla")
-    madrid_phi = _load_live_fraction("madrid")
+    # (dataframe, network_key, marker, linestyle, alpha, label)
+    series = [(gla, "gla", "o", "-", 1.0, "Greater London"), (madrid, "madrid", "s", "--", 0.75, "Madrid")]
+    if cary is not None:
+        series.append((cary, "cary", "^", ":", 0.7, "Cary (suburban)"))
 
-    # Filter to distances where sampling actually engaged
-    gla_sampled = gla[gla["hoeffding_p_close"] < gla_phi].copy()
-    madrid_sampled = madrid[madrid["hoeffding_p_close"] < madrid_phi].copy()
+    # Filter each network to the distances where sampling actually engaged (p < phi)
+    prepared = []
+    for df, key, marker, ls, alpha, label in series:
+        phi = _load_live_fraction(key)
+        sampled = df[df["hoeffding_p_close"] < phi].copy()
+        prepared.append((sampled, marker, ls, alpha, f"{label} ($\\varphi$={phi:.2f})"))
 
     fig, axes = plt.subplots(1, 2, figsize=(11, 5))
 
@@ -185,28 +190,21 @@ def generate_fig5_speedup(gla: pd.DataFrame, madrid: pd.DataFrame):
     ]
 
     for ax, (col, title, colour) in zip(axes, panels, strict=True):
-        gla_valid = gla_sampled.dropna(subset=[col])
-        madrid_valid = madrid_sampled.dropna(subset=[col])
-
-        ax.plot(
-            gla_valid["distance_km"],
-            gla_valid[col],
-            "o-",
-            color=colour,
-            linewidth=1.8,
-            markersize=7,
-            label=f"Greater London ($\\varphi$={gla_phi:.2f})",
-        )
-        ax.plot(
-            madrid_valid["distance_km"],
-            madrid_valid[col],
-            "s--",
-            color=colour,
-            linewidth=1.8,
-            markersize=7,
-            alpha=0.75,
-            label=f"Madrid ($\\varphi$={madrid_phi:.2f})",
-        )
+        for sampled, marker, ls, alpha, label in prepared:
+            valid = sampled.dropna(subset=[col])
+            if valid.empty:
+                continue
+            ax.plot(
+                valid["distance_km"],
+                valid[col],
+                marker=marker,
+                linestyle=ls,
+                color=colour,
+                linewidth=1.8,
+                markersize=7,
+                alpha=alpha,
+                label=label,
+            )
 
         ax.axhline(1.0, color="grey", linestyle=":", linewidth=1.0, alpha=0.7)
 
@@ -257,25 +255,13 @@ def load_reach_data() -> list[dict]:
                 d = pickle.load(f)
             rows.append({"network": "Madrid", "distance": dist, "mean_reach": d["mean_reach"]})
 
-    # Synthetic topologies — topology reach values don't change with epsilon, use most recent cache
-    for cache_name in sorted(CACHE_DIR.glob("sampling_analysis_v*.pkl"), key=lambda p: p.stat().st_mtime, reverse=True):
-        with open(cache_name, "rb") as f:
-            synthetic = pd.DataFrame(pickle.load(f))
-        if "topology" not in synthetic.columns:
-            continue
-        topo_reach = synthetic[synthetic["sweep_type"] == "distance_based"][
-            ["topology", "distance", "mean_reach"]
-        ].drop_duplicates()
-        topo_labels = {"trellis": "Synthetic (trellis)", "tree": "Synthetic (tree)", "linear": "Synthetic (linear)"}
-        for _, row in topo_reach.iterrows():
-            rows.append(
-                {
-                    "network": topo_labels.get(row["topology"], row["topology"]),
-                    "distance": row["distance"],
-                    "mean_reach": row["mean_reach"],
-                }
-            )
-        break  # use only the most recent synthetic cache (by mtime)
+    # Cary (suburban)
+    for dist in [1000, 2000, 5000, 10000, 20000]:
+        p = CACHE_DIR / f"cary_ground_truth_{dist}m.pkl"
+        if p.exists():
+            with open(p, "rb") as f:
+                d = pickle.load(f)
+            rows.append({"network": "Cary (suburban)", "distance": dist, "mean_reach": d["mean_reach"]})
 
     return rows
 
@@ -312,13 +298,11 @@ def generate_fig6_reach_comparison():
         zorder=5,
     )
 
-    # Real networks
+    # Real networks (dense metros above the canonical curve, sparse suburb below)
     network_styles = {
         "Greater London": ("o", "#333333", 8, "-"),
         "Madrid": ("s", "#888888", 8, "--"),
-        "Synthetic (trellis)": ("^", "#4DAC26", 7, ":"),
-        "Synthetic (tree)": ("v", "#D01C8B", 7, ":"),
-        "Synthetic (linear)": ("D", "#F1A340", 7, ":"),
+        "Cary (suburban)": ("^", "#B2182B", 8, ":"),
     }
 
     for network, style_args in network_styles.items():
@@ -373,7 +357,7 @@ def generate_fig6_reach_comparison():
 # =============================================================================
 
 
-def generate_fig2_error_vs_reach(gla_full: pd.DataFrame, madrid_full: pd.DataFrame):
+def generate_fig2_error_vs_reach(gla_full: pd.DataFrame, madrid_full: pd.DataFrame, cary_full: pd.DataFrame | None = None):
     """Figure 2: Absolute and relative error vs per-node reach quartiles.
 
     Uses GLA and Madrid validation quartile data (reach_q1-q4, mae_q1-q4,
@@ -409,23 +393,29 @@ def generate_fig2_error_vs_reach(gla_full: pd.DataFrame, madrid_full: pd.DataFra
                 if np.isfinite(median_true) and median_true > 0:
                     records_rel.append({"reach": reach, "error": mae / median_true, "colour": colour, "marker": "o"})
 
-    # --- Madrid ---
-    for _, row in madrid_full.iterrows():
-        for prefix, colour in [("h", COLOUR_CLOSENESS), ("b", COLOUR_BETWEENNESS)]:
-            p_col = "hoeffding_p_close" if prefix == "h" else "hoeffding_p_betw"
-            p_val = row.get(p_col, np.nan)
-            if not np.isfinite(p_val) or p_val >= madrid_phi:
-                continue
-            for q in [1, 2, 3, 4]:
-                reach = row.get(f"{prefix}_reach_q{q}", None)
-                mae = row.get(f"{prefix}_mae_q{q}", None)
-                median_true = row.get(f"{prefix}_median_true_q{q}", np.nan)
-                if reach is not None and mae is not None and reach > 0 and mae > 0:
-                    records_abs.append({"reach": reach, "error": mae, "colour": colour, "marker": "s"})
-                    if np.isfinite(median_true) and median_true > 0:
-                        records_rel.append(
-                            {"reach": reach, "error": mae / median_true, "colour": colour, "marker": "s"}
-                        )
+    # --- Wide-schema networks (Madrid, Cary) ---
+    def add_wide_network(df, phi, marker):
+        if df is None:
+            return
+        for _, row in df.iterrows():
+            for prefix, colour in [("h", COLOUR_CLOSENESS), ("b", COLOUR_BETWEENNESS)]:
+                p_col = "hoeffding_p_close" if prefix == "h" else "hoeffding_p_betw"
+                p_val = row.get(p_col, np.nan)
+                if not np.isfinite(p_val) or p_val >= phi:
+                    continue
+                for q in [1, 2, 3, 4]:
+                    reach = row.get(f"{prefix}_reach_q{q}", None)
+                    mae = row.get(f"{prefix}_mae_q{q}", None)
+                    median_true = row.get(f"{prefix}_median_true_q{q}", np.nan)
+                    if reach is not None and mae is not None and reach > 0 and mae > 0:
+                        records_abs.append({"reach": reach, "error": mae, "colour": colour, "marker": marker})
+                        if np.isfinite(median_true) and median_true > 0:
+                            records_rel.append(
+                                {"reach": reach, "error": mae / median_true, "colour": colour, "marker": marker}
+                            )
+
+    add_wide_network(madrid_full, madrid_phi, "s")
+    add_wide_network(cary_full, _load_live_fraction("cary"), "^")
 
     df_abs = pd.DataFrame(records_abs)
     df_rel = pd.DataFrame(records_rel)
@@ -436,6 +426,7 @@ def generate_fig2_error_vs_reach(gla_full: pd.DataFrame, madrid_full: pd.DataFra
         Line2D([0], [0], color=COLOUR_BETWEENNESS, marker="o", linestyle="-", markersize=6, label="Betweenness"),
         Line2D([0], [0], color="grey", marker="o", linestyle="none", markersize=6, label="GLA"),
         Line2D([0], [0], color="grey", marker="s", linestyle="none", markersize=6, label="Madrid"),
+        Line2D([0], [0], color="grey", marker="^", linestyle="none", markersize=6, label="Cary"),
     ]
 
     for ax, df, ylabel, title, is_rel in [
@@ -477,12 +468,12 @@ def main():
     print("04_figures_validation.py - Validation Figures")
     print("=" * 70)
 
-    gla, madrid = load_data()
+    gla, madrid, cary = load_data()
     gla_full = pd.read_csv(OUTPUT_DIR / "gla_validation.csv")
 
-    generate_fig2_error_vs_reach(gla_full, madrid)
-    generate_fig4_accuracy(gla, madrid)
-    generate_fig5_speedup(gla, madrid)
+    generate_fig2_error_vs_reach(gla_full, madrid, cary)
+    generate_fig4_accuracy(gla, madrid, cary)
+    generate_fig5_speedup(gla, madrid, cary)
     generate_fig6_reach_comparison()
 
     print("\nDone. Figures saved to:", FIGURES_DIR)

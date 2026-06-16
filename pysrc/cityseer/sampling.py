@@ -21,12 +21,19 @@ import numpy as np
 # enabling reach-agnostic comparison across networks.
 #
 # Default parameters:
-#   ε = 0.06  (normalised additive error tolerance; unified for closeness and betweenness)
+#   ε = 0.05  (normalised additive error tolerance; the single calibrated parameter)
 #   δ = 0.1   (failure probability → 90% confidence)
-#   s = 175m  (canonical sparse street network inter-node spacing)
-HOEFFDING_EPSILON: float = 0.06
+#   s = 175m  (canonical sparse grid — a fixed reference, not fitted)
+#
+# The grid spacing s=175m is a fixed, network-agnostic reach model (r = π·d²/s²) motivated by
+# observed street block lengths; it is not tuned per network. The accuracy tolerance ε is the
+# single calibrated parameter: it is set empirically on real networks so that the sparsest
+# validated network (a low-density US suburb, Cary, NC) preserves rank (ρ≥0.95) at all
+# distances. ε=0.05 clears that bound with a small margin; the denser metropolitan networks
+# (London, Madrid) oversample and clear it comfortably.
+HOEFFDING_EPSILON: float = 0.05
 HOEFFDING_DELTA: float = 0.1
-GRID_SPACING: float = 175.0  # metres — canonical sparse street network inter-node spacing
+GRID_SPACING: float = 175.0  # metres — canonical sparse grid (fixed reference, not fitted)
 
 
 def compute_hoeffding_p(
@@ -49,7 +56,7 @@ def compute_hoeffding_p(
     mean_reachability : float
         Average number of nodes reachable within distance threshold.
     epsilon : float
-        Normalised additive error tolerance. Default 0.06 (via HOEFFDING_EPSILON).
+        Normalised additive error tolerance. Default 0.05 (via HOEFFDING_EPSILON).
     delta : float
         Failure probability (1 - confidence). Default 0.1 (via HOEFFDING_DELTA), meaning
         90% confidence that the error stays within epsilon.
@@ -97,14 +104,15 @@ def compute_distance_p(
     distance : float
         Distance threshold in metres.
     epsilon : float
-        Normalised additive error tolerance. Default 0.06.
+        Normalised additive error tolerance. Default 0.05.
     delta : float
         Failure probability (1 - confidence). Default 0.1.
     grid_spacing : float
-        Canonical inter-node spacing in metres. The default 175m represents a sparse urban
-        network. Denser networks (closer intersection spacing) will have more reachable nodes
-        than the model predicts, so the computed sampling probability will be higher than
-        strictly necessary — safe but slightly slower than optimal.
+        Canonical inter-node spacing in metres. The default 175m is a fixed reference grid
+        (not fitted), motivated by observed street block lengths. Denser networks have more
+        reachable nodes than the model predicts, so the computed sampling probability is
+        conservative (oversamples) — safe but slightly slower. The accuracy tolerance epsilon
+        is the calibrated knob (see HOEFFDING_EPSILON).
 
     Returns
     -------

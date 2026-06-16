@@ -17,7 +17,6 @@ Outputs:
 
 import json
 import math
-import pickle
 from datetime import datetime
 
 import matplotlib
@@ -30,16 +29,15 @@ import pandas as pd
 from cityseer.sampling import GRID_SPACING, compute_distance_p
 from utilities import (
     CACHE_DIR,
-    CACHE_VERSION,
     FIGURES_DIR,
     HOEFFDING_DELTA,
     OUTPUT_DIR,
     TABLES_DIR,
 )
 
-# Paper default epsilons — unified at 0.06 for both metrics
-PAPER_EPSILON_CLOSENESS = 0.06
-PAPER_EPSILON_BETWEENNESS = 0.06
+# Paper default epsilons — unified at 0.05 for both metrics (single calibrated parameter)
+PAPER_EPSILON_CLOSENESS = 0.05
+PAPER_EPSILON_BETWEENNESS = 0.05
 
 # =============================================================================
 # DATA LOADING
@@ -50,7 +48,7 @@ def load_gla_summary() -> pd.DataFrame:
     """Load GLA validation summary results."""
     path = OUTPUT_DIR / "gla_validation_summary.csv"
     if not path.exists():
-        raise FileNotFoundError(f"GLA validation summary not found: {path}. Run 02_validate_gla.py first.")
+        raise FileNotFoundError(f"GLA validation summary not found: {path}. Run 01_validate_gla.py first.")
     return pd.read_csv(path)
 
 
@@ -62,17 +60,12 @@ def load_madrid_validation() -> pd.DataFrame | None:
     return pd.read_csv(path)
 
 
-def load_synthetic_distance_count() -> int | None:
-    """Load synthetic cache distance count (optional, for metadata macros)."""
-    path = CACHE_DIR / f"sampling_analysis_{CACHE_VERSION}.pkl"
+def load_cary_validation() -> pd.DataFrame | None:
+    """Load Cary validation results (optional)."""
+    path = OUTPUT_DIR / "cary_validation.csv"
     if not path.exists():
         return None
-    with open(path, "rb") as f:
-        data = pickle.load(f)
-    df = pd.DataFrame(data)
-    if "distance" not in df.columns or df.empty:
-        return None
-    return int(df["distance"].nunique())
+    return pd.read_csv(path)
 
 
 # =============================================================================
@@ -106,9 +99,6 @@ def generate_macros() -> str:
         speedup = 1.0 / p if p < 1.0 else 1.0
         distance_scenarios[dist] = {"p": p, "k": k, "canonical_reach": r, "speedup": speedup}
 
-    # Synthetic metadata (optional cache-derived values)
-    synthetic_distance_count = load_synthetic_distance_count()
-
     # Min rho across all distances (closeness)
     gla_min_rho_c = gla_df["rho_closeness"].min()
     gla_min_rho_c_conservative = int(gla_min_rho_c * 100) / 100
@@ -117,7 +107,7 @@ def generate_macros() -> str:
     gla_betw_rhos = gla_df["rho_betweenness"].dropna()
     gla_min_rho_b = gla_betw_rhos.min() if len(gla_betw_rhos) > 0 else float("nan")
 
-    # Load GLA node counts from cache (written by 02_validate_gla.py)
+    # Load GLA node counts from cache (written by 01_validate_gla.py)
     gla_n_nodes_path = CACHE_DIR / "gla_n_nodes.json"
     gla_n_nodes = None
     gla_n_total = None
@@ -287,7 +277,65 @@ def generate_macros() -> str:
             macros += "\n"
 
     # -------------------------------------------------------------------------
-    # Overall minimum rho across both validated networks
+    # Cary (suburban) validation macros (optional)
+    # -------------------------------------------------------------------------
+    cary_df = load_cary_validation()
+    cary_min_rho_c = None
+    if cary_df is not None:
+        cary_min_rho_c = cary_df["rho_closeness"].min()
+        cary_betw_rhos = (
+            cary_df["rho_betweenness"].dropna() if "rho_betweenness" in cary_df.columns else pd.Series(dtype=float)
+        )
+        cary_min_rho_b = cary_betw_rhos.min() if len(cary_betw_rhos) > 0 else float("nan")
+
+        cary_n_nodes_path = CACHE_DIR / "cary_n_nodes.json"
+        cary_n_nodes = None
+        cary_n_total = None
+        cary_live_fraction = None
+        if cary_n_nodes_path.exists():
+            with open(cary_n_nodes_path) as f:
+                cary_node_info = json.load(f)
+                cary_n_nodes = cary_node_info["n_nodes"]
+                cary_n_total = cary_node_info.get("n_total")
+                cary_live_fraction = cary_node_info.get("live_fraction")
+
+        macros += """
+% -----------------------------------------------------------------------------
+% CARY (SUBURBAN) VALIDATION RESULTS
+% -----------------------------------------------------------------------------
+
+"""
+        if cary_n_nodes is not None:
+            macros += f"\\newcommand{{\\caryNnodes}}{{{format_number(cary_n_nodes, 0)}}}\n"
+        if cary_n_total is not None:
+            macros += f"\\newcommand{{\\caryNtotal}}{{{format_number(cary_n_total, 0)}}}\n"
+        if cary_live_fraction is not None:
+            macros += f"\\newcommand{{\\caryLiveFraction}}{{{cary_live_fraction:.2f}}}\n"
+        macros += f"\\newcommand{{\\caryMinRho}}{{{cary_min_rho_c:.4f}}}\n"
+        if not np.isnan(cary_min_rho_b):
+            macros += f"\\newcommand{{\\caryMinRhoBetweenness}}{{{cary_min_rho_b:.4f}}}\n"
+        macros += "\n"
+
+        for dist, label in [(5000, "FiveKm"), (10000, "TenKm"), (20000, "TwentyKm")]:
+            dist_row = cary_df[cary_df["distance"] == dist]
+            if dist_row.empty:
+                continue
+            r = dist_row.iloc[0]
+            macros += f"% {dist // 1000}km validation\n"
+            macros += f"\\newcommand{{\\cary{label}RhoH}}{{{r['rho_closeness']:.4f}}}\n"
+            spd_c = r.get("speedup_closeness", float("nan"))
+            if np.isfinite(spd_c):
+                macros += f"\\newcommand{{\\cary{label}Speedup}}{{{spd_c:.1f}}}\n"
+            rho_b = r.get("rho_betweenness", float("nan"))
+            if np.isfinite(rho_b):
+                macros += f"\\newcommand{{\\cary{label}RhoB}}{{{rho_b:.4f}}}\n"
+            spd_b = r.get("speedup_betweenness", float("nan"))
+            if np.isfinite(spd_b):
+                macros += f"\\newcommand{{\\cary{label}SpeedupBetweenness}}{{{spd_b:.1f}}}\n"
+            macros += "\n"
+
+    # -------------------------------------------------------------------------
+    # Overall minimum rho across all validated networks
     # -------------------------------------------------------------------------
     overall_min_rho_values = [gla_min_rho_c]
     if not np.isnan(gla_min_rho_b):
@@ -298,6 +346,12 @@ def generate_macros() -> str:
         madrid_b = madrid_df["rho_betweenness"].dropna()
         if len(madrid_b) > 0:
             overall_min_rho_values.append(float(madrid_b.min()))
+    if cary_min_rho_c is not None:
+        overall_min_rho_values.append(cary_min_rho_c)
+    if cary_df is not None and "rho_betweenness" in cary_df.columns:
+        cary_b = cary_df["rho_betweenness"].dropna()
+        if len(cary_b) > 0:
+            overall_min_rho_values.append(float(cary_b.min()))
     overall_min_rho = min(overall_min_rho_values)
     overall_min_rho_conservative = int(overall_min_rho * 100) / 100
 
@@ -309,27 +363,6 @@ def generate_macros() -> str:
 % Minimum observed rho across all validated networks (conservative, 2dp)
 \\newcommand{{\\overallMinRho}}{{{overall_min_rho_conservative}}}
 """
-
-    n_distances_macro = synthetic_distance_count if synthetic_distance_count is not None else 5
-
-    macros += """
-% -----------------------------------------------------------------------------
-% SYNTHETIC DATA PARAMETERS
-% -----------------------------------------------------------------------------
-
-% Number of topologies tested
-\\newcommand{\\nTopologies}{3}
-
-% Number of epsilon values tested (per metric)
-\\newcommand{\\nEpsilons}{5}
-
-% Maximum analysis distance for synthetic networks
-\\newcommand{\\syntheticMaxDist}{4{,}000}
-
-% Inward buffer for synthetic networks (km)
-\\newcommand{\\syntheticBuffer}{4}
-"""
-    macros += f"\n% Number of distances tested\n\\newcommand{{\\nDistances}}{{{n_distances_macro}}}\n"
 
     return macros
 
@@ -451,6 +484,23 @@ def generate_validation_tables():
             f.write(latex)
         print(f"  Saved: {path}")
 
+    # Cary
+    cary_path = OUTPUT_DIR / "cary_validation.csv"
+    if cary_path.exists():
+        cary_df = pd.read_csv(cary_path)
+        latex = generate_validation_table(
+            cary_df,
+            network_name="Cary, NC (suburban) network",
+            network_key="cary",
+            label="tab:cary_validation",
+            nnodes_macro=r"\caryNnodes{}",
+            epsilon=PAPER_EPSILON_CLOSENESS,
+        )
+        path = TABLES_DIR / "tab5_cary_validation.tex"
+        with open(path, "w") as f:
+            f.write(latex)
+        print(f"  Saved: {path}")
+
 
 # =============================================================================
 # DISTANCE-BASED LOOKUP TABLE
@@ -463,7 +513,7 @@ def generate_tab_distance_lookup() -> str:
     Uses the deterministic distance-based schedule (canonical grid model,
     s=GRID_SPACING) to show p and speedup at the standard validation distances.
     Canonical reach r = pi * d^2 / s^2 is shown alongside p and speedup.
-    Both metrics use the same schedule (epsilon=0.06).
+    Both metrics use the same schedule (epsilon=0.05).
     """
     import math
 
@@ -483,7 +533,7 @@ def generate_tab_distance_lookup() -> str:
     lines.append(r"\centering")
     lines.append(
         r"\caption{Deterministic sampling schedule by analysis distance "
-        r"($\varepsilon = 0.06$, $\delta = 0.1$, canonical grid spacing $s = "
+        r"($\varepsilon = 0.05$, $\delta = 0.1$, canonical grid spacing $s = "
         + f"{GRID_SPACING:.0f}"
         + r"\,\text{m}$). "
         r"Both closeness and betweenness use the same schedule. "
@@ -658,7 +708,7 @@ def main():
     except FileNotFoundError as e:
         print(f"\nERROR: {e}")
         print("\nRun the pipeline scripts first:")
-        print("  python scripts/02_validate_gla.py")
+        print("  python scripts/01_validate_gla.py")
         return 1
 
     output_path = TABLES_DIR / "model_macros.tex"

@@ -3,7 +3,7 @@
 06_figures_spatial.py - Generate spatial error figures from per-node sampled caches.
 
 Reads per-node sampled caches ({network}_sampled_{dist}m.pkl) produced by
-02_validate_gla.py and 03_validate_madrid.py, plus optional sensitivity CSVs.
+01_validate_gla.py and 02_validate_madrid.py, plus optional sensitivity CSVs.
 
 Figures:
   - fig7_spatial_error_gla.png:      Spatial map of per-node absolute error (GLA, 20km)
@@ -607,7 +607,7 @@ def generate_fig10_sensitivity():
 
     if not has_gla and not has_madrid:
         print("\nSkipping Figure 10: no sensitivity data found.")
-        print("  Run 02_validate_gla.py --sensitivity and/or 03_validate_madrid.py --sensitivity")
+        print("  Run 01_validate_gla.py --sensitivity and/or 02_validate_madrid.py --sensitivity")
         return
 
     print("\nGenerating Figure 10: grid spacing sensitivity...")
@@ -839,8 +839,8 @@ def main():
 
     if gla_data is None and madrid_data is None:
         print("\nERROR: No per-node caches found. Run validation scripts with --force first:")
-        print("  python 02_validate_gla.py --force")
-        print("  python 03_validate_madrid.py --force")
+        print("  python 01_validate_gla.py --force")
+        print("  python 02_validate_madrid.py --force")
         return 1
 
     # Generate figures

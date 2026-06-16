@@ -1,13 +1,13 @@
 #!/usr/bin/env python
 """
-02_validate_gla.py - Validate sampling models on Greater London network.
+01_validate_gla.py - Validate sampling models on Greater London network.
 
 Tests closeness and betweenness (both using deterministic distance-based source sampling)
 at their respective epsilon values across five distance thresholds.
 
 Usage:
-    python 02_validate_gla.py           # Run (skips cache if exists)
-    python 02_validate_gla.py --force   # Force regeneration of validation data
+    python 01_validate_gla.py           # Run (skips cache if exists)
+    python 01_validate_gla.py --force   # Force regeneration of validation data
 
 Outputs:
     - output/gla_validation.csv
@@ -35,6 +35,7 @@ from shapely.geometry import Point
 from utilities import (
     CACHE_DIR,
     HOEFFDING_DELTA,
+    assert_mask_within_data,
     OUTPUT_DIR,
     canonical_reach,
     compute_accuracy_metrics,
@@ -49,14 +50,14 @@ from utilities import (
 
 SCRIPT_DIR = Path(__file__).parent
 
-# GLA network file
-GLA_GPKG_FILE = SCRIPT_DIR.parent.parent.parent / "temp" / "os_open_roads" / "oproad_gb.gpkg"
+# GLA network file (OS Open Roads, GB GeoPackage)
+GLA_GPKG_FILE = SCRIPT_DIR.parent.parent.parent / "temp" / "oproad_gpkg_gb" / "Data" / "oproad_gb.gpkg"
 
 # Validation parameters
 GLA_DISTANCES = [1000, 2000, 5000, 10000, 20000]
 # Hoeffding + deterministic distance-based source sampling (both metrics)
-GLA_EPSILON_CLOSENESS = 0.06
-GLA_EPSILON_BETWEENNESS = 0.06
+GLA_EPSILON_CLOSENESS = 0.05
+GLA_EPSILON_BETWEENNESS = 0.05
 N_RUNS = 3
 
 DELTA = HOEFFDING_DELTA
@@ -158,6 +159,8 @@ def load_gla_network(force: bool = False):
         edges_gdf = gpd.read_file(GLA_GPKG_FILE, layer="road_link", mask=gla_buffered)
         edges_gdf = edges_gdf[edges_gdf.geometry.is_valid & ~edges_gdf.geometry.is_empty]
         edges_gdf = edges_gdf.explode(index_parts=False)
+        # Guard: the 20km road-mask must lie within the available data (mask and edges both EPSG:27700)
+        assert_mask_within_data(gla_buffered, edges_gdf, "GLA")
 
         print("  Building graph...")
         G = io.nx_from_generic_geopandas(edges_gdf)
@@ -239,23 +242,28 @@ def generate_validation_data(net, nodes_gdf, live_mask, force: bool = False) -> 
             baseline_close_time = gt_data.get("baseline_close_time", gt_data.get("baseline_time", None))
             baseline_betw_time = gt_data.get("baseline_betw_time", None)
         else:
-            print("  Computing ground truth (closeness + betweenness combined)...")
+            # Exact baselines are measured PER METRIC because the 4.25 redesign gives them
+            # different source sets: closeness-exact sources only live nodes, whereas
+            # betweenness-exact sources every node. A single combined run split 50/50 would
+            # misstate both speedups (closeness break-even is p<phi, betweenness is p<1).
+            # Use the same high-level wrappers as the sampled path (sample=False) so exact and
+            # sampled share an identical code path and the speedup ratio is apples-to-apples.
+            print("  Computing exact ground truth (closeness-only, then betweenness-only)...")
             t0 = time.time()
-            gt_result = net.centrality_shortest(
-                distances=[dist],
-                compute_closeness=True,
-                compute_betweenness=True,
-                pbar_disabled=False,
-            )
-            baseline_combined_time = time.time() - t0
-            true_harmonic = np.array(gt_result.node_harmonic[dist])[live_mask]
-            node_reach = np.array(gt_result.node_density[dist])[live_mask]
+            gdf_close = networks.closeness_shortest(net, nodes_gdf.copy(), distances=[dist])
+            baseline_close_time = time.time() - t0  # exact closeness sources n_live
+            true_harmonic = gdf_close[f"cc_harmonic_{dist}"].to_numpy()[live_mask]
+            node_reach = gdf_close[f"cc_density_{dist}"].to_numpy()[live_mask]
             mean_reach = float(np.mean(node_reach))
-            true_betweenness = np.array(gt_result.node_betweenness[dist])[live_mask]
-            # Split combined time proportionally for per-metric speedup comparison
-            baseline_close_time = baseline_combined_time / 2
-            baseline_betw_time = baseline_combined_time / 2
-            print(f"  Ground truth (combined): {baseline_combined_time:.1f}s")
+
+            t0 = time.time()
+            gdf_betw = networks.betweenness_shortest(net, nodes_gdf.copy(), distances=[dist])
+            baseline_betw_time = time.time() - t0  # exact betweenness sources n_total
+            true_betweenness = gdf_betw[f"cc_betweenness_{dist}"].to_numpy()[live_mask]
+            print(
+                f"  Ground truth exact: closeness={baseline_close_time:.1f}s (n_live), "
+                f"betweenness={baseline_betw_time:.1f}s (n_total)"
+            )
 
             with open(gt_cache, "wb") as f:
                 pickle.dump(
@@ -770,12 +778,14 @@ def run_sensitivity_analysis(
             for seed in range(N_RUNS):
                 result = net.centrality_shortest(
                     distances=[dist],
-                    compute_closeness=True,
-                    compute_betweenness=False,
+                    closeness_exprs=[("harmonic", "1/c")],
+                    betweenness_exprs=[],
+                    compute_cycles=False,
                     sample_probability=p,
                     random_seed=42 + seed,
+                    pbar_disabled=True,
                 )
-                est_h = np.array(result.node_harmonic[dist])[live_mask]
+                est_h = np.array(result.metrics["harmonic"][dist])[live_mask]
                 sp_h, _, _, _, _ = compute_accuracy_metrics(true_harmonic, est_h)
                 if not np.isnan(sp_h):
                     spearmans_h.append(sp_h)
@@ -787,12 +797,14 @@ def run_sensitivity_analysis(
                 for seed in range(N_RUNS):
                     result = net.centrality_shortest(
                         distances=[dist],
-                        compute_closeness=False,
-                        compute_betweenness=True,
+                        closeness_exprs=[],
+                        betweenness_exprs=[("betweenness", "1")],
+                        compute_cycles=False,
                         sample_probability=p,
                         random_seed=42 + seed,
+                        pbar_disabled=True,
                     )
-                    est_b = np.array(result.node_betweenness[dist])[live_mask]
+                    est_b = np.array(result.metrics["betweenness"][dist])[live_mask]
                     sp_b, _, _, _, _ = compute_accuracy_metrics(true_betweenness, est_b)
                     if not np.isnan(sp_b):
                         spearmans_b.append(sp_b)
@@ -842,7 +854,7 @@ def main():
     args = parser.parse_args()
 
     print("=" * 70)
-    print("02_validate_gla.py - Validating sampling models on Greater London network")
+    print("01_validate_gla.py - Validating sampling models on Greater London network")
     print("=" * 70)
 
     print(f"\nCloseness:   Hoeffding + deterministic distance-based, eps={GLA_EPSILON_CLOSENESS}")

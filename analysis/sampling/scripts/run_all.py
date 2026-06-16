@@ -17,11 +17,10 @@ from pathlib import Path
 SCRIPT_DIR = Path(__file__).parent
 
 SCRIPTS = [
-    ("00_generate_cache.py", "Generate synthetic network sampling data", True),
-    ("01_analyse_synthetic.py", "Analyse synthetic data and generate figures", False),
-    ("02_validate_gla.py", "Validate on Greater London network", True),
-    ("03_validate_madrid.py", "Validate on Greater Madrid network", True),
-    ("04_figures_validation.py", "Generate validation figures for GLA and Madrid", False),
+    ("01_validate_gla.py", "Validate on Greater London network", True),
+    ("02_validate_madrid.py", "Validate on Greater Madrid network", True),
+    ("03_validate_cary.py", "Validate on Cary, NC (suburban) network", True),
+    ("04_figures_validation.py", "Generate validation figures (GLA, Madrid, Cary)", False),
     ("05_generate_macros.py", "Generate LaTeX macros, tables, and practical guide figure", False),
     ("06_figures_spatial.py", "Generate spatial error figures from per-node caches", False),
 ]
@@ -36,7 +35,7 @@ def main():
         default=0,
         dest="start_from",
         metavar="N",
-        help="Start from script N (e.g. --from 2 to start at 02_validate_gla.py)",
+        help="Start from script N (e.g. --from 1 to start at 01_validate_gla.py)",
     )
     args = parser.parse_args()
 

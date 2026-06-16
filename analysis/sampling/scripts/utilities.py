@@ -22,7 +22,7 @@ import networkx as nx
 import numpy as np
 from cityseer.sampling import GRID_SPACING
 from scipy import stats as scipy_stats
-from shapely.geometry import Point
+from shapely.geometry import Point, box
 from shapely.ops import unary_union
 
 warnings.filterwarnings("ignore")
@@ -52,7 +52,7 @@ CACHE_VERSION = "v36"
 QUARTILE_KEYS = ("spearman", "mae", "max_error", "reach", "median_true")
 
 # Analysis-specific Hoeffding defaults
-HOEFFDING_EPSILON = 0.06  # Normalised additive error tolerance
+HOEFFDING_EPSILON = 0.05  # Normalised additive error tolerance
 HOEFFDING_DELTA = 0.1  # Failure probability (90% confidence)
 
 
@@ -204,6 +204,36 @@ def mean_quartiles(quartile_list: list[dict], quartile_keys: tuple = QUARTILE_KE
 # =============================================================================
 # SECTION 3: Network Helpers
 # =============================================================================
+
+
+def assert_mask_within_data(road_mask, edges_gdf, name: str, min_coverage: float = 0.99) -> float:
+    """Guard: the road-load mask must lie within the available data extent.
+
+    Buffer nodes only mitigate edge effects if the network actually extends to the
+    mask boundary. If the mask reaches past the data (e.g. a province-only extract
+    buffered *outward*), boundary nodes suffer edge roll-off and the
+    "buffer >= d_max => through-routes are real" assumption breaks.
+
+    GLA carves the analysis area out of a larger dataset (mask = London + 20km, data
+    = all of GB). Madrid does the inverse (mask = the whole province, analysis area =
+    province - 20km), so the mask equals the data extent. Either way the mask must be
+    contained by the data; this catches a future regression where it is not.
+
+    Both arguments must be in the same (projected) CRS. Coverage is measured against
+    the data's bounding box, so this catches a mask spilling past the data extent (the
+    failure mode that matters); it does not police interior holes.
+
+    Returns the coverage fraction; raises AssertionError below ``min_coverage``.
+    """
+    data_box = box(*edges_gdf.total_bounds)
+    covered = road_mask.intersection(data_box).area / road_mask.area
+    print(f"  Buffer containment ({name}): {covered * 100:.1f}% of road-mask within data extent")
+    assert covered >= min_coverage, (
+        f"{name}: road-load mask extends beyond available data "
+        f"({covered * 100:.1f}% < {min_coverage * 100:.0f}% covered). Boundary nodes would be "
+        f"truncated — shrink the inner boundary (erode inward) or obtain a wider data extract."
+    )
+    return covered
 
 
 def apply_live_buffer_nx(G: nx.MultiGraph, buffer_dist: float) -> nx.MultiGraph:

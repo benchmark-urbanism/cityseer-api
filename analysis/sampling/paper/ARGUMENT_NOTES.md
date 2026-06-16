@@ -18,13 +18,13 @@ Without deterministic comparability, sampled centrality values from different lo
 
 We construct a single function p(d) that converts analysis distance to sampling probability:
 
-1. **Canonical grid model**: Estimate reach as r = pi \* d^2 / s^2 using a fixed grid spacing s = 175 m (representative of sparse street networks). This is intentionally conservative: real urban networks are typically denser, so actual reach exceeds canonical reach, meaning the schedule oversamples relative to what the network requires.
+1. **Canonical grid model (fixed)**: Estimate reach as r = pi \* d^2 / s^2 using a fixed grid spacing s = 175 m. This is held constant, not fitted. For dense networks, actual reach exceeds canonical reach, so the schedule oversamples (conservative). For the sparsest networks (e.g. a low-density US suburb), actual reach falls *below* canonical reach, so the grid model is no longer conservative there — that case is covered by the tolerance epsilon, which is calibrated against it.
 
 2. **Hoeffding bound**: Given canonical reach r, compute the required sample count k = log(2r/delta) / (2 \* epsilon^2), then p = min(1, k/r).
 
 3. **Unified for both metrics**: The same p(d) applies to closeness and betweenness. This is not just for simplicity: a single Brandes-style Dijkstra traversal from each sampled source produces both closeness accumulation and betweenness backpropagation simultaneously. Using the same sampling schedule for both metrics means each source traversal is shared, halving computation time compared to running separate schedules. Although betweenness is noisier in principle, the practical benefit of shared traversals outweighs the marginal gain from metric-specific tuning.
 
-The user-facing parameter is epsilon (default 0.06), which controls the error--speed trade-off. Lower epsilon = more conservative = more samples = slower but more accurate.
+The single calibrated parameter is epsilon (default 0.05): with s fixed, epsilon is the one knob, tuned once so the sparsest validated network (Cary, NC) preserves rank. Lower epsilon = more samples = slower but more accurate; denser networks clear the target comfortably at the default.
 
 ## What We Validate
 
@@ -32,11 +32,11 @@ We are **not** trying to prove that sampled centrality preserves absolute values
 
 Specifically:
 
-1. **Epsilon sweep on synthetic networks** (Fig 1): At epsilon = 0.06, rho >= 0.95 across trellis, tree, and linear topologies --- covering the structural range of real street networks.
+1. **Epsilon calibration on the binding network** (Cary): epsilon is tuned to the smallest value at which the *sparsest* validated network clears rho >= 0.95 at every distance. That value (0.05) is then fixed and applied to all networks.
 
-2. **Practical guide** (Fig 3): Shows the deterministic schedule across epsilon values so practitioners can choose their operating point. At epsilon = 0.06, sampling kicks in beyond ~5 km and reaches ~20x speedup at 20 km.
+2. **Practical guide** (Fig 3): Shows the deterministic schedule across epsilon values so practitioners can choose their operating point. At epsilon = 0.05, sampling engages beyond ~5 km and reaches ~15x speedup at 20 km.
 
-3. **Real-world validation** (Figs 4--6, Tables 2, 4): Greater London (~295k nodes) and Greater Madrid confirm rho >= 0.95 at distances from 1--20 km for both closeness and betweenness.
+3. **Real-world validation** (Figs 4--6, Tables 2, 4, 5): three networks spanning the density range --- Greater London, Greater Madrid (dense metros), and Cary, NC (sparse suburb) --- confirm rho >= 0.95 at 1--20 km for both metrics. Cary is the binding case (min rho ~0.96).
 
 4. **Spatial residuals** (Fig 7): No systematic spatial bias --- the sampling error is spatially uniform, not concentrated in particular areas of the network.
 
@@ -47,25 +47,40 @@ Specifically:
 1. **Problem**: Exact multi-scale centrality is O(n \* r) per distance, prohibitive at metropolitan scales.
 2. **Requirement**: Comparative urban analysis demands a deterministic, network-agnostic sampling schedule so that results are directly comparable within and between cities.
 3. **Theoretical grounding**: The Hoeffding/Eppstein-Wang bound, applied to a canonical grid reach model, yields a conservative distance-only schedule p(d).
-4. **Practical calibration**: We sweep epsilon on synthetic networks to identify a regime (epsilon = 0.06) that reliably achieves rho >= 0.95 across diverse topologies without excessive oversampling.
-5. **Validation**: Two large real-world networks confirm rank preservation and demonstrate meaningful speedups.
+4. **Practical calibration**: With the grid spacing s fixed, epsilon is the single free parameter. We calibrate it on the sparsest real network (Cary, NC) --- the binding case --- to the smallest value (epsilon = 0.05) that holds rho >= 0.95 at every distance.
+5. **Validation**: Three real-world networks spanning the density range confirm rank preservation and demonstrate meaningful speedups.
 6. **Implementation**: Released in the open-source cityseer package with user-configurable epsilon.
 
 ## Buffer Nodes and the Break-Even Threshold
 
-A critical implementation detail: when networks include boundary buffer nodes (dead nodes surrounding the analysis area to mitigate edge effects), sampling must include these buffer nodes in the source pool. This is because:
+> Updated for the 4.25 betweenness redesign: betweenness now counts routes from **every** node
+> (`live` is an output filter, not a source restriction), and the old per-pair compensation
+> (dead-to-dead = 0, live-live = 0.5, live->dead = 1.0) has been removed.
 
-1. **Why buffer nodes must be sampled**: Under sampling, the estimator uses target-based aggregation with IPW. A live target node near the boundary receives contributions from dead buffer sources in exact mode (via the target's own traversal). Under sampling, those buffer nodes must have a chance of being selected as sources; otherwise, boundary live nodes systematically underestimate closeness ("edge roll-off").
+Networks include boundary buffer ("dead") nodes surrounding the analysis area to mitigate edge
+effects. The two metrics now treat them differently:
 
-2. **Break-even threshold**: Since sampling runs `p * n_total` traversals (where n_total includes buffer nodes) and exact mode runs only `n_live` traversals, sampling is only beneficial when `p < phi` where `phi = n_live / n_total` (the live fraction). The implementation falls back to exact mode when `p >= phi`.
+1. **Closeness — live sources in exact mode, all sources under sampling.** Exact mode aggregates
+   at the source, so only live nodes need to run. Under sampling the estimator target-aggregates
+   with IPW, so buffer nodes must be eligible sources; otherwise boundary live nodes underestimate
+   closeness ("edge roll-off").
 
-3. **Effective speedup**: The speedup is `phi / p`, not `1/p`. For a network spanning L km with buffer d_max km, `phi ≈ (1 - 2*d_max/L)^2`. Larger networks benefit more; analyses with large d_max relative to network extent see reduced benefit.
+2. **Betweenness — every node is a source, in both modes.** A shortest path between two buffer
+   nodes that passes through the inner area legitimately credits the live intermediate, so all
+   nodes source; `live` only filters which nodes' values are reported. Each ordered pair is counted
+   with `pair_count = 0.5` (undirected) or `1.0` (directed) — the per-pair 0.5 is the global `/2`
+   for the two symmetric orderings. Buffer-to-buffer routes through the interior are counted (with
+   buffer >= d_max they are real shortest paths, not truncation artifacts).
 
-4. **Aggregation direction**:
-   - Exact mode: source-based aggregation (closeness accumulates to source node)
-   - Sampling mode: target-based aggregation with IPW (closeness accumulates to target node with 1/p scaling)
+3. **Break-even differs by metric.** Closeness exact mode runs only `n_live` traversals, so
+   sampling helps when `p < phi` (`phi = n_live / n_total`), with effective speedup `phi / p`.
+   Betweenness exact mode now runs all `n_total` sources, so sampling helps whenever `p < 1`, with
+   speedup `1/p`. (A closeness-only run skips buffer sources in exact mode; requesting betweenness
+   forces every node to traverse.)
 
-5. **Betweenness pair weighting**: Dead-to-dead pairs excluded (pair_count=0); bidirectional live pairs weighted 0.5; dead targets from live sources weighted 1.0.
+4. **Aggregation direction (closeness):**
+   - Exact mode: source-based aggregation (accumulates to the source node)
+   - Sampling mode: target-based aggregation with IPW (accumulates to the target node, 1/p scaling)
 
 ## Key Messages
 
