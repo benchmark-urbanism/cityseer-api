@@ -131,7 +131,7 @@ The sampling probability $p$ depends on reach, which varies not only across netw
   r_c = \frac{\pi d^2}{s^2}
   \label{eq:canonical_reach}
 \end{equation}
-We set $s = \gridSpacing$\,m, near the upper end of observed mean block lengths in European street networks (80--180\,m; \citealp{Boeing2017, Strano2013}). Holding $s$ fixed is what makes the schedule network-agnostic: the same distance yields the same $p$ everywhere, which is precisely what makes cross-network comparison valid. For dense networks, real reach exceeds the canonical estimate, so the schedule oversamples and the guarantee only strengthens. For the sparsest networks, real reach falls \emph{below} the canonical estimate (Figure~\ref{fig:val_reach}); there the grid model is no longer conservative, and it is the tolerance $\varepsilon$ --- calibrated on exactly such a network (Section~\ref{sec:validation}) --- that secures rank preservation. The trade-off is intentional: a small loss of potential speedup on dense networks buys a single, consistent sampling rate across all nodes and all networks at a given distance.
+We set $s = \gridSpacing$\,m, a deliberately conservative (large) reference: it sits above typical mean street-segment lengths in European cities (roughly 60--120\,m; \citealp{Strano2013}), so the canonical model under-counts reach for most networks. Holding $s$ fixed is what makes the schedule network-agnostic: the same distance yields the same $p$ everywhere, which is precisely what makes cross-network comparison valid. For dense networks, real reach exceeds the canonical estimate, so the schedule oversamples and the guarantee only strengthens. For the sparsest networks, real reach falls \emph{below} the canonical estimate (Figure~\ref{fig:val_reach}); there the grid model is no longer conservative, and it is the tolerance $\varepsilon$ --- calibrated on exactly such a network (Section~\ref{sec:validation}) --- that secures rank preservation. The trade-off is intentional: a small loss of potential speedup on dense networks buys a single, consistent sampling rate across all nodes and all networks at a given distance.
 
 The resulting sampling probabilities at standard analysis distances are shown later in Table~\ref{tab:distance_lookup}.
 
@@ -184,11 +184,6 @@ This has a cost, and it differs by metric because exact mode runs a different nu
 \end{equation}
 with effective speedup $\varphi / p$; for a network spanning $L$\,km with a $d_{\max}$\,km buffer on each side, $\varphi \approx (1 - 2d_{\max}/L)^2$. \emph{Betweenness} runs from every node even in exact mode (above), so its exact cost is already $n$ traversals and sampling is faster whenever $p < 1$, with speedup $1/p$. A combined closeness--betweenness call is gated by the closeness condition $p \geq \varphi$. When it triggers, the implementation falls back to exact mode, which produces identical (deterministic) results. This fallback is a cost optimisation, not part of the schedule: $p(d)$ remains deterministic and network-agnostic regardless.
 
-\subsection{Why the schedule is conservative}
-\label{sec:conservatism}
-
-At the default settings ($\varepsilon = \hoeffdingEpsilon$), the schedule is more conservative than necessary on all but the sparsest networks: the default is calibrated so the sparsest validated network just clears the target (Section~\ref{sec:validation}), leaving denser networks with wide margins. Three factors make the bound loose. First, the Hoeffding bound uses only the range of contributions and ignores the actual (much smaller) variance. Second, the union bound treats node-level errors as independent, even though they are positively correlated. Third, the accuracy metric (Spearman $\rho$) measures rank preservation, which is more forgiving than additive error: small absolute errors rarely change the ordering among well-separated nodes, and the highest-centrality nodes have the largest neighbourhoods and therefore the most precise estimates.
-
 %==============================================================================
 \section{Related Work}
 \label{sec:related}
@@ -232,8 +227,7 @@ Table~\ref{tab:bounds_comparison} summarises existing sampling approaches, group
 \label{sec:setup}
 %==============================================================================
 
-\paragraph{Boundary effects.}
-Nodes near network edges have artificially low centrality because their surroundings are truncated. Following standard practice \citep{Gil2017}, we surround the study area with a ring of buffer nodes equal in depth to the maximum analysis distance. Only interior (\emph{live}) nodes receive centrality values; the buffer nodes participate in path computations but are not reported. Under sampling, buffer nodes must also serve as potential sources to avoid edge roll-off (Section~\ref{sec:buffer}).
+Each network is analysed with a boundary buffer of depth equal to the maximum analysis distance (Section~\ref{sec:buffer}).
 
 \paragraph{Validation networks.}
 We validate on three real-world street networks spanning the urban density range, each built from official open road-network data. \emph{Greater London} (Ordnance Survey Open Roads; \glaNnodes{} live nodes) and \emph{Greater Madrid} (the official \emph{Red Viaria} road network; \madridNnodes{} live nodes) are dense metropolitan networks. \emph{Cary, NC} (US Census TIGER/Line; \caryNnodes{} live nodes) is a low-density planned suburb in the Raleigh region, with mean node degree $\approx 2.5$ --- markedly sparser than the metros and the real-world counterpart of low-connectivity suburban development. Each network is analysed within a \glaBuffer{}\,km buffer (Section~\ref{sec:buffer}); in every case the live study area is delimited by the administrative boundary geocoded from OpenStreetMap via OSMnx \citep{Boeing2017}, independently of the road-geometry source. We report the mean over three random seeds (inter-seed standard deviation in $\rho < 0.002$ at all distances). Ground truth uses all sources ($p = 1.0$) and is deterministic.
@@ -258,9 +252,7 @@ Tables~\ref{tab:validation}--\ref{tab:cary_validation} report results for the th
 
 \input{tables/tab5_cary_validation}
 
-At short distances the required sample fraction is high enough that exact computation is cheaper, so the implementation uses exact mode automatically (Section~\ref{sec:buffer}). Speedup emerges at longer distances, where only a small fraction of nodes need be sampled (Figure~\ref{fig:val_speedup}).
-
-The three networks span the urban density range (Figure~\ref{fig:val_accuracy}). London and Madrid are dense, with actual reach at or above the canonical model (Figure~\ref{fig:val_reach}), so the schedule oversamples and their accuracy margins are wide. Cary is sparse --- its reach lies below the canonical curve --- which is exactly why the tolerance is calibrated against it and why its margins are the tightest of the three.
+Speedup emerges only at the longer distances, where a small fraction of nodes is sampled (Figure~\ref{fig:val_speedup}). London and Madrid are dense, with actual reach at or above the canonical model (Figure~\ref{fig:val_reach}), so the schedule oversamples them and their margins are wide; Cary is sparse --- its reach lies below the canonical curve --- which is why the tolerance is calibrated against it and why its margins are the tightest of the three.
 
 \begin{figure}[htbp]
   \centering
@@ -312,7 +304,7 @@ In \cityseer{}, the user sets a single parameter ($\varepsilon$, the error toler
   \label{fig:guide}
 \end{figure}
 
-Table~\ref{tab:distance_lookup} and Figure~\ref{fig:guide} show the sampling probability and theoretical speedup ($1/p$) as a function of distance alone. In practice, networks analysed with a boundary buffer have a live fraction $\varphi < 1$ (Section~\ref{sec:buffer}), and the implementation falls back to exact computation at any distance where $p \geq \varphi$. For example, at $\varepsilon = \hoeffdingEpsilon$, the schedule prescribes $p \approx \hoeffdingPFiveKm\%$ at 5\,km, but if the live fraction is $\varphi \approx \glaLiveFraction$ (as for Greater London), exact mode is cheaper and sampling does not engage. At 10\,km ($p \approx \hoeffdingPTenKm\%$) and 20\,km ($p \approx \hoeffdingPTwentyKm\%$), sampling is active and the realised closeness speedup is $\varphi / p$ rather than $1/p$ (betweenness, which sources from every node, realises $1/p$). Larger study areas have higher $\varphi$ and benefit more; the compact Cary study area, with a low $\varphi$, sees little closeness speedup though betweenness still gains.
+These values assume no buffer. In practice, networks analysed with a boundary buffer have a live fraction $\varphi < 1$ (Section~\ref{sec:buffer}), and the implementation falls back to exact computation at any distance where $p \geq \varphi$. For example, at $\varepsilon = \hoeffdingEpsilon$ the schedule prescribes $p \approx \hoeffdingPFiveKm\%$ at 5\,km, but if $\varphi \approx \glaLiveFraction$ (as for Greater London), exact mode is cheaper and sampling does not engage. At 10\,km ($p \approx \hoeffdingPTenKm\%$) and 20\,km ($p \approx \hoeffdingPTwentyKm\%$), sampling is active and the realised closeness speedup is $\varphi / p$ rather than $1/p$ (betweenness, which sources from every node, realises $1/p$). Larger study areas have higher $\varphi$ and benefit more; the compact Cary study area, with a low $\varphi$, sees little closeness speedup though betweenness still gains.
 
 Halving $\varepsilon$ quadruples the number of required samples. A tighter tolerance ($\varepsilon = 0.04$) suits networks sparser than the validation set, or publication-quality work, but roughly halves the speedup. A looser tolerance ($\varepsilon = 0.08$--$0.1$) trades ranking accuracy for additional speed and is suitable for exploratory work where approximate rankings suffice.
 
@@ -322,7 +314,9 @@ For small networks (under about 1{,}000 nodes), exact computation completes in s
 
 \subsection{What the guarantee does and does not cover}
 
-The Hoeffding bound guarantees that absolute errors stay within a tolerance. Our validation measures something different: whether the \emph{ranking} of nodes is preserved (Spearman $\rho$). No formal bound connects the two. The empirical success rests on a structural property of street networks: centrality values are spread across several orders of magnitude, so small additive errors rarely change the ordering among well-separated nodes. The bound provides the mathematical form of the schedule; the ranking accuracy is a validated empirical outcome, not a formal guarantee.
+The Hoeffding bound guarantees that absolute errors stay within a tolerance; our validation measures something different --- whether the \emph{ranking} of nodes is preserved (Spearman $\rho$) --- and no formal bound connects the two. The bound provides the mathematical \emph{form} of the schedule; the ranking accuracy is a validated empirical outcome.
+
+Three factors make the bound loose, so that on all but the sparsest networks the schedule is markedly more conservative than necessary. First, the Hoeffding bound uses only the range of contributions and ignores the actual (much smaller) variance. Second, the union bound treats node-level errors as independent, though they are positively correlated. Third, rank preservation is more forgiving than additive error: street-network centrality spans several orders of magnitude, so small absolute errors rarely change the ordering among well-separated nodes, and the highest-centrality nodes --- those with the largest neighbourhoods --- are estimated most precisely.
 
 \subsection{Scope and limitations}
 \label{sec:limitations}
