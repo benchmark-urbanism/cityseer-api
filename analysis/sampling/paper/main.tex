@@ -302,7 +302,7 @@ In \cityseer{}, the user sets a single parameter ($\varepsilon$, the error toler
   \label{fig:guide}
 \end{figure}
 
-These values assume no buffer. In practice, networks analysed with a boundary buffer have a live fraction $\varphi < 1$ (Section~\ref{sec:buffer}), and the implementation falls back to exact computation at any distance where $p \geq \varphi$. For example, at $\varepsilon = \hoeffdingEpsilon$ the schedule prescribes $p \approx \hoeffdingPFiveKm\%$ at 5\,km, but if $\varphi \approx \glaLiveFraction$ (as for Greater London), exact mode is cheaper and sampling does not engage. At 10\,km ($p \approx \hoeffdingPTenKm\%$) and 20\,km ($p \approx \hoeffdingPTwentyKm\%$), sampling is active and the realised closeness speedup is $\varphi / p$ rather than $1/p$ (betweenness, which sources from every node, realises $1/p$). Larger study areas have higher $\varphi$ and benefit more; the compact Cary study area, with a low $\varphi$, sees little closeness speedup though betweenness still gains.
+On a buffered network the live fraction is $\varphi < 1$, and sampling engages only where $p < \varphi$ (Section~\ref{sec:buffer}). For example, at $\varepsilon = \hoeffdingEpsilon$ the schedule prescribes $p \approx \hoeffdingPFiveKm\%$ at 5\,km, but if $\varphi \approx \glaLiveFraction$ (Greater London) exact mode is cheaper and sampling does not engage. At 10\,km ($p \approx \hoeffdingPTenKm\%$) and 20\,km ($p \approx \hoeffdingPTwentyKm\%$), sampling is active and the realised closeness speedup is $\varphi / p$ rather than $1/p$ (betweenness, which sources from every node, realises $1/p$). Larger study areas have higher $\varphi$ and benefit more; the compact Cary study area, with a low $\varphi$, sees little closeness speedup though betweenness still gains.
 
 Halving $\varepsilon$ quadruples the number of required samples. A tighter tolerance ($\varepsilon = 0.04$) suits networks sparser than the validation set, or publication-quality work, but roughly halves the speedup. A looser tolerance ($\varepsilon = 0.08$--$0.1$) trades ranking accuracy for additional speed and is suitable for exploratory work where approximate rankings suffice.
 
@@ -323,9 +323,7 @@ The schedule applies to shortest-path (metric) distance only. Angular distance (
 
 The canonical grid model substitutes a fixed spacing for actual network structure: denser networks are oversampled, while sparser ones fall below the canonical estimate and rely on the calibrated tolerance $\varepsilon$ to preserve rank (Figure~\ref{fig:val_reach}). Effective speedup also depends on the live fraction $\varphi$, which shrinks as the buffer grows relative to the study area, so large distance thresholds on small study areas see less benefit.
 
-\subsection{Future work}
-
-Extending validation to angular distance and to a broader range of global morphologies are natural next steps. Adaptive per-node sampling, online stopping criteria \citep{Borassi2019}, and variance-aware bounds \citep{Pellegrina2023} could further improve efficiency.
+Natural extensions include validation on angular distance and a broader range of morphologies, and tighter efficiency via adaptive per-node sampling, online stopping criteria \citep{Borassi2019}, or variance-aware bounds \citep{Pellegrina2023}.
 
 %==============================================================================
 \section{Conclusion}
@@ -406,7 +404,7 @@ gdf = networks.centrality_shortest(
 
 Convenience wrappers (\texttt{closeness\_shortest}, \texttt{betweenness\_shortest}) are available for computing a single metric, but using them separately forgoes the shared-traversal advantage.
 
-The default error tolerance ($\varepsilon = \hoeffdingEpsilon$) and failure probability ($\delta = \hoeffdingDelta$) are set in \texttt{cityseer.config}. The \texttt{cityseer.sampling} module provides helper functions for custom workflows:
+The default error tolerance ($\varepsilon = \hoeffdingEpsilon$), failure probability ($\delta = \hoeffdingDelta$), and canonical grid spacing ($s = \gridSpacing\,$m) are defined in \texttt{cityseer.sampling}, which also provides helper functions for custom workflows:
 \begin{itemize}
   \item \texttt{compute\_distance\_p}: deterministic $p$ from distance via canonical grid model (recommended entry point)
   \item \texttt{compute\_hoeffding\_p}: Hoeffding bound from a given reach value (for experimentation with non-canonical schedules)
