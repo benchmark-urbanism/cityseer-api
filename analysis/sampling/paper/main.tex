@@ -71,7 +71,7 @@ The remainder of the paper is organised as follows. Section~\ref{sec:preliminari
 Both centrality measures are computed with a distance cutoff $d_{\max}$. We write $d$ for $d_{\max}$ when the context is clear.
 
 \paragraph{Harmonic closeness.}
-Closeness measures how easily a node can reach its surroundings \citep{Rochat2009, Freeman1979}. For each node $v$, it sums the inverse distances to all nodes within the threshold; nearby nodes contribute more than distant ones:
+Closeness measures how easily a node can reach its surroundings \citep{Freeman1979}. We adopt the \emph{harmonic} form --- a sum of inverse distances over reachable nodes --- rather than classic closeness (the reciprocal of summed distances), because a distance threshold leaves most of the network unreachable, and classic closeness is ill-defined or unstable on the resulting disconnected, variably sized catchments. Harmonic closeness instead sums bounded per-node contributions, with unreachable nodes contributing zero, so it stays well-defined and comparable across catchments of different size while expressing the same intention \citep{Rochat2009, Boldi2014}. (This additive form is also what lets a single source's contribution be estimated independently under sampling; Appendix~\ref{sec:appendix_ht}.) For each node $v$ it sums the inverse distances to all nodes within the threshold, so nearby nodes contribute more than distant ones:
 \begin{equation}
   C_H(v;\, d_{\max}) = \sum_{\substack{u \neq v \\ d(v,u) \leq d_{\max}}} \frac{1}{d(v, u)}
 \end{equation}
@@ -404,7 +404,7 @@ gdf = networks.centrality_shortest(
 
 Convenience wrappers (\texttt{closeness\_shortest}, \texttt{betweenness\_shortest}) are available for computing a single metric, but using them separately forgoes the shared-traversal advantage.
 
-The default error tolerance ($\varepsilon = \hoeffdingEpsilon$), failure probability ($\delta = \hoeffdingDelta$), and canonical grid spacing ($s = \gridSpacing\,$m) are defined in \texttt{cityseer.sampling}, which also provides helper functions for custom workflows:
+The default error tolerance ($\varepsilon = \hoeffdingEpsilon$) and failure probability ($\delta = \hoeffdingDelta$) are set in \texttt{cityseer.config}. The \texttt{cityseer.sampling} module provides helper functions for custom workflows:
 \begin{itemize}
   \item \texttt{compute\_distance\_p}: deterministic $p$ from distance via canonical grid model (recommended entry point)
   \item \texttt{compute\_hoeffding\_p}: Hoeffding bound from a given reach value (for experimentation with non-canonical schedules)

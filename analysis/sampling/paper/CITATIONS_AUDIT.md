@@ -56,6 +56,14 @@ sources (see per-citation "Usage" below); two carry a precision note (`Bader2007
 - **Synopsis:** Defines harmonic centrality as the sum of reciprocals of shortest-path distances; well-defined on disconnected graphs (infinite distances contribute 0).
 - **Usage:** IN-CONTEXT.
 
+### Boldi2014  *(newly cited — added during the harmonic-centrality verification)*
+- **URL:** https://doi.org/10.1080/15427951.2013.865686 · preprint https://arxiv.org/abs/1308.2140
+- **Metadata:** Paolo Boldi & Sebastiano Vigna, "Axioms for Centrality", *Internet Mathematics* 10(3–4):222–262, 2014. CONFIRMED.
+- **Cited for:** justifying the harmonic form over classic closeness — harmonic behaves well on disconnected graphs and is comparable across catchments of different size (their size/density axioms), where classic closeness fails.
+- **Quote (abstract, verbatim):** "only a new simple measure based on distances, harmonic centrality, turns out to satisfy all axioms; essentially, harmonic centrality is a correction to Bavelas's classic closeness centrality designed to take unreachable nodes into account in a natural way."
+- **Synopsis:** Proposes axioms (size, density, score-monotonicity) for centrality measures and shows harmonic centrality uniquely satisfies all of them, correcting classic closeness's failure on disconnected graphs.
+- **Usage:** IN-CONTEXT — directly supports the harmonic-over-classic-closeness justification. Corroborated by cityseer's own docs ("standard/normalised closeness do not work well with distance-bounded analysis; use harmonic") and Rochat2009.
+
 ## Sampling / approximation algorithms
 
 ### Eppstein2004
