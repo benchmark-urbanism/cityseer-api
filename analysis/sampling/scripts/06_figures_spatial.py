@@ -132,7 +132,7 @@ def _spatial_residual_panel(ax, node_x, node_y, residual, title, crop_half=10000
     ax.set_ylim(cy - crop_half, cy + crop_half)
 
 
-def generate_fig7_spatial_error(gla_data: dict, madrid_data: dict | None, dist: int):
+def generate_fig7_spatial_error(gla_data: dict, madrid_data: dict | None, dist: int, cary_data: dict | None = None):
     """Spatial map of per-node signed residuals (est - true): 2x2 grid.
 
     Top row: GLA closeness, GLA betweenness.
@@ -142,63 +142,31 @@ def generate_fig7_spatial_error(gla_data: dict, madrid_data: dict | None, dist: 
     """
     print(f"\nGenerating Figure 7: spatial residual map ({dist // 1000}km)...")
 
-    nrows = 2 if madrid_data is not None else 1
+    nets = [("GLA", gla_data)]
+    if madrid_data is not None:
+        nets.append(("Madrid", madrid_data))
+    if cary_data is not None:
+        nets.append(("Cary", cary_data))
+
+    nrows = len(nets)
     fig, axes = plt.subplots(nrows, 2, figsize=(14, 5.5 * nrows))
     if nrows == 1:
         axes = axes[np.newaxis, :]  # ensure 2D indexing
 
     dist_km = dist // 1000
-
-    # --- GLA row ---
-    if gla_data["est_harmonic"] is not None:
-        res_h = gla_data["est_harmonic"] - gla_data["true_harmonic"]
-        _spatial_residual_panel(
-            axes[0, 0],
-            gla_data["node_x"],
-            gla_data["node_y"],
-            res_h,
-            f"A) GLA Closeness ({dist_km}km)",
-        )
-    else:
-        axes[0, 0].set_title("A) GLA Closeness (no data)")
-
-    if gla_data.get("est_betweenness") is not None:
-        res_b = gla_data["est_betweenness"] - gla_data["true_betweenness"]
-        _spatial_residual_panel(
-            axes[0, 1],
-            gla_data["node_x"],
-            gla_data["node_y"],
-            res_b,
-            f"B) GLA Betweenness ({dist_km}km)",
-        )
-    else:
-        axes[0, 1].set_title("B) GLA Betweenness (no data)")
-
-    # --- Madrid row ---
-    if madrid_data is not None:
-        if madrid_data["est_harmonic"] is not None:
-            res_h = madrid_data["est_harmonic"] - madrid_data["true_harmonic"]
-            _spatial_residual_panel(
-                axes[1, 0],
-                madrid_data["node_x"],
-                madrid_data["node_y"],
-                res_h,
-                f"C) Madrid Closeness ({dist_km}km)",
-            )
-        else:
-            axes[1, 0].set_title("C) Madrid Closeness (no data)")
-
-        if madrid_data.get("est_betweenness") is not None:
-            res_b = madrid_data["est_betweenness"] - madrid_data["true_betweenness"]
-            _spatial_residual_panel(
-                axes[1, 1],
-                madrid_data["node_x"],
-                madrid_data["node_y"],
-                res_b,
-                f"D) Madrid Betweenness ({dist_km}km)",
-            )
-        else:
-            axes[1, 1].set_title("D) Madrid Betweenness (no data)")
+    letters = "ABCDEFGH"
+    li = 0
+    for row, (label, data) in enumerate(nets):
+        for col, (metric, true_key, est_key) in enumerate(
+            [("Closeness", "true_harmonic", "est_harmonic"), ("Betweenness", "true_betweenness", "est_betweenness")]
+        ):
+            title = f"{letters[li]}) {label} {metric} ({dist_km}km)"
+            li += 1
+            if data.get(est_key) is not None and data.get(true_key) is not None:
+                res = data[est_key] - data[true_key]
+                _spatial_residual_panel(axes[row, col], data["node_x"], data["node_y"], res, title)
+            else:
+                axes[row, col].set_title(f"{letters[li - 1]}) {label} {metric} (no data)")
 
     fig.suptitle(
         f"Spatial Distribution of Sampling Residuals ({dist_km}km)",
@@ -748,7 +716,7 @@ def _decile_panel(ax, true_vals, est_vals, title, colour, n_groups=10):
     return im, top_retention
 
 
-def generate_fig11_decile_transition(gla_data: dict, madrid_data: dict | None, dist: int):
+def generate_fig11_decile_transition(gla_data: dict, madrid_data: dict | None, dist: int, cary_data: dict | None = None):
     """Decile transition matrix heatmap: 2x2 grid.
 
     For each (network, metric) combination, cross-tabulates true vs sampled
@@ -760,7 +728,15 @@ def generate_fig11_decile_transition(gla_data: dict, madrid_data: dict | None, d
     """
     print(f"\nGenerating Figure 11: decile transition matrix ({dist // 1000}km)...")
 
-    nrows = 2 if madrid_data is not None else 1
+    configs = []
+    if gla_data is not None:
+        configs.append(("GLA", gla_data))
+    if madrid_data is not None:
+        configs.append(("Madrid", madrid_data))
+    if cary_data is not None:
+        configs.append(("Cary", cary_data))
+
+    nrows = len(configs)
     fig, axes = plt.subplots(nrows, 2, figsize=(12, 6 * nrows))
     if nrows == 1:
         axes = axes[np.newaxis, :]
@@ -768,13 +744,7 @@ def generate_fig11_decile_transition(gla_data: dict, madrid_data: dict | None, d
     dist_km = dist // 1000
     im = None
 
-    configs = []
-    if gla_data is not None:
-        configs.append((0, "GLA", gla_data))
-    if madrid_data is not None:
-        configs.append((1, "Madrid", madrid_data))
-
-    for row_idx, net_label, data in configs:
+    for row_idx, (net_label, data) in enumerate(configs):
         for col_idx, (metric, true_key, est_key, colour) in enumerate(
             [
                 ("Closeness", "true_harmonic", "est_harmonic", COLOUR_CLOSENESS),
@@ -836,6 +806,7 @@ def main():
     print("\nLoading per-node sampled caches...")
     gla_data = load_sampled_cache("gla", dist)
     madrid_data = load_sampled_cache("madrid", dist)
+    cary_data = load_sampled_cache("cary", dist)
 
     if gla_data is None and madrid_data is None:
         print("\nERROR: No per-node caches found. Run validation scripts with --force first:")
@@ -845,7 +816,7 @@ def main():
 
     # Generate figures
     if gla_data is not None:
-        generate_fig7_spatial_error(gla_data, madrid_data, dist)
+        generate_fig7_spatial_error(gla_data, madrid_data, dist, cary_data)
 
     if gla_data is not None:
         generate_fig8_error_vs_reach(gla_data, madrid_data, dist)
@@ -857,7 +828,7 @@ def main():
         generate_fig9b_rank_displacement(gla_data, madrid_data, dist)
 
     if gla_data is not None or madrid_data is not None:
-        generate_fig11_decile_transition(gla_data, madrid_data, dist)
+        generate_fig11_decile_transition(gla_data, madrid_data, dist, cary_data)
 
     generate_fig10_sensitivity()
 

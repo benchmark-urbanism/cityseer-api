@@ -22,11 +22,13 @@
 
 % Title and authors
 \title{A Deterministic Sampling Schedule for Multi-Scale Localised Network Centrality}
-\author{%
-  Gareth Simons\\
-  \textit{Benchmark Urbanism}\\
-  \texttt{gareth@benchmarkurbanism.com}
-}
+% Author(s) to be finalised (co-author pending) --- original below:
+% \author{%
+%   Gareth Simons\\
+%   \textit{Benchmark Urbanism}\\
+%   \texttt{gareth@benchmarkurbanism.com}
+% }
+\author{}
 \date{\today}
 
 \begin{document}
@@ -275,7 +277,7 @@ Speedup emerges only at the longer distances, where a small fraction of nodes is
 
 \subsection{Error structure}
 
-Absolute errors grow with reach, but \emph{relative} errors shrink (Figure~\ref{fig:error_crossover}): the most important nodes (those with the highest centrality and largest neighbourhoods) are estimated most precisely. Errors are spatially uniform, with no systematic bias in dense cores or sparse peripheries (Figure~\ref{fig:spatial_error}). Most nodes remain in the same centrality decile under sampling, with the strongest stability in the upper deciles (Figure~\ref{fig:decile_transition}).
+Absolute errors grow with reach, but \emph{relative} errors shrink (Figure~\ref{fig:error_crossover}): the most important nodes (those with the highest centrality and largest neighbourhoods) are estimated most precisely. Spatially, this means residuals are \emph{not} uniform --- their magnitude is largest where centrality is largest (Figure~\ref{fig:spatial_error}) --- but there is no systematic directional bias: residuals from neighbouring nodes are correlated (they share sampled sources), so a single realisation shows smooth same-sign patches that relocate from one seed to the next, and the mean relative bias is only $\sim$1--3\%. Most nodes remain in the same centrality decile under sampling, with the strongest stability in the upper deciles (Figure~\ref{fig:decile_transition}).
 
 \begin{figure}[htbp]
   \centering
@@ -372,10 +374,6 @@ The Greater Madrid metropolitan network (\madridNnodes{} live nodes) is sourced 
 
 The Cary, NC network (\caryNnodes{} live nodes) is built from US Census TIGER/Line \emph{edges} --- the topologically integrated road layer, which is natively noded at intersections (the cartographic \emph{roads} layer is not, and does not build a connected graph). Road edges (\texttt{ROADFLG = Y}) are loaded for every county intersecting the analysis area plus its \glaBuffer{}\,km buffer, then passed through the same consolidation pipeline as the GLA network. The live area is the Cary municipal boundary; the surrounding region supplies the buffer.
 
-\paragraph{Correctness verification.}
-
-We verified the Rust-based \cityseer{} implementation against NetworkX \citep{Hagberg2008} on test networks across distance thresholds from 200\,m to 3200\,m, both distance heuristics, and both metrics. The maximum per-node difference was below $10^{-6}$ in all configurations, attributable to floating-point precision.
-
 \paragraph{Inverse-probability weighting.}
 \label{sec:appendix_ht}
 
@@ -419,14 +417,14 @@ All analysis scripts and validation results are available at \href{https://githu
 \begin{figure}[htbp]
   \centering
   \includegraphics[width=0.85\textwidth]{figures/fig7_spatial_error_gla.png}
-  \caption{Spatial distribution of sampling residuals (sampled minus true centrality) at 20\,km ($\varepsilon = \hoeffdingEpsilon$) for closeness and betweenness on the Greater London and Greater Madrid networks. Residuals are spatially uniform, with no systematic concentration in dense urban cores or sparse peripheral areas.}
+  \caption{Spatial distribution of sampling residuals (sampled minus true) at 20\,km ($\varepsilon = \hoeffdingEpsilon$) for closeness and betweenness across the three networks. Residuals are \emph{not} spatially uniform: their magnitude is largest where centrality is largest (dense cores for closeness, high-betweenness corridors for betweenness), and because neighbouring nodes share sampled sources their errors are correlated, producing smooth same-sign patches rather than fine-grained noise. These are not a directional bias --- the mean relative bias is $\sim$1--3\% and the patches relocate from seed to seed, so any apparent large-scale gradient (for example the east--west one for Greater London, which tracks that city's real density gradient) reverses sign across seeds --- and relative error is smallest precisely where absolute residuals are largest, so rankings are preserved.}
   \label{fig:spatial_error}
 \end{figure}
 
 \begin{figure}[htbp]
   \centering
   \includegraphics[width=\textwidth]{figures/fig11_decile_transition.pdf}
-  \caption{Decile transition matrices showing the proportion of nodes that remain in the same centrality decile (diagonal) or move to an adjacent decile under sampling, for closeness and betweenness at 20\,km on the Greater London network. Diagonal dominance is strongest in the upper deciles (high-centrality nodes). Lower deciles show more scatter, particularly for betweenness, but rank swaps among low-centrality nodes have minimal practical impact.}
+  \caption{Decile transition matrices showing the proportion of nodes that remain in the same centrality decile (diagonal) or move to an adjacent decile under sampling, for closeness and betweenness at 20\,km on the three networks. Diagonal dominance is strongest in the upper deciles (high-centrality nodes). Lower deciles show more scatter --- particularly for betweenness and on the sparse Cary network --- but rank swaps among low-centrality nodes have minimal practical impact, and top-decile retention stays high throughout.}
   \label{fig:decile_transition}
 \end{figure}
 
