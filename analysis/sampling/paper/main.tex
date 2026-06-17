@@ -129,7 +129,7 @@ The sampling probability $p$ depends on reach, which varies not only across netw
   r_c = \frac{\pi d^2}{s^2}
   \label{eq:canonical_reach}
 \end{equation}
-We set $s = \gridSpacing$\,m, a deliberately conservative (large) reference: it sits above typical mean street-segment lengths in European cities (roughly 60--120\,m; \citealp{Strano2013}), so the canonical model under-counts reach for most networks. Holding $s$ fixed is what makes the schedule network-agnostic: the same distance yields the same $p$ everywhere, which is precisely what makes cross-network comparison valid. For dense networks, real reach exceeds the canonical estimate, so the schedule oversamples and the guarantee only strengthens. For the sparsest networks, real reach falls \emph{below} the canonical estimate (Figure~\ref{fig:val_reach}); there the grid model is no longer conservative, and it is the tolerance $\varepsilon$ --- calibrated on exactly such a network (Section~\ref{sec:validation}) --- that secures rank preservation. The trade-off is intentional: a small loss of potential speedup on dense networks buys a single, consistent sampling rate across all nodes and all networks at a given distance.
+We set $s = \gridSpacing$\,m, a deliberately conservative (large) reference: it sits above typical mean street-segment lengths in European cities (city means $\approx$95--122\,m; \citealp{Strano2013}), so the canonical model under-counts reach for most networks. Holding $s$ fixed is what makes the schedule network-agnostic: the same distance yields the same $p$ everywhere, which is precisely what makes cross-network comparison valid. For dense networks, real reach exceeds the canonical estimate, so the schedule oversamples and the guarantee only strengthens. For the sparsest networks, real reach falls \emph{below} the canonical estimate (Figure~\ref{fig:val_reach}); there the grid model is no longer conservative, and it is the tolerance $\varepsilon$ --- calibrated on exactly such a network (Section~\ref{sec:validation}) --- that secures rank preservation. The trade-off is intentional: a small loss of potential speedup on dense networks buys a single, consistent sampling rate across all nodes and all networks at a given distance.
 
 The resulting sampling probabilities at standard analysis distances are shown later in Table~\ref{tab:distance_lookup}.
 
@@ -187,7 +187,7 @@ with effective speedup $\varphi / p$; for a network spanning $L$\,km with a $d_{
 \label{sec:related}
 %==============================================================================
 
-Table~\ref{tab:bounds_comparison} summarises existing sampling approaches, grouped by computational primitive; \citet{Bergamini2019} provide a comprehensive empirical comparison for global betweenness.
+Table~\ref{tab:bounds_comparison} summarises existing sampling approaches, grouped by computational primitive; \citet{Matta2019} provide a comprehensive empirical comparison for global betweenness.
 
 \begin{table}[htbp]
   \centering
