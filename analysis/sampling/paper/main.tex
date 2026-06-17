@@ -277,7 +277,7 @@ Speedup emerges only at the longer distances, where a small fraction of nodes is
 
 \subsection{Error structure}
 
-Absolute errors grow with reach, but \emph{relative} errors shrink (Figure~\ref{fig:error_crossover}): the most important nodes (those with the highest centrality and largest neighbourhoods) are estimated most precisely. Spatially, this means residuals are \emph{not} uniform --- their magnitude is largest where centrality is largest (Figure~\ref{fig:spatial_error}) --- but there is no systematic directional bias: residuals from neighbouring nodes are correlated (they share sampled sources), so a single realisation shows smooth same-sign patches that relocate from one seed to the next, and the mean relative bias is only $\sim$1--3\%. Most nodes remain in the same centrality decile under sampling, with the strongest stability in the upper deciles (Figure~\ref{fig:decile_transition}).
+Absolute errors grow with reach, but \emph{relative} errors shrink (Figure~\ref{fig:error_crossover}): the most important nodes (those with the highest centrality and largest neighbourhoods) are estimated most precisely. What matters for our claim is not the absolute residual but whether a node's \emph{rank} moves, and it barely does: the median node shifts only 1--2 percentile points on the metropolitan networks (somewhat more on the sparse Cary network), and these shifts are spatially diffuse rather than concentrated (Figure~\ref{fig:spatial_error}), falling mostly on low-centrality nodes. Most nodes remain in the same centrality decile under sampling, with the strongest stability in the upper deciles (Figure~\ref{fig:decile_transition}).
 
 \begin{figure}[htbp]
   \centering
@@ -416,8 +416,8 @@ All analysis scripts and validation results are available at \href{https://githu
 
 \begin{figure}[htbp]
   \centering
-  \includegraphics[width=0.85\textwidth]{figures/fig7_spatial_error_gla.png}
-  \caption{Spatial distribution of sampling residuals (sampled minus true) at 20\,km ($\varepsilon = \hoeffdingEpsilon$) for closeness and betweenness across the three networks. Residuals are \emph{not} spatially uniform: their magnitude is largest where centrality is largest (dense cores for closeness, high-betweenness corridors for betweenness), and because neighbouring nodes share sampled sources their errors are correlated, producing smooth same-sign patches rather than fine-grained noise. These are not a directional bias --- the mean relative bias is $\sim$1--3\% and the patches relocate from seed to seed, so any apparent large-scale gradient (for example the east--west one for Greater London, which tracks that city's real density gradient) reverses sign across seeds --- and relative error is smallest precisely where absolute residuals are largest, so rankings are preserved.}
+  \includegraphics[width=\textwidth]{figures/fig7_rank_shift.png}
+  \caption{Spatial distribution of the per-node \emph{rank shift} under sampling at 20\,km ($\varepsilon = \hoeffdingEpsilon$): the change in each node's percentile rank, $|$pctile(true)$-$pctile(sampled)$|$, in percentile points, drawn as the hexbin \emph{median} per cell on a fixed 0--10 scale common to all panels (pale $=$ ranks barely move). This is the quantity the schedule sets out to preserve, and it is what the choice of absolute residual obscures: an absolute-residual map looks alarming because residuals are large in absolute terms exactly where the values are large, even though those nodes scarcely change rank. The maps are pale almost everywhere --- the median node shifts about 1--2 percentile points on the metros and $\sim$2--3.5 on the sparse Cary network. Shifts are spatially diffuse rather than concentrated, are larger for betweenness and on Cary, and fall mostly on low-centrality nodes (whose tightly clustered values make ties easy to flip); the high-centrality nodes that drive comparative analysis are the most stable.}
   \label{fig:spatial_error}
 \end{figure}
 

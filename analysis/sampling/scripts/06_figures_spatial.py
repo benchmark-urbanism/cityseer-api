@@ -97,11 +97,22 @@ def load_sampled_cache(network: str, dist: int) -> dict | None:
 # =============================================================================
 
 
-def _spatial_residual_panel(ax, node_x, node_y, residual, title, crop_half=10000):
+def _spatial_residual_panel(ax, node_x, node_y, residual, true_vals, title, crop_half=10000, vlim_pct=10.0):
     """Plot a single spatial residual panel, cropped to a square around the median.
 
-    Uses a diverging colourmap centred on zero: blue = underestimate, red = overestimate.
+    The colour encodes the residual as a percentage of the 95th-percentile centrality
+    value (a robust "high-centrality" reference) on a FIXED scale (+/- vlim_pct) common
+    to every panel, so that saturation reflects the residual's magnitude *relative to the
+    values* rather than the residual's own spread. Pale = small relative error; the fixed
+    scale also makes panels directly comparable. Diverging map: blue = under, red = over.
     """
+    node_x, node_y = np.asarray(node_x, float), np.asarray(node_y, float)
+    residual, true_vals = np.asarray(residual, float), np.asarray(true_vals, float)
+
+    pos = true_vals[np.isfinite(true_vals) & (true_vals > 0)]
+    scale = np.percentile(pos, 95) if pos.size else 1.0
+    rel_pct = residual / scale * 100.0  # residual as % of the 95th-percentile value
+
     cx, cy = np.median(node_x), np.median(node_y)
     mask = (
         (node_x >= cx - crop_half)
@@ -109,22 +120,25 @@ def _spatial_residual_panel(ax, node_x, node_y, residual, title, crop_half=10000
         & (node_y >= cy - crop_half)
         & (node_y <= cy + crop_half)
     )
-    x, y, res = node_x[mask], node_y[mask], residual[mask]
+    x, y, r = node_x[mask], node_y[mask], rel_pct[mask]
 
-    # Symmetric range centred on zero using 95th percentile of |residual|
-    vlim = np.percentile(np.abs(res), 95)
-    scatter = ax.scatter(
+    # Hexbin (mean residual per cell) instead of a scatter: a dense scatter of small
+    # residuals overplots into apparent saturation, fooling the eye into reading small
+    # errors as large. Binning shows the true local level per cell.
+    hb = ax.hexbin(
         x,
         y,
-        c=res,
-        s=0.3,
-        alpha=0.7,
+        C=r,
+        reduce_C_function=np.mean,
+        gridsize=50,
+        mincnt=1,
         cmap=CMAP_DIVERGING,
-        vmin=-vlim,
-        vmax=vlim,
-        rasterized=True,
+        vmin=-vlim_pct,
+        vmax=vlim_pct,
+        linewidths=0.0,
+        extent=(cx - crop_half, cx + crop_half, cy - crop_half, cy + crop_half),
     )
-    plt.colorbar(scatter, ax=ax, label="Residual (est \u2212 true)", shrink=0.4)
+    plt.colorbar(hb, ax=ax, label="Mean residual (\\% of 95th-pct value)", shrink=0.4, extend="both")
     ax.set_title(title, pad=4)
     ax.set_aspect("equal")
     ax.tick_params(labelsize=8)
@@ -133,14 +147,16 @@ def _spatial_residual_panel(ax, node_x, node_y, residual, title, crop_half=10000
 
 
 def generate_fig7_spatial_error(gla_data: dict, madrid_data: dict | None, dist: int, cary_data: dict | None = None):
-    """Spatial map of per-node signed residuals (est - true): 2x2 grid.
+    """Spatial map of per-node RANK SHIFT under sampling.
 
-    Top row: GLA closeness, GLA betweenness.
-    Bottom row: Madrid closeness, Madrid betweenness.
-    Each panel is cropped to a 20km x 20km window centred on the network median.
-    Diverging colourmap: blue = underestimate, red = overestimate.
+    For each node: |percentile-rank(true) - percentile-rank(sampled)| in percentile
+    points --- the quantity the schedule aims to preserve. Hexbin (mean per cell) on a
+    FIXED 0-10 scale common to all panels with a sequential colourmap, so a pale map means
+    ranks barely move and panels are directly comparable. Binning (rather than a dense
+    scatter) avoids overplotting small values into apparent saturation.
+    Rows: GLA, Madrid, Cary; columns: closeness, betweenness.
     """
-    print(f"\nGenerating Figure 7: spatial residual map ({dist // 1000}km)...")
+    print(f"\nGenerating Figure 7: spatial rank-shift map ({dist // 1000}km)...")
 
     nets = [("GLA", gla_data)]
     if madrid_data is not None:
@@ -151,9 +167,11 @@ def generate_fig7_spatial_error(gla_data: dict, madrid_data: dict | None, dist: 
     nrows = len(nets)
     fig, axes = plt.subplots(nrows, 2, figsize=(14, 5.5 * nrows))
     if nrows == 1:
-        axes = axes[np.newaxis, :]  # ensure 2D indexing
+        axes = axes[np.newaxis, :]
 
     dist_km = dist // 1000
+    crop = 10000
+    vmax = 10.0  # percentile points; fixed scale common to all panels
     letters = "ABCDEFGH"
     li = 0
     for row, (label, data) in enumerate(nets):
@@ -162,19 +180,48 @@ def generate_fig7_spatial_error(gla_data: dict, madrid_data: dict | None, dist: 
         ):
             title = f"{letters[li]}) {label} {metric} ({dist_km}km)"
             li += 1
-            if data.get(est_key) is not None and data.get(true_key) is not None:
-                res = data[est_key] - data[true_key]
-                _spatial_residual_panel(axes[row, col], data["node_x"], data["node_y"], res, title)
-            else:
-                axes[row, col].set_title(f"{letters[li - 1]}) {label} {metric} (no data)")
+            ax = axes[row, col]
+            t, e = data.get(true_key), data.get(est_key)
+            if t is None or e is None:
+                ax.set_title(f"{letters[li - 1]}) {label} {metric} (no data)")
+                continue
+            t, e = np.asarray(t, float), np.asarray(e, float)
+            x, y = np.asarray(data["node_x"], float), np.asarray(data["node_y"], float)
+            valid = (t != 0) | (e != 0)
+            n = max(int(valid.sum()), 1)
+            shift = np.full(len(t), np.nan)
+            shift[valid] = (
+                np.abs(rankdata(t[valid], method="average") - rankdata(e[valid], method="average")) / n * 100.0
+            )  # percentile-point shift
+            cx, cy = np.median(x), np.median(y)
+            m = valid & (x >= cx - crop) & (x <= cx + crop) & (y >= cy - crop) & (y <= cy + crop)
+            hb = ax.hexbin(
+                x[m],
+                y[m],
+                C=shift[m],
+                reduce_C_function=np.median,
+                gridsize=50,
+                mincnt=1,
+                cmap="Reds",
+                vmin=0,
+                vmax=vmax,
+                linewidths=0.0,
+                extent=(cx - crop, cx + crop, cy - crop, cy + crop),
+            )
+            plt.colorbar(hb, ax=ax, label="Median rank shift (percentile pts)", shrink=0.4, extend="max")
+            ax.set_title(title, pad=4)
+            ax.set_aspect("equal")
+            ax.tick_params(labelsize=8)
+            ax.set_xlim(cx - crop, cx + crop)
+            ax.set_ylim(cy - crop, cy + crop)
 
     fig.suptitle(
-        f"Spatial Distribution of Sampling Residuals ({dist_km}km)",
+        f"Spatial Distribution of Rank Shift under Sampling ({dist_km}km)",
         fontsize=13,
         fontweight="bold",
     )
     plt.tight_layout(h_pad=1.0, w_pad=2.0, rect=[0, 0, 1, 0.96])
-    out = FIGURES_DIR / "fig7_spatial_error_gla.png"
+    out = FIGURES_DIR / "fig7_rank_shift.png"
     fig.savefig(out, dpi=300, bbox_inches="tight")
     plt.close()
     print(f"  Saved: {out}")
