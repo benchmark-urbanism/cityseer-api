@@ -414,16 +414,16 @@ All analysis scripts and validation results are available at \href{https://githu
 
 \paragraph{Spatial error distribution.}
 
-\begin{figure}[htbp]
+\begin{figure}[p]
   \centering
-  \includegraphics[width=\textwidth]{figures/fig7_rank_shift.png}
-  \caption{Spatial distribution of the per-node \emph{rank shift} under sampling at 20\,km ($\varepsilon = \hoeffdingEpsilon$): the change in each node's percentile rank, $|$pctile(true)$-$pctile(sampled)$|$, in percentile points, drawn as the hexbin \emph{median} per cell on a fixed 0--10 scale common to all panels (pale $=$ ranks barely move). This is the quantity the schedule sets out to preserve, and it is what the choice of absolute residual obscures: an absolute-residual map looks alarming because residuals are large in absolute terms exactly where the values are large, even though those nodes scarcely change rank. The maps are pale almost everywhere --- the median node shifts about 1--2 percentile points on the metros and $\sim$2--3.5 on the sparse Cary network. Shifts are spatially diffuse rather than concentrated, are larger for betweenness and on Cary, and fall mostly on low-centrality nodes (whose tightly clustered values make ties easy to flip); the high-centrality nodes that drive comparative analysis are the most stable.}
+  \includegraphics[width=0.82\textwidth]{figures/fig7_rank_shift.png}
+  \caption{Spatial distribution of the per-node \emph{rank shift} under sampling at 20\,km ($\varepsilon = \hoeffdingEpsilon$): $|$pctile(true)$-$pctile(sampled)$|$ in percentile points, drawn as the hexbin median per cell on a fixed 0--10 white-to-red scale common to all panels (pale $=$ ranks barely move). This is the quantity the schedule preserves, and it is mostly small: the median node shifts $\sim$1--2 percentile points on the metros and $\sim$2--3.5 on the sparse Cary network. An absolute-residual map looks alarming by comparison --- residuals are largest where the values are largest, even though those nodes scarcely change rank. Shifts are spatially diffuse, larger for betweenness and on Cary, and fall mostly on low-centrality nodes (clustered values, easily-flipped ties); high-centrality nodes are the most stable.}
   \label{fig:spatial_error}
 \end{figure}
 
-\begin{figure}[htbp]
+\begin{figure}[p]
   \centering
-  \includegraphics[width=\textwidth]{figures/fig11_decile_transition.pdf}
+  \includegraphics[width=0.72\textwidth]{figures/fig11_decile_transition.pdf}
   \caption{Decile transition matrices showing the proportion of nodes that remain in the same centrality decile (diagonal) or move to an adjacent decile under sampling, for closeness and betweenness at 20\,km on the three networks. Diagonal dominance is strongest in the upper deciles (high-centrality nodes). Lower deciles show more scatter --- particularly for betweenness and on the sparse Cary network --- but rank swaps among low-centrality nodes have minimal practical impact, and top-decile retention stays high throughout.}
   \label{fig:decile_transition}
 \end{figure}
