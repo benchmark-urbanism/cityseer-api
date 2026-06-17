@@ -41,11 +41,6 @@ from utilities import CACHE_DIR, FIGURES_DIR, OUTPUT_DIR
 COLOUR_CLOSENESS = "#2166AC"
 COLOUR_BETWEENNESS = "#B2182B"
 
-# Diverging colourmap: closeness blue → white → betweenness red
-CMAP_DIVERGING = LinearSegmentedColormap.from_list(
-    "closeness_betweenness",
-    [COLOUR_CLOSENESS, "white", COLOUR_BETWEENNESS],
-)
 # Sequential colourmap: blue → red (for magnitude-only data)
 CMAP_SEQUENTIAL = LinearSegmentedColormap.from_list(
     "blue_to_red",
@@ -95,55 +90,6 @@ def load_sampled_cache(network: str, dist: int) -> dict | None:
 # =============================================================================
 # FIG 7: SPATIAL ERROR MAP (GLA, 20km)
 # =============================================================================
-
-
-def _spatial_residual_panel(ax, node_x, node_y, residual, true_vals, title, crop_half=10000, vlim_pct=10.0):
-    """Plot a single spatial residual panel, cropped to a square around the median.
-
-    The colour encodes the residual as a percentage of the 95th-percentile centrality
-    value (a robust "high-centrality" reference) on a FIXED scale (+/- vlim_pct) common
-    to every panel, so that saturation reflects the residual's magnitude *relative to the
-    values* rather than the residual's own spread. Pale = small relative error; the fixed
-    scale also makes panels directly comparable. Diverging map: blue = under, red = over.
-    """
-    node_x, node_y = np.asarray(node_x, float), np.asarray(node_y, float)
-    residual, true_vals = np.asarray(residual, float), np.asarray(true_vals, float)
-
-    pos = true_vals[np.isfinite(true_vals) & (true_vals > 0)]
-    scale = np.percentile(pos, 95) if pos.size else 1.0
-    rel_pct = residual / scale * 100.0  # residual as % of the 95th-percentile value
-
-    cx, cy = np.median(node_x), np.median(node_y)
-    mask = (
-        (node_x >= cx - crop_half)
-        & (node_x <= cx + crop_half)
-        & (node_y >= cy - crop_half)
-        & (node_y <= cy + crop_half)
-    )
-    x, y, r = node_x[mask], node_y[mask], rel_pct[mask]
-
-    # Hexbin (mean residual per cell) instead of a scatter: a dense scatter of small
-    # residuals overplots into apparent saturation, fooling the eye into reading small
-    # errors as large. Binning shows the true local level per cell.
-    hb = ax.hexbin(
-        x,
-        y,
-        C=r,
-        reduce_C_function=np.mean,
-        gridsize=50,
-        mincnt=1,
-        cmap=CMAP_DIVERGING,
-        vmin=-vlim_pct,
-        vmax=vlim_pct,
-        linewidths=0.0,
-        extent=(cx - crop_half, cx + crop_half, cy - crop_half, cy + crop_half),
-    )
-    plt.colorbar(hb, ax=ax, label="Mean residual (\\% of 95th-pct value)", shrink=0.4, extend="both")
-    ax.set_title(title, pad=4)
-    ax.set_aspect("equal")
-    ax.tick_params(labelsize=8)
-    ax.set_xlim(cx - crop_half, cx + crop_half)
-    ax.set_ylim(cy - crop_half, cy + crop_half)
 
 
 def generate_fig7_spatial_error(gla_data: dict, madrid_data: dict | None, dist: int, cary_data: dict | None = None):
