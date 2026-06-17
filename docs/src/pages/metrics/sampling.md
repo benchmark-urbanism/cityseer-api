@@ -23,7 +23,7 @@ If the computed sampling rate offers no speedup for a given distance, that dista
 
 Separate accuracy models are fitted for closeness and betweenness centrality. Betweenness centrality is more sensitive to which nodes are included in the sample (its sampling error has higher variance than closeness), so the betweenness model requires more samples at the same distance threshold. When computing both metrics together, the betweenness model is used to ensure both achieve the target accuracy.
 
-The `epsilon` parameter controls the error tolerance. The default of 0.06 is suitable for most analyses.
+The `epsilon` parameter controls the error tolerance. The default of 0.05 is suitable for most analyses.
 
 ## Usage
 

@@ -280,7 +280,7 @@ def centrality_shortest(
     sample: bool
         If True, enables adaptive sampling at longer distance thresholds.
     epsilon: float
-        Error tolerance for sampling. Defaults to ``sampling.HOEFFDING_EPSILON`` (0.06).
+        Error tolerance for sampling. Defaults to ``sampling.HOEFFDING_EPSILON`` (0.05).
 
     Returns
     -------
@@ -750,7 +750,7 @@ def centrality_simplest(
     sample: bool
         If True, enables adaptive sampling at longer distance thresholds.
     epsilon: float
-        Error tolerance for sampling. Defaults to ``sampling.HOEFFDING_EPSILON`` (0.06).
+        Error tolerance for sampling. Defaults to ``sampling.HOEFFDING_EPSILON`` (0.05).
 
     Returns
     -------

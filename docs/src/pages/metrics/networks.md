@@ -280,7 +280,7 @@ closeness or Hillier normalisation instead.
   </div>
   <div class="desc">
 
- Error tolerance for sampling. Defaults to ``sampling.HOEFFDING_EPSILON`` (0.06).</div>
+ Error tolerance for sampling. Defaults to ``sampling.HOEFFDING_EPSILON`` (0.05).</div>
 </div>
 
 ### Returns
@@ -1078,7 +1078,7 @@ print(nodes_gdf[["cc_harmonic_400", "cc_betweenness_800"]])
   </div>
   <div class="desc">
 
- Error tolerance for sampling. Defaults to ``sampling.HOEFFDING_EPSILON`` (0.06).</div>
+ Error tolerance for sampling. Defaults to ``sampling.HOEFFDING_EPSILON`` (0.05).</div>
 </div>
 
 ### Returns

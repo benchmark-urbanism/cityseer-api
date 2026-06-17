@@ -991,7 +991,7 @@ class CityNetwork:
         cn.centrality_shortest(
             distances=[800, 2000, 5000],
             sample=True,
-            epsilon=0.06,
+            epsilon=0.05,
         )
 
         # Custom closeness metric
