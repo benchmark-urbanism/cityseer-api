@@ -357,7 +357,9 @@ def generate_fig6_reach_comparison():
 # =============================================================================
 
 
-def generate_fig2_error_vs_reach(gla_full: pd.DataFrame, madrid_full: pd.DataFrame, cary_full: pd.DataFrame | None = None):
+def generate_fig2_error_vs_reach(
+    gla_full: pd.DataFrame, madrid_full: pd.DataFrame, cary_full: pd.DataFrame | None = None
+):
     """Figure 2: Absolute and relative error vs per-node reach quartiles.
 
     Uses GLA and Madrid validation quartile data (reach_q1-q4, mae_q1-q4,

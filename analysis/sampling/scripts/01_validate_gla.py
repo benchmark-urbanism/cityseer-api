@@ -35,8 +35,8 @@ from shapely.geometry import Point
 from utilities import (
     CACHE_DIR,
     HOEFFDING_DELTA,
-    assert_mask_within_data,
     OUTPUT_DIR,
+    assert_mask_within_data,
     canonical_reach,
     compute_accuracy_metrics,
     compute_quartile_accuracy,

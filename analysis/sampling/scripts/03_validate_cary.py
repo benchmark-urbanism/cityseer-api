@@ -123,9 +123,7 @@ def load_cary_network(force: bool = False):
     else:
         edge_files = sorted(CARY_EDGES_DIR.glob("tl_2023_*_edges.zip"))
         if not edge_files:
-            raise FileNotFoundError(
-                f"No TIGER edge files in {CARY_EDGES_DIR}. Run fetch_tiger_cary.py first."
-            )
+            raise FileNotFoundError(f"No TIGER edge files in {CARY_EDGES_DIR}. Run fetch_tiger_cary.py first.")
         print(f"Loading Cary network from {len(edge_files)} TIGER EDGES files")
         parts = [gpd.read_file(z).to_crs(CARY_CRS) for z in edge_files]
         edges_gdf = gpd.GeoDataFrame(pd.concat(parts, ignore_index=True), geometry="geometry", crs=CARY_CRS)

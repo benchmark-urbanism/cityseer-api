@@ -35,7 +35,8 @@ def main():
     net, nodes_gdf, live_mask, _ = _cary.load_cary_network()
     rows = []
     for dist in DISTANCES:
-        gt = pickle.load(open(CACHE_DIR / f"cary_ground_truth_{dist}m.pkl", "rb"))
+        with open(CACHE_DIR / f"cary_ground_truth_{dist}m.pkl", "rb") as f:
+            gt = pickle.load(f)
         true_h, true_b = gt["harmonic"], gt["betweenness"]
         for eps in EPSILONS:
             p = compute_distance_p(dist, epsilon=eps)

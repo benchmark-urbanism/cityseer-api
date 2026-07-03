@@ -1,3 +1,86 @@
+# v4.25.0 Release Notes
+
+## Headline
+
+v4.25 replaces the fixed centrality metric set with an **expression-based API**, adds the high-level **`CityNetwork`** class, redesigns **betweenness** to count all routes (fixing boundary roll-off and directed counting), and recalibrates **sampling** against three real networks. Backwards compatibility is a first-class concern: the 4.24 function names remain available as deprecated shims that produce the same default columns as before — see `COMPATIBILITY.md` for the full contract and migration table.
+
+## New Features
+
+### Expression-based centrality
+
+`centrality_shortest` and `centrality_simplest` now accept arbitrary metric expressions instead of a fixed metric set. Closeness and betweenness are dicts of `{label: expression}` over the variables `c` (network cost) and `p` (normalised progress, `c / threshold`), and `decay_fn` supplies distance weighting:
+
+```python
+net.centrality_shortest(
+    distances=[800, 2000],
+    closeness={"harmonic": "1/c", "gravity": "exp(-0.005 * c)"},
+    betweenness={"betweenness": "1"},
+    decay_fn="exp(-4 * p)",
+)
+```
+
+Each label becomes a `cc_{label}_{distance}` column. The default expressions reproduce the classic 4.24 metrics. Land-use aggregations gain per-label decay functions on the same principle (#175).
+
+### `CityNetwork` high-level API
+
+A new `CityNetwork` class wraps graph preparation and metrics behind a lean interface. Its defaults are intentionally minimal — a single harmonic closeness, a single betweenness, cycles off — and any keyword can be overridden. The classic functional API is unchanged and remains the compatibility surface.
+
+### Directed networks
+
+One-way street routing via directed graphs (#173). Directed betweenness counts each ordered pair fully (see Breaking Changes).
+
+### Demand-weighted betweenness
+
+`betweenness_demand` computes spatial-interaction (origin–destination weighted) flow betweenness (#176).
+
+### Sampling recalibrated (experimental)
+
+The distance-based sampling schedule is now calibrated on three real networks spanning the density range (Greater London, Madrid, and a low-density US suburb), instead of synthetic topologies. The default tolerance is now `epsilon=0.05` (was 0.06), tuned so the sparsest validated network preserves rankings (Spearman rho >= 0.95 at 1–20 km); the canonical grid spacing stays fixed at 175 m. Sampling remains opt-in via `sample=True` and experimental.
+
+### Statistics measure selection
+
+`compute_stats` accepts `measures=[...]` (e.g. `["mean", "count"]`) to compute only the statistics you need.
+
+### Other improvements
+
+- Impedances propagate through dual-graph construction.
+- Improved NetworkX round-trip for momepy interoperability.
+- Segment-length weighting via `segment_weighted=True` on the centrality functions.
+- Expression evaluation uses `exmex` (replacing the unmaintained `meval`), with `ln`, `log10`, `abs`, and `round` available in expressions.
+
+## Breaking Changes
+
+### Betweenness counts all routes
+
+Betweenness now sources from **every** node; the `live` designation only filters which nodes' values are reported. This fixes two long-standing issues: boundary nodes no longer lose credit for routes passing through them between buffer nodes (edge roll-off), and directed betweenness counts each ordered pair fully (previously halved). Consequences: on undirected, fully-live networks values are unchanged; on buffered networks, values near the boundary increase (they are now correct); on directed networks, values double relative to 4.24 (they were undercounted).
+
+### `segment_centrality` removed
+
+The continuous-segment engine is gone. Calling `networks.segment_centrality` raises `NotImplementedError` with migration guidance — use node-based centrality with `segment_weighted=True` for segment-length weighting.
+
+### Removed parameters
+
+`betas=` and `spatial_tolerance=` are removed and raise `TypeError`. Replace `betas` with the equivalent expression: `decay_fn="exp(-beta * c)"`. `source_indices` is also removed. The full removed-parameter table with migrations is in `COMPATIBILITY.md`.
+
+### Low-level API
+
+The Rust-level result and function signatures changed with the expression API. The low-level surface (`rustalgos`) does not carry a compatibility guarantee; the high-level `cityseer.metrics` functions do.
+
+## Backwards Compatibility
+
+- `node_centrality_shortest` and `node_centrality_simplest` remain available as deprecated shims producing the **same default columns and values** as 4.24 (`cc_beta_*`, `cc_harmonic_*`, `cc_betweenness_*`, `cc_betweenness_beta_*`, `cc_cycles_*`, ...). They emit `DeprecationWarning` and will be removed in a future major release.
+- Land-use and statistics functions keep the classic paired `_nw`/`_wt` default columns.
+- Columns prefixed `cc_` are managed by cityseer and are overwritten in place when a metric is recomputed for the same distance.
+- See `COMPATIBILITY.md` for the two-surface policy (classic functional API vs lean `CityNetwork`), the removed-parameter table, and the deprecation timeline.
+
+## Fixes
+
+- QGIS plugin: version check no longer reports a false mismatch between the plugin's `beta` spelling and pip's normalised `b` spelling.
+- `nx_from_osm_nx`: fixed a key-lookup bug after node key stringification.
+- Fixed node-weight semantics in centrality aggregation.
+- Docs generator renders deprecation notices instead of crashing (CI fix).
+- Release workflows serialised to avoid a tag race in `action-gh-release`.
+
 # v4.24.0 Release Notes
 
 ## New Features

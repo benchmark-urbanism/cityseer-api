@@ -417,9 +417,10 @@ class TestSamplingModel:
     """Tests for the Hoeffding/Eppstein–Wang reach → p sampling model."""
 
     def test_constants_match_paper(self):
-        """Default Hoeffding parameters match the paper defaults."""
-        assert sampling.HOEFFDING_EPSILON == 0.06
+        """Default Hoeffding parameters match the paper defaults (eps calibrated on the sparsest network)."""
+        assert sampling.HOEFFDING_EPSILON == 0.05
         assert sampling.HOEFFDING_DELTA == 0.1
+        assert sampling.GRID_SPACING == 175.0
 
     def test_compute_hoeffding_p_matches_formula(self):
         """compute_hoeffding_p implements k=log(2r/δ)/(2ε²), p=min(1,k/r)."""

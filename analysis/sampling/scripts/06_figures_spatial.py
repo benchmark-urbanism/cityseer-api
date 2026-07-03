@@ -6,11 +6,12 @@ Reads per-node sampled caches ({network}_sampled_{dist}m.pkl) produced by
 01_validate_gla.py and 02_validate_madrid.py, plus optional sensitivity CSVs.
 
 Figures:
-  - fig7_spatial_error_gla.png:      Spatial map of per-node absolute error (GLA, 20km)
-  - fig8_error_vs_reach.pdf:         Per-node error vs reach scatter (GLA + Madrid, 20km)
-  - fig9_residual_histogram.pdf:     Distribution of normalised residuals (GLA + Madrid, 20km)
-  - fig11_decile_transition.pdf:     Decile transition heatmap (GLA + Madrid, 20km)
-  - fig10_sensitivity.pdf:           ρ vs grid spacing s (GLA + Madrid, if sensitivity CSVs exist)
+  - fig7_rank_shift.png:             Spatial map of per-node rank shift (all networks, 20km)
+  - fig8_error_vs_reach.pdf:         Per-node error vs reach scatter (20km)
+  - fig9_residual_histogram.pdf:     Distribution of normalised residuals (20km)
+  - fig9b_rank_displacement.png:     Spatial rank displacement (20km)
+  - fig11_decile_transition.pdf:     Decile transition heatmap (all networks, 20km)
+  - fig10_sensitivity.pdf:           ρ vs grid spacing s (if sensitivity CSVs exist)
 
 Usage:
     python 06_figures_spatial.py
@@ -709,7 +710,9 @@ def _decile_panel(ax, true_vals, est_vals, title, colour, n_groups=10):
     return im, top_retention
 
 
-def generate_fig11_decile_transition(gla_data: dict, madrid_data: dict | None, dist: int, cary_data: dict | None = None):
+def generate_fig11_decile_transition(
+    gla_data: dict, madrid_data: dict | None, dist: int, cary_data: dict | None = None
+):
     """Decile transition matrix heatmap: 2x2 grid.
 
     For each (network, metric) combination, cross-tabulates true vs sampled

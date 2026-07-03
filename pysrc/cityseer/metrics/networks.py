@@ -36,6 +36,8 @@ corrected to approximate the full computation.
 :::note
 The reasons for picking one approach over another are varied:
 
+- Columns prefixed ``cc_`` are managed by cityseer: recomputing a metric for the same distance overwrites the
+matching ``cc_`` columns in place (intended for re-runs). Don't store your own data under this prefix.
 - Centralities can be distorted by messy graph topologies such as unnecessary intermediate points along streets
 (used to describe road curvature) or overly complex representations of street intersections. Clean the network
 first using the [`graph`](/tools/graphs) module (see the
