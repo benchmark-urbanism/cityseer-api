@@ -73,7 +73,7 @@ The lower-level API (`cityseer.tools`, `cityseer.metrics`) offers step-by-step c
 
 Localised metrics are directly comparable across different locations and cities because the analysis window is defined by the distance threshold, not by the extent of the dataset. Shorter distance thresholds capture local neighbourhood structure while longer thresholds reveal city-wide patterns.
 
-Nodes at the periphery of a study area can be marked as "dead" (non-live) using a boundary polygon. Dead nodes participate fully in network traversal but their own values are not reported: results are only written for live nodes. For closeness, dead nodes are skipped as sources in exact mode (a pure cost saving); for betweenness, every node serves as a source so that all routes passing through the study area — by design including routes that both start and end among dead nodes — credit the live nodes they traverse. This prevents artificially depressed values at the edges of the study area without discarding network connectivity. See the [Live Nodes](https://benchmark-urbanism.github.io/cityseer-examples/recipes/live_nodes.html) recipe for a worked example.
+Nodes at the periphery of a study area can be marked as "dead" (non-live) using a boundary polygon. Dead nodes participate fully in network traversal but their own values are not reported: results are only written for live nodes. For closeness, dead nodes are skipped as sources in exact mode (a pure cost saving); for betweenness, every node serves as a source so that all routes passing through the study area, by design including routes that both start and end among dead nodes, credit the live nodes they traverse. This prevents artificially depressed values at the edges of the study area without discarding network connectivity. See the [Live Nodes](https://benchmark-urbanism.github.io/cityseer-examples/recipes/live_nodes.html) recipe for a worked example.
 
 ### Primal and dual graphs
 
@@ -93,7 +93,7 @@ See the [Create Dual Graph](https://benchmark-urbanism.github.io/cityseer-exampl
 `cityseer` supports two routing heuristics:
 
 - **Shortest path**: Routes minimise cumulative physical distance along the network. A 400m route is preferred over a 600m route, regardless of how many turns are involved.
-- **Simplest path (angular)**: Routes minimise cumulative angular change — the total amount of turning at each junction. A pedestrian following a simplest path prefers to continue straight ahead rather than turning, even if a shorter alternative exists.
+- **Simplest path (angular)**: Routes minimise cumulative angular change, that is, the total amount of turning at each junction. A pedestrian following a simplest path prefers to continue straight ahead rather than turning, even if a shorter alternative exists.
 
 When to use each:
 
@@ -247,13 +247,13 @@ cn.centrality_simplest(
 
 Every node carries a `weight` (default `1.0`). Set it on the nodes `GeoDataFrame`, or add a `weight` attribute to your NetworkX nodes before ingestion, to apply gravity-style weighting to centrality:
 
-- **Closeness** weights each reachable node by its destination weight, so `density` becomes $\sum_j w_j$ (the sum of reachable node weights) rather than a plain count, and other closeness expressions are scaled accordingly. A node's own weight does **not** rescale its own score — weighting reflects the *opportunities it can reach*.
+- **Closeness** weights each reachable node by its destination weight, so `density` becomes $\sum_j w_j$ (the sum of reachable node weights) rather than a plain count, and other closeness expressions are scaled accordingly. A node's own weight does **not** rescale its own score; weighting reflects the *opportunities it can reach*.
 - **Betweenness** weights each origin–destination pair by the **product** of its endpoint weights $w_s \cdot w_t$, the standard gravity-flow form.
 
 The same weighting is applied identically whether or not [adaptive sampling](#adaptive-sampling) is used. With the default weights of `1.0` the results are unchanged from an unweighted analysis.
 
 :::note
-Node weights affect **centrality only**. Land-use accessibility, mixed-use diversity, and statistical aggregations are intentionally *not* node-weighted — they weight reachable land-use data points (optionally by [distance decay](#decay-functions)), not network nodes.
+Node weights affect **centrality only**. Land-use accessibility, mixed-use diversity, and statistical aggregations are intentionally *not* node-weighted; they weight reachable land-use data points (optionally by [distance decay](#decay-functions)), not network nodes.
 :::
 
 ### Segment-weighted centrality
@@ -273,8 +273,8 @@ cn.centrality_shortest(distances=[800], segment_weighted=True)
 
 For cases where only closeness or only betweenness is needed, convenience functions skip the unused category:
 
-- [`closeness_shortest`](/metrics/networks#closeness_shortest) / [`closeness_simplest`](/metrics/networks#closeness_simplest) — closeness only (betweenness disabled)
-- [`betweenness_shortest`](/metrics/networks#betweenness_shortest) / [`betweenness_simplest`](/metrics/networks#betweenness_simplest) — betweenness only (closeness and cycles disabled)
+- [`closeness_shortest`](/metrics/networks#closeness_shortest) / [`closeness_simplest`](/metrics/networks#closeness_simplest): closeness only (betweenness disabled)
+- [`betweenness_shortest`](/metrics/networks#betweenness_shortest) / [`betweenness_simplest`](/metrics/networks#betweenness_simplest): betweenness only (closeness and cycles disabled)
 
 ### Origin–destination and demand betweenness
 
@@ -310,13 +310,13 @@ Distance decay controls how feature importance or metric weighting decreases wit
 
 ### How decay weighting works
 
-A decay function maps **normalised progress** `p` to a weight. `p = 0` at the analysis node (the source) and `p = 1` at the distance (or time) cutoff, so `p = network_distance / threshold`. The function is evaluated **once per reached element** — for every reachable node in a centrality calculation, or every reachable data point in a land-use calculation — and the resulting weight scales that element's contribution to the metric (a count, a numerical value, or a diversity contribution).
+A decay function maps **normalised progress** `p` to a weight. `p = 0` at the analysis node (the source) and `p = 1` at the distance (or time) cutoff, so `p = network_distance / threshold`. The function is evaluated **once per reached element**, for every reachable node in a centrality calculation, or every reachable data point in a land-use calculation, and the resulting weight scales that element's contribution to the metric (a count, a numerical value, or a diversity contribution).
 
 A few properties are worth understanding:
 
 - **Per-threshold normalisation.** When several `distances` are requested, `p` is recomputed against each threshold independently. The same physical point therefore has a larger `p` (and so less weight under a decaying function) at a short threshold than at a long one, keeping every catchment internally consistent.
 - **Clamping (land-use only).** Land-use decay output is clamped to `[0, 1]`, so an expression can never produce negative or amplifying weights. Centrality expressions are **not** clamped, because they are general metric formulas (e.g. `1/c`) rather than weights.
-- **Flat by default for land-use.** With the default `"1"`, every reachable point contributes a weight of 1 — i.e. a plain unweighted count or sum within the threshold.
+- **Flat by default for land-use.** With the default `"1"`, every reachable point contributes a weight of 1, i.e. a plain unweighted count or sum within the threshold.
 - **Decay vs. metric.** In centrality the decay is simply one possible metric expression (the default `"exp(-4 * p)"` `decay`/`betweenness_decay` columns). In the land-use methods the decay is a separate `decay_fn` that multiplies whatever is being aggregated.
 
 ### When to use each preset
@@ -358,10 +358,10 @@ cn, data_gdf = cn.compute_stats(
 
 ### Multiple decays in one traversal
 
-The expensive part of a land-use computation is the network traversal from every node; applying a decay weight to the reachable points is cheap by comparison. So instead of calling a method once per decay shape — repeating the traversal each time — the land-use methods (`compute_accessibilities`, `compute_mixed_uses`, `compute_stats`) let `decay_fn` be a `{label: expression}` dict and compute **every decay variant in a single shared traversal**.
+The expensive part of a land-use computation is the network traversal from every node; applying a decay weight to the reachable points is cheap by comparison. So instead of calling a method once per decay shape, repeating the traversal each time, the land-use methods (`compute_accessibilities`, `compute_mixed_uses`, `compute_stats`) let `decay_fn` be a `{label: expression}` dict and compute **every decay variant in a single shared traversal**.
 
 - **Input.** `decay_fn` may be a single expression string, `None` (flat, the default), or a `{label: expression}` dict.
-- **Output naming.** Each label is appended to that variant's output columns: `decay_fn={"grav": ..., "raw": ...}` yields `cc_retail_grav_800`, `cc_retail_raw_800`, and so on. A plain string or `None` adds **no** suffix, so existing column names — and their values — are unchanged. The dict form is therefore purely additive and backwards compatible.
+- **Output naming.** Each label is appended to that variant's output columns: `decay_fn={"grav": ..., "raw": ...}` yields `cc_retail_grav_800`, `cc_retail_raw_800`, and so on. A plain string or `None` adds **no** suffix, so existing column names, and their values, are unchanged. The dict form is therefore purely additive and backwards compatible.
 - **When to use it.** Whenever you want the same features summarised under more than one distance weighting: a gravity-weighted *and* a plain count of the same amenity; or several catchment shapes (exponential, Gaussian, flat) for a sensitivity analysis. A pipeline that previously made *N* calls collapses to one.
 
 ```python
@@ -390,8 +390,8 @@ Centrality expressions use two variables: `c` (raw cost) and `p` (normalised pro
 
 [`compute_accessibilities`](/metrics/layers#compute_accessibilities) measures how many instances of each specified land-use category are reachable from every network node, and how far away the nearest instance is. For each category key and distance threshold it writes two kinds of column:
 
-- `cc_{category}_{distance}` — the (optionally decay-weighted) **count** of reachable instances of that category within the threshold. With the default flat decay this is a plain count; with a decaying `decay_fn` it becomes a distance-weighted "gravity" accessibility.
-- `cc_{category}_nearest_max_{distance}` — the network distance to the **nearest** instance of that category. This is written only at the largest threshold, since the nearest distance does not depend on the catchment size.
+- `cc_{category}_{distance}`: the (optionally decay-weighted) **count** of reachable instances of that category within the threshold. With the default flat decay this is a plain count; with a decaying `decay_fn` it becomes a distance-weighted "gravity" accessibility.
+- `cc_{category}_nearest_max_{distance}`: the network distance to the **nearest** instance of that category. This is written only at the largest threshold, since the nearest distance does not depend on the catchment size.
 
 Pass `decay_fn` to weight counts by distance, including the `{label: expression}` dict form to produce several weightings at once (see [Multiple decays in one traversal](#multiple-decays-in-one-traversal)). The `angular=True` parameter enables simplest-path routing.
 
@@ -434,7 +434,7 @@ See the [Mixed Uses](https://benchmark-urbanism.github.io/cityseer-examples/reci
 | MAD | `_mad` | Weighted median absolute deviation. |
 | Max / Min | `_max` / `_min` | Extremes of reachable values (not affected by `decay_fn`). |
 
-Pass a list of `stats_column_labels` to summarise several columns in one call, and a `decay_fn` to weight each value by distance — including the `{label: expression}` dict form for multiple weightings in a single traversal. By default all eight measures are produced; pass `measures=[...]` (any subset of the suffixes above) to compute only the ones you need. This keeps the output `GeoDataFrame` smaller and skips the weighted median/MAD sort when neither is requested.
+Pass a list of `stats_column_labels` to summarise several columns in one call, and a `decay_fn` to weight each value by distance, including the `{label: expression}` dict form for multiple weightings in a single traversal. By default all eight measures are produced; pass `measures=[...]` (any subset of the suffixes above) to compute only the ones you need. This keeps the output `GeoDataFrame` smaller and skips the weighted median/MAD sort when neither is requested.
 
 ```python
 cn, prices_gdf = cn.compute_stats(
@@ -499,11 +499,11 @@ See the [3D Elevation](https://benchmark-urbanism.github.io/cityseer-examples/re
 
 ## Edge Impedance
 
-Each network edge carries an `imp_factor` (default `1.0`) that multiplicatively scales its effective traversal cost — useful for representing road surface, road class, or any other static per-segment penalty. Impedance composes with the slope penalty above: the effective edge cost is `length × imp_factor × slope_pen`, so both factors apply together.
+Each network edge carries an `imp_factor` (default `1.0`) that multiplicatively scales its effective traversal cost, which is useful for representing road surface, road class, or any other static per-segment penalty. Impedance composes with the slope penalty above: the effective edge cost is `length × imp_factor × slope_pen`, so both factors apply together.
 
-Set per-edge impedance by including an `imp_factor` column on the `GeoDataFrame` passed to `CityNetwork.from_geopandas`, an `imp_factor` attribute on edges of a `NetworkX` graph passed to `CityNetwork.from_nx`, or via the `impedances={fid: value}` keyword on `CityNetwork.from_wkts`. The value is propagated through dual graph construction: each dual edge — which traverses half of each adjacent primal segment — receives the **length-weighted mean** of its two primal impedances, so an all-`1.0` primal yields `1.0` on the dual (fully backwards compatible).
+Set per-edge impedance by including an `imp_factor` column on the `GeoDataFrame` passed to `CityNetwork.from_geopandas`, an `imp_factor` attribute on edges of a `NetworkX` graph passed to `CityNetwork.from_nx`, or via the `impedances={fid: value}` keyword on `CityNetwork.from_wkts`. The value is propagated through dual graph construction: each dual edge, which traverses half of each adjacent primal segment, receives the **length-weighted mean** of its two primal impedances, so an all-`1.0` primal yields `1.0` on the dual (fully backwards compatible).
 
-Impedance applies to **shortest-path** routing (and any equivalent time-converted budget), including the reachability budget used by simplest-path (angular) analysis. The angular cost itself is purely geometric (cumulative turning) and is **not** scaled by `imp_factor` — only how far an angular traversal can reach within the time budget.
+Impedance applies to **shortest-path** routing (and any equivalent time-converted budget), including the reachability budget used by simplest-path (angular) analysis. The angular cost itself is purely geometric (cumulative turning) and is **not** scaled by `imp_factor`; only how far an angular traversal can reach within the time budget.
 
 ## Column Naming Conventions
 
@@ -565,7 +565,7 @@ For large networks at long distance thresholds, `cityseer` offers an experimenta
 
 Sampling is applied per distance threshold. Short distances where few nodes are reachable run at full computation, since sampling offers no speedup. Longer distances automatically use sparser sampling as the number of reachable nodes increases. If the computed sampling rate offers no speedup for a given distance, that distance runs exactly.
 
-The `epsilon` parameter controls the error tolerance. The default of 0.05 is calibrated on real networks spanning the density range — from dense metropolitan grids to a sparse suburb — so that node rankings are preserved (Spearman ρ ≥ 0.95); denser networks clear the target comfortably. Both `centrality_shortest` and `centrality_simplest` support sampling. Pass `sample=True` to enable:
+The `epsilon` parameter controls the error tolerance. The default of 0.05 is calibrated on real networks spanning the density range, from dense metropolitan grids to a sparse suburb, so that node rankings are preserved (Spearman ρ ≥ 0.95); denser networks clear the target comfortably, while networks sparser than a typical suburb may require a tighter tolerance (see the [sampling page](/metrics/sampling)). Both `centrality_shortest` and `centrality_simplest` support sampling. Pass `sample=True` to enable:
 
 ```python
 cn.centrality_shortest(
