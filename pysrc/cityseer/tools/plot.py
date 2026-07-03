@@ -132,7 +132,7 @@ def plot_nx_primal_or_dual(  # noqa
     Examples
     --------
     Plot either or both primal and dual representations of a `networkX MultiGraph`. Only call this function directly if
-    explicitly printing both primal and dual graphs. Otherwise, use the simplified [`plot_nx`](/tools/plot#plot-nx)
+    explicitly printing both primal and dual graphs. Otherwise, use the simplified [`plot_nx`](/tools/plot#plot_nx)
     method instead.
 
     ```py
@@ -448,7 +448,7 @@ def plot_assignment(
     Parameters
     ----------
     network_structure: rustalgos.graph.NetworkStructure
-        A [`rustalgos.graph.NetworkStructure`](/rustalgos/rustalgos#networkstructure) instance.
+        A [`rustalgos.graph.NetworkStructure`](/rustalgos/graph#networkstructure) instance.
     nx_multigraph: MultiGraph
         A `NetworkX` MultiGraph.
     data_map: DataMap
@@ -583,7 +583,7 @@ def plot_network_structure(
     Parameters
     ----------
     network_structure: rustalgos.graph.NetworkStructure
-        A [`rustalgos.graph.NetworkStructure`](/rustalgos/rustalgos#networkstructure) instance.
+        A [`rustalgos.graph.NetworkStructure`](/rustalgos/graph#networkstructure) instance.
     data_map: DataMap
         An optional `rustalgos.data.DataMap` object with data entries for plotting.
     poly: geometry.Polygon

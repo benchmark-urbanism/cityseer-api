@@ -6,7 +6,7 @@ layout: ../../layouts/PageLayout.astro
 # decay
 
 
- Functions for generating decay expression strings. Decay expressions control how feature importance decreases with distance from an analysis point. They use a single variable `p` that ranges from 0 at the analysis point (source) to 1 at the distance threshold (cutoff), where `p = network_distance / max_distance`. The functions below produce expression strings that can be passed directly to the `decay_fn` parameter of [`betweenness_demand`](/metrics/networks#betweenness-demand), [`compute_stats`](/metrics/layers#compute-stats), [`compute_accessibilities`](/metrics/layers#compute-accessibilities), and other analysis functions.
+ Functions for generating decay expression strings. Decay expressions control how feature importance decreases with distance from an analysis point. They use a single variable `p` that ranges from 0 at the analysis point (source) to 1 at the distance threshold (cutoff), where `p = network_distance / max_distance`. The functions below produce expression strings that can be passed directly to the `decay_fn` parameter of [`betweenness_demand`](/metrics/networks#betweenness_demand), [`compute_stats`](/metrics/layers#compute_stats), [`compute_accessibilities`](/metrics/layers#compute_accessibilities), and other analysis functions.
 
 ```python
 from cityseer import decay

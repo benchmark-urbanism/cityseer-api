@@ -8,8 +8,8 @@ layout: ../../layouts/PageLayout.astro
 
  Compute network centralities. Two centrality methods are available, using shortest-path (metric) or simplest-path (angular) heuristics:
 
-- [`centrality_shortest`](#centrality-shortest)
-- [`centrality_simplest`](#centrality-simplest)
+- [`centrality_shortest`](#centrality_shortest)
+- [`centrality_simplest`](#centrality_simplest)
 
  Metrics are specified as ``{name: expression}`` dicts using variables ``c`` (cost) and ``p`` (normalised progress). For shortest paths, ``c`` is metric distance and ``p = c / threshold``. For simplest paths, ``c`` is angular cost and ``p`` is normalised time progress.
 
@@ -41,7 +41,7 @@ first using the [`graph`](/tools/graphs) module (see the
 inverse-distance calculation amplifies small distances. This is more likely with simplest-path measures or short
 distance thresholds.
 - Simplest (angular) measures require a dual graph representation. Convert primal graphs with
-[`graphs.nx_to_dual`](/tools/graphs#nx-to-dual) before ingesting them.
+[`graphs.nx_to_dual`](/tools/graphs#nx_to_dual) before ingesting them.
 - Metrics should only be compared across networks that use the same graph representation (both primal or both
 dual), because the differing number of nodes and edges between representations affects the metric values. For
 example, a four-way intersection consisting of one node with four edges on a primal graph translates to four
@@ -152,7 +152,7 @@ closeness or Hillier normalisation instead.
   </div>
   <div class="desc">
 
- A [`rustalgos.graph.NetworkStructure`](/rustalgos/rustalgos#networkstructure).</div>
+ A [`rustalgos.graph.NetworkStructure`](/rustalgos/graph#networkstructure).</div>
 </div>
 
 <div class="param-set">
@@ -533,7 +533,7 @@ print(nodes_gdf[["cc_harmonic_400", "cc_betweenness_800"]])
   </div>
   <div class="desc">
 
- A [`rustalgos.graph.NetworkStructure`](/rustalgos/rustalgos#networkstructure).</div>
+ A [`rustalgos.graph.NetworkStructure`](/rustalgos/graph#networkstructure).</div>
 </div>
 
 <div class="param-set">
@@ -553,7 +553,7 @@ print(nodes_gdf[["cc_harmonic_400", "cc_betweenness_800"]])
   </div>
   <div class="desc">
 
- An [`OdMatrix`](/rustalgos/centrality#odmatrix) mapping (origin, destination) node pairs to trip weights. Build with [`build_od_matrix`](/metrics/networks#build-od-matrix).</div>
+ An [`OdMatrix`](/rustalgos/centrality#odmatrix) mapping (origin, destination) node pairs to trip weights. Build with [`build_od_matrix`](/metrics/networks#build_od_matrix).</div>
 </div>
 
 <div class="param-set">
@@ -712,7 +712,7 @@ print(nodes_gdf[["cc_harmonic_400", "cc_betweenness_800"]])
 
  where :math:`f` is ``decay_fn`` and :math:`c_{od}` is the network distance. Each origin's full weight is conserved and distributed across reachable destinations (destination totals are not constrained — that would require a doubly-constrained / Furness model). The gravity model is the classic instance of this form, recovered with an exponential ``decay_fn``.
 
- This is the modelled-matrix counterpart to [`betweenness_od`](#betweenness-od): rather than supplying an explicit OD matrix, the per-pair weights are derived from the network distances revealed during routing, computed in a single traversal per origin.
+ This is the modelled-matrix counterpart to [`betweenness_od`](#betweenness_od): rather than supplying an explicit OD matrix, the per-pair weights are derived from the network distances revealed during routing, computed in a single traversal per origin.
 ### Parameters
 <div class="param-set">
   <div class="def">
@@ -721,7 +721,7 @@ print(nodes_gdf[["cc_harmonic_400", "cc_betweenness_800"]])
   </div>
   <div class="desc">
 
- A [`rustalgos.graph.NetworkStructure`](/rustalgos/rustalgos#networkstructure).</div>
+ A [`rustalgos.graph.NetworkStructure`](/rustalgos/graph#networkstructure).</div>
 </div>
 
 <div class="param-set">
@@ -960,7 +960,7 @@ print(nodes_gdf[["cc_harmonic_400", "cc_betweenness_800"]])
   </div>
   <div class="desc">
 
- A [`rustalgos.graph.NetworkStructure`](/rustalgos/rustalgos#networkstructure).</div>
+ A [`rustalgos.graph.NetworkStructure`](/rustalgos/graph#networkstructure).</div>
 </div>
 
 <div class="param-set">
@@ -1456,13 +1456,13 @@ print(nodes_gdf[["cc_harmonic_400_ang", "cc_betweenness_800_ang"]])
 </div>
 
 
- Deprecated 4.24 alias for [`centrality_shortest`](#centrality-shortest).
+ Deprecated 4.24 alias for [`centrality_shortest`](#centrality_shortest).
 ### Deprecated
 
 Since version 4.25. Use `centrality_shortest` with `closeness` / `betweenness` expression dicts. This shim preserves
 the 4.24 output (columns `cc_density`, `cc_farness`, `cc_harmonic`, `cc_beta`, `cc_cycles`,
 `cc_hillier`, `cc_betweenness`, `cc_betweenness_beta`) and will be removed in a future major release.
-See COMPATIBILITY.md.
+See [COMPATIBILITY.md](https://github.com/benchmark-urbanism/cityseer-api/blob/master/COMPATIBILITY.md).
 
 
 </div>
@@ -1558,12 +1558,12 @@ See COMPATIBILITY.md.
 </div>
 
 
- Deprecated 4.24 alias for [`centrality_simplest`](#centrality-simplest).
+ Deprecated 4.24 alias for [`centrality_simplest`](#centrality_simplest).
 ### Deprecated
 
 Since version 4.25. Use `centrality_simplest` with `closeness` / `betweenness` expression dicts. This shim preserves the
 4.24 output (angular columns `cc_density_ang`, `cc_farness_ang`, `cc_harmonic_ang`, `cc_hillier_ang`,
-`cc_betweenness_ang`) and will be removed in a future major release. See COMPATIBILITY.md.
+`cc_betweenness_ang`) and will be removed in a future major release. See [COMPATIBILITY.md](https://github.com/benchmark-urbanism/cityseer-api/blob/master/COMPATIBILITY.md).
 
 
 </div>
@@ -1595,7 +1595,7 @@ Since version 4.25. Use `centrality_simplest` with `closeness` / `betweenness` e
 
 Since version 4.25. The continuous-segment engine (`segment_density` / `harmonic` / `beta` / `betweenness`) was removed
 at the low level, so the old numbers cannot be reproduced. The nearest equivalent is
-`centrality_shortest(..., segment_weighted=True)` — a different calculation. See COMPATIBILITY.md.
+`centrality_shortest(..., segment_weighted=True)` — a different calculation. See [COMPATIBILITY.md](https://github.com/benchmark-urbanism/cityseer-api/blob/master/COMPATIBILITY.md).
 
 
 </div>

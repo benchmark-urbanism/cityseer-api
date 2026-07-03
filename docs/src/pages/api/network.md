@@ -20,10 +20,10 @@ layout: ../../layouts/PageLayout.astro
 
  Construct instances via the class methods rather than calling ``__init__`` directly:
 
-- [`from_geopandas`](#from-geopandas) -- from a GeoDataFrame of LineString geometries
-- [`from_wkts`](#from-wkts) -- from a dictionary of WKT strings or Shapely geometries
-- [`from_nx`](#from-nx) -- from a cityseer-compatible NetworkX MultiGraph
-- [`from_osm`](#from-osm) -- from OpenStreetMap via a bounding polygon
+- [`from_geopandas`](#from_geopandas) -- from a GeoDataFrame of LineString geometries
+- [`from_wkts`](#from_wkts) -- from a dictionary of WKT strings or Shapely geometries
+- [`from_nx`](#from_nx) -- from a cityseer-compatible NetworkX MultiGraph
+- [`from_osm`](#from_osm) -- from OpenStreetMap via a bounding polygon
 - [`load`](#load) -- from a previously saved parquet/pickle pair
 
  Most methods return ``self`` to support method chaining:
@@ -39,7 +39,7 @@ cn = (
 
 :::note
 The underlying graph construction automatically cleans input geometries by removing short self-loops, near-duplicate
-edges, and short danglers. Use the [`feature_status`](#feature-status) property to inspect which input features were
+edges, and short danglers. Use the ``feature_status`` property to inspect which input features were
 filtered and why.
 :::
 
@@ -50,13 +50,13 @@ filtered and why.
 - **Shortest-path** analysis uses metric distances along street segments.
 - **Simplest-path** analysis uses cumulative angular change along streets and at intersections as the routing cost.
 
- Because the dual is built automatically, there is no need to call ``nx_to_dual`` when using ``CityNetwork``. Although the topology is dual internally, results are visualised and exported as the original street segment geometries via [`to_geopandas`](#to-geopandas), so each row in the output corresponds to one input street.
+ Because the dual is built automatically, there is no need to call ``nx_to_dual`` when using ``CityNetwork``. Although the topology is dual internally, results are visualised and exported as the original street segment geometries via [`to_geopandas`](#to_geopandas), so each row in the output corresponds to one input street.
 
  ### Working with results
 
  All computed metrics are written to the internal ``nodes_gdf`` GeoDataFrame. Since ``CityNetwork`` uses a dual graph, each row in ``nodes_gdf`` represents a street segment, with a Point geometry at the segment midpoint.
 
- To retrieve results with the original LineString geometries, use [`to_geopandas`](#to-geopandas):
+ To retrieve results with the original LineString geometries, use [`to_geopandas`](#to_geopandas):
 
 ```python
 cn = CityNetwork.from_geopandas(edges_gdf, crs=32632)
@@ -797,7 +797,7 @@ assert cn.is_directed
   </div>
   <div class="desc">
 
- Additional keyword arguments passed to [`io.osm_graph_from_poly`](/tools/io#osm-graph-from-poly).</div>
+ Additional keyword arguments passed to [`io.osm_graph_from_poly`](/tools/io#osm_graph_from_poly).</div>
 </div>
 
 ### Returns
@@ -902,7 +902,7 @@ cn.centrality_shortest(distances=[400, 800])
 </div>
 
 
- Set live/dead node status based on a boundary polygon. Nodes whose midpoints fall inside the polygon are marked ``live``; others are marked ``dead``. Dead nodes are excluded from centrality source computations but remain reachable as targets.
+ Set live/dead node status based on a boundary polygon. Nodes whose midpoints fall inside the polygon are marked ``live``; others are marked ``dead``. Dead nodes participate in traversal but their own values are not reported. Closeness skips dead sources in exact mode (a cost saving); betweenness sources from every node so that routes through the study area — including those between dead nodes — credit the live nodes they traverse.
 ### Parameters
 <div class="param-set">
   <div class="def">
@@ -1088,7 +1088,7 @@ print(cn_restored.nodes_gdf["cc_harmonic_800"])
 </div>
 
 
- Compute shortest-path (metric) centrality. Wraps [`centrality_shortest`](/metrics/networks#centrality-shortest). All keyword arguments are forwarded; see that function for the full parameter list including ``distances``, ``minutes``, ``closeness``, ``betweenness``, ``cycles``, ``postprocess``, ``segment_weighted``, ``sample``, and ``epsilon``.
+ Compute shortest-path (metric) centrality. Wraps [`centrality_shortest`](/metrics/networks#centrality_shortest). All keyword arguments are forwarded; see that function for the full parameter list including ``distances``, ``minutes``, ``closeness``, ``betweenness``, ``cycles``, ``postprocess``, ``segment_weighted``, ``sample``, and ``epsilon``.
 ### Returns
 <div class="param-set">
   <div class="def">
@@ -1162,7 +1162,7 @@ cn.centrality_shortest(
 </div>
 
 
- Compute simplest-path (angular) centrality. Wraps [`centrality_simplest`](/metrics/networks#centrality-simplest). All keyword arguments are forwarded; see that function for the full parameter list.
+ Compute simplest-path (angular) centrality. Wraps [`centrality_simplest`](/metrics/networks#centrality_simplest). All keyword arguments are forwarded; see that function for the full parameter list.
 ### Returns
 <div class="param-set">
   <div class="def">
@@ -1227,7 +1227,7 @@ cn.centrality_simplest(distances=[400, 800, 1600])
 
  Build an origin-destination (OD) matrix for OD-weighted betweenness. In standard betweenness, every pair of nodes contributes equally. OD-weighted betweenness instead weights each pair by observed trip counts between their respective zones (e.g. commuter cycling counts), so streets carrying more actual traffic receive higher scores.
 
- Wraps [`build_od_matrix`](/metrics/networks#build-od-matrix). See that function for the full parameter list.
+ Wraps [`build_od_matrix`](/metrics/networks#build_od_matrix). See that function for the full parameter list.
 ### Parameters
 <div class="param-set">
   <div class="def">
@@ -1257,7 +1257,7 @@ cn.centrality_simplest(distances=[400, 800, 1600])
   </div>
   <div class="desc">
 
- An OD matrix for use with [`betweenness_od`](#betweenness-od).</div>
+ An OD matrix for use with [`betweenness_od`](#betweenness_od).</div>
 </div>
 
 
@@ -1293,7 +1293,7 @@ cn.centrality_simplest(distances=[400, 800, 1600])
 
  Compute OD-weighted betweenness centrality. Weights betweenness by actual origin-destination trip counts rather than treating all paths equally. Only source nodes with outbound trips are traversed, and each shortest-path contribution is scaled by the corresponding OD weight.
 
- Wraps [`betweenness_od`](/metrics/networks#betweenness-od). See that function for the full parameter list.
+ Wraps [`betweenness_od`](/metrics/networks#betweenness_od). See that function for the full parameter list.
 ### Parameters
 <div class="param-set">
   <div class="def">
@@ -1302,7 +1302,7 @@ cn.centrality_simplest(distances=[400, 800, 1600])
   </div>
   <div class="desc">
 
- An OD matrix from [`build_od_matrix`](#build-od-matrix).</div>
+ An OD matrix from [`build_od_matrix`](#build_od_matrix).</div>
 </div>
 
 ### Returns
@@ -1350,7 +1350,7 @@ cn.centrality_simplest(distances=[400, 800, 1600])
 
  Compute land-use accessibility metrics. Counts how many instances of each specified land-use category (e.g. retail, parks) are reachable within each distance threshold, and records the nearest distance to each category.
 
- Wraps [`compute_accessibilities`](/metrics/layers#compute-accessibilities). All additional keyword arguments are forwarded; see that function for the full parameter list including ``landuse_column_label``, ``accessibility_keys``, ``distances``, ``minutes``, ``decay_fn``, and ``angular``. ``decay_fn`` accepts a single expression or a ``{label: expression}`` dict that computes several decay variants in one network traversal, each label suffixing its output columns.
+ Wraps [`compute_accessibilities`](/metrics/layers#compute_accessibilities). All additional keyword arguments are forwarded; see that function for the full parameter list including ``landuse_column_label``, ``accessibility_keys``, ``distances``, ``minutes``, ``decay_fn``, and ``angular``. ``decay_fn`` accepts a single expression or a ``{label: expression}`` dict that computes several decay variants in one network traversal, each label suffixing its output columns.
 ### Parameters
 <div class="param-set">
   <div class="def">
@@ -1435,7 +1435,7 @@ print(cn.nodes_gdf["cc_park_nearest_max_800"])
 
  Compute mixed-use diversity metrics. Measures the diversity of land-use categories reachable from each node using Hill numbers: q=0 counts how many distinct types are present, q=1 measures diversity accounting for how evenly types are represented, and q=2 gives greater weight to the most common types.
 
- Wraps [`compute_mixed_uses`](/metrics/layers#compute-mixed-uses). All additional keyword arguments are forwarded; see that function for the full parameter list including ``landuse_column_label``, ``distances``, ``minutes``, ``compute_hill``, ``compute_shannon``, ``compute_gini``, ``decay_fn``, and ``angular``. ``decay_fn`` accepts a single expression or a ``{label: expression}`` dict that computes several decay variants in one network traversal, each label suffixing its output columns (only the Hill measures vary with decay).
+ Wraps [`compute_mixed_uses`](/metrics/layers#compute_mixed_uses). All additional keyword arguments are forwarded; see that function for the full parameter list including ``landuse_column_label``, ``distances``, ``minutes``, ``compute_hill``, ``compute_shannon``, ``compute_gini``, ``decay_fn``, and ``angular``. ``decay_fn`` accepts a single expression or a ``{label: expression}`` dict that computes several decay variants in one network traversal, each label suffixing its output columns (only the Hill measures vary with decay).
 ### Parameters
 <div class="param-set">
   <div class="def">
@@ -1514,7 +1514,7 @@ print(cn.nodes_gdf["cc_hill_q0_800"])
 
  Compute statistical aggregations of numerical data over the network. Aggregates numerical attributes (e.g. property prices, floor areas) within network-distance thresholds, computing weighted statistics (mean, sum, min, max, variance, etc.) at each node.
 
- Wraps [`compute_stats`](/metrics/layers#compute-stats). All additional keyword arguments are forwarded; see that function for the full parameter list including ``stats_column_labels``, ``distances``, ``minutes``, ``decay_fn``, and ``angular``. ``decay_fn`` accepts a single expression or a ``{label: expression}`` dict that computes several decay variants in one network traversal, each label suffixing its output columns.
+ Wraps [`compute_stats`](/metrics/layers#compute_stats). All additional keyword arguments are forwarded; see that function for the full parameter list including ``stats_column_labels``, ``distances``, ``minutes``, ``decay_fn``, and ``angular``. ``decay_fn`` accepts a single expression or a ``{label: expression}`` dict that computes several decay variants in one network traversal, each label suffixing its output columns.
 ### Parameters
 <div class="param-set">
   <div class="def">
@@ -1605,7 +1605,7 @@ print(cn.nodes_gdf["cc_floor_area_sum_1600"])
 
  Add GTFS (General Transit Feed Specification) public transport data to the network. Integrates transit stops and routes so that centrality and accessibility analyses account for public transport connections.
 
- Wraps [`io.add_transport_gtfs`](/tools/io#add-transport-gtfs).
+ Wraps [`io.add_transport_gtfs`](/tools/io#add_transport_gtfs).
 ### Parameters
 <div class="param-set">
   <div class="def">
@@ -1671,7 +1671,7 @@ print(cn.nodes_gdf["cc_floor_area_sum_1600"])
 </div>
 
 
- Convert the network to a NetworkX MultiGraph (or MultiDiGraph if directed). If the network was built with [`from_nx`](#from-nx), returns a copy of the original graph with computed centrality and layer columns added to each edge's data dictionary. Otherwise builds a new cityseer-compatible undirected graph from the internal GeoDataFrame.
+ Convert the network to a NetworkX MultiGraph (or MultiDiGraph if directed). If the network was built with [`from_nx`](#from_nx), returns a copy of the original graph with computed centrality and layer columns added to each edge's data dictionary. Otherwise builds a new cityseer-compatible undirected graph from the internal GeoDataFrame.
 ### Returns
 <div class="param-set">
   <div class="def">
@@ -1691,7 +1691,7 @@ print(cn.nodes_gdf["cc_floor_area_sum_1600"])
   </div>
   <div class="desc">
 
- If the network is directed but was not built via [`from_nx`](#from-nx) (no source graph to export).</div>
+ If the network is directed but was not built via [`from_nx`](#from_nx) (no source graph to export).</div>
 </div>
 
 ### Notes

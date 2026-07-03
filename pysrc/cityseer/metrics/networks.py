@@ -3,8 +3,8 @@ Compute network centralities.
 
 Two centrality methods are available, using shortest-path (metric) or simplest-path (angular) heuristics:
 
-- [`centrality_shortest`](#centrality-shortest)
-- [`centrality_simplest`](#centrality-simplest)
+- [`centrality_shortest`](#centrality_shortest)
+- [`centrality_simplest`](#centrality_simplest)
 
 Metrics are specified as ``{name: expression}`` dicts using variables ``c`` (cost) and ``p`` (normalised
 progress). For shortest paths, ``c`` is metric distance and ``p = c / threshold``. For simplest paths,
@@ -46,7 +46,7 @@ first using the [`graph`](/tools/graphs) module (see the
 inverse-distance calculation amplifies small distances. This is more likely with simplest-path measures or short
 distance thresholds.
 - Simplest (angular) measures require a dual graph representation. Convert primal graphs with
-  [`graphs.nx_to_dual`](/tools/graphs#nx-to-dual) before ingesting them.
+  [`graphs.nx_to_dual`](/tools/graphs#nx_to_dual) before ingesting them.
 - Metrics should only be compared across networks that use the same graph representation (both primal or both
 dual), because the differing number of nodes and edges between representations affects the metric values. For
 example, a four-way intersection consisting of one node with four edges on a primal graph translates to four
@@ -251,7 +251,7 @@ def centrality_shortest(
     Parameters
     ----------
     network_structure
-        A [`rustalgos.graph.NetworkStructure`](/rustalgos/rustalgos#networkstructure).
+        A [`rustalgos.graph.NetworkStructure`](/rustalgos/graph#networkstructure).
     nodes_gdf
         A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe)
         representing nodes. The outputs of calculations will be written to this `GeoDataFrame`.
@@ -552,13 +552,13 @@ def betweenness_od(
     Parameters
     ----------
     network_structure
-        A [`rustalgos.graph.NetworkStructure`](/rustalgos/rustalgos#networkstructure).
+        A [`rustalgos.graph.NetworkStructure`](/rustalgos/graph#networkstructure).
     nodes_gdf
         A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe)
         representing nodes. The outputs of calculations will be written to this `GeoDataFrame`.
     od_matrix
         An [`OdMatrix`](/rustalgos/centrality#odmatrix) mapping (origin, destination) node pairs to trip weights.
-        Build with [`build_od_matrix`](/metrics/networks#build-od-matrix).
+        Build with [`build_od_matrix`](/metrics/networks#build_od_matrix).
     distances: list[int]
         Distance thresholds in metres at which to compute betweenness.
     minutes: list[float]
@@ -632,14 +632,14 @@ def betweenness_demand(
     constrained — that would require a doubly-constrained / Furness model). The gravity model is the
     classic instance of this form, recovered with an exponential ``decay_fn``.
 
-    This is the modelled-matrix counterpart to [`betweenness_od`](#betweenness-od): rather than
+    This is the modelled-matrix counterpart to [`betweenness_od`](#betweenness_od): rather than
     supplying an explicit OD matrix, the per-pair weights are derived from the network distances
     revealed during routing, computed in a single traversal per origin.
 
     Parameters
     ----------
     network_structure
-        A [`rustalgos.graph.NetworkStructure`](/rustalgos/rustalgos#networkstructure).
+        A [`rustalgos.graph.NetworkStructure`](/rustalgos/graph#networkstructure).
     nodes_gdf
         A nodes `GeoDataFrame`; flow betweenness columns are written to it and it is returned.
     origins_gdf
@@ -727,7 +727,7 @@ def centrality_simplest(
     Parameters
     ----------
     network_structure
-        A [`rustalgos.graph.NetworkStructure`](/rustalgos/rustalgos#networkstructure).
+        A [`rustalgos.graph.NetworkStructure`](/rustalgos/graph#networkstructure).
     nodes_gdf
         A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe)
         representing nodes. The outputs of calculations will be written to this `GeoDataFrame`.
@@ -982,7 +982,7 @@ def betweenness_simplest(
 # These reproduce the pre-4.25 functional API (names, parameters, output column
 # names and values) by translating old-style calls into the expression engine.
 # They add no algorithms of their own and are scheduled for removal a few major
-# releases on. See COMPATIBILITY.md.
+# releases on. See [COMPATIBILITY.md](https://github.com/benchmark-urbanism/cityseer-api/blob/master/COMPATIBILITY.md).
 # ---------------------------------------------------------------------------
 
 
@@ -1012,13 +1012,13 @@ def node_centrality_shortest(
     sample: bool = False,
     epsilon: float | None = None,
 ) -> gpd.GeoDataFrame:
-    """Deprecated 4.24 alias for [`centrality_shortest`](#centrality-shortest).
+    """Deprecated 4.24 alias for [`centrality_shortest`](#centrality_shortest).
 
     .. deprecated:: 4.25
         Use `centrality_shortest` with `closeness` / `betweenness` expression dicts. This shim preserves
         the 4.24 output (columns `cc_density`, `cc_farness`, `cc_harmonic`, `cc_beta`, `cc_cycles`,
         `cc_hillier`, `cc_betweenness`, `cc_betweenness_beta`) and will be removed in a future major release.
-        See COMPATIBILITY.md.
+        See [COMPATIBILITY.md](https://github.com/benchmark-urbanism/cityseer-api/blob/master/COMPATIBILITY.md).
     """
     warnings.warn(
         "node_centrality_shortest is deprecated since 4.25; use centrality_shortest "
@@ -1067,12 +1067,12 @@ def node_centrality_simplest(
     sample: bool = False,
     epsilon: float | None = None,
 ) -> gpd.GeoDataFrame:
-    """Deprecated 4.24 alias for [`centrality_simplest`](#centrality-simplest).
+    """Deprecated 4.24 alias for [`centrality_simplest`](#centrality_simplest).
 
     .. deprecated:: 4.25
         Use `centrality_simplest` with `closeness` / `betweenness` expression dicts. This shim preserves the
         4.24 output (angular columns `cc_density_ang`, `cc_farness_ang`, `cc_harmonic_ang`, `cc_hillier_ang`,
-        `cc_betweenness_ang`) and will be removed in a future major release. See COMPATIBILITY.md.
+        `cc_betweenness_ang`) and will be removed in a future major release. See [COMPATIBILITY.md](https://github.com/benchmark-urbanism/cityseer-api/blob/master/COMPATIBILITY.md).
     """
     warnings.warn(
         "node_centrality_simplest is deprecated since 4.25; use centrality_simplest with "
@@ -1111,7 +1111,7 @@ def segment_centrality(*_args, **_kwargs) -> gpd.GeoDataFrame:
     .. deprecated:: 4.25
         The continuous-segment engine (`segment_density` / `harmonic` / `beta` / `betweenness`) was removed
         at the low level, so the old numbers cannot be reproduced. The nearest equivalent is
-        `centrality_shortest(..., segment_weighted=True)` — a different calculation. See COMPATIBILITY.md.
+        `centrality_shortest(..., segment_weighted=True)` — a different calculation. See [COMPATIBILITY.md](https://github.com/benchmark-urbanism/cityseer-api/blob/master/COMPATIBILITY.md).
     """
     raise NotImplementedError(
         "segment_centrality was removed in 4.25: its continuous-segment engine is gone, so the old "

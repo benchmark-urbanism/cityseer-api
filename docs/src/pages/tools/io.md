@@ -13,8 +13,8 @@ layout: ../../layouts/PageLayout.astro
 ``NetworkStructure`` instances. However, the graph simplification and cleaning pipeline
 (``osm_graph_from_poly``, ``nx_from_osm``, and the functions in the ``graphs`` module) does not preserve edge
 directionality. A ``MultiDiGraph`` should therefore not be passed through those functions before conversion.
-For the high-level API, use [`CityNetwork.from_nx`](/api/network#from-nx) with a ``MultiDiGraph`` or
-[`CityNetwork.from_geopandas`](/api/network#from-geopandas) with ``directed=True`` and an ``oneway`` column.
+For the high-level API, use [`CityNetwork.from_nx`](/api/network#from_nx) with a ``MultiDiGraph`` or
+[`CityNetwork.from_geopandas`](/api/network#from_geopandas) with ``directed=True`` and an ``oneway`` column.
 :::
 
 
@@ -178,7 +178,7 @@ For the high-level API, use [`CityNetwork.from_nx`](/api/network#from-nx) with a
 </div>
 
 
- Buffer a point and return a `shapely` Polygon. This function can be used to prepare a buffered point `Polygon` for passing to [`osm_graph_from_poly()`](#osm-graph-from-poly). Expects WGS 84 / EPSG 4326 input coordinates. If `projected` is `True` then a UTM converted polygon will be returned. Otherwise returned as WGS 84 polygon in geographic coords.
+ Buffer a point and return a `shapely` Polygon. This function can be used to prepare a buffered point `Polygon` for passing to [`osm_graph_from_poly()`](#osm_graph_from_poly). Expects WGS 84 / EPSG 4326 input coordinates. If `projected` is `True` then a UTM converted polygon will be returned. Otherwise returned as WGS 84 polygon in geographic coords.
 ### Parameters
 <div class="param-set">
   <div class="def">
@@ -278,7 +278,7 @@ For the high-level API, use [`CityNetwork.from_nx`](/api/network#from-nx) with a
  Fetches an OSM response.
 :::note
 This function requires a valid OSM request. If you prepare a polygonal extents then it may be easier to use
-[`osm_graph_from_poly()`](#osm-graph-from-poly), which would call this method on your behalf and then
+[`osm_graph_from_poly()`](#osm_graph_from_poly), which would call this method on your behalf and then
 builds a graph automatically.
 :::
 ### Parameters
@@ -566,7 +566,7 @@ builds a graph automatically.
 
  The following is the default query which you can adapt for your purposes. Notice the `geom_osm` f-string interpolation key (for injecting the geometry) and the use of `out qt;` instead of `out skel qt;`.
 
-```python
+```text
 /* https://wiki.openstreetmap.org/wiki/Overpass_API/Overpass_QL */
 [out:json];
 (way["highway"]
@@ -679,7 +679,7 @@ out qt;
 
  Copy an [`OSMnx`](https://osmnx.readthedocs.io/) directed `MultiDiGraph` to a `cityseer` compatible graph. When ``directed=False`` (default), converts to an undirected ``MultiGraph``. When ``directed=True``, preserves edge directionality as a ``MultiDiGraph``.
 
- See the [`OSMnx`](/guide#osm-and-networkx) section of the guide for a more general discussion (and example) on workflows combining `OSMnx` with `cityseer`.
+ See the [`OSMnx`](/guide#from-openstreetmap-via-osmnx) section of the guide for a more general discussion (and example) on workflows combining `OSMnx` with `cityseer`.
 
  `x` and `y` node attributes will be copied directly and `geometry` edge attributes will be copied to a `geom` edge attribute. The conversion process will snap the `shapely` `LineString` endpoints to the corresponding start and end node coordinates.
 
@@ -905,7 +905,7 @@ out qt;
   </div>
   <div class="desc">
 
- A `gpd.GeoDataFrame` with `live`, `weight`, and `geometry` attributes. The original `networkX` graph's node keys will be used for the `GeoDataFrame` index. If `nx_multigraph` is a dual graph prepared with [`graphs.nx_to_dual`](/tools/graphs#nx-to-dual) then the corresponding primal edge `LineString` geometry will be set as the `GeoPandas` geometry for visualisation purposes using `primal_edge` for the column name. The dual node `Point` geometry will be saved in `WKT` format to the `dual_node` column.</div>
+ A `gpd.GeoDataFrame` with `live`, `weight`, and `geometry` attributes. The original `networkX` graph's node keys will be used for the `GeoDataFrame` index. If `nx_multigraph` is a dual graph prepared with [`graphs.nx_to_dual`](/tools/graphs#nx_to_dual) then the corresponding primal edge `LineString` geometry will be set as the `GeoPandas` geometry for visualisation purposes using `primal_edge` for the column name. The dual node `Point` geometry will be saved in `WKT` format to the `dual_node` column.</div>
 </div>
 
 <div class="param-set">
@@ -925,7 +925,7 @@ out qt;
   </div>
   <div class="desc">
 
- A [`rustalgos.graph.NetworkStructure`](/rustalgos/rustalgos#networkstructure) instance.</div>
+ A [`rustalgos.graph.NetworkStructure`](/rustalgos/graph#networkstructure) instance.</div>
 </div>
 
 
@@ -987,7 +987,7 @@ out qt;
   </div>
   <div class="desc">
 
- A [`rustalgos.graph.NetworkStructure`](/rustalgos/rustalgos#networkstructure) instance.</div>
+ A [`rustalgos.graph.NetworkStructure`](/rustalgos/graph#networkstructure) instance.</div>
 </div>
 
 
@@ -1082,7 +1082,7 @@ out qt;
   </div>
   <div class="desc">
 
- An edges `gpd.GeoDataFrame` as derived from [`network_structure_from_nx`](#network-structure-from-nx).</div>
+ An edges `gpd.GeoDataFrame` as derived from [`network_structure_from_nx`](#network_structure_from_nx).</div>
 </div>
 
 ### Returns
@@ -1125,7 +1125,7 @@ out qt;
 </div>
 
 
- Transpose a `cityseer` `networkX` `MultiGraph` into a `gpd.GeoDataFrame` representing the network edges. Converts the `geom` attribute attached to each edge into a GeoPandas GeoDataFrame. This is useful when inspecting or cleaning the network in QGIS. It can then be reimported with [`nx_from_generic_geopandas`](#nx-from-generic-geopandas)
+ Transpose a `cityseer` `networkX` `MultiGraph` into a `gpd.GeoDataFrame` representing the network edges. Converts the `geom` attribute attached to each edge into a GeoPandas GeoDataFrame. This is useful when inspecting or cleaning the network in QGIS. It can then be reimported with [`nx_from_generic_geopandas`](#nx_from_generic_geopandas)
 ### Parameters
 <div class="param-set">
   <div class="def">

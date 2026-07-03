@@ -73,7 +73,7 @@ The lower-level API (`cityseer.tools`, `cityseer.metrics`) offers step-by-step c
 
 Localised metrics are directly comparable across different locations and cities because the analysis window is defined by the distance threshold, not by the extent of the dataset. Shorter distance thresholds capture local neighbourhood structure while longer thresholds reveal city-wide patterns.
 
-Nodes at the periphery of a study area can be marked as "dead" (non-live) using a boundary polygon. Dead nodes are still reachable as targets during network traversal, but do not serve as sources for metric computation. This prevents artificially depressed values at the edges of the study area without discarding network connectivity. See the [Live Nodes](https://benchmark-urbanism.github.io/cityseer-examples/recipes/live_nodes.html) recipe for a worked example.
+Nodes at the periphery of a study area can be marked as "dead" (non-live) using a boundary polygon. Dead nodes participate fully in network traversal but their own values are not reported: results are only written for live nodes. For closeness, dead nodes are skipped as sources in exact mode (a pure cost saving); for betweenness, every node serves as a source so that routes passing through the study area — including those between dead nodes — correctly credit the live nodes they traverse. This prevents artificially depressed values at the edges of the study area without discarding network connectivity. See the [Live Nodes](https://benchmark-urbanism.github.io/cityseer-examples/recipes/live_nodes.html) recipe for a worked example.
 
 ### Primal and dual graphs
 
@@ -84,7 +84,7 @@ Street networks can be represented in two complementary forms:
 
 The dual representation is needed for angular (simplest-path) analysis because each street segment becomes an explicit node in the graph, allowing the cumulative turning angle (the sum of directional changes at each junction along a route) to be tracked explicitly. It also produces more intuitive outputs: a map coloured by betweenness shows which streets carry the most through-movement, rather than which intersections do.
 
-The [`CityNetwork`](/api/network) class builds the dual graph automatically from input geometries; there is no need to call conversion functions manually. When using the lower-level API, convert a primal graph with [`graphs.nx_to_dual`](/tools/graphs#nx-to-dual) before computing angular centralities.
+The [`CityNetwork`](/api/network) class builds the dual graph automatically from input geometries; there is no need to call conversion functions manually. When using the lower-level API, convert a primal graph with [`graphs.nx_to_dual`](/tools/graphs#nx_to_dual) before computing angular centralities.
 
 See the [Create Dual Graph](https://benchmark-urbanism.github.io/cityseer-examples/recipes/networks/create_dual_graph.html) example for a visual comparison.
 
@@ -110,10 +110,10 @@ The [`CityNetwork`](/api/network) class lets you build a network, compute centra
 
 | Constructor | Input format | Example |
 | --- | --- | --- |
-| [`from_geopandas`](/api/network#from-geopandas) | GeoDataFrame of LineStrings | [Network from Streets](https://benchmark-urbanism.github.io/cityseer-examples/recipes/networks/network_from_streets.html) |
-| [`from_nx`](/api/network#from-nx) | NetworkX MultiGraph or MultiDiGraph | [OSMnx to Cityseer](https://benchmark-urbanism.github.io/cityseer-examples/recipes/networks/osmnx_to_cityseer.html) |
-| [`from_osm`](/api/network#from-osm) | Shapely polygon (downloads from OSM) | [Create from BBox](https://benchmark-urbanism.github.io/cityseer-examples/recipes/networks/create_from_bbox.html) |
-| [`from_wkts`](/api/network#from-wkts) | Dictionary of WKT strings or Shapely geometries | -- |
+| [`from_geopandas`](/api/network#from_geopandas) | GeoDataFrame of LineStrings | [Network from Streets](https://benchmark-urbanism.github.io/cityseer-examples/recipes/networks/network_from_streets.html) |
+| [`from_nx`](/api/network#from_nx) | NetworkX MultiGraph or MultiDiGraph | [OSMnx to Cityseer](https://benchmark-urbanism.github.io/cityseer-examples/recipes/networks/osmnx_to_cityseer.html) |
+| [`from_osm`](/api/network#from_osm) | Shapely polygon (downloads from OSM) | [Create from BBox](https://benchmark-urbanism.github.io/cityseer-examples/recipes/networks/create_from_bbox.html) |
+| [`from_wkts`](/api/network#from_wkts) | Dictionary of WKT strings or Shapely geometries | -- |
 | [`load`](/api/network#load) | Previously saved parquet/pickle pair | [Save to File](https://benchmark-urbanism.github.io/cityseer-examples/recipes/networks/save_to_file.html) |
 
 ### Method chaining
@@ -131,7 +131,7 @@ cn = (
 
 ### Retrieving results
 
-Because `CityNetwork` uses a dual graph internally, the `nodes_gdf` property exposes each street segment as a row with a Point geometry at the segment midpoint. To obtain results with the original LineString geometries (suitable for mapping and export), call [`to_geopandas()`](/api/network#to-geopandas):
+Because `CityNetwork` uses a dual graph internally, the `nodes_gdf` property exposes each street segment as a row with a Point geometry at the segment midpoint. To obtain results with the original LineString geometries (suitable for mapping and export), call [`to_geopandas()`](/api/network#to_geopandas):
 
 ```python
 # Original LineString geometries with all computed columns
@@ -141,7 +141,7 @@ result_gdf.to_file("results.gpkg")
 
 ### Automatic graph cleaning
 
-Input geometries are automatically cleaned during construction: short self-loops, near-duplicate edges, and short danglers are removed. The [`feature_status`](/api/network#feature-status) property returns a Series with values such as `"active"`, `"short_self_loop"`, `"duplicate"`, `"short_dangler"`, or `"invalid_geometry"`, indicating what happened to each input feature. When using the lower-level API, the [`tools.graphs`](/tools/graphs) module provides manual graph cleaning functions; see the [Network Simplification](https://benchmark-urbanism.github.io/cityseer-examples/recipes/networks/network_simplification.html) example.
+Input geometries are automatically cleaned during construction: short self-loops, near-duplicate edges, and short danglers are removed. The [`feature_status`](/api/network#citynetwork) property returns a Series with values such as `"active"`, `"short_self_loop"`, `"duplicate"`, `"short_dangler"`, or `"invalid_geometry"`, indicating what happened to each input feature. When using the lower-level API, the [`tools.graphs`](/tools/graphs) module provides manual graph cleaning functions; see the [Network Simplification](https://benchmark-urbanism.github.io/cityseer-examples/recipes/networks/network_simplification.html) example.
 
 ## Centrality
 
@@ -167,7 +167,7 @@ Pass `None` to use the defaults for a category, or `{}` to skip it entirely.
 
 ### Shortest-path centrality
 
-[`centrality_shortest`](/api/network#centrality-shortest) (or [`centrality_shortest`](/metrics/networks#centrality-shortest) in the lower-level API) computes the following default metrics for each distance threshold `d`. In the formulas below, the sum is over all nodes $j$ reachable within $d$, $c_j$ is the shortest-path distance in metres to node $j$, and $p_j = c_j / d$.
+[`centrality_shortest`](/api/network#centrality_shortest) (or [`centrality_shortest`](/metrics/networks#centrality_shortest) in the lower-level API) computes the following default metrics for each distance threshold `d`. In the formulas below, the sum is over all nodes $j$ reachable within $d$, $c_j$ is the shortest-path distance in metres to node $j$, and $p_j = c_j / d$.
 
 **Default closeness** (pass `closeness=None` or omit):
 
@@ -199,7 +199,7 @@ Pass `None` to use the defaults for a category, or `{}` to skip it entirely.
 
 ### Simplest-path centrality
 
-[`centrality_simplest`](/api/network#centrality-simplest) (or [`centrality_simplest`](/metrics/networks#centrality-simplest) in the lower-level API) computes angular centrality metrics. For simplest paths, `c` is the cumulative angular change in degrees (the total turning at each junction along a route) rather than metric distance. The variable `p` is normalised elapsed time (not angular cost), so the distance reachability budget is still metric. Note the `_ang` suffix on all output columns.
+[`centrality_simplest`](/api/network#centrality_simplest) (or [`centrality_simplest`](/metrics/networks#centrality_simplest) in the lower-level API) computes angular centrality metrics. For simplest paths, `c` is the cumulative angular change in degrees (the total turning at each junction along a route) rather than metric distance. The variable `p` is normalised elapsed time (not angular cost), so the distance reachability budget is still metric. Note the `_ang` suffix on all output columns.
 
 **Default closeness** (pass `closeness=None` or omit):
 
@@ -273,15 +273,15 @@ cn.centrality_shortest(distances=[800], segment_weighted=True)
 
 For cases where only closeness or only betweenness is needed, convenience functions skip the unused category:
 
-- [`closeness_shortest`](/metrics/networks#closeness-shortest) / [`closeness_simplest`](/metrics/networks#closeness-simplest) — closeness only (betweenness disabled)
-- [`betweenness_shortest`](/metrics/networks#betweenness-shortest) / [`betweenness_simplest`](/metrics/networks#betweenness-simplest) — betweenness only (closeness and cycles disabled)
+- [`closeness_shortest`](/metrics/networks#closeness_shortest) / [`closeness_simplest`](/metrics/networks#closeness_simplest) — closeness only (betweenness disabled)
+- [`betweenness_shortest`](/metrics/networks#betweenness_shortest) / [`betweenness_simplest`](/metrics/networks#betweenness_simplest) — betweenness only (closeness and cycles disabled)
 
 ### Origin–destination and demand betweenness
 
 Standard betweenness treats every node pair equally. When you have real or modelled travel flows, two functions route those flows instead:
 
-- [`betweenness_od`](/metrics/networks#betweenness-od) takes an **explicit** origin–destination matrix (build one from flow data and zone centroids with [`build_od_matrix`](/metrics/networks#build-od-matrix)) and accumulates each pair's trip weight along shortest paths.
-- [`betweenness_demand`](/metrics/networks#betweenness-demand) takes weighted **origins** and **destinations** separately and *models* the matrix with a **singly (origin-)constrained spatial interaction model**: each origin distributes its full weight across reachable destinations in proportion to $W_d \cdot f(c_{od})$, where $f$ is a `decay_fn` expression. The classic gravity model is recovered with an exponential decay. The allocation is computed in the same traversal that routes the flows, so no explicit matrix is needed.
+- [`betweenness_od`](/metrics/networks#betweenness_od) takes an **explicit** origin–destination matrix (build one from flow data and zone centroids with [`build_od_matrix`](/metrics/networks#build_od_matrix)) and accumulates each pair's trip weight along shortest paths.
+- [`betweenness_demand`](/metrics/networks#betweenness_demand) takes weighted **origins** and **destinations** separately and *models* the matrix with a **singly (origin-)constrained spatial interaction model**: each origin distributes its full weight across reachable destinations in proportion to $W_d \cdot f(c_{od})$, where $f$ is a `decay_fn` expression. The classic gravity model is recovered with an exponential decay. The allocation is computed in the same traversal that routes the flows, so no explicit matrix is needed.
 
 ```python
 from cityseer.metrics import networks
@@ -388,7 +388,7 @@ Centrality expressions use two variables: `c` (raw cost) and `p` (normalised pro
 
 ### Accessibility
 
-[`compute_accessibilities`](/metrics/layers#compute-accessibilities) measures how many instances of each specified land-use category are reachable from every network node, and how far away the nearest instance is. For each category key and distance threshold it writes two kinds of column:
+[`compute_accessibilities`](/metrics/layers#compute_accessibilities) measures how many instances of each specified land-use category are reachable from every network node, and how far away the nearest instance is. For each category key and distance threshold it writes two kinds of column:
 
 - `cc_{category}_{distance}` — the (optionally decay-weighted) **count** of reachable instances of that category within the threshold. With the default flat decay this is a plain count; with a decaying `decay_fn` it becomes a distance-weighted "gravity" accessibility.
 - `cc_{category}_nearest_max_{distance}` — the network distance to the **nearest** instance of that category. This is written only at the largest threshold, since the nearest distance does not depend on the catchment size.
@@ -410,7 +410,7 @@ See the [OSM Accessibility](https://benchmark-urbanism.github.io/cityseer-exampl
 
 ### Mixed-use diversity
 
-[`compute_mixed_uses`](/metrics/layers#compute-mixed-uses) measures the diversity of land-use categories reachable from each node. Hill numbers are computed by default (`compute_hill=True`); Shannon and Gini-Simpson indices are available via the `compute_shannon` and `compute_gini` flags. The three Hill orders differ in how strongly they weight common versus rare categories:
+[`compute_mixed_uses`](/metrics/layers#compute_mixed_uses) measures the diversity of land-use categories reachable from each node. Hill numbers are computed by default (`compute_hill=True`); Shannon and Gini-Simpson indices are available via the `compute_shannon` and `compute_gini` flags. The three Hill orders differ in how strongly they weight common versus rare categories:
 
 - **Hill q=0** (`cc_hill_q0_{d}`, equivalent to species richness) -- counts how many different land-use types are present. Best when using many fine-grained categories.
 - **Hill q=1** (`cc_hill_q1_{d}`, equivalent to the exponential of Shannon entropy) -- accounts for both the number of land-use types and how evenly distributed they are.
@@ -422,7 +422,7 @@ See the [Mixed Uses](https://benchmark-urbanism.github.io/cityseer-examples/reci
 
 ### Statistical aggregations
 
-[`compute_stats`](/metrics/layers#compute-stats) computes descriptive statistics for one or more numerical columns over the street network. For each input column and distance threshold it writes eight measures, named `cc_{column}_{measure}_{distance}`:
+[`compute_stats`](/metrics/layers#compute_stats) computes descriptive statistics for one or more numerical columns over the street network. For each input column and distance threshold it writes eight measures, named `cc_{column}_{measure}_{distance}`:
 
 | Measure | Column suffix | Notes |
 | --- | --- | --- |
@@ -462,7 +462,7 @@ cn = CityNetwork.from_geopandas(gdf, directed=True)
 
 ### From a NetworkX MultiDiGraph
 
-Passing a `MultiDiGraph` to [`from_nx`](/api/network#from-nx) automatically enables directed mode:
+Passing a `MultiDiGraph` to [`from_nx`](/api/network#from_nx) automatically enables directed mode:
 
 ```python
 cn = CityNetwork.from_nx(G_digraph)
@@ -553,7 +553,7 @@ The [`metrics.observe`](/metrics/observe) module identifies coherent street sequ
 
 ### Public transport (GTFS)
 
-The [`add_gtfs`](/api/network#add-gtfs) method integrates public transport stops and routes from GTFS data, enabling centrality and accessibility analyses that account for transit connections. See the [Centrality with Metro](https://benchmark-urbanism.github.io/cityseer-examples/recipes/centrality/centrality_metro.html) and [Accessibility with Metro](https://benchmark-urbanism.github.io/cityseer-examples/recipes/accessibility/accessibility_metro.html) examples.
+The [`add_gtfs`](/api/network#add_gtfs) method integrates public transport stops and routes from GTFS data, enabling centrality and accessibility analyses that account for transit connections. See the [Centrality with Metro](https://benchmark-urbanism.github.io/cityseer-examples/recipes/centrality/centrality_metro.html) and [Accessibility with Metro](https://benchmark-urbanism.github.io/cityseer-examples/recipes/accessibility/accessibility_metro.html) examples.
 
 ## Performance and Scale
 
@@ -565,7 +565,7 @@ For large networks at long distance thresholds, `cityseer` offers an experimenta
 
 Sampling is applied per distance threshold. Short distances where few nodes are reachable run at full computation, since sampling offers no speedup. Longer distances automatically use sparser sampling as the number of reachable nodes increases. If the computed sampling rate offers no speedup for a given distance, that distance runs exactly.
 
-The `epsilon` parameter controls the error tolerance. The default of 0.06 is suitable for most analyses. Both `centrality_shortest` and `centrality_simplest` support sampling. Pass `sample=True` to enable:
+The `epsilon` parameter controls the error tolerance. The default of 0.05 is calibrated on real networks spanning the density range — from dense metropolitan grids to a sparse suburb — so that node rankings are preserved (Spearman ρ ≥ 0.95); denser networks clear the target comfortably. Both `centrality_shortest` and `centrality_simplest` support sampling. Pass `sample=True` to enable:
 
 ```python
 cn.centrality_shortest(

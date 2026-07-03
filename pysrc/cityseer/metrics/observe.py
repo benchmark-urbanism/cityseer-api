@@ -192,8 +192,8 @@ def street_continuity(
 
     This requires a graph with `names`, `routes`, or `highways` edge keys corresponding to the selected `method`
     parameter. These keys are available if importing an OSM network with
-    [`osm_graph_from_poly`](/tools/io#osm-graph-from-poly) or if importing OS Open Roads data with
-    [nx_from_open_roads](/tools/io#nx-from-open-roads).
+    [`osm_graph_from_poly`](/tools/io#osm_graph_from_poly) or if importing OS Open Roads data with
+    [nx_from_open_roads](/tools/io#nx_from_open_roads).
 
     Parameters
     ----------

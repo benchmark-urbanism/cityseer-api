@@ -21,11 +21,24 @@ If the computed sampling rate offers no speedup for a given distance, that dista
 
 ## Accuracy
 
-Separate accuracy models are fitted for closeness and betweenness centrality. Betweenness centrality is more sensitive to which nodes are included in the sample (its sampling error has higher variance than closeness), so the betweenness model requires more samples at the same distance threshold. When computing both metrics together, the betweenness model is used to ensure both achieve the target accuracy.
+A single schedule serves both closeness and betweenness: each sampled source traversal computes both metrics at once, so sharing the schedule halves the work relative to sampling each metric separately. The schedule is deterministic and network-agnostic — the same distance always yields the same sampling probability, regardless of the network — which keeps sampled results directly comparable across studies and cities.
 
-The `epsilon` parameter controls the error tolerance. The default of 0.05 is suitable for most analyses.
+The `epsilon` parameter is the single tuning knob, controlling the error tolerance. The default of 0.05 is calibrated empirically on three real street networks spanning the urban density range — Greater London, Madrid, and a low-density US suburb (Cary, NC) — such that node *rankings* are preserved (Spearman ρ ≥ 0.95 against exact computation at 1–20 km) even on the sparsest network; denser networks clear the target comfortably. Tighten `epsilon` for networks sparser than a typical suburb; loosen it (e.g. 0.08–0.1) for exploratory work where approximate rankings suffice. Halving `epsilon` roughly quadruples the number of samples.
+
+The full methodology and validation are documented in the sampling study under [`analysis/sampling/`](https://github.com/benchmark-urbanism/cityseer-api/tree/master/analysis/sampling) in the repository.
 
 ## Usage
+
+With the high-level API:
+
+```python
+cn.centrality_shortest(
+    distances=[500, 2000, 5000, 20000],
+    sample=True,  # epsilon=0.05 default; pass epsilon=... to override
+)
+```
+
+Or with the lower-level functional API:
 
 ```python
 from cityseer.metrics import networks
@@ -40,7 +53,7 @@ nodes_gdf = networks.centrality_shortest(
 
 ## API Reference
 
-- [`centrality_shortest`](/metrics/networks#centrality-shortest)
-- [`centrality_simplest`](/metrics/networks#centrality-simplest)
+- [`centrality_shortest`](/metrics/networks#centrality_shortest)
+- [`centrality_simplest`](/metrics/networks#centrality_simplest)
 
 </section>

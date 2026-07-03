@@ -121,7 +121,7 @@ def build_data_map(
     n_nearest_candidates: int = 50,
 ) -> rustalgos.data.DataMap:
     """
-    Assign a `GeoDataFrame` to a [`rustalgos.graph.NetworkStructure`](/rustalgos/rustalgos#networkstructure).
+    Assign a `GeoDataFrame` to a [`rustalgos.graph.NetworkStructure`](/rustalgos/graph#networkstructure).
 
     A `NetworkStructure` provides the backbone for the calculation of land-use and statistical aggregations over the
     network. Points will be assigned to the closest street edge. Polygons will be assigned to the closest
@@ -135,8 +135,8 @@ def build_data_map(
         location of the feature in space; or, in the case of buildings, should ideally correspond to the location of the
         building entrance.
     network_structure
-        A [`rustalgos.graph.NetworkStructure`](/rustalgos/rustalgos#networkstructure). Best generated with the
-        [`io.network_structure_from_nx`](/tools/io#network-structure-from-nx) function.
+        A [`rustalgos.graph.NetworkStructure`](/rustalgos/graph#networkstructure). Best generated with the
+        [`io.network_structure_from_nx`](/tools/io#network_structure_from_nx) function.
     max_netw_assign_dist: int
         The maximum distance to consider when assigning respective data points to the nearest adjacent network nodes.
     data_id_col: str
@@ -155,7 +155,7 @@ def build_data_map(
     Returns
     -------
     data_map: rustalgos.data.DataMap
-        A [`rustalgos.data.DataMap`](/rustalgos#datamap) instance.
+        A [`rustalgos.data.DataMap`](/rustalgos/data#datamap) instance.
     """
     # check for unique index
     if data_gdf.index.duplicated().any():
@@ -223,11 +223,11 @@ def compute_accessibilities(
     nodes_gdf
         A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe)
         representing nodes. Best generated with the
-        [`io.network_structure_from_nx`](/tools/io#network-structure-from-nx) function. The outputs of
+        [`io.network_structure_from_nx`](/tools/io#network_structure_from_nx) function. The outputs of
         calculations will be written to this `GeoDataFrame`, which is then returned from the function.
     network_structure
-        A [`rustalgos.graph.NetworkStructure`](/rustalgos/rustalgos#networkstructure). Best generated with the
-        [`io.network_structure_from_nx`](/tools/io#network-structure-from-nx) function.
+        A [`rustalgos.graph.NetworkStructure`](/rustalgos/graph#networkstructure). Best generated with the
+        [`io.network_structure_from_nx`](/tools/io#network_structure_from_nx) function.
     max_netw_assign_dist: int
         The maximum distance to consider when assigning respective data points to the nearest adjacent network nodes.
     distances: list[int]
@@ -413,11 +413,11 @@ def compute_mixed_uses(
     nodes_gdf
         A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe)
         representing nodes. Best generated with the
-        [`io.network_structure_from_nx`](/tools/io#network-structure-from-nx) function. The outputs of
+        [`io.network_structure_from_nx`](/tools/io#network_structure_from_nx) function. The outputs of
         calculations will be written to this `GeoDataFrame`, which is then returned from the function.
     network_structure
-        A [`rustalgos.graph.NetworkStructure`](/rustalgos/rustalgos#networkstructure). Best generated with the
-        [`io.network_structure_from_nx`](/tools/io#network-structure-from-nx) function.
+        A [`rustalgos.graph.NetworkStructure`](/rustalgos/graph#networkstructure). Best generated with the
+        [`io.network_structure_from_nx`](/tools/io#network_structure_from_nx) function.
     max_netw_assign_dist: int
         The maximum distance to consider when assigning respective data points to the nearest adjacent network nodes.
     compute_hill: bool
@@ -628,11 +628,11 @@ def compute_stats(
     nodes_gdf
         A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe)
         representing nodes. Best generated with the
-        [`io.network_structure_from_nx`](/tools/io#network-structure-from-nx) function. The outputs of
+        [`io.network_structure_from_nx`](/tools/io#network_structure_from_nx) function. The outputs of
         calculations will be written to this `GeoDataFrame`, which is then returned from the function.
     network_structure
-        A [`rustalgos.graph.NetworkStructure`](/rustalgos/rustalgos#networkstructure). Best generated with the
-        [`io.network_structure_from_nx`](/tools/io#network-structure-from-nx) function.
+        A [`rustalgos.graph.NetworkStructure`](/rustalgos/graph#networkstructure). Best generated with the
+        [`io.network_structure_from_nx`](/tools/io#network_structure_from_nx) function.
     max_netw_assign_dist: int
         The maximum distance to consider when assigning respective data points to the nearest adjacent network nodes.
     distances: list[int]

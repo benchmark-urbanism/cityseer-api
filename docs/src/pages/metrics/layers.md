@@ -56,7 +56,7 @@ layout: ../../layouts/PageLayout.astro
 </div>
 
 
- Assign a `GeoDataFrame` to a [`rustalgos.graph.NetworkStructure`](/rustalgos/rustalgos#networkstructure). A `NetworkStructure` provides the backbone for the calculation of land-use and statistical aggregations over the network. Points will be assigned to the closest street edge. Polygons will be assigned to the closest `n_nearest_candidates` adjacent street edges.
+ Assign a `GeoDataFrame` to a [`rustalgos.graph.NetworkStructure`](/rustalgos/graph#networkstructure). A `NetworkStructure` provides the backbone for the calculation of land-use and statistical aggregations over the network. Points will be assigned to the closest street edge. Polygons will be assigned to the closest `n_nearest_candidates` adjacent street edges.
 ### Parameters
 <div class="param-set">
   <div class="def">
@@ -75,7 +75,7 @@ layout: ../../layouts/PageLayout.astro
   </div>
   <div class="desc">
 
- A [`rustalgos.graph.NetworkStructure`](/rustalgos/rustalgos#networkstructure). Best generated with the [`io.network_structure_from_nx`](/tools/io#network-structure-from-nx) function.</div>
+ A [`rustalgos.graph.NetworkStructure`](/rustalgos/graph#networkstructure). Best generated with the [`io.network_structure_from_nx`](/tools/io#network_structure_from_nx) function.</div>
 </div>
 
 <div class="param-set">
@@ -126,7 +126,7 @@ layout: ../../layouts/PageLayout.astro
   </div>
   <div class="desc">
 
- A [`rustalgos.data.DataMap`](/rustalgos#datamap) instance.</div>
+ A [`rustalgos.data.DataMap`](/rustalgos/data#datamap) instance.</div>
 </div>
 
 
@@ -258,7 +258,7 @@ layout: ../../layouts/PageLayout.astro
   </div>
   <div class="desc">
 
- A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe) representing nodes. Best generated with the [`io.network_structure_from_nx`](/tools/io#network-structure-from-nx) function. The outputs of calculations will be written to this `GeoDataFrame`, which is then returned from the function.</div>
+ A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe) representing nodes. Best generated with the [`io.network_structure_from_nx`](/tools/io#network_structure_from_nx) function. The outputs of calculations will be written to this `GeoDataFrame`, which is then returned from the function.</div>
 </div>
 
 <div class="param-set">
@@ -268,7 +268,7 @@ layout: ../../layouts/PageLayout.astro
   </div>
   <div class="desc">
 
- A [`rustalgos.graph.NetworkStructure`](/rustalgos/rustalgos#networkstructure). Best generated with the [`io.network_structure_from_nx`](/tools/io#network-structure-from-nx) function.</div>
+ A [`rustalgos.graph.NetworkStructure`](/rustalgos/graph#networkstructure). Best generated with the [`io.network_structure_from_nx`](/tools/io#network_structure_from_nx) function.</div>
 </div>
 
 <div class="param-set">
@@ -545,7 +545,7 @@ print(nodes_gdf["cc_c_nearest_max_800"])
   </div>
   <div class="desc">
 
- A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe) representing nodes. Best generated with the [`io.network_structure_from_nx`](/tools/io#network-structure-from-nx) function. The outputs of calculations will be written to this `GeoDataFrame`, which is then returned from the function.</div>
+ A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe) representing nodes. Best generated with the [`io.network_structure_from_nx`](/tools/io#network_structure_from_nx) function. The outputs of calculations will be written to this `GeoDataFrame`, which is then returned from the function.</div>
 </div>
 
 <div class="param-set">
@@ -555,7 +555,7 @@ print(nodes_gdf["cc_c_nearest_max_800"])
   </div>
   <div class="desc">
 
- A [`rustalgos.graph.NetworkStructure`](/rustalgos/rustalgos#networkstructure). Best generated with the [`io.network_structure_from_nx`](/tools/io#network-structure-from-nx) function.</div>
+ A [`rustalgos.graph.NetworkStructure`](/rustalgos/graph#networkstructure). Best generated with the [`io.network_structure_from_nx`](/tools/io#network_structure_from_nx) function.</div>
 </div>
 
 <div class="param-set">
@@ -863,7 +863,7 @@ been applied.
   </div>
   <div class="desc">
 
- A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe) representing nodes. Best generated with the [`io.network_structure_from_nx`](/tools/io#network-structure-from-nx) function. The outputs of calculations will be written to this `GeoDataFrame`, which is then returned from the function.</div>
+ A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe) representing nodes. Best generated with the [`io.network_structure_from_nx`](/tools/io#network_structure_from_nx) function. The outputs of calculations will be written to this `GeoDataFrame`, which is then returned from the function.</div>
 </div>
 
 <div class="param-set">
@@ -873,7 +873,7 @@ been applied.
   </div>
   <div class="desc">
 
- A [`rustalgos.graph.NetworkStructure`](/rustalgos/rustalgos#networkstructure). Best generated with the [`io.network_structure_from_nx`](/tools/io#network-structure-from-nx) function.</div>
+ A [`rustalgos.graph.NetworkStructure`](/rustalgos/graph#networkstructure). Best generated with the [`io.network_structure_from_nx`](/tools/io#network_structure_from_nx) function.</div>
 </div>
 
 <div class="param-set">

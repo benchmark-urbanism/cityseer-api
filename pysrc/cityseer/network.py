@@ -136,10 +136,10 @@ class CityNetwork:
 
     Construct instances via the class methods rather than calling ``__init__`` directly:
 
-    - [`from_geopandas`](#from-geopandas) -- from a GeoDataFrame of LineString geometries
-    - [`from_wkts`](#from-wkts) -- from a dictionary of WKT strings or Shapely geometries
-    - [`from_nx`](#from-nx) -- from a cityseer-compatible NetworkX MultiGraph
-    - [`from_osm`](#from-osm) -- from OpenStreetMap via a bounding polygon
+    - [`from_geopandas`](#from_geopandas) -- from a GeoDataFrame of LineString geometries
+    - [`from_wkts`](#from_wkts) -- from a dictionary of WKT strings or Shapely geometries
+    - [`from_nx`](#from_nx) -- from a cityseer-compatible NetworkX MultiGraph
+    - [`from_osm`](#from_osm) -- from OpenStreetMap via a bounding polygon
     - [`load`](#load) -- from a previously saved parquet/pickle pair
 
     Most methods return ``self`` to support method chaining:
@@ -154,7 +154,7 @@ class CityNetwork:
 
     :::note
     The underlying graph construction automatically cleans input geometries by removing short self-loops, near-duplicate
-    edges, and short danglers. Use the [`feature_status`](#feature-status) property to inspect which input features were
+    edges, and short danglers. Use the ``feature_status`` property to inspect which input features were
     filtered and why.
     :::
 
@@ -169,14 +169,14 @@ class CityNetwork:
 
     Because the dual is built automatically, there is no need to call ``nx_to_dual`` when using ``CityNetwork``.
     Although the topology is dual internally, results are visualised and exported as the original street segment
-    geometries via [`to_geopandas`](#to-geopandas), so each row in the output corresponds to one input street.
+    geometries via [`to_geopandas`](#to_geopandas), so each row in the output corresponds to one input street.
 
     ### Working with results
 
     All computed metrics are written to the internal ``nodes_gdf`` GeoDataFrame. Since ``CityNetwork`` uses a dual
     graph, each row in ``nodes_gdf`` represents a street segment, with a Point geometry at the segment midpoint.
 
-    To retrieve results with the original LineString geometries, use [`to_geopandas`](#to-geopandas):
+    To retrieve results with the original LineString geometries, use [`to_geopandas`](#to_geopandas):
 
     ```python
     cn = CityNetwork.from_geopandas(edges_gdf, crs=32632)
@@ -307,7 +307,7 @@ class CityNetwork:
         Columns include ``ns_node_idx``, ``x``, ``y``, ``z`` (if elevation data is present), ``live``, ``weight``,
         and any centrality or layer results
         that have been computed. This is the *working* GeoDataFrame used by centrality and layer methods.
-        Use [`to_geopandas`](#to-geopandas) to obtain a GeoDataFrame with the original LineString geometries.
+        Use [`to_geopandas`](#to_geopandas) to obtain a GeoDataFrame with the original LineString geometries.
         """
         return self._nodes_gdf
 
@@ -720,7 +720,7 @@ class CityNetwork:
             Optional polygon for live/dead node assignment (in the target projected CRS).
         **kwargs
             Additional keyword arguments passed to
-            [`io.osm_graph_from_poly`](/tools/io#osm-graph-from-poly).
+            [`io.osm_graph_from_poly`](/tools/io#osm_graph_from_poly).
 
         Returns
         -------
@@ -844,7 +844,9 @@ class CityNetwork:
         """Set live/dead node status based on a boundary polygon.
 
         Nodes whose midpoints fall inside the polygon are marked ``live``; others are marked ``dead``.
-        Dead nodes are excluded from centrality source computations but remain reachable as targets.
+        Dead nodes participate in traversal but their own values are not reported. Closeness skips dead
+        sources in exact mode (a cost saving); betweenness sources from every node so that routes through
+        the study area — including those between dead nodes — credit the live nodes they traverse.
 
         Parameters
         ----------
@@ -968,7 +970,7 @@ class CityNetwork:
     def centrality_shortest(self, **kwargs: Any) -> CityNetwork:
         """Compute shortest-path (metric) centrality.
 
-        Wraps [`centrality_shortest`](/metrics/networks#centrality-shortest). All keyword arguments
+        Wraps [`centrality_shortest`](/metrics/networks#centrality_shortest). All keyword arguments
         are forwarded; see that function for the full parameter list including ``distances``,
         ``minutes``, ``closeness``, ``betweenness``, ``cycles``, ``postprocess``,
         ``segment_weighted``, ``sample``, and ``epsilon``.
@@ -1034,7 +1036,7 @@ class CityNetwork:
     def centrality_simplest(self, **kwargs: Any) -> CityNetwork:
         """Compute simplest-path (angular) centrality.
 
-        Wraps [`centrality_simplest`](/metrics/networks#centrality-simplest). All keyword arguments
+        Wraps [`centrality_simplest`](/metrics/networks#centrality_simplest). All keyword arguments
         are forwarded; see that function for the full parameter list.
 
         Returns
@@ -1083,7 +1085,7 @@ class CityNetwork:
         instead weights each pair by observed trip counts between their respective zones (e.g.
         commuter cycling counts), so streets carrying more actual traffic receive higher scores.
 
-        Wraps [`build_od_matrix`](/metrics/networks#build-od-matrix). See that function for
+        Wraps [`build_od_matrix`](/metrics/networks#build_od_matrix). See that function for
         the full parameter list.
 
         Parameters
@@ -1096,7 +1098,7 @@ class CityNetwork:
         Returns
         -------
         od_matrix: OdMatrix
-            An OD matrix for use with [`betweenness_od`](#betweenness-od).
+            An OD matrix for use with [`betweenness_od`](#betweenness_od).
         """
         return networks.build_od_matrix(
             od_df=od_df,
@@ -1116,13 +1118,13 @@ class CityNetwork:
         equally. Only source nodes with outbound trips are traversed, and each shortest-path
         contribution is scaled by the corresponding OD weight.
 
-        Wraps [`betweenness_od`](/metrics/networks#betweenness-od). See that function for
+        Wraps [`betweenness_od`](/metrics/networks#betweenness_od). See that function for
         the full parameter list.
 
         Parameters
         ----------
         od_matrix: OdMatrix
-            An OD matrix from [`build_od_matrix`](#build-od-matrix).
+            An OD matrix from [`build_od_matrix`](#build_od_matrix).
 
         Returns
         -------
@@ -1145,7 +1147,7 @@ class CityNetwork:
         Counts how many instances of each specified land-use category (e.g. retail, parks) are reachable
         within each distance threshold, and records the nearest distance to each category.
 
-        Wraps [`compute_accessibilities`](/metrics/layers#compute-accessibilities). All additional keyword
+        Wraps [`compute_accessibilities`](/metrics/layers#compute_accessibilities). All additional keyword
         arguments are forwarded; see that function for the full parameter list including
         ``landuse_column_label``, ``accessibility_keys``, ``distances``, ``minutes``, ``decay_fn``,
         and ``angular``. ``decay_fn`` accepts a single expression or a ``{label: expression}`` dict that
@@ -1199,7 +1201,7 @@ class CityNetwork:
         q=0 counts how many distinct types are present, q=1 measures diversity accounting for how
         evenly types are represented, and q=2 gives greater weight to the most common types.
 
-        Wraps [`compute_mixed_uses`](/metrics/layers#compute-mixed-uses). All additional keyword
+        Wraps [`compute_mixed_uses`](/metrics/layers#compute_mixed_uses). All additional keyword
         arguments are forwarded; see that function for the full parameter list including
         ``landuse_column_label``, ``distances``, ``minutes``, ``compute_hill``, ``compute_shannon``,
         ``compute_gini``, ``decay_fn``, and ``angular``. ``decay_fn`` accepts a single expression or a
@@ -1245,7 +1247,7 @@ class CityNetwork:
         Aggregates numerical attributes (e.g. property prices, floor areas) within network-distance
         thresholds, computing weighted statistics (mean, sum, min, max, variance, etc.) at each node.
 
-        Wraps [`compute_stats`](/metrics/layers#compute-stats). All additional keyword arguments are forwarded;
+        Wraps [`compute_stats`](/metrics/layers#compute_stats). All additional keyword arguments are forwarded;
         see that function for the full parameter list including ``stats_column_labels``, ``distances``,
         ``minutes``, ``decay_fn``, and ``angular``. ``decay_fn`` accepts a single expression or a
         ``{label: expression}`` dict that computes several decay variants in one network traversal, each
@@ -1301,7 +1303,7 @@ class CityNetwork:
         Integrates transit stops and routes so that centrality and accessibility analyses account
         for public transport connections.
 
-        Wraps [`io.add_transport_gtfs`](/tools/io#add-transport-gtfs).
+        Wraps [`io.add_transport_gtfs`](/tools/io#add_transport_gtfs).
 
         Parameters
         ----------
@@ -1330,7 +1332,7 @@ class CityNetwork:
     def to_nx(self) -> nx.MultiGraph | nx.MultiDiGraph:
         """Convert the network to a NetworkX MultiGraph (or MultiDiGraph if directed).
 
-        If the network was built with [`from_nx`](#from-nx), returns a copy of the original graph with computed
+        If the network was built with [`from_nx`](#from_nx), returns a copy of the original graph with computed
         centrality and layer columns added to each edge's data dictionary. Otherwise builds a new
         cityseer-compatible undirected graph from the internal GeoDataFrame.
 
@@ -1342,7 +1344,7 @@ class CityNetwork:
         Raises
         ------
         NotImplementedError
-            If the network is directed but was not built via [`from_nx`](#from-nx) (no source graph to export).
+            If the network is directed but was not built via [`from_nx`](#from_nx) (no source graph to export).
 
         Examples
         --------

@@ -7,10 +7,10 @@ Note that the `cityseer` network data structures can be created and manipulated 
 The graph simplification and cleaning functions in this module (e.g. ``nx_remove_filler_nodes``,
 ``nx_remove_dangling_nodes``, ``nx_to_dual``) operate on undirected ``MultiGraph`` instances and do not preserve
 edge directionality. Do not pass a ``MultiDiGraph`` through these functions. For directed (one-way) network
-support, use [`CityNetwork.from_nx`](/api/network#from-nx) with a ``MultiDiGraph``,
-[`CityNetwork.from_geopandas`](/api/network#from-geopandas) with ``directed=True``, or build a directed
+support, use [`CityNetwork.from_nx`](/api/network#from_nx) with a ``MultiDiGraph``,
+[`CityNetwork.from_geopandas`](/api/network#from_geopandas) with ``directed=True``, or build a directed
 ``NetworkStructure`` via
-[`io.network_structure_from_nx`](/tools/io#network-structure-from-nx) with a ``MultiDiGraph``.
+[`io.network_structure_from_nx`](/tools/io#network_structure_from_nx) with a ``MultiDiGraph``.
 :::
 
 """
@@ -470,10 +470,10 @@ def nx_merge_parallel_edges(
     osm_hwy_target_tags: list[str]
         An optional list of OpenStreetMap target highway tags. If provided, only nodes with neighbouring edges
         containing a tag matching one of the target OSM highway tags will be consolidated. Requires graph prepared with
-        via [`io.osm_graph_from_poly`](/io#osm-graph-from-poly).
+        via [`io.osm_graph_from_poly`](/tools/io#osm_graph_from_poly).
     osm_matched_tags_only: bool
         Whether to only merge edges with shared OSM `name` or `ref` tags. False by default. Requires graph prepared with
-        via [`io.osm_graph_from_poly`](/io#osm-graph-from-poly).
+        via [`io.osm_graph_from_poly`](/tools/io#osm_graph_from_poly).
 
     Returns
     -------
@@ -1123,7 +1123,7 @@ def nx_consolidate_nodes(
     by a single new edge, with the new geometry selected from either:
     - An imaginary centreline of the combined edges if `merge_edges_by_midline` is set to `True`;
     - Else, the shortest edge, with longer edges discarded;
-    See [`nx_merge_parallel_edges`](#nx-merge-parallel-edges) for more information.
+    See [`nx_merge_parallel_edges`](#nx_merge_parallel_edges) for more information.
 
     Parameters
     ----------
@@ -1144,7 +1144,8 @@ def nx_consolidate_nodes(
         used where available. True by default.
     prioritise_by_hwy_tag: bool
         Whether to prioritise centroid locations by OSM highway tags. For example, trunk roads will have higher priority
-        than residential roads. Requires graph prepared with via [`io.osm_graph_from_poly`](/io#osm-graph-from-poly).
+        than residential roads. Requires a graph prepared via
+        [`io.osm_graph_from_poly`](/tools/io#osm_graph_from_poly).
         Defaults to False.
     merge_edges_by_midline: bool
         Whether to merge parallel edges by an imaginary centreline. If set to False, then the shortest edge will be
@@ -1155,10 +1156,10 @@ def nx_consolidate_nodes(
     osm_hwy_target_tags: list[str]
         An optional list of OpenStreetMap target highway tags. If provided, only nodes with neighbouring edges
         containing a tag matching one of the target OSM highway tags will be consolidated. Requires graph prepared with
-        via [`io.osm_graph_from_poly`](/io#osm-graph-from-poly).
+        via [`io.osm_graph_from_poly`](/tools/io#osm_graph_from_poly).
     osm_matched_tags_only: bool
         Whether to only merge edges with shared OSM `name` or `ref` tags. False by default. Requires graph prepared with
-        via [`io.osm_graph_from_poly`](/io#osm-graph-from-poly).
+        via [`io.osm_graph_from_poly`](/tools/io#osm_graph_from_poly).
     simplify_by_max_angle: int
         The optional maximum angle to permit for a given edge. Angles greater than this will be reduced.
 
@@ -1169,7 +1170,7 @@ def nx_consolidate_nodes(
 
     Examples
     --------
-    See the guide on [graph cleaning](/guide#graph-cleaning) for more information.
+    See the guide on [graph cleaning](/guide#automatic-graph-cleaning) for more information.
 
     ![Example raw graph from OSM](/images/graph_raw.png)
     _The pre-consolidation OSM street network for Soho, London. © OpenStreetMap contributors._
@@ -1459,7 +1460,7 @@ def nx_split_opposing_geoms(
     by a single new edge, with the new geometry selected from either:
         - An imaginary centreline of the combined edges if `merge_edges_by_midline` is set to `True`;
         - Else, the shortest edge, with longer edges discarded.
-    See [`nx_merge_parallel_edges`](#nx-merge-parallel-edges) for more information.
+    See [`nx_merge_parallel_edges`](#nx_merge_parallel_edges) for more information.
 
     Parameters
     ----------
@@ -1476,15 +1477,16 @@ def nx_split_opposing_geoms(
         sufficiently adjacent to be merged.
     prioritise_by_hwy_tag: bool
         Whether to prioritise centroid locations by OSM highway tags. For example, trunk roads will have higher priority
-        than residential roads. Requires graph prepared with via [`io.osm_graph_from_poly`](/io#osm-graph-from-poly).
+        than residential roads. Requires a graph prepared via
+        [`io.osm_graph_from_poly`](/tools/io#osm_graph_from_poly).
         Defaults to False.
     osm_hwy_target_tags: list[str]
         An optional list of OpenStreetMap target highway tags. If provided, only nodes with neighbouring edges
         containing a tag matching one of the target OSM highway tags will be consolidated. Requires graph prepared with
-        via [`io.osm_graph_from_poly`](/io#osm-graph-from-poly).
+        via [`io.osm_graph_from_poly`](/tools/io#osm_graph_from_poly).
     osm_matched_tags_only: bool
         Whether to only merge edges with shared OSM `name` or `ref` tags. False by default. Requires graph prepared with
-        via [`io.osm_graph_from_poly`](/io#osm-graph-from-poly).
+        via [`io.osm_graph_from_poly`](/tools/io#osm_graph_from_poly).
     min_node_degree: int
         Only project nodes with at least node degree of `min_node_degree`.
     max_node_degree: int
@@ -1885,7 +1887,7 @@ def nx_decompose(
     osm_hwy_target_tags: list[str]
         An optional list of OpenStreetMap target highway tags. If provided, only nodes with neighbouring edges
         containing a tag matching one of the target OSM highway tags will be decomposed. Requires graph prepared with
-        via [`io.osm_graph_from_poly`](/io#osm-graph-from-poly).
+        via [`io.osm_graph_from_poly`](/tools/io#osm_graph_from_poly).
 
     Returns
     -------
