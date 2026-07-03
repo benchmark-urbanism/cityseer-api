@@ -1,27 +1,29 @@
 #!/usr/bin/env python
 """
-03_validate_cary.py - External validation on Cary, NC (suburban) network.
+04_validate_woodlands.py - HELD-OUT validation on The Woodlands, TX (suburban) network.
 
-Third validation network: a low-connectivity planned suburb (Raleigh / Research
-Triangle), the sparsest of the three (cf. dense Greater London and Greater Madrid)
-and the real-world analog of the synthetic "tree" topology — the regime where the
-epsilon schedule's conservatism matters most.
+Fourth validation network, HELD OUT from calibration: The Woodlands is a
+master-planned, dendritic Texan suburb (north of Houston) with the archetypal
+cul-de-sac street pattern. Unlike Cary — which was used to calibrate the default
+epsilon — this network plays no part in setting any parameter: the schedule
+(eps=0.05, s=175 m, delta=0.1) is applied exactly as shipped, so the results here
+test out-of-sample transferability to an unseen sparse network.
 
 Validates both closeness and betweenness sampling models using the unified
 framework: Hoeffding bound + deterministic distance-based source sampling + IPW.
 
-Data: TIGER/Line 2023 EDGES (topologically integrated, natively noded) for the
-seven NC counties intersecting Cary + 20 km. Fetch with fetch_tiger.py first (its header gives
-the Cary invocation).
+Data: TIGER/Line 2023 EDGES (topologically integrated, natively noded) for every
+county intersecting The Woodlands + 20 km. Fetch with:
+    python fetch_tiger.py --place "The Woodlands, Texas, USA" --crs EPSG:26915 --out tiger_woodlands
 
 Usage:
-    python 03_validate_cary.py           # Run (skips cache if exists)
-    python 03_validate_cary.py --force   # Force regeneration of validation data
+    python 04_validate_woodlands.py           # Run (skips cache if exists)
+    python 04_validate_woodlands.py --force   # Force regeneration of validation data
 
 Outputs:
-    - output/cary_validation.csv
-    - output/cary_theoretical_bounds_comparison.csv
-    - output/cary_bound_analysis.csv
+    - output/woodlands_validation.csv
+    - output/woodlands_theoretical_bounds_comparison.csv
+    - output/woodlands_bound_analysis.csv
 """
 
 import argparse
@@ -58,86 +60,86 @@ from utilities import (
 
 SCRIPT_DIR = Path(__file__).parent
 
-# Cary TIGER/Line EDGES directory (per-county zips from fetch_tiger.py)
-CARY_EDGES_DIR = SCRIPT_DIR.parent.parent.parent / "temp" / "tiger_cary"
-CARY_CRS = "EPSG:32119"  # NAD83 / North Carolina (metres)
+# Woodlands TIGER/Line EDGES directory (per-county zips from fetch_tiger.py)
+WOODLANDS_EDGES_DIR = SCRIPT_DIR.parent.parent.parent / "temp" / "tiger_woodlands"
+WOODLANDS_CRS = "EPSG:26915"  # NAD83 / UTM 15N (metres)
 
 # Validation parameters
-CARY_DISTANCES = [1000, 2000, 5000, 10000, 20000]
+WOODLANDS_DISTANCES = [1000, 2000, 5000, 10000, 20000]
 N_RUNS = 3
 
 # Hoeffding + deterministic distance-based source sampling (both metrics)
-CARY_EPSILON_CLOSENESS = 0.05
-CARY_EPSILON_BETWEENNESS = 0.05
+WOODLANDS_EPSILON_CLOSENESS = 0.05
+WOODLANDS_EPSILON_BETWEENNESS = 0.05
 
 DELTA = HOEFFDING_DELTA
 
 # Sensitivity analysis: grid spacings to test (default s=175m is the paper default)
 DEFAULT_GRID_SPACINGS = [125, 150, 175, 200, 225]
 
-if not np.isclose(CARY_EPSILON_CLOSENESS, CITYSEER_HOEFFDING_EPSILON) or not np.isclose(
-    CARY_EPSILON_BETWEENNESS, CITYSEER_HOEFFDING_EPSILON
+if not np.isclose(WOODLANDS_EPSILON_CLOSENESS, CITYSEER_HOEFFDING_EPSILON) or not np.isclose(
+    WOODLANDS_EPSILON_BETWEENNESS, CITYSEER_HOEFFDING_EPSILON
 ):
     raise RuntimeError(
         "Validation epsilons must match cityseer.metrics runtime sampling epsilon when using sample=True. "
-        f"Script eps: closeness={CARY_EPSILON_CLOSENESS}, betweenness={CARY_EPSILON_BETWEENNESS}; "
+        f"Script eps: closeness={WOODLANDS_EPSILON_CLOSENESS}, betweenness={WOODLANDS_EPSILON_BETWEENNESS}; "
         f"cityseer.sampling.HOEFFDING_EPSILON={CITYSEER_HOEFFDING_EPSILON}"
     )
 
 
-def get_cary_mask(force: bool = False):
-    """Return Cary boundary (marks live) and its 20km buffered version (road-load mask) in EPSG:32119.
+def get_woodlands_mask(force: bool = False):
+    """Return Woodlands boundary (marks live) and its 20km buffered version (road-load mask) in EPSG:32119.
 
-    Mirrors the GLA pattern: the analysis area (Cary) is a sub-region carved out of a
+    Mirrors the GLA pattern: the analysis area (Woodlands) is a sub-region carved out of a
     much larger dataset (seven NC counties), so the buffer is built *outward* and is
     fully covered by the data (asserted by the loader guard).
     """
-    boundary_cache = CACHE_DIR / "cary_boundary.geojson"
-    buffered_cache = CACHE_DIR / "cary_buffered.geojson"
+    boundary_cache = CACHE_DIR / "woodlands_boundary.geojson"
+    buffered_cache = CACHE_DIR / "woodlands_buffered.geojson"
     if boundary_cache.exists() and buffered_cache.exists() and not force:
         boundary = gpd.read_file(boundary_cache).geometry.iloc[0]
         buffered = gpd.read_file(buffered_cache).geometry.iloc[0]
         return boundary, buffered
-    print("Downloading Cary, NC boundary from OSM...")
-    gdf = ox.geocode_to_gdf("Cary, North Carolina, USA").to_crs(CARY_CRS)
+    print("Downloading The Woodlands, TX boundary from OSM...")
+    gdf = ox.geocode_to_gdf("The Woodlands, Texas, USA").to_crs(WOODLANDS_CRS)
     boundary = gdf.geometry.iloc[0].simplify(100)
     buffered = boundary.buffer(20_000)
-    gpd.GeoDataFrame(geometry=[boundary], crs=CARY_CRS).to_file(boundary_cache, driver="GeoJSON")
-    gpd.GeoDataFrame(geometry=[buffered], crs=CARY_CRS).to_file(buffered_cache, driver="GeoJSON")
-    print(f"  Cached Cary boundary to {boundary_cache}")
+    gpd.GeoDataFrame(geometry=[boundary], crs=WOODLANDS_CRS).to_file(boundary_cache, driver="GeoJSON")
+    gpd.GeoDataFrame(geometry=[buffered], crs=WOODLANDS_CRS).to_file(buffered_cache, driver="GeoJSON")
+    print(f"  Cached Woodlands boundary to {boundary_cache}")
     return boundary, buffered
 
 
-def load_cary_network(force: bool = False):
-    """Load (or build) the Cary network and return (net, nodes_gdf, live_mask, n_live).
+def load_woodlands_network(force: bool = False):
+    """Load (or build) the Woodlands network and return (net, nodes_gdf, live_mask, n_live).
 
     Uses the TIGER EDGES layer (ROADFLG=='Y'), which is natively noded — no planar
     noding required, and correct at grade-separated crossings.
     """
-    cary_boundary, cary_buffered = get_cary_mask(force=force)
+    woodlands_boundary, woodlands_buffered = get_woodlands_mask(force=force)
 
-    cary_cache = CACHE_DIR / "cary_graph.pkl"
-    if cary_cache.exists() and not force:
-        print(f"Loading cached Cary graph from {cary_cache}")
-        with open(cary_cache, "rb") as f:
+    woodlands_cache = CACHE_DIR / "woodlands_graph.pkl"
+    if woodlands_cache.exists() and not force:
+        print(f"Loading cached Woodlands graph from {woodlands_cache}")
+        with open(woodlands_cache, "rb") as f:
             G = pickle.load(f)
     else:
-        edge_files = sorted(CARY_EDGES_DIR.glob("tl_2023_*_edges.zip"))
+        edge_files = sorted(WOODLANDS_EDGES_DIR.glob("tl_2023_*_edges.zip"))
         if not edge_files:
             raise FileNotFoundError(
-                f"No TIGER edge files in {CARY_EDGES_DIR}. "
-                "Run fetch_tiger.py first (its header gives the Cary invocation)."
+                f"No TIGER edge files in {WOODLANDS_EDGES_DIR}. "
+                "Run fetch_tiger.py first (its header gives the Woodlands invocation)."
             )
-        print(f"Loading Cary network from {len(edge_files)} TIGER EDGES files")
-        parts = [gpd.read_file(z).to_crs(CARY_CRS) for z in edge_files]
-        edges_gdf = gpd.GeoDataFrame(pd.concat(parts, ignore_index=True), geometry="geometry", crs=CARY_CRS)
+        print(f"Loading Woodlands network from {len(edge_files)} TIGER EDGES files")
+        parts = [gpd.read_file(z).to_crs(WOODLANDS_CRS) for z in edge_files]
+        edges_gdf = gpd.GeoDataFrame(pd.concat(parts, ignore_index=True), geometry="geometry", crs=WOODLANDS_CRS)
         # ROADFLG=='Y' selects the road network from the topologically-integrated EDGES layer
-        edges_gdf = edges_gdf[(edges_gdf["ROADFLG"] == "Y") & edges_gdf.intersects(cary_buffered)]
+        edges_gdf = edges_gdf[(edges_gdf["ROADFLG"] == "Y") & edges_gdf.intersects(woodlands_buffered)]
         edges_gdf = edges_gdf[edges_gdf.geometry.is_valid & ~edges_gdf.geometry.is_empty].explode(index_parts=False)
         edges_gdf.geometry = edges_gdf.geometry.map(shapely.force_2d)
         print(f"  Loaded: {len(edges_gdf)} road edges")
         # Guard: the 20km road-mask must lie within the available data (mask and edges both EPSG:32119)
-        assert_mask_within_data(cary_buffered, edges_gdf, "Cary")
+        assert_mask_within_data(woodlands_buffered, edges_gdf, "Woodlands")
 
         print("  Building graph...")
         G = io.nx_from_generic_geopandas(edges_gdf)
@@ -146,17 +148,17 @@ def load_cary_network(force: bool = False):
         G = graphs.nx_consolidate_nodes(G, buffer_dist=10)
         G = graphs.nx_remove_dangling_nodes(G, despine=20)
 
-        print(f"  Caching to {cary_cache}")
-        with open(cary_cache, "wb") as f:
+        print(f"  Caching to {woodlands_cache}")
+        with open(woodlands_cache, "wb") as f:
             pickle.dump(G, f)
 
-    print(f"Cary graph: {G.number_of_nodes()} nodes, {G.number_of_edges()} edges")
+    print(f"Woodlands graph: {G.number_of_nodes()} nodes, {G.number_of_edges()} edges")
 
     # Mark live nodes
-    print("Marking live nodes using Cary boundary...")
+    print("Marking live nodes using Woodlands boundary...")
     n_live = 0
     for _n, data in G.nodes(data=True):
-        data["live"] = cary_boundary.contains(Point(data["x"], data["y"]))
+        data["live"] = woodlands_boundary.contains(Point(data["x"], data["y"]))
         n_live += data["live"]
     print(f"  Live nodes: {n_live}/{G.number_of_nodes()} ({100 * n_live / G.number_of_nodes():.1f}%)")
 
@@ -169,8 +171,8 @@ def load_cary_network(force: bool = False):
 
 
 def generate_validation_data(net, nodes_gdf, live_mask, force: bool = False) -> pd.DataFrame:
-    """Generate Cary validation data, or load from cache."""
-    validation_csv = OUTPUT_DIR / "cary_validation.csv"
+    """Generate Woodlands validation data, or load from cache."""
+    validation_csv = OUTPUT_DIR / "woodlands_validation.csv"
     required_cols = {
         "distance",
         "mean_reach",
@@ -207,13 +209,13 @@ def generate_validation_data(net, nodes_gdf, live_mask, force: bool = False) -> 
 
     results = []
 
-    for dist in CARY_DISTANCES:
+    for dist in WOODLANDS_DISTANCES:
         print(f"\n{'=' * 50}")
         print(f"Distance: {dist}m")
         print(f"{'=' * 50}")
 
         # Ground truth (cached per distance)
-        gt_cache = CACHE_DIR / f"cary_ground_truth_{dist}m.pkl"
+        gt_cache = CACHE_DIR / f"woodlands_ground_truth_{dist}m.pkl"
         if gt_cache.exists() and not force:
             print(f"  Loading cached ground truth from {gt_cache}")
             with open(gt_cache, "rb") as f:
@@ -267,8 +269,8 @@ def generate_validation_data(net, nodes_gdf, live_mask, force: bool = False) -> 
         # ---------------------------------------------------------------
         # Closeness: distance-based sampling
         # ---------------------------------------------------------------
-        actual_p_close = compute_distance_p(dist, epsilon=CARY_EPSILON_CLOSENESS)
-        print(f"  Closeness eps={CARY_EPSILON_CLOSENESS}: p={actual_p_close:.4f}")
+        actual_p_close = compute_distance_p(dist, epsilon=WOODLANDS_EPSILON_CLOSENESS)
+        print(f"  Closeness eps={WOODLANDS_EPSILON_CLOSENESS}: p={actual_p_close:.4f}")
 
         spearmans_h, maes_h, precs_h, scales_h, quartiles_h = [], [], [], [], []
         close_times = []
@@ -328,8 +330,8 @@ def generate_validation_data(net, nodes_gdf, live_mask, force: bool = False) -> 
         if nonzero_betw < 10:
             print(f"  Betweenness: skipped (only {nonzero_betw} nonzero)")
         else:
-            actual_p_betw = compute_distance_p(dist, epsilon=CARY_EPSILON_BETWEENNESS)
-            print(f"  Betweenness eps={CARY_EPSILON_BETWEENNESS}: p={actual_p_betw:.4f}")
+            actual_p_betw = compute_distance_p(dist, epsilon=WOODLANDS_EPSILON_BETWEENNESS)
+            print(f"  Betweenness eps={WOODLANDS_EPSILON_BETWEENNESS}: p={actual_p_betw:.4f}")
 
             spearmans_b, maes_b, precs_b, scales_b, quartiles_b = [], [], [], [], []
             betw_times = []
@@ -375,7 +377,7 @@ def generate_validation_data(net, nodes_gdf, live_mask, force: bool = False) -> 
         # ---------------------------------------------------------------
         # Save per-node results (exact + sampled) for this distance
         # ---------------------------------------------------------------
-        sampled_cache = CACHE_DIR / f"cary_sampled_{dist}m.pkl"
+        sampled_cache = CACHE_DIR / f"woodlands_sampled_{dist}m.pkl"
         sampled_data = {
             "distance": dist,
             "mean_reach": mean_reach,
@@ -384,12 +386,12 @@ def generate_validation_data(net, nodes_gdf, live_mask, force: bool = False) -> 
             "node_y": node_y,
             "true_harmonic": true_harmonic,
             "est_harmonic": est_harmonic,
-            "epsilon_closeness": CARY_EPSILON_CLOSENESS,
+            "epsilon_closeness": WOODLANDS_EPSILON_CLOSENESS,
             "hoeffding_p": actual_p_close,
             "spearmans_closeness": spearmans_h,
             "true_betweenness": true_betweenness,
             "est_betweenness": est_betweenness,
-            "epsilon_betweenness": CARY_EPSILON_BETWEENNESS,
+            "epsilon_betweenness": WOODLANDS_EPSILON_BETWEENNESS,
             "hoeffding_p_betw": actual_p_betw if nonzero_betw >= 10 else None,
             "spearmans_betweenness": spearmans_b_list if nonzero_betw >= 10 else None,
         }
@@ -402,7 +404,7 @@ def generate_validation_data(net, nodes_gdf, live_mask, force: bool = False) -> 
             "distance": dist,
             "mean_reach": mean_reach,
             # Closeness
-            "epsilon_closeness": CARY_EPSILON_CLOSENESS,
+            "epsilon_closeness": WOODLANDS_EPSILON_CLOSENESS,
             "hoeffding_p_close": actual_p_close,
             "rho_closeness": rho_h,
             "max_abs_error_h": max_mae_h,
@@ -413,7 +415,7 @@ def generate_validation_data(net, nodes_gdf, live_mask, force: bool = False) -> 
             "sampled_time_h": mean_close_time,
             "speedup_closeness": speedup_h,
             # Betweenness
-            "epsilon_betweenness": CARY_EPSILON_BETWEENNESS,
+            "epsilon_betweenness": WOODLANDS_EPSILON_BETWEENNESS,
             "hoeffding_p_betw": actual_p_betw,
             "rho_betweenness": rho_b,
             "max_abs_error_b": max_mae_b,
@@ -440,24 +442,24 @@ def generate_validation_data(net, nodes_gdf, live_mask, force: bool = False) -> 
 
 
 def get_n_nodes(force: bool = False) -> dict | None:
-    """Get live and total node counts from cached Cary graph.
+    """Get live and total node counts from cached Woodlands graph.
 
     Returns dict with 'n_nodes' (live), 'n_total', and 'live_fraction'.
     """
-    n_nodes_cache = CACHE_DIR / "cary_n_nodes.json"
+    n_nodes_cache = CACHE_DIR / "woodlands_n_nodes.json"
     if n_nodes_cache.exists() and not force:
         with open(n_nodes_cache) as f:
             data = json.load(f)
             if "n_total" in data:
                 return data
-    cary_cache = CACHE_DIR / "cary_graph.pkl"
-    if not cary_cache.exists():
+    woodlands_cache = CACHE_DIR / "woodlands_graph.pkl"
+    if not woodlands_cache.exists():
         return None
-    with open(cary_cache, "rb") as f:
+    with open(woodlands_cache, "rb") as f:
         G = pickle.load(f)
-    cary_boundary, _ = get_cary_mask(force=force)
+    woodlands_boundary, _ = get_woodlands_mask(force=force)
     n_total = G.number_of_nodes()
-    n_nodes = sum(1 for _n, d in G.nodes(data=True) if cary_boundary.contains(Point(d["x"], d["y"])))
+    n_nodes = sum(1 for _n, d in G.nodes(data=True) if woodlands_boundary.contains(Point(d["x"], d["y"])))
     data = {"n_nodes": n_nodes, "n_total": n_total, "live_fraction": n_nodes / n_total if n_total > 0 else 1.0}
     with open(n_nodes_cache, "w") as f:
         json.dump(data, f)
@@ -504,7 +506,7 @@ def compute_theoretical_bounds(df: pd.DataFrame, n_nodes: int):
         return None
 
     bounds_df = pd.DataFrame(rows)
-    csv_path = OUTPUT_DIR / "cary_theoretical_bounds_comparison.csv"
+    csv_path = OUTPUT_DIR / "woodlands_theoretical_bounds_comparison.csv"
     bounds_df.to_csv(csv_path, index=False)
     print(f"  Saved: {csv_path}")
     return bounds_df
@@ -551,7 +553,7 @@ def compute_bound_analysis(df: pd.DataFrame):
         t = len(subset)
         print(f"    {metric}: {h}/{t} ({100 * h / t:.1f}%)")
 
-    csv_path = OUTPUT_DIR / "cary_bound_analysis.csv"
+    csv_path = OUTPUT_DIR / "woodlands_bound_analysis.csv"
     bound_df.to_csv(csv_path, index=False)
     print(f"\n  Saved: {csv_path}")
     return bound_df
@@ -578,7 +580,7 @@ def run_sensitivity_analysis(
     if distances is None:
         distances = [10000, 20000]  # only long distances where sampling matters
 
-    sensitivity_csv = OUTPUT_DIR / "cary_sensitivity.csv"
+    sensitivity_csv = OUTPUT_DIR / "woodlands_sensitivity.csv"
     if sensitivity_csv.exists() and not force:
         print(f"\nSensitivity results already exist: {sensitivity_csv}")
         return pd.read_csv(sensitivity_csv)
@@ -592,7 +594,7 @@ def run_sensitivity_analysis(
     rows = []
     for dist in distances:
         # Load ground truth
-        gt_cache = CACHE_DIR / f"cary_ground_truth_{dist}m.pkl"
+        gt_cache = CACHE_DIR / f"woodlands_ground_truth_{dist}m.pkl"
         if not gt_cache.exists():
             print(f"  Skipping {dist}m — no ground truth cache")
             continue
@@ -603,7 +605,7 @@ def run_sensitivity_analysis(
         mean_reach = gt_data["mean_reach"]
 
         for s in grid_spacings:
-            p = compute_distance_p(dist, epsilon=CARY_EPSILON_CLOSENESS, grid_spacing=float(s))
+            p = compute_distance_p(dist, epsilon=WOODLANDS_EPSILON_CLOSENESS, grid_spacing=float(s))
             print(f"\n  d={dist}m, s={s}m: p={p:.4f}")
 
             if p >= 1.0:
@@ -684,7 +686,7 @@ def run_sensitivity_analysis(
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Validate sampling model on Cary, NC network")
+    parser = argparse.ArgumentParser(description="Validate sampling model on The Woodlands, TX network")
     parser.add_argument("--force", action="store_true", help="Force regeneration of validation data")
     parser.add_argument(
         "--sensitivity",
@@ -701,15 +703,15 @@ def main():
     args = parser.parse_args()
 
     print("=" * 70)
-    print("03_validate_cary.py - External validation on Cary, NC (suburban) network")
+    print("04_validate_woodlands.py - External validation on The Woodlands, TX (suburban) network")
     print("=" * 70)
 
-    print(f"\nCloseness:   Hoeffding + deterministic distance-based, eps={CARY_EPSILON_CLOSENESS}")
-    print(f"Betweenness: Hoeffding + deterministic distance-based, eps={CARY_EPSILON_BETWEENNESS}")
+    print(f"\nCloseness:   Hoeffding + deterministic distance-based, eps={WOODLANDS_EPSILON_CLOSENESS}")
+    print(f"Betweenness: Hoeffding + deterministic distance-based, eps={WOODLANDS_EPSILON_BETWEENNESS}")
     print(f"Delta: {DELTA}")
 
     # Load network (needed for both validation and sensitivity)
-    net, nodes_gdf, live_mask, n_live_count = load_cary_network(force=args.force)
+    net, nodes_gdf, live_mask, n_live_count = load_woodlands_network(force=args.force)
 
     # Generate or load validation data
     df = generate_validation_data(net, nodes_gdf, live_mask, force=args.force)
@@ -720,7 +722,9 @@ def main():
     n_nodes = None
     if node_info is not None:
         n_nodes = node_info["n_nodes"]
-        print(f"\nCary network: {n_nodes} live / {node_info['n_total']} total (φ={node_info['live_fraction']:.3f})")
+        print(
+            f"\nWoodlands network: {n_nodes} live / {node_info['n_total']} total (φ={node_info['live_fraction']:.3f})"
+        )
         compute_theoretical_bounds(df, n_nodes)
 
     # Bound analysis
@@ -769,9 +773,9 @@ def main():
     print("\n" + "=" * 70)
     print("OUTPUTS")
     print("=" * 70)
-    print(f"  1. {OUTPUT_DIR / 'cary_validation.csv'}")
-    print(f"  2. {OUTPUT_DIR / 'cary_theoretical_bounds_comparison.csv'}")
-    print(f"  3. {OUTPUT_DIR / 'cary_bound_analysis.csv'}")
+    print(f"  1. {OUTPUT_DIR / 'woodlands_validation.csv'}")
+    print(f"  2. {OUTPUT_DIR / 'woodlands_theoretical_bounds_comparison.csv'}")
+    print(f"  3. {OUTPUT_DIR / 'woodlands_bound_analysis.csv'}")
 
     # Sensitivity analysis (optional)
     if args.sensitivity:
@@ -783,7 +787,7 @@ def main():
             grid_spacings=spacings,
             force=args.force,
         )
-        print(f"  5. {OUTPUT_DIR / 'cary_sensitivity.csv'}")
+        print(f"  5. {OUTPUT_DIR / 'woodlands_sensitivity.csv'}")
 
     return 0
 

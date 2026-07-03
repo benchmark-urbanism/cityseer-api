@@ -20,9 +20,10 @@ SCRIPTS = [
     ("01_validate_gla.py", "Validate on Greater London network", True),
     ("02_validate_madrid.py", "Validate on Greater Madrid network", True),
     ("03_validate_cary.py", "Validate on Cary, NC (suburban) network", True),
-    ("04_figures_validation.py", "Generate validation figures (GLA, Madrid, Cary)", False),
-    ("05_generate_macros.py", "Generate LaTeX macros, tables, and practical guide figure", False),
-    ("06_figures_spatial.py", "Generate spatial error figures from per-node caches", False),
+    ("04_validate_woodlands.py", "Validate on The Woodlands, TX (held-out suburban) network", True),
+    ("05_figures_validation.py", "Generate validation figures (all four networks)", False),
+    ("06_generate_macros.py", "Generate LaTeX macros, tables, and practical guide figure", False),
+    ("07_figures_spatial.py", "Generate spatial error figures from per-node caches", False),
 ]
 
 

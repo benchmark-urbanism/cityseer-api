@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-04_figures_validation.py - Generate validation figures for the three real networks.
+05_figures_validation.py - Generate validation figures for the three real networks.
 
 Reads cached validation CSVs and produces publication figures (Greater London,
 Madrid, and Cary, NC):
@@ -10,7 +10,7 @@ Madrid, and Cary, NC):
   - fig6_reach_comparison.pdf:     Canonical grid reach vs actual network reach
 
 Usage:
-    python 04_figures_validation.py
+    python 05_figures_validation.py
 """
 
 import pickle
@@ -61,11 +61,12 @@ plt.rcParams.update(
 # =============================================================================
 
 
-def load_data() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame | None]:
-    """Load GLA, Madrid and Cary validation CSVs (Cary optional)."""
+def load_data() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame | None, pd.DataFrame | None]:
+    """Load GLA, Madrid, Cary and Woodlands validation CSVs (suburbs optional)."""
     gla_path = OUTPUT_DIR / "gla_validation_summary.csv"
     madrid_path = OUTPUT_DIR / "madrid_validation.csv"
     cary_path = OUTPUT_DIR / "cary_validation.csv"
+    woodlands_path = OUTPUT_DIR / "woodlands_validation.csv"
 
     if not gla_path.exists():
         raise FileNotFoundError(f"GLA validation summary not found: {gla_path}\n  Run 01_validate_gla.py first.")
@@ -75,16 +76,20 @@ def load_data() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame | None]:
     gla = pd.read_csv(gla_path)
     madrid = pd.read_csv(madrid_path)
     cary = pd.read_csv(cary_path) if cary_path.exists() else None
+    woodlands = pd.read_csv(woodlands_path) if woodlands_path.exists() else None
 
     gla["distance_km"] = gla["distance"] / 1000
     madrid["distance_km"] = madrid["distance"] / 1000
     if cary is not None:
         cary["distance_km"] = cary["distance"] / 1000
+    if woodlands is not None:
+        woodlands["distance_km"] = woodlands["distance"] / 1000
 
     print(f"GLA:    {len(gla)} distance rows")
     print(f"Madrid: {len(madrid)} distance rows")
     print(f"Cary:   {len(cary) if cary is not None else 0} distance rows")
-    return gla, madrid, cary
+    print(f"Woodlands: {len(woodlands) if woodlands is not None else 0} distance rows")
+    return gla, madrid, cary, woodlands
 
 
 # =============================================================================
@@ -92,7 +97,7 @@ def load_data() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame | None]:
 # =============================================================================
 
 
-def generate_fig4_accuracy(gla: pd.DataFrame, madrid: pd.DataFrame, cary: pd.DataFrame | None = None):
+def generate_fig4_accuracy(gla, madrid, cary=None, woodlands=None):
     """Figure 4: Spearman rho vs distance for the real networks, closeness and betweenness."""
     print("\nGenerating Figure 4: validation accuracy...")
 
@@ -107,6 +112,8 @@ def generate_fig4_accuracy(gla: pd.DataFrame, madrid: pd.DataFrame, cary: pd.Dat
     series = [(gla, "o", "-", 1.0, "Greater London"), (madrid, "s", "--", 0.75, "Madrid")]
     if cary is not None:
         series.append((cary, "^", ":", 0.7, "Cary (suburban)"))
+    if woodlands is not None:
+        series.append((woodlands, "D", "-.", 0.65, "The Woodlands (held-out)"))
 
     for ax, (col, title, colour) in zip(axes, panels, strict=True):
         for df, marker, ls, alpha, label in series:
@@ -163,7 +170,7 @@ def _load_live_fraction(network: str) -> float:
     return 1.0
 
 
-def generate_fig5_speedup(gla: pd.DataFrame, madrid: pd.DataFrame, cary: pd.DataFrame | None = None):
+def generate_fig5_speedup(gla, madrid, cary=None, woodlands=None):
     """Figure 5: Speedup vs distance for the real networks, closeness and betweenness.
 
     Only distances where sampling was actually used (p < live_fraction) are shown.
@@ -174,6 +181,8 @@ def generate_fig5_speedup(gla: pd.DataFrame, madrid: pd.DataFrame, cary: pd.Data
     series = [(gla, "gla", "o", "-", 1.0, "Greater London"), (madrid, "madrid", "s", "--", 0.75, "Madrid")]
     if cary is not None:
         series.append((cary, "cary", "^", ":", 0.7, "Cary (suburban)"))
+    if woodlands is not None:
+        series.append((woodlands, "woodlands", "D", "-.", 0.65, "The Woodlands (held-out)"))
 
     # Filter each network to the distances where sampling actually engaged (p < phi)
     prepared = []
@@ -263,6 +272,14 @@ def load_reach_data() -> list[dict]:
                 d = pickle.load(f)
             rows.append({"network": "Cary (suburban)", "distance": dist, "mean_reach": d["mean_reach"]})
 
+    # The Woodlands (held-out suburban)
+    for dist in [1000, 2000, 5000, 10000, 20000]:
+        p = CACHE_DIR / f"woodlands_ground_truth_{dist}m.pkl"
+        if p.exists():
+            with open(p, "rb") as f:
+                d = pickle.load(f)
+            rows.append({"network": "The Woodlands (held-out)", "distance": dist, "mean_reach": d["mean_reach"]})
+
     return rows
 
 
@@ -303,6 +320,7 @@ def generate_fig6_reach_comparison():
         "Greater London": ("o", "#333333", 8, "-"),
         "Madrid": ("s", "#888888", 8, "--"),
         "Cary (suburban)": ("^", "#B2182B", 8, ":"),
+        "The Woodlands (held-out)": ("D", "#E08214", 8, "-."),
     }
 
     for network, style_args in network_styles.items():
@@ -358,7 +376,10 @@ def generate_fig6_reach_comparison():
 
 
 def generate_fig2_error_vs_reach(
-    gla_full: pd.DataFrame, madrid_full: pd.DataFrame, cary_full: pd.DataFrame | None = None
+    gla_full: pd.DataFrame,
+    madrid_full: pd.DataFrame,
+    cary_full: pd.DataFrame | None = None,
+    woodlands_full: pd.DataFrame | None = None,
 ):
     """Figure 2: Absolute and relative error vs per-node reach quartiles.
 
@@ -418,6 +439,7 @@ def generate_fig2_error_vs_reach(
 
     add_wide_network(madrid_full, madrid_phi, "s")
     add_wide_network(cary_full, _load_live_fraction("cary"), "^")
+    add_wide_network(woodlands_full, _load_live_fraction("woodlands"), "D")
 
     df_abs = pd.DataFrame(records_abs)
     df_rel = pd.DataFrame(records_rel)
@@ -429,6 +451,7 @@ def generate_fig2_error_vs_reach(
         Line2D([0], [0], color="grey", marker="o", linestyle="none", markersize=6, label="GLA"),
         Line2D([0], [0], color="grey", marker="s", linestyle="none", markersize=6, label="Madrid"),
         Line2D([0], [0], color="grey", marker="^", linestyle="none", markersize=6, label="Cary"),
+        Line2D([0], [0], color="grey", marker="D", linestyle="none", markersize=6, label="Woodlands"),
     ]
 
     for ax, df, ylabel, title, is_rel in [
@@ -467,15 +490,15 @@ def generate_fig2_error_vs_reach(
 
 def main():
     print("=" * 70)
-    print("04_figures_validation.py - Validation Figures")
+    print("05_figures_validation.py - Validation Figures")
     print("=" * 70)
 
-    gla, madrid, cary = load_data()
+    gla, madrid, cary, woodlands = load_data()
     gla_full = pd.read_csv(OUTPUT_DIR / "gla_validation.csv")
 
-    generate_fig2_error_vs_reach(gla_full, madrid, cary)
-    generate_fig4_accuracy(gla, madrid, cary)
-    generate_fig5_speedup(gla, madrid, cary)
+    generate_fig2_error_vs_reach(gla_full, madrid, cary, woodlands)
+    generate_fig4_accuracy(gla, madrid, cary, woodlands)
+    generate_fig5_speedup(gla, madrid, cary, woodlands)
     generate_fig6_reach_comparison()
 
     print("\nDone. Figures saved to:", FIGURES_DIR)

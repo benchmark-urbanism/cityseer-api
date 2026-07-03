@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-06_figures_spatial.py - Generate spatial error figures from per-node sampled caches.
+07_figures_spatial.py - Generate spatial error figures from per-node sampled caches.
 
 Reads per-node sampled caches ({network}_sampled_{dist}m.pkl) produced by
 01_validate_gla.py and 02_validate_madrid.py, plus optional sensitivity CSVs.
@@ -14,8 +14,8 @@ Figures:
   - fig10_sensitivity.pdf:           ρ vs grid spacing s (if sensitivity CSVs exist)
 
 Usage:
-    python 06_figures_spatial.py
-    python 06_figures_spatial.py --distance 10000  # Use 10km instead of 20km
+    python 07_figures_spatial.py
+    python 07_figures_spatial.py --distance 10000  # Use 10km instead of 20km
 """
 
 import argparse
@@ -93,7 +93,7 @@ def load_sampled_cache(network: str, dist: int) -> dict | None:
 # =============================================================================
 
 
-def generate_fig7_spatial_error(gla_data: dict, madrid_data: dict | None, dist: int, cary_data: dict | None = None):
+def generate_fig7_spatial_error(gla_data, madrid_data, dist, cary_data=None, woodlands_data=None):
     """Spatial map of per-node RANK SHIFT under sampling.
 
     For each node: |percentile-rank(true) - percentile-rank(sampled)| in percentile
@@ -110,6 +110,8 @@ def generate_fig7_spatial_error(gla_data: dict, madrid_data: dict | None, dist: 
         nets.append(("Madrid", madrid_data))
     if cary_data is not None:
         nets.append(("Cary", cary_data))
+    if woodlands_data is not None:
+        nets.append(("Woodlands", woodlands_data))
 
     nrows = len(nets)
     fig, axes = plt.subplots(nrows, 2, figsize=(14, 5.5 * nrows))
@@ -711,7 +713,11 @@ def _decile_panel(ax, true_vals, est_vals, title, colour, n_groups=10):
 
 
 def generate_fig11_decile_transition(
-    gla_data: dict, madrid_data: dict | None, dist: int, cary_data: dict | None = None
+    gla_data: dict,
+    madrid_data: dict | None,
+    dist: int,
+    cary_data: dict | None = None,
+    woodlands_data: dict | None = None,
 ):
     """Decile transition matrix heatmap: 2x2 grid.
 
@@ -731,6 +737,8 @@ def generate_fig11_decile_transition(
         configs.append(("Madrid", madrid_data))
     if cary_data is not None:
         configs.append(("Cary", cary_data))
+    if woodlands_data is not None:
+        configs.append(("Woodlands", woodlands_data))
 
     nrows = len(configs)
     fig, axes = plt.subplots(nrows, 2, figsize=(12, 6 * nrows))
@@ -795,7 +803,7 @@ def main():
     dist = args.distance
 
     print("=" * 70)
-    print(f"06_figures_spatial.py - Spatial Error Figures ({dist // 1000}km)")
+    print(f"07_figures_spatial.py - Spatial Error Figures ({dist // 1000}km)")
     print("=" * 70)
 
     # Load per-node caches
@@ -803,6 +811,7 @@ def main():
     gla_data = load_sampled_cache("gla", dist)
     madrid_data = load_sampled_cache("madrid", dist)
     cary_data = load_sampled_cache("cary", dist)
+    woodlands_data = load_sampled_cache("woodlands", dist)
 
     if gla_data is None and madrid_data is None:
         print("\nERROR: No per-node caches found. Run validation scripts with --force first:")
@@ -812,7 +821,7 @@ def main():
 
     # Generate figures
     if gla_data is not None:
-        generate_fig7_spatial_error(gla_data, madrid_data, dist, cary_data)
+        generate_fig7_spatial_error(gla_data, madrid_data, dist, cary_data, woodlands_data)
 
     if gla_data is not None:
         generate_fig8_error_vs_reach(gla_data, madrid_data, dist)
@@ -824,7 +833,7 @@ def main():
         generate_fig9b_rank_displacement(gla_data, madrid_data, dist)
 
     if gla_data is not None or madrid_data is not None:
-        generate_fig11_decile_transition(gla_data, madrid_data, dist, cary_data)
+        generate_fig11_decile_transition(gla_data, madrid_data, dist, cary_data, woodlands_data)
 
     generate_fig10_sensitivity()
 

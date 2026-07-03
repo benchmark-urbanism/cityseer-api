@@ -36,7 +36,7 @@ Specifically:
 
 2. **Practical guide** (Fig 3): Shows the deterministic schedule across epsilon values so practitioners can choose their operating point. At epsilon = 0.05, sampling engages beyond ~5 km and reaches ~15x speedup at 20 km.
 
-3. **Real-world validation** (Figs 4--6, Tables 2, 4, 5): three networks spanning the density range --- Greater London, Greater Madrid (dense metros), and Cary, NC (sparse suburb) --- confirm rho >= 0.95 at 1--20 km for both metrics. Cary is the binding case (min rho ~0.96).
+3. **Real-world validation** (Figs 4--6, Tables 2, 4, 5, 6): four networks spanning the density range. Greater London and Greater Madrid (dense metros) plus Cary, NC (sparse suburb) confirm rho >= 0.95 at 1--20 km for both metrics; Cary is the binding calibration case (min rho ~0.96). A fourth network, The Woodlands, TX (very sparse dendritic suburb), is held out from calibration as the out-of-sample test: it meets the target at all distances except closeness at 20 km (rho = 0.94). The miss has a mechanical explanation (reach at 38% of canonical, vs 51% for Cary) and epsilon = 0.04 restores the target (output/woodlands_epsilon_sweep.csv). The held-out result locates the density boundary of the default tolerance and is reported as such in the paper, not hidden.
 
 4. **Spatial residuals** (Fig 7): No systematic spatial bias --- the sampling error is spatially uniform, not concentrated in particular areas of the network.
 

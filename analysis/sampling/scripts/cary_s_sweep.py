@@ -6,7 +6,7 @@ NOTE: this sweep predates the final calibration and is kept for the record. It
 explored recalibrating the grid spacing s (at the then-default eps=0.06) as an
 alternative to tightening eps. The final design went the other way — s stays a
 fixed canonical reference (175 m) and eps is the single calibrated parameter
-(0.05, via cary_epsilon_sweep.py) — because s and eps are redundant controls on
+(0.05, via epsilon_sweep.py --network cary) — because s and eps are redundant controls on
 the sampling level and only one should be fitted. The committed
 output/cary_s_sweep.csv was generated at eps=0.06 and maps rho against s at the
 binding distances; it is not cited by the paper.

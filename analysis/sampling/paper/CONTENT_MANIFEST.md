@@ -31,13 +31,14 @@ OSMnx; only the road geometry differs by source.
 | 01 | `01_validate_gla.py`       | Greater London validation                          | `output/gla_*.csv`, `.cache/gla_n_nodes.json`                                                        |
 | 02 | `02_validate_madrid.py`    | Greater Madrid validation                          | `output/madrid_*.csv`, `.cache/madrid_n_nodes.json`                                                  |
 | 03 | `03_validate_cary.py`      | Cary, NC (suburban) validation                     | `output/cary_*.csv`, `.cache/cary_n_nodes.json`                                                      |
-| 04 | `04_figures_validation.py` | Validation figures (accuracy, speedup, reach)      | `figures/fig2_error_vs_reach.pdf`, `fig4_validation_accuracy.pdf`, `fig5_validation_speedup.pdf`, `fig6_reach_comparison.pdf` |
-| 05 | `05_generate_macros.py`    | LaTeX macros, validation tables, practical-guide   | `tables/model_macros.tex`, `tab2/tab4/tab5_*.tex`, `tab_distance_lookup.tex`, `figures/fig3_practical_guide.pdf` |
-| 06 | `06_figures_spatial.py`    | Spatial-error figures (GLA + Madrid)               | `figures/fig7_spatial_error_gla.png`, `figures/fig11_decile_transition.pdf`                         |
+| 04 | `04_validate_woodlands.py` | Held-out validation: The Woodlands, TX (suburban) | `output/woodlands_*.csv`, `tables/woodlands_n_nodes.json` |
+| 05 | `05_figures_validation.py` | Validation figures (accuracy, speedup, reach)      | `figures/fig2_error_vs_reach.pdf`, `fig4_validation_accuracy.pdf`, `fig5_validation_speedup.pdf`, `fig6_reach_comparison.pdf` |
+| 06 | `06_generate_macros.py`    | LaTeX macros, validation tables, practical-guide   | `tables/model_macros.tex`, `tab2/tab4/tab5/tab6_*.tex`, `tab_distance_lookup.tex`, `figures/fig3_practical_guide.pdf` |
+| 07 | `07_figures_spatial.py`    | Spatial-error figures (all networks)               | `figures/fig7_rank_shift.png`, `figures/fig11_decile_transition.pdf`                         |
 | –  | `utilities.py`             | Shared constants / utilities                       | (imported by the others)                                                                            |
-| –  | `fetch_tiger_cary.py`      | One-off: download TIGER edges for Cary + buffer    | `temp/tiger_cary/*.zip`                                                                              |
+| –  | `fetch_tiger.py`      | Download TIGER edges for a suburb + buffer (Cary, Woodlands)    | `temp/tiger_{place}/*.zip`                                                                              |
 
-Standalone calibration diagnostics (not part of `run_all.py`): `cary_epsilon_sweep.py`,
+Standalone calibration diagnostics (not part of `run_all.py`): `epsilon_sweep.py`,
 `cary_s_sweep.py` — map ρ vs ε / s on Cary to locate the ρ = 0.95 crossing.
 
 ## Paper
