@@ -2,7 +2,7 @@
 
 ## Headline
 
-v4.25 replaces the fixed centrality metric set with an **expression-based API**, adds the high-level **`CityNetwork`** class, redesigns **betweenness** to count all routes (fixing boundary roll-off and directed counting), and recalibrates **sampling** against three real networks. Backwards compatibility is a first-class concern: the 4.24 function names remain available as deprecated shims that produce the same default columns as before — see `COMPATIBILITY.md` for the full contract and migration table.
+v4.25 replaces the fixed centrality metric set with an **expression-based API**, adds the high-level **`CityNetwork`** class, redefines **betweenness** to count all routes (including routes that both start and end outside the boundary), and recalibrates **sampling** against three real networks. Backwards compatibility is a first-class concern: the 4.24 function names remain available as deprecated shims that produce the same default columns as before — see `COMPATIBILITY.md` for the full contract and migration table.
 
 ## New Features
 
@@ -52,7 +52,7 @@ The distance-based sampling schedule is now calibrated on three real networks sp
 
 ### Betweenness counts all routes
 
-Betweenness now sources from **every** node; the `live` designation only filters which nodes' values are reported. This fixes two long-standing issues: boundary nodes no longer lose credit for routes passing through them between buffer nodes (edge roll-off), and directed betweenness counts each ordered pair fully (previously halved). Consequences: on undirected, fully-live networks values are unchanged; on buffered networks, values near the boundary increase (they are now correct); on directed networks, values double relative to 4.24 (they were undercounted).
+Betweenness now sources from **every** node; the `live` designation only filters which nodes' values are reported. This is a deliberate change of definition, not a bug fix. Previously, routes that both started **and** ended outside the boundary were intentionally excluded — a pragmatic scoping choice, since such routes are relatively uncommon yet require every buffer node to run as a source, adding substantial computational weight. In 4.25 we opt for theoretical strictness: with a buffer at least as deep as the analysis distance, a route between two buffer nodes that passes through the study area is a real shortest path, so it is now counted and credits the live nodes it traverses. These buffer-to-buffer routes are the *only* difference. Consequences: on undirected, fully-live networks values are unchanged; on buffered networks, values near the boundary increase (the newly counted routes accrue there), and exact betweenness costs more to compute (all nodes source — part of the motivation for sampling). Separately, on directed networks each ordered origin–destination pair now contributes with weight 1, where previously the undirected pair-weighting of ½ was applied; directed values are therefore twice their 4.24 magnitude.
 
 ### `segment_centrality` removed
 
