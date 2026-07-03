@@ -72,7 +72,7 @@ if not np.isclose(MADRID_EPSILON_CLOSENESS, CITYSEER_HOEFFDING_EPSILON) or not n
     raise RuntimeError(
         "Validation epsilons must match cityseer.metrics runtime sampling epsilon when using sample=True. "
         f"Script eps: closeness={MADRID_EPSILON_CLOSENESS}, betweenness={MADRID_EPSILON_BETWEENNESS}; "
-        f"cityseer.config.HOEFFDING_EPSILON={CITYSEER_HOEFFDING_EPSILON}"
+        f"cityseer.sampling.HOEFFDING_EPSILON={CITYSEER_HOEFFDING_EPSILON}"
     )
 
 

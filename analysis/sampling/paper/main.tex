@@ -49,7 +49,7 @@
 
 Urban morphological analysis relies on localised network centrality to reveal patterns of accessibility and flow in street networks \citep{Cooper2015}. Two measures are central to this work: \emph{closeness} (how easily a node can reach its neighbours) and \emph{betweenness} (how often a node lies on shortest paths between others). Both are computed within distance thresholds that range from pedestrian ($\approx$500\,m) to metropolitan ($\approx$20\,km) scales, as implemented in tools such as sDNA \citep{Cooper2018} and \cityseer{} \citep{Simons2022}.
 
-Exact computation requires running a shortest-path traversal from every node; the cost scales with both the number of nodes and the size of each node's neighbourhood. A multi-scale analysis of the Greater London network (\glaNnodes{} nodes) across ten distance thresholds takes several hours on a single core. Sampling offers a natural way to reduce this cost: instead of traversing from every node, traverse from a randomly selected fraction and scale up the result.
+Exact computation requires running a shortest-path traversal from every node; the cost scales with both the number of nodes and the size of each node's neighbourhood. A multi-scale analysis of the Greater London network (\glaNnodes{} nodes) quickly becomes expensive: the exact 20\,km betweenness pass alone takes on the order of ten minutes of multi-core compute, and costs compound across thresholds and metrics. Sampling offers a natural way to reduce this cost: instead of traversing from every node, traverse from a randomly selected fraction and scale up the result.
 
 The challenge is comparability. Each node's centrality is computed over its own local neighbourhood, and these vary in size and density both within and across cities. If the sampling rate tracked local structure, nodes in dense and sparse areas would carry different noise levels, distorting comparisons within a city and --- the same argument applied across networks \citep{Strano2013} --- between cities. The schedule must therefore be \emph{deterministic} (the same distance always yields the same probability) and \emph{network-agnostic} (no dependence on local or global structure); existing adaptive methods such as KADABRA \citep{Borassi2019} produce network-dependent sample counts, precluding direct comparison.
 
@@ -244,7 +244,7 @@ The schedule has a single free parameter, the tolerance $\varepsilon$ ($\delta$ 
 
 \subsection{Real-world validation}
 
-Tables~\ref{tab:validation}--\ref{tab:cary_validation} report results for the three networks. All achieve $\rho > \targetRho$ for closeness and betweenness at every distance from 1--20\,km. At shorter distances the schedule prescribes $p \geq \varphi$, so the implementation computes exactly and $\rho = 1$ holds by construction; genuine estimation error appears only where sampling engages (10 and 20\,km here), and the reported margins above $\targetRho$ refer to those sampled distances. The 20\,km betweenness is the limiting case for each network: $\rho = \glaMinRhoBetweenness$ (London), $\rho = \madridMinRhoBetweenness$ (Madrid), and $\rho = \caryMinRhoBetweenness$ (Cary).
+Tables~\ref{tab:validation}--\ref{tab:cary_validation} report results for the three networks. All achieve $\rho > \targetRho$ for closeness and betweenness at every distance from 1--20\,km. At shorter distances the schedule prescribes $p \geq \varphi$, so the implementation computes exactly and $\rho = 1$ holds by construction; genuine estimation error appears only where sampling engages (10 and 20\,km on the metropolitan networks; 20\,km on Cary, whose low live fraction keeps 10\,km in exact mode), and the reported margins above $\targetRho$ refer to those sampled distances. The 20\,km betweenness is the limiting case for each network: $\rho = \glaMinRhoBetweenness$ (London), $\rho = \madridMinRhoBetweenness$ (Madrid), and $\rho = \caryMinRhoBetweenness$ (Cary).
 
 \input{tables/tab2_validation}
 
@@ -402,7 +402,7 @@ gdf = networks.centrality_shortest(
 
 Convenience wrappers (\texttt{closeness\_shortest}, \texttt{betweenness\_shortest}) are available for computing a single metric, but using them separately forgoes the shared-traversal advantage.
 
-The default error tolerance ($\varepsilon = \hoeffdingEpsilon$) and failure probability ($\delta = \hoeffdingDelta$) are set in \texttt{cityseer.config}. The \texttt{cityseer.sampling} module provides helper functions for custom workflows:
+The default error tolerance ($\varepsilon = \hoeffdingEpsilon$), failure probability ($\delta = \hoeffdingDelta$), and canonical grid spacing ($s = \gridSpacing\,$m) are defined in \texttt{cityseer.sampling}, which also provides helper functions for custom workflows:
 \begin{itemize}
   \item \texttt{compute\_distance\_p}: deterministic $p$ from distance via canonical grid model (recommended entry point)
   \item \texttt{compute\_hoeffding\_p}: Hoeffding bound from a given reach value (for experimentation with non-canonical schedules)

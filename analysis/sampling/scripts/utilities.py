@@ -10,7 +10,7 @@ Sections:
 3. Network helpers (live buffer)
 4. Hoeffding / EW bound utilities (analysis-specific)
 
-Note: All sampling probabilities use cityseer.config.compute_distance_p (distance-based).
+Note: All sampling probabilities use cityseer.sampling.compute_distance_p (distance-based).
       All derived quantities (predicted epsilon, effective n) use canonical reach from distance.
 """
 

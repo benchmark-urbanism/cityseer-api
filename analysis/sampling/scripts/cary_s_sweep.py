@@ -1,11 +1,15 @@
 #!/usr/bin/env python
 """
-cary_s_sweep.py - Find the minimal grid spacing s that keeps Cary above rho=0.95.
+cary_s_sweep.py - Historical calibration diagnostic: rho vs grid spacing s on Cary.
 
-s=250 (the first guess) lands Cary's 20km closeness at rho=0.969 — a ~2pt margin
-over the 0.95 target, bought with ~half the speedup. This sweeps s at the binding
-distances (fixed eps=0.06) to locate the smallest s that still clears 0.95 with a
-modest safety margin, recovering the speedup s=250 gave away.
+NOTE: this sweep predates the final calibration and is kept for the record. It
+explored recalibrating the grid spacing s (at the then-default eps=0.06) as an
+alternative to tightening eps. The final design went the other way — s stays a
+fixed canonical reference (175 m) and eps is the single calibrated parameter
+(0.05, via cary_epsilon_sweep.py) — because s and eps are redundant controls on
+the sampling level and only one should be fitted. The committed
+output/cary_s_sweep.csv was generated at eps=0.06 and maps rho against s at the
+binding distances; it is not cited by the paper.
 
 Reuses the cached Cary network + ground truth; only the cheap sampled passes run.
 """

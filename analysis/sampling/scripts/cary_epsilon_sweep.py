@@ -2,14 +2,16 @@
 """
 cary_epsilon_sweep.py - Map where Cary's rank correlation crosses 0.95 vs epsilon.
 
-Cary (sparse suburban) closeness lands at rho=0.945 at 20km with the default
-eps=0.06. This sweeps eps at the distances where sampling engages to locate the
-rho=0.95 crossing precisely, informing whether to keep eps=0.06 (design margin)
-or tighten it.
+This sweep is the calibration evidence behind the eps=0.05 default: under the
+pre-calibration eps=0.06, Cary (the sparsest network) closeness landed at
+rho=0.945 at 20km — below the 0.95 target — while eps=0.05 clears it
+(rho=0.961). The sweep runs eps in {0.04, 0.05, 0.06, 0.08} at the distances
+where sampling engages, locating the crossing (output/cary_epsilon_sweep.csv).
 
-Reuses the cached Cary network + per-distance ground truth (run 04 first); only
-the cheap sampled passes re-run, via the low-level Rust API with an explicit
-sample_probability (so eps is swept directly, bypassing the phi fallback).
+Reuses the cached Cary network + per-distance ground truth (run
+03_validate_cary.py first); only the cheap sampled passes re-run, via the
+low-level Rust API with an explicit sample_probability (so eps is swept
+directly, bypassing the phi fallback).
 """
 
 import importlib.util
