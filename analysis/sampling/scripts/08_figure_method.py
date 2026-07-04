@@ -36,8 +36,8 @@ YLIM = (-2.1, 2.1)
 plt.rcParams.update(
     {
         "font.family": "sans-serif",
-        "font.size": 10,
-        "axes.titlesize": 10.5,
+        "font.size": 12,
+        "axes.titlesize": 13,
         "figure.dpi": 150,
         "savefig.dpi": 300,
     }
@@ -80,7 +80,7 @@ def annotate_exemplar(ax, xy, text: str, colour: str, corner: str) -> None:
         text,
         xy=xy,
         xytext=corners[corner],
-        fontsize=9.5,
+        fontsize=12,
         color=colour,
         ha="left",
         va="center",
@@ -99,7 +99,7 @@ def draw_sampling_panel(ax, pts, sampled, exemplars, note: str) -> None:
     for u, colour, corner in exemplars:
         ax.add_patch(Circle(pts[u], RADIUS, fill=False, edgecolor=colour, linewidth=1.5, linestyle="--"))
         annotate_exemplar(ax, pts[u], f"$n_{{eff}}$ = {catchment_neff(pts, sampled, u)}", colour, corner)
-    ax.text(0.03, 0.035, note, transform=ax.transAxes, fontsize=8.3, style="italic", color="#444444")
+    ax.text(0.03, 0.035, note, transform=ax.transAxes, fontsize=10, style="italic", color="#444444")
 
 
 def main() -> int:
@@ -112,13 +112,14 @@ def main() -> int:
     u_sparse = int(np.argmin(np.abs(pts[:, 0] - 3.2) + np.abs(pts[:, 1])))
     exemplars = [(u_dense, COLOUR_DENSE, "tl"), (u_sparse, COLOUR_SPARSE, "tr")]
 
-    fig = plt.figure(figsize=(16.4, 4.5))
-    grid = fig.add_gridspec(1, 5, width_ratios=[1, 1, 0.045, 1, 1], wspace=0.08)
+    fig = plt.figure(figsize=(9.6, 7.6))
+    grid = fig.add_gridspec(2, 3, width_ratios=[1, 1, 0.05], wspace=0.08, hspace=0.16)
     ax_a = fig.add_subplot(grid[0, 0])
     ax_b = fig.add_subplot(grid[0, 1])
     ax_cbar = fig.add_subplot(grid[0, 2])
-    ax_c = fig.add_subplot(grid[0, 3])
-    ax_d = fig.add_subplot(grid[0, 4])
+    ax_c = fig.add_subplot(grid[1, 0])
+    ax_d = fig.add_subplot(grid[1, 1])
+    fig.add_subplot(grid[1, 2]).set_visible(False)
 
     # --- A: pilot ---
     style_panel(ax_a, "A) Pilot: measure local reach")
@@ -132,7 +133,7 @@ def main() -> int:
         0.035,
         "same radius, very different catchments",
         transform=ax_a.transAxes,
-        fontsize=8.3,
+        fontsize=10,
         style="italic",
         color="#444444",
     )
@@ -147,13 +148,13 @@ def main() -> int:
         0.035,
         "dense: low $q$;  sparse: high $q$",
         transform=ax_b.transAxes,
-        fontsize=8.3,
+        fontsize=10,
         style="italic",
         color="#444444",
     )
     cbar = fig.colorbar(sc, cax=ax_cbar)
-    cbar.set_label("inclusion probability $q$", fontsize=8.5)
-    cbar.ax.tick_params(labelsize=8)
+    cbar.set_label("inclusion probability $q$", fontsize=11)
+    cbar.ax.tick_params(labelsize=10)
     # equal-aspect panels shrink vertically; match the colorbar to panel B's drawn height
     fig.canvas.draw()
     pos_b = ax_b.get_position()
@@ -162,14 +163,14 @@ def main() -> int:
 
     # --- C: fixed-rate contrast ---
     p_fixed = float(K_TARGET / reach.mean())
-    style_panel(ax_c, f"C) Fixed rate ($p$ = {p_fixed:.2f}): fringe starved")
+    style_panel(ax_c, f"C) Fixed rate ($p$ = {p_fixed:.2f})")
     fixed_sampled = np.random.default_rng(3).random(len(pts)) < p_fixed
-    draw_sampling_panel(ax_c, pts, fixed_sampled, exemplars, "one rate for all: dense fine, sparse starved")
+    draw_sampling_panel(ax_c, pts, fixed_sampled, exemplars, "one rate for all: the sparse catchment is starved")
 
     # --- D: per-node draw ---
-    style_panel(ax_d, "D) Per-node rates: every catchment $\\approx k$")
+    style_panel(ax_d, "D) Per-node rates")
     node_sampled = np.random.default_rng(21).random(len(pts)) < q
-    draw_sampling_panel(ax_d, pts, node_sampled, exemplars, "contributions weighted $1/q$: unbiased")
+    draw_sampling_panel(ax_d, pts, node_sampled, exemplars, "every catchment $\\approx k$; weights $1/q$ keep it unbiased")
 
     # single shared legend
     handles = [
@@ -177,11 +178,11 @@ def main() -> int:
         Line2D([], [], marker="o", linestyle="none", markersize=4, color=COLOUR_UNSAMPLED, label="not sampled"),
         Line2D([], [], linestyle="--", color="#666666", label="exemplar catchment (radius $d$)"),
     ]
-    fig.legend(handles=handles, loc="lower center", ncol=3, fontsize=8.5, frameon=False, bbox_to_anchor=(0.5, -0.02))
+    fig.legend(handles=handles, loc="lower center", ncol=3, fontsize=11, frameon=False, bbox_to_anchor=(0.5, 0.0))
 
     fig.suptitle(
         f"Per-node reach-based sampling (worked example, $k = {int(K_TARGET)}$)",
-        fontsize=12,
+        fontsize=14,
         fontweight="bold",
         y=1.0,
     )
