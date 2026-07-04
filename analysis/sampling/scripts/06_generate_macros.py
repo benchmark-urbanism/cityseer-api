@@ -425,6 +425,18 @@ def generate_macros() -> str:
     overall_min_rho = min(overall_min_rho_values)
     overall_min_rho_conservative = int(overall_min_rho * 100) / 100
 
+    # Adaptive-sampling minima across available adaptive CSVs (sampled + exact-fallback rows).
+    adaptive_minima = []
+    for network in ["gla", "madrid", "cary", "woodlands"]:
+        path = OUTPUT_DIR / f"{network}_validation_adaptive.csv"
+        if not path.exists():
+            continue
+        adf = pd.read_csv(path)
+        adaptive_minima.append(float(adf[["rho_closeness", "rho_betweenness"]].min().min()))
+    if adaptive_minima:
+        adaptive_min = min(adaptive_minima)
+        macros += f"\\newcommand{{\\adaptiveMinRho}}{{{adaptive_min:.4f}}}\n"
+
     # Reach ratio (actual mean reach / canonical reach) at 20km for the suburbs:
     # quantifies how far each falls below the canonical grid model.
     r20 = math.pi * 20000**2 / GRID_SPACING**2
@@ -604,6 +616,54 @@ def generate_validation_tables():
 # =============================================================================
 # DISTANCE-BASED LOOKUP TABLE
 # =============================================================================
+
+
+def generate_adaptive_table() -> None:
+    """Combined adaptive-sampling validation table across the four networks.
+
+    Reads {network}_validation_adaptive.csv (produced by validate_adaptive.py) and reports
+    the distances where estimation is non-trivial (10 and 20 km). Closeness rows showing
+    rho = 1.0 reflect the work-based fallback selecting exact computation.
+    """
+    frames = []
+    for network, label in [("gla", "London"), ("madrid", "Madrid"), ("cary", "Cary"), ("woodlands", "Woodlands")]:
+        path = OUTPUT_DIR / f"{network}_validation_adaptive.csv"
+        if not path.exists():
+            continue
+        df = pd.read_csv(path)
+        df["network"] = label
+        frames.append(df[df["distance"].isin([10000, 20000])])
+    if not frames:
+        print("  No adaptive validation CSVs found; skipping adaptive table.")
+        return
+    data = pd.concat(frames, ignore_index=True)
+
+    lines = [
+        r"\begin{table}[htbp]",
+        r"\centering",
+        r"\caption{Per-node (adaptive) sampling validation at the distances where estimation is"
+        r" non-trivial ($\varepsilon = " + str(PAPER_EPSILON_CLOSENESS) + r"$, $\delta = 0.1$)."
+        r" Closeness entries at $\rho = 1.0$ indicate that the work test selected exact"
+        r" computation (powered sampling would not undercut exact cost on that network).}",
+        r"\label{tab:adaptive_validation}",
+        r"\begin{tabular}{lrrrrr}",
+        r"\toprule",
+        r"\textbf{Network} & \textbf{Dist.} & \textbf{$\rho_c$} & \textbf{Spd$_c$} &"
+        r" \textbf{$\rho_b$} & \textbf{Spd$_b$} \\",
+        r"\midrule",
+    ]
+    for _, row in data.iterrows():
+        spd_c = f"{row['speedup_closeness']:.1f}$\\times$" if np.isfinite(row["speedup_closeness"]) else "---"
+        spd_b = f"{row['speedup_betweenness']:.1f}$\\times$" if np.isfinite(row["speedup_betweenness"]) else "---"
+        lines.append(
+            f"{row['network']} & {int(row['distance']) // 1000}\\,km & {row['rho_closeness']:.4f} & {spd_c}"
+            f" & {row['rho_betweenness']:.4f} & {spd_b} \\\\"
+        )
+    lines += [r"\bottomrule", r"\end{tabular}", r"\end{table}", ""]
+    path = TABLES_DIR / "tab7_adaptive_validation.tex"
+    with open(path, "w") as f:
+        f.write("\n".join(lines))
+    print(f"  Saved: {path}")
 
 
 def generate_tab_distance_lookup() -> str:
@@ -823,6 +883,7 @@ def main():
     print(f"Generated: {table_path}")
 
     generate_validation_tables()
+    generate_adaptive_table()
     generate_fig3_practical_guide()
 
     # Print summary

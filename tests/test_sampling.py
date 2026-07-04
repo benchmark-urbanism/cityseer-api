@@ -17,6 +17,7 @@ import math
 import numpy as np
 import pytest
 from cityseer import rustalgos, sampling
+from cityseer.metrics import networks
 from cityseer.tools import graphs, io, mock
 
 
@@ -728,3 +729,79 @@ class TestOdBetweenness:
 
         betw = np.array(result.metrics["betweenness"][500])
         assert np.allclose(betw, 0.0)
+
+
+class TestAdaptiveSampling:
+    """Tests for per-node (adaptive) sampling: pilot reach, node probabilities, runtime path."""
+
+    def test_compute_node_p_values(self):
+        """Per-node probabilities follow q = min(1, k(r)/r) with clamping and safe fallbacks."""
+        reach = np.array([10.0, 1_000.0, 100_000.0, 0.0, np.nan])
+        q = sampling.compute_node_p(reach)
+        # low reach saturates at 1; invalid reach falls back to 1 (always sample)
+        assert q[0] == 1.0
+        assert q[3] == 1.0
+        assert q[4] == 1.0
+        # high reach: q = k/r
+        k = math.log(2 * 100_000.0 / sampling.HOEFFDING_DELTA) / (2 * sampling.HOEFFDING_EPSILON**2)
+        assert q[2] == pytest.approx(k / 100_000.0, rel=1e-9)
+        # floor is respected
+        q_floored = sampling.compute_node_p(np.array([1e12]), min_probability=0.05)
+        assert q_floored[0] == 0.05
+
+    def test_compute_node_p_monotone(self):
+        """Probabilities do not increase with reach."""
+        reach = np.array([100.0, 1_000.0, 10_000.0, 100_000.0])
+        q = sampling.compute_node_p(reach)
+        assert all(q[i] >= q[i + 1] for i in range(len(q) - 1))
+
+    def test_estimate_euclidean_reach(self):
+        """Euclidean pilot counts neighbours within the radius and applies deflation."""
+        # 3 points on a line, 100m apart: within 150m each end sees 2, middle sees 3 (incl self)
+        xs = [0.0, 100.0, 200.0]
+        ys = [0.0, 0.0, 0.0]
+        reach = sampling.estimate_euclidean_reach(xs, ys, 150.0, deflation=1.0)
+        assert list(reach) == [2.0, 3.0, 2.0]
+        deflated = sampling.estimate_euclidean_reach(xs, ys, 150.0, deflation=2.0)
+        assert list(deflated) == [1.0, 1.5, 1.0]
+
+    def test_small_network_falls_back_to_exact(self):
+        """On a small mock network the work test selects exact computation; results match."""
+        G = mock.mock_graph()
+        G = graphs.nx_simple_geoms(G)
+        nodes_gdf, _, ns = io.network_structure_from_nx(G)
+        sampled = networks.centrality_shortest(ns, nodes_gdf.copy(), distances=[800], sample=True)
+        exact = networks.centrality_shortest(ns, nodes_gdf.copy(), distances=[800])
+        assert np.allclose(
+            sampled["cc_harmonic_800"].to_numpy(float),
+            exact["cc_harmonic_800"].to_numpy(float),
+            equal_nan=True,
+        )
+
+    def test_forced_per_node_sampling_unbiased(self):
+        """Per-node weights with IPW average toward exact values across seeds."""
+        G = mock.mock_graph()
+        G = graphs.nx_simple_geoms(G)
+        nodes_gdf, _, ns = io.network_structure_from_nx(G)
+        exact = networks.centrality_shortest(ns, nodes_gdf.copy(), distances=[800])
+        truth = exact["cc_harmonic_800"].to_numpy(float)
+        reach = sampling.estimate_euclidean_reach(ns.node_xs, ns.node_ys, 800, deflation=1.0)
+        q = np.clip(sampling.compute_node_p(reach, epsilon=0.3), 0.3, 0.9)
+        weights = [float(v) for v in q]
+        runs = []
+        for seed in range(120):
+            res = ns.centrality_shortest(
+                distances=[800],
+                closeness_exprs=[("harmonic", "1/c")],
+                betweenness_exprs=[],
+                compute_cycles=False,
+                sample_probability=1.0,
+                sampling_weights=weights,
+                random_seed=seed,
+                pbar_disabled=True,
+            )
+            runs.append(np.array(res.metrics["harmonic"][800]))
+        mean_est = np.nanmean(runs, axis=0)
+        m = np.isfinite(truth) & (truth > 0)
+        rel_bias = float(np.nanmean((mean_est[m] - truth[m]) / truth[m]))
+        assert abs(rel_bias) < 0.05

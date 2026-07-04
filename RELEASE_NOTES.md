@@ -2,7 +2,7 @@
 
 ## Headline
 
-v4.25 replaces the fixed centrality metric set with an **expression-based API**, adds the high-level **`CityNetwork`** class, redefines **betweenness** to count all routes (including routes that both start and end outside the boundary), and recalibrates **sampling** against three real networks. Backwards compatibility is a first-class concern: the 4.24 function names remain available as deprecated shims that produce the same default columns as before — see `COMPATIBILITY.md` for the full contract and migration table.
+v4.25 replaces the fixed centrality metric set with an **expression-based API**, adds the high-level **`CityNetwork`** class, redefines **betweenness** to count all routes (including routes that both start and end outside the boundary), and makes **sampling** per-node adaptive, validated on four real networks. Backwards compatibility is a first-class concern: the 4.24 function names remain available as deprecated shims that produce the same default columns as before; see `COMPATIBILITY.md` for the full contract and migration table.
 
 ## New Features
 
@@ -23,7 +23,7 @@ Each label becomes a `cc_{label}_{distance}` column. The default expressions rep
 
 ### `CityNetwork` high-level API
 
-A new `CityNetwork` class wraps graph preparation and metrics behind a lean interface. Its defaults are intentionally minimal — a single harmonic closeness, a single betweenness, cycles off — and any keyword can be overridden. The classic functional API is unchanged and remains the compatibility surface.
+A new `CityNetwork` class wraps graph preparation and metrics behind a lean interface. Its defaults are intentionally minimal (a single harmonic closeness, a single betweenness, cycles off) and any keyword can be overridden. The classic functional API is unchanged and remains the compatibility surface.
 
 ### Directed networks
 
@@ -33,9 +33,20 @@ One-way street routing via directed graphs (#173). Directed betweenness counts e
 
 `betweenness_demand` computes spatial-interaction (origin–destination weighted) flow betweenness (#176).
 
-### Sampling recalibrated (experimental)
+### Sampling is now per-node adaptive (experimental)
 
-The distance-based sampling schedule is now calibrated on three real networks spanning the density range (Greater London, Madrid, and a low-density US suburb), instead of synthetic topologies. The default tolerance is now `epsilon=0.05` (was 0.06), tuned so the sparsest validated network preserves rankings (Spearman rho >= 0.95 at 1–20 km); the canonical grid spacing stays fixed at 175 m. Sampling remains opt-in via `sample=True` and experimental.
+`sample=True` now measures each node's local reach with a cheap pilot (a KD-tree count of
+nodes within the straight-line radius, deflated to a conservative catchment estimate) and
+assigns each node its own source inclusion probability via the Hoeffding bound. Sparse areas
+sample more heavily and dense areas less, so precision is uniform across the network, and
+per-source inverse-probability weighting keeps estimates unbiased. A per-distance work test
+selects exact computation wherever powered sampling would not be cheaper. The default
+tolerance is `epsilon=0.05` (was 0.06), calibrated on real networks spanning the density
+range (Greater London, Madrid, and two low-density US suburbs, one held out from
+calibration; all pass Spearman rho >= 0.95 at 1–20 km under this method). The previous
+distance-only schedule remains available as a reference model in `cityseer.sampling`
+(`compute_distance_p`) but is no longer used by the runtime. Sampling remains opt-in via
+`sample=True` and experimental.
 
 ### Statistics measure selection
 
@@ -52,11 +63,11 @@ The distance-based sampling schedule is now calibrated on three real networks sp
 
 ### Betweenness counts all routes
 
-Betweenness now sources from **every** node; the `live` designation only filters which nodes' values are reported. This is a deliberate change of definition, not a bug fix. Previously, routes that both started **and** ended outside the boundary were intentionally excluded — a pragmatic scoping choice, since such routes are relatively uncommon yet require every buffer node to run as a source, adding substantial computational weight. In 4.25 we opt for theoretical strictness: with a buffer at least as deep as the analysis distance, a route between two buffer nodes that passes through the study area is a real shortest path, so it is now counted and credits the live nodes it traverses. These buffer-to-buffer routes are the *only* difference. Consequences: on undirected, fully-live networks values are unchanged; on buffered networks, values near the boundary increase (the newly counted routes accrue there), and exact betweenness costs more to compute (all nodes source — part of the motivation for sampling). Separately, on directed networks each ordered origin–destination pair now contributes with weight 1, where previously the undirected pair-weighting of ½ was applied; directed values are therefore twice their 4.24 magnitude.
+Betweenness now sources from **every** node; the `live` designation only filters which nodes' values are reported. This is a deliberate change of definition, not a bug fix. Previously, routes that both started **and** ended outside the boundary were intentionally excluded, a pragmatic scoping choice, since such routes are relatively uncommon yet require every buffer node to run as a source, adding substantial computational weight. In 4.25 we opt for theoretical strictness: with a buffer at least as deep as the analysis distance, a route between two buffer nodes that passes through the study area is a real shortest path, so it is now counted and credits the live nodes it traverses. These buffer-to-buffer routes are the *only* difference. Consequences: on undirected, fully-live networks values are unchanged; on buffered networks, values near the boundary increase (the newly counted routes accrue there), and exact betweenness costs more to compute since all nodes source, which is part of the motivation for sampling. Separately, on directed networks each ordered origin–destination pair now contributes with weight 1, where previously the undirected pair-weighting of ½ was applied; directed values are therefore twice their 4.24 magnitude.
 
 ### `segment_centrality` removed
 
-The continuous-segment engine is gone. Calling `networks.segment_centrality` raises `NotImplementedError` with migration guidance — use node-based centrality with `segment_weighted=True` for segment-length weighting.
+The continuous-segment engine is gone. Calling `networks.segment_centrality` raises `NotImplementedError` with migration guidance; use node-based centrality with `segment_weighted=True` for segment-length weighting.
 
 ### Removed parameters
 

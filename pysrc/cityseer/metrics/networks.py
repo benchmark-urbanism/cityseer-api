@@ -122,6 +122,39 @@ class _SegmentWeightContext:
                 self.network_structure.set_node_weight(idx, w)
 
 
+def _plan_adaptive_sampling(
+    network_structure: rustalgos.graph.NetworkStructure,
+    resolved_distances: list[int],
+    epsilon: float,
+    has_betweenness: bool,
+) -> tuple[list[int], list[tuple[int, np.ndarray]]]:
+    """Split distances into exact and sampled, with per-node inclusion probabilities.
+
+    For each distance, a pilot estimates per-node reach (Euclidean neighbour count, deflated;
+    see ``cityseer.sampling``), from which per-node probabilities ``q = min(1, k(r)/r)`` follow.
+    Sparse areas receive high probabilities and dense areas low ones, so every catchment
+    accumulates approximately the Hoeffding-required number of effective samples. A distance is
+    sampled only when the estimated sampled work (``sum(q * r)``) undercuts exact work
+    (``sum(r)`` over live nodes for closeness-only calls; over all nodes when betweenness is
+    requested, since exact betweenness sources every node).
+    """
+    full_distances: list[int] = []
+    sampled: list[tuple[int, np.ndarray]] = []
+    lives = np.asarray(network_structure.node_lives, dtype=bool)
+    node_xs = network_structure.node_xs
+    node_ys = network_structure.node_ys
+    for d in sorted(resolved_distances):
+        reach_est = sampling.estimate_euclidean_reach(node_xs, node_ys, d)
+        q = sampling.compute_node_p(reach_est, epsilon=epsilon)
+        sampled_work = float(np.sum(q * reach_est))
+        exact_work = float(np.sum(reach_est)) if has_betweenness else float(np.sum(reach_est[lives]))
+        if sampled_work >= exact_work:
+            full_distances.append(d)
+        else:
+            sampled.append((d, q))
+    return full_distances, sampled
+
+
 DEFAULT_SHORTEST_CLOSENESS = {"density": "1", "farness": "c", "harmonic": "1/c", "decay": "exp(-4 * p)"}
 DEFAULT_SHORTEST_BETWEENNESS = {"betweenness": "1", "betweenness_decay": "exp(-4 * p)"}
 DEFAULT_SHORTEST_POSTPROCESS = {"hillier": "density**2 / farness"}
@@ -321,19 +354,14 @@ def centrality_shortest(
 
     eps = epsilon if epsilon is not None else sampling.HOEFFDING_EPSILON
     full_distances: list[int] = []
-    sampled_distances: list[tuple[int, float]] = []
+    sampled_distances: list[tuple[int, np.ndarray]] = []
     if not sample:
         full_distances = sorted(resolved_distances)
     else:
         logger.warning("Sampling is experimental: API and behaviour may change in future releases.")
-        lives = network_structure.node_lives
-        live_fraction = sum(lives) / len(lives) if lives else 1.0
-        for d in sorted(resolved_distances):
-            p = sampling.compute_distance_p(d, epsilon=eps)
-            if p >= live_fraction:
-                full_distances.append(d)
-            else:
-                sampled_distances.append((d, p))
+        full_distances, sampled_distances = _plan_adaptive_sampling(
+            network_structure, resolved_distances, eps, bool(betweenness_items)
+        )
 
     results: dict[int, rustalgos.centrality.CentralityResult] = {}
 
@@ -360,8 +388,9 @@ def centrality_shortest(
             for d in full_distances:
                 results[d] = result
 
-        for d, p in sampled_distances:
-            logger.info(f"  Sampled {d}m: p={p:.0%}")
+        for d, q in sampled_distances:
+            mean_q = float(np.mean(q))
+            logger.info(f"  Sampled {d}m: mean q={mean_q:.0%}")
             partial_func = partial(
                 network_structure.centrality_shortest,
                 distances=[d],
@@ -370,14 +399,15 @@ def centrality_shortest(
                 compute_cycles=cycles,
                 speed_m_s=speed_m_s,
                 tolerance=tolerance,
-                sample_probability=p,
+                sample_probability=1.0,
+                sampling_weights=[float(v) for v in q],
                 random_seed=random_seed,
             )
             result = config.wrap_progress(
                 total=node_count,
                 rust_struct=network_structure,
                 partial_func=partial_func,
-                desc=f"centrality p={p:.0%}: {d}m",
+                desc=f"centrality q~{mean_q:.0%}: {d}m",
             )
             results[d] = result
 
@@ -793,19 +823,14 @@ def centrality_simplest(
 
     eps = epsilon if epsilon is not None else sampling.HOEFFDING_EPSILON
     full_distances: list[int] = []
-    sampled_distances: list[tuple[int, float]] = []
+    sampled_distances: list[tuple[int, np.ndarray]] = []
     if not sample:
         full_distances = sorted(resolved_distances)
     else:
         logger.warning("Sampling is experimental: API and behaviour may change in future releases.")
-        lives = network_structure.node_lives
-        live_fraction = sum(lives) / len(lives) if lives else 1.0
-        for d in sorted(resolved_distances):
-            p = sampling.compute_distance_p(d, epsilon=eps)
-            if p >= live_fraction:
-                full_distances.append(d)
-            else:
-                sampled_distances.append((d, p))
+        full_distances, sampled_distances = _plan_adaptive_sampling(
+            network_structure, resolved_distances, eps, bool(betweenness_items)
+        )
 
     results: dict[int, rustalgos.centrality.CentralityResult] = {}
 
@@ -831,8 +856,9 @@ def centrality_simplest(
             for d in full_distances:
                 results[d] = result
 
-        for d, p in sampled_distances:
-            logger.info(f"  Sampled {d}m: p={p:.0%}")
+        for d, q in sampled_distances:
+            mean_q = float(np.mean(q))
+            logger.info(f"  Sampled {d}m: mean q={mean_q:.0%}")
             partial_func = partial(
                 network_structure.centrality_simplest,
                 distances=[d],
@@ -840,14 +866,15 @@ def centrality_simplest(
                 betweenness_exprs=betweenness_items,
                 speed_m_s=speed_m_s,
                 tolerance=tolerance,
-                sample_probability=p,
+                sample_probability=1.0,
+                sampling_weights=[float(v) for v in q],
                 random_seed=random_seed,
             )
             result = config.wrap_progress(
                 total=node_count,
                 rust_struct=network_structure,
                 partial_func=partial_func,
-                desc=f"centrality simplest p={p:.0%}: {d}m",
+                desc=f"centrality simplest q~{mean_q:.0%}: {d}m",
             )
             results[d] = result
 

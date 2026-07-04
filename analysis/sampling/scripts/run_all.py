@@ -24,6 +24,8 @@ SCRIPTS = [
     ("05_figures_validation.py", "Generate validation figures (all four networks)", False),
     ("06_generate_macros.py", "Generate LaTeX macros, tables, and practical guide figure", False),
     ("07_figures_spatial.py", "Generate spatial error figures from per-node caches", False),
+    ("08_figure_method.py", "Generate the per-node method schematic", False),
+    ("09_figure_adaptive_comparison.py", "Generate baseline vs adaptive comparison figure", False),
 ]
 
 

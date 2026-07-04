@@ -340,12 +340,33 @@ def generate_fig6_reach_comparison():
             alpha=0.85,
         )
 
+    # annotate the assumed-vs-actual gap that drives baseline under-sampling (held-out network, 20km)
+    wood = df[df["network"] == "The Woodlands (held-out)"]
+    w20 = wood[wood["distance"] == 20000]
+    if not w20.empty:
+        actual = float(w20.iloc[0]["mean_reach"])
+        assumed = float(np.pi * 20000**2 / GRID_SPACING**2)
+        ax.annotate(
+            "",
+            xy=(20, actual),
+            xytext=(20, assumed),
+            arrowprops={"arrowstyle": "<->", "color": "#B2182B", "lw": 1.2},
+        )
+        ax.text(
+            20.4,
+            np.sqrt(actual * assumed),
+            f"assumed vs actual:\n{assumed / actual:.1f}x under-sampled",
+            fontsize=7.5,
+            color="#B2182B",
+            va="center",
+        )
+
     ax.set_yscale("log")
     ax.set_xlabel("Distance (km)")
     ax.set_ylabel("Mean reachability (nodes)")
     ax.set_title("Canonical vs Actual Network Reach")
     ax.set_xticks([1, 2, 4, 5, 10, 20])
-    ax.set_xlim(0, 23)
+    ax.set_xlim(0, 26)
     ax.legend(loc="upper left", fontsize=9)
     ax.grid(True, alpha=0.3, which="both")
     ax.yaxis.set_major_formatter(matplotlib.ticker.FuncFormatter(lambda x, _: f"{x:,.0f}"))

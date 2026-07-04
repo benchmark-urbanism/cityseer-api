@@ -34,9 +34,13 @@ OSMnx; only the road geometry differs by source.
 | 04 | `04_validate_woodlands.py` | Held-out validation: The Woodlands, TX (suburban) | `output/woodlands_*.csv`, `tables/woodlands_n_nodes.json` |
 | 05 | `05_figures_validation.py` | Validation figures (accuracy, speedup, reach)      | `figures/fig2_error_vs_reach.pdf`, `fig4_validation_accuracy.pdf`, `fig5_validation_speedup.pdf`, `fig6_reach_comparison.pdf` |
 | 06 | `06_generate_macros.py`    | LaTeX macros, validation tables, practical-guide   | `tables/model_macros.tex`, `tab2/tab4/tab5/tab6_*.tex`, `tab_distance_lookup.tex`, `figures/fig3_practical_guide.pdf` |
+| 08 | `08_figure_method.py` | Method schematic (worked example) | `figures/fig1_method_schematic.pdf/.svg` |
+| 09 | `09_figure_adaptive_comparison.py` | Baseline vs adaptive comparison | `figures/fig12_baseline_vs_adaptive.pdf/.svg` |
 | 07 | `07_figures_spatial.py`    | Spatial-error figures (all networks)               | `figures/fig7_rank_shift.png`, `figures/fig11_decile_transition.pdf`                         |
 | –  | `utilities.py`             | Shared constants / utilities                       | (imported by the others)                                                                            |
 | –  | `fetch_tiger.py`      | Download TIGER edges for a suburb + buffer (Cary, Woodlands)    | `temp/tiger_{place}/*.zip`                                                                              |
+
+Adaptive validation (not part of `run_all.py`): `validate_adaptive.py` runs the per-node runtime path against the cached exact baselines and writes `output/{network}_validation_adaptive.csv` (consumed by `06_generate_macros.py` for `tab7` and `\adaptiveMinRho`).
 
 Standalone calibration diagnostics (not part of `run_all.py`): `epsilon_sweep.py`,
 `cary_s_sweep.py` — map ρ vs ε / s on Cary to locate the ρ = 0.95 crossing.
