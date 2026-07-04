@@ -1,0 +1,14 @@
+﻿route_id,agency_id,route_short_name,route_long_name,route_desc,route_type,route_url,route_color,route_text_color
+4__1___,CRTM,1,Pinar de Chamartín-Valdecarros,,1,https://www.crtm.es/4__1___.aspx,2DBEF0,FFFFFF
+4__2___,CRTM,2,Las Rosas-Cuatro Caminos,,1,https://www.crtm.es/4__2___.aspx,ED1C24,FFFFFF
+4__3___,CRTM,3,Villaverde Alto-Moncloa,,1,https://www.crtm.es/4__3___.aspx,FFD000,000000
+4__4___,CRTM,4,Argüelles-Pinar de Chamartín,,1,https://www.crtm.es/4__4___.aspx,B65518,FFFFFF
+4__5___,CRTM,5,Alameda de Osuna-Casa de Campo,,1,https://www.crtm.es/4__5___.aspx,8FD400,FFFFFF
+4__6___,CRTM,6,Circular,,1,https://www.crtm.es/4__6___.aspx,98989B,FFFFFF
+4__7___,CRTM,7,Hospital del Henares-Pitis,,1,https://www.crtm.es/4__7___.aspx,EE7518,FFFFFF
+4__8___,CRTM,8,Nuevos Ministerios - Aeropuerto T4,,1,https://www.crtm.es/4__8___.aspx,EC82B1,FFFFFF
+4__9___,CRTM,9,Paco de Lucía-Arganda del Rey,,1,https://www.crtm.es/4__9___.aspx,A60084,FFFFFF
+4__10___,CRTM,10,Hospital Infanta Sofía-Puerta del Sur,,1,https://www.crtm.es/4__10___.aspx,005AA9,FFFFFF
+4__11___,CRTM,11,Plaza Elíptica-La Fortuna,,1,https://www.crtm.es/4__11___.aspx,009B3A,FFFFFF
+4__12___,CRTM,12,MetroSur,,1,https://www.crtm.es/4__12___.aspx,A49800,FFFFFF
+4__R___,CRTM,R,Opera-Príncipe Pío,,1,https://www.crtm.es/4__R___.aspx,FFFFFF,005AA9

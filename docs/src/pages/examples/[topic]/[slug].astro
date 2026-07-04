@@ -1,0 +1,72 @@
+---
+import NotebookLayout from '@src/layouts/NotebookLayout.astro'
+import { exampleNotebooks } from '@src/notebooks'
+import type { NotebookEntry } from '@src/notebooks'
+
+export function getStaticPaths() {
+  // display order mirrors the link order on each topic index page; slugs the
+  // page does not (yet) link fall back to alphabetical after the linked ones
+  const topicPages = import.meta.glob('../*.md', {
+    eager: true,
+    query: '?raw',
+    import: 'default',
+  }) as Record<string, string>
+
+  const orderFor = (topic: string): string[] => {
+    // top-level recipes (quickstart, live-nodes) are linked from /examples itself
+    const page = topic === 'recipes' ? topicPages['../index.md'] : topicPages[`../${topic}.md`]
+    if (!page) return []
+    const pattern = new RegExp(`/examples/${topic}/([a-z0-9][a-z0-9-]*)`, 'g')
+    const seen: string[] = []
+    for (const match of page.matchAll(pattern)) {
+      if (!seen.includes(match[1])) seen.push(match[1])
+    }
+    return seen
+  }
+
+  const byTopic = new Map<string, NotebookEntry[]>()
+  for (const notebook of exampleNotebooks) {
+    byTopic.set(notebook.topic, [...(byTopic.get(notebook.topic) ?? []), notebook])
+  }
+
+  const paths: {
+    params: { topic: string; slug: string }
+    props: { notebook: NotebookEntry; prev: NotebookEntry | null; next: NotebookEntry | null }
+  }[] = []
+  for (const [topic, group] of byTopic) {
+    const order = orderFor(topic)
+    const rank = (n: NotebookEntry) => {
+      const idx = order.indexOf(n.slug)
+      return idx === -1 ? order.length : idx
+    }
+    group.sort((a, b) => rank(a) - rank(b) || a.slug.localeCompare(b.slug))
+    group.forEach((notebook, idx) => {
+      paths.push({
+        params: { topic, slug: notebook.slug },
+        props: {
+          notebook,
+          prev: idx > 0 ? group[idx - 1] : null,
+          next: idx < group.length - 1 ? group[idx + 1] : null,
+        },
+      })
+    })
+  }
+  return paths
+}
+
+const { notebook, prev, next } = Astro.props
+const topicLabels: Record<string, string> = {
+  networks: 'Network Preparation',
+  centrality: 'Centrality',
+  accessibility: 'Accessibility',
+  stats: 'Statistics',
+  visibility: 'Visibility',
+  continuity: 'Continuity',
+}
+// top-level recipes live directly under /examples; topic notebooks link back to their topic page
+const isTopic = notebook.topic !== 'recipes'
+const backHref = isTopic ? `/examples/${notebook.topic}` : '/examples'
+const backLabel = isTopic ? (topicLabels[notebook.topic] ?? 'Examples') : 'Examples'
+---
+
+<NotebookLayout notebook={notebook} prev={prev} next={next} backHref={backHref} backLabel={backLabel} />

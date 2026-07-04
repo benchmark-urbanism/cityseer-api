@@ -218,7 +218,7 @@ def street_continuity(
     Notes
     -----
     For worked examples, see the
-    [Street Continuity from OSM](https://benchmark-urbanism.github.io/cityseer-examples/recipes/continuity/continuity_osm.html)
+    [Street Continuity from OSM](https://cityseer.benchmarkurbanism.com/examples/continuity/continuity-osm)
     recipe.
 
     """

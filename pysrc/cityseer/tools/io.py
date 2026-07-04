@@ -222,6 +222,8 @@ def fetch_osm_network(osm_request: str, timeout: int = 300, max_tries: int = 3) 
             "https://overpass-api.de/api/interpreter",
             timeout=timeout,
             params={"data": osm_request},
+            # Overpass rejects generic python user agents with 406 Not Acceptable
+            headers={"User-Agent": "cityseer-api (https://cityseer.benchmarkurbanism.com)"},
         )
         # break if OK response
         if osm_response is not None and osm_response.status_code == 200:
@@ -795,7 +797,7 @@ def nx_from_osm_nx(
     When ``directed=False`` (default), converts to an undirected ``MultiGraph``.
     When ``directed=True``, preserves edge directionality as a ``MultiDiGraph``.
 
-    See the [`OSMnx`](/guide#from-openstreetmap-via-osmnx) section of the guide for a more general discussion
+    See the [`OSMnx`](/guide/networks#from-openstreetmap-via-osmnx) section of the guide for a more general discussion
     (and example) on workflows combining `OSMnx` with `cityseer`.
 
     `x` and `y` node attributes will be copied directly and `geometry` edge attributes will be copied to a `geom` edge

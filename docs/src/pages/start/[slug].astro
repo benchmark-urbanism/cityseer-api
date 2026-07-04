@@ -1,0 +1,25 @@
+---
+import NotebookLayout from '@src/layouts/NotebookLayout.astro'
+import { learnNotebooks } from '@src/notebooks'
+
+export function getStaticPaths() {
+  return learnNotebooks.map((notebook, idx) => ({
+    params: { slug: notebook.slug },
+    props: {
+      notebook,
+      prev: idx > 0 ? learnNotebooks[idx - 1] : null,
+      next: idx < learnNotebooks.length - 1 ? learnNotebooks[idx + 1] : null,
+    },
+  }))
+}
+
+const { notebook, prev, next } = Astro.props
+---
+
+<NotebookLayout
+  notebook={notebook}
+  prev={prev}
+  next={next}
+  backHref="/start"
+  backLabel="Getting Started"
+/>

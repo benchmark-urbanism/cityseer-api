@@ -40,6 +40,11 @@ def check_quiet() -> bool:
 
 
 QUIET_MODE = check_quiet()
+if QUIET_MODE:
+    # quiet mode silences progress bars and routine INFO chatter alike, including
+    # chatty third-party loggers (e.g. pyogrio) via the root logger level
+    logging.getLogger("cityseer").setLevel(logging.WARNING)
+    logging.getLogger().setLevel(logging.WARNING)
 
 
 def check_debug() -> bool:

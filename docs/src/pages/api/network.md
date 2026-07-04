@@ -6,7 +6,7 @@ layout: ../../layouts/PageLayout.astro
 # network
 
 
- High-level CityNetwork API for urban network analysis. The [`CityNetwork`](#citynetwork) class wraps network construction, centrality computation, land-use analysis, and export into a single interface. It builds dual graphs (where street segments become nodes rather than intersections) directly from LineString geometries, enabling both shortest-path (metric distance) and simplest-path (angular change) analysis. See the [Guide](/guide) for concepts, conventions, and worked examples.
+ High-level CityNetwork API for urban network analysis. The [`CityNetwork`](#citynetwork) class wraps network construction, centrality computation, land-use analysis, and export into a single interface. It builds dual graphs (where street segments become nodes rather than intersections) directly from LineString geometries, enabling both shortest-path (metric distance) and simplest-path (angular change) analysis. See the [Guide](/guide/fundamentals) for concepts, conventions, and worked examples.
 
 
 <div class="class">
@@ -70,7 +70,7 @@ result_gdf = cn.to_geopandas()
 result_gdf["cc_harmonic_800"]
 ```
 
- Column names follow the ``cc_{metric}_{distance}`` convention described in the [Column Naming Conventions](/guide#column-naming-conventions) section.
+ Column names follow the ``cc_{metric}_{distance}`` convention described in the [Column Naming Conventions](/guide/fundamentals#column-naming-conventions) section.
 
  ### Feature cleaning
 
@@ -150,7 +150,7 @@ result_gdf = cn.to_geopandas()
 result_gdf.to_file("results.gpkg")
 ```
 
- For end-to-end worked examples with real-world data, see the [Cityseer Examples](https://benchmark-urbanism.github.io/cityseer-examples/) site, including the [Quickstart](https://benchmark-urbanism.github.io/cityseer-examples/recipes/quickstart.html) notebook.
+ For end-to-end worked examples with real-world data, see the [Cityseer Examples](https://cityseer.benchmarkurbanism.com/examples) site, including the [Quickstart](https://cityseer.benchmarkurbanism.com/examples/recipes/quickstart) notebook.
 
 
 
@@ -378,7 +378,7 @@ result_gdf.to_file("centrality_results.gpkg")
   </div>
   <div class="desc">
 
- Optional mapping from primal feature ID to its impedance factor. Each dual edge's ``imp_factor`` becomes the length-weighted mean of its two adjacent primal segments' impedances; missing entries default to ``1.0``. See the [Edge Impedance](/guide#edge-impedance) section of the guide.</div>
+ Optional mapping from primal feature ID to its impedance factor. Each dual edge's ``imp_factor`` becomes the length-weighted mean of its two adjacent primal segments' impedances; missing entries default to ``1.0``. See the [Edge Impedance](/guide/networks#edge-impedance) section of the guide.</div>
 </div>
 
 ### Returns
@@ -529,7 +529,7 @@ cn.centrality_shortest(distances=[200])
 
 ### Notes
 
- An optional ``imp_factor`` column on the input ``GeoDataFrame`` is propagated to each dual edge as the length-weighted mean of the two adjacent primal segments' impedances; omit it to leave every dual edge at the default ``1.0``. See the [Edge Impedance](/guide#edge-impedance) section of the guide.
+ An optional ``imp_factor`` column on the input ``GeoDataFrame`` is propagated to each dual edge as the length-weighted mean of the two adjacent primal segments' impedances; omit it to leave every dual edge at the default ``1.0``. See the [Edge Impedance](/guide/networks#edge-impedance) section of the guide.
 
 ```python
 import geopandas as gpd
@@ -615,7 +615,7 @@ cn = CityNetwork.from_geopandas(gdf, directed=True)
   </div>
   <div class="desc">
 
- A cityseer-compatible primal NetworkX graph. ``MultiDiGraph`` enables directed routing. Any ``imp_factor`` edge attribute is propagated to each dual edge as the length-weighted mean of the two adjacent primal segments' impedances (default ``1.0`` if absent). See the [Edge Impedance](/guide#edge-impedance) section of the guide.</div>
+ A cityseer-compatible primal NetworkX graph. ``MultiDiGraph`` enables directed routing. Any ``imp_factor`` edge attribute is propagated to each dual edge as the length-weighted mean of the two adjacent primal segments' impedances (default ``1.0`` if absent). See the [Edge Impedance](/guide/networks#edge-impedance) section of the guide.</div>
 </div>
 
 <div class="param-set">
@@ -1124,7 +1124,7 @@ cn.centrality_shortest(
 )
 ```
 
- By default this emits just ``cc_harmonic_{d}`` (closeness) and ``cc_betweenness_{d}``, with cycles off. Pass ``closeness`` / ``betweenness`` expression dicts (and ``cycles=True``) to compute any of the metrics below (see [Column Naming Conventions](/guide#column-naming-conventions)):
+ By default this emits just ``cc_harmonic_{d}`` (closeness) and ``cc_betweenness_{d}``, with cycles off. Pass ``closeness`` / ``betweenness`` expression dicts (and ``cycles=True``) to compute any of the metrics below (see [Column Naming Conventions](/guide/fundamentals#column-naming-conventions)):
 
 | Column | Description |
 | --- | --- |

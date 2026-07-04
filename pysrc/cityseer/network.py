@@ -3,7 +3,7 @@
 The [`CityNetwork`](#citynetwork) class wraps network construction, centrality computation, land-use analysis, and
 export into a single interface. It builds dual graphs (where street segments become nodes rather than intersections)
 directly from LineString geometries, enabling both shortest-path (metric distance) and simplest-path (angular change)
-analysis. See the [Guide](/guide) for concepts, conventions, and worked examples.
+analysis. See the [Guide](/guide/fundamentals) for concepts, conventions, and worked examples.
 """
 
 from __future__ import annotations
@@ -191,7 +191,7 @@ class CityNetwork:
     ```
 
     Column names follow the ``cc_{metric}_{distance}`` convention described in the
-    [Column Naming Conventions](/guide#column-naming-conventions) section.
+    [Column Naming Conventions](/guide/fundamentals#column-naming-conventions) section.
 
     ### Feature cleaning
 
@@ -276,8 +276,8 @@ class CityNetwork:
     ```
 
     For end-to-end worked examples with real-world data, see the
-    [Cityseer Examples](https://benchmark-urbanism.github.io/cityseer-examples/) site, including the
-    [Quickstart](https://benchmark-urbanism.github.io/cityseer-examples/recipes/quickstart.html) notebook.
+    [Cityseer Examples](https://cityseer.benchmarkurbanism.com/examples) site, including the
+    [Quickstart](https://cityseer.benchmarkurbanism.com/examples/recipes/quickstart) notebook.
     """
 
     def __init__(
@@ -419,7 +419,7 @@ class CityNetwork:
         impedances: dict[Any, float] | None
             Optional mapping from primal feature ID to its impedance factor. Each dual edge's
             ``imp_factor`` becomes the length-weighted mean of its two adjacent primal segments'
-            impedances; missing entries default to ``1.0``. See the [Edge Impedance](/guide#edge-impedance)
+            impedances; missing entries default to ``1.0``. See the [Edge Impedance](/guide/networks#edge-impedance)
             section of the guide.
 
         Returns
@@ -493,7 +493,7 @@ class CityNetwork:
         An optional ``imp_factor`` column on the input ``GeoDataFrame`` is propagated to each
         dual edge as the length-weighted mean of the two adjacent primal segments' impedances;
         omit it to leave every dual edge at the default ``1.0``. See the
-        [Edge Impedance](/guide#edge-impedance) section of the guide.
+        [Edge Impedance](/guide/networks#edge-impedance) section of the guide.
 
         Returns
         -------
@@ -588,7 +588,7 @@ class CityNetwork:
             A cityseer-compatible primal NetworkX graph. ``MultiDiGraph`` enables directed routing.
             Any ``imp_factor`` edge attribute is propagated to each dual edge as the length-weighted
             mean of the two adjacent primal segments' impedances (default ``1.0`` if absent). See the
-            [Edge Impedance](/guide#edge-impedance) section of the guide.
+            [Edge Impedance](/guide/networks#edge-impedance) section of the guide.
         boundary: BaseGeometry
             Optional polygon in the same projected CRS; nodes inside are marked as ``live``,
             nodes outside as ``dead``.
@@ -1006,7 +1006,7 @@ class CityNetwork:
 
         By default this emits just ``cc_harmonic_{d}`` (closeness) and ``cc_betweenness_{d}``, with cycles
         off. Pass ``closeness`` / ``betweenness`` expression dicts (and ``cycles=True``) to compute any of the
-        metrics below (see [Column Naming Conventions](/guide#column-naming-conventions)):
+        metrics below (see [Column Naming Conventions](/guide/fundamentals#column-naming-conventions)):
 
         | Column | Description |
         | --- | --- |

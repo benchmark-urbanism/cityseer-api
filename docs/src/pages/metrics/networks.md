@@ -36,7 +36,7 @@ matching ``cc_`` columns in place (intended for re-runs). Don't store your own d
 - Centralities can be distorted by messy graph topologies such as unnecessary intermediate points along streets
 (used to describe road curvature) or overly complex representations of street intersections. Clean the network
 first using the [`graph`](/tools/graphs) module (see the
-[automatic graph cleaning](/guide#automatic-graph-cleaning) for examples).
+[automatic graph cleaning](/guide/fundamentals#automatic-graph-cleaning) for examples).
 - `harmonic` centrality can produce inflated values when nodes are very close together, because the
 inverse-distance calculation amplifies small distances. This is more likely with simplest-path measures or short
 distance thresholds.
@@ -1459,7 +1459,7 @@ print(nodes_gdf[["cc_harmonic_400_ang", "cc_betweenness_800_ang"]])
  Deprecated 4.24 alias for [`centrality_shortest`](#centrality_shortest).
 ### Deprecated
 
-Since version 4.25. Use `centrality_shortest` with `closeness` / `betweenness` expression dicts. This shim preserves
+Since version 5.0. Use `centrality_shortest` with `closeness` / `betweenness` expression dicts. This shim preserves
 the 4.24 output (columns `cc_density`, `cc_farness`, `cc_harmonic`, `cc_beta`, `cc_cycles`,
 `cc_hillier`, `cc_betweenness`, `cc_betweenness_beta`) and will be removed in a future major release.
 See [COMPATIBILITY.md](https://github.com/benchmark-urbanism/cityseer-api/blob/master/COMPATIBILITY.md).
@@ -1561,7 +1561,7 @@ See [COMPATIBILITY.md](https://github.com/benchmark-urbanism/cityseer-api/blob/m
  Deprecated 4.24 alias for [`centrality_simplest`](#centrality_simplest).
 ### Deprecated
 
-Since version 4.25. Use `centrality_simplest` with `closeness` / `betweenness` expression dicts. This shim preserves the
+Since version 5.0. Use `centrality_simplest` with `closeness` / `betweenness` expression dicts. This shim preserves the
 4.24 output (angular columns `cc_density_ang`, `cc_farness_ang`, `cc_harmonic_ang`, `cc_hillier_ang`,
 `cc_betweenness_ang`) and will be removed in a future major release. See [COMPATIBILITY.md](https://github.com/benchmark-urbanism/cityseer-api/blob/master/COMPATIBILITY.md).
 
@@ -1590,10 +1590,10 @@ Since version 4.25. Use `centrality_simplest` with `closeness` / `betweenness` e
 </div>
 
 
- Removed in 4.25; raises with guidance.
+ Removed in 5.0; raises with guidance.
 ### Deprecated
 
-Since version 4.25. The continuous-segment engine (`segment_density` / `harmonic` / `beta` / `betweenness`) was removed
+Since version 5.0. The continuous-segment engine (`segment_density` / `harmonic` / `beta` / `betweenness`) was removed
 at the low level, so the old numbers cannot be reproduced. The nearest equivalent is
 `centrality_shortest(..., segment_weighted=True)` — a different calculation. See [COMPATIBILITY.md](https://github.com/benchmark-urbanism/cityseer-api/blob/master/COMPATIBILITY.md).
 

@@ -1,6 +1,6 @@
-# Backwards compatibility (4.25)
+# Backwards compatibility (v5)
 
-4.25 generalises the metrics API — hardcoded β-metrics became configurable **decay expressions**, and a
+v5 generalises the metrics API — hardcoded β-metrics became configurable **decay expressions**, and a
 high-level **`CityNetwork`** class was added. This document records the contract: **the functional API you
 already use stays behaviour-compatible by default**, and the new expression engine is **opt-in**. Nothing in the
 documented high-level API breaks.
@@ -9,7 +9,7 @@ documented high-level API breaks.
 
 | Surface | Default output |
 | --- | --- |
-| `cityseer.metrics.networks` / `layers` functions (the old API you already use) | **Classic 4.24** — the full metric set; land-use returns both `_nw` and `_wt` columns |
+| `cityseer.metrics.networks` / `layers` functions (the old API you already use) | **Classic 4.x** — the full metric set; land-use returns both `_nw` and `_wt` columns |
 | `cityseer.CityNetwork` (the new API) | **Lean** — a single harmonic closeness + a single betweenness, cycles off; land-use returns one column |
 
 The old functions are preserved exactly so existing scripts keep working. The new `CityNetwork` is a clean
@@ -18,12 +18,12 @@ engine is opt-in: pass `closeness` / `betweenness` dicts (centrality) or `decay_
 what you want. Nothing in the documented old API breaks.
 
 Low-level surfaces (`rustalgos.*` `NetworkStructure`/`DataMap` methods, the result objects, `pair_distances_*`)
-**do** change in 4.25 — these were never the stable public contract.
+**do** change in v5 — these were never the stable public contract.
 
 ## What's preserved — the default call
 
 The common path is preserved exactly. A call using only the everyday arguments (`distances`,
-`landuse_column_label`, …) returns the **same columns and the same numbers** as 4.24:
+`landuse_column_label`, …) returns the **same columns and the same numbers** as 4.x:
 
 - **Renamed functions** — `node_centrality_shortest` and `node_centrality_simplest` are restored as deprecated
   aliases that emit `DeprecationWarning`. (`segment_centrality` is *not* restored — see "Removed" below.)
@@ -40,7 +40,7 @@ documented migration, not a full shim.
 Pass one of these (beyond the everyday args) and here is exactly what to expect — every one fails loudly, so none
 can silently mislead:
 
-| Old parameter | 4.25 | If you pass it | Do this instead |
+| Old parameter | v5 | If you pass it | Do this instead |
 | --- | --- | --- | --- |
 | `betas=[...]` | removed | `TypeError` | rely on `distances` (default weighting is unchanged), or `decay_fn="exp(-beta * c)"` |
 | `min_threshold_wt=` | removed | `TypeError` | only affected custom β scaling; fold into the `decay_fn` expression |
@@ -68,7 +68,7 @@ own docstrings — see `centrality_shortest` / `centrality_simplest` and `comput
 ## Removed (not restored)
 
 - **`segment_centrality`** — the underlying continuous-segment routine (`segment_density` / `harmonic` / `beta` /
-  `betweenness`) was removed at the low level in 4.25, so the old numbers cannot be reproduced. The nearest modern
+  `betweenness`) was removed at the low level in v5, so the old numbers cannot be reproduced. The nearest modern
   equivalent is `centrality_shortest(..., segment_weighted=True)`, which weights node centrality by street-segment
   length — related, but a different calculation. Calling `segment_centrality` raises a clear error pointing here.
 
@@ -81,14 +81,14 @@ own docstrings — see `centrality_shortest` / `centrality_simplest` and `comput
 
 ## Deprecation timeline
 
-- **4.25** — compat layer active; deprecated names/params warn.
-- **~4.26–4.27** — warnings remain; docs steer users to `CityNetwork`.
-- **~4.28** (a few majors on) — remove the compat layer.
+- **5.0** — compat layer active; deprecated names/params warn.
+- **5.x** — warnings remain; docs steer users to `CityNetwork`.
+- **6.0** — remove the compat layer.
 
 ## How it's built (so it stays contained)
 
 Three contained moves, no duplicated algorithms (one source of truth), each pinned by a parity test against the
-4.24 result:
+4.x result:
 
 - **Renamed functions** → thin deprecated shims that translate into the new core and relabel outputs
   (`node_centrality_shortest`, `node_centrality_simplest` — done).

@@ -145,3 +145,15 @@ analysis/sampling/paper/main.pdf
 analysis/sampling/paper/figures/
 analysis/sampling/paper/tables/
 
+
+# generated notebook exports (built locally at deploy time, never committed)
+docs/public/examples/notebooks/
+docs/src/generated/
+.claude/settings.local.json
+
+# marimo session caches
+**/__marimo__/
+
+# generated visibility rasters (madrid_rast_ht.tif is the bundled input)
+examples/recipes/visibility/images/*.tif
+!examples/recipes/visibility/images/madrid_rast_ht.tif

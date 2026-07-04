@@ -1,8 +1,8 @@
-# v4.25.0 Release Notes
+# v5.0.0 Release Notes
 
 ## Headline
 
-v4.25 replaces the fixed centrality metric set with an **expression-based API**, adds the high-level **`CityNetwork`** class, redefines **betweenness** to count all routes (including routes that both start and end outside the boundary), and makes **sampling** per-node adaptive, validated on four real networks. Backwards compatibility is a first-class concern: the 4.24 function names remain available as deprecated shims that produce the same default columns as before; see `COMPATIBILITY.md` for the full contract and migration table.
+v5 is a major release centred on a new API: the high-level **`CityNetwork`** class becomes the primary interface, the fixed centrality metric set is replaced by an **expression-based API**, **betweenness** is redefined to count all routes (including routes that both start and end outside the boundary), and **sampling** becomes per-node adaptive, validated on four real networks. The documentation site has been rebuilt around the new API, with all examples and tutorials using `CityNetwork` throughout. Backwards compatibility is a first-class concern: the 4.x function names remain available as deprecated shims that produce the same default columns as before; see `COMPATIBILITY.md` for the full contract and migration table.
 
 ## New Features
 
@@ -19,7 +19,7 @@ net.centrality_shortest(
 )
 ```
 
-Each label becomes a `cc_{label}_{distance}` column. The default expressions reproduce the classic 4.24 metrics. Land-use aggregations gain per-label decay functions on the same principle (#175).
+Each label becomes a `cc_{label}_{distance}` column. The default expressions reproduce the classic 4.x metrics. Land-use aggregations gain per-label decay functions on the same principle (#175).
 
 ### `CityNetwork` high-level API
 
@@ -35,15 +35,15 @@ One-way street routing via directed graphs (#173). Directed betweenness counts e
 
 ### Sampling is now per-node adaptive (experimental)
 
-`sample=True` now measures each node's local reach with a cheap pilot (a KD-tree count of
-nodes within the straight-line radius, deflated to a conservative catchment estimate) and
-assigns each node its own source inclusion probability via the Hoeffding bound. Sparse areas
+`sample=True` now measures each node's local reach with a cheap pilot (a small number of
+bounded shortest-path traversals polling the network) and assigns each node its own source
+inclusion probability via the Hoeffding bound. Sparse areas
 sample more heavily and dense areas less, so precision is uniform across the network, and
 per-source inverse-probability weighting keeps estimates unbiased. A per-distance work test
 selects exact computation wherever powered sampling would not be cheaper. The default
-tolerance is `epsilon=0.05` (was 0.06), calibrated on real networks spanning the density
-range (Greater London, Madrid, and two low-density US suburbs, one held out from
-calibration; all pass Spearman rho >= 0.95 at 1–20 km under this method). The previous
+tolerance is `epsilon=0.05` (was 0.06), calibrated on real-world networks spanning the urban density
+range, one held out from calibration; all pass Spearman rho >= 0.95 at 1–20 km under
+this method. The previous
 distance-only schedule remains available as a reference model in `cityseer.sampling`
 (`compute_distance_p`) but is no longer used by the runtime. Sampling remains opt-in via
 `sample=True` and experimental.
@@ -63,7 +63,7 @@ distance-only schedule remains available as a reference model in `cityseer.sampl
 
 ### Betweenness counts all routes
 
-Betweenness now sources from **every** node; the `live` designation only filters which nodes' values are reported. This is a deliberate change of definition, not a bug fix. Previously, routes that both started **and** ended outside the boundary were intentionally excluded, a pragmatic scoping choice, since such routes are relatively uncommon yet require every buffer node to run as a source, adding substantial computational weight. In 4.25 we opt for theoretical strictness: with a buffer at least as deep as the analysis distance, a route between two buffer nodes that passes through the study area is a real shortest path, so it is now counted and credits the live nodes it traverses. These buffer-to-buffer routes are the *only* difference. Consequences: on undirected, fully-live networks values are unchanged; on buffered networks, values near the boundary increase (the newly counted routes accrue there), and exact betweenness costs more to compute since all nodes source, which is part of the motivation for sampling. Separately, on directed networks each ordered origin–destination pair now contributes with weight 1, where previously the undirected pair-weighting of ½ was applied; directed values are therefore twice their 4.24 magnitude.
+Betweenness now sources from **every** node; the `live` designation only filters which nodes' values are reported. This is a deliberate change of definition, not a bug fix. Previously, routes that both started **and** ended outside the boundary were intentionally excluded, a pragmatic scoping choice, since such routes are relatively uncommon yet require every buffer node to run as a source, adding substantial computational weight. In v5 we opt for theoretical strictness: with a buffer at least as deep as the analysis distance, a route between two buffer nodes that passes through the study area is a real shortest path, so it is now counted and credits the live nodes it traverses. These buffer-to-buffer routes are the *only* difference. Consequences: on undirected, fully-live networks values are unchanged; on buffered networks, values near the boundary increase (the newly counted routes accrue there), and exact betweenness costs more to compute since all nodes source, which is part of the motivation for sampling. Separately, on directed networks each ordered origin–destination pair now contributes with weight 1, where previously the undirected pair-weighting of ½ was applied; directed values are therefore twice their 4.x magnitude.
 
 ### `segment_centrality` removed
 
@@ -79,13 +79,14 @@ The Rust-level result and function signatures changed with the expression API. T
 
 ## Backwards Compatibility
 
-- `node_centrality_shortest` and `node_centrality_simplest` remain available as deprecated shims producing the **same default columns and values** as 4.24 (`cc_beta_*`, `cc_harmonic_*`, `cc_betweenness_*`, `cc_betweenness_beta_*`, `cc_cycles_*`, ...). They emit `DeprecationWarning` and will be removed in a future major release.
+- `node_centrality_shortest` and `node_centrality_simplest` remain available as deprecated shims producing the **same default columns and values** as 4.x (`cc_beta_*`, `cc_harmonic_*`, `cc_betweenness_*`, `cc_betweenness_beta_*`, `cc_cycles_*`, ...). They emit `DeprecationWarning` and will be removed in a future major release.
 - Land-use and statistics functions keep the classic paired `_nw`/`_wt` default columns.
 - Columns prefixed `cc_` are managed by cityseer and are overwritten in place when a metric is recomputed for the same distance.
 - See `COMPATIBILITY.md` for the two-surface policy (classic functional API vs lean `CityNetwork`), the removed-parameter table, and the deprecation timeline.
 
 ## Fixes
 
+- OSM fetching sends an identifying `User-Agent`: the Overpass API now rejects generic python user agents with `406 Not Acceptable`, which broke `osm_graph_from_poly` and everything built on it.
 - QGIS plugin: version check no longer reports a false mismatch between the plugin's `beta` spelling and pip's normalised `b` spelling.
 - `nx_from_osm_nx`: fixed a key-lookup bug after node key stringification.
 - Fixed node-weight semantics in centrality aggregation.

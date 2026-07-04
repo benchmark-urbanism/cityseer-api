@@ -1,0 +1,85 @@
+---
+// Compact Pagefind search box for the sidebar. The pagefind bundle only exists
+// after a production build (pagefind --site dist), so the import is guarded and
+// the box hides itself in dev mode when the index is absent.
+---
+
+<div id="site-search" class="w-full px-4 pb-2"></div>
+
+<script>
+  const initSearch = async () => {
+    const el = document.getElementById('site-search')
+    if (!el) return
+    try {
+      // generated post-build by pagefind; absent in dev mode. The path lives in a
+      // variable so vite/esbuild cannot statically resolve it during dev.
+      const pagefindUiPath = '/pagefind/pagefind-ui.js'
+      await import(/* @vite-ignore */ pagefindUiPath)
+      const PagefindUI = (window as any).PagefindUI
+      if (!PagefindUI) throw new Error('PagefindUI unavailable')
+      // load the default UI stylesheet alongside the script
+      const css = document.createElement('link')
+      css.rel = 'stylesheet'
+      css.href = '/pagefind/pagefind-ui.css'
+      document.head.appendChild(css)
+      new PagefindUI({
+        element: '#site-search',
+        showImages: false,
+        showSubResults: true,
+        resetStyles: false,
+      })
+    } catch {
+      // no index available (dev mode): hide the search box
+      el.style.display = 'none'
+    }
+  }
+  initSearch()
+</script>
+
+<style is:global>
+  #site-search {
+    --pagefind-ui-scale: 0.7;
+    --pagefind-ui-primary: var(--color-theme);
+    --pagefind-ui-text: var(--color-lighter-grey);
+    --pagefind-ui-background: var(--color-dark-grey);
+    --pagefind-ui-border: var(--color-mid-grey);
+    --pagefind-ui-tag: var(--color-mid-grey);
+    --pagefind-ui-border-width: 1px;
+    --pagefind-ui-border-radius: 4px;
+    --pagefind-ui-font: inherit;
+
+    font-size: var(--text-sm);
+  }
+
+  #site-search .pagefind-ui__search-input,
+  #site-search .pagefind-ui__search-clear {
+    color: var(--color-lighter-grey);
+    font-weight: var(--font-weight-normal);
+  }
+
+  #site-search .pagefind-ui__search-input::placeholder {
+    color: var(--color-light-grey);
+    opacity: 1;
+  }
+
+  #site-search .pagefind-ui__result-link {
+    color: var(--color-theme);
+  }
+
+  #site-search .pagefind-ui__result-excerpt,
+  #site-search .pagefind-ui__message {
+    color: var(--color-light-grey);
+  }
+
+  #site-search .pagefind-ui__button {
+    color: var(--color-lighter-grey);
+    background-color: var(--color-dark-grey);
+    border: 1px solid var(--color-mid-grey);
+  }
+
+  /* keep the results drawer from stretching the sidebar indefinitely */
+  #site-search .pagefind-ui__drawer:not(.pagefind-ui__hidden) {
+    max-height: 60vh;
+    overflow-y: auto;
+  }
+</style>

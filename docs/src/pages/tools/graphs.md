@@ -125,7 +125,7 @@ G = graphs.nx_simple_geoms(G)
 G_clean = graphs.nx_remove_filler_nodes(G)
 ```
 
- For a worked example, see the [Network Simplification](https://benchmark-urbanism.github.io/cityseer-examples/recipes/networks/network_simplification.html) recipe.
+ For a worked example, see the [Network Simplification](https://cityseer.benchmarkurbanism.com/examples/networks/network-simplification) recipe.
 
 </div>
 
@@ -740,7 +740,7 @@ G_clean = graphs.nx_remove_filler_nodes(G)
 
 ### Notes
 
- See the guide on [graph cleaning](/guide#automatic-graph-cleaning) for more information.
+ See the guide on [graph cleaning](/guide/fundamentals#automatic-graph-cleaning) for more information.
 
 ![Example raw graph from OSM](/images/graph_raw.png) _The pre-consolidation OSM street network for Soho, London. © OpenStreetMap contributors._
 

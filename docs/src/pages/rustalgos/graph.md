@@ -180,6 +180,40 @@ layout: ../../layouts/PageLayout.astro
 
 <div class="function">
 
+## poll_reach_hits
+
+
+<div class="content">
+<span class="name">poll_reach_hits</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">self</span>
+  </div>
+  <div class="param">
+    <span class="pn">/</span>
+  </div>
+  <div class="param">
+    <span class="pn">src_idxs</span>
+  </div>
+  <div class="param">
+    <span class="pn">distances</span>
+  </div>
+  <div class="param">
+    <span class="pn">speed_m_s</span>
+  </div>
+  <span class="pt">)</span>
+</div>
+</div>
+
+
+ Per-node hit counts from bounded Dijkstra traversals over the given sources. For each distance threshold, counts how many of the sources reach each node within that metric distance (one traversal per source, to the largest threshold). Backs the sampling pilot (cityseer.sampling.estimate_polled_reach): on an undirected network a node's hit count is binomial in its reach, so hits / m * n estimates reach at every threshold from one traversal set. Returns one Vec of length node_bound() per distance, indexed by raw node index.
+
+</div>
+
+ 
+
+<div class="function">
+
 ## dijkstra_tree_simplest
 
 
@@ -1329,22 +1363,12 @@ layout: ../../layouts/PageLayout.astro
 
  
 
-<span class="name">node_ys</span>
-
-
- 
-
 <span class="name">node_xs</span>
 
 
  
 
-<span class="name">node_zs</span>
-
-
- 
-
-<span class="name">node_xys</span>
+<span class="name">node_ys</span>
 
 
  
@@ -1354,7 +1378,17 @@ layout: ../../layouts/PageLayout.astro
 
  
 
+<span class="name">node_zs</span>
+
+
+ 
+
 <span class="name">street_node_lives</span>
+
+
+ 
+
+<span class="name">node_xys</span>
 
 
  

@@ -6,9 +6,7 @@ A `Python` package for pedestrian-scale network-based urban analysis: network an
 
 [![publish package](https://github.com/benchmark-urbanism/cityseer-api/actions/workflows/publish_package.yml/badge.svg)](https://github.com/benchmark-urbanism/cityseer-api/actions/workflows/publish_package.yml)
 
-[![deploy docs](https://github.com/benchmark-urbanism/cityseer-api/actions/workflows/firebase-hosting-merge.yml/badge.svg)](https://github.com/benchmark-urbanism/cityseer-api/actions/workflows/firebase-hosting-merge.yml)
-
-Examples: <https://benchmark-urbanism.github.io/cityseer-examples/>
+Examples: <https://cityseer.benchmarkurbanism.com/examples>
 
 API Documentation: <https://cityseer.benchmarkurbanism.com/>
 

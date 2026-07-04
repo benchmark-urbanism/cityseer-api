@@ -8,11 +8,11 @@ compare how well-connected a location is with how accessible different amenities
 preset helpers. ``decay_fn`` also accepts a ``{label: expression}`` dict to compute several decay variants in a single
 network traversal, with each label appended to that variant's output column names.
 
-For practical worked examples, see the [Cityseer Examples](https://benchmark-urbanism.github.io/cityseer-examples/)
+For practical worked examples, see the [Cityseer Examples](https://cityseer.benchmarkurbanism.com/examples)
 site, including the
-[OSM Accessibility](https://benchmark-urbanism.github.io/cityseer-examples/recipes/accessibility/osm_accessibility.html),
-[Mixed Uses](https://benchmark-urbanism.github.io/cityseer-examples/recipes/accessibility/gpd_mixed_uses.html), and
-[Statistical Aggregations](https://benchmark-urbanism.github.io/cityseer-examples/recipes/stats/gpd_stats.html) recipes.
+[OSM Accessibility](https://cityseer.benchmarkurbanism.com/examples/accessibility/osm-accessibility),
+[Mixed Uses](https://cityseer.benchmarkurbanism.com/examples/accessibility/gpd-mixed-uses), and
+[Statistical Aggregations](https://cityseer.benchmarkurbanism.com/examples/stats/gpd-stats) recipes.
 """
 
 from __future__ import annotations
@@ -47,17 +47,17 @@ def _resolve_decay_fns(decay_fn: str | dict[str, str] | None) -> tuple[list[str]
     """Resolve ``decay_fn`` into aligned ``(labels, expressions, legacy_tail)``.
 
     - ``None``: the legacy default — both an unweighted (``_nw``) and a beta-weighted (``_wt``)
-      column, matching pre-4.25 behaviour. Pass a single ``decay_fn`` to get just one column.
+      column, matching pre-v5 behaviour. Pass a single ``decay_fn`` to get just one column.
     - ``str``: a single decay with an empty label (output columns unsuffixed).
     - ``dict``: ``{label: expression}`` — each label suffixes its output columns, and all decays
       are computed in a single shared network traversal.
 
     ``legacy_tail`` is True only for the ``None`` default; it places the ``_nw``/``_wt`` suffix at
-    the end of the column name (``cc_key_dist_nw``), as in pre-4.25. The dict form embeds the label
+    the end of the column name (``cc_key_dist_nw``), as in pre-v5. The dict form embeds the label
     in the metric name instead (``cc_key_label_dist``).
     """
     if decay_fn is None:
-        # legacy default: unweighted (_nw) + beta-weighted (_wt), matching pre-4.25 output.
+        # legacy default: unweighted (_nw) + beta-weighted (_wt), matching pre-v5 output.
         return ["nw", "wt"], ["1", "exp(-4 * p)"], True
     if isinstance(decay_fn, str):
         return [""], [decay_fn], False
@@ -78,7 +78,7 @@ def _decay_suffix(label: str) -> str:
 def _layer_col_key(metric_key: str, dist: int, angular: bool, decay_label: str, legacy_tail: bool) -> str:
     """Build the output column key for a decay variant.
 
-    The legacy default appends the ``_nw``/``_wt`` suffix at the end (``cc_key_dist_nw``, pre-4.25);
+    The legacy default appends the ``_nw``/``_wt`` suffix at the end (``cc_key_dist_nw``, pre-v5);
     the dict/per-label form embeds the label in the metric name (``cc_key_label_dist``).
     """
     if legacy_tail:
@@ -255,7 +255,7 @@ def compute_accessibilities(
     decay_fn: str | dict[str, str]
         An optional decay function expression using the variable `p`, where `p` is the normalised
         distance from 0 (source) to 1 (cutoff threshold). Controls how distance affects the
-        accessibility count weighting. Default is `"1"` (flat, no distance weighting). For
+        accessibility count weighting. When omitted (`None`), the legacy default computes both an unweighted (`_nw`) and a decay-weighted (`_wt`) column; pass a single expression such as `"1"` (flat) to compute one unsuffixed column. For
         distance-weighted metrics, provide an expression such as `"exp(-4 * p)"` for exponential
         decay, or use the `cityseer.decay` module helpers to generate expressions from absolute
         distance units; see [`cityseer.decay`](/api/decay) for details and examples. Pass a dict of
@@ -301,7 +301,7 @@ def compute_accessibilities(
     ```
 
     For worked examples with real-world data, see the
-    [OSM Accessibility](https://benchmark-urbanism.github.io/cityseer-examples/recipes/accessibility/osm_accessibility.html)
+    [OSM Accessibility](https://cityseer.benchmarkurbanism.com/examples/accessibility/osm-accessibility)
     recipe.
 
     """
@@ -451,7 +451,7 @@ def compute_mixed_uses(
     decay_fn: str | dict[str, str]
         An optional decay function expression using the variable `p`, where `p` is the normalised
         distance from 0 (source) to 1 (cutoff threshold). Controls how distance affects the
-        Hill diversity weighting. Default is `"1"` (flat, no distance weighting). For
+        Hill diversity weighting. When omitted (`None`), the legacy default computes both an unweighted (`_nw`) and a decay-weighted (`_wt`) variant; pass a single expression such as `"1"` (flat) to compute one unsuffixed variant. For
         distance-weighted metrics, provide an expression such as `"exp(-4 * p)"` for exponential
         decay, or use the `cityseer.decay` module helpers to generate expressions from absolute
         distance units; see [`cityseer.decay`](/api/decay) for details and examples. Pass a dict of
@@ -521,7 +521,7 @@ def compute_mixed_uses(
     :::
 
     For a worked example, see the
-    [Mixed Uses](https://benchmark-urbanism.github.io/cityseer-examples/recipes/accessibility/gpd_mixed_uses.html)
+    [Mixed Uses](https://cityseer.benchmarkurbanism.com/examples/accessibility/gpd-mixed-uses)
     recipe.
 
     """
@@ -660,7 +660,7 @@ def compute_stats(
     decay_fn: str | dict[str, str]
         An optional decay function expression using the variable `p`, where `p` is the normalised
         distance from 0 (source) to 1 (cutoff threshold). Controls how distance affects the
-        statistical weighting. Default is `"1"` (flat, no distance weighting). For
+        statistical weighting. When omitted (`None`), the legacy default computes both an unweighted (`_nw`) and a decay-weighted (`_wt`) variant; pass a single expression such as `"1"` (flat) to compute one unsuffixed variant. For
         distance-weighted metrics, provide an expression such as `"exp(-4 * p)"` for exponential
         decay, or use the `cityseer.decay` module helpers. Values are clamped to [0, 1]. Supported
         functions include `exp`, `ln`, `log`, `log10`, `sqrt`, `abs`, `floor`, `ceil`, `round`, `sin`,
@@ -767,7 +767,7 @@ def compute_stats(
     :::
 
     For a worked example, see the
-    [Statistical Aggregations](https://benchmark-urbanism.github.io/cityseer-examples/recipes/stats/gpd_stats.html)
+    [Statistical Aggregations](https://cityseer.benchmarkurbanism.com/examples/stats/gpd-stats)
     recipe.
 
     """

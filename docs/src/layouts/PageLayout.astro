@@ -3,7 +3,9 @@ import CommonLayout from '@src/layouts/CommonLayout.astro'
 import Footer from '@src/components/Footer.astro'
 import NavColumn from '@src/components/NavColumn.vue'
 import RepoLink from '@src/components/RepoLink.astro'
+import SiteSearch from '@src/components/SiteSearch.astro'
 import StripeTitle from '@src/components/StripeTitle.astro'
+import { resolveSection, sections } from '@src/nav'
 
 import logoURL from '@src/assets/logos/cityseer_logo_light_red.png'
 import '@src/styles/yapper.css'
@@ -11,11 +13,26 @@ import '@src/styles/yapper.css'
 const currentPath = Astro.url.pathname
 
 const pageDescriptions: Record<string, string> = {
-  '/intro': 'Cityseer is a Python/Rust library for fine-grained street-network and land-use analysis at the pedestrian scale.',
-  '/guide': 'Comprehensive guide to cityseer: installation, core concepts, CityNetwork API, centrality, decay functions, land-use analysis, and advanced features.',
+  '/start': 'Getting started with cityseer: installation, a five-minute quickstart, and the Python 101 learning path.',
+  '/guide/fundamentals': 'How cityseer frames analysis: localised computation, routing heuristics, network conversion, distance thresholds, edge rolloff, and the CityNetwork API.',
+  '/guide/networks': 'How cityseer represents street networks: primal and dual graphs, directed one-way streets, elevation and slope, and edge impedances.',
+  '/guide/centrality': 'Centrality in cityseer: expression-based metrics, shortest and simplest path measures, node weights, OD flows, performance, and adaptive sampling.',
+  '/guide/land-use': 'Land-use analysis in cityseer: accessibility, mixed-use diversity, statistical aggregations, and distance decay functions.',
+  '/guide/interpretation': 'Which cityseer metric answers which question: a practical mapping from planning questions to metrics, thresholds, and how to read the numbers.',
+  '/guide/troubleshooting': 'Symptom-first troubleshooting for cityseer: CRS mistakes, edge rolloff, slow runs, OSM download failures, and data assignment issues.',
+  '/guide/migration': 'Migrating from cityseer v4 to v5: the CityNetwork API, renamed functions, removed parameters, and the betweenness redefinition.',
+  '/api/glossary': 'Definitions of key cityseer terms: dual graph, edge rolloff, betweenness, accessibility, and more.',
   '/api/network': 'API reference for the CityNetwork class: constructors, centrality, accessibility, mixed-use diversity, statistical aggregations, and export methods.',
   '/api/decay': 'API reference for cityseer.decay: helper functions for generating exponential, linear, flat, Gaussian, and logistic decay expressions.',
   '/plugin': 'QGIS plugin for computing localised network centrality metrics directly within QGIS without writing Python code.',
+  '/examples': 'Worked cityseer recipes with bundled real-world data: network preparation, centrality, accessibility, statistics, visibility, and continuity.',
+  '/examples/networks': 'Network preparation recipes: building cityseer-compatible graphs from OSM, GeoDataFrames, OSMnx, and momepy, plus directed networks.',
+  '/examples/centrality': 'Centrality recipes: metric and angular centrality, custom expressions, adaptive sampling, demand-weighted betweenness, and GTFS.',
+  '/examples/accessibility': 'Accessibility recipes: land-use accessibility and mixed-use metrics from geopandas and OSM data.',
+  '/examples/stats': 'Statistics recipes: aggregating numeric feature properties such as building heights over the street network.',
+  '/examples/visibility': 'Visibility recipes: street enclosure and openness from building footprints and raster terrain data.',
+  '/examples/continuity': 'Continuity recipes: street name, route, and highway classification continuity from OSM and OS Open Roads.',
+  '/examples/datasets': 'Real-world datasets used by the cityseer example recipes, with source links and licensing information.',
   '/tools/io': 'API reference for cityseer.tools.io: network I/O, OSM graph construction, CRS conversion, and NetworkStructure creation.',
   '/tools/graphs': 'API reference for cityseer.tools.graphs: graph cleaning, simplification, decomposition, consolidation, and dual graph conversion.',
   '/tools/plot': 'API reference for cityseer.tools.plot: plotting utilities for network visualisation.',
@@ -33,37 +50,13 @@ const pageDescriptions: Record<string, string> = {
   '/rustalgos/viewshed': 'API reference for cityseer.rustalgos.viewshed: viewshed data structures.',
 }
 
-const pageName = currentPath === '/intro'
-  ? 'Introduction'
-  : currentPath.split('/').filter(Boolean).pop()?.replace(/-/g, ' ') ?? ''
+const pageName = currentPath.split('/').filter(Boolean).pop()?.replace(/-/g, ' ') ?? ''
 const pageTitle = pageName
   ? `cityseer — ${pageName}`
   : 'cityseer'
 const pageDescription = pageDescriptions[currentPath]
 
-const navPaths = [
-  '/intro',
-  '/guide',
-  '/api/network',
-  '/api/decay',
-  '/plugin',
-  '/tools/io',
-  '/tools/graphs',
-  '/tools/plot',
-  '/tools/mock',
-  '/tools/util',
-  '/metrics/observe',
-  '/metrics/networks',
-  '/metrics/sampling',
-  '/metrics/layers',
-  '/metrics/visibility',
-  '/rustalgos/rustalgos',
-  '/rustalgos/graph',
-  '/rustalgos/centrality',
-  '/rustalgos/diversity',
-  '/rustalgos/data',
-  '/rustalgos/viewshed',
-]
+const activeSection = resolveSection(currentPath)
 ---
 
 <CommonLayout title={pageTitle} description={pageDescription}>
@@ -73,7 +66,13 @@ const navPaths = [
         <a href="/" title="home" class="object-contain transition-all hover:scale-105">
           <img src={logoURL.src} alt="logo" class="h-full w-full max-w-xs px-4 py-10" />
         </a>
-        <NavColumn client:visible navPaths={navPaths} currentPath={currentPath} />
+        <SiteSearch />
+        <NavColumn
+          client:visible
+          sections={sections}
+          activeSectionId={activeSection.id}
+          currentPath={currentPath}
+        />
         <div class="grow"></div>
         <div class="self-start px-8 py-2">
           <RepoLink />
@@ -81,7 +80,7 @@ const navPaths = [
       </div>
       <StripeTitle />
     </div>
-    <div id="content-col">
+    <div id="content-col" data-pagefind-body>
       <slot />
       <Footer />
     </div>

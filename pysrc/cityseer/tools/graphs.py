@@ -155,7 +155,7 @@ def nx_remove_filler_nodes(nx_multigraph: nx.MultiGraph) -> nx.MultiGraph:
     ```
 
     For a worked example, see the
-    [Network Simplification](https://benchmark-urbanism.github.io/cityseer-examples/recipes/networks/network_simplification.html)
+    [Network Simplification](https://cityseer.benchmarkurbanism.com/examples/networks/network-simplification)
     recipe.
 
     """
@@ -1170,7 +1170,7 @@ def nx_consolidate_nodes(
 
     Examples
     --------
-    See the guide on [graph cleaning](/guide#automatic-graph-cleaning) for more information.
+    See the guide on [graph cleaning](/guide/fundamentals#automatic-graph-cleaning) for more information.
 
     ![Example raw graph from OSM](/images/graph_raw.png)
     _The pre-consolidation OSM street network for Soho, London. © OpenStreetMap contributors._
