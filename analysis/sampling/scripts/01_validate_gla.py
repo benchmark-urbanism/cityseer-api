@@ -1,9 +1,13 @@
 #!/usr/bin/env python
 """
-01_validate_gla.py - Validate sampling models on Greater London network.
+01_validate_gla.py - Validate the canonical distance-based schedule on Greater London.
 
-Tests closeness and betweenness (both using deterministic distance-based source sampling)
-at their respective epsilon values across five distance thresholds.
+Builds the exact ground truths and the ablation rung-1 record: closeness and
+betweenness under the canonical schedule p = compute_distance_p(d), driven
+explicitly through the low-level API with the schedule's p >= phi fallback to
+exact computation. Since cityseer 4.25 the high-level sample=True flag runs the
+per-node polled-pilot method (validate_adaptive.py), not this schedule, so the
+schedule must be supplied as an explicit sample_probability.
 
 Usage:
     python 01_validate_gla.py           # Run (skips cache if exists)
@@ -28,7 +32,6 @@ import numpy as np
 import osmnx as ox
 import pandas as pd
 from cityseer.metrics import networks
-from cityseer.sampling import HOEFFDING_EPSILON as CITYSEER_HOEFFDING_EPSILON
 from cityseer.sampling import compute_distance_p
 from cityseer.tools import graphs, io
 from shapely.geometry import Point
@@ -64,16 +67,6 @@ DELTA = HOEFFDING_DELTA
 
 # Sensitivity analysis: grid spacings to test (default s=175m is the paper default)
 DEFAULT_GRID_SPACINGS = [125, 150, 175, 200, 225]
-
-if not np.isclose(GLA_EPSILON_CLOSENESS, CITYSEER_HOEFFDING_EPSILON) or not np.isclose(
-    GLA_EPSILON_BETWEENNESS, CITYSEER_HOEFFDING_EPSILON
-):
-    raise RuntimeError(
-        "Validation epsilons must match cityseer.metrics runtime sampling epsilon when using sample=True. "
-        f"Script eps: closeness={GLA_EPSILON_CLOSENESS}, betweenness={GLA_EPSILON_BETWEENNESS}; "
-        f"cityseer.sampling.HOEFFDING_EPSILON={CITYSEER_HOEFFDING_EPSILON}"
-    )
-
 
 def get_gla_mask(force: bool = False):
     """
@@ -287,24 +280,33 @@ def generate_validation_data(net, nodes_gdf, live_mask, force: bool = False) -> 
         # ---------------------------------------------------------------
         eps_close = GLA_EPSILON_CLOSENESS
         n_live = int(live_mask.sum())
+        phi = n_live / len(live_mask)
         actual_p_close = compute_distance_p(dist, epsilon=eps_close)
-        print(f"\n  Closeness eps={eps_close}: p={actual_p_close:.4f}")
+        close_exact = actual_p_close >= phi  # the schedule's fallback: p >= phi runs the whole call exact
+        print(f"\n  Closeness eps={eps_close}: p={actual_p_close:.4f} ({'exact' if close_exact else 'sampled'})")
 
         spearmans_h, maes_h, precs_h, scales_h, quartiles_h = [], [], [], [], []
         close_times = []
 
         for seed in range(N_RUNS):
             t0 = time.time()
-            nodes_gdf_close = networks.closeness_shortest(
-                net,
-                nodes_gdf.copy(),
-                distances=[dist],
-                random_seed=42 + seed,
-                sample=True,
-            )
+            if close_exact:
+                nodes_gdf_close = networks.closeness_shortest(net, nodes_gdf.copy(), distances=[dist])
+                est_harmonic = nodes_gdf_close[f"cc_harmonic_{dist}"].values[live_mask]
+            else:
+                # Canonical schedule via the low-level API: sample=True now runs the
+                # per-node method, so the schedule's p is supplied explicitly.
+                result = net.centrality_shortest(
+                    distances=[dist],
+                    closeness_exprs=[("harmonic", "1/c")],
+                    betweenness_exprs=[],
+                    compute_cycles=False,
+                    sample_probability=float(actual_p_close),
+                    random_seed=42 + seed,
+                    pbar_disabled=True,
+                )
+                est_harmonic = np.array(result.metrics["harmonic"][dist])[live_mask]
             close_times.append(time.time() - t0)
-            col_key = f"cc_harmonic_{dist}"
-            est_harmonic = nodes_gdf_close[col_key].values[live_mask]
 
             sp_h, prec_h, scale_h, _, mae_h = compute_accuracy_metrics(true_harmonic, est_harmonic)
             if not np.isnan(sp_h):
@@ -367,23 +369,29 @@ def generate_validation_data(net, nodes_gdf, live_mask, force: bool = False) -> 
         else:
             eps_betw = GLA_EPSILON_BETWEENNESS
             actual_p_b = compute_distance_p(dist, epsilon=eps_betw)
-            print(f"\n  Betweenness eps={eps_betw}: p={actual_p_b:.4f}")
+            betw_exact = actual_p_b >= phi  # the schedule's fallback applies to the whole call
+            print(f"\n  Betweenness eps={eps_betw}: p={actual_p_b:.4f} ({'exact' if betw_exact else 'sampled'})")
 
             spearmans_b, maes_b, precs_b, scales_b, quartiles_b = [], [], [], [], []
             betw_times = []
 
             for seed in range(N_RUNS):
                 t0 = time.time()
-                nodes_gdf_betw = networks.betweenness_shortest(
-                    net,
-                    nodes_gdf.copy(),
-                    distances=[dist],
-                    random_seed=42 + seed,
-                    sample=True,
-                )
+                if betw_exact:
+                    nodes_gdf_betw = networks.betweenness_shortest(net, nodes_gdf.copy(), distances=[dist])
+                    est_betweenness = nodes_gdf_betw[f"cc_betweenness_{dist}"].values[live_mask]
+                else:
+                    result = net.centrality_shortest(
+                        distances=[dist],
+                        closeness_exprs=[],
+                        betweenness_exprs=[("betweenness", "1")],
+                        compute_cycles=False,
+                        sample_probability=float(actual_p_b),
+                        random_seed=42 + seed,
+                        pbar_disabled=True,
+                    )
+                    est_betweenness = np.array(result.metrics["betweenness"][dist])[live_mask]
                 betw_times.append(time.time() - t0)
-                col_key = f"cc_betweenness_{dist}"
-                est_betweenness = nodes_gdf_betw[col_key].values[live_mask]
 
                 sp_b, prec_b, scale_b, _, mae_b = compute_accuracy_metrics(true_betweenness, est_betweenness)
                 if not np.isnan(sp_b):

@@ -37,7 +37,7 @@ import osmnx as ox
 import requests
 from shapely.ops import unary_union
 
-BUFFER_M = 20_000
+BUFFER_M = 20_000  # default; override with --buffer-km
 TEMP_ROOT = Path(__file__).resolve().parents[3] / "temp"
 
 COUNTY_URL = "https://www2.census.gov/geo/tiger/GENZ2023/shp/cb_2023_us_county_500k.zip"
@@ -69,13 +69,13 @@ def download(url: str, dest: Path, attempts: int = 4) -> Path:
     return dest
 
 
-def fetch(place: str, crs: str, out_dir: Path) -> int:
+def fetch(place: str, crs: str, out_dir: Path, buffer_m: int = BUFFER_M) -> int:
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    print(f"1. {place}: boundary + {BUFFER_M / 1000:.0f} km buffer")
+    print(f"1. {place}: boundary + {buffer_m / 1000:.0f} km buffer")
     gdf = ox.geocode_to_gdf(place).to_crs(crs)
     boundary = gdf.geometry.iloc[0]
-    buffered = boundary.buffer(BUFFER_M)
+    buffered = boundary.buffer(buffer_m)
     print(f"   inner area: {boundary.area / 1e6:.0f} km^2 | buffered: {buffered.area / 1e6:.0f} km^2")
 
     print("2. Counties intersecting the buffer")
@@ -111,8 +111,9 @@ def main() -> int:
     parser.add_argument("--place", required=True, help='Geocodable place, e.g. "Cary, North Carolina, USA"')
     parser.add_argument("--crs", required=True, help="Projected CRS in metres, e.g. EPSG:32119")
     parser.add_argument("--out", required=True, help="Directory name under temp/, e.g. tiger_cary")
+    parser.add_argument("--buffer-km", type=float, default=BUFFER_M / 1000, help="Road-mask buffer in km (= d_max)")
     args = parser.parse_args()
-    return fetch(args.place, args.crs, TEMP_ROOT / args.out)
+    return fetch(args.place, args.crs, TEMP_ROOT / args.out, buffer_m=int(args.buffer_km * 1000))
 
 
 if __name__ == "__main__":

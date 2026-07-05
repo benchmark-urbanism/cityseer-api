@@ -41,7 +41,7 @@ matching ``cc_`` columns in place (intended for re-runs). Don't store your own d
 - Centralities can be distorted by messy graph topologies such as unnecessary intermediate points along streets
 (used to describe road curvature) or overly complex representations of street intersections. Clean the network
 first using the [`graph`](/tools/graphs) module (see the
-[automatic graph cleaning](/guide#automatic-graph-cleaning) for examples).
+[automatic graph cleaning](/guide/fundamentals#automatic-graph-cleaning) for examples).
 - `harmonic` centrality can produce inflated values when nodes are very close together, because the
 inverse-distance calculation amplifies small distances. This is more likely with simplest-path measures or short
 distance thresholds.
@@ -127,28 +127,36 @@ def _plan_adaptive_sampling(
     resolved_distances: list[int],
     epsilon: float,
     has_betweenness: bool,
+    random_seed: int | None = None,
 ) -> tuple[list[int], list[tuple[int, np.ndarray]]]:
     """Split distances into exact and sampled, with per-node inclusion probabilities.
 
-    For each distance, a pilot estimates per-node reach (Euclidean neighbour count, deflated;
-    see ``cityseer.sampling``), from which per-node probabilities ``q = min(1, k(r)/r)`` follow.
-    Sparse areas receive high probabilities and dense areas low ones, so every catchment
-    accumulates approximately the Hoeffding-required number of effective samples. A distance is
-    sampled only when the estimated sampled work (``sum(q * r)``) undercuts exact work
-    (``sum(r)`` over live nodes for closeness-only calls; over all nodes when betweenness is
-    requested, since exact betweenness sources every node).
+    A pilot polls the network (sampled sources, one bounded Dijkstra each; see
+    ``cityseer.sampling.estimate_polled_reach``) to measure per-node reach at every distance,
+    respecting barriers and dead ends that a Euclidean count would miss. Per-node probabilities
+    ``q = min(1, k(r)/r)`` derive from the lower confidence bound on reach, so estimation error
+    lands on the oversampling side. Sparse areas receive high probabilities and dense areas low
+    ones, so every catchment accumulates approximately the Hoeffding-required number of
+    effective samples. A distance is sampled only when the estimated sampled work
+    (``sum(q * r)``) undercuts exact work (``sum(r)`` over live nodes for closeness-only calls;
+    over all nodes when betweenness is requested, since exact betweenness sources every node).
+    Work sums use the upper confidence bound on reach: a node the poll never hit is censused
+    (q = 1), so pricing it at its point estimate of zero would hide real traversal cost and
+    select sampling where exact computation is cheaper. Sampling engages only when predicted
+    work clears ``WORK_TEST_MARGIN``, since the work model omits constant overheads.
     """
     full_distances: list[int] = []
     sampled: list[tuple[int, np.ndarray]] = []
     lives = np.asarray(network_structure.node_lives, dtype=bool)
-    node_xs = network_structure.node_xs
-    node_ys = network_structure.node_ys
+    reach_lcb, _reach_point, reach_ucb = sampling.estimate_polled_reach(
+        network_structure, sorted(resolved_distances), random_seed=random_seed
+    )
     for d in sorted(resolved_distances):
-        reach_est = sampling.estimate_euclidean_reach(node_xs, node_ys, d)
-        q = sampling.compute_node_p(reach_est, epsilon=epsilon)
+        q = sampling.compute_node_p(reach_lcb[d], epsilon=epsilon)
+        reach_est = reach_ucb[d]
         sampled_work = float(np.sum(q * reach_est))
         exact_work = float(np.sum(reach_est)) if has_betweenness else float(np.sum(reach_est[lives]))
-        if sampled_work >= exact_work:
+        if sampled_work >= sampling.WORK_TEST_MARGIN * exact_work:
             full_distances.append(d)
         else:
             sampled.append((d, q))
@@ -360,7 +368,7 @@ def centrality_shortest(
     else:
         logger.warning("Sampling is experimental: API and behaviour may change in future releases.")
         full_distances, sampled_distances = _plan_adaptive_sampling(
-            network_structure, resolved_distances, eps, bool(betweenness_items)
+            network_structure, resolved_distances, eps, bool(betweenness_items), random_seed=random_seed
         )
 
     results: dict[int, rustalgos.centrality.CentralityResult] = {}
@@ -829,7 +837,7 @@ def centrality_simplest(
     else:
         logger.warning("Sampling is experimental: API and behaviour may change in future releases.")
         full_distances, sampled_distances = _plan_adaptive_sampling(
-            network_structure, resolved_distances, eps, bool(betweenness_items)
+            network_structure, resolved_distances, eps, bool(betweenness_items), random_seed=random_seed
         )
 
     results: dict[int, rustalgos.centrality.CentralityResult] = {}
@@ -1006,7 +1014,7 @@ def betweenness_simplest(
 # ---------------------------------------------------------------------------
 # Deprecated 4.24 compatibility shims
 #
-# These reproduce the pre-4.25 functional API (names, parameters, output column
+# These reproduce the pre-v5 functional API (names, parameters, output column
 # names and values) by translating old-style calls into the expression engine.
 # They add no algorithms of their own and are scheduled for removal a few major
 # releases on. See [COMPATIBILITY.md](https://github.com/benchmark-urbanism/cityseer-api/blob/master/COMPATIBILITY.md).
@@ -1041,14 +1049,14 @@ def node_centrality_shortest(
 ) -> gpd.GeoDataFrame:
     """Deprecated 4.24 alias for [`centrality_shortest`](#centrality_shortest).
 
-    .. deprecated:: 4.25
+    .. deprecated:: 5.0
         Use `centrality_shortest` with `closeness` / `betweenness` expression dicts. This shim preserves
         the 4.24 output (columns `cc_density`, `cc_farness`, `cc_harmonic`, `cc_beta`, `cc_cycles`,
         `cc_hillier`, `cc_betweenness`, `cc_betweenness_beta`) and will be removed in a future major release.
         See [COMPATIBILITY.md](https://github.com/benchmark-urbanism/cityseer-api/blob/master/COMPATIBILITY.md).
     """
     warnings.warn(
-        "node_centrality_shortest is deprecated since 4.25; use centrality_shortest "
+        "node_centrality_shortest is deprecated since 5.0; use centrality_shortest "
         "with closeness/betweenness expression dicts. This shim will be removed in a "
         "future major release.",
         DeprecationWarning,
@@ -1096,13 +1104,13 @@ def node_centrality_simplest(
 ) -> gpd.GeoDataFrame:
     """Deprecated 4.24 alias for [`centrality_simplest`](#centrality_simplest).
 
-    .. deprecated:: 4.25
+    .. deprecated:: 5.0
         Use `centrality_simplest` with `closeness` / `betweenness` expression dicts. This shim preserves the
         4.24 output (angular columns `cc_density_ang`, `cc_farness_ang`, `cc_harmonic_ang`, `cc_hillier_ang`,
         `cc_betweenness_ang`) and will be removed in a future major release. See [COMPATIBILITY.md](https://github.com/benchmark-urbanism/cityseer-api/blob/master/COMPATIBILITY.md).
     """
     warnings.warn(
-        "node_centrality_simplest is deprecated since 4.25; use centrality_simplest with "
+        "node_centrality_simplest is deprecated since 5.0; use centrality_simplest with "
         "closeness/betweenness expression dicts. This shim will be removed in a future major release.",
         DeprecationWarning,
         stacklevel=2,
@@ -1133,15 +1141,15 @@ def node_centrality_simplest(
 
 
 def segment_centrality(*_args, **_kwargs) -> gpd.GeoDataFrame:
-    """Removed in 4.25; raises with guidance.
+    """Removed in 5.0; raises with guidance.
 
-    .. deprecated:: 4.25
+    .. deprecated:: 5.0
         The continuous-segment engine (`segment_density` / `harmonic` / `beta` / `betweenness`) was removed
         at the low level, so the old numbers cannot be reproduced. The nearest equivalent is
         `centrality_shortest(..., segment_weighted=True)` — a different calculation. See [COMPATIBILITY.md](https://github.com/benchmark-urbanism/cityseer-api/blob/master/COMPATIBILITY.md).
     """
     raise NotImplementedError(
-        "segment_centrality was removed in 4.25: its continuous-segment engine is gone, so the old "
+        "segment_centrality was removed in v5: its continuous-segment engine is gone, so the old "
         "segment_density/harmonic/beta/betweenness cannot be reproduced. Nearest equivalent: "
         "centrality_shortest(..., segment_weighted=True) — a different calculation. See COMPATIBILITY.md."
     )

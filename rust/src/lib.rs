@@ -13,9 +13,10 @@ mod viewshed;
 
 /// Configure the rayon global thread pool.
 ///
-/// Uses N-1 threads when more than 2 cores are available, leaving one core
-/// free for the OS, Python GIL operations, and progress bar updates.
-/// On 1- or 2-core machines, uses all available cores.
+/// Leaves cores free for the OS, Python GIL operations, and progress bar
+/// updates: two cores on machines with 8 or more, one core on 3-7 core
+/// machines, none on 1- or 2-core machines (halving a dual-core machine
+/// costs more than the reservation buys).
 ///
 /// The RAYON_NUM_THREADS environment variable overrides this default.
 fn configure_thread_pool() {
@@ -26,7 +27,13 @@ fn configure_thread_pool() {
     let n_cpus = std::thread::available_parallelism()
         .map(|p| p.get())
         .unwrap_or(1);
-    let n_threads = if n_cpus > 2 { n_cpus - 1 } else { n_cpus };
+    let n_threads = if n_cpus >= 8 {
+        n_cpus - 2
+    } else if n_cpus > 2 {
+        n_cpus - 1
+    } else {
+        n_cpus
+    };
     let _ = rayon::ThreadPoolBuilder::new()
         .num_threads(n_threads)
         .build_global();
@@ -37,7 +44,7 @@ fn configure_thread_pool() {
 #[pymodule]
 #[pyo3(name = "rustalgos")]
 fn rustalgos(py_module: &Bound<'_, PyModule>) -> PyResult<()> {
-    // Configure rayon thread pool (N-1 cores, or all if <= 2)
+    // Configure rayon thread pool (leave 1-2 cores free; see configure_thread_pool)
     configure_thread_pool();
     // Initialize pyo3-log to bridge Rust logs to Python logging
     // Use try_init() so it silently succeeds if a logger is already registered

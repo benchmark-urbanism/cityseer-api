@@ -765,6 +765,34 @@ class TestAdaptiveSampling:
         deflated = sampling.estimate_euclidean_reach(xs, ys, 150.0, deflation=2.0)
         assert list(deflated) == [1.0, 1.5, 1.0]
 
+    def test_estimate_polled_reach_census_is_exact(self):
+        """With every node polled, the point estimate equals exact reach (cc_density)."""
+        G = mock.mock_graph()
+        G = graphs.nx_simple_geoms(G)
+        nodes_gdf, _, ns = io.network_structure_from_nx(G)
+        n = len(ns.node_indices())
+        _, reach_point, _ = sampling.estimate_polled_reach(ns, [800], n_sources=n, random_seed=0)
+        exact = networks.centrality_shortest(ns, nodes_gdf.copy(), distances=[800])
+        density = exact["cc_density_800"].to_numpy(float)
+        # polled reach counts the node itself (self-distance 0); cc_density excludes it
+        assert np.allclose(reach_point[800], density + 1.0)
+
+    def test_estimate_polled_reach_bounds_and_reproducibility(self):
+        """Bounds bracket the point estimate; same seed reproduces."""
+        G = mock.mock_graph()
+        G = graphs.nx_simple_geoms(G)
+        _, _, ns = io.network_structure_from_nx(G)
+        lcb1, point1, ucb1 = sampling.estimate_polled_reach(ns, [400, 800], n_sources=20, random_seed=42)
+        lcb2, _, _ = sampling.estimate_polled_reach(ns, [400, 800], n_sources=20, random_seed=42)
+        for d in (400, 800):
+            assert np.all(lcb1[d] <= point1[d] + 1e-9)
+            assert np.all(point1[d] <= ucb1[d] + 1e-9)
+            # unhit nodes are not priced as free
+            assert np.all(ucb1[d] > 0)
+            assert np.allclose(lcb1[d], lcb2[d])
+        # reach at the larger threshold dominates the smaller
+        assert np.all(point1[800] >= point1[400])
+
     def test_small_network_falls_back_to_exact(self):
         """On a small mock network the work test selects exact computation; results match."""
         G = mock.mock_graph()

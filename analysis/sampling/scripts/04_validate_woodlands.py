@@ -2,15 +2,17 @@
 """
 04_validate_woodlands.py - HELD-OUT validation on The Woodlands, TX (suburban) network.
 
-Fourth validation network, HELD OUT from calibration: The Woodlands is a
-master-planned, dendritic Texan suburb (north of Houston) with the archetypal
-cul-de-sac street pattern. Unlike Cary — which was used to calibrate the default
-epsilon — this network plays no part in setting any parameter: the schedule
-(eps=0.05, s=175 m, delta=0.1) is applied exactly as shipped, so the results here
-test out-of-sample transferability to an unseen sparse network.
+Fourth validation network, HELD OUT from accuracy calibration: The Woodlands is
+a master-planned, dendritic Texan suburb (north of Houston) with the archetypal
+cul-de-sac street pattern. Cary calibrated the default epsilon; this network
+plays no part in setting the accuracy parameters, so the results test
+out-of-sample transferability to an unseen sparse network.
 
-Validates both closeness and betweenness sampling models using the unified
-framework: Hoeffding bound + deterministic distance-based source sampling + IPW.
+Builds the exact ground truths and the ablation rung-1 record: closeness and
+betweenness under the canonical schedule p = compute_distance_p(d), driven
+explicitly through the low-level API with the schedule's p >= phi fallback to
+exact computation. Since cityseer 4.25 the high-level sample=True flag runs the
+per-node polled-pilot method (validate_adaptive.py), not this schedule.
 
 Data: TIGER/Line 2023 EDGES (topologically integrated, natively noded) for every
 county intersecting The Woodlands + 20 km. Fetch with:
@@ -38,7 +40,6 @@ import osmnx as ox
 import pandas as pd
 import shapely
 from cityseer.metrics import networks
-from cityseer.sampling import HOEFFDING_EPSILON as CITYSEER_HOEFFDING_EPSILON
 from cityseer.sampling import compute_distance_p
 from cityseer.tools import graphs, io
 from shapely.geometry import Point
@@ -76,16 +77,6 @@ DELTA = HOEFFDING_DELTA
 
 # Sensitivity analysis: grid spacings to test (default s=175m is the paper default)
 DEFAULT_GRID_SPACINGS = [125, 150, 175, 200, 225]
-
-if not np.isclose(WOODLANDS_EPSILON_CLOSENESS, CITYSEER_HOEFFDING_EPSILON) or not np.isclose(
-    WOODLANDS_EPSILON_BETWEENNESS, CITYSEER_HOEFFDING_EPSILON
-):
-    raise RuntimeError(
-        "Validation epsilons must match cityseer.metrics runtime sampling epsilon when using sample=True. "
-        f"Script eps: closeness={WOODLANDS_EPSILON_CLOSENESS}, betweenness={WOODLANDS_EPSILON_BETWEENNESS}; "
-        f"cityseer.sampling.HOEFFDING_EPSILON={CITYSEER_HOEFFDING_EPSILON}"
-    )
-
 
 def get_woodlands_mask(force: bool = False):
     """Return Woodlands boundary (marks live) and its 20km buffered version (road-load mask) in EPSG:32119.
@@ -269,8 +260,13 @@ def generate_validation_data(net, nodes_gdf, live_mask, force: bool = False) -> 
         # ---------------------------------------------------------------
         # Closeness: distance-based sampling
         # ---------------------------------------------------------------
+        phi = float(np.mean(live_mask))
         actual_p_close = compute_distance_p(dist, epsilon=WOODLANDS_EPSILON_CLOSENESS)
-        print(f"  Closeness eps={WOODLANDS_EPSILON_CLOSENESS}: p={actual_p_close:.4f}")
+        close_exact = actual_p_close >= phi  # the schedule's fallback: p >= phi runs the whole call exact
+        print(
+            f"  Closeness eps={WOODLANDS_EPSILON_CLOSENESS}: p={actual_p_close:.4f} "
+            f"({'exact' if close_exact else 'sampled'})"
+        )
 
         spearmans_h, maes_h, precs_h, scales_h, quartiles_h = [], [], [], [], []
         close_times = []
@@ -278,16 +274,23 @@ def generate_validation_data(net, nodes_gdf, live_mask, force: bool = False) -> 
         print(f"    Running {N_RUNS} runs: ", end="", flush=True)
         for seed in range(N_RUNS):
             t0 = time.time()
-            nodes_gdf_close = networks.closeness_shortest(
-                net,
-                nodes_gdf.copy(),
-                distances=[dist],
-                random_seed=42 + seed,
-                sample=True,
-            )
+            if close_exact:
+                nodes_gdf_close = networks.closeness_shortest(net, nodes_gdf.copy(), distances=[dist])
+                est_harmonic = nodes_gdf_close[f"cc_harmonic_{dist}"].values[live_mask]
+            else:
+                # Canonical schedule via the low-level API: sample=True now runs the
+                # per-node method, so the schedule's p is supplied explicitly.
+                result = net.centrality_shortest(
+                    distances=[dist],
+                    closeness_exprs=[("harmonic", "1/c")],
+                    betweenness_exprs=[],
+                    compute_cycles=False,
+                    sample_probability=float(actual_p_close),
+                    random_seed=42 + seed,
+                    pbar_disabled=True,
+                )
+                est_harmonic = np.array(result.metrics["harmonic"][dist])[live_mask]
             close_times.append(time.time() - t0)
-            col_key = f"cc_harmonic_{dist}"
-            est_harmonic = nodes_gdf_close[col_key].values[live_mask]
 
             sp_h, prec_h, scale_h, _, mae_h = compute_accuracy_metrics(true_harmonic, est_harmonic)
             if not np.isnan(sp_h):
@@ -331,7 +334,11 @@ def generate_validation_data(net, nodes_gdf, live_mask, force: bool = False) -> 
             print(f"  Betweenness: skipped (only {nonzero_betw} nonzero)")
         else:
             actual_p_betw = compute_distance_p(dist, epsilon=WOODLANDS_EPSILON_BETWEENNESS)
-            print(f"  Betweenness eps={WOODLANDS_EPSILON_BETWEENNESS}: p={actual_p_betw:.4f}")
+            betw_exact = actual_p_betw >= phi  # the schedule's fallback applies to the whole call
+            print(
+                f"  Betweenness eps={WOODLANDS_EPSILON_BETWEENNESS}: p={actual_p_betw:.4f} "
+                f"({'exact' if betw_exact else 'sampled'})"
+            )
 
             spearmans_b, maes_b, precs_b, scales_b, quartiles_b = [], [], [], [], []
             betw_times = []
@@ -339,16 +346,21 @@ def generate_validation_data(net, nodes_gdf, live_mask, force: bool = False) -> 
             print(f"    Running {N_RUNS} runs: ", end="", flush=True)
             for seed in range(N_RUNS):
                 t0 = time.time()
-                nodes_gdf_betw = networks.betweenness_shortest(
-                    net,
-                    nodes_gdf.copy(),
-                    distances=[dist],
-                    random_seed=42 + seed,
-                    sample=True,
-                )
+                if betw_exact:
+                    nodes_gdf_betw = networks.betweenness_shortest(net, nodes_gdf.copy(), distances=[dist])
+                    est_betweenness = nodes_gdf_betw[f"cc_betweenness_{dist}"].values[live_mask]
+                else:
+                    result = net.centrality_shortest(
+                        distances=[dist],
+                        closeness_exprs=[],
+                        betweenness_exprs=[("betweenness", "1")],
+                        compute_cycles=False,
+                        sample_probability=float(actual_p_betw),
+                        random_seed=42 + seed,
+                        pbar_disabled=True,
+                    )
+                    est_betweenness = np.array(result.metrics["betweenness"][dist])[live_mask]
                 betw_times.append(time.time() - t0)
-                col_key = f"cc_betweenness_{dist}"
-                est_betweenness = nodes_gdf_betw[col_key].values[live_mask]
 
                 sp_b, prec_b, scale_b, _, mae_b = compute_accuracy_metrics(true_betweenness, est_betweenness)
                 if not np.isnan(sp_b):

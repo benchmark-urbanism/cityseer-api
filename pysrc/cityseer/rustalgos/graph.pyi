@@ -403,6 +403,20 @@ class NetworkStructure:
             (List of reachable node indices, List of NodeVisit states for all nodes).
         """
         ...
+    def poll_reach_hits(
+        self,
+        src_idxs: list[int],
+        distances: list[int],
+        speed_m_s: float,
+    ) -> list[list[int]]:
+        """
+        Count, per distance threshold, how many of the given sources reach each node.
+
+        One bounded Dijkstra per source (parallel, to the largest threshold). Backs the
+        sampling pilot: hit counts are binomial in reach. Returns one list of length
+        node_bound() per distance, indexed by raw node index.
+        """
+        ...
     def dijkstra_tree_simplest(
         self,
         src_idx: int,

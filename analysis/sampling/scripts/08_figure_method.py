@@ -4,11 +4,11 @@
 
 Four equal panels on a hypothetical network with a dense core and a sparse fringe:
 
-  A) Pilot: count nodes within the radius of each node (local reach differs by area).
+  A) Pilot: measure each node's local reach (catchment sizes differ by area).
   B) Assign: per-node inclusion probability q = min(1, k(r)/r); dense low, sparse high.
-  C) Contrast: a single fixed rate starves the sparse catchment.
-  D) Per-node rates: every catchment receives approximately k effective samples;
-     inverse-probability weighting (1/q per source) keeps estimates unbiased.
+  C) Sample with per-node rates: every catchment receives approximately k effective
+     samples; inverse-probability weighting (1/q per source) keeps estimates unbiased.
+  D) Contrast: a single fixed rate starves the sparse catchment.
 
 Outputs both PDF (paper) and SVG (docs site).
 """
@@ -16,32 +16,26 @@ Outputs both PDF (paper) and SVG (docs site).
 import matplotlib
 
 matplotlib.use("Agg")
+import figstyle
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.lines import Line2D
-from matplotlib.patches import Circle
+from matplotlib.patches import Circle, Rectangle
 from utilities import FIGURES_DIR
 
-COLOUR_DENSE = "#2166AC"
-COLOUR_SPARSE = "#B2182B"
-COLOUR_POINT = "#9a9a9a"
-COLOUR_SAMPLED = "#2b2b2b"
-COLOUR_UNSAMPLED = "#d4d4d4"
+# Exemplar hues sit outside the four semantic metric colours (closeness blue,
+# betweenness red, canonical grey, method orange) so the schematic never reads as
+# a closeness/betweenness figure. Teal and purple are the reserved suburb hues.
+COLOUR_DENSE = "#1B9E77"   # teal   - dense-core exemplar (identity only, not a metric)
+COLOUR_SPARSE = "#7B3FA0"  # purple - sparse-fringe exemplar
+COLOUR_POINT = figstyle.COLOR_MUTED     # network node
+COLOUR_SAMPLED = figstyle.COLOR_INK     # sampled source
+COLOUR_UNSAMPLED = figstyle.COLOR_FAINT  # not sampled
 
 RADIUS = 0.75
 K_TARGET = 18.0
-XLIM = (-2.1, 4.15)
-YLIM = (-2.1, 2.1)
-
-plt.rcParams.update(
-    {
-        "font.family": "sans-serif",
-        "font.size": 12,
-        "axes.titlesize": 13,
-        "figure.dpi": 150,
-        "savefig.dpi": 300,
-    }
-)
+XLIM = (-1.95, 4.05)
+YLIM = (-1.6, 1.65)
 
 
 def make_network(rng: np.random.Generator) -> np.ndarray:
@@ -61,31 +55,43 @@ def counts_within(pts: np.ndarray, radius: float) -> np.ndarray:
     return (d2 <= radius**2).sum(axis=1).astype(float)
 
 
-def style_panel(ax, title: str) -> None:
-    ax.set_title(title, pad=7)
+def style_panel(ax, letter: str, title: str) -> None:
+    """Coordinate-free panel: bold letter stamp, concise step title, one light frame."""
+    figstyle.panel_label(ax, letter)
+    ax.set_title(title)
     ax.set_aspect("equal")
     ax.set_xlim(*XLIM)
     ax.set_ylim(*YLIM)
     ax.set_xticks([])
     ax.set_yticks([])
     for spine in ax.spines.values():
-        spine.set_color("#bbbbbb")
-        spine.set_linewidth(0.8)
-
-
-def annotate_exemplar(ax, xy, text: str, colour: str, corner: str) -> None:
-    """Place an exemplar label in a fixed corner with a thin leader line."""
-    corners = {"tl": (-1.95, 1.62), "tr": (3.05, 1.62), "bl": (-1.95, -1.75), "br": (3.05, -1.75)}
-    ax.annotate(
-        text,
-        xy=xy,
-        xytext=corners[corner],
-        fontsize=12,
-        color=colour,
-        ha="left",
-        va="center",
-        arrowprops={"arrowstyle": "-", "color": colour, "alpha": 0.55, "lw": 0.9},
+        spine.set_visible(False)
+    ax.add_patch(
+        Rectangle(
+            (0, 0), 1, 1, transform=ax.transAxes, fill=False,
+            edgecolor=figstyle.COLOR_FAINT, linewidth=0.8, zorder=0, clip_on=False,
+        )
     )
+
+
+def mark_exemplar(ax, xy, colour: str) -> None:
+    """Crosshair-style marker: dashed catchment circle plus a centre dot."""
+    ax.add_patch(Circle(xy, RADIUS, fill=False, edgecolor=colour, linewidth=1.5, linestyle="--"))
+    ax.scatter(*xy, s=46, c=colour, zorder=6, edgecolors="white", linewidths=0.8)
+
+
+def label_below(ax, dense_text: str, sparse_text: str, xfracs: tuple[float, float], note: str | None = None) -> None:
+    """Exemplar values beneath the panel, each centred under its own exemplar.
+
+    ``xfracs`` are the two exemplar x-positions in axes fractions, so the labels
+    track the markers when the coordinate limits change rather than sitting at
+    fixed fractions.
+    """
+    xf_dense, xf_sparse = xfracs
+    ax.text(xf_dense, -0.075, dense_text, transform=ax.transAxes, fontsize=figstyle.SIZE_LABEL, color=COLOUR_DENSE, ha="center")
+    ax.text(xf_sparse, -0.075, sparse_text, transform=ax.transAxes, fontsize=figstyle.SIZE_LABEL, color=COLOUR_SPARSE, ha="center")
+    if note:
+        ax.text(0.5, -0.165, note, transform=ax.transAxes, fontsize=figstyle.SIZE_ANNOT, style="italic", color=figstyle.COLOR_INK, ha="center")
 
 
 def catchment_neff(pts: np.ndarray, sampled: np.ndarray, u: int) -> int:
@@ -93,16 +99,27 @@ def catchment_neff(pts: np.ndarray, sampled: np.ndarray, u: int) -> int:
     return int((sampled & in_catch).sum())
 
 
-def draw_sampling_panel(ax, pts, sampled, exemplars, note: str) -> None:
+def draw_sampling_panel(ax, pts, sampled, exemplars, xfracs, targets) -> None:
     ax.scatter(pts[~sampled, 0], pts[~sampled, 1], s=7, c=COLOUR_UNSAMPLED, linewidths=0)
     ax.scatter(pts[sampled, 0], pts[sampled, 1], s=13, c=COLOUR_SAMPLED, linewidths=0)
-    for u, colour, corner in exemplars:
-        ax.add_patch(Circle(pts[u], RADIUS, fill=False, edgecolor=colour, linewidth=1.5, linestyle="--"))
-        annotate_exemplar(ax, pts[u], f"$n_{{eff}}$ = {catchment_neff(pts, sampled, u)}", colour, corner)
-    ax.text(0.03, 0.035, note, transform=ax.transAxes, fontsize=10, style="italic", color="#444444")
+    for u, colour in exemplars:
+        mark_exemplar(ax, pts[u], colour)
+    neffs = [catchment_neff(pts, sampled, u) for u, _ in exemplars]
+    # Each n_eff reads "reached / target" so the draw is judged on the figure, not
+    # only in the caption. The target is k for a catchment larger than k, and the
+    # whole catchment (a census) when k exceeds its population.
+    label_below(
+        ax,
+        f"$n_{{\\mathrm{{eff}}}}$ = {neffs[0]} / {targets[0]}",
+        f"$n_{{\\mathrm{{eff}}}}$ = {neffs[1]} / {targets[1]}",
+        xfracs,
+        note="reached / target",
+    )
 
 
 def main() -> int:
+    figstyle.apply()
+
     rng = np.random.default_rng(7)
     pts = make_network(rng)
     reach = counts_within(pts, RADIUS)
@@ -110,82 +127,78 @@ def main() -> int:
 
     u_dense = int(np.argmax(reach))
     u_sparse = int(np.argmin(np.abs(pts[:, 0] - 3.2) + np.abs(pts[:, 1])))
-    exemplars = [(u_dense, COLOUR_DENSE, "tl"), (u_sparse, COLOUR_SPARSE, "tr")]
+    exemplars = [(u_dense, COLOUR_DENSE), (u_sparse, COLOUR_SPARSE)]
 
-    fig = plt.figure(figsize=(9.6, 7.6))
-    grid = fig.add_gridspec(2, 3, width_ratios=[1, 1, 0.05], wspace=0.08, hspace=0.16)
+    # Per-exemplar target: k for a catchment larger than k, else a census of the
+    # whole catchment (min(k, reach)). These anchor the n_eff labels in C and D.
+    targets = tuple(int(min(K_TARGET, reach[u])) for u, _ in exemplars)
+
+    # Below-panel labels sit under the exemplar they annotate: convert each
+    # exemplar's x-coordinate to an axes fraction so the labels stay aligned when
+    # the coordinate limits change.
+    span = XLIM[1] - XLIM[0]
+    xfracs = (
+        (pts[u_dense, 0] - XLIM[0]) / span,
+        (pts[u_sparse, 0] - XLIM[0]) / span,
+    )
+
+    fig = plt.figure(figsize=(8.0, 5.3))
+    grid = fig.add_gridspec(2, 2, wspace=0.06, hspace=0.30)
     ax_a = fig.add_subplot(grid[0, 0])
     ax_b = fig.add_subplot(grid[0, 1])
-    ax_cbar = fig.add_subplot(grid[0, 2])
     ax_c = fig.add_subplot(grid[1, 0])
     ax_d = fig.add_subplot(grid[1, 1])
-    fig.add_subplot(grid[1, 2]).set_visible(False)
 
     # --- A: pilot ---
-    style_panel(ax_a, "A) Pilot: measure local reach")
-    ax_a.scatter(pts[:, 0], pts[:, 1], s=9, c=COLOUR_POINT, alpha=0.75, linewidths=0)
-    for u, colour, corner in exemplars:
-        ax_a.add_patch(Circle(pts[u], RADIUS, fill=False, edgecolor=colour, linewidth=1.5, linestyle="--"))
-        ax_a.scatter(*pts[u], s=38, c=colour, zorder=5)
-        annotate_exemplar(ax_a, pts[u], f"$\\hat{{r}}$ = {int(reach[u])}", colour, corner)
-    ax_a.text(
-        0.03,
-        0.035,
-        "same radius, very different catchments",
-        transform=ax_a.transAxes,
-        fontsize=10,
-        style="italic",
-        color="#444444",
-    )
+    style_panel(ax_a, "A", "Pilot: measure local reach")
+    ax_a.scatter(pts[:, 0], pts[:, 1], s=9, c=COLOUR_POINT, alpha=0.85, linewidths=0)
+    for u, colour in exemplars:
+        mark_exemplar(ax_a, pts[u], colour)
+    label_below(ax_a, f"$\\hat{{r}}$ = {int(reach[u_dense])}", f"$\\hat{{r}}$ = {int(reach[u_sparse])}", xfracs)
 
-    # --- B: per-node q, dedicated colorbar axis so the panel keeps its size ---
-    style_panel(ax_b, "B) Assign: $q = \\min(1,\\, k/\\hat{r}\\,)$ per node")
-    sc = ax_b.scatter(pts[:, 0], pts[:, 1], s=13, c=q, cmap="viridis", vmin=0, vmax=1, linewidths=0)
-    for u, colour, corner in exemplars:
-        annotate_exemplar(ax_b, pts[u], f"$q$ = {q[u]:.2f}", colour, corner)
-    ax_b.text(
-        0.03,
-        0.035,
-        "dense: low $q$;  sparse: high $q$",
-        transform=ax_b.transAxes,
-        fontsize=10,
-        style="italic",
-        color="#444444",
-    )
-    cbar = fig.colorbar(sc, cax=ax_cbar)
-    cbar.set_label("inclusion probability $q$", fontsize=11)
-    cbar.ax.tick_params(labelsize=10)
-    # equal-aspect panels shrink vertically; match the colorbar to panel B's drawn height
-    fig.canvas.draw()
-    pos_b = ax_b.get_position()
-    pos_c = ax_cbar.get_position()
-    ax_cbar.set_position([pos_c.x0, pos_b.y0, pos_c.width, pos_b.height])
+    # --- B: per-node q ---
+    style_panel(ax_b, "B", "Assign: $q = \\min(1,\\, k/\\hat{r}\\,)$")
+    ax_b.scatter(pts[:, 0], pts[:, 1], s=4 + 40 * q, c=COLOUR_POINT, alpha=0.85, linewidths=0)
+    for u, colour in exemplars:
+        mark_exemplar(ax_b, pts[u], colour)
+    label_below(ax_b, f"$q$ = {q[u_dense]:.2f}", f"$q$ = {q[u_sparse]:.2f}", xfracs)
+    # In-panel size key in the empty upper-left column (x < -1.4 holds almost no
+    # core nodes): a header, then the small and large reference dots, each anchored
+    # with a "low"/"high" q cue so the ramp direction reads without cross-referencing
+    # the numeric q labels below. Those numeric values appear once below, so no
+    # number is repeated here.
+    ax_b.text(-1.80, 1.50, "marker size $\\propto q$", fontsize=figstyle.SIZE_ANNOT, ha="left", va="center", color=figstyle.COLOR_INK)
+    ax_b.scatter([-1.62], [1.16], s=4 + 40 * 0.11, c=COLOUR_POINT, linewidths=0)
+    ax_b.text(-1.46, 1.16, "low", fontsize=figstyle.SIZE_ANNOT, ha="left", va="center", color=figstyle.COLOR_INK)
+    ax_b.scatter([-1.62], [0.78], s=4 + 40 * 1.0, c=COLOUR_POINT, linewidths=0)
+    ax_b.text(-1.42, 0.78, "high", fontsize=figstyle.SIZE_ANNOT, ha="left", va="center", color=figstyle.COLOR_INK)
 
-    # --- C: fixed-rate contrast ---
-    p_fixed = float(K_TARGET / reach.mean())
-    style_panel(ax_c, f"C) Fixed rate ($p$ = {p_fixed:.2f})")
-    fixed_sampled = np.random.default_rng(3).random(len(pts)) < p_fixed
-    draw_sampling_panel(ax_c, pts, fixed_sampled, exemplars, "one rate for all: the sparse catchment is starved")
-
-    # --- D: per-node draw ---
-    style_panel(ax_d, "D) Per-node rates")
+    # --- C: per-node draw (the method's outcome) ---
+    style_panel(ax_c, "C", "Sample with per-node rates")
     node_sampled = np.random.default_rng(21).random(len(pts)) < q
-    draw_sampling_panel(ax_d, pts, node_sampled, exemplars, "every catchment $\\approx k$; weights $1/q$ keep it unbiased")
+    draw_sampling_panel(ax_c, pts, node_sampled, exemplars, xfracs, targets)
+
+    # --- D: fixed-rate counterfactual, for illustration only ---
+    p_fixed = float(K_TARGET / reach.mean())
+    style_panel(ax_d, "D", f"Contrast: one fixed rate ($p$ = {p_fixed:.2f})")
+    fixed_sampled = np.random.default_rng(3).random(len(pts)) < p_fixed
+    draw_sampling_panel(ax_d, pts, fixed_sampled, exemplars, xfracs, targets)
 
     # single shared legend
+    # Three entries that match the marks in the panels: a filled grey network node
+    # (A, B), a near-black filled sampled source (C, D), and a pale filled node with
+    # a thin muted edge for "not sampled" (C, D). The pale fill matches the in-panel
+    # unsampled dots; the thin edge only lets that pale mark hold its shape at legend
+    # size and in greyscale. The teal/purple exemplar circles need no key here: the
+    # caption names them and the coloured below-panel labels sit under their markers.
     handles = [
-        Line2D([], [], marker="o", linestyle="none", markersize=5, color=COLOUR_SAMPLED, label="sampled source"),
-        Line2D([], [], marker="o", linestyle="none", markersize=4, color=COLOUR_UNSAMPLED, label="not sampled"),
-        Line2D([], [], linestyle="--", color="#666666", label="exemplar catchment (radius $d$)"),
+        Line2D([], [], marker="o", linestyle="none", markersize=6, color=COLOUR_POINT, label="network node (A, B)"),
+        Line2D([], [], marker="o", linestyle="none", markersize=6.5, color=COLOUR_SAMPLED, label="sampled source (C, D)"),
+        Line2D([], [], marker="o", linestyle="none", markersize=6, markerfacecolor=COLOUR_UNSAMPLED,
+               markeredgecolor=figstyle.COLOR_MUTED, markeredgewidth=0.5, label="not sampled (C, D)"),
     ]
-    fig.legend(handles=handles, loc="lower center", ncol=3, fontsize=11, frameon=False, bbox_to_anchor=(0.5, 0.0))
+    fig.legend(handles=handles, loc="lower center", ncol=3, frameon=False, bbox_to_anchor=(0.5, -0.005))
 
-    fig.suptitle(
-        f"Per-node reach-based sampling (worked example, $k = {int(K_TARGET)}$)",
-        fontsize=14,
-        fontweight="bold",
-        y=1.0,
-    )
     for ext in ("pdf", "svg"):
         out = FIGURES_DIR / f"fig1_method_schematic.{ext}"
         fig.savefig(out, bbox_inches="tight")

@@ -1331,6 +1331,68 @@ impl NetworkStructure {
         Ok(self.dijkstra_tree_shortest_inner(src_idx, max_seconds, speed_m_s))
     }
 
+    /// Per-node hit counts from bounded Dijkstra traversals over the given sources.
+    ///
+    /// For each distance threshold, counts how many of the sources reach each node
+    /// within that metric distance (one traversal per source, to the largest
+    /// threshold). Backs the sampling pilot (cityseer.sampling.estimate_polled_reach):
+    /// on an undirected network a node's hit count is binomial in its reach, so
+    /// hits / m * n estimates reach at every threshold from one traversal set.
+    /// Returns one Vec of length node_bound() per distance, indexed by raw node index.
+    #[pyo3(signature = (src_idxs, distances, speed_m_s))]
+    pub fn poll_reach_hits(
+        &self,
+        py: Python,
+        src_idxs: Vec<usize>,
+        distances: Vec<u32>,
+        speed_m_s: f32,
+    ) -> PyResult<Vec<Vec<u32>>> {
+        if distances.is_empty() {
+            return Err(exceptions::PyValueError::new_err(
+                "poll_reach_hits requires at least one distance",
+            ));
+        }
+        for src_idx in &src_idxs {
+            self.validate_dijkstra_inputs(*src_idx, speed_m_s)?;
+        }
+        let max_dist = *distances.iter().max().unwrap();
+        let max_seconds = (max_dist as f32 / speed_m_s).ceil() as u32;
+        let bound = self.node_bound();
+        let n_dist = distances.len();
+        let counts = py.detach(move || {
+            src_idxs
+                .par_iter()
+                .fold(
+                    || vec![vec![0u32; bound]; n_dist],
+                    |mut acc, src_idx| {
+                        let (visited, tree_map) =
+                            self.dijkstra_tree_shortest_inner(*src_idx, max_seconds, speed_m_s);
+                        for node_idx in visited {
+                            let dist = tree_map[node_idx].short_dist;
+                            for (di, thresh) in distances.iter().enumerate() {
+                                if dist <= *thresh as f32 {
+                                    acc[di][node_idx] += 1;
+                                }
+                            }
+                        }
+                        acc
+                    },
+                )
+                .reduce(
+                    || vec![vec![0u32; bound]; n_dist],
+                    |mut a, b| {
+                        for (a_row, b_row) in a.iter_mut().zip(b) {
+                            for (a_val, b_val) in a_row.iter_mut().zip(b_row) {
+                                *a_val += b_val;
+                            }
+                        }
+                        a
+                    },
+                )
+        });
+        Ok(counts)
+    }
+
     #[pyo3(signature = (src_idx, max_seconds, speed_m_s))]
     pub fn dijkstra_tree_simplest(
         &self,
