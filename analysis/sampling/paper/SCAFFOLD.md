@@ -38,11 +38,14 @@ full"; inverse-probability weighting is standard survey practice.
    sampling cannot pay, the method declines to sample.
 7. Scope: rank-based evaluation, betweenness caveat, pilot tail, angular untested;
    the main validation ends at 20 km with the buffered network extent (by
-   construction). A frontier test on the held-out network, rebuilt with a 50 km
-   buffer (nine counties, Houston-scale), shows closeness routed exact and
-   betweenness plateauing at rho 0.953-0.955 through 30/40/50 km with speedups
-   13-25x (output/woodlands_frontier.csv, 11_frontier_woodlands.py): the distance
-   decay flattens at the target line rather than crossing it.
+   construction). The extended-distance test reruns the held-out network on a 50 km
+   buffer (nine counties, Houston-scale) across the FULL 1-50 km range
+   (11_frontier_woodlands.py --distances 1000..50000; output/woodlands_frontier.csv),
+   so fig13 panel C is one continuous series from one build, no divider or diamond
+   special case. Closeness routes exact throughout on that build; betweenness plateaus
+   just above the target line rather than crossing it (speedups 6-14x in the timing
+   session of record; frontier sampled timings swing between sessions, per the Setup
+   caveat).
 
 **Reader:** urban analysts deciding whether to trust sampled centrality, plus a
 methods referee. Their questions, in order: can I trust it, when does it apply, what
@@ -53,6 +56,18 @@ subsection. No "two ways to supply reach" framing anywhere else.
 
 **Intuition rule:** one analogy, the survey, paper-wide. Every technical component is
 introduced in survey terms before its mathematics. No second metaphor.
+
+**Register rule (2026-07-06):** formal academic tone throughout, explanatory but never
+chatty. No staccato gloss fragments, no conversational vocabulary ("crowd", "doing its
+job", "in plain terms"), no double introductions of one concept. Accessibility is
+achieved with precise subordinate clauses, concrete nouns, worked numbers, tables, and
+figures, inside the formal register.
+
+**Framing rule (2026-07-06):** do not imply analysts already sample; few do. The arc,
+stated in the abstract and mirrored by the introduction: localised centrality is the
+goal; exact computation is expensive; sampling is therefore appealing; sampling raises
+a design problem (comparable uncertainty across unequal catchments); this design
+answers it; these are the results.
 
 ---
 
@@ -148,21 +163,20 @@ method, on the same networks, seeds, and ground truth. Three comparisons, in ord
   entry point, so modes are recorded per metric.
 - Comparison 1, accuracy and its geography: rho vs distance for both metrics
   (fig13: calibration networks in panels A and B; the held-out network in panel C,
-  extended to 50 km via the frontier rebuild); per-reach-quartile rho (fig12
+  validated 1-50 km on the 50 km build); per-reach-quartile rho (fig12
   panel C: the upper three quartiles improve slightly, the lowest shifts by a
   similar small amount the other way);
   paired rank-shift statistics on the held-out network at 20 km (baseline closeness:
   neighbour-error correlation 0.55 and mean rank displacement 0.068 of the rank
   range; the method routes the cell to exact and the residuals are zero; betweenness
   mean rank displacement is similar under both designs, 0.048 vs 0.051, while the
-  neighbour-error correlation falls from 0.25 to 0.18). The paired CLOSENESS rank-shift map (fig15, Woodlands
-  20 km: clustered residuals under the fixed rate beside a blank map under the
-  method) sits in Section 5 as the spatial companion to the statistics; betweenness
-  spatial claims stay in the text because their improvement is de-clustering, not
-  magnitude, which a median hexbin cannot show. Method-only rank-shift maps and
-  decile matrices live in the appendix; the error-vs-reach figure (fig8) sits in the
-  Section 5.3 error-structure discussion. Residual betweenness gradient
-  acknowledged (tie-heavy low-reach values).
+  neighbour-error correlation falls from 0.25 to 0.18). Section 5.3 is a single
+  summary paragraph; all four error-structure figures (method-only rank-shift maps
+  fig7, error-vs-reach fig8, decile matrices fig11, paired closeness rank-shift map
+  fig15) live in the appendix and the paragraph points at them. Betweenness spatial
+  claims stay in the text because their improvement is de-clustering, not magnitude,
+  which a median hexbin cannot show. Residual betweenness gradient acknowledged
+  (tie-heavy low-reach values).
 - Comparison 2, cost at the same target: consolidated table of rho and realised
   speedups, pilot included; sampling pays on London at 20 km (6.8x/8.3x) and on
   held-out betweenness at 20 km (2.6x); Madrid's 20 km cells sit near break-even
@@ -179,10 +193,10 @@ method, on the same networks, seeds, and ground truth. Three comparisons, in ord
   reports within-quartile statistics for the sampled metro closeness cells (rho
   depressed by range restriction; per-quartile median rank shift stays small).
 
-Figures owned: adaptive accuracy + speedup, fig12; error-vs-reach (fig8) in the
-Section 5.3 error-structure discussion. Appendix: method-only rank-shift maps and
-deciles, plus the paired rank-shift statistics (spatial_macros.tex). Tables owned:
-the consolidated adaptive results table (with per-metric modes).
+Figures owned: adaptive accuracy (fig13) and comparison (fig12). Appendix: all four
+error-structure figures (fig7, fig8, fig11, fig15), plus the paired rank-shift
+statistics (spatial_macros.tex). Tables owned: the consolidated adaptive results
+table (with per-metric modes).
 
 ## 6. Discussion
 
@@ -230,8 +244,8 @@ Claim, mechanism, evidence, scope. Nothing new.
 | adaptive accuracy fig (fig13)       | 5        | rho vs distance, method                  | done (regenerated 2026-07-04, final CSVs)  |
 | adaptive results table (tab7)       | 5        | rho + speedups, all networks/distances   | done (regenerated 2026-07-04, final CSVs)  |
 | fig12 comparison                    | 4/5      | baseline vs method bars + quartiles      | done (regenerated 2026-07-04, final CSVs)  |
-| rank-shift, deciles, error-vs-reach | appendix (error-vs-reach fig8 promoted to 5.3) | method-only maps; paired Woodlands 20 km statistics in Section 5 text (spatial_macros.tex) | done (regenerated 2026-07-04) |
-| fig15 paired rank-shift map         | 5        | Woodlands 20 km closeness, fixed rate vs method | done; wired into Section 5.3       |
+| rank-shift, deciles, error-vs-reach | appendix | fig7, fig8, fig11; stats in 5.3 text     | done (all moved to appendix 2026-07-06)    |
+| fig15 paired rank-shift map         | appendix | Woodlands 20 km closeness, paired        | done (moved to appendix 2026-07-06)        |
 | canonical tables 2/4/5/6            | appendix | ablation record                          | done                                       |
 | fig3 + distance lookup              | none     | canonical guidance                       | removed (generators deleted from 06)       |
 | fig2/fig4/fig5 canonical figures    | none     | canonical err/accuracy/speedup           | removed (generators deleted from 05)       |
@@ -245,3 +259,18 @@ cells (1.0--8.3x) and asserts n_seeds == 3 for every sampled cell. Speedups divi
 exact baselines cached at ground-truth build time (Jun 16 / Jul 3) by sampled runtimes
 from the 16:30--17:31 re-run; Setup discloses the machine and configuration. A
 same-session timing re-measurement on an idle machine remains open.
+
+**Status note (2026-07-06, shortening + register pass):** the paper was cut for length
+and the main text lightened. All four error-structure figures now sit in the appendix
+and Section 5.3 is one summary paragraph. Per-cell numbers (speedups, quartile rhos,
+canonical comparisons, paired rank-shift statistics) live in tab7/tab8, the appendix
+tables, and the appendix error-structure paragraph; the text repeats only load-bearing
+values (held-out failure rho, minimum sampled rho, 20 km speedup range). The survey
+analogy is stated in the Section 3 opener and no longer repeated; fig1 and appendix
+captions were halved; Related work is one paragraph leaning on tab:bounds_comparison.
+Register rule now in force: main-text sentences stay short and plain; technical
+machinery lives in the appendix. New appendix paragraph "Pilot reach estimator and
+confidence bounds" (sec:appendix_pilot) holds the hit-count estimator, Clopper-Pearson
+construction, and without-replacement note; the C_max per-term bounds moved into the
+IPW appendix paragraph. Body source tokens 9097 -> 6721 (-26%); main text ends p14
+(references from p15); 25 pp total.

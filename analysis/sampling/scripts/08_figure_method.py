@@ -19,6 +19,7 @@ matplotlib.use("Agg")
 import figstyle
 import matplotlib.pyplot as plt
 import numpy as np
+from matplotlib import patheffects
 from matplotlib.lines import Line2D
 from matplotlib.patches import Circle, Rectangle
 from utilities import FIGURES_DIR
@@ -74,24 +75,44 @@ def style_panel(ax, letter: str, title: str) -> None:
     )
 
 
-def mark_exemplar(ax, xy, colour: str) -> None:
-    """Crosshair-style marker: dashed catchment circle plus a centre dot."""
-    ax.add_patch(Circle(xy, RADIUS, fill=False, edgecolor=colour, linewidth=1.5, linestyle="--"))
+def mark_exemplar(ax, xy, colour: str, linestyle="--") -> None:
+    """Crosshair-style marker: dashed catchment circle plus a centre dot.
+
+    Each exemplar carries its own dash pattern (dense dashed, sparse dash-dot), so
+    the two circles separate in greyscale as well as by hue.
+    """
+    ax.add_patch(Circle(xy, RADIUS, fill=False, edgecolor=colour, linewidth=1.5, linestyle=linestyle))
     ax.scatter(*xy, s=46, c=colour, zorder=6, edgecolors="white", linewidths=0.8)
 
 
-def label_below(ax, dense_text: str, sparse_text: str, xfracs: tuple[float, float], note: str | None = None) -> None:
+def label_below(
+    ax,
+    dense_text: str,
+    sparse_text: str,
+    xfracs: tuple[float, float],
+    note: str | None = None,
+    sparse_weight: str = "normal",
+) -> None:
     """Exemplar values beneath the panel, each centred under its own exemplar.
 
     ``xfracs`` are the two exemplar x-positions in axes fractions, so the labels
     track the markers when the coordinate limits change rather than sitting at
-    fixed fractions.
+    fixed fractions. ``sparse_weight="bold"`` flags a failing sparse count (panel D).
     """
     xf_dense, xf_sparse = xfracs
-    ax.text(xf_dense, -0.075, dense_text, transform=ax.transAxes, fontsize=figstyle.SIZE_LABEL, color=COLOUR_DENSE, ha="center")
-    ax.text(xf_sparse, -0.075, sparse_text, transform=ax.transAxes, fontsize=figstyle.SIZE_LABEL, color=COLOUR_SPARSE, ha="center")
+    ax.text(
+        xf_dense, -0.075, dense_text, transform=ax.transAxes, fontsize=figstyle.SIZE_LABEL,
+        color=COLOUR_DENSE, ha="center",
+    )
+    ax.text(
+        xf_sparse, -0.075, sparse_text, transform=ax.transAxes, fontsize=figstyle.SIZE_LABEL,
+        color=COLOUR_SPARSE, ha="center", fontweight=sparse_weight,
+    )
     if note:
-        ax.text(0.5, -0.165, note, transform=ax.transAxes, fontsize=figstyle.SIZE_ANNOT, style="italic", color=figstyle.COLOR_INK, ha="center")
+        ax.text(
+            0.5, -0.165, note, transform=ax.transAxes, fontsize=figstyle.SIZE_ANNOT,
+            style="italic", color=figstyle.COLOR_INK, ha="center",
+        )
 
 
 def catchment_neff(pts: np.ndarray, sampled: np.ndarray, u: int) -> int:
@@ -99,22 +120,34 @@ def catchment_neff(pts: np.ndarray, sampled: np.ndarray, u: int) -> int:
     return int((sampled & in_catch).sum())
 
 
-def draw_sampling_panel(ax, pts, sampled, exemplars, xfracs, targets) -> None:
+def draw_sampling_panel(ax, pts, sampled, exemplars, xfracs, targets, warn_sparse: bool = False) -> None:
     ax.scatter(pts[~sampled, 0], pts[~sampled, 1], s=7, c=COLOUR_UNSAMPLED, linewidths=0)
     ax.scatter(pts[sampled, 0], pts[sampled, 1], s=13, c=COLOUR_SAMPLED, linewidths=0)
-    for u, colour in exemplars:
-        mark_exemplar(ax, pts[u], colour)
-    neffs = [catchment_neff(pts, sampled, u) for u, _ in exemplars]
+    for u, colour, linestyle in exemplars:
+        mark_exemplar(ax, pts[u], colour, linestyle)
+    neffs = [catchment_neff(pts, sampled, u) for u, _, _ in exemplars]
     # Each n_eff reads "reached / target" so the draw is judged on the figure, not
     # only in the caption. The target is k for a catchment larger than k, and the
     # whole catchment (a census) when k exceeds its population.
+    # warn_sparse (panel D): the sparse catchment's failing count is set in bold and
+    # tagged "under-sampled" beside its circle, so the fixed rate's failure is
+    # typographically salient rather than a number to be compared against panel C.
     label_below(
         ax,
         f"$n_{{\\mathrm{{eff}}}}$ = {neffs[0]} / {targets[0]}",
         f"$n_{{\\mathrm{{eff}}}}$ = {neffs[1]} / {targets[1]}",
         xfracs,
         note="reached / target",
+        sparse_weight="bold" if warn_sparse else "normal",
     )
+    if warn_sparse:
+        u_sparse = exemplars[1][0]
+        ax.text(
+            pts[u_sparse][0], pts[u_sparse][1] + RADIUS + 0.14, "under-sampled",
+            ha="center", va="bottom", fontsize=figstyle.SIZE_ANNOT, style="italic",
+            fontweight="bold", color=COLOUR_SPARSE,
+            path_effects=[patheffects.withStroke(linewidth=2.5, foreground="white")],
+        )
 
 
 def main() -> int:
@@ -127,11 +160,13 @@ def main() -> int:
 
     u_dense = int(np.argmax(reach))
     u_sparse = int(np.argmin(np.abs(pts[:, 0] - 3.2) + np.abs(pts[:, 1])))
-    exemplars = [(u_dense, COLOUR_DENSE), (u_sparse, COLOUR_SPARSE)]
+    # Distinct dash patterns (dense dashed, sparse dash-dot) keep the two catchment
+    # circles apart in greyscale, where teal and purple converge.
+    exemplars = [(u_dense, COLOUR_DENSE, "--"), (u_sparse, COLOUR_SPARSE, (0, (5, 2, 1, 2)))]
 
     # Per-exemplar target: k for a catchment larger than k, else a census of the
     # whole catchment (min(k, reach)). These anchor the n_eff labels in C and D.
-    targets = tuple(int(min(K_TARGET, reach[u])) for u, _ in exemplars)
+    targets = tuple(int(min(K_TARGET, reach[u])) for u, _, _ in exemplars)
 
     # Below-panel labels sit under the exemplar they annotate: convert each
     # exemplar's x-coordinate to an axes fraction so the labels stay aligned when
@@ -152,22 +187,25 @@ def main() -> int:
     # --- A: pilot ---
     style_panel(ax_a, "A", "Pilot: measure local reach")
     ax_a.scatter(pts[:, 0], pts[:, 1], s=9, c=COLOUR_POINT, alpha=0.85, linewidths=0)
-    for u, colour in exemplars:
-        mark_exemplar(ax_a, pts[u], colour)
+    for u, colour, linestyle in exemplars:
+        mark_exemplar(ax_a, pts[u], colour, linestyle)
     label_below(ax_a, f"$\\hat{{r}}$ = {int(reach[u_dense])}", f"$\\hat{{r}}$ = {int(reach[u_sparse])}", xfracs)
 
     # --- B: per-node q ---
     style_panel(ax_b, "B", "Assign: $q = \\min(1,\\, k/\\hat{r}\\,)$")
     ax_b.scatter(pts[:, 0], pts[:, 1], s=4 + 40 * q, c=COLOUR_POINT, alpha=0.85, linewidths=0)
-    for u, colour in exemplars:
-        mark_exemplar(ax_b, pts[u], colour)
+    for u, colour, linestyle in exemplars:
+        mark_exemplar(ax_b, pts[u], colour, linestyle)
     label_below(ax_b, f"$q$ = {q[u_dense]:.2f}", f"$q$ = {q[u_sparse]:.2f}", xfracs)
     # In-panel size key in the empty upper-left column (x < -1.4 holds almost no
     # core nodes): a header, then the small and large reference dots, each anchored
     # with a "low"/"high" q cue so the ramp direction reads without cross-referencing
     # the numeric q labels below. Those numeric values appear once below, so no
     # number is repeated here.
-    ax_b.text(-1.80, 1.50, "marker size $\\propto q$", fontsize=figstyle.SIZE_ANNOT, ha="left", va="center", color=figstyle.COLOR_INK)
+    ax_b.text(
+        -1.80, 1.50, "marker size $\\propto q$", fontsize=figstyle.SIZE_ANNOT,
+        ha="left", va="center", color=figstyle.COLOR_INK,
+    )
     ax_b.scatter([-1.62], [1.16], s=4 + 40 * 0.11, c=COLOUR_POINT, linewidths=0)
     ax_b.text(-1.46, 1.16, "low", fontsize=figstyle.SIZE_ANNOT, ha="left", va="center", color=figstyle.COLOR_INK)
     ax_b.scatter([-1.62], [0.78], s=4 + 40 * 1.0, c=COLOUR_POINT, linewidths=0)
@@ -182,7 +220,7 @@ def main() -> int:
     p_fixed = float(K_TARGET / reach.mean())
     style_panel(ax_d, "D", f"Contrast: one fixed rate ($p$ = {p_fixed:.2f})")
     fixed_sampled = np.random.default_rng(3).random(len(pts)) < p_fixed
-    draw_sampling_panel(ax_d, pts, fixed_sampled, exemplars, xfracs, targets)
+    draw_sampling_panel(ax_d, pts, fixed_sampled, exemplars, xfracs, targets, warn_sparse=True)
 
     # single shared legend
     # Three entries that match the marks in the panels: a filled grey network node
@@ -193,7 +231,8 @@ def main() -> int:
     # caption names them and the coloured below-panel labels sit under their markers.
     handles = [
         Line2D([], [], marker="o", linestyle="none", markersize=6, color=COLOUR_POINT, label="network node (A, B)"),
-        Line2D([], [], marker="o", linestyle="none", markersize=6.5, color=COLOUR_SAMPLED, label="sampled source (C, D)"),
+        Line2D([], [], marker="o", linestyle="none", markersize=6.5, color=COLOUR_SAMPLED,
+               label="sampled source (C, D)"),
         Line2D([], [], marker="o", linestyle="none", markersize=6, markerfacecolor=COLOUR_UNSAMPLED,
                markeredgecolor=figstyle.COLOR_MUTED, markeredgewidth=0.5, label="not sampled (C, D)"),
     ]

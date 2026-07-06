@@ -57,6 +57,11 @@ COLOUR_BETWEENNESS = figstyle.COLOR_BETWEENNESS
 # "GLA" that diverged from the rest of the figures.
 NETWORK_NAMES = figstyle.NETWORK_LABELS
 
+# Per-network line styles for fig8, matching the assignment used by fig6 in
+# 05_figures_validation.py, so a network keeps its dash pattern across figures and
+# the four same-hue series separate in greyscale.
+NETWORK_LINESTYLES = {"gla": "-", "madrid": "--", "cary": ":", "woodlands": "-."}
+
 
 # =============================================================================
 # DATA LOADING
@@ -143,16 +148,12 @@ def generate_fig7_spatial_error(gla_data, madrid_data, dist, cary_data=None, woo
         cy = 0.5 * (y.min() + y.max()) if use_bbox else np.median(y)
         # Bin every panel on the same 20 km extent at gridsize 50 (400 m hexes), so the
         # per-cell max and saturation statistics stay comparable across panels and match
-        # the caption. The 20 km window frames the metros (which extend past it) and Cary
-        # (whose 19 km footprint fills it). The Woodlands footprint is only ~16 km across,
-        # so only its DISPLAY window is zoomed to its bounding box: the footprint fills the
-        # panel without changing the binning. Figure 15 zooms to the same footprint, so the
-        # two stay registered, and this column then carries its own scale bar below.
+        # the caption. Every panel also DISPLAYS the same 20 km window at a common
+        # scale, so the single scale bar on the top-left panel serves all of them (the
+        # caption states this). The Woodlands footprint (~16 km across) simply sits
+        # inside its window with a margin.
         crop = 10000.0
-        if key == "woodlands":
-            view = 0.5 * max(x.max() - x.min(), y.max() - y.min()) + 200.0
-        else:
-            view = crop
+        view = crop
         for row, (metric, true_key, est_key) in enumerate(metrics):
             letter = letters[row * ncols + col]
             ax = axes[row, col]
@@ -223,10 +224,9 @@ def generate_fig7_spatial_error(gla_data, madrid_data, dist, cary_data=None, woo
             ax.set_aspect("equal")
             ax.set_xlim(cx - view, cx + view)
             ax.set_ylim(cy - view, cy + view)
-            # The 20 km columns (London, Madrid, Cary) share one scale, fixed by the
-            # top-left scale bar; the tighter Woodlands column carries its own, since its
-            # window is smaller.
-            if row == 0 and (col == 0 or key == "woodlands"):
+            # All panels share one 20 km window at a common scale, so a single scale
+            # bar on the top-left panel serves the whole figure.
+            if row == 0 and col == 0:
                 figstyle.scale_bar(ax, 5000)
             figstyle.panel_label(ax, letter, inside=True, halo=True)
             ax.set_axis_off()
@@ -267,18 +267,21 @@ def _binned_error_panel(ax, datasets, true_key, est_key, colour, metric_name, n_
     Relative error makes the panels comparable across networks whose absolute values
     differ by orders of magnitude. The median trend is the message and is the only
     plotted mark, so it fills the panel rather than being squeezed by tall spread
-    whiskers. Networks are distinguished by marker shape (the primary channel) and
-    lightness steps of the panel hue. The y-limits are driven by the plotted medians,
+    whiskers. Networks are distinguished by marker shape, per-network line style
+    (NETWORK_LINESTYLES), and lightness steps of the panel hue, and each series
+    carries a direct label at its right-hand end, so the panel decodes in greyscale
+    without a trip to the legend. The y-limits are driven by the plotted medians,
     so the trend occupies the frame.
     """
     dodge = 0.8 / max(len(datasets), 1)
     tints = figstyle.NETWORK_TINT_STEPS
     all_medians: list[float] = []
+    end_labels: list[tuple[str, float, tuple[float, float, float]]] = []
     # faint wash on the top decile, where the highest-value nodes carry the lowest
     # relative error and the series converge low: it directs the eye to the message
     # ("lowest in the top decile") through the mid-decile crossings.
     ax.axvspan(9.5, 10.5, color=figstyle.COLOR_FAINT, zorder=0)
-    for d_idx, (label, data, marker) in enumerate(datasets):
+    for d_idx, (label, data, marker, linestyle) in enumerate(datasets):
         true_vals = data.get(true_key)
         est_vals = data.get(est_key)
         if true_vals is None or est_vals is None:
@@ -312,7 +315,7 @@ def _binned_error_panel(ax, datasets, true_key, est_key, colour, metric_name, n_
         # draw the darkest networks on top (darker = higher zorder): the reference
         # series that carries the roughly-constant message is not buried under paler noise
         zbias = len(datasets) - d_idx
-        ax.plot(x, medians, color=line_tint, linewidth=1.8, alpha=1.0, zorder=3 + zbias)
+        ax.plot(x, medians, linestyle=linestyle, color=line_tint, linewidth=1.8, alpha=1.0, zorder=3 + zbias)
         ax.plot(
             x,
             medians,
@@ -325,6 +328,9 @@ def _binned_error_panel(ax, datasets, true_key, est_key, colour, metric_name, n_
             label=label,
             zorder=3 + zbias + 0.5,
         )
+        finite = np.isfinite(medians)
+        if finite.any():
+            end_labels.append((label, float(medians[finite][-1]), line_tint))
     ax.set_xticks(np.arange(1, n_bins + 1))
     ax.set_yscale("log")
     ax.yaxis.set_major_formatter(matplotlib.ticker.FormatStrFormatter("%g"))
@@ -339,6 +345,28 @@ def _binned_error_panel(ax, datasets, true_key, est_key, colour, metric_name, n_
     # and the top-decile dip fill the axes instead of sitting in a thin band
     if all_medians:
         ax.set_ylim(min(all_medians) / 1.12, max(all_medians) * 1.25)
+    # Direct labels at the right-hand line ends, in each series' own line colour. The
+    # decile-10 medians converge (that is the message), so label positions are dodged
+    # apart in log space by a minimum gap sized to the text height; the x-axis is
+    # extended past decile 10 to hold the words.
+    if end_labels and all_medians:
+        lo, hi = min(all_medians) / 1.12, max(all_medians) * 1.25
+        min_gap = 0.055 * np.log10(hi / lo)
+        order = sorted(range(len(end_labels)), key=lambda i: end_labels[i][1], reverse=True)
+        pos = [np.log10(end_labels[i][1]) for i in order]
+        for j in range(1, len(pos)):
+            pos[j] = min(pos[j], pos[j - 1] - min_gap)
+        floor = np.log10(lo) + 0.5 * min_gap
+        for j in range(len(pos) - 1, -1, -1):
+            need = floor if j == len(pos) - 1 else pos[j + 1] + min_gap
+            pos[j] = max(pos[j], need)
+        for i, y_log in zip(order, pos, strict=True):
+            label, _y, line_tint = end_labels[i]
+            ax.text(
+                10.75, 10.0**y_log, label, fontsize=figstyle.SIZE_ANNOT,
+                color=line_tint, ha="left", va="center",
+            )
+    ax.set_xlim(0.35, 13.4)
     ax.set_xlabel("Reach decile (per network)")
     ax.set_ylabel("Median relative error")
     ax.set_title(metric_name)
@@ -366,18 +394,18 @@ def generate_fig8_error_vs_reach(
     # scale lands at its point values (a larger canvas would print below the floor).
     fig, axes = plt.subplots(1, 2, figsize=(7.6, 3.6), constrained_layout=True)
 
-    datasets = [(NETWORK_NAMES["gla"], gla_data, figstyle.NETWORK_MARKERS["gla"])]
-    if madrid_data is not None:
-        datasets.append((NETWORK_NAMES["madrid"], madrid_data, figstyle.NETWORK_MARKERS["madrid"]))
-    if cary_data is not None:
-        datasets.append((NETWORK_NAMES["cary"], cary_data, figstyle.NETWORK_MARKERS["cary"]))
-    if woodlands_data is not None:
-        datasets.append((NETWORK_NAMES["woodlands"], woodlands_data, figstyle.NETWORK_MARKERS["woodlands"]))
+    datasets = [
+        (NETWORK_NAMES[key], data, figstyle.NETWORK_MARKERS[key], NETWORK_LINESTYLES[key])
+        for key, data in [
+            ("gla", gla_data), ("madrid", madrid_data), ("cary", cary_data), ("woodlands", woodlands_data)
+        ]
+        if data is not None
+    ]
 
     # suburbs route closeness to exact at this distance: zero error, nothing to draw
     # on a log axis, so keep them out of panel A's datasets
     exact_closeness = [
-        name for name, data, _h in datasets
+        name for name, data, _marker, _ls in datasets
         if data is not None and np.allclose(
             np.asarray(data["true_harmonic"], float), np.asarray(data["est_harmonic"], float)
         )
@@ -408,18 +436,20 @@ def generate_fig8_error_vs_reach(
     figstyle.panel_label(axes[0], "A")
     figstyle.panel_label(axes[1], "B")
 
-    # One figure-level legend keyed on marker shape (the stable network identifier;
-    # hue carries the metric, not the network), so the two panels need no duplicate
-    # per-panel legends.
+    # One figure-level legend keyed on marker shape and line style (the stable
+    # network identifiers; hue carries the metric, not the network), so the two
+    # panels need no duplicate per-panel legends. Neutral ink lines keep the legend
+    # metric-agnostic and legible in greyscale.
     from matplotlib.lines import Line2D
 
     handles = [
         Line2D(
-            [], [], linestyle="none", marker=marker, markersize=6,
+            [], [], linestyle=ls, color=figstyle.COLOR_INK, linewidth=1.4,
+            marker=marker, markersize=6,
             markerfacecolor=figstyle.COLOR_MUTED, markeredgecolor=figstyle.COLOR_INK,
             markeredgewidth=0.6, label=label,
         )
-        for label, _data, marker in datasets
+        for label, _data, marker, ls in datasets
     ]
     # "outside" placement lets constrained_layout reserve a strip below the panels,
     # so the shared legend never collides with the x-axis labels
@@ -643,34 +673,45 @@ def _decile_panel(ax, true_vals, est_vals, title, cmap, n_groups=10, show_xlabel
     ax.set_axisbelow(False)
     ax.tick_params(which="minor", length=0)
 
-    # Annotate cells at or above 4%: the diagonal and the immediate off-diagonal moves
-    # that define the diagonal band. Dropping the 1-3% noise lets the numbers breathe at
-    # print size. The digits are set at SIZE_ANNOT-1 (8 pt) so they clear the 7 pt
-    # legibility floor once the figure is placed at 0.85 textwidth (which now applies no
-    # downscale, since the canvas is authored at the display width); a thin contrasting
-    # halo keeps every digit legible regardless of cell tone.
+    # Annotate cells at or above 5%: the diagonal and the immediate off-diagonal moves
+    # that define the diagonal band. Dropping the 1-4% noise lets the numbers breathe at
+    # print size. The digits sit at the 7 pt legibility floor (SIZE_ANNOT-2): the colour
+    # field carries the pattern and the numbers are secondary, so they stay quiet; a
+    # thin contrasting halo keeps every digit legible regardless of cell tone.
     for i in range(data.shape[0]):
         for j in range(data.shape[1]):
             val = data[i, j]
-            if val >= 4.0:
+            if val >= 5.0:
                 dark_cell = val > 55
                 text_colour = "white" if dark_cell else figstyle.COLOR_INK
                 halo = figstyle.COLOR_INK if dark_cell else "white"
                 ax.text(
                     j, i, f"{val:.0f}", ha="center", va="center",
-                    fontsize=figstyle.SIZE_ANNOT - 1, color=text_colour,
-                    path_effects=[patheffects.withStroke(linewidth=1.4, foreground=halo)],
+                    fontsize=figstyle.SIZE_ANNOT - 2, color=text_colour,
+                    path_effects=[patheffects.withStroke(linewidth=1.2, foreground=halo)],
                 )
+
+    # Bold outline on the top-decile retention cell (true 10 -> sampled 10), the
+    # single number the caption leans on, so the eye lands on it first in every panel.
+    from matplotlib.patches import Rectangle
+
+    ax.add_patch(
+        Rectangle(
+            (n_actual - 1.5, n_actual - 1.5), 1.0, 1.0, fill=False,
+            edgecolor=figstyle.COLOR_INK, linewidth=1.4, zorder=4,
+        )
+    )
 
     ax.set_xticks(range(n_actual))
     ax.set_xticklabels(range(1, n_actual + 1))
     ax.set_yticks(range(n_actual))
     ax.set_yticklabels(range(1, n_actual + 1))
+    ax.tick_params(labelsize=figstyle.SIZE_ANNOT - 1)
     if show_xlabel:
         ax.set_xlabel("Sampled decile")
     if show_ylabel:
         ax.set_ylabel("True decile")
-    ax.set_title(title)
+    ax.set_title(title, fontsize=figstyle.SIZE_LEGEND)
     # the cell grid already bounds the matrix, so drop the axes frame
     ax.set_frame_on(False)
     ax.tick_params(length=0)
@@ -801,7 +842,10 @@ def generate_fig15_rank_shift_paired(network: str, dist: int):
         print("  Skipped: need both baseline and _adaptive caches for", network)
         return
 
-    variants = [("Canonical schedule", base, figstyle.COLOR_CANONICAL), ("Per-node method", adap, figstyle.COLOR_METHOD)]
+    variants = [
+        ("Canonical schedule", base, figstyle.COLOR_CANONICAL),
+        ("Per-node method", adap, figstyle.COLOR_METHOD),
+    ]
     # Two maps side by side; the short height keeps them width-limited so they fill the
     # columns and no dead gutter opens between them.
     fig, axes = plt.subplots(1, 2, figsize=(6.6, 3.5), constrained_layout=True)
@@ -876,8 +920,14 @@ def generate_fig15_rank_shift_paired(network: str, dist: int):
                 path_effects=[patheffects.withStroke(linewidth=2.0, foreground="white")],
             )
         # tint the title with the schedule/method colour used across the set (grey for
-        # the canonical schedule, orange for the per-node method), matching fig12
-        ax.set_title(title, color=title_colour)
+        # the canonical schedule, orange for the per-node method), matching fig12; a
+        # small neutral subtitle names the shared subject under each title, so the
+        # panels state what is mapped without a trip to the caption
+        ax.set_title(title, color=title_colour, pad=18)
+        ax.text(
+            0.5, 1.01, "The Woodlands, closeness, 20 km", transform=ax.transAxes,
+            ha="center", va="bottom", fontsize=figstyle.SIZE_ANNOT, color=figstyle.COLOR_INK,
+        )
         ax.set_aspect("equal")
         ax.set_xlim(cx - viewx, cx + viewx)
         ax.set_ylim(cy - viewy, cy + viewy)

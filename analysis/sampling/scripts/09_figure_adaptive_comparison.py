@@ -14,9 +14,13 @@ frontier rebuild). Open markers denote distances computed exactly (work test);
 filled markers are sampled. The rule holds in every panel.
 
 Colours follow the shared design system (figstyle): closeness = blue, betweenness =
-red, canonical schedule = grey, per-node method = orange. Panel C of both figures
-denotes metrics (closeness blue, betweenness red), not networks. Panel identity and
-the open/filled marker rule are carried by the LaTeX caption, not in-artwork titles.
+red, canonical schedule = grey, per-node method = orange. The canonical schedule and
+the per-node method also differ by marker shape (square vs circle), so the pairing
+survives greyscale. Panel C of both figures denotes metrics (closeness blue,
+betweenness red), not networks; fig13's panel C also separates the metrics by line
+style and labels each line directly. Every panel carries a descriptive in-artwork
+title, and the open-marker rule (open = computed exactly) appears in the legends, so
+the figures read without the LaTeX caption.
 
 Reads output/{network}_validation[_adaptive].csv; includes whichever networks have
 adaptive results, so it can be regenerated as runs complete.
@@ -138,11 +142,13 @@ def _target_line(ax, x_label: float, ha: str = "left", show_label: bool = True) 
 def generate_fig13_adaptive_accuracy() -> None:
     """rho vs distance: calibration networks (A, B); held-out network to 50 km (C).
 
-    One marker rule figure-wide: open = exact (work test), filled = sampled. Panel C
-    shows the held-out network's main 20 km-buffered build (circles/squares, to 20 km)
-    and the frontier rebuild with a 50 km buffer (diamonds at 30/40/50 km; a different
-    graph, so points are not joined to the main lines). Panel C colours denote metrics
-    (closeness blue, betweenness red), not networks.
+    One marker rule figure-wide: open = exact (work test), filled = sampled; panel B's
+    legend states it. Panel C shows the held-out network's main 20 km-buffered build
+    (circles/squares, to 20 km) and the frontier rebuild with a 50 km buffer (diamonds
+    at 30/40/50 km; a different graph, so points are not joined to the main lines).
+    Panel C colours denote metrics (closeness blue, betweenness red), not networks;
+    the metrics are further separated by line style (solid vs dashed) and labelled
+    directly at the line ends, so the panel reads without the A/B network key.
     """
     fig, axes = plt.subplots(1, 3, figsize=(7.5, 2.8), sharey=True)
     # (axis, column, panel letter, metric key for the exact test)
@@ -177,6 +183,13 @@ def generate_fig13_adaptive_accuracy() -> None:
         plt.close()
         print("  No adaptive validation CSVs found; skipping fig13.")
         return
+    # Descriptive two-line titles carry the panel identity in the artwork (the bold
+    # letter stamp keeps the cross-reference); two lines keep the centred titles
+    # narrower than the panels.
+    panel_titles = {
+        "A": "Closeness,\ncalibration networks",
+        "B": "Betweenness,\ncalibration networks",
+    }
     for ax, _col, letter, _metric in metric_specs:
         # Shared scale (sharey): label the target and the y-axis once, on the leftmost
         # panel; B repeats neither.
@@ -186,86 +199,80 @@ def generate_fig13_adaptive_accuracy() -> None:
         ax.set_xticklabels(["1", "2", "5", "10", "20"])
         ax.set_xlabel("Analysis distance (km)")
         ax.set_ylabel("Spearman $\\rho$" if ax is axes[0] else "")
-        ax.set_ylim(0.945, 1.004)
+        ax.set_ylim(0.945, 1.0065)
+        ax.set_title(panel_titles[letter], fontsize=figstyle.SIZE_LEGEND)
         ax.grid(True)
         figstyle.panel_label(ax, letter)
     axes[0].legend(loc="lower left")
+    # The open-marker rule, stated once in the artwork. Panel B's mid-left region is
+    # the one space clear of every line, marker, legend, and the target line; the
+    # rule applies to all three panels (C repeats the open markers on its diamonds).
+    axes[1].legend(
+        handles=[
+            Line2D([], [], marker="o", linestyle="none", markeredgecolor=figstyle.COLOR_INK,
+                   markerfacecolor="white", markersize=7,
+                   label="computed exactly\n($\\rho$ = 1)"),
+        ],
+        loc="center left", fontsize=figstyle.SIZE_ANNOT,
+    )
 
-    # --- Panel C: held-out network to 20 km, frontier rebuild to 50 km ---
-    # Marker rule matches A/B: open = exact, filled = sampled. Frontier points are
-    # diamonds. Colours denote metrics (blue closeness, red betweenness).
+    # --- Panel C: held-out network on the 50 km buffer, full 1-50 km range ---
+    # One build (woodlands50, 11_frontier_woodlands.py --distances 1000..50000), so the
+    # panel is a single continuous series per metric. Marker rule matches A/B: open =
+    # exact, filled = sampled. Colours denote metrics (blue closeness, red betweenness).
     ax = axes[2]
-    held = OUTPUT_DIR / "woodlands_validation_adaptive.csv"
     frontier = OUTPUT_DIR / "woodlands_frontier.csv"
-    if held.exists():
-        dfh = pd.read_csv(held).sort_values("distance")
-        xh = dfh["distance"].to_numpy(float) / 1000
-        exact_c = dfh.apply(lambda r: r["mode"] == "exact" or _closeness_ran_exact(r), axis=1).to_numpy(bool)
-        exact_b = dfh.apply(_betweenness_ran_exact, axis=1).to_numpy(bool)
+    if frontier.exists():
+        dff = pd.read_csv(frontier).sort_values("distance")
+        xf = dff["distance"].to_numpy(float) / 1000
+        # The frontier CSV has no mode column; an exact cell reproduces the ground
+        # truth on every seed, so exact mode is identified as rho = 1 with zero spread.
+        exact_c = (dff["rho_closeness"].to_numpy(float) >= 1.0 - 1e-12) & (
+            dff["rho_closeness_std"].to_numpy(float) == 0.0
+        )
+        exact_b = (dff["rho_betweenness"].to_numpy(float) >= 1.0 - 1e-12) & (
+            dff["rho_betweenness_std"].to_numpy(float) == 0.0
+        )
         # Closeness circles are slightly larger and sit beneath the betweenness squares
-        # so both markers stay visible where the two metrics coincide at rho = 1; 7-vs-5
-        # preserves that nesting while staying near the shared 6 pt A/B mark.
-        for col, colour, marker, label, exact, msize, zord in [
-            ("rho_closeness", figstyle.COLOR_CLOSENESS, "o", "closeness", exact_c, 7, 3),
-            ("rho_betweenness", figstyle.COLOR_BETWEENNESS, "s", "betweenness", exact_b, 5, 4),
+        # so both markers stay visible where the two metrics coincide at rho = 1. A/B
+        # use colour for networks, so C separates its metric lines by line style as
+        # well (closeness solid, betweenness dashed) and labels each directly, keeping
+        # the panel legible in greyscale and without the A/B key.
+        for col, colour, marker, ls, exact, msize, zord in [
+            ("rho_closeness", figstyle.COLOR_CLOSENESS, "o", "-", exact_c, 7, 3),
+            ("rho_betweenness", figstyle.COLOR_BETWEENNESS, "s", "--", exact_b, 5, 4),
         ]:
-            y = dfh[col].to_numpy(float)
-            ax.plot(xh, y, "-", color=colour, linewidth=1.6, alpha=0.85, zorder=2, label=label)
-            ax.plot(xh[~exact], y[~exact], marker, color=colour, markersize=msize, linestyle="none", zorder=zord)
+            y = dff[col].to_numpy(float)
+            ax.plot(xf, y, linestyle=ls, color=colour, linewidth=1.6, alpha=0.85, zorder=2)
+            ax.plot(xf[~exact], y[~exact], marker, color=colour, markersize=msize, linestyle="none", zorder=zord)
             ax.plot(
-                xh[exact], y[exact], marker, markerfacecolor="white", markeredgecolor=colour,
+                xf[exact], y[exact], marker, markerfacecolor="white", markeredgecolor=colour,
                 markersize=msize, linestyle="none", zorder=zord,
             )
-        if frontier.exists():
-            dff = pd.read_csv(frontier).sort_values("distance")
-            xf = dff["distance"].to_numpy(float) / 1000
-            # Frontier closeness routes to exact (rho = 1, zero spread): open diamonds.
-            # Frontier betweenness is sampled: filled diamonds. The open/filled meaning
-            # is the shared marker rule stated in the caption. The frontier closeness
-            # points sit at rho = 1 and betweenness at ~0.954 (they do not coincide),
-            # so the diamond stays at 6 pt and the 30/40/50 km points do not fuse.
-            ax.plot(
-                xf, dff["rho_closeness"], "D", markerfacecolor="white",
-                markeredgecolor=figstyle.COLOR_CLOSENESS, markersize=6, linestyle="none", zorder=3,
-            )
-            ax.plot(
-                xf, dff["rho_betweenness"], "D", color=figstyle.COLOR_BETWEENNESS, markersize=5,
-                linestyle="none", zorder=4,
-            )
-            ax.axvline(20, color=figstyle.COLOR_INK, linestyle=":", linewidth=1.0, alpha=0.5)
-            # Sit the annotation in the gap between the rho=1 closeness diamonds and the
-            # rho=0.953--0.955 betweenness diamonds, clear of the top-row markers. No
-            # directional arrow: the dotted 20 km divider and the diamonds directly
-            # above the label already convey the split.
-            ax.text(
-                21, 0.994, "50 km rebuild",
-                fontsize=figstyle.SIZE_ANNOT, color=figstyle.COLOR_INK, va="top",
-            )
+        # Direct labels on the two lines: closeness sits just above its flat rho = 1
+        # line (the ylim headroom above 1.004 exists for it); betweenness sits above
+        # its 30-50 km plateau, clear of the target line below.
+        ax.text(
+            6.8, 1.002, "closeness", fontsize=figstyle.SIZE_ANNOT,
+            color=figstyle.COLOR_CLOSENESS, ha="center", va="bottom",
+        )
+        ax.text(
+            38, 0.9575, "betweenness", fontsize=figstyle.SIZE_ANNOT,
+            color=figstyle.COLOR_BETWEENNESS, ha="center", va="bottom",
+        )
         # The dashed target is labelled once on panel A (shared scale); C draws the
         # line without repeating the tag.
         _target_line(ax, 3.0, show_label=False)
         ax.set_xscale("log")
         ax.set_xticks([1, 2, 5, 10, 20, 30, 40, 50])
         # Blank the 30 and 40 labels: on the log axis they collide with 20/50 and read
-        # as "2030"/"4050". The tick marks stay so each frontier diamond (30/40/50) has
-        # a tick beneath it.
+        # as "2030"/"4050". The tick marks stay so each point has a tick beneath it.
         ax.set_xticklabels(["1", "2", "5", "10", "20", "", "", "50"])
         ax.set_xlabel("Analysis distance (km)")
-        ax.set_ylim(0.945, 1.004)
+        ax.set_ylim(0.945, 1.0065)
+        ax.set_title("Held-out (The Woodlands),\nto 50 km", fontsize=figstyle.SIZE_LEGEND)
         ax.grid(True)
         figstyle.panel_label(ax, "C")
-        # Explicit legend: metric hues for the two series, and a neutral shape-only
-        # diamond for the frontier rebuild, so "frontier" reads as the marker shape
-        # rather than as betweenness (its red filled diamond).
-        legend_handles = [
-            Line2D([], [], color=figstyle.COLOR_CLOSENESS, marker="o", markersize=7,
-                   linewidth=1.6, label="closeness"),
-            Line2D([], [], color=figstyle.COLOR_BETWEENNESS, marker="s", markersize=5,
-                   linewidth=1.6, label="betweenness"),
-            Line2D([], [], marker="D", linestyle="none", markeredgecolor=figstyle.COLOR_INK,
-                   markerfacecolor="none", markersize=7, label="frontier rebuild"),
-        ]
-        ax.legend(handles=legend_handles, loc="center left")
     else:
         figstyle.panel_label(ax, "C")
     plt.tight_layout()
@@ -298,12 +305,14 @@ def main() -> int:
         any_exact = any_exact or any(exact_flags)
         # Paired points on the truncated axis: position encodes rho honestly where
         # bar length against an arbitrary axis floor would not. Canonical = grey,
-        # per-node method = orange; the connector is the muted neutral.
+        # per-node method = orange; the connector is the muted neutral. Marker shape
+        # doubles the colour coding (canonical = square, per-node = circle) so the
+        # pairing survives greyscale print.
         x = np.arange(len(labels))
         off = 0.14
         for xi, bv, av, is_exact in zip(x, base_vals, adap_vals, exact_flags, strict=True):
             ax.plot([xi - off, xi + off], [bv, av], "-", color=figstyle.COLOR_MUTED, linewidth=1.0, alpha=0.9, zorder=2)
-            ax.plot(xi - off, bv, "o", color=figstyle.COLOR_CANONICAL, markersize=7, zorder=3)
+            ax.plot(xi - off, bv, "s", color=figstyle.COLOR_CANONICAL, markersize=6.5, zorder=3)
             if is_exact:
                 # White halo so the rho=1.00 gridline reads behind the ring, not across it.
                 ax.plot(
@@ -324,6 +333,14 @@ def main() -> int:
         ax.set_ylabel("Spearman $\\rho$ (20 km)" if panel == 0 else "")
         if panel != 0:
             ax.tick_params(labelleft=False)
+        # Descriptive title alongside the bold letter stamp, matching fig13. Panel B
+        # has no y-tick labels, so its centred title starts further left; a small
+        # rightward nudge keeps it clear of the corner letter.
+        ax.set_title(
+            "Closeness, by network" if panel == 0 else "Betweenness, by network",
+            fontsize=figstyle.SIZE_LEGEND,
+            x=0.5 if panel == 0 else 0.56,
+        )
         ax.grid(True, axis="y")
         ax.set_axisbelow(True)  # gridlines behind the markers, not across their rings
         figstyle.panel_label(ax, letter)
@@ -341,7 +358,7 @@ def main() -> int:
         qx = [1, 2, 3, 4]
         for xi, bv, av in zip(qx, base_q, adap_q, strict=True):
             ax.plot([xi, xi], [bv, av], "-", color=figstyle.COLOR_MUTED, linewidth=1.0, alpha=0.9, zorder=2)
-        ax.plot(qx, base_q, "o", color=figstyle.COLOR_CANONICAL, markersize=7, linestyle="none", zorder=3)
+        ax.plot(qx, base_q, "s", color=figstyle.COLOR_CANONICAL, markersize=6.5, linestyle="none", zorder=3)
         ax.plot(qx, adap_q, "o", color=figstyle.COLOR_METHOD, markersize=7, linestyle="none", zorder=3)
         ax.set_xticks(qx)
         ax.set_xticklabels(["Q1", "Q2", "Q3", "Q4"])
@@ -351,7 +368,18 @@ def main() -> int:
         # from A/B's network-wide rho, so its y-limits are decoupled to enlarge the
         # paired gap without exaggerating it.
         ax.set_ylim(0.925, 0.99)
-        ax.set_ylabel("Spearman $\\rho$ within quartile")
+        # Plain-words axis label: within-quartile rho compares streets whose reach is
+        # similar, which is what the quantity means for a lay reader.
+        ax.set_ylabel("$\\rho$ among streets\nof similar reach")
+        # Short title: the y- and x-labels carry "reach", so the title only names the
+        # metric and network; longer titles collide with the corner letter stamp.
+        ax.set_title("Betweenness, held-out", fontsize=figstyle.SIZE_LEGEND)
+        # Mechanism note in the empty upper-left region, clear of the Q3/Q4 markers.
+        ax.text(
+            0.04, 0.97, "both designs dip\nwhere near-zero ties\nreorder easily",
+            transform=ax.transAxes, ha="left", va="top",
+            fontsize=figstyle.SIZE_ANNOT, color=figstyle.COLOR_INK,
+        )
         ax.grid(True, axis="y")
         ax.set_axisbelow(True)
         figstyle.panel_label(ax, "C")
@@ -362,7 +390,7 @@ def main() -> int:
     # canonical/method encoding), placed as a horizontal row below the panels.
     handles = [
         Line2D(
-            [], [], marker="o", linestyle="none", color=figstyle.COLOR_CANONICAL, markersize=7,
+            [], [], marker="s", linestyle="none", color=figstyle.COLOR_CANONICAL, markersize=6.5,
             label="canonical schedule",
         ),
         Line2D(

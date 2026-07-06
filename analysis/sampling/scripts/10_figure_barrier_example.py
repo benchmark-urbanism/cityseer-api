@@ -27,6 +27,7 @@ from pathlib import Path
 import matplotlib
 
 matplotlib.use("Agg")
+import figstyle
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib import patheffects
@@ -34,8 +35,6 @@ from matplotlib.lines import Line2D
 from matplotlib.patches import Circle
 from scipy.ndimage import gaussian_filter
 from scipy.spatial import KDTree
-
-import figstyle
 from utilities import CACHE_DIR, FIGURES_DIR, TABLES_DIR
 
 DIST = 10000
@@ -129,11 +128,14 @@ def main() -> int:
     fig, ax = plt.subplots(figsize=(7.2, 7.2))
     # Colour semantics (figstyle): the per-node method's reachable set is the accent
     # (orange), the Euclidean disc-only excess is the canonical distance-only count
-    # (grey), and context nodes outside the disc are faint.
+    # (grey), and context nodes outside the disc are faint. The disc-only grey is a
+    # darkened step of COLOR_CANONICAL: the orange dots print near 60% grey (alpha
+    # over white), so the standard #737373 would converge with them in greyscale.
+    colour_disc_only = "#5A5A5A"
     ax.scatter(xs[window & ~in_disc], ys[window & ~in_disc], s=0.6,
                color=figstyle.COLOR_FAINT, rasterized=True)
     ax.scatter(xs[disc_only], ys[disc_only], s=0.9,
-               color=figstyle.COLOR_CANONICAL, rasterized=True)
+               color=colour_disc_only, rasterized=True)
     # Slightly smaller and semi-transparent so a dense cul-de-sac cluster of
     # near-duplicate nodes reads as a smear rather than parallel tally strokes.
     ax.scatter(xs[reached_mask], ys[reached_mask], s=0.7, alpha=0.85,
@@ -151,7 +153,7 @@ def main() -> int:
     ]
     if seg_lens:
         keep_len = max(0.20 * max(seg_lens), 6 * grid_step)
-        for s, seg_len in zip(segs, seg_lens):
+        for s, seg_len in zip(segs, seg_lens, strict=True):
             if seg_len >= keep_len:
                 ax.plot(s[:, 0], s[:, 1], color=figstyle.COLOR_INK, linewidth=1.0, zorder=4)
     ax.add_patch(Circle((sx, sy), DIST, fill=False, linestyle="--",
@@ -175,12 +177,22 @@ def main() -> int:
     ax.text(0.055, 0.965, "N", transform=ax.transAxes, ha="center", va="bottom",
             fontsize=figstyle.SIZE_ANNOT, fontweight="bold", color=figstyle.COLOR_INK,
             path_effects=halo)
+    # Headline numbers on the map itself (the same computed values the macros carry),
+    # in the sparse lower-left corner, so the disc-vs-reach gap reads at first glance.
+    ax.text(
+        0.02, 0.02,
+        (f"disc: {int(disc_counts[sel_live]):,} / reached: {int(reach[sel_live]):,} "
+         f"({ratios[sel_live]:.1f}×)"),
+        transform=ax.transAxes, ha="left", va="bottom", fontsize=figstyle.SIZE_LEGEND,
+        color=figstyle.COLOR_INK,
+        bbox=dict(facecolor="white", alpha=0.85, edgecolor="none", pad=2.5),
+    )
     handles = [
         Line2D([0], [0], marker="*", color=figstyle.COLOR_INK, linestyle="none",
                markersize=12, label="Exemplar node"),
         Line2D([0], [0], marker="o", color=figstyle.COLOR_METHOD, linestyle="none", markersize=6,
                label=f"Reached on the network ({int(reach[sel_live]):,} nodes)"),
-        Line2D([0], [0], marker="o", color=figstyle.COLOR_CANONICAL, linestyle="none", markersize=6,
+        Line2D([0], [0], marker="o", color=colour_disc_only, linestyle="none", markersize=6,
                label=(f"In the Euclidean disc only ({int(disc_counts[sel_live] - reach[sel_live]):,} "
                       f"of {int(disc_counts[sel_live]):,} nodes)")),
         Line2D([0], [0], marker="o", color=figstyle.COLOR_FAINT, linestyle="none", markersize=7,

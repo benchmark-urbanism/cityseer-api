@@ -22,10 +22,10 @@ import matplotlib.ticker
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-from matplotlib import patheffects
 import numpy as np
 import pandas as pd
 from cityseer.sampling import GRID_SPACING
+from matplotlib import patheffects
 
 sys.path.insert(0, str(Path(__file__).parent))
 import figstyle
@@ -202,22 +202,27 @@ def generate_fig6_reach_comparison():
     # borrowing the betweenness red for a decorative "bad region" wash.
     ax.fill_between(d_fine / 1000, r_canonical, Y_MAX, color=figstyle.COLOR_MUTED, alpha=0.11, label="_nolegend_")
     ax.fill_between(d_fine / 1000, Y_MIN, r_canonical, color=figstyle.COLOR_WARN, alpha=0.11, label="_nolegend_")
+    # Region labels one step larger and darker than SIZE_ANNOT/COLOR_CANONICAL, so
+    # they survive the 0.75-textwidth placement in single-column print. Single lines:
+    # the caption carries the oversamples/under-samples reading, and one line keeps
+    # the denser label clear of both the legend text and the London line's 20 km end
+    # in the top-right pocket.
     ax.text(
-        9,
+        27,
         1.7e5,
-        "Denser than canonical\n(schedule conservative)",
-        fontsize=figstyle.SIZE_ANNOT,
-        color=figstyle.COLOR_CANONICAL,
-        ha="center",
-        va="top",
+        "Denser than canonical",
+        fontsize=figstyle.SIZE_LEGEND,
+        color="#4A4A4A",
+        ha="right",
+        va="center",
         style="italic",
     )
     ax.text(
         12,
         42,
-        "Sparser than canonical\n(schedule under-samples)",
-        fontsize=figstyle.SIZE_ANNOT,
-        color=figstyle.COLOR_CANONICAL,
+        "Sparser than canonical",
+        fontsize=figstyle.SIZE_LEGEND,
+        color="#4A4A4A",
         ha="center",
         va="bottom",
         style="italic",

@@ -546,6 +546,7 @@ def generate_validation_table(
     label: str,
     nnodes_macro: str,
     epsilon: float,
+    include_shared_notes: bool = False,
 ) -> str:
     """Generate a LaTeX validation table for one network.
 
@@ -596,12 +597,15 @@ def generate_validation_table(
 \vspace{{0.5em}}
 \footnotesize
 Network: {network_name}, {nnodes_macro} nodes.
-Rows marked ``exact'' have $p \geq \varphi$, the schedule's fallback threshold;
+"""
+    if include_shared_notes:
+        latex += r"""Rows marked ``exact'' have $p \geq \varphi$, the schedule's fallback threshold;
 the rule is sized to exact closeness cost and applies to the whole call, so both
 metrics run exact in those rows.
 Subscripts: $c$ = closeness, $b$ = betweenness.
-\end{{table}}
+Notes apply to Tables~\ref{tab:validation}--\ref{tab:woodlands_validation}.
 """
+    latex += "\\end{table}\n"
     return latex
 
 
@@ -620,6 +624,7 @@ def generate_validation_tables():
             label="tab:validation",
             nnodes_macro=r"\glaNnodes{}",
             epsilon=PAPER_EPSILON_CLOSENESS,
+            include_shared_notes=True,
         )
         path = TABLES_DIR / "tab2_validation.tex"
         with open(path, "w") as f:
@@ -730,22 +735,26 @@ def generate_adaptive_table() -> None:
     lines = [
         r"\begin{table}[htbp]",
         r"\centering",
-        r"\caption{Per-node method on the four validation networks"
-        r" ($\varepsilon = " + str(PAPER_EPSILON_CLOSENESS) + r"$, $\delta = 0.1$; mean of three seeds)."
-        r" The work test decides per distance whether sampling undercuts exact computation;"
+        r"\caption{Per-node method on the four validation networks. Entries marked exact"
+        r" record the work test declining to sample by design, where exact computation is"
+        r" already cheaper (Section~\ref{sec:worktest}); they equal the ground truth, so no"
+        r" timing is reported for them. All speedups include the pilot's cost."
+        r" ($\varepsilon = " + str(PAPER_EPSILON_CLOSENESS) + r"$, $\delta = 0.1$; mean of three seeds;"
         r" each metric ran through its single-metric entry point, so the decision is recorded"
-        r" per metric. Entries marked exact were computed exactly and equal the ground truth,"
-        r" so no timing is reported for them."
-        r" Speedups are wall-clock ratios of the exact runtime to the sampled runtime, which"
-        r" includes the pilot.}",
+        r" per metric. Speedups are wall-clock ratios of the exact runtime to the sampled"
+        r" runtime.)}",
         r"\label{tab:adaptive_validation}",
         r"\begin{tabular}{lrrrrr}",
         r"\toprule",
-        r"\textbf{Network} & \textbf{Dist.} & \textbf{$\rho_c$} & \textbf{Spd$_c$} &"
-        r" \textbf{$\rho_b$} & \textbf{Spd$_b$} \\",
+        r"\textbf{Network} & \textbf{Dist.} & \textbf{$\rho_c$} & \textbf{Speed-up$_c$} &"
+        r" \textbf{$\rho_b$} & \textbf{Speed-up$_b$} \\",
         r"\midrule",
     ]
+    prev_network = None
     for _, row in data.iterrows():
+        if prev_network is not None and row["network"] != prev_network:
+            lines.append(r"\addlinespace")
+        prev_network = row["network"]
         dist_str = f"{int(row['distance']) // 1000}\\,km"
         if _closeness_ran_exact(row) or row["mode"] == "exact":
             c_cells = "exact & ---"
@@ -788,8 +797,8 @@ def generate_ablation_table() -> None:
         min_b = float(df["rho_betweenness"].dropna().min())
         argmin_dists.add(int(df.loc[df["rho_closeness"].idxmin(), "distance"]))
         argmin_dists.add(int(df.loc[df["rho_betweenness"].idxmin(), "distance"]))
-        c_str = f"\\textbf{{{min_c:.4f}}}" if min_c < 0.95 else f"{min_c:.4f}"
-        b_str = f"\\textbf{{{min_b:.4f}}}" if min_b < 0.95 else f"{min_b:.4f}"
+        c_str = f"{min_c:.4f}$^{{\\dagger}}$" if min_c < 0.95 else f"{min_c:.4f}"
+        b_str = f"{min_b:.4f}$^{{\\dagger}}$" if min_b < 0.95 else f"{min_b:.4f}"
         rows.append(f"{label} & {c_str} & {b_str} \\\\")
     if not rows:
         print("  No canonical validation CSVs found; skipping ablation table.")
@@ -810,11 +819,20 @@ def generate_ablation_table() -> None:
         r"\label{tab:ablation}",
         r"\begin{tabular}{lrr}",
         r"\toprule",
-        r"\textbf{Network} & \textbf{$\min_d \rho_c$} & \textbf{$\min_d \rho_b$} \\",
+        r"\textbf{Network} & \textbf{Closeness (worst $\rho$)} & \textbf{Betweenness (worst $\rho$)} \\",
         r"\midrule",
     ]
     lines += rows
-    lines += [r"\bottomrule", r"\end{tabular}", r"\end{table}", ""]
+    lines += [
+        r"\bottomrule",
+        r"\end{tabular}",
+        r"",
+        r"\vspace{0.5em}",
+        r"\footnotesize",
+        r"$^{\dagger}$below the $\rho \geq 0.95$ target.",
+        r"\end{table}",
+        "",
+    ]
     path = TABLES_DIR / "tab8_ablation.tex"
     with open(path, "w") as f:
         f.write("\n".join(lines))
