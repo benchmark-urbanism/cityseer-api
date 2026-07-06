@@ -14,10 +14,9 @@ source (its manifest entry is still refreshed). Exits nonzero if any export fail
 """
 
 import json
+import os
 import re
-import os
 import shutil
-import os
 import subprocess
 import sys
 import time
@@ -49,6 +48,7 @@ def finalize_export(nb: Path, html_out: Path) -> None:
         for img in src_images.iterdir():
             if img.suffix.lower() in IMAGE_EXTS:
                 shutil.copy2(img, dst / img.name)
+
 
 # lesson number -> slug: 1_notebooks.py -> 1-notebooks
 def slugify(stem: str) -> str:

@@ -64,8 +64,10 @@ def main() -> int:
     valid = reach >= MIN_REACH
     ratios = np.where(valid, disc_counts / np.maximum(reach, 1.0), 0.0)
     sel_live = int(np.argmax(ratios))
-    print(f"Exemplar live node {sel_live}: disc count {disc_counts[sel_live]:.0f}, "
-          f"network reach {reach[sel_live]:.0f}, ratio {ratios[sel_live]:.1f}")
+    print(
+        f"Exemplar live node {sel_live}: disc count {disc_counts[sel_live]:.0f}, "
+        f"network reach {reach[sel_live]:.0f}, ratio {ratios[sel_live]:.1f}"
+    )
 
     def _tex_int(n: float) -> str:
         return f"{int(n):,}".replace(",", "{,}")
@@ -132,14 +134,11 @@ def main() -> int:
     # darkened step of COLOR_CANONICAL: the orange dots print near 60% grey (alpha
     # over white), so the standard #737373 would converge with them in greyscale.
     colour_disc_only = "#5A5A5A"
-    ax.scatter(xs[window & ~in_disc], ys[window & ~in_disc], s=0.6,
-               color=figstyle.COLOR_FAINT, rasterized=True)
-    ax.scatter(xs[disc_only], ys[disc_only], s=0.9,
-               color=colour_disc_only, rasterized=True)
+    ax.scatter(xs[window & ~in_disc], ys[window & ~in_disc], s=0.6, color=figstyle.COLOR_FAINT, rasterized=True)
+    ax.scatter(xs[disc_only], ys[disc_only], s=0.9, color=colour_disc_only, rasterized=True)
     # Slightly smaller and semi-transparent so a dense cul-de-sac cluster of
     # near-duplicate nodes reads as a smear rather than parallel tally strokes.
-    ax.scatter(xs[reached_mask], ys[reached_mask], s=0.7, alpha=0.85,
-               color=figstyle.COLOR_METHOD, rasterized=True)
+    ax.scatter(xs[reached_mask], ys[reached_mask], s=0.7, alpha=0.85, color=figstyle.COLOR_METHOD, rasterized=True)
     # Contour the 0.5 level, then keep only substantial arcs: the empty-cell masking
     # still spawns a few short strays in the sparse western half that bound nothing
     # the eye can parse. Dropping arcs below a fraction of the longest one leaves the
@@ -147,17 +146,13 @@ def main() -> int:
     cs = ax.contour(grid_x, grid_y, np.ma.masked_invalid(grid_val), levels=[0.5])
     segs = list(cs.allsegs[0])
     cs.remove()
-    seg_lens = [
-        float(np.hypot(np.diff(s[:, 0]), np.diff(s[:, 1])).sum()) if len(s) > 1 else 0.0
-        for s in segs
-    ]
+    seg_lens = [float(np.hypot(np.diff(s[:, 0]), np.diff(s[:, 1])).sum()) if len(s) > 1 else 0.0 for s in segs]
     if seg_lens:
         keep_len = max(0.20 * max(seg_lens), 6 * grid_step)
         for s, seg_len in zip(segs, seg_lens, strict=True):
             if seg_len >= keep_len:
                 ax.plot(s[:, 0], s[:, 1], color=figstyle.COLOR_INK, linewidth=1.0, zorder=4)
-    ax.add_patch(Circle((sx, sy), DIST, fill=False, linestyle="--",
-                        edgecolor=figstyle.COLOR_INK, linewidth=1.2))
+    ax.add_patch(Circle((sx, sy), DIST, fill=False, linestyle="--", edgecolor=figstyle.COLOR_INK, linewidth=1.2))
     ax.plot(sx, sy, "*", color=figstyle.COLOR_INK, markersize=14, zorder=5)
     ax.set_aspect("equal")
     ax.set_xlim(sx - DIST - margin, sx + DIST + margin)
@@ -170,43 +165,83 @@ def main() -> int:
     # rests on an explicit orientation rather than the east=right convention alone.
     halo = [patheffects.withStroke(linewidth=3.0, foreground="white")]
     ax.annotate(
-        "", xy=(0.055, 0.955), xytext=(0.055, 0.875), xycoords="axes fraction",
-        arrowprops=dict(arrowstyle="-|>", color=figstyle.COLOR_INK, lw=1.2,
-                        path_effects=halo),
+        "",
+        xy=(0.055, 0.955),
+        xytext=(0.055, 0.875),
+        xycoords="axes fraction",
+        arrowprops=dict(arrowstyle="-|>", color=figstyle.COLOR_INK, lw=1.2, path_effects=halo),
     )
-    ax.text(0.055, 0.965, "N", transform=ax.transAxes, ha="center", va="bottom",
-            fontsize=figstyle.SIZE_ANNOT, fontweight="bold", color=figstyle.COLOR_INK,
-            path_effects=halo)
+    ax.text(
+        0.055,
+        0.965,
+        "N",
+        transform=ax.transAxes,
+        ha="center",
+        va="bottom",
+        fontsize=figstyle.SIZE_ANNOT,
+        fontweight="bold",
+        color=figstyle.COLOR_INK,
+        path_effects=halo,
+    )
     # Headline numbers on the map itself (the same computed values the macros carry),
     # in the sparse lower-left corner, so the disc-vs-reach gap reads at first glance.
     ax.text(
-        0.02, 0.02,
-        (f"disc: {int(disc_counts[sel_live]):,} / reached: {int(reach[sel_live]):,} "
-         f"({ratios[sel_live]:.1f}×)"),
-        transform=ax.transAxes, ha="left", va="bottom", fontsize=figstyle.SIZE_LEGEND,
+        0.02,
+        0.02,
+        (f"disc: {int(disc_counts[sel_live]):,} / reached: {int(reach[sel_live]):,} ({ratios[sel_live]:.1f}×)"),
+        transform=ax.transAxes,
+        ha="left",
+        va="bottom",
+        fontsize=figstyle.SIZE_LEGEND,
         color=figstyle.COLOR_INK,
         bbox=dict(facecolor="white", alpha=0.85, edgecolor="none", pad=2.5),
     )
     handles = [
-        Line2D([0], [0], marker="*", color=figstyle.COLOR_INK, linestyle="none",
-               markersize=12, label="Exemplar node"),
-        Line2D([0], [0], marker="o", color=figstyle.COLOR_METHOD, linestyle="none", markersize=6,
-               label=f"Reached on the network ({int(reach[sel_live]):,} nodes)"),
-        Line2D([0], [0], marker="o", color=colour_disc_only, linestyle="none", markersize=6,
-               label=(f"In the Euclidean disc only ({int(disc_counts[sel_live] - reach[sel_live]):,} "
-                      f"of {int(disc_counts[sel_live]):,} nodes)")),
-        Line2D([0], [0], marker="o", color=figstyle.COLOR_FAINT, linestyle="none", markersize=7,
-               label="Network nodes outside the disc"),
-        Line2D([0], [0], color=figstyle.COLOR_INK, linestyle="-", linewidth=1.0,
-               label="Boundary of the reached set (smoothed contour)"),
-        Line2D([0], [0], color=figstyle.COLOR_INK, linestyle="--",
-               label=f"{DIST // 1000} km Euclidean disc"),
+        Line2D([0], [0], marker="*", color=figstyle.COLOR_INK, linestyle="none", markersize=12, label="Exemplar node"),
+        Line2D(
+            [0],
+            [0],
+            marker="o",
+            color=figstyle.COLOR_METHOD,
+            linestyle="none",
+            markersize=6,
+            label=f"Reached on the network ({int(reach[sel_live]):,} nodes)",
+        ),
+        Line2D(
+            [0],
+            [0],
+            marker="o",
+            color=colour_disc_only,
+            linestyle="none",
+            markersize=6,
+            label=(
+                f"In the Euclidean disc only ({int(disc_counts[sel_live] - reach[sel_live]):,} "
+                f"of {int(disc_counts[sel_live]):,} nodes)"
+            ),
+        ),
+        Line2D(
+            [0],
+            [0],
+            marker="o",
+            color=figstyle.COLOR_FAINT,
+            linestyle="none",
+            markersize=7,
+            label="Network nodes outside the disc",
+        ),
+        Line2D(
+            [0],
+            [0],
+            color=figstyle.COLOR_INK,
+            linestyle="-",
+            linewidth=1.0,
+            label="Boundary of the reached set (smoothed contour)",
+        ),
+        Line2D([0], [0], color=figstyle.COLOR_INK, linestyle="--", label=f"{DIST // 1000} km Euclidean disc"),
     ]
     # Place the legend below the map so it never overlaps the reached-set contour
     # (its top-left arc entered the old upper-left legend box). Two columns keep the
     # six entries compact under the square panel; no frame, per the figstyle convention.
-    ax.legend(handles=handles, loc="upper center", bbox_to_anchor=(0.5, -0.01),
-              ncol=2, frameon=False)
+    ax.legend(handles=handles, loc="upper center", bbox_to_anchor=(0.5, -0.01), ncol=2, frameon=False)
     figstyle.scale_bar(ax, 2000, loc="lower right")
     plt.tight_layout()
     out = FIGURES_DIR / "fig14_disc_vs_reach.pdf"

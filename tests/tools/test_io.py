@@ -159,19 +159,24 @@ def test_osm_graph_from_poly():
     """ """
     import requests
 
+    # Skip gracefully when the Overpass API isn't reachable or rate-limits from the local
+    # environment so that `verify_project` stays green; CI already skips this test via the
+    # marker above. Every Overpass-backed call goes through this guard: a 429 midway
+    # through the test would otherwise fail it after the first call succeeded.
+    def osm_graph_or_skip(*args, **kwargs) -> nx.MultiGraph:
+        try:
+            return io.osm_graph_from_poly(*args, **kwargs)
+        except (
+            requests.exceptions.ConnectionError,
+            requests.exceptions.Timeout,
+            requests.exceptions.HTTPError,
+        ) as exc:
+            pytest.skip(f"Overpass API not reachable: {exc}")
+
     # scaffold
     poly_wgs, _ = io.buffered_point_poly(LNG, LAT, BUFFER)
     # check that default 4326 works - this will convert to UTM internally.
-    # Skip gracefully when the Overpass API isn't reachable from the local environment so
-    # that `verify_project` stays green; CI already skips this test via the marker above.
-    try:
-        network_from_wgs = io.osm_graph_from_poly(poly_wgs, simplify=False)
-    except (
-        requests.exceptions.ConnectionError,
-        requests.exceptions.Timeout,
-        requests.exceptions.HTTPError,
-    ) as exc:
-        pytest.skip(f"Overpass API not reachable: {exc}")
+    network_from_wgs = osm_graph_or_skip(poly_wgs, simplify=False)
     # visual check for debugging
     # from cityseer.tools import plot
     # plot.plot_nx(network_from_wgs)
@@ -183,7 +188,7 @@ def test_osm_graph_from_poly():
     # 32630 corresponds to UTM 30N
     poly_utm, utm_epsg = io.buffered_point_poly(LNG, LAT, BUFFER, projected=True)
     assert utm_epsg == 32630
-    network_from_utm = io.osm_graph_from_poly(poly_utm, poly_crs_code=utm_epsg, simplify=False)
+    network_from_utm = osm_graph_or_skip(poly_utm, poly_crs_code=utm_epsg, simplify=False)
     assert network_from_utm.graph["crs"].to_epsg() == 32630
     # visual check for debugging
     # plot.plot_nx(network_from_utm)
@@ -195,7 +200,7 @@ def test_osm_graph_from_poly():
     assert list(network_from_utm.edges) == list(network_from_wgs.edges)
     # check that to CRS conversions are working
     # this will convert out graph to BNG - EPSG 27700
-    network_to_bng = io.osm_graph_from_poly(poly_wgs, to_crs_code=27700, simplify=False)
+    network_to_bng = osm_graph_or_skip(poly_wgs, to_crs_code=27700, simplify=False)
     assert network_to_bng.graph["crs"].to_epsg() == 27700
     # networks should still match
     assert list(network_to_bng.nodes) == list(network_from_wgs.nodes)

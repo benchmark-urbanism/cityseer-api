@@ -162,8 +162,15 @@ def generate_fig7_spatial_error(gla_data, madrid_data, dist, cary_data=None, woo
             if col == 0:
                 # metric once, as a left row label (small-multiples matrix)
                 ax.text(
-                    -0.10, 0.5, metric, transform=ax.transAxes, rotation=90,
-                    ha="center", va="center", fontsize=figstyle.SIZE_TITLE, color=figstyle.COLOR_INK,
+                    -0.10,
+                    0.5,
+                    metric,
+                    transform=ax.transAxes,
+                    rotation=90,
+                    ha="center",
+                    va="center",
+                    fontsize=figstyle.SIZE_TITLE,
+                    color=figstyle.COLOR_INK,
                 )
             t, e = data.get(true_key), data.get(est_key)
             if t is None or e is None:
@@ -363,8 +370,13 @@ def _binned_error_panel(ax, datasets, true_key, est_key, colour, metric_name, n_
         for i, y_log in zip(order, pos, strict=True):
             label, _y, line_tint = end_labels[i]
             ax.text(
-                10.75, 10.0**y_log, label, fontsize=figstyle.SIZE_ANNOT,
-                color=line_tint, ha="left", va="center",
+                10.75,
+                10.0**y_log,
+                label,
+                fontsize=figstyle.SIZE_ANNOT,
+                color=line_tint,
+                ha="left",
+                va="center",
             )
     ax.set_xlim(0.35, 13.4)
     ax.set_xlabel("Reach decile (per network)")
@@ -397,7 +409,10 @@ def generate_fig8_error_vs_reach(
     datasets = [
         (NETWORK_NAMES[key], data, figstyle.NETWORK_MARKERS[key], NETWORK_LINESTYLES[key])
         for key, data in [
-            ("gla", gla_data), ("madrid", madrid_data), ("cary", cary_data), ("woodlands", woodlands_data)
+            ("gla", gla_data),
+            ("madrid", madrid_data),
+            ("cary", cary_data),
+            ("woodlands", woodlands_data),
         ]
         if data is not None
     ]
@@ -405,10 +420,10 @@ def generate_fig8_error_vs_reach(
     # suburbs route closeness to exact at this distance: zero error, nothing to draw
     # on a log axis, so keep them out of panel A's datasets
     exact_closeness = [
-        name for name, data, _marker, _ls in datasets
-        if data is not None and np.allclose(
-            np.asarray(data["true_harmonic"], float), np.asarray(data["est_harmonic"], float)
-        )
+        name
+        for name, data, _marker, _ls in datasets
+        if data is not None
+        and np.allclose(np.asarray(data["true_harmonic"], float), np.asarray(data["est_harmonic"], float))
     ]
     sampled_closeness = [d for d in datasets if d[0] not in exact_closeness]
     _binned_error_panel(
@@ -422,8 +437,11 @@ def generate_fig8_error_vs_reach(
     if exact_closeness:
         axes[0].annotate(
             ", ".join(exact_closeness) + ": exact (zero error)",
-            xy=(0.02, 0.965), xycoords="axes fraction",
-            fontsize=figstyle.SIZE_ANNOT, color=figstyle.COLOR_INK, va="top",
+            xy=(0.02, 0.965),
+            xycoords="axes fraction",
+            fontsize=figstyle.SIZE_ANNOT,
+            color=figstyle.COLOR_INK,
+            va="top",
         )
     _binned_error_panel(
         axes[1],
@@ -444,10 +462,17 @@ def generate_fig8_error_vs_reach(
 
     handles = [
         Line2D(
-            [], [], linestyle=ls, color=figstyle.COLOR_INK, linewidth=1.4,
-            marker=marker, markersize=6,
-            markerfacecolor=figstyle.COLOR_MUTED, markeredgecolor=figstyle.COLOR_INK,
-            markeredgewidth=0.6, label=label,
+            [],
+            [],
+            linestyle=ls,
+            color=figstyle.COLOR_INK,
+            linewidth=1.4,
+            marker=marker,
+            markersize=6,
+            markerfacecolor=figstyle.COLOR_MUTED,
+            markeredgecolor=figstyle.COLOR_INK,
+            markeredgewidth=0.6,
+            label=label,
         )
         for label, _data, marker, ls in datasets
     ]
@@ -686,8 +711,13 @@ def _decile_panel(ax, true_vals, est_vals, title, cmap, n_groups=10, show_xlabel
                 text_colour = "white" if dark_cell else figstyle.COLOR_INK
                 halo = figstyle.COLOR_INK if dark_cell else "white"
                 ax.text(
-                    j, i, f"{val:.0f}", ha="center", va="center",
-                    fontsize=figstyle.SIZE_ANNOT - 2, color=text_colour,
+                    j,
+                    i,
+                    f"{val:.0f}",
+                    ha="center",
+                    va="center",
+                    fontsize=figstyle.SIZE_ANNOT - 2,
+                    color=text_colour,
                     path_effects=[patheffects.withStroke(linewidth=1.2, foreground=halo)],
                 )
 
@@ -697,8 +727,13 @@ def _decile_panel(ax, true_vals, est_vals, title, cmap, n_groups=10, show_xlabel
 
     ax.add_patch(
         Rectangle(
-            (n_actual - 1.5, n_actual - 1.5), 1.0, 1.0, fill=False,
-            edgecolor=figstyle.COLOR_INK, linewidth=1.4, zorder=4,
+            (n_actual - 1.5, n_actual - 1.5),
+            1.0,
+            1.0,
+            fill=False,
+            edgecolor=figstyle.COLOR_INK,
+            linewidth=1.4,
+            zorder=4,
         )
     )
 
@@ -753,10 +788,16 @@ def generate_fig11_decile_transition(
     # Order the panels metric-contiguous: the closeness (blue) panels first, then every
     # betweenness (red) panel. A colourbar can then sit beside only the panels it
     # describes, so no red heatmap ever lands next to the blue closeness scale.
-    metro = [(net, data) for net, data in
-             [(NETWORK_NAMES["gla"], gla_data), (NETWORK_NAMES["madrid"], madrid_data)] if data is not None]
-    suburb = [(net, data) for net, data in
-              [(NETWORK_NAMES["cary"], cary_data), (NETWORK_NAMES["woodlands"], woodlands_data)] if data is not None]
+    metro = [
+        (net, data)
+        for net, data in [(NETWORK_NAMES["gla"], gla_data), (NETWORK_NAMES["madrid"], madrid_data)]
+        if data is not None
+    ]
+    suburb = [
+        (net, data)
+        for net, data in [(NETWORK_NAMES["cary"], cary_data), (NETWORK_NAMES["woodlands"], woodlands_data)]
+        if data is not None
+    ]
     closeness_panels = [(net, data, closeness_spec) for net, data in metro]
     # suburb closeness is exact (identity matrix): betweenness only
     betweenness_panels = [(net, data, betweenness_spec) for net, data in metro + suburb]
@@ -801,8 +842,12 @@ def generate_fig11_decile_transition(
     flat = axes.flatten()
     if "Closeness" in im_by_metric:
         cbar_c = fig.colorbar(
-            im_by_metric["Closeness"], ax=list(flat[:n_close]), location="right",
-            shrink=0.9, aspect=15, pad=0.02,
+            im_by_metric["Closeness"],
+            ax=list(flat[:n_close]),
+            location="right",
+            shrink=0.9,
+            aspect=15,
+            pad=0.02,
         )
         cbar_c.set_label("Closeness: % of true-decile row")
     if "Betweenness" in im_by_metric:
@@ -810,8 +855,12 @@ def generate_fig11_decile_transition(
         # title/label overhead vs one), so its aspect is scaled by the same factor
         # (15 -> 36) to render the same thickness and share a right edge with the blue bar.
         cbar_b = fig.colorbar(
-            im_by_metric["Betweenness"], ax=list(flat[n_close:len(panels)]), location="right",
-            shrink=0.9, aspect=36, pad=0.02,
+            im_by_metric["Betweenness"],
+            ax=list(flat[n_close : len(panels)]),
+            location="right",
+            shrink=0.9,
+            aspect=36,
+            pad=0.02,
         )
         cbar_b.set_label("Betweenness: % of true-decile row")
     out = FIGURES_DIR / "fig11_decile_transition.pdf"
@@ -880,9 +929,7 @@ def generate_fig15_rank_shift_paired(network: str, dist: int):
         valid = (t != 0) | (e != 0)
         n = max(int(valid.sum()), 1)
         shift = np.full(len(t), np.nan)
-        shift[valid] = (
-            np.abs(rankdata(t[valid], method="average") - rankdata(e[valid], method="average")) / n * 100.0
-        )
+        shift[valid] = np.abs(rankdata(t[valid], method="average") - rankdata(e[valid], method="average")) / n * 100.0
         hex_edge = "#9e9e9e" if exact else "none"
         hex_lw = 0.3 if exact else 0.0
         m = valid & (x >= cx - crop) & (x <= cx + crop) & (y >= cy - crop) & (y <= cy + crop)
@@ -925,8 +972,14 @@ def generate_fig15_rank_shift_paired(network: str, dist: int):
         # panels state what is mapped without a trip to the caption
         ax.set_title(title, color=title_colour, pad=18)
         ax.text(
-            0.5, 1.01, "The Woodlands, closeness, 20 km", transform=ax.transAxes,
-            ha="center", va="bottom", fontsize=figstyle.SIZE_ANNOT, color=figstyle.COLOR_INK,
+            0.5,
+            1.01,
+            "The Woodlands, closeness, 20 km",
+            transform=ax.transAxes,
+            ha="center",
+            va="bottom",
+            fontsize=figstyle.SIZE_ANNOT,
+            color=figstyle.COLOR_INK,
         )
         ax.set_aspect("equal")
         ax.set_xlim(cx - viewx, cx + viewx)

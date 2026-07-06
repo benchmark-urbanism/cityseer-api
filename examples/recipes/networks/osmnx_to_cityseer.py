@@ -26,7 +26,7 @@ def _(mo):
 @app.cell
 def _():
     import osmnx as ox
-    from cityseer.tools import plot, io
+    from cityseer.tools import io, plot
 
     return io, ox, plot
 

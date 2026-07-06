@@ -176,8 +176,14 @@ def generate_fig13_adaptive_accuracy() -> None:
             ax.plot(x, y, "-", color=colour, linewidth=1.6, alpha=0.85, zorder=2)
             ax.plot(x[~exact], y[~exact], marker, color=colour, markersize=6, linestyle="none", label=label, zorder=3)
             ax.plot(
-                x[exact], y[exact], marker, markerfacecolor="white",
-                markeredgecolor=colour, markersize=6, linestyle="none", zorder=3,
+                x[exact],
+                y[exact],
+                marker,
+                markerfacecolor="white",
+                markeredgecolor=colour,
+                markersize=6,
+                linestyle="none",
+                zorder=3,
             )
     if not plotted:
         plt.close()
@@ -209,11 +215,19 @@ def generate_fig13_adaptive_accuracy() -> None:
     # rule applies to all three panels (C repeats the open markers on its diamonds).
     axes[1].legend(
         handles=[
-            Line2D([], [], marker="o", linestyle="none", markeredgecolor=figstyle.COLOR_INK,
-                   markerfacecolor="white", markersize=7,
-                   label="computed exactly\n($\\rho$ = 1)"),
+            Line2D(
+                [],
+                [],
+                marker="o",
+                linestyle="none",
+                markeredgecolor=figstyle.COLOR_INK,
+                markerfacecolor="white",
+                markersize=7,
+                label="computed exactly\n($\\rho$ = 1)",
+            ),
         ],
-        loc="center left", fontsize=figstyle.SIZE_ANNOT,
+        loc="center left",
+        fontsize=figstyle.SIZE_ANNOT,
     )
 
     # --- Panel C: held-out network on the 50 km buffer, full 1-50 km range ---
@@ -246,19 +260,35 @@ def generate_fig13_adaptive_accuracy() -> None:
             ax.plot(xf, y, linestyle=ls, color=colour, linewidth=1.6, alpha=0.85, zorder=2)
             ax.plot(xf[~exact], y[~exact], marker, color=colour, markersize=msize, linestyle="none", zorder=zord)
             ax.plot(
-                xf[exact], y[exact], marker, markerfacecolor="white", markeredgecolor=colour,
-                markersize=msize, linestyle="none", zorder=zord,
+                xf[exact],
+                y[exact],
+                marker,
+                markerfacecolor="white",
+                markeredgecolor=colour,
+                markersize=msize,
+                linestyle="none",
+                zorder=zord,
             )
         # Direct labels on the two lines: closeness sits just above its flat rho = 1
         # line (the ylim headroom above 1.004 exists for it); betweenness sits above
         # its 30-50 km plateau, clear of the target line below.
         ax.text(
-            6.8, 1.002, "closeness", fontsize=figstyle.SIZE_ANNOT,
-            color=figstyle.COLOR_CLOSENESS, ha="center", va="bottom",
+            6.8,
+            1.002,
+            "closeness",
+            fontsize=figstyle.SIZE_ANNOT,
+            color=figstyle.COLOR_CLOSENESS,
+            ha="center",
+            va="bottom",
         )
         ax.text(
-            38, 0.9575, "betweenness", fontsize=figstyle.SIZE_ANNOT,
-            color=figstyle.COLOR_BETWEENNESS, ha="center", va="bottom",
+            38,
+            0.9575,
+            "betweenness",
+            fontsize=figstyle.SIZE_ANNOT,
+            color=figstyle.COLOR_BETWEENNESS,
+            ha="center",
+            va="bottom",
         )
         # The dashed target is labelled once on panel A (shared scale); C draws the
         # line without repeating the tag.
@@ -288,9 +318,7 @@ def main() -> int:
 
     # --- Panels A/B: 20km rho, baseline vs adaptive, one metric per panel ---
     any_exact = False
-    for panel, (metric, exact_key, letter) in enumerate(
-        [("rho_c", "exact_c", "A"), ("rho_b", None, "B")]
-    ):
+    for panel, (metric, exact_key, letter) in enumerate([("rho_c", "exact_c", "A"), ("rho_b", None, "B")]):
         ax = axes[panel]
         labels, base_vals, adap_vals, exact_flags = [], [], [], []
         for key, label in NETWORKS:
@@ -316,8 +344,14 @@ def main() -> int:
             if is_exact:
                 # White halo so the rho=1.00 gridline reads behind the ring, not across it.
                 ax.plot(
-                    xi + off, av, "o", markerfacecolor="white", markeredgecolor=figstyle.COLOR_METHOD,
-                    markersize=7, zorder=3, path_effects=HALO_WHITE,
+                    xi + off,
+                    av,
+                    "o",
+                    markerfacecolor="white",
+                    markeredgecolor=figstyle.COLOR_METHOD,
+                    markersize=7,
+                    zorder=3,
+                    path_effects=HALO_WHITE,
                 )
             else:
                 ax.plot(xi + off, av, "o", color=figstyle.COLOR_METHOD, markersize=7, zorder=3)
@@ -376,9 +410,14 @@ def main() -> int:
         ax.set_title("Betweenness, held-out", fontsize=figstyle.SIZE_LEGEND)
         # Mechanism note in the empty upper-left region, clear of the Q3/Q4 markers.
         ax.text(
-            0.04, 0.97, "both designs dip\nwhere near-zero ties\nreorder easily",
-            transform=ax.transAxes, ha="left", va="top",
-            fontsize=figstyle.SIZE_ANNOT, color=figstyle.COLOR_INK,
+            0.04,
+            0.97,
+            "both designs dip\nwhere near-zero ties\nreorder easily",
+            transform=ax.transAxes,
+            ha="left",
+            va="top",
+            fontsize=figstyle.SIZE_ANNOT,
+            color=figstyle.COLOR_INK,
         )
         ax.grid(True, axis="y")
         ax.set_axisbelow(True)
@@ -390,19 +429,35 @@ def main() -> int:
     # canonical/method encoding), placed as a horizontal row below the panels.
     handles = [
         Line2D(
-            [], [], marker="s", linestyle="none", color=figstyle.COLOR_CANONICAL, markersize=6.5,
+            [],
+            [],
+            marker="s",
+            linestyle="none",
+            color=figstyle.COLOR_CANONICAL,
+            markersize=6.5,
             label="canonical schedule",
         ),
         Line2D(
-            [], [], marker="o", linestyle="none", color=figstyle.COLOR_METHOD, markersize=7,
+            [],
+            [],
+            marker="o",
+            linestyle="none",
+            color=figstyle.COLOR_METHOD,
+            markersize=7,
             label="per-node method",
         ),
     ]
     if any_exact:
         handles.append(
             Line2D(
-                [], [], marker="o", linestyle="none", markerfacecolor="white",
-                markeredgecolor=figstyle.COLOR_METHOD, markersize=7, label="per-node method (exact)",
+                [],
+                [],
+                marker="o",
+                linestyle="none",
+                markerfacecolor="white",
+                markeredgecolor=figstyle.COLOR_METHOD,
+                markersize=7,
+                label="per-node method (exact)",
             )
         )
     plt.tight_layout(rect=[0, 0.06, 1, 1])

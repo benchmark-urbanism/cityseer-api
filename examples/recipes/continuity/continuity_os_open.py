@@ -90,10 +90,9 @@ def _(mo):
 
 @app.cell
 def _():
+    from cityseer.tools import io
     from pyproj import Transformer
     from shapely import geometry
-
-    from cityseer.tools import io
 
     # create graph - only UK locations will work for OS Open Roads data
     # stratford-upon-avon
@@ -157,8 +156,8 @@ def _(mo):
 @app.cell
 def _(G_open):
     import matplotlib.pyplot as plt
-    from cityseer.tools import plot
     from cityseer.metrics import observe
+    from cityseer.tools import plot
 
     print("Continuity by street names")
     G_cont, NamesContReport = observe.street_continuity(G_open, method="names")
@@ -189,6 +188,7 @@ def _(G_cont, plot, plot_bbox: tuple[float, float, float, float], plt):
         ["plasma", "viridis", "tab10", "tab10"],  #
         [False, False, True, False],  #
         [False, False, True, True],
+        strict=False,
     ):
         print(f"Plotting results for method: {method}")
         # plot

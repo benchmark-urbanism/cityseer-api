@@ -1,12 +1,13 @@
 # %%
 # runs example local analysis for specified streets
-# uses the lower-level functional API deliberately: the workflow needs fine network
-# decomposition (nx_decompose), which the high-level CityNetwork class does not expose
+# hybrid API: fine network decomposition (graphs.nx_decompose) is a tools-level
+# preprocessing step with no CityNetwork equivalent; everything downstream (dual
+# construction, live boundary, centrality, accessibilities) uses CityNetwork
 # see https://cityseer.benchmarkurbanism.com/guide/fundamentals#citynetwork-api
 import json
 
 import pandas as pd
-from cityseer.metrics import layers, networks
+from cityseer.network import CityNetwork
 from cityseer.tools import graphs, io
 from osmnx import _errors as ox_errs
 from osmnx import features
@@ -22,15 +23,14 @@ def local_analysis(line_geom: geometry.LineString, location_key: str) -> None:
     extent = line_geom.buffer(50)
     extent_buff = extent.buffer(5000)
     G_multigraph = io.osm_graph_from_poly(extent_buff, poly_crs_code=27700, to_crs_code=27700, simplify=True)
+    # decomposition is the one tools-level step CityNetwork does not expose
     G_decomp = graphs.nx_decompose(G_multigraph, 10)
-    # simplest-path (angular) centrality requires a dual graph;
-    # shortest-path centrality runs on the dual as well
-    G_dual = graphs.nx_to_dual(G_decomp)
-    for node_key, node_data in G_dual.nodes(data=True):
-        G_dual.nodes[node_key]["live"] = extent.contains(geometry.Point(node_data["x"], node_data["y"]))
-    nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(G_dual)
-    nodes_gdf = networks.centrality_shortest(network_structure, nodes_gdf, distances=[500, 1000, 2500, 5000])
-    nodes_gdf = networks.centrality_simplest(network_structure, nodes_gdf, distances=[500, 1000, 2500, 5000])
+    # CityNetwork builds the dual graph automatically (angular centrality requires it,
+    # and shortest-path centrality runs on the dual as well); the boundary marks nodes
+    # inside the extent as live
+    cn = CityNetwork.from_nx(G_decomp, boundary=extent)
+    cn = cn.centrality_shortest(distances=[500, 1000, 2500, 5000])
+    cn = cn.centrality_simplest(distances=[500, 1000, 2500, 5000])
 
     # a sample landuse schema
     SCHEMA = {
@@ -239,15 +239,14 @@ def local_analysis(line_geom: geometry.LineString, location_key: str) -> None:
     landuses_gdf = landuses_gdf[["cat_key", "geom"]]
     landuses_gdf.to_file(f"../temp/{location_key}_places.gpkg")
     # compute accessibilities
-    nodes_gdf, landuses_gdf = layers.compute_accessibilities(
+    cn, landuses_gdf = cn.compute_accessibilities(
         landuses_gdf,
-        "cat_key",
-        list(SCHEMA.keys()),
-        nodes_gdf,
-        network_structure,
+        landuse_column_label="cat_key",
+        accessibility_keys=list(SCHEMA.keys()),
         distances=[100, 200, 500],
     )
     #
+    nodes_gdf = cn.to_geopandas()
     nodes_gdf.loc[nodes_gdf.live].to_file(f"../temp/{location_key}.gpkg")
 
 

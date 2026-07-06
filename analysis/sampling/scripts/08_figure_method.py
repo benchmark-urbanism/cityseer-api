@@ -27,10 +27,10 @@ from utilities import FIGURES_DIR
 # Exemplar hues sit outside the four semantic metric colours (closeness blue,
 # betweenness red, canonical grey, method orange) so the schematic never reads as
 # a closeness/betweenness figure. Teal and purple are the reserved suburb hues.
-COLOUR_DENSE = "#1B9E77"   # teal   - dense-core exemplar (identity only, not a metric)
+COLOUR_DENSE = "#1B9E77"  # teal   - dense-core exemplar (identity only, not a metric)
 COLOUR_SPARSE = "#7B3FA0"  # purple - sparse-fringe exemplar
-COLOUR_POINT = figstyle.COLOR_MUTED     # network node
-COLOUR_SAMPLED = figstyle.COLOR_INK     # sampled source
+COLOUR_POINT = figstyle.COLOR_MUTED  # network node
+COLOUR_SAMPLED = figstyle.COLOR_INK  # sampled source
 COLOUR_UNSAMPLED = figstyle.COLOR_FAINT  # not sampled
 
 RADIUS = 0.75
@@ -69,8 +69,15 @@ def style_panel(ax, letter: str, title: str) -> None:
         spine.set_visible(False)
     ax.add_patch(
         Rectangle(
-            (0, 0), 1, 1, transform=ax.transAxes, fill=False,
-            edgecolor=figstyle.COLOR_FAINT, linewidth=0.8, zorder=0, clip_on=False,
+            (0, 0),
+            1,
+            1,
+            transform=ax.transAxes,
+            fill=False,
+            edgecolor=figstyle.COLOR_FAINT,
+            linewidth=0.8,
+            zorder=0,
+            clip_on=False,
         )
     )
 
@@ -101,17 +108,34 @@ def label_below(
     """
     xf_dense, xf_sparse = xfracs
     ax.text(
-        xf_dense, -0.075, dense_text, transform=ax.transAxes, fontsize=figstyle.SIZE_LABEL,
-        color=COLOUR_DENSE, ha="center",
+        xf_dense,
+        -0.075,
+        dense_text,
+        transform=ax.transAxes,
+        fontsize=figstyle.SIZE_LABEL,
+        color=COLOUR_DENSE,
+        ha="center",
     )
     ax.text(
-        xf_sparse, -0.075, sparse_text, transform=ax.transAxes, fontsize=figstyle.SIZE_LABEL,
-        color=COLOUR_SPARSE, ha="center", fontweight=sparse_weight,
+        xf_sparse,
+        -0.075,
+        sparse_text,
+        transform=ax.transAxes,
+        fontsize=figstyle.SIZE_LABEL,
+        color=COLOUR_SPARSE,
+        ha="center",
+        fontweight=sparse_weight,
     )
     if note:
         ax.text(
-            0.5, -0.165, note, transform=ax.transAxes, fontsize=figstyle.SIZE_ANNOT,
-            style="italic", color=figstyle.COLOR_INK, ha="center",
+            0.5,
+            -0.165,
+            note,
+            transform=ax.transAxes,
+            fontsize=figstyle.SIZE_ANNOT,
+            style="italic",
+            color=figstyle.COLOR_INK,
+            ha="center",
         )
 
 
@@ -143,9 +167,15 @@ def draw_sampling_panel(ax, pts, sampled, exemplars, xfracs, targets, warn_spars
     if warn_sparse:
         u_sparse = exemplars[1][0]
         ax.text(
-            pts[u_sparse][0], pts[u_sparse][1] + RADIUS + 0.14, "under-sampled",
-            ha="center", va="bottom", fontsize=figstyle.SIZE_ANNOT, style="italic",
-            fontweight="bold", color=COLOUR_SPARSE,
+            pts[u_sparse][0],
+            pts[u_sparse][1] + RADIUS + 0.14,
+            "under-sampled",
+            ha="center",
+            va="bottom",
+            fontsize=figstyle.SIZE_ANNOT,
+            style="italic",
+            fontweight="bold",
+            color=COLOUR_SPARSE,
             path_effects=[patheffects.withStroke(linewidth=2.5, foreground="white")],
         )
 
@@ -203,8 +233,13 @@ def main() -> int:
     # the numeric q labels below. Those numeric values appear once below, so no
     # number is repeated here.
     ax_b.text(
-        -1.80, 1.50, "marker size $\\propto q$", fontsize=figstyle.SIZE_ANNOT,
-        ha="left", va="center", color=figstyle.COLOR_INK,
+        -1.80,
+        1.50,
+        "marker size $\\propto q$",
+        fontsize=figstyle.SIZE_ANNOT,
+        ha="left",
+        va="center",
+        color=figstyle.COLOR_INK,
     )
     ax_b.scatter([-1.62], [1.16], s=4 + 40 * 0.11, c=COLOUR_POINT, linewidths=0)
     ax_b.text(-1.46, 1.16, "low", fontsize=figstyle.SIZE_ANNOT, ha="left", va="center", color=figstyle.COLOR_INK)
@@ -231,10 +266,20 @@ def main() -> int:
     # caption names them and the coloured below-panel labels sit under their markers.
     handles = [
         Line2D([], [], marker="o", linestyle="none", markersize=6, color=COLOUR_POINT, label="network node (A, B)"),
-        Line2D([], [], marker="o", linestyle="none", markersize=6.5, color=COLOUR_SAMPLED,
-               label="sampled source (C, D)"),
-        Line2D([], [], marker="o", linestyle="none", markersize=6, markerfacecolor=COLOUR_UNSAMPLED,
-               markeredgecolor=figstyle.COLOR_MUTED, markeredgewidth=0.5, label="not sampled (C, D)"),
+        Line2D(
+            [], [], marker="o", linestyle="none", markersize=6.5, color=COLOUR_SAMPLED, label="sampled source (C, D)"
+        ),
+        Line2D(
+            [],
+            [],
+            marker="o",
+            linestyle="none",
+            markersize=6,
+            markerfacecolor=COLOUR_UNSAMPLED,
+            markeredgecolor=figstyle.COLOR_MUTED,
+            markeredgewidth=0.5,
+            label="not sampled (C, D)",
+        ),
     ]
     fig.legend(handles=handles, loc="lower center", ncol=3, frameon=False, bbox_to_anchor=(0.5, -0.005))
 

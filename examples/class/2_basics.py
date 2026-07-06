@@ -542,7 +542,7 @@ def _(mo):
 @app.cell
 def _():
     # Duplicate "London" is ignored
-    unique_cities = {"London", "Paris", "Berlin", "London"}
+    unique_cities = {"London", "Paris", "Berlin"}
     # Output might be in any order, e.g., {'Berlin', 'London', 'Paris'}
     print(unique_cities)
     return (unique_cities,)

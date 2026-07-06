@@ -32,9 +32,9 @@ def _(mo):
 @app.cell
 def _():
     # use an alias for convenience
-    import osmnx as ox
-    import momepy
     import matplotlib.pyplot as plt
+    import momepy
+    import osmnx as ox
 
     return momepy, ox, plt
 

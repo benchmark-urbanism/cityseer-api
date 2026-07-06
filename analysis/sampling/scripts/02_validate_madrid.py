@@ -68,6 +68,7 @@ DELTA = HOEFFDING_DELTA
 # Sensitivity analysis: grid spacings to test (default s=175m is the paper default)
 DEFAULT_GRID_SPACINGS = [125, 150, 175, 200, 225]
 
+
 def get_madrid_mask(force: bool = False):
     """Return Community of Madrid boundary and 20km buffered version in EPSG:25830."""
     boundary_cache = CACHE_DIR / "madrid_boundary.geojson"

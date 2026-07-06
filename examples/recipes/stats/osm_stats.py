@@ -188,7 +188,9 @@ def _(bldgs_gpd_1, colors, nodes_gdf_1, plt):
         norm=colors.LogNorm(vmin=1, vmax=1000),
         ax=ax,
     )
-    bldgs_gpd_1.plot(column="area", cmap="magma", legend=False, alpha=0.5, norm=colors.LogNorm(vmin=1, vmax=1000), ax=ax)
+    bldgs_gpd_1.plot(
+        column="area", cmap="magma", legend=False, alpha=0.5, norm=colors.LogNorm(vmin=1, vmax=1000), ax=ax
+    )
     ax.set_title("Mean building area, 100 m")
     ax.set_axis_off()
     fig.tight_layout()

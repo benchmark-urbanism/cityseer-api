@@ -113,8 +113,8 @@ def _(mo):
 @app.cell
 def _(G_osm):
     import matplotlib.pyplot as plt
-    from cityseer.tools import plot
     from cityseer.metrics import observe
+    from cityseer.tools import plot
 
     print("Continuity by street names")
     G_cont, NamesContReport = observe.street_continuity(G_osm, method="names")
@@ -145,6 +145,7 @@ def _(G_cont, plot, plot_bbox, plt):
         ["plasma", "viridis", "tab10", "tab10"],  #
         [False, False, True, False],  #
         [False, False, True, True],
+        strict=False,
     ):
         print(f"Plotting results for method: {method}")
         # plot

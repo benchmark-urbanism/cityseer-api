@@ -43,23 +43,37 @@ def main() -> int:
         bars_x = [0, 1]
         heights = [EXACT_COST, sampled_cost]
         ax.bar(
-            bars_x, heights, width=0.55,
+            bars_x,
+            heights,
+            width=0.55,
             color=[figstyle.COLOR_CANONICAL, figstyle.COLOR_METHOD],
         )
         # Decision threshold: sampling engages only below the dashed line.
         ax.axhline(threshold, color=figstyle.COLOR_INK, linestyle="--", linewidth=1.1, zorder=3)
         # The decision, stated over the sampled bar in the bar's own colour.
         ax.text(
-            1, sampled_cost + 4, decision, ha="center", va="bottom",
-            fontsize=figstyle.SIZE_ANNOT, style="italic", color=figstyle.COLOR_METHOD,
+            1,
+            sampled_cost + 4,
+            decision,
+            ha="center",
+            va="bottom",
+            fontsize=figstyle.SIZE_ANNOT,
+            style="italic",
+            color=figstyle.COLOR_METHOD,
         )
         if exact_note:
             # Why suburban exact closeness is already cheap: it runs only the live
             # streets. Set vertically inside the grey bar in white, where it cannot
             # collide with the bars, the threshold line, or the titles.
             ax.text(
-                0, EXACT_COST / 2, exact_note, ha="center", va="center", rotation=90,
-                fontsize=figstyle.SIZE_ANNOT, color="white",
+                0,
+                EXACT_COST / 2,
+                exact_note,
+                ha="center",
+                va="center",
+                rotation=90,
+                fontsize=figstyle.SIZE_ANNOT,
+                color="white",
             )
         ax.set_title(title, fontsize=figstyle.SIZE_LEGEND)
         ax.set_xticks(bars_x)
@@ -70,8 +84,13 @@ def main() -> int:
     # Label the threshold once, on the left panel (shared scale), in the free space
     # above the low sampled bar and to the right of the exact bar.
     axes[0].text(
-        1.66, threshold + 2.5, "$\\gamma \\times$ exact", ha="right", va="bottom",
-        fontsize=figstyle.SIZE_ANNOT, color=figstyle.COLOR_INK,
+        1.66,
+        threshold + 2.5,
+        "$\\gamma \\times$ exact",
+        ha="right",
+        va="bottom",
+        fontsize=figstyle.SIZE_ANNOT,
+        color=figstyle.COLOR_INK,
     )
     axes[0].set_ylabel("Predicted work (exact = 100)")
     plt.tight_layout()

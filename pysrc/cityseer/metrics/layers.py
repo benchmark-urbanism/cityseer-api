@@ -255,7 +255,9 @@ def compute_accessibilities(
     decay_fn: str | dict[str, str]
         An optional decay function expression using the variable `p`, where `p` is the normalised
         distance from 0 (source) to 1 (cutoff threshold). Controls how distance affects the
-        accessibility count weighting. When omitted (`None`), the legacy default computes both an unweighted (`_nw`) and a decay-weighted (`_wt`) column; pass a single expression such as `"1"` (flat) to compute one unsuffixed column. For
+        accessibility count weighting. When omitted (`None`), the legacy default computes both an
+        unweighted (`_nw`) and a decay-weighted (`_wt`) column; pass a single expression such as
+        `"1"` (flat) to compute one unsuffixed column. For
         distance-weighted metrics, provide an expression such as `"exp(-4 * p)"` for exponential
         decay, or use the `cityseer.decay` module helpers to generate expressions from absolute
         distance units; see [`cityseer.decay`](/api/decay) for details and examples. Pass a dict of
@@ -451,7 +453,9 @@ def compute_mixed_uses(
     decay_fn: str | dict[str, str]
         An optional decay function expression using the variable `p`, where `p` is the normalised
         distance from 0 (source) to 1 (cutoff threshold). Controls how distance affects the
-        Hill diversity weighting. When omitted (`None`), the legacy default computes both an unweighted (`_nw`) and a decay-weighted (`_wt`) variant; pass a single expression such as `"1"` (flat) to compute one unsuffixed variant. For
+        Hill diversity weighting. When omitted (`None`), the legacy default computes both an
+        unweighted (`_nw`) and a decay-weighted (`_wt`) variant; pass a single expression such as
+        `"1"` (flat) to compute one unsuffixed variant. For
         distance-weighted metrics, provide an expression such as `"exp(-4 * p)"` for exponential
         decay, or use the `cityseer.decay` module helpers to generate expressions from absolute
         distance units; see [`cityseer.decay`](/api/decay) for details and examples. Pass a dict of
@@ -660,7 +664,9 @@ def compute_stats(
     decay_fn: str | dict[str, str]
         An optional decay function expression using the variable `p`, where `p` is the normalised
         distance from 0 (source) to 1 (cutoff threshold). Controls how distance affects the
-        statistical weighting. When omitted (`None`), the legacy default computes both an unweighted (`_nw`) and a decay-weighted (`_wt`) variant; pass a single expression such as `"1"` (flat) to compute one unsuffixed variant. For
+        statistical weighting. When omitted (`None`), the legacy default computes both an
+        unweighted (`_nw`) and a decay-weighted (`_wt`) variant; pass a single expression such as
+        `"1"` (flat) to compute one unsuffixed variant. For
         distance-weighted metrics, provide an expression such as `"exp(-4 * p)"` for exponential
         decay, or use the `cityseer.decay` module helpers. Values are clamped to [0, 1]. Supported
         functions include `exp`, `ln`, `log`, `log10`, `sqrt`, `abs`, `floor`, `ceil`, `round`, `sin`,

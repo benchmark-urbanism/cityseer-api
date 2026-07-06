@@ -35,10 +35,10 @@ def _(mo):
 def _():
     import geopandas as gpd
     import matplotlib.pyplot as plt
+    import numpy as np
     import seaborn as sns
     from cityseer.network import CityNetwork
     from cityseer.tools import graphs, io
-    import numpy as np
 
     return CityNetwork, gpd, graphs, io, np, plt, sns
 

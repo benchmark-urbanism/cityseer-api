@@ -37,16 +37,16 @@ from matplotlib.colors import LinearSegmentedColormap, to_rgb
 # COLOUR SEMANTICS  (fixed mapping; never repaint the same quantity)
 # =============================================================================
 
-COLOR_CLOSENESS = "#2166AC"   # blue   - closeness / harmonic centrality
+COLOR_CLOSENESS = "#2166AC"  # blue   - closeness / harmonic centrality
 COLOR_BETWEENNESS = "#B2182B"  # red    - betweenness centrality
-COLOR_CANONICAL = "#737373"   # grey   - canonical distance-only schedule (baseline)
-COLOR_METHOD = "#D9730D"      # orange - per-node reach-based method (the accent)
+COLOR_CANONICAL = "#737373"  # grey   - canonical distance-only schedule (baseline)
+COLOR_METHOD = "#D9730D"  # orange - per-node reach-based method (the accent)
 
 # De-emphasised neutrals for supporting marks (never carry a semantic quantity).
-COLOR_INK = "#2B2B2B"    # near-black: contours, scale bars, key marks, panel letters
+COLOR_INK = "#2B2B2B"  # near-black: contours, scale bars, key marks, panel letters
 COLOR_MUTED = "#BBBBBB"  # paired-point connectors, faint reference lines
 COLOR_FAINT = "#E0E0E0"  # background context points (nodes outside the region of interest)
-COLOR_WARN = "#C9A227"   # desaturated tan: semantic-free "attention" wash, tied to no metric
+COLOR_WARN = "#C9A227"  # desaturated tan: semantic-free "attention" wash, tied to no metric
 
 # British-spelling aliases so scripts that currently use COLOUR_* adopt the module
 # by import alone. COLOUR_ADAPTIVE now resolves to the accent (previously blue),
@@ -65,9 +65,9 @@ COLOUR_ADAPTIVE = COLOR_METHOD
 # semantic colour above.
 # -----------------------------------------------------------------------------
 NETWORK_COLORS = {
-    "gla": "#2166AC",       # London
-    "madrid": "#B2182B",    # Madrid
-    "cary": "#1B9E77",      # Cary
+    "gla": "#2166AC",  # London
+    "madrid": "#B2182B",  # Madrid
+    "cary": "#1B9E77",  # Cary
     "woodlands": "#7B3FA0",  # The Woodlands (held out)
 }
 NETWORK_MARKERS = {"gla": "o", "madrid": "s", "cary": "^", "woodlands": "D"}
@@ -88,12 +88,12 @@ NETWORK_TINT_STEPS = (0.0, 0.16, 0.30, 0.40)
 # TYPE SCALE  (points; reused everywhere so sizes never drift between figures)
 # =============================================================================
 
-SIZE_PANEL = 13   # panel letters (bold)
-SIZE_TITLE = 12   # axis / panel title
-SIZE_LABEL = 11   # axis label, base font
-SIZE_TICK = 10    # tick labels
+SIZE_PANEL = 13  # panel letters (bold)
+SIZE_TITLE = 12  # axis / panel title
+SIZE_LABEL = 11  # axis label, base font
+SIZE_TICK = 10  # tick labels
 SIZE_LEGEND = 10  # legend entries
-SIZE_ANNOT = 9    # in-figure annotations, scale-bar labels
+SIZE_ANNOT = 9  # in-figure annotations, scale-bar labels
 
 # =============================================================================
 # SEQUENTIAL COLOURMAPS  (near-white -> dark; monotonic lightness)

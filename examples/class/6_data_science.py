@@ -165,21 +165,21 @@ def _(nodes_gdf_acc, plt):
     _ax[0].set_xlim(6433800, 6433800 + 2700)
     _ax[0].set_ylim(1669400, 1669400 + 2700)
     _ax[0].set_axis_off()
-    _ax[0].set_title("Principal component 1 - explained variance: {:.0%}".format(pca.explained_variance_ratio_[0]))
+    _ax[0].set_title(f"Principal component 1 - explained variance: {pca.explained_variance_ratio_[0]:.0%}")
     nodes_gdf_acc.plot(
         column="pca_2", cmap="Reds", legend=True, legend_kwds={"label": "Component 2 score", "shrink": 0.6}, ax=_ax[1]
     )
     _ax[1].set_xlim(6433800, 6433800 + 2700)
     _ax[1].set_ylim(1669400, 1669400 + 2700)
     _ax[1].set_axis_off()
-    _ax[1].set_title("Principal component 2 - explained variance: {:.0%}".format(pca.explained_variance_ratio_[1]))
+    _ax[1].set_title(f"Principal component 2 - explained variance: {pca.explained_variance_ratio_[1]:.0%}")
     nodes_gdf_acc.plot(
         column="pca_3", cmap="Reds", legend=True, legend_kwds={"label": "Component 3 score", "shrink": 0.6}, ax=_ax[2]
     )
     _ax[2].set_xlim(6433800, 6433800 + 2700)
     _ax[2].set_ylim(1669400, 1669400 + 2700)
     _ax[2].set_axis_off()
-    _ax[2].set_title("Principal component 3 - explained variance: {:.0%}".format(pca.explained_variance_ratio_[2]))
+    _ax[2].set_title(f"Principal component 3 - explained variance: {pca.explained_variance_ratio_[2]:.0%}")
     plt.tight_layout()
     _fig
     return
@@ -272,7 +272,7 @@ def _(nodes_gdf_acc, plt):
     _ax[1].set_xlim(6433800, 6433800 + 2700)
     _ax[1].set_ylim(1669400, 1669400 + 2700)
     _ax[1].set_axis_off()
-    _ax[1].set_title("Predicted restaurant accessibility, 800 m - R2 score: {:.2f}".format(r2))
+    _ax[1].set_title(f"Predicted restaurant accessibility, 800 m - R2 score: {r2:.2f}")
     # coolwarm suits the residuals because they diverge around zero
     nodes_gdf_acc.plot(
         column="cc_restaurant_800_residuals",

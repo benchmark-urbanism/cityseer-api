@@ -137,7 +137,7 @@ def _(nodes_exact, nodes_sampled, spearmanr, t_exact, t_sampled):
 @app.cell
 def _(nodes_sampled, plt):
     fig, axes = plt.subplots(1, 2, figsize=(12, 6), dpi=150)
-    for ax, col in zip(axes, ["cc_harmonic_1600", "cc_harmonic_10000"]):
+    for ax, col in zip(axes, ["cc_harmonic_1600", "cc_harmonic_10000"], strict=False):
         _dist = col.split("_")[-1]
         _label = f"Harmonic closeness, {_dist} m"
         nodes_sampled[nodes_sampled.live].plot(

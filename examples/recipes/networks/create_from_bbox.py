@@ -25,9 +25,8 @@ def _(mo):
 
 @app.cell
 def _():
-    from shapely import geometry
-
     from cityseer.tools import io, plot
+    from shapely import geometry
 
     return geometry, io, plot
 

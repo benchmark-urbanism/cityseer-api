@@ -457,9 +457,7 @@ def generate_macros() -> str:
                     )
                 macros += f"\\newcommand{{\\{network}Adaptive{label}RhoH}}{{{arow['rho_closeness']:.4f}}}\n"
                 if np.isfinite(arow.get("speedup_closeness", float("nan"))):
-                    macros += (
-                        f"\\newcommand{{\\{network}Adaptive{label}SpeedupC}}{{{arow['speedup_closeness']:.1f}}}\n"
-                    )
+                    macros += f"\\newcommand{{\\{network}Adaptive{label}SpeedupC}}{{{arow['speedup_closeness']:.1f}}}\n"
                     if int(arow["distance"]) == 20000:
                         twenty_km_speedups.append(float(arow["speedup_closeness"]))
                 # Within-quartile closeness rho (reach quartiles), cited by the error-structure
@@ -491,9 +489,7 @@ def generate_macros() -> str:
         macros += f"\\newcommand{{\\adaptiveMinRhoFloor}}{{{int(adaptive_min * 100) / 100}}}\n"
         macros += f"\\newcommand{{\\adaptiveMaxSeedStd}}{{{adaptive_max_std:.4f}}}\n"
     if closeness_quartile_rhos:
-        macros += (
-            f"\\newcommand{{\\adaptiveClosenessQuartileMinRho}}{{{min(closeness_quartile_rhos):.3f}}}\n"
-        )
+        macros += f"\\newcommand{{\\adaptiveClosenessQuartileMinRho}}{{{min(closeness_quartile_rhos):.3f}}}\n"
     if twenty_km_speedups:
         # Min/max over every sampled 20km cell (both metrics, all networks), so range
         # claims in the abstract and discussion cover the cells they describe.

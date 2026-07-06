@@ -25,7 +25,7 @@ def _(mo):
 
 @app.cell
 def _():
-    from shapely.geometry import Point, LineString, Polygon
+    from shapely.geometry import LineString, Point, Polygon
 
     pt = Point(0, 0)
     pt

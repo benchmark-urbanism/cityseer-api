@@ -150,6 +150,11 @@ select = [
 ]
 fixable = ["ALL"]
 
+[tool.ruff.lint.per-file-ignores]
+# marimo notebooks: cells end in bare display expressions (B018) and carry prose/
+# URL lines that resist wrapping (E501); both are notebook idiom, not defects.
+"examples/**" = ["E501", "B018"]
+
 [tool.ruff.format]
 quote-style = "double"
 indent-style = "space"

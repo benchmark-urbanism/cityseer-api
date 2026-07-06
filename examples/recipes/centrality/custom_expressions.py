@@ -171,6 +171,7 @@ def _(nodes_custom, plt):
         axes,
         ["cc_harmonic_800", "cc_gravity_800"],
         ["Harmonic closeness, 800 m", "Gravity-weighted closeness, 800 m"],
+        strict=False,
     ):
         nodes_custom[nodes_custom.live].plot(
             ax=ax, column=col, cmap="magma", markersize=2, legend=True, legend_kwds={"label": label, "shrink": 0.6}
@@ -239,7 +240,7 @@ def _(cn, data_dir, gpd):
 def _(nodes_stats, plt):
     stat_cols = sorted(c for c in nodes_stats.columns if "mean_height" in c and "_mean_" in c)
     fig_s, axes_s = plt.subplots(1, len(stat_cols), figsize=(6 * len(stat_cols), 6), dpi=150)
-    for ax_s, col_s in zip(axes_s, stat_cols):
+    for ax_s, col_s in zip(axes_s, stat_cols, strict=False):
         # column names follow cc_mean_height_mean_{decay label}_{distance}
         _decay_label, _dist = col_s.split("_")[-2:]
         _title = f"Mean building height, {_dist} m ({'distance-weighted' if _decay_label == 'wt' else 'unweighted'})"

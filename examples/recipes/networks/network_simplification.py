@@ -29,7 +29,7 @@ def _(mo):
 
 @app.cell
 def _():
-    from cityseer.tools import graphs, plot, io
+    from cityseer.tools import graphs, io, plot
 
     return graphs, io, plot
 

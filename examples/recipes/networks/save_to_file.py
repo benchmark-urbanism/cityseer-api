@@ -29,9 +29,8 @@ def _(mo):
 
 @app.cell
 def _():
-    from shapely import geometry
-
     from cityseer.tools import io
+    from shapely import geometry
 
     poly_wgs = geometry.box(
         -0.14115725966109327,
