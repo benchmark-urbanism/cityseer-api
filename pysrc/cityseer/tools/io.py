@@ -256,9 +256,12 @@ def _extract_gdf(gdf):
         relations_gdf = relations_gdf[relations_gdf.geometry.type == "Polygon"]
     else:
         relations_gdf = gpd.GeoDataFrame(columns=gdf.columns, crs=gdf.crs)  # type: ignore
-    # combine
-    combined_gdf = pd.concat([ways_gdf, relations_gdf])
-    combined_geom = combined_gdf.union_all()  # type: ignore
+    # combine. cast the concat result: pd.concat is typed as returning a plain
+    # DataFrame, which drops the .union_all() geometry method and forces a type: ignore
+    # whose necessity flips across stub versions (unused on some, required on others).
+    # cast has no runtime effect and is never itself flagged as an unused suppression.
+    combined_gdf = cast("gpd.GeoDataFrame", pd.concat([ways_gdf, relations_gdf]))
+    combined_geom = combined_gdf.union_all()
     # extract geoms and explode
     combined_gdf = gpd.GeoDataFrame({"geometry": [combined_geom]}, crs=combined_gdf.crs)  # type: ignore
     area_gdf = combined_gdf.explode(index_parts=False).reset_index(drop=True)
