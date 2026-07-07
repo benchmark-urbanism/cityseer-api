@@ -1,3 +1,12 @@
+# v5.1.0 Release Notes
+
+A documentation and usability release on top of v5.0.0. No breaking changes.
+
+- **Origin-Destination Flows**: a new guide section, plus recipes covering explicit OD-matrix routing (`build_od_matrix` with `betweenness_od`) and demand-modelled flows (`betweenness_demand`).
+- **Network cleaning guide**: a dedicated section on automated versus configurable cleaning, with references.
+- **Configurable Overpass endpoint**: `fetch_osm_network` and `osm_graph_from_poly` accept an `overpass_url` argument, or the `CITYSEER_OVERPASS_URL` environment variable, plus an optional `cache_path` for offline and repeatable OSM builds.
+- **Restyled example plots**: uniform colour with line width scaled by intensity, no colour bars.
+
 # v5.0.0 Release Notes
 
 ## Headline
