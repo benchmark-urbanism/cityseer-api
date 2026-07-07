@@ -82,6 +82,16 @@ Pass `None` to use the defaults for a category, or `{}` to skip it entirely. The
 
 Simplest-path centrality does not include decay-weighted metrics by default because angular cost is not a distance measure. Decay-weighted angular metrics can be added via custom expressions if needed.
 
+## Choosing shortest or angular
+
+The two are not interchangeable. The right choice depends on the network's condition as well as the research question.
+
+**Shortest-path (metric) centrality is the general-purpose choice.** Metric distance is well defined regardless of how tidy the network representation is, so shortest-path measures degrade gracefully when the geometry carries noise: extra nodes, un-merged dual carriageways, or slightly misplaced junctions shift the numbers only slightly. It applies across morphologies, and it is the safer option for messier or less thoroughly cleaned networks, and for cities where physical travel distance is what governs movement.
+
+**Simplest-path (angular) centrality weights routes by cumulative turning rather than distance**, following the space-syntax idea that people navigate by minimising directional complexity. On a clean, well-consolidated network, angular measures can correspond more closely with observed pedestrian and vehicular movement than metric ones. The important caveat is that angular cost is highly sensitive to the network representation. Spurious nodes, unconsolidated parallel edges, roundabouts left as rings, and noisy geometry all distort the turn angles that the measure is built from, so angular results are only trustworthy on a carefully cleaned network (see [Network Cleaning](/guide/cleaning)). On a messy network, angular centrality can mislead, whereas shortest-path centrality stays robust.
+
+A practical rule: shortest-path always applies. Reach for angular when the network is clean and you specifically want a route-complexity model of movement, and sanity-check the angular pattern against the metric one.
+
 ## Custom metrics
 
 To define custom metrics, pass a dictionary of `{name: expression}` pairs. Closeness and betweenness expressions (and `decay_fn` expressions elsewhere) are evaluated by the runtime expression engine: they can use the variables `c` and `p`, the operators `+`, `-`, `*`, `/`, and `^` (power), and the functions `exp`, `ln`, `log10`, `sqrt`, `abs`, `sin`, `cos`, `tan`, `floor`, `ceil`, and `round`, plus the constants `PI` and `E`. Note that `**` is not accepted (write `^`), `min` and `max` are not available, and unary minus binds tighter than the power operator, so write `-(p^2)` rather than `-p^2` when the square should be negated.
@@ -139,25 +149,7 @@ For cases where only closeness or only betweenness is needed, convenience functi
 
 ## Origin–destination and demand betweenness
 
-Standard betweenness treats every node pair equally. When you have real or modelled travel flows, two functions route those flows instead:
-
-- [`betweenness_od`](/metrics/networks#betweenness_od) takes an **explicit** origin–destination matrix (build one from flow data and zone centroids with [`build_od_matrix`](/metrics/networks#build_od_matrix)) and accumulates each pair's trip weight along shortest paths.
-- [`betweenness_demand`](/metrics/networks#betweenness_demand) takes weighted **origins** and **destinations** separately and *models* the matrix with a **singly (origin-)constrained spatial interaction model**: each origin distributes its full weight across reachable destinations in proportion to $W_d \cdot f(c_{od})$, where $f$ is a `decay_fn` expression. The classic gravity model is recovered with an exponential decay. The allocation is computed in the same traversal that routes the flows, so no explicit matrix is needed.
-
-```python
-from cityseer.metrics import networks
-
-# population blocks -> retail attractors, exponential distance decay
-nodes_gdf = networks.betweenness_demand(
-    network_structure, nodes_gdf,
-    origins_gdf=population_gdf, destinations_gdf=retail_gdf,
-    origin_weight_col="population", destination_weight_col="floorspace",
-    distances=[800], decay_fn="exp(-0.002 * c)",
-)
-print(nodes_gdf["cc_demand_800"])
-```
-
-Because both functions route flows through the same Brandes machinery, points that snap to the same network node have their weights **summed** (not overwritten), preserving total demand at each junction. For a worked example with population origins and amenity destinations, see the [OD Betweenness recipe](/examples/centrality/od-betweenness).
+Standard betweenness treats every node pair equally. When you have real or modelled travel flows, `cityseer` can route those flows instead, with [`betweenness_od`](/metrics/networks#betweenness_od) for an explicit origin–destination matrix and [`betweenness_demand`](/metrics/networks#betweenness_demand) for a modelled, singly-constrained spatial interaction model. This has its own dedicated section: see the [Origin-Destination Flows guide](/guide/flows) and the [flow recipes](/examples/flows).
 
 ## Centrality recipes
 

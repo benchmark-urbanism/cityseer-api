@@ -19,4 +19,3 @@ Angular centrality measures require the **dual graph**. `CityNetwork` builds the
 | [centrality_metro](/examples/centrality/centrality-metro) | Adding GTFS transport data to centrality calculations (experimental). |
 | [custom_expressions](/examples/centrality/custom-expressions) | Expression-based metrics: defining custom closeness and betweenness expressions, selecting only the metrics you need, derived metrics via postprocess, and statistic selection with `measures` and `decay_fn`. |
 | [sampled_centrality](/examples/centrality/sampled-centrality) | Adaptive sampling for large networks at long distance thresholds: `sample=True`, the `epsilon` tolerance, and validating sampled against exact results. |
-| [od_betweenness](/examples/centrality/od-betweenness) | Demand-weighted betweenness: modelling origin-destination flows with a singly constrained spatial interaction model (population to amenities), deterrence functions, and explicit OD matrices. |

@@ -113,16 +113,14 @@ def _(nodes_gdf_1):
 
 @app.cell
 def _(data_gdf_1, nodes_gdf_1, plt):
-    fig, ax = plt.subplots(1, 1, figsize=(8, 8), dpi=150)
-    nodes_gdf_1.plot(
-        column="cc_park_nearest_max_800",
-        cmap="viridis_r",
-        legend=True,
-        legend_kwds={"label": "Distance to nearest park (m)", "shrink": 0.6},
-        ax=ax,
-    )
-    data_gdf_1.plot(markersize=2, edgecolor=None, color="grey", legend=False, ax=ax)
-    ax.set_title("Distance to nearest park, 800 m max")
+    fig, ax = plt.subplots(1, 1, figsize=(7, 7), dpi=150)
+    _g = nodes_gdf_1.copy()
+    # distance-to-nearest: lower is better, so invert the rank to draw the closest streets boldest
+    _g["_r"] = 1 - _g["cc_park_nearest_max_800"].rank(pct=True)
+    _g = _g.sort_values("_r")
+    _g.plot(ax=ax, color=plt.get_cmap("OrRd")(_g["_r"]), linewidth=0.15 + 2.25 * _g["_r"])
+    data_gdf_1.plot(color="#cccccc", edgecolor="#bbbbbb", ax=ax)
+    ax.set_title("Distance to nearest park, 800 m max", loc="left")
     ax.set_axis_off()
     fig.tight_layout()
     fig

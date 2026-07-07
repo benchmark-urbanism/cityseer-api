@@ -36,7 +36,7 @@ Both heuristics can be computed from a single `CityNetwork` instance at any comb
 
 `cityseer` converts the network into a `rust` data structure prior to computing derivative metrics. When using the [`CityNetwork`](/api/network) class described below, this conversion happens automatically during construction, including the dual graph representation required for angular analysis, and no manual steps are needed.
 
-Note that all distances used when computing metrics are network distances (shortest paths along the network), not Euclidean distances.
+All distances used when computing metrics are network distances (shortest paths along the network), not Euclidean distances.
 
 :::note
 For advanced users: the lower-level API exposes the conversion directly. [`network_structure_from_nx`](/tools/io#network-structure-from-nx) produces nodes and edges `GeoDataFrames` plus the internal `NetworkStructure`, and [`graphs.nx_to_dual`](/tools/graphs#nx_to_dual) converts a primal graph to the dual representation required for angular analysis. The [network preparation recipes](/examples/networks) teach this route step by step, with each recipe handing the prepared graph back to `CityNetwork.from_nx`.
@@ -128,7 +128,7 @@ cc_retail_grav_800          -- "retail" count at 800m under the "grav" decay lab
 cc_price_mean_grav_1200     -- mean of "price" at 1200m under the "grav" decay label
 ```
 
-When analysing results programmatically, it is often useful to select subsets of the computed columns by pattern:
+When analysing results programmatically, you can select subsets of the computed columns by pattern:
 
 ```python
 # All cityseer columns

@@ -117,15 +117,11 @@ def _(cn_directed, cn_undirected, plt):
         (axes[0], cn_undirected, "undirected"),
         (axes[1], cn_directed, "directed (one-way aware)"),
     ):
-        cn.nodes_gdf.plot(
-            ax=ax,
-            column="cc_betweenness_800",
-            cmap="magma",
-            markersize=4,
-            legend=True,
-            legend_kwds={"label": "Betweenness, 800 m", "shrink": 0.6},
-        )
-        ax.set_title(f"Betweenness, 800 m ({title})")
+        g = cn.nodes_gdf.copy()
+        g["_r"] = g["cc_betweenness_800"].rank(pct=True)
+        g = g.sort_values("_r")  # strongest drawn last, on top
+        g.plot(ax=ax, color=plt.get_cmap("OrRd")(g["_r"]), markersize=0.5 + 12 * g["_r"])
+        ax.set_title(f"Betweenness, 800 m ({title})", loc="left")
         ax.set_axis_off()
     fig.tight_layout()
     fig

@@ -4,7 +4,7 @@ layout: '@src/layouts/PageLayout.astro'
 
 # Land-Use Analysis
 
-Land-use methods aggregate data points (shops, parks, building attributes) over the network from each node. Distance decay is central to how they weight nearby versus distant features, so both topics live together on this page.
+Land-use methods aggregate data points (shops, parks, building attributes) over the network from each node. Distance decay is central to how they weight nearby versus distant features, so both topics are covered on this page.
 
 ## Decay Functions
 
@@ -82,7 +82,7 @@ This mirrors how `centrality_shortest` accepts a `{name: expression}` dict of me
 
 ## Expression syntax
 
-Centrality expressions use two variables: `c` (raw cost) and `p` (normalised progress, `c / threshold`). Land-use decay expressions use `p` only. Both are evaluated by the same runtime expression engine, which supports the operators `+`, `-`, `*`, `/`, and `^` (power), the functions `exp`, `ln`, `log10`, `sqrt`, `abs`, `sin`, `cos`, `tan`, `floor`, `ceil`, and `round`, and the constants `PI` and `E`. Note that `**` is not accepted (write `^`), `min` and `max` are not available, and unary minus binds tighter than the power operator, so write `-(p^2)` rather than `-p^2` when the square should be negated. Land-use decay output is clamped to [0, 1]; centrality expressions are not clamped.
+Centrality expressions use two variables: `c` (raw cost) and `p` (normalised progress, `c / threshold`). Land-use decay expressions use `p` only. Both are evaluated by the same runtime expression engine, which supports the operators `+`, `-`, `*`, `/`, and `^` (power), the functions `exp`, `ln`, `log10`, `sqrt`, `abs`, `sin`, `cos`, `tan`, `floor`, `ceil`, and `round`, and the constants `PI` and `E`. `**` is not accepted (write `^`), `min` and `max` are not available, and unary minus binds tighter than the power operator, so write `-(p^2)` rather than `-p^2` when the square should be negated. Land-use decay output is clamped to [0, 1]; centrality expressions are not clamped.
 
 The centrality `postprocess` parameter is the one exception: it is evaluated in Python over previously computed metric columns and supports only `+`, `-`, `*`, `/`, and `**` (power), with no functions; see [Custom metrics](/guide/centrality#custom-metrics). See the [`cityseer.decay`](/api/decay) API reference for full details.
 
@@ -118,9 +118,9 @@ See the [OSM Accessibility](/examples/accessibility/osm-accessibility) recipe.
 
 [`compute_mixed_uses`](/metrics/layers#compute_mixed_uses) measures the diversity of land-use categories reachable from each node. Hill numbers are computed by default (`compute_hill=True`); Shannon and Gini-Simpson indices are available via the `compute_shannon` and `compute_gini` flags. The three Hill orders differ in how strongly they weight common versus rare categories:
 
-- **Hill q=0** (`cc_hill_q0_{d}`, equivalent to species richness) -- counts how many different land-use types are present. Best when using many fine-grained categories.
-- **Hill q=1** (`cc_hill_q1_{d}`, equivalent to the exponential of Shannon entropy) -- accounts for both the number of land-use types and how evenly distributed they are.
-- **Hill q=2** (`cc_hill_q2_{d}`, equivalent to the inverse Simpson concentration) -- focuses on the most common land-use types, downweighting rare ones. Best when using broad categories where the balance of dominant types matters most.
+- **Hill q=0** (`cc_hill_q0_{d}`, equivalent to species richness) counts how many different land-use types are present. Best when using many fine-grained categories.
+- **Hill q=1** (`cc_hill_q1_{d}`, equivalent to the exponential of Shannon entropy) accounts for both the number of land-use types and how evenly distributed they are.
+- **Hill q=2** (`cc_hill_q2_{d}`, equivalent to the inverse Simpson concentration) focuses on the most common land-use types, downweighting rare ones. Best when using broad categories where the balance of dominant types matters most.
 
 The Hill measures are distance-weighted through a branch-distance form, so a `decay_fn` shapes how strongly nearer instances count. Shannon (`cc_shannon_{d}`) and Gini (`cc_gini_{d}`) are computed from raw category counts and are not affected by `decay_fn`.
 

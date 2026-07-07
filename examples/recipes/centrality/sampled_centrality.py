@@ -136,14 +136,15 @@ def _(nodes_exact, nodes_sampled, spearmanr, t_exact, t_sampled):
 
 @app.cell
 def _(nodes_sampled, plt):
-    fig, axes = plt.subplots(1, 2, figsize=(12, 6), dpi=150)
+    fig, axes = plt.subplots(1, 2, figsize=(13, 6.5), dpi=150)
     for ax, col in zip(axes, ["cc_harmonic_1600", "cc_harmonic_10000"], strict=False):
         _dist = col.split("_")[-1]
         _label = f"Harmonic closeness, {_dist} m"
-        nodes_sampled[nodes_sampled.live].plot(
-            ax=ax, column=col, cmap="magma", markersize=0.5, legend=True, legend_kwds={"label": _label, "shrink": 0.6}
-        )
-        ax.set_title(f"{_label} (sampled run)")
+        g = nodes_sampled[nodes_sampled.live].copy()
+        g["_r"] = g[col].rank(pct=True)
+        g = g.sort_values("_r")  # strongest drawn last
+        g.plot(ax=ax, color=plt.get_cmap("OrRd")(g["_r"]), linewidth=0.15 + 2.25 * g["_r"])
+        ax.set_title(f"{_label} (sampled run)", loc="left")
         ax.set_axis_off()
     fig.tight_layout()
     fig

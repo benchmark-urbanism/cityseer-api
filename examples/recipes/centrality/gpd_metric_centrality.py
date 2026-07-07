@@ -91,38 +91,28 @@ def _(nodes_gdf_1):
 
 @app.cell
 def _(nodes_gdf_1, plt):
-    _fig, _ax = plt.subplots(1, 1, figsize=(8, 6), dpi=150)
-    nodes_gdf_1.plot(
-        column="cc_harmonic_500",
-        cmap="magma",
-        legend=True,
-        legend_kwds={"label": "Harmonic closeness, 500 m", "shrink": 0.6},
-        ax=_ax,
-    )
-    _ax.set_title("Harmonic closeness, 500 m")
-    _ax.set_xlim(438500, 438500 + 3500)
-    _ax.set_ylim(4472500, 4472500 + 3500)
+    _fig, _ax = plt.subplots(1, 1, figsize=(7, 7), dpi=150)
+    _g = nodes_gdf_1[nodes_gdf_1.live].copy()
+    _g["_r"] = _g["cc_harmonic_500"].rank(pct=True)
+    _g = _g.sort_values("_r")  # strongest drawn last
+    _g.plot(ax=_ax, color=plt.get_cmap("OrRd")(_g["_r"]), linewidth=0.15 + 2.25 * _g["_r"])
+    _ax.set_title("Harmonic closeness, 500 m", loc="left")
+    _ax.set_axis_off()
     _fig.tight_layout()
-    _ax.axis(False)
     _fig
     return
 
 
 @app.cell
 def _(nodes_gdf_1, plt):
-    _fig, _ax = plt.subplots(1, 1, figsize=(8, 6), dpi=150)
-    nodes_gdf_1.plot(
-        column="cc_betweenness_2000",
-        cmap="magma",
-        legend=True,
-        legend_kwds={"label": "Betweenness, 2000 m", "shrink": 0.6},
-        ax=_ax,
-    )
-    _ax.set_title("Betweenness, 2000 m")
-    _ax.set_xlim(438500, 438500 + 3500)
-    _ax.set_ylim(4472500, 4472500 + 3500)
+    _fig, _ax = plt.subplots(1, 1, figsize=(7, 7), dpi=150)
+    _g = nodes_gdf_1[nodes_gdf_1.live].copy()
+    _g["_r"] = _g["cc_betweenness_2000"].rank(pct=True)
+    _g = _g.sort_values("_r")  # strongest drawn last
+    _g.plot(ax=_ax, color=plt.get_cmap("OrRd")(_g["_r"]), linewidth=0.15 + 2.25 * _g["_r"])
+    _ax.set_title("Betweenness, 2000 m", loc="left")
+    _ax.set_axis_off()
     _fig.tight_layout()
-    _ax.axis(False)
     _fig
     return
 
@@ -167,19 +157,14 @@ def _(mo):
 
 @app.cell
 def _(nodes_gdf_2, plt):
-    _fig, _ax = plt.subplots(1, 1, figsize=(8, 6), dpi=150)
-    nodes_gdf_2.plot(
-        column="cc_harmonic_1200",
-        cmap="magma",
-        legend=True,
-        legend_kwds={"label": "Harmonic closeness, 1200 m", "shrink": 0.6},
-        ax=_ax,
-    )
-    _ax.set_title("Harmonic closeness, 1200 m (15 minutes)")
-    _ax.set_xlim(438500, 438500 + 3500)
-    _ax.set_ylim(4472500, 4472500 + 3500)
+    _fig, _ax = plt.subplots(1, 1, figsize=(7, 7), dpi=150)
+    _g = nodes_gdf_2[nodes_gdf_2.live].copy()
+    _g["_r"] = _g["cc_harmonic_1200"].rank(pct=True)
+    _g = _g.sort_values("_r")  # strongest drawn last
+    _g.plot(ax=_ax, color=plt.get_cmap("OrRd")(_g["_r"]), linewidth=0.15 + 2.25 * _g["_r"])
+    _ax.set_title("Harmonic closeness, 1200 m (15 minutes)", loc="left")
+    _ax.set_axis_off()
     _fig.tight_layout()
-    _ax.axis(False)
     _fig
     return
 
@@ -214,19 +199,14 @@ def _(nodes_gdf_3):
 
 @app.cell
 def _(nodes_gdf_3, plt):
-    _fig, _ax = plt.subplots(1, 1, figsize=(8, 6), dpi=150)
-    nodes_gdf_3.plot(
-        column="cc_decay_400",
-        cmap="magma",
-        legend=True,
-        legend_kwds={"label": "Decay-weighted closeness, 400 m", "shrink": 0.6},
-        ax=_ax,
-    )
-    _ax.set_title("Decay-weighted closeness, 400 m")
-    _ax.set_xlim(438500, 438500 + 3500)
-    _ax.set_ylim(4472500, 4472500 + 3500)
+    _fig, _ax = plt.subplots(1, 1, figsize=(7, 7), dpi=150)
+    _g = nodes_gdf_3[nodes_gdf_3.live].copy()
+    _g["_r"] = _g["cc_decay_400"].rank(pct=True)
+    _g = _g.sort_values("_r")  # strongest drawn last
+    _g.plot(ax=_ax, color=plt.get_cmap("OrRd")(_g["_r"]), linewidth=0.15 + 2.25 * _g["_r"])
+    _ax.set_title("Decay-weighted closeness, 400 m", loc="left")
+    _ax.set_axis_off()
     _fig.tight_layout()
-    _ax.axis(False)
     _fig
     return
 
@@ -266,19 +246,14 @@ def _(mo):
 
 @app.cell
 def _(nodes_gdf_4, plt):
-    _fig, _ax = plt.subplots(1, 1, figsize=(8, 6), dpi=150)
-    nodes_gdf_4.plot(
-        column="cc_betweenness_10000",
-        cmap="magma",
-        legend=True,
-        legend_kwds={"label": "Betweenness, 10000 m", "shrink": 0.6},
-        ax=_ax,
-    )
-    _ax.set_title("Betweenness, 10000 m (sampled)")
-    _ax.set_xlim(438500, 438500 + 3500)
-    _ax.set_ylim(4472500, 4472500 + 3500)
+    _fig, _ax = plt.subplots(1, 1, figsize=(7, 7), dpi=150)
+    _g = nodes_gdf_4[nodes_gdf_4.live].copy()
+    _g["_r"] = _g["cc_betweenness_10000"].rank(pct=True)
+    _g = _g.sort_values("_r")  # strongest drawn last
+    _g.plot(ax=_ax, color=plt.get_cmap("OrRd")(_g["_r"]), linewidth=0.15 + 2.25 * _g["_r"])
+    _ax.set_title("Betweenness, 10000 m (sampled)", loc="left")
+    _ax.set_axis_off()
     _fig.tight_layout()
-    _ax.axis(False)
     _fig
     return
 
@@ -310,19 +285,14 @@ def _(cn, nodes_gdf_4):
 
 @app.cell
 def _(nodes_gdf_5, plt):
-    _fig, _ax = plt.subplots(1, 1, figsize=(8, 6), dpi=150)
-    nodes_gdf_5.plot(
-        column="cc_betweenness_5000",
-        cmap="magma",
-        legend=True,
-        legend_kwds={"label": "Betweenness, 5000 m", "shrink": 0.6},
-        ax=_ax,
-    )
-    _ax.set_title("Betweenness, 5000 m (tolerance 0.5%)")
-    _ax.set_xlim(438500, 438500 + 3500)
-    _ax.set_ylim(4472500, 4472500 + 3500)
+    _fig, _ax = plt.subplots(1, 1, figsize=(7, 7), dpi=150)
+    _g = nodes_gdf_5[nodes_gdf_5.live].copy()
+    _g["_r"] = _g["cc_betweenness_5000"].rank(pct=True)
+    _g = _g.sort_values("_r")  # strongest drawn last
+    _g.plot(ax=_ax, color=plt.get_cmap("OrRd")(_g["_r"]), linewidth=0.15 + 2.25 * _g["_r"])
+    _ax.set_title("Betweenness, 5000 m (tolerance 0.5%)", loc="left")
+    _ax.set_axis_off()
     _fig.tight_layout()
-    _ax.axis(False)
     _fig
     return
 

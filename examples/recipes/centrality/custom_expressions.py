@@ -166,17 +166,18 @@ def _(cn):
 
 @app.cell
 def _(nodes_custom, plt):
-    fig, axes = plt.subplots(1, 2, figsize=(12, 6), dpi=150)
+    fig, axes = plt.subplots(1, 2, figsize=(13, 6.5), dpi=150)
     for ax, col, label in zip(
         axes,
         ["cc_harmonic_800", "cc_gravity_800"],
         ["Harmonic closeness, 800 m", "Gravity-weighted closeness, 800 m"],
         strict=False,
     ):
-        nodes_custom[nodes_custom.live].plot(
-            ax=ax, column=col, cmap="magma", markersize=2, legend=True, legend_kwds={"label": label, "shrink": 0.6}
-        )
-        ax.set_title(label)
+        g = nodes_custom[nodes_custom.live].copy()
+        g["_r"] = g[col].rank(pct=True)
+        g = g.sort_values("_r")  # strongest drawn last
+        g.plot(ax=ax, color=plt.get_cmap("OrRd")(g["_r"]), linewidth=0.15 + 2.25 * g["_r"])
+        ax.set_title(label, loc="left")
         ax.set_axis_off()
     fig.tight_layout()
     fig
@@ -239,20 +240,16 @@ def _(cn, data_dir, gpd):
 @app.cell
 def _(nodes_stats, plt):
     stat_cols = sorted(c for c in nodes_stats.columns if "mean_height" in c and "_mean_" in c)
-    fig_s, axes_s = plt.subplots(1, len(stat_cols), figsize=(6 * len(stat_cols), 6), dpi=150)
+    fig_s, axes_s = plt.subplots(1, len(stat_cols), figsize=(6.5 * len(stat_cols), 6.5), dpi=150)
     for ax_s, col_s in zip(axes_s, stat_cols, strict=False):
         # column names follow cc_mean_height_mean_{decay label}_{distance}
         _decay_label, _dist = col_s.split("_")[-2:]
         _title = f"Mean building height, {_dist} m ({'distance-weighted' if _decay_label == 'wt' else 'unweighted'})"
-        nodes_stats[nodes_stats.live].plot(
-            ax=ax_s,
-            column=col_s,
-            cmap="viridis",
-            markersize=2,
-            legend=True,
-            legend_kwds={"label": "Mean building height (m)", "shrink": 0.6},
-        )
-        ax_s.set_title(_title)
+        _g = nodes_stats[nodes_stats.live].copy()
+        _g["_r"] = _g[col_s].rank(pct=True)
+        _g = _g.sort_values("_r")  # strongest drawn last
+        _g.plot(ax=ax_s, color=plt.get_cmap("OrRd")(_g["_r"]), linewidth=0.15 + 2.25 * _g["_r"])
+        ax_s.set_title(_title, loc="left")
         ax_s.set_axis_off()
     fig_s.tight_layout()
     fig_s

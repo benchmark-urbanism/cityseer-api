@@ -130,18 +130,13 @@ def _(nodes_gdf_1):
 
 @app.cell
 def _(data_gdf_2, nodes_gdf_1, plt):
-    _fig, _ax = plt.subplots(1, 1, figsize=(8, 8), dpi=150)
-    nodes_gdf_1.plot(
-        column="cc_restaurant_400",
-        cmap="magma",
-        legend=True,
-        legend_kwds={"label": "Restaurant accessibility, 400 m", "shrink": 0.6},
-        ax=_ax,
-    )
-    data_gdf_2[data_gdf_2["amenity"] == "restaurant"].plot(
-        markersize=2, edgecolor=None, color="white", legend=False, ax=_ax
-    )
-    _ax.set_title("Restaurant accessibility, 400 m")
+    _fig, _ax = plt.subplots(1, 1, figsize=(7, 7), dpi=150)
+    _g = nodes_gdf_1.copy()
+    _g["_r"] = _g["cc_restaurant_400"].rank(pct=True)
+    _g = _g.sort_values("_r")  # strongest drawn last
+    _g.plot(ax=_ax, color=plt.get_cmap("OrRd")(_g["_r"]), linewidth=0.15 + 2.25 * _g["_r"])
+    data_gdf_2[data_gdf_2["amenity"] == "restaurant"].plot(markersize=2, edgecolor=None, color="#333333", ax=_ax)
+    _ax.set_title("Restaurant accessibility, 400 m", loc="left")
     _ax.set_axis_off()
     _fig.tight_layout()
     _fig
@@ -150,16 +145,14 @@ def _(data_gdf_2, nodes_gdf_1, plt):
 
 @app.cell
 def _(data_gdf_2, nodes_gdf_1, plt):
-    _fig, _ax = plt.subplots(1, 1, figsize=(8, 8), dpi=150)
-    nodes_gdf_1.plot(
-        column="cc_pub_nearest_max_800",
-        cmap="viridis_r",
-        legend=True,
-        legend_kwds={"label": "Distance to nearest pub (m)", "shrink": 0.6},
-        ax=_ax,
-    )
-    data_gdf_2[data_gdf_2["amenity"] == "pub"].plot(markersize=2, edgecolor=None, color="white", legend=False, ax=_ax)
-    _ax.set_title("Distance to nearest pub, 800 m max")
+    _fig, _ax = plt.subplots(1, 1, figsize=(7, 7), dpi=150)
+    _g = nodes_gdf_1.copy()
+    # distance-to-nearest: lower is better, so invert the rank to draw the closest streets boldest
+    _g["_r"] = 1 - _g["cc_pub_nearest_max_800"].rank(pct=True)
+    _g = _g.sort_values("_r")
+    _g.plot(ax=_ax, color=plt.get_cmap("OrRd")(_g["_r"]), linewidth=0.15 + 2.25 * _g["_r"])
+    data_gdf_2[data_gdf_2["amenity"] == "pub"].plot(markersize=2, edgecolor=None, color="#333333", ax=_ax)
+    _ax.set_title("Distance to nearest pub, 800 m max", loc="left")
     _ax.set_axis_off()
     _fig.tight_layout()
     _fig

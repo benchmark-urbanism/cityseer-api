@@ -164,40 +164,46 @@ def _(base_gdf, metro_gdf):
 
 @app.cell
 def _(base_gdf, metro_gdf, plt, prems_gpd_2, stops_gdf):
+    import matplotlib.colors as mcolors
+
     fig, axes = plt.subplots(3, 1, figsize=(8, 20), dpi=150)
-    _vmax = float(metro_gdf["cc_retail_800"].max())
-    base_gdf.plot(
-        column="cc_retail_800",
-        cmap="magma",
-        legend=True,
-        legend_kwds={"label": "Retail accessibility, 800 m", "shrink": 0.6},
-        ax=axes[0],
-        vmax=_vmax,
-    )
-    axes[0].set_title("Retail accessibility without metro, 800 m")
-    stops_gdf.plot(ax=axes[0], color="red", markersize=1)
-    metro_gdf.plot(
-        column="cc_retail_800",
-        cmap="magma",
-        legend=True,
-        legend_kwds={"label": "Retail accessibility, 800 m", "shrink": 0.6},
-        ax=axes[1],
-        vmax=_vmax,
-    )
-    axes[1].set_title("Retail accessibility with metro, 800 m")
-    stops_gdf.plot(ax=axes[1], color="red", markersize=1)
-    metro_gdf.plot(
-        column="cc_retail_800_diff",
-        cmap="viridis",
-        legend=True,
-        legend_kwds={"label": "Difference in retail accessibility, 800 m", "shrink": 0.6},
-        ax=axes[2],
-    )
-    axes[2].set_title("Difference due to metro, 800 m")
-    for ax in axes:
-        prems_gpd_2[prems_gpd_2["division_desc"] == "retail"].plot(
-            markersize=1, edgecolor=None, color="white", legend=False, ax=ax
+    # baseline and with-metro retail accessibility: OrRd rank style, width and colour by percentile
+    for _ax, _gdf, _title in [
+        (axes[0], base_gdf, "Retail accessibility without metro, 800 m"),
+        (axes[1], metro_gdf, "Retail accessibility with metro, 800 m"),
+    ]:
+        _g = _gdf[_gdf.live].copy()
+        _g["_r"] = _g["cc_retail_800"].rank(pct=True)
+        _g = _g.sort_values("_r")
+        _g.plot(ax=_ax, color=plt.get_cmap("OrRd")(_g["_r"]), linewidth=0.15 + 2.25 * _g["_r"])
+        _ax.set_title(_title, loc="left")
+    # difference map: signed values, so keep a diverging scheme centred on zero
+    _gd = metro_gdf[metro_gdf.live].copy()
+    try:
+        _norm = mcolors.TwoSlopeNorm(vcenter=0)
+        _gd.plot(
+            column="cc_retail_800_diff",
+            cmap="coolwarm",
+            norm=_norm,
+            legend=True,
+            legend_kwds={"label": "Difference in retail accessibility, 800 m", "shrink": 0.6},
+            ax=axes[2],
         )
+    except ValueError:
+        _gd.plot(
+            column="cc_retail_800_diff",
+            cmap="coolwarm",
+            legend=True,
+            legend_kwds={"label": "Difference in retail accessibility, 800 m", "shrink": 0.6},
+            ax=axes[2],
+        )
+    axes[2].set_title("Difference due to metro, 800 m", loc="left")
+    for ax in axes:
+        # context overlays on top: retail premises and metro stops in neutral dark
+        prems_gpd_2[prems_gpd_2["division_desc"] == "retail"].plot(
+            markersize=1, edgecolor=None, color="#333333", legend=False, ax=ax
+        )
+        stops_gdf.plot(ax=ax, color="#333333", markersize=1)
         ax.set_xlim(438500, 438500 + 3500)
         ax.set_ylim(4472500, 4472500 + 3500)
         ax.set_axis_off()

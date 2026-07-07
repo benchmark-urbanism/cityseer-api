@@ -205,21 +205,14 @@ def _(nodes_gdf_1, np, plt, sns):
 
 @app.cell
 def _(bldgs_gpd_1, nodes_gdf_1, plt):
-    _fig, _ax = plt.subplots(1, 1, figsize=(8, 8), dpi=150)
-    # orientation is continuous (0-45 degrees), so use a sequential colormap
-    nodes_gdf_1.plot(
-        column="cc_orientation_median_200",
-        cmap="viridis",
-        legend=True,
-        legend_kwds={"label": "Median building orientation (degrees), 200 m", "shrink": 0.6},
-        vmin=0,
-        vmax=45,
-        ax=_ax,
-    )
-    bldgs_gpd_1.plot(
-        column="orientation", cmap="viridis", legend=False, vmin=0, vmax=45, linewidth=0.1, alpha=0.5, ax=_ax
-    )
-    _ax.set_title("Median building orientation, 200 m")
+    g = nodes_gdf_1[nodes_gdf_1.live].copy()
+    g["_r"] = g["cc_orientation_median_200"].rank(pct=True)
+    g = g.sort_values("_r")
+    _fig, _ax = plt.subplots(1, 1, figsize=(7, 7), dpi=150)
+    g.plot(ax=_ax, color=plt.get_cmap("OrRd")(g["_r"]), linewidth=0.15 + 2.25 * g["_r"])
+    # buildings as light-grey context
+    bldgs_gpd_1.plot(color="#cccccc", edgecolor="#bbbbbb", linewidth=0.1, ax=_ax)
+    _ax.set_title("Median building orientation, 200 m", loc="left")
     _ax.set_xlim(438500, 438500 + 3500)
     _ax.set_ylim(4472500, 4472500 + 3500)
     _ax.set_axis_off()

@@ -8,7 +8,7 @@ v5 is a major release centred on a new API. The high-level [`CityNetwork`](/api/
 
 ## The short version
 
-Existing scripts using the everyday arguments keep working: the 4.x function names remain available as deprecated shims that produce the same default columns and the same numbers as before. Removed parameters fail loudly with a `TypeError` and a pointer to this guide — nothing fails silently with wrong numbers. New code should start with `CityNetwork`.
+Existing scripts using the everyday arguments keep working: the 4.x function names remain available as deprecated shims that produce the same default columns and the same numbers as before. Removed parameters raise a `TypeError` that points to this guide; they are not silently reinterpreted to produce wrong numbers. New code should start with `CityNetwork`.
 
 ## Recommended: move to CityNetwork
 
@@ -34,7 +34,7 @@ cn.centrality_shortest(distances=[400, 800])
 result_gdf = cn.to_geopandas()
 ```
 
-`CityNetwork` builds the dual graph automatically, handles boundaries via `set_boundary` (replacing manual `live` flags), and exposes accessibility, mixed-use, statistics, GTFS, and save/load methods on the same object. Note its lean defaults: a single harmonic closeness and a single betweenness, with further metrics requested via expression dictionaries.
+`CityNetwork` builds the dual graph automatically, handles boundaries via `set_boundary` (replacing manual `live` flags), and exposes accessibility, mixed-use, statistics, GTFS, and save/load methods on the same object. Its defaults are lean: a single harmonic closeness and a single betweenness, with further metrics requested via expression dictionaries.
 
 ## Renamed functions
 
@@ -61,7 +61,7 @@ These fail with a clear `TypeError` rather than being silently reinterpreted:
 
 ## Removed: segment_centrality
 
-The continuous-segment engine is gone and its numbers cannot be reproduced. The nearest modern equivalent is `centrality_shortest(..., segment_weighted=True)`, which weights node centrality by street-segment length — related, but a different calculation. Calling `segment_centrality` raises an error pointing here.
+The continuous-segment engine is gone and its numbers cannot be reproduced. The nearest modern equivalent is `centrality_shortest(..., segment_weighted=True)`, which weights node centrality by street-segment length (a related but different calculation). Calling `segment_centrality` raises an error pointing here.
 
 ## Changed: betweenness counts all routes
 
