@@ -30,12 +30,14 @@ jobs:
       - name: Set up Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
           cache-dependency-path: docs/package-lock.json
 
       - name: Install docs dependencies
-        run: npm ci --prefix docs
+        # npm install (not ci): the committed lock file drifts from package.json,
+        # so ci's strict sync check fails. install reconciles and proceeds.
+        run: npm install --prefix docs
 
       - name: Export example notebooks
         # Executes every notebook to static HTML. OSMnx-based notebooks use the
