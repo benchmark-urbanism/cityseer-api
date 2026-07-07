@@ -1323,6 +1323,121 @@ cn.centrality_simplest(distances=[400, 800, 1600])
 
 <div class="function">
 
+## betweenness_demand
+
+
+<div class="content">
+<span class="name">betweenness_demand</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">self</span>
+  </div>
+  <div class="param">
+    <span class="pn">origins_gdf</span>
+    <span class="pc">:</span>
+    <span class="pa"> geopandas.geodataframe.GeoDataFrame</span>
+  </div>
+  <div class="param">
+    <span class="pn">destinations_gdf</span>
+    <span class="pc">:</span>
+    <span class="pa"> geopandas.geodataframe.GeoDataFrame</span>
+  </div>
+  <div class="param">
+    <span class="pn">origin_weight_col</span>
+    <span class="pc">:</span>
+    <span class="pa"> str</span>
+  </div>
+  <div class="param">
+    <span class="pn">destination_weight_col</span>
+    <span class="pc">:</span>
+    <span class="pa"> str</span>
+  </div>
+  <div class="param">
+    <span class="pn">**kwargs</span>
+  </div>
+  <span class="pt">)-&gt;[</span>
+  <span class="pr">CityNetwork</span>
+  <span class="pt">]</span>
+</div>
+</div>
+
+
+ Compute demand-weighted (flow) betweenness from a spatial interaction model. Trips are allocated between weighted origins (e.g. population) and weighted destinations (e.g. attractors) using a singly (origin-)constrained spatial interaction model, then routed along shortest network paths so intermediate streets accumulate the flow passing through them. This is the modelled-matrix counterpart to [`betweenness_od`](#betweenness_od): the per-pair weights are derived from the network distances revealed during routing, rather than supplied as an explicit OD matrix.
+
+ Wraps [`betweenness_demand`](/metrics/networks#betweenness_demand). All additional keyword arguments are forwarded; see that function for the full parameter list including ``distances``, ``minutes``, ``decay_fn``, ``closest_destination``, ``metric_name``, and ``max_snap_dist``.
+### Parameters
+<div class="param-set">
+  <div class="def">
+    <div class="name">origins_gdf</div>
+    <div class="type">GeoDataFrame</div>
+  </div>
+  <div class="desc">
+
+ A GeoDataFrame of demand origins (points or centroids).</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">destinations_gdf</div>
+    <div class="type">GeoDataFrame</div>
+  </div>
+  <div class="desc">
+
+ A GeoDataFrame of demand destinations / attractors (points or centroids).</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">origin_weight_col</div>
+    <div class="type">str</div>
+  </div>
+  <div class="desc">
+
+ Column in ``origins_gdf`` giving each origin's weight (e.g. population).</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">destination_weight_col</div>
+    <div class="type">str</div>
+  </div>
+  <div class="desc">
+
+ Column in ``destinations_gdf`` giving each destination's attractiveness weight.</div>
+</div>
+
+### Returns
+<div class="param-set">
+  <div class="def">
+    <div class="name">self</div>
+    <div class="type">CityNetwork</div>
+  </div>
+  <div class="desc">
+
+ Returns self for method chaining. A ``cc_{metric_name}_{distance}`` column (default ``cc_demand_{distance}``) is written to ``nodes_gdf``.</div>
+</div>
+
+### Notes
+
+```python
+cn.betweenness_demand(
+    origins_gdf=population_gdf,
+    destinations_gdf=amenities_gdf,
+    origin_weight_col="population",
+    destination_weight_col="weight",
+    distances=[800],
+    decay_fn="exp(-0.002 * c)",
+)
+result_gdf = cn.to_geopandas()  # cc_demand_800 projected onto the street segments
+```
+
+
+</div>
+
+ 
+
+<div class="function">
+
 ## compute_accessibilities
 
 

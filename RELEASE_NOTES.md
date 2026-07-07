@@ -1,3 +1,10 @@
+# v5.2.0 Release Notes
+
+A small feature release. No breaking changes.
+
+- **`CityNetwork.betweenness_demand`**: demand-weighted (flow) betweenness is now a method on `CityNetwork`, matching `betweenness_od`. It runs the singly-constrained spatial interaction model on the network and writes a `cc_demand_{distance}` column, which `to_geopandas` projects onto the street segments. Previously this was reachable only through the lower-level functional API.
+- **Flow recipes render on streets**: the demand-flow and directed-network examples now project their values onto the street segments (line width by intensity) instead of plotting node midpoints as points.
+
 # v5.1.0 Release Notes
 
 A documentation and usability release on top of v5.0.0. No breaking changes.

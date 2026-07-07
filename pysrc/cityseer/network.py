@@ -1139,6 +1139,69 @@ class CityNetwork:
         )
         return self
 
+    def betweenness_demand(
+        self,
+        origins_gdf: gpd.GeoDataFrame,
+        destinations_gdf: gpd.GeoDataFrame,
+        origin_weight_col: str,
+        destination_weight_col: str,
+        **kwargs: Any,
+    ) -> CityNetwork:
+        """Compute demand-weighted (flow) betweenness from a spatial interaction model.
+
+        Trips are allocated between weighted origins (e.g. population) and weighted destinations
+        (e.g. attractors) using a singly (origin-)constrained spatial interaction model, then routed
+        along shortest network paths so intermediate streets accumulate the flow passing through them.
+        This is the modelled-matrix counterpart to [`betweenness_od`](#betweenness_od): the per-pair
+        weights are derived from the network distances revealed during routing, rather than supplied
+        as an explicit OD matrix.
+
+        Wraps [`betweenness_demand`](/metrics/networks#betweenness_demand). All additional keyword
+        arguments are forwarded; see that function for the full parameter list including ``distances``,
+        ``minutes``, ``decay_fn``, ``closest_destination``, ``metric_name``, and ``max_snap_dist``.
+
+        Parameters
+        ----------
+        origins_gdf: GeoDataFrame
+            A GeoDataFrame of demand origins (points or centroids).
+        destinations_gdf: GeoDataFrame
+            A GeoDataFrame of demand destinations / attractors (points or centroids).
+        origin_weight_col: str
+            Column in ``origins_gdf`` giving each origin's weight (e.g. population).
+        destination_weight_col: str
+            Column in ``destinations_gdf`` giving each destination's attractiveness weight.
+
+        Returns
+        -------
+        self: CityNetwork
+            Returns self for method chaining. A ``cc_{metric_name}_{distance}`` column (default
+            ``cc_demand_{distance}``) is written to ``nodes_gdf``.
+
+        Examples
+        --------
+        ```python
+        cn.betweenness_demand(
+            origins_gdf=population_gdf,
+            destinations_gdf=amenities_gdf,
+            origin_weight_col="population",
+            destination_weight_col="weight",
+            distances=[800],
+            decay_fn="exp(-0.002 * c)",
+        )
+        result_gdf = cn.to_geopandas()  # cc_demand_800 projected onto the street segments
+        ```
+        """
+        self._nodes_gdf = networks.betweenness_demand(
+            network_structure=self._network_structure,
+            nodes_gdf=self._nodes_gdf,
+            origins_gdf=origins_gdf,
+            destinations_gdf=destinations_gdf,
+            origin_weight_col=origin_weight_col,
+            destination_weight_col=destination_weight_col,
+            **kwargs,
+        )
+        return self
+
     def compute_accessibilities(
         self, data_gdf: gpd.GeoDataFrame, **kwargs: Any
     ) -> tuple[CityNetwork, gpd.GeoDataFrame]:

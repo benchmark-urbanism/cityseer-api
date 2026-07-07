@@ -25,10 +25,9 @@ def _(mo):
 def _():
     import geopandas as gpd
     import matplotlib.pyplot as plt
-    from cityseer.metrics import networks
-    from cityseer.tools import graphs, io
+    from cityseer.network import CityNetwork
 
-    return gpd, graphs, io, networks, plt
+    return CityNetwork, gpd, plt
 
 
 @app.cell(hide_code=True)
@@ -36,29 +35,22 @@ def _(mo):
     mo.md(r"""
     ## Network and demand data
 
-    A central-Madrid network (as a dual graph, so both measures share one basis), with Eurostat census population as **origins** and hospitality premises as **destinations**.
+    A central-Madrid network, with Eurostat census population as **origins** and hospitality premises as **destinations**. `CityNetwork` builds the dual graph internally, so both measures share one basis.
     """)
     return
 
 
 @app.cell
-def _(gpd, graphs, io, mo):
-    from shapely import geometry
-
+def _(CityNetwork, gpd, mo):
     data_dir = (mo.notebook_dir() / ".." / ".." / "data").resolve()
-    streets = gpd.read_file(data_dir / "madrid_streets" / "street_network.gpkg")
-    streets = streets.explode(ignore_index=True).drop_duplicates(subset="geometry")
-    centre = gpd.GeoSeries.from_xy([440300], [4474300], crs=streets.crs)
+    streets_gpd = gpd.read_file(data_dir / "madrid_streets" / "street_network.gpkg")
+    streets_gpd = streets_gpd.explode(ignore_index=True).drop_duplicates(subset="geometry")
+    centre = gpd.GeoSeries.from_xy([440300], [4474300], crs=streets_gpd.crs)
     study_poly = centre.buffer(3000).iloc[0]
-    buffered_poly = centre.buffer(3800).iloc[0]
-    streets_clip = streets[streets.intersects(buffered_poly)]
-    G = io.nx_from_generic_geopandas(streets_clip)
-    for _idx, _data in G.nodes(data=True):
-        G.nodes[_idx]["live"] = study_poly.contains(geometry.Point(_data["x"], _data["y"]))
-    G_dual = graphs.nx_to_dual(G)
-    nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(G_dual)
+    buffered_poly = centre.buffer(3800).iloc[0]  # network buffered past the 800 m threshold
+    cn = CityNetwork.from_geopandas(streets_gpd[streets_gpd.intersects(buffered_poly)], boundary=study_poly)
 
-    census = gpd.read_file(data_dir / "madrid_census" / "eu_stat_clipped.gpkg").to_crs(streets.crs)
+    census = gpd.read_file(data_dir / "madrid_census" / "eu_stat_clipped.gpkg").to_crs(streets_gpd.crs)
     origins = census[["T", "geometry"]].copy()
     origins["geometry"] = origins.geometry.centroid
     origins = origins[origins.within(buffered_poly)]
@@ -66,7 +58,7 @@ def _(gpd, graphs, io, mo):
     dests = premises[premises["section_id"] == "I"].copy()
     dests = dests[dests.within(buffered_poly)]
     dests["weight"] = 1.0
-    return dests, network_structure, nodes_gdf, origins
+    return cn, dests, origins
 
 
 @app.cell(hide_code=True)
@@ -74,19 +66,15 @@ def _(mo):
     mo.md(r"""
     ## Compute both measures
 
-    Uniform betweenness needs only the network. Demand-weighted flow additionally takes the weighted origins and destinations and a distance-decay deterrence function.
+    Uniform betweenness needs only the network. Demand-weighted flow additionally takes the weighted origins and destinations and a distance-decay deterrence function. Both write to `nodes_gdf`, and `to_geopandas` projects them onto the street segments for mapping.
     """)
     return
 
 
 @app.cell
-def _(dests, network_structure, networks, nodes_gdf, origins):
-    # uniform: every pair equal
-    nodes_plain = networks.betweenness_shortest(network_structure, nodes_gdf.copy(), distances=[800])
-    # demand-weighted: population -> hospitality, gravity-style decay
-    nodes_demand = networks.betweenness_demand(
-        network_structure,
-        nodes_gdf.copy(),
+def _(cn, dests, origins):
+    cn.centrality_shortest(distances=[800])  # uniform betweenness -> cc_betweenness_800
+    cn.betweenness_demand(  # population -> hospitality, gravity-style decay -> cc_demand_800
         origins_gdf=origins,
         destinations_gdf=dests,
         origin_weight_col="T",
@@ -94,7 +82,8 @@ def _(dests, network_structure, networks, nodes_gdf, origins):
         distances=[800],
         decay_fn="exp(-0.002 * c)",
     )
-    return nodes_demand, nodes_plain
+    streets = cn.to_geopandas()  # both metrics projected onto the street segments
+    return (streets,)
 
 
 @app.cell(hide_code=True)
@@ -102,23 +91,23 @@ def _(mo):
     mo.md(r"""
     ## Map them side by side
 
-    Both use the same styling (marker size and orange-red colour scaled by a percentile rank of the value), so the patterns are directly comparable.
+    Both use the same styling (line width and orange-red colour scaled by a percentile rank of the value), so the patterns are directly comparable.
     """)
     return
 
 
 @app.cell
-def _(nodes_demand, nodes_plain, plt):
+def _(plt, streets):
     fig, axes = plt.subplots(1, 2, figsize=(13, 6.5))
-    panels = [
-        (axes[0], nodes_plain, "cc_betweenness_800", "Uniform betweenness"),
-        (axes[1], nodes_demand, "cc_demand_800", "Demand-weighted flow"),
-    ]
-    for ax, gdf, col, title in panels:
-        live = gdf[gdf.live].copy()
-        live["rank"] = live[col].rank(pct=True)
-        live = live.sort_values("rank")  # strongest drawn last
-        live.plot(ax=ax, color=plt.get_cmap("OrRd")(live["rank"]), markersize=0.5 + 12 * live["rank"])
+    live = streets[streets.live]
+    for ax, col, title in [
+        (axes[0], "cc_betweenness_800", "Uniform betweenness"),
+        (axes[1], "cc_demand_800", "Demand-weighted flow"),
+    ]:
+        g = live.copy()
+        g["rank"] = g[col].rank(pct=True)
+        g = g.sort_values("rank")  # strongest drawn last
+        g.plot(ax=ax, color=plt.get_cmap("OrRd")(g["rank"]), linewidth=0.15 + 2.25 * g["rank"])
         ax.set_title(title, loc="left")
         ax.set_axis_off()
         ax.set_aspect("equal")
