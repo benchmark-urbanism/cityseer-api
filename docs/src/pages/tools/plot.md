@@ -275,7 +275,7 @@ layout: ../../layouts/PageLayout.astro
 
 ### Notes
 
- Plot either or both primal and dual representations of a `networkX MultiGraph`. Only call this function directly if explicitly printing both primal and dual graphs. Otherwise, use the simplified [`plot_nx`](/tools/plot#plot-nx) method instead.
+ Plot either or both primal and dual representations of a `networkX MultiGraph`. Only call this function directly if explicitly printing both primal and dual graphs. Otherwise, use the simplified [`plot_nx`](/tools/plot#plot_nx) method instead.
 
 ```py
 from cityseer.tools import mock, graphs, plot
@@ -494,7 +494,7 @@ G = mock.mock_graph()
 G = graphs.nx_simple_geoms(G)
 G = graphs.nx_decompose(G, 50)
 nodes_gdf, edges_gdf, network_structure = io.network_structure_from_nx(G)
-networks.node_centrality_shortest(network_structure=network_structure, nodes_gdf=nodes_gdf, distances=[800])
+networks.centrality_shortest(network_structure=network_structure, nodes_gdf=nodes_gdf, distances=[800])
 G_after = io.nx_from_cityseer_geopandas(nodes_gdf, edges_gdf)
 # let's extract and normalise the values
 vals = []
@@ -579,7 +579,7 @@ This method is primarily intended for package testing and development.
   </div>
   <div class="desc">
 
- A [`rustalgos.graph.NetworkStructure`](/rustalgos/rustalgos#networkstructure) instance.</div>
+ A [`rustalgos.graph.NetworkStructure`](/rustalgos/graph#networkstructure) instance.</div>
 </div>
 
 <div class="param-set">
@@ -700,7 +700,7 @@ mainly to visually confirm the correct behaviour of particular algorithms during
   </div>
   <div class="desc">
 
- A [`rustalgos.graph.NetworkStructure`](/rustalgos/rustalgos#networkstructure) instance.</div>
+ A [`rustalgos.graph.NetworkStructure`](/rustalgos/graph#networkstructure) instance.</div>
 </div>
 
 <div class="param-set">

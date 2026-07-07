@@ -526,22 +526,18 @@ def test_accessibility(primal_graph, dual_graph):
             landuses_map,  # type: ignore
             accessibility_keys,
             distances,
+            decay_fn="exp(-4 * p)",
         )
         # test manual metrics against all nodes
         betas = rustalgos.betas_from_distances(distances)
         for dist, beta in zip(distances, betas, strict=True):
-            z_nws = []
-            z_wts = []
+            z_counts = []
             for src_idx in network_structure.street_node_indices():  # type: ignore
                 # aggregate
-                a_nw = 0
-                b_nw = 0
-                c_nw = 0
-                z_nw = 0
-                a_wt = 0
-                b_wt = 0
-                c_wt = 0
-                z_wt = 0  # for deduplication checks on data items 45-49 - which are only z items
+                a_count = 0
+                b_count = 0
+                c_count = 0
+                z_count = 0  # for deduplication checks on data items 45-49 - which are only z items
                 a_dist = np.nan
                 b_dist = np.nan
                 c_dist = np.nan
@@ -560,34 +556,26 @@ def test_accessibility(primal_graph, dual_graph):
                         data_class = landuses_map[data_key_py]
                         # aggregate accessibility codes
                         if data_class == "a":
-                            a_nw += 1
-                            a_wt += np.exp(-beta * data_dist)
+                            a_count += np.exp(-beta * data_dist)
                             if np.isnan(a_dist) or data_dist < a_dist:
                                 a_dist = data_dist
                         elif data_class == "b":
-                            b_nw += 1
-                            b_wt += np.exp(-beta * data_dist)
+                            b_count += np.exp(-beta * data_dist)
                             if np.isnan(b_dist) or data_dist < b_dist:
                                 b_dist = data_dist
                         elif data_class == "c":
-                            c_nw += 1
-                            c_wt += np.exp(-beta * data_dist)
+                            c_count += np.exp(-beta * data_dist)
                             if np.isnan(c_dist) or data_dist < c_dist:
                                 c_dist = data_dist
                         elif data_class == "z":
-                            z_nw += 1
-                            z_wt += np.exp(-beta * data_dist)
+                            z_count += np.exp(-beta * data_dist)
                             if np.isnan(z_dist) or data_dist < z_dist:
                                 z_dist = data_dist
                 # assertions
-                assert accessibilities.result["a"].unweighted[dist][src_idx] - a_nw < config.ATOL
-                assert accessibilities.result["b"].unweighted[dist][src_idx] - b_nw < config.ATOL
-                assert accessibilities.result["c"].unweighted[dist][src_idx] - c_nw < config.ATOL
-                assert accessibilities.result["z"].unweighted[dist][src_idx] - z_nw < config.ATOL
-                assert accessibilities.result["a"].weighted[dist][src_idx] - a_wt < config.ATOL
-                assert accessibilities.result["b"].weighted[dist][src_idx] - b_wt < config.ATOL
-                assert accessibilities.result["c"].weighted[dist][src_idx] - c_wt < config.ATOL
-                assert accessibilities.result["z"].weighted[dist][src_idx] - z_wt < config.ATOL
+                assert accessibilities.result["a"].count[dist][src_idx] - a_count < config.ATOL
+                assert accessibilities.result["b"].count[dist][src_idx] - b_count < config.ATOL
+                assert accessibilities.result["c"].count[dist][src_idx] - c_count < config.ATOL
+                assert accessibilities.result["z"].count[dist][src_idx] - z_count < config.ATOL
                 if dist == max(distances):
                     if np.isfinite(a_dist):
                         assert accessibilities.result["a"].distance[dist][src_idx] - a_dist < config.ATOL
@@ -611,16 +599,12 @@ def test_accessibility(primal_graph, dual_graph):
                     assert dist not in accessibilities.result["c"].distance
                     assert dist not in accessibilities.result["z"].distance
                 # check for deduplication
-                z_nws.append(z_nw)
-                z_wts.append(z_wt)
+                z_counts.append(z_count)
             if deduplicate is True:
-                assert np.all(z_nws) <= 1
-                assert np.all(z_wts) <= 1
+                assert np.all(z_counts) <= 1
             else:
-                if dist >= 400:
-                    assert max(z_nws) == 5
                 if dist >= 800:
-                    assert max(z_wts) >= 1
+                    assert max(z_counts) >= 1
     # setup dual data
     with pytest.raises(ValueError, match="dual graph"):
         data_map.accessibility(
@@ -651,15 +635,8 @@ def test_accessibility(primal_graph, dual_graph):
     for acc_key in accessibility_keys:
         for dist_key in distances:
             if not np.allclose(
-                accessibilities_dual_short.result[acc_key].weighted[dist_key],
-                accessibilities_ang.result[acc_key].weighted[dist_key],
-                rtol=config.RTOL,
-                atol=config.ATOL,
-            ):
-                some_false = True
-            if not np.allclose(
-                accessibilities_dual_short.result[acc_key].unweighted[dist_key],
-                accessibilities_ang.result[acc_key].unweighted[dist_key],
+                accessibilities_dual_short.result[acc_key].count[dist_key],
+                accessibilities_ang.result[acc_key].count[dist_key],
                 rtol=config.RTOL,
                 atol=config.ATOL,
             ):
@@ -691,10 +668,10 @@ def test_mixed_uses(primal_graph, dual_graph):
             landuses_map,
             distances=distances,
             compute_hill=True,
-            compute_hill_weighted=True,
             compute_shannon=True,
             compute_gini=True,
             angular=angular,
+            decay_fn="exp(-4 * p)",
         )
         for netw_src_idx in active_network.street_node_indices():
             reachable_entries = active_data_map.aggregate_to_src_idx(
@@ -724,36 +701,18 @@ def test_mixed_uses(primal_graph, dual_graph):
                 # assertions
                 assert np.isclose(
                     mixed_uses_data.hill[0][dist_cutoff][netw_src_idx],
-                    rustalgos.diversity.hill_diversity(cl_counts, 0.0),
-                    rtol=config.RTOL,
-                    atol=config.ATOL,
-                )
-                assert np.isclose(
-                    mixed_uses_data.hill[1][dist_cutoff][netw_src_idx],
-                    rustalgos.diversity.hill_diversity(cl_counts, 1),
-                    rtol=config.RTOL,
-                    atol=config.ATOL,
-                )
-                assert np.isclose(
-                    mixed_uses_data.hill[2][dist_cutoff][netw_src_idx],
-                    rustalgos.diversity.hill_diversity(cl_counts, 2),
-                    rtol=config.RTOL,
-                    atol=config.ATOL,
-                )
-                assert np.isclose(
-                    mixed_uses_data.hill_weighted[0][dist_cutoff][netw_src_idx],
                     rustalgos.diversity.hill_diversity_branch_distance_wt(cl_counts, cl_nearest, 0, beta, 1.0),
                     rtol=config.RTOL,
                     atol=config.ATOL,
                 )
                 assert np.isclose(
-                    mixed_uses_data.hill_weighted[1][dist_cutoff][netw_src_idx],
+                    mixed_uses_data.hill[1][dist_cutoff][netw_src_idx],
                     rustalgos.diversity.hill_diversity_branch_distance_wt(cl_counts, cl_nearest, 1, beta, 1.0),
                     rtol=config.RTOL,
                     atol=config.ATOL,
                 )
                 assert np.isclose(
-                    mixed_uses_data.hill_weighted[2][dist_cutoff][netw_src_idx],
+                    mixed_uses_data.hill[2][dist_cutoff][netw_src_idx],
                     rustalgos.diversity.hill_diversity_branch_distance_wt(cl_counts, cl_nearest, 2, beta, 1.0),
                     rtol=config.RTOL,
                     atol=config.ATOL,
@@ -809,11 +768,13 @@ def test_stats(primal_graph):
     isolated_data_idx = [16, 37]
     # compute - first do with no deduplication so that direct comparisons can be made to numpy methods
     # have to use a single large distance, otherwise distance cutoffs will result in limited agg
+    # use decay_fn="1" (flat) so weighted values match raw numpy aggregations
     distances = [10000]
     stats_results = data_map.stats(
         network_structure,
         numerical_maps=numerical_maps,
         distances=distances,
+        decay_fn="1",
     )
     for stats_result, mock_num_arr in zip(
         stats_results.result, [data_gdf["mock_numerical_1"].values, data_gdf["mock_numerical_2"].values], strict=True
@@ -941,7 +902,7 @@ def test_stats(primal_graph):
                 rtol=config.RTOL,
             )
 
-            # MAD (Median Absolute Deviation) - unweighted
+            # MAD (Median Absolute Deviation)
             def np_mad(arr):
                 if arr.size == 0:
                     return np.nan
@@ -1004,24 +965,13 @@ def test_stats(primal_graph):
             assert np.all(
                 stats_result.sum[dist][connected_nodes_idx] >= stats_result_dedupe.sum[dist][connected_nodes_idx]
             )
-            assert np.all(
-                stats_result.sum_wt[dist][connected_nodes_idx] >= stats_result_dedupe.sum_wt[dist][connected_nodes_idx]
-            )
             # mean and variance should also be diminished
             assert np.all(
                 stats_result.mean[dist][connected_nodes_idx] >= stats_result_dedupe.mean[dist][connected_nodes_idx]
             )
             assert np.all(
-                stats_result.mean_wt[dist][connected_nodes_idx]
-                >= stats_result_dedupe.mean_wt[dist][connected_nodes_idx]
-            )
-            assert np.all(
                 stats_result.variance[dist][connected_nodes_idx]
                 >= stats_result_dedupe.variance[dist][connected_nodes_idx]
-            )
-            assert np.all(
-                stats_result.variance_wt[dist][connected_nodes_idx]
-                >= stats_result_dedupe.variance_wt[dist][connected_nodes_idx]
             )
 
 
@@ -1059,6 +1009,7 @@ def test_stats_weighted(primal_graph):
         network_structure,
         numerical_maps=numerical_maps,
         distances=distances,
+        decay_fn="exp(-4 * p)",
     )
 
     stats_result = stats_results.result[0]
@@ -1090,15 +1041,15 @@ def test_stats_weighted(primal_graph):
                         wts.append(wt)
 
             if not vals:
-                assert np.isnan(stats_result.mean_wt[dist_key][netw_src_idx])
-                assert np.isnan(stats_result.variance_wt[dist_key][netw_src_idx])
-                assert np.isnan(stats_result.median_wt[dist_key][netw_src_idx])
+                assert np.isnan(stats_result.mean[dist_key][netw_src_idx])
+                assert np.isnan(stats_result.variance[dist_key][netw_src_idx])
+                assert np.isnan(stats_result.median[dist_key][netw_src_idx])
                 continue
 
             # weighted mean
             mean_wt_py = np.average(vals, weights=wts)
             assert np.isclose(
-                stats_result.mean_wt[dist_key][netw_src_idx],
+                stats_result.mean[dist_key][netw_src_idx],
                 mean_wt_py,
                 rtol=config.RTOL,
                 atol=config.ATOL,
@@ -1107,7 +1058,7 @@ def test_stats_weighted(primal_graph):
             # weighted variance
             variance_wt_py = np.average((np.array(vals) - mean_wt_py) ** 2, weights=wts)
             assert np.isclose(
-                stats_result.variance_wt[dist_key][netw_src_idx],
+                stats_result.variance[dist_key][netw_src_idx],
                 variance_wt_py,
                 rtol=config.RTOL,
                 atol=config.ATOL,
@@ -1117,7 +1068,7 @@ def test_stats_weighted(primal_graph):
             median_wt_py = weighted_median(vals, wts)
             assert np.isclose(
                 median_wt_py,
-                stats_result.median_wt[dist_key][netw_src_idx],
+                stats_result.median[dist_key][netw_src_idx],
                 rtol=config.RTOL,
                 atol=config.ATOL,
             )
@@ -1126,7 +1077,7 @@ def test_stats_weighted(primal_graph):
             abs_devs = [abs(v - median_wt_py) for v in vals]
             mad_wt_py = weighted_median(abs_devs, wts)
             assert np.isclose(
-                stats_result.mad_wt[dist_key][netw_src_idx],
+                stats_result.mad[dist_key][netw_src_idx],
                 mad_wt_py,
                 rtol=config.RTOL,
                 atol=config.ATOL,

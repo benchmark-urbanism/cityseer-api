@@ -6,9 +6,7 @@ A `Python` package for pedestrian-scale network-based urban analysis: network an
 
 [![publish package](https://github.com/benchmark-urbanism/cityseer-api/actions/workflows/publish_package.yml/badge.svg)](https://github.com/benchmark-urbanism/cityseer-api/actions/workflows/publish_package.yml)
 
-[![deploy docs](https://github.com/benchmark-urbanism/cityseer-api/actions/workflows/firebase-hosting-merge.yml/badge.svg)](https://github.com/benchmark-urbanism/cityseer-api/actions/workflows/firebase-hosting-merge.yml)
-
-Examples: <https://benchmark-urbanism.github.io/cityseer-examples/>
+Examples: <https://cityseer.benchmarkurbanism.com/examples>
 
 API Documentation: <https://cityseer.benchmarkurbanism.com/>
 
@@ -24,8 +22,45 @@ pip install cityseer
 
 ## Development
 
-`brew install uv rust rust-analyzer rustfmt`
-`uv sync`
+Contributions are welcome — please open an [issue](https://github.com/benchmark-urbanism/cityseer-api/issues) or [discussion](https://github.com/benchmark-urbanism/cityseer-api/discussions) before larger changes.
+
+> [!IMPORTANT]
+> Active development happens on the **`dev`** branch; `master` tracks the latest released version. Please **base branches and target pull requests against `dev`**, not `master`:
+>
+> ```bash
+> gh pr create --base dev
+> ```
+>
+> Pushing an alpha tag (e.g. `4.25.0b1`) from `dev` publishes a pre-release to PyPI for testing ahead of a stable release off `master`.
+
+### Setup
+
+The loop-intensive algorithms are written in `rust` and exposed to `Python` via [`maturin`](https://www.maturin.rs/), so a `rust` toolchain is required alongside [`uv`](https://docs.astral.sh/uv/):
+
+```bash
+brew install uv rust rust-analyzer rustfmt   # or your platform's equivalent
+uv sync                                       # creates the venv and builds the rust extension
+```
+
+After editing `rust` sources, rebuild the extension before re-running Python:
+
+```bash
+uv run maturin develop                        # or re-run `uv sync`
+```
+
+### Verify before pushing
+
+Run the same formatting, linting, type-checking, and test suite that CI runs:
+
+```bash
+uv run poe verify_project                     # ruff format && ruff check && ty check && pytest ./tests
+```
+
+To preview the documentation site locally:
+
+```bash
+uv run poe docs_dev
+```
 
 ## Cite
 

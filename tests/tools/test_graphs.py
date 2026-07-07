@@ -734,6 +734,38 @@ def test_nx_to_dual(primal_graph, diamond_graph):
         assert G_dual.number_of_edges(s, e) == 1
 
 
+def test_nx_to_dual_propagates_imp_factor():
+    """Per-primal `imp_factor` propagates to each dual edge as the length-weighted mean
+    of the two adjacent primal segments' impedances; default of 1.0 is unchanged.
+    """
+    G = nx.MultiGraph(crs="EPSG:32630")
+    G.add_node("a", x=0.0, y=0.0)
+    G.add_node("b", x=100.0, y=0.0)
+    G.add_node("c", x=300.0, y=0.0)  # bc length = 200
+    geom_ab = geometry.LineString([(0, 0), (100, 0)])
+    geom_bc = geometry.LineString([(100, 0), (300, 0)])
+    G.add_edge("a", "b", geom=geom_ab, imp_factor=2.0)
+    G.add_edge("b", "c", geom=geom_bc, imp_factor=4.0)
+
+    G_dual = graphs.nx_to_dual(G)
+    edges = list(G_dual.edges(data=True))
+    assert len(edges) == 1
+    _u, _v, data = edges[0]
+    # length-weighted mean of the two primal impedances
+    expected = (100.0 * 2.0 + 200.0 * 4.0) / (100.0 + 200.0)
+    assert data["imp_factor"] == pytest.approx(expected)
+
+    # back-compat: when no imp_factor is set on the primal, the dual edge defaults to 1.0
+    G_default = nx.MultiGraph(crs="EPSG:32630")
+    G_default.add_node("a", x=0.0, y=0.0)
+    G_default.add_node("b", x=100.0, y=0.0)
+    G_default.add_node("c", x=300.0, y=0.0)
+    G_default.add_edge("a", "b", geom=geom_ab)
+    G_default.add_edge("b", "c", geom=geom_bc)
+    _u, _v, data_default = next(iter(graphs.nx_to_dual(G_default).edges(data=True)))
+    assert data_default["imp_factor"] == pytest.approx(1.0)
+
+
 def test_nx_weight_by_dissolved_edges(parallel_segments_graph):
     """ """
     G_20 = graphs.nx_weight_by_dissolved_edges(parallel_segments_graph, 20)

@@ -1,5 +1,19 @@
 ---
 import '@src/styles/global.css'
+
+interface Props {
+  title?: string
+  description?: string
+  canonicalUrl?: string
+}
+
+const siteUrl = 'https://cityseer.benchmarkurbanism.com'
+const defaultDescription =
+  'Cityseer API is a collection of computational tools for fine-grained network and land-use analysis, useful for assessing the morphological precursors to vibrant neighbourhoods. It is underpinned by rigorous network-based methods that have been developed from the ground-up specifically for hyperlocal analysis at the pedestrian scale.'
+
+const { title = 'cityseer', description = defaultDescription, canonicalUrl } = Astro.props
+const resolvedUrl = canonicalUrl ?? `${siteUrl}${Astro.url.pathname}`
+const ogImageUrl = `${siteUrl}/logos/cityseer_logo_light_red.png`
 ---
 
 <html lang="en-GB">
@@ -9,7 +23,6 @@ import '@src/styles/global.css'
     <meta name="author" content="Benchmark Urbanism (Cityseer Ltd.)" />
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <!-- favicons -->
-    <link rel="icon" href="/favicon.ico" />
     <link rel="icon" href="/favicons/favicon.ico" />
     <link rel="icon" href="/favicons/icon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/favicons/apple-touch-icon.png" />
@@ -24,17 +37,47 @@ import '@src/styles/global.css'
       href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@200;300;400;500;600;700&display=swap"
     />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16/dist/katex.min.css" />
+    <!-- SEO -->
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <meta name="keywords" content="cityseer, urban, metrics, analytics, network analysis, centrality, accessibility, pedestrian, urban design, planning, GIS, Python, Rust" />
+    <link rel="canonical" href={resolvedUrl} />
+    <!-- Open Graph -->
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content={resolvedUrl} />
+    <meta property="og:image" content={ogImageUrl} />
+    <meta property="og:site_name" content="cityseer" />
+    <meta property="og:locale" content="en_GB" />
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={ogImageUrl} />
+    <!-- JSON-LD Structured Data -->
+    <script is:inline type="application/ld+json" set:html={JSON.stringify({
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "name": "cityseer",
+      "applicationCategory": "DeveloperApplication",
+      "operatingSystem": "Cross-platform",
+      "url": siteUrl,
+      "description": defaultDescription,
+      "author": {
+        "@type": "Organization",
+        "name": "Benchmark Urbanism",
+        "url": "https://benchmarkurbanism.com"
+      },
+      "license": "https://www.gnu.org/licenses/agpl-3.0.html",
+      "programmingLanguage": ["Python", "Rust"],
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD"
+      }
+    })} />
     <slot name="metaContent" />
-    <meta
-      set:html
-      name="description"
-      content="Cityseer API is a collection of computational tools for fine-grained network and land-use analysis, useful for assessing the morphological precursors to vibrant neighbourhoods. It is underpinned by rigorous network-based methods that have been developed from the ground-up specifically for hyperlocal analysis at the pedestrian scale."
-    />
-    <meta
-      set:html
-      name="keywords"
-      content="cityseer, urban, metrics, analytics, big data, predictive analytics, urban design, planning, property development, machine learning, API"
-    />
   </head>
 
   <body>

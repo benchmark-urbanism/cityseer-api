@@ -19,14 +19,19 @@
 
 % Auto-generated model macros (from analysis pipeline)
 \input{tables/model_macros}
+\input{tables/barrier_macros}
+\input{tables/spatial_macros}
+\input{tables/forced_macros}
 
 % Title and authors
-\title{A Deterministic Sampling Schedule for Multi-Scale Localised Network Centrality}
-\author{%
-  Author Name\\
-  \textit{Affiliation}\\
-  \texttt{email@example.com}
-}
+\title{Reach-Based Sampling for Multi-Scale Localised Network Centrality}
+% Author(s) to be finalised (co-author pending); draft author block:
+% \author{%
+%   Gareth Simons\\
+%   \textit{Benchmark Urbanism}\\
+%   \texttt{gareth@benchmarkurbanism.com}
+% }
+\author{}
 \date{\today}
 
 \begin{document}
@@ -34,9 +39,7 @@
 \maketitle
 
 \begin{abstract}
-  Localised network centrality (closeness and betweenness within distance thresholds) is fundamental to comparative urban morphological analysis, but exact computation at metropolitan scales requires hours of processing time. Source sampling reduces this cost; however, comparative analysis across cities requires that the sampling schedule be deterministic and network-agnostic so that rankings remain directly comparable.
-
-  We present such a schedule $p(d)$, derived by adapting the Eppstein--Wang source-sampling bound to localised centrality: node count $n$ is replaced by distance-bounded reach $r$, and a canonical grid model converts distance to reach so that $p$ depends only on the analysis distance. The schedule serves both closeness and betweenness from shared Brandes traversals, with two user-chosen parameters: error tolerance $\varepsilon$ and failure probability $\delta$. Validation on the Greater London (\glaNnodes{} nodes) and Greater Madrid (\madridNnodes{} nodes) street networks at distances of 1--20\,km confirms rank preservation ($\rho \geq \overallMinRho$) for both metrics, with measured wall-clock speedups of up to $13\times$ at 20\,km. The schedule is implemented in the open-source \cityseer{} Python package \citep{Simons2022}.
+  Localised network centrality, closeness and betweenness computed within a distance threshold, underpins comparisons of street importance across places and cities. Exact computation traces shortest routes from every street and becomes expensive at metropolitan scale, which makes sampling appealing: traversals run from a fraction of streets and the results are scaled up. Sampling, however, raises a design problem. Each street's sampled score is in effect a survey of its own catchment, and catchments vary by orders of magnitude, so a single sampling rate leaves sparse streets with too few respondents while oversampling dense ones; uncertainty then tracks density and undermines comparison across places. We therefore set the sampling rate street by street: a cheap pilot poll measures every catchment, each street's rate derives from a conservative lower bound on its polled reach so that polling error costs time rather than accuracy, streets the poll cannot certify as populous are enumerated in full, and inverse-probability weighting keeps the estimates unbiased. Where sampling would not reduce cost, the method computes exactly. On four networks, with The Woodlands (TX) held out from all calibration, both metrics preserve the exact ranking ($\rho \geq \adaptiveMinRhoFloor$) at 1--20\,km; on the held-out network the method routes closeness to exact computation, whereas a fixed rate samples it and misses the accuracy target at 20\,km. Including the pilot's cost, sampled 20\,km runs are \adaptiveTwentyKmSpeedupMin--\adaptiveTwentyKmSpeedupMax$\times$ faster than exact computation. A single tolerance parameter governs precision, and the method is implemented in the open-source \cityseer{} package.
 \end{abstract}
 
 \textbf{Keywords:} network centrality, sampling, urban morphology, betweenness, harmonic closeness, computational efficiency
@@ -45,279 +48,323 @@
 \section{Introduction}
 %==============================================================================
 
-Urban morphological analysis relies on localised network centrality to reveal patterns of accessibility and flow in street networks \citep{Cooper2015}. Closeness and betweenness are computed within distance thresholds ranging from pedestrian ($\approx$500\,m) to metropolitan ($\approx$20\,km) scales, as implemented in tools such as sDNA \citep{Cooper2018} and \cityseer{} \citep{Simons2022}. The computational cost of exact computation is $O(n \cdot \bar{r})$ per distance threshold, where $n$ is the number of nodes and $\bar{r}$ is the mean number of reachable nodes (reach); a multi-scale analysis of the Greater London network (\glaNnodes{} nodes) across ten distance thresholds requires several hours on a single core. Source sampling, which runs traversals from a fraction $p$ of nodes and rescales the result, reduces this cost to $O(p \cdot n \cdot \bar{r})$.
+Urban morphological analysis relies on localised network centrality to reveal patterns of accessibility and flow in street networks \citep{Cooper2015}, in which nodes represent street junctions. Two measures are central to this work: \emph{closeness} (how easily a node can reach its neighbours) and \emph{betweenness} (how often a node lies on shortest paths between others). Both are computed within distance thresholds that range from pedestrian ($\approx$500\,m) to metropolitan ($\approx$20\,km) scales, as implemented in tools such as sDNA \citep{Cooper2018} and \cityseer{} \citep{Simons2022}.
 
-When centrality patterns are compared within and between cities \citep{Strano2013}, the sampling schedule must be \emph{deterministic} and \emph{network-agnostic}: the same analysis distance must produce the same sampling probability irrespective of the specific network. If sampling rates varied by network, centrality values from different locations would reflect different noise levels, undermining cross-city comparison. Adaptive methods such as KADABRA \citep{Borassi2019} provide convergence guarantees but produce network-dependent sample counts, precluding direct comparison.
+Exact computation requires running a shortest-path traversal from every node, and the cost scales with both the number of nodes and the size of each node's neighbourhood: on the Greater London network (\glaNnodes{} nodes, plus a surrounding buffer; Section~\ref{sec:preliminaries}) the exact 20\,km betweenness pass alone takes about seven minutes of multi-core compute (430\,s; Section~\ref{sec:setup}), and costs compound across thresholds and metrics.
+% 430 s: GLA exact 20 km betweenness baseline; verified against output/gla_validation_adaptive.csv
+% (sampled_time_b 27.69 s x speedup_betweenness 15.516 = 429.7 s), the same baseline tab7 divides.
+% Re-verify if the macros are regenerated.
+Sampling offers a way to contain this cost: traversals run from a randomly selected fraction of the nodes, and the results are scaled up. Each traversal visits every node within the threshold of its starting point, so a node's estimate is assembled from the traversals that reach it.
 
-The mean number of reachable nodes, or \emph{reach} ($r$), governs both the cost of each traversal and the accuracy of the sampled estimate. At short distances, reach is small and traversals are cheap. At long distances, reach is large and each sampled traversal updates many nodes, so both the potential speedup and the effective sample size per node grow with distance.
+Sampling raises a difficulty of its own: comparability. Centrality patterns are routinely compared across areas and cities \citep{Strano2013}, and sampled estimates support that comparison only if they carry comparable uncertainty. Each node's score is a survey of its own \emph{catchment}, the set of nodes within the distance threshold, and its precision depends on how many sampled sources reach the node. Catchment sizes vary by orders of magnitude between dense cores and sparse peripheries. A fixed rate therefore gives a dense district thousands of reached sources and a cul-de-sac a handful (Figure~\ref{fig:method_schematic}D), so the estimates being compared carry unequal uncertainty. Existing adaptive methods such as KADABRA \citep{Borassi2019} tune their sample counts to a single network-wide accuracy target rather than to the precision of each catchment (Section~\ref{sec:related}).
 
-For global closeness, \citet{Eppstein2004} apply Hoeffding's inequality \citep{Hoeffding1963} with a union bound over all $n$ nodes to derive sample complexity $k = O(\log n / \varepsilon^2)$. Path-sampling methods \citep{Riondato2016, Borassi2019, Pellegrina2023} are effective for global betweenness but lose their cost advantage under localisation, where a single Brandes traversal \citep{Brandes2001} from one source updates all $r$ nodes in the bounded neighbourhood simultaneously. We therefore use source-sampling with a single deterministic schedule for both metrics.
-
-The remainder of the paper is organised as follows. Section~\ref{sec:preliminaries} defines the centrality measures and accuracy metrics. Section~\ref{sec:models} derives the sampling model and presents the algorithm. Section~\ref{sec:related} reviews related work. Section~\ref{sec:setup} describes the experimental setup. Section~\ref{sec:validation} presents validation results. Sections~\ref{sec:discussion} and~\ref{sec:conclusion} discuss practical implications and conclude.
+We therefore measure every catchment with a cheap pilot poll: a small set of traversals runs from random starting points, and each street's hit count measures the size of its catchment at every distance. Each node is then drawn as a traversal source with a probability sized to its own reach. The sample size follows the standard survey rule for a population of a given size \citep{Eppstein2004}, with the catchment rather than the whole network as the population. Section~\ref{sec:method} states the full design: inverse-probability weighting for unbiasedness (no systematic over- or under-estimate), a census for small catchments, a work test that selects exact computation where sampling cannot reduce cost, and a shared traversal that serves both metrics from one sample.
 
 Our contributions are:
 \begin{enumerate}
-  \item A deterministic, network-agnostic source-sampling schedule $p(d)$ for localised closeness and betweenness, derived by: (a) replacing global node count $n$ with distance-bounded reach $r$ in the Eppstein--Wang bound; (b) substituting a canonical grid model for $r$ so that $p$ depends only on distance; and (c) applying a single schedule to both metrics via shared Brandes traversals.
-  \item Empirical validation on the Greater London (\glaNnodes{} nodes) and Greater Madrid street networks at 1--20\,km, demonstrating rank preservation ($\rho \geq \overallMinRho$) with speedups of up to $13\times$.
+  \item A localised sample-size bound: under a distance threshold the relevant population is the catchment, whose size is the reach $r$ rather than the network size $n$, so the required samples scale with $\log r$ rather than $\log n$. A whole-network guarantee must hold at all $n$ streets simultaneously, which inflates the required sample count; a per-catchment guarantee covers only the streets of that catchment and needs fewer.
+  \item A per-node sampling design with a single tolerance parameter $\varepsilon$: a pilot poll measures every catchment, each node receives an inclusion probability sized to a confidence bound on its reach, inverse-probability weighting keeps estimates unbiased, and a per-distance work test selects exact computation where sampling cannot reduce cost.
+  \item Empirical validation at 1--20\,km on four street networks spanning the urban density range, one excluded from every calibration decision, together with an ablation that replaces the measured reach with cheaper stand-ins and shows assumed reach failing exactly where the reach measurements predict.
+  \item An open-source implementation in the \cityseer{} Python package.
 \end{enumerate}
+
+Section~\ref{sec:preliminaries} defines the centrality measures and the evaluation target, Section~\ref{sec:method} states the method, Section~\ref{sec:ablation} presents the ablation of the reach measurement, Section~\ref{sec:validation} reports the validation, and Sections~\ref{sec:discussion} and~\ref{sec:conclusion} discuss and conclude.
 
 %==============================================================================
 \section{Preliminaries}
 \label{sec:preliminaries}
 %==============================================================================
 
-We compute two centrality measures, each with a distance cutoff $d_{\max}$. We write $d$ for $d_{\max}$ when the context is clear.
+Both centrality measures are computed with a distance cutoff $d_{\max}$. We write $d$ for $d_{\max}$ when the context is clear.
 
 \paragraph{Harmonic closeness.}
-Following \citet{Rochat2009} and \citet{Freeman1979}, harmonic closeness sums inverse distances to all nodes within the threshold:
+Closeness measures how easily a node can reach its surroundings \citep{Freeman1979}. We adopt the \emph{harmonic} form, a sum of inverse distances over reachable nodes, rather than classic closeness, which is ill-defined or unstable on the disconnected, variably sized catchments a distance threshold produces. Harmonic closeness sums bounded per-node contributions, with unreachable nodes contributing zero, so it stays well-defined and comparable across catchments of different size \citep{Rochat2009, Boldi2014}, and its additive form lets a single source's contribution be estimated independently under sampling (Appendix~\ref{sec:appendix_ht}):
 \begin{equation}
   C_H(v;\, d_{\max}) = \sum_{\substack{u \neq v \\ d(v,u) \leq d_{\max}}} \frac{1}{d(v, u)}
 \end{equation}
 
 \paragraph{Betweenness.}
-Following \citet{Freeman1977}, betweenness sums the fractions of shortest paths passing through each node. In the localised variant, a bounded Dijkstra traversal from each source $s$ discovers all targets $t$ with $d(s,t) \leq d_{\max}$:
+Betweenness measures how often a node acts as an intermediary \citep{Freeman1977}. For each node $v$, it sums, over all pairs of other nodes within the threshold, the fraction of that pair's shortest paths that pass through $v$:
 \begin{equation}
   C_B(v;\, d_{\max}) = \sum_{\substack{s \neq t,\; s \neq v,\; t \neq v \\ d(s,t) \leq d_{\max}}} \frac{\sigma_{st}(v)}{\sigma_{st}}
 \end{equation}
-where $\sigma_{st}$ is the number of shortest paths from $s$ to $t$, and $\sigma_{st}(v)$ is the number passing through $v$. By the optimal substructure of shortest paths, if $v$ lies on a shortest path from $s$ to $t$, then $d(s,t) = d(s,v) + d(v,t)$. The constraint $d(s,t) \leq d_{\max}$ therefore implies $d(s,v) \leq d_{\max}$, so every node contributing to betweenness at threshold $d_{\max}$ is discovered by the bounded Dijkstra. This property holds for shortest-path (metric) distance; angular (simplest-path) distance \citep{Turner2007} does not satisfy subpath optimality in general (Section~\ref{sec:limitations}).
+where $\sigma_{st}$ is the total number of shortest paths from $s$ to $t$, and $\sigma_{st}(v)$ is the number that pass through $v$. On undirected graphs each pair of endpoints is counted once (Appendix~\ref{sec:appendix_betw} gives the ordered-pair weighting). Any piece of a shortest path is itself a shortest path, so a distance-bounded traversal from each source discovers every node that could contribute to betweenness at that threshold; this is what lets the sampling design of Section~\ref{sec:method} serve betweenness from the same traversals as closeness. The subpath property holds for shortest-path (metric) distance but need not hold for angular (simplest-path) distance \citep{Turner2007}; Section~\ref{sec:limitations} returns to that case.
 
 \paragraph{Reach.}
-Reach is the number of nodes within $d_{\max}$ of a given node. We write $r_v = |\{u : d(v,u) \leq d_{\max}\}|$ for the reach of node $v$, and $\bar{r}$ for the mean reach:
-\begin{equation}
-  \bar{r} = \frac{1}{n} \sum_{v} r_v
-\end{equation}
-On a canonical grid network with uniform inter-node spacing $s = \gridSpacing\,$m, all nodes have the same reach $r_v = \bar{r} = \pi d^2 / s^2$, which grows from approximately 100 nodes at 1\,km to over 40{,}000 at 20\,km. We use $r_c = \pi d^2 / s^2$ to denote this canonical reach. On real networks, $r_v$ varies across nodes; we use $r$ without subscript when the specific quantity (mean, maximum, or canonical) is clear from context.
+The set of nodes within distance $d$ of a node $v$ is $v$'s \emph{catchment}; the \emph{reach} of $v$ is its size, $r_v = |\{u : d(v,u) \leq d\}|$. Reach grows roughly with the square of the analysis distance, and at any fixed distance it scales with local node density, so it varies by orders of magnitude between dense cores and sparse peripheries.
 
-\paragraph{Accuracy metrics.}
-We measure rank preservation using Spearman rank correlation ($\rho$) between sampled and ground-truth centrality values. Urban applications rely on relative rankings (e.g., identifying the most central streets) rather than absolute values, so $\rho$ measures the quantity of practical interest.
+\paragraph{Buffers and live nodes.}
+Nodes near the edge of a network have artificially low centrality because their neighbourhoods are truncated. The standard remedy \citep{Gil2017} is to surround the study area with a ring of \emph{buffer nodes}: paths can pass through them, but their own centrality values are not reported. Only the interior (\emph{live}) nodes receive results. We write $n_L$ for the live count, $n$ for the total, and $\varphi = n_L / n$ for the live fraction. A small town buffered to 20\,km is mostly buffer, so its live fraction is small; this matters when the cost of exact computation is weighed in Section~\ref{sec:worktest}.
+
+\paragraph{Accuracy metric.}
+We evaluate sampling quality using Spearman rank correlation ($\rho$) between sampled and exact centrality values. Urban applications rely on relative rankings (e.g., identifying the most central streets) rather than absolute values, so $\rho$ captures the quantity of practical interest. The coefficient runs from $-1$ to $1$, and a value of $1$ means the sampled ranking matches the exact ranking exactly. We set the target at $\rho \geq \targetRho$, a conventional threshold for ranking applications; a looser $\rho = 0.9$ would allow visible reordering among the lower-ranked streets. A validation \emph{cell} is one combination of network, metric, and distance. Two numbers from the sampled 20\,km cells make that target concrete: the median street moves by at most \sampledMedianShiftMax{} percentile points in the ranking, and at least \sampledTopDecileRetentionMin\% of the streets that truly fall in the most-central tenth stay there.
 
 %==============================================================================
-\section{Sampling Model}
-\label{sec:models}
+\section{Method}
+\label{sec:method}
 %==============================================================================
 
-\subsection{Closeness: the Hoeffding source-sampling bound}
+The method is a survey. Each street's score is estimated over its own catchment, so each catchment is a population, and each population needs its own sample size. The population sizes are unknown, so a cheap poll measures them first; the survey proper is then sized street by street. Three questions organise the section: how many samples a population of a given size needs (Section~\ref{sec:bound}), how big each population is (Section~\ref{sec:pilot}), and when a census is cheaper than a survey (Section~\ref{sec:worktest}).
 
-Following \citet{Eppstein2004}, we sample $k$ source nodes uniformly at random and run a distance-bounded Dijkstra from each. Each sampled source $s$ contributes $1/d(s,v)$ to target node $v$'s closeness estimate; the Horvitz--Thompson estimator (Appendix~\ref{sec:appendix_ht}) gives $\hat{C}_H(v) = (1/p)\sum_{s \in S,\, d(s,v) \leq d_{\max}} 1/d(s,v)$. After normalisation by $C_{\max} = 1/d_{\min}$ (the maximum possible contribution from a single source, where $d_{\min}$ is the minimum edge length), each contribution lies in $[0, 1]$. The Hoeffding bound \citep{Hoeffding1963} gives, for a fixed target node $v$:
+\subsection{How many samples does a catchment need?}
+\label{sec:bound}
+
+Following \citet{Eppstein2004}, sources are drawn at random, a distance-bounded shortest-path traversal runs from each, and each sampled contribution is scaled up by the reciprocal of its inclusion probability (inverse-probability weighting; Appendix~\ref{sec:appendix_ht}). The respondents for a target $v$ are its \emph{reached sources}, the sampled sources whose traversals reach $v$, all of which lie in $v$'s catchment. Consider first an idealised survey of that catchment, with $k$ sources drawn uniformly at random from the $r_v$ catchment members and each contribution weighted by $r_v / k$, so that the estimate $\hat{C}_H(v)$ is a sum of $k$ bounded terms. Hoeffding's inequality \citep{Hoeffding1963}, which bounds how far a sum of independent bounded terms strays from its expectation and thereby determines how many respondents suffice for a stated tolerance, gives
 \[
-  \Pr\!\left[\left|\hat{C}_H(v) - C_H(v)\right| > \varepsilon \cdot C_{\max}\right] \leq 2 \exp(-2k\varepsilon^2)
+  \Pr\!\left[\left|\hat{C}_H(v) - C_H(v)\right| > \varepsilon \cdot C_{\max}\right] \leq 2 \exp(-2k\varepsilon^2),
 \]
-To guarantee this bound simultaneously for all target nodes, a union bound is applied. In the global (unbounded) setting of \citet{Eppstein2004}, the union bound is taken over all $n$ nodes, yielding $k = \log(2n/\delta)/(2\varepsilon^2)$.
+where $C_{\max}$ bounds the total centrality attainable over the catchment. Appendix~\ref{sec:appendix_ht} states the per-term bounds, both for this idealised survey and for the deployed design of Section~\ref{sec:pilot}; Section~\ref{sec:guarantee_scope} discusses where the tolerance is loose.
 
-Under localisation with threshold $d_{\max}$, the key observation is that each source $s$ contributes to the closeness estimate of target $v$ only if $d(s,v) \leq d_{\max}$. Consider a fixed target node $v$ with reach $r_v = |\{u : d(v,u) \leq d_{\max}\}|$. Under Bernoulli source sampling with probability $p$, the number of sampled sources that contribute to $v$'s estimate is $\text{Binomial}(r_v, p)$ with expectation $k_v = p \cdot r_v$. Each source's contribution is independent (depending only on the distance $d(s,v)$). As noted by \citet{Eppstein2004}, the Hoeffding bound extends to this setting: conditioning on the realised sample size $|S \cap N(v)|$, the bound holds for each fixed $k$, and taking expectation over $k$ preserves the inequality.
-
-To ensure the additive guarantee holds simultaneously for all target nodes within a given neighbourhood, a union bound is applied. In the global (unbounded) setting, this union bound runs over all $n$ nodes. Under localisation, only the $r_v$ nodes within $d_{\max}$ of a target $v$ contribute to $v$'s estimate, so the union bound for each neighbourhood runs over at most $r_v$ targets. For a network-agnostic schedule, we replace the network-specific $r_v$ with the canonical reach $r_c$ (Section~\ref{sec:canonical}), yielding:
+The required $k$ follows from the failure budget $\delta$, the survey's total allowance for streets whose estimates miss the tolerance. Because this allowance is shared among all the streets a guarantee covers, covering more streets leaves each a smaller share and demands more samples: in the global setting of \citet{Eppstein2004} the budget is divided across all $n$ nodes of the network (a union bound), which puts a $\log n$ factor into $k$, whereas under localisation only the catchment matters and the budget is divided across the $r_v$ members of $v$'s own catchment. Solving $2r\exp(-2k\varepsilon^2) \leq \delta$ for $k$ gives the required reached-source count for a catchment of size $r$:
 \begin{equation}
-  k = \frac{\log(2r_c/\delta)}{2\varepsilon^2}
+  k(r) = \frac{\ln(2r/\delta)}{2\varepsilon^2}.
   \label{eq:hoeffding_k}
 \end{equation}
-with corresponding sampling probability
+At the default $\varepsilon = \hoeffdingEpsilon$, a catchment of 40{,}000 nodes requires roughly 2{,}700 reached sources. Where reach is locally homogeneous (nearby nodes have catchments of similar size), this allocation carries a catchment-scale analogue of the global guarantee: each of the roughly $r_v$ nodes in a catchment fails with probability at most $\delta / r_v$, so the expected number of tolerance-exceeding nodes per catchment is at most $\delta$. The count scales with $\log r$ rather than $\log n$.
+
+Two parameters enter the bound: the tolerance $\varepsilon$ and the failure probability $\delta$. The failure probability is held at its default throughout, so $\varepsilon$ is the single calibrated parameter governing precision (Section~\ref{sec:ablation}); the work test of Section~\ref{sec:worktest} adds one empirically chosen cost constant.
+
+One sample can serve betweenness as well as closeness at almost no extra cost: Brandes' backpropagation \citep{Brandes2001} recovers a source's betweenness contributions from the same distance-bounded search tree. The closeness bound does not entail this reuse, so the adequacy of one sample for both metrics is established empirically (Sections~\ref{sec:validation} and~\ref{sec:guarantee_scope}).
+
+\subsection{How big is each population? The pilot poll}
+\label{sec:pilot}
+
+The bound of Section~\ref{sec:bound} describes an idealised fixed-size survey of each catchment. The deployed design approximates that survey; this section states the design and returns to the gap between the two. The catchment sizes are unknown, so a pilot polls them. The pilot draws $m = \min(n,\, \max(400,\, 0.025\,n))$ sources uniformly and runs one distance-bounded Dijkstra search (the standard shortest-path algorithm) from each, out to the largest requested threshold. A street with a large catchment is reached by many of these traversals and a street with a small catchment by few, so each street's hit count measures its reach at every distance (Appendix~\ref{sec:appendix_pilot} gives the estimator and its confidence bounds). Because the poll travels on the network itself, it respects rivers, railways, dead ends, and disconnected fringes.
+
+The two directions of estimation error carry different costs (Table~\ref{tab:error_directions}): an overestimated reach lowers the sampling rate and under-samples the catchment, which risks accuracy, whereas an underestimated reach merely oversamples it, which costs time. Inclusion probabilities therefore derive from a one-sided lower confidence bound on the polled reach, a conservative low estimate of the population size, written $\hat{r}^{-}_u$ (Appendix~\ref{sec:appendix_pilot}):
 \begin{equation}
-  p = \min\!\left(1,\; \frac{k}{r_c}\right)
-  \label{eq:hoeffding_p}
+  q_u = \min\!\left(1,\; \frac{k(\hat{r}^{-}_u)}{\hat{r}^{-}_u}\right),
+  \label{eq:node_q}
 \end{equation}
+floored at $q_u \geq 0.01$ to bound the inverse-probability weights. Figure~\ref{fig:method_schematic}B draws these probabilities on the worked example, with marker size proportional to $q$. A node the poll rarely hits falls toward $q = 1$: when the poll cannot establish that a population is large, that population is surveyed in full, which is exact for sparse catchments. Contributions are weighted $1/q_u$ per source, so estimates are unbiased whatever the pilot's quality (Appendix~\ref{sec:appendix_ht}); pilot error affects precision and running time, not bias.
 
-The guarantee is that, for each node $v$, the additive error in $v$'s closeness estimate is at most $\varepsilon \cdot C_{\max}$ with probability at least $1 - \delta$, where the union bound is over the targets in $v$'s neighbourhood. If one wished a simultaneous guarantee across all $n$ nodes, a na\"ive Bonferroni bound would give failure probability at most $n\delta$; in practice the bound is substantially more conservative (Section~\ref{sec:conservatism}).
+\begin{table}[htbp]
+\centering
+\caption{The two directions of pilot error and their costs.}
+\label{tab:error_directions}
+\small
+\begin{tabular}{@{}lll@{}}
+\toprule
+\textbf{Pilot error} & \textbf{Sampling consequence} & \textbf{Cost} \\
+\midrule
+Reach overestimated & Too few respondents & Accuracy at risk \\
+Reach underestimated & Too many respondents & Extra time only \\
+\midrule
+\multicolumn{3}{@{}l}{Rates derive from the lower confidence bound on reach, placing the design's errors on the time side.} \\
+\bottomrule
+\end{tabular}
+\end{table}
 
-The canonical reach $r_c$ is chosen conservatively \emph{relative to the Hoeffding bound}, not as an upper bound on actual reach. When a network's actual reach exceeds $r_c$ (as for London; Figure~\ref{fig:val_reach}), sampling at rate $p = k/r_c$ delivers more sources per neighbourhood than the bound requires ($p \cdot r_v > k$ for those nodes), strengthening the guarantee. When actual reach falls below $r_c$ (sparse peripheries), fewer sources contribute per neighbourhood, but $k$ itself is also lower than needed for that neighbourhood's smaller union bound, so the net effect is a modest loss of oversampling. The empirical results (Section~\ref{sec:validation}) confirm that the schedule is conservative across both regimes.
+Wherever reach is locally uniform, these probabilities give each target the respondents its reach calls for. A target is answered by the members of its catchment, so its expected count of reached sources is the sum of their probabilities. The lower confidence bound normally sits below the true reach, which raises each $q_u$, so the expected count meets or exceeds $k(r_v)$ (Figure~\ref{fig:method_schematic}C: 22 reached sources against the required 18). The design falls short only at the boundary of a dense district, where a street is answered mostly by streets whose large catchments earned them low probabilities. Saturation at $q = 1$ around sparse nodes limits that shortfall, and the residual effect is assessed empirically (Section~\ref{sec:error_structure}).
 
-This model has no fitted parameters; $\varepsilon$ (error tolerance) and $\delta$ (failure probability) are user-chosen constants. At default values $\varepsilon = \hoeffdingEpsilon$, $\delta = \hoeffdingDelta$:
-\begin{itemize}
-  \item \textbf{Low reach} ($r_c \lesssim 1{,}500$): $k > r_c$, so $p = 1$ and computation is exact.
-  \item \textbf{High reach}: $p$ decreases as $O(\log r_c / r_c)$, so the speedup $1/p$ grows as $O(r_c / \log r_c)$.
-\end{itemize}
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\textwidth]{figures/fig1_method_schematic.pdf}
+\caption{A single sampling rate cannot serve catchments of unequal size; rates sized from measured reach can. The panels illustrate the method on a hypothetical network with a dense core and a sparse fringe, with $k$ fixed at 18 for illustration (in the method $k$ grows slowly with catchment size, Eq.~\ref{eq:hoeffding_k}). A) The pilot measures each node's catchment; circles mark two exemplar catchments of 160 and 14 nodes. B) Each node receives its own inclusion probability $q = \min(1, k/\hat{r})$, drawn with marker size proportional to $q$: 0.11 in the core, 1.0 on the fringe. C) One draw under these probabilities: the dense catchment receives 22 reached sources ($n_{\mathrm{eff}}$) against the required 18, and the 14-node catchment is censused (13 of 14 drawn; a few members near the core carry $q$ below 1). Contributions are weighted $1/q$ per source, so estimates are unbiased regardless of the pilot's accuracy. D) For contrast, a fixed rate spending a comparable overall budget ($k/\bar{r} = 0.20$) over-samples the dense catchment (32 sources) while drawing only 5 of the 14 nodes it should census.}
+\label{fig:method_schematic}
+\end{figure}
 
-\subsection{Extension to betweenness}
+The poll size $m$ affects cost, not correctness: a smaller $m$ widens the confidence bounds, which pushes $q$ toward 1 and the work test (below) toward exact computation, both conservative directions. The pilot parameters (the $m$ rule, the poll level $\alpha$, the probability floor) are fixed conventions of the implementation; none is fitted to a validation network.
 
-Because each source traversal already runs a bounded Dijkstra, betweenness can be estimated from the same traversals used for closeness. The Dijkstra exploration is shared; Brandes backpropagation \citep{Brandes2001} adds $O(r)$ work per source.
+The deployed design still differs from the idealised survey of Section~\ref{sec:bound}. Every catchment member is included or not by its own independent draw, so the realised reached-source count varies around its expectation (Figure~\ref{fig:method_schematic}C) and the weights vary across sources. The idealised bound is therefore an approximation for the deployed estimator, assessed empirically (Sections~\ref{sec:guaranteed_vs_validated} and~\ref{sec:validation}).
 
-A traversal from source $s$ accumulates dependency contributions\footnote{We follow Brandes' notation $\delta_s(v)$ for source-dependency; this should not be confused with the failure probability $\delta$.} $\delta_s(v)$ for all reached nodes. On the canonical grid, each $\delta_s(v)$ is bounded in $[0, r_c-1]$ (using the wider bound; the tight bound excluding both $s$ and $v$ is $r_c - 2$). Dividing by this per-source range, each normalised contribution $\delta_s(v)/(r_c - 1)$ lies in $[0, 1]$, and the Hoeffding bound on the mean of $k$ such normalised contributions with tolerance $\varepsilon$ gives $\Pr[|\bar{X} - \mu| > \varepsilon] \leq 2\exp(-2k\varepsilon^2)$, the same bound as for closeness. A union bound over the $r_c$ targets in the neighbourhood then yields the same sample complexity $k$ (Equation~\ref{eq:hoeffding_k}) and sampling probability $p$ (Equation~\ref{eq:hoeffding_p}). On networks where actual reach exceeds $r_c$, the per-source dependency could exceed $r_c - 1$, so the $[0, 1]$ normalisation is approximate; the oversampling in such networks (more sources than the bound requires) compensates empirically (Section~\ref{sec:validation}).
+\subsection{When is a census cheaper? The work test}
+\label{sec:worktest}
 
-The Hoeffding bound is more conservative for betweenness than for closeness, for two reasons. First, the bound uses only the range of the random variables, ignoring the smaller actual variance; betweenness contributions are more heavy-tailed than closeness contributions, so the range bound is less tight. Second, while the bound is applied per target over independently sampled sources (which is valid), the dependency scores $\delta_s(v)$ for different targets $v$ from the same source $s$ are correlated, sharing a single shortest-path tree. The union bound does not exploit this positive dependence. In practice, betweenness consistently shows smaller margins above the $\rho = \targetRho$ threshold than closeness (Section~\ref{sec:validation}).
+When a population is small, a census is cheaper than a survey. The same holds for a whole distance threshold: at short distances traversals are cheap and sampling saves nothing, so the implementation must decide, per distance, whether to sample at all.
 
-\subsection{From reach to distance: the canonical grid model}
-\label{sec:canonical}
-
-Equations~\ref{eq:hoeffding_k}--\ref{eq:hoeffding_p} express $p$ as a function of reach $r$, which varies across networks. To obtain a network-agnostic schedule, we substitute a canonical grid model:
+A \emph{call} is one request for a set of metrics and distances. The work test prices exact work separately for each metric, because the required sources differ. Exact \emph{closeness} runs only the $n_L$ live streets: each tallies its own neighbours from its own traversal. Sampled closeness assembles a boundary street's score from its neighbours' traversals, and some of those neighbours sit just outside the boundary, so buffer streets must be eligible sources or boundary streets lose their contributions. \emph{Betweenness} runs from every node in either mode, because a shortest path between two buffer nodes can credit a live node it passes through: closeness concerns only the study area's own streets, whereas betweenness must also account for through movement. The test predicts each source's traversal work from the size of the neighbourhood it explores, and selects sampling only when the predicted sampled work falls below a margin $\gamma = 0.75$ of the predicted exact work:
 \begin{equation}
-  r_c = \frac{\pi d^2}{s^2}
-  \label{eq:canonical_reach}
+  \sum_{u \in V} q_u\, \hat{r}^{+}_u \;<\; \gamma \cdot
+  \begin{cases}
+    \sum_{u \in V_L} \hat{r}^{+}_u & \text{(closeness only)}\\[2pt]
+    \sum_{u \in V} \hat{r}^{+}_u  & \text{(betweenness requested).}
+  \end{cases}
+  \label{eq:work_test}
 \end{equation}
-with spacing $s = 175$\,m, chosen as a conservative upper bound on inter-node spacing. Comparative studies of European street networks report mean block lengths of 80--180\,m \citep{Boeing2017, Strano2013}; $s = 175$\,m falls near the upper end, so the canonical reach $r_c$ underestimates the actual reach of most urban networks and the prescribed $p$ oversamples relative to what any given network requires. Setting $s$ too low would increase oversampling (more computation, no accuracy benefit); setting $s$ too high would risk undersampling on dense networks. The schedule trades some potential speedup for robust rank preservation across heterogeneous morphologies.
+If exact computation costs the equivalent of 100 traversals, sampling engages only below a predicted cost of 75; a predicted cost of 80 would leave too little saving to cover the pilot's overhead (Figure~\ref{fig:work_test}).
 
-Table~\ref{tab:ew_comparison} provides the resulting sampling probabilities at standard analysis distances for several $\varepsilon$ values.
+Work is priced from the \emph{upper} confidence bound $\hat{r}^{+}_u$, a conservative high estimate of the population size, so a node the poll never hit is priced as the census it would receive rather than at zero. The work model omits fixed overheads such as the pilot; the margin $\gamma$ covers them. The margin was set from preliminary timed runs on the four validation networks. It is the one empirically chosen constant besides the tolerance $\varepsilon$ (Section~\ref{sec:canonical}), and it affects only whether sampling engages, not the estimates. In the validation, every cell the test approves for sampling runs faster than exact computation (Section~\ref{sec:validation}).
 
-\input{tables/tab1_ew_comparison}
+Sampled closeness carries a built-in handicap: it must be able to draw sources from every node, live or buffer, whereas exact closeness runs only from the live nodes. On networks with a low live fraction, exact closeness is already cheap, so the work test routes closeness-only calls there to exact computation. Closeness sampling engages only on dense networks at long distances. Betweenness runs from all nodes in both modes, so its decision turns on the probabilities alone.
 
-\subsection{Algorithm}
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.7\textwidth]{figures/fig16_work_test.pdf}
+\caption{The work test compares predicted traversal work (illustrative values, exact = 100) and engages sampling only when the predicted saving clears the margin $\gamma$. On networks with a low live fraction exact closeness runs only the live streets and is already cheap, so the test declines to sample.}
+\label{fig:work_test}
+\end{figure}
+
+The test runs once per call and per distance. We call the resulting decision the \emph{mode} of that computation: exact or sampled. A single-metric call carries its own mode; a call that computes both metrics together applies the with-betweenness pricing to both. The mode is thus a per-distance decision, and it is distinct from the per-node adaptivity of Section~\ref{sec:pilot}: within a sampled distance every node still carries its own inclusion probability, and nodes whose reach the poll cannot certify as large saturate at $q = 1$, so sparse catchments are enumerated in full even when the distance as a whole is sampled.
+
+\subsection{Algorithm and worked example}
+
+Table~\ref{tab:parameters} collects the parameters introduced in the preceding sections, with their defaults. Algorithm~\ref{alg:adaptive} restates the procedure for implementers using those defaults and introduces nothing beyond the preceding sections. Figure~\ref{fig:method_schematic} illustrates the procedure on a worked example. In the implementation, distances routed to exact computation are batched, so a single Dijkstra per source serves all of them; each sampled distance runs its own pass under its own per-node probabilities.
+
+\begin{table}[htbp]
+\centering
+\caption{Parameters of the method. The tolerance $\varepsilon$ is the one calibrated parameter (Section~\ref{sec:canonical}); the work-test margin $\gamma$ is the one empirically chosen cost constant; the rest are fixed conventions of the implementation.}
+\label{tab:parameters}
+\small
+\begin{tabular}{@{}llp{5.8cm}l@{}}
+\toprule
+\textbf{Symbol} & \textbf{Name} & \textbf{Role in the survey} & \textbf{Default} \\
+\midrule
+$\varepsilon$ & Tolerance & How tight each street's estimate must be & \hoeffdingEpsilon \\
+$\delta$ & Failure budget & The allowance for streets that miss the tolerance & \hoeffdingDelta \\
+$\alpha$ & Poll level & How cautious the reach bounds are & 0.1 \\
+$m$ & Poll size & How many pilot traversals run & $\min(n,\, \max(400,\, 0.025\,n))$ \\
+$q_{\min}$ & Probability floor & Keeps any one source from dominating & 0.01 \\
+$\gamma$ & Work-test margin & How large the predicted saving must be before sampling engages & 0.75 \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 \begin{algorithm}[htbp]
-  \caption{Deterministic per-distance sampling for localised network centrality}
-  \label{alg:deterministic}
+  \caption{Per-node reach-based sampling for localised network centrality}
+  \label{alg:adaptive}
   \begin{algorithmic}[1]
-    \Require Network $G = (V, E)$, distance thresholds $D = \{d_1, \ldots, d_m\}$
-    \Require Error tolerance $\varepsilon$ (default $\hoeffdingEpsilon$), failure probability $\delta$ (default $\hoeffdingDelta$)
-    \Require Canonical grid spacing $s$ (default 175\,m)
+    \Require Network $G = (V, E)$ with live nodes $V_L \subseteq V$ and buffer nodes $V_B = V \setminus V_L$
+    \Require Distance thresholds $D = \{d_1, \ldots, d_j\}$
+    \Require Tolerance $\varepsilon$ (default $\hoeffdingEpsilon$), failure probability $\delta$ (default $\hoeffdingDelta$), poll level $\alpha$ (default 0.1), work-test margin $\gamma$ (default 0.75)
     \Ensure Closeness estimates $\hat{C}_H[d]$ and betweenness estimates $\hat{C}_B[d]$ for each $d \in D$
 
+    \State Pilot: draw $m = \min(|V|,\, \max(400,\, 0.025\,|V|))$ sources uniformly; run one Dijkstra per source, bounded at $\max(D)$; record per-node hit counts $h_u[d]$ for each $d \in D$
     \For{each distance $d \in D$}
-    \State Compute canonical reach: $r_c \gets \pi d^2 / s^2$ \Comment{Eq.~\ref{eq:canonical_reach}}
-    \State Compute required sources: $k \gets \ln(2r_c/\delta) / (2\varepsilon^2)$
-    \State Compute sampling probability: $p \gets \min(1, k / r_c)$
-    \State Sample sources $S \subseteq V$ by including each node independently with probability $p$
-    \For{each source $s \in S$}
-    \State Run distance-bounded Dijkstra from $s$; accumulate closeness via inverse distances
-    \State Run Brandes backpropagation; accumulate betweenness path counts
+    \State Reach bounds: $\hat{r}^{-}_u,\, \hat{r}^{+}_u \gets$ one-sided Clopper--Pearson bounds from $h_u[d]$ at level $\alpha$
+    \State Per-node probability: $q_u \gets 1$ if $\hat{r}^{-}_u = 0$ (census); otherwise $q_u \gets \min\!\left(1,\; \ln(2\hat{r}^{-}_u/\delta) \,/\, (2\varepsilon^2\, \hat{r}^{-}_u)\right)$, floored at 0.01
+    \State Work test: exact cost $\gets \sum_{u \in V_L} \hat{r}^{+}_u$ (closeness only) or $\sum_{u \in V} \hat{r}^{+}_u$ (with betweenness)
+    \If{$\sum_{u \in V} q_u \hat{r}^{+}_u \geq \gamma \cdot$ exact cost} \Comment{a census is cheaper; Section~\ref{sec:worktest}}
+    \State Run exact computation (closeness sources $V_L$; betweenness sources $V$)
+    \Else
+    \State Sample sources $S \subseteq V$ by including each node $u$ independently with prob.\ $q_u$
+    \For{each source $u \in S$} \Comment{$S$ includes both live and buffer nodes}
+    \State Run distance-bounded Dijkstra from $u$
+    \State Accumulate closeness to each live target $v$ via $1/(q_u \cdot d(u,v))$ \Comment{IPW}
+    \State Run Brandes backpropagation; accumulate betweenness for live targets, weighted $1/q_u$
     \EndFor
-    \State Scale both estimates by $1/p$ \Comment{Horvitz--Thompson; Appendix~\ref{sec:appendix_ht}}
+    \EndIf
     \EndFor
 
     \State \Return $\{\hat{C}_H[d],\, \hat{C}_B[d] : d \in D\}$
   \end{algorithmic}
 \end{algorithm}
 
-Each distance threshold draws an independent source set. In the implementation, distances where $p = 1$ are batched into a single pass so that one Dijkstra per source serves all such distances simultaneously, while each sampled distance ($p < 1$) requires a separate pass with its own source set. Per-distance independence simplifies the probabilistic analysis at the cost of some redundant traversals.
+\subsection{What is guaranteed and what is validated}
+\label{sec:guaranteed_vs_validated}
 
-\subsection{Conservatism of the bound}
-\label{sec:conservatism}
-
-The schedule at $\varepsilon = \hoeffdingEpsilon$ is empirically conservative: observed errors on both validation networks are well below the bound (Section~\ref{sec:validation}). Three sources of slack account for this. First, the Hoeffding bound uses only the range of the random variables, ignoring the smaller actual variance; on the synthetic networks tested here, the variance-to-range ratio averages $\sigma^2/b^2 \approx 0.02$ across topologies and distances (closeness), where $b$ is the per-source contribution range. Bernstein's inequality \citep{BoucheronLugosiMassart2013} would tighten this by incorporating empirical variance, but the existing slack makes this refinement unnecessary for the accuracy targets considered here. Second, the union bound does not exploit positive dependence among node-level errors. Third, Spearman $\rho$ is more forgiving than additive error: small absolute errors rarely alter rankings among well-separated nodes, and the nodes with the highest centrality (which analysts care about most) have the highest reach and therefore the highest effective sample size.
+The design separates three levels of assurance: unbiasedness is guaranteed, additive accuracy for closeness is argued under stated approximations, and rank fidelity is demonstrated empirically. The Horvitz--Thompson weighting guarantees unbiasedness for both metrics, independently of pilot quality (Appendix~\ref{sec:appendix_ht}). The additive error guarantee of Section~\ref{sec:bound} applies to closeness and is stated for the idealised survey; the deployed design targets the same expected respondent count, and the gap between the two is assessed empirically. Rank fidelity, the quantity applications rely on, has no formal bridge from the additive bound and is validated in Section~\ref{sec:validation}. Betweenness has no comparable per-source bound: a single source can account for a large share of a target's value, so betweenness is judged entirely by the validation.
 
 %==============================================================================
-\section{Related Work}
-\label{sec:related}
+\section{Ablation: why measurement is necessary}
+\label{sec:ablation}
 %==============================================================================
 
-Table~\ref{tab:bounds_comparison} summarises existing sampling approaches for centrality approximation, grouped by computational primitive; \citet{Bergamini2019} provide a comprehensive empirical comparison for global betweenness.
+The load-bearing component of the method is the measurement of reach. This section tests that claim by ablation, replacing the measured reach with cheaper stand-ins. Three ways to know a population's size form a ladder: assume it from a formula, count it on a map, or measure it on the network. Each of the first two rungs fails in a way the next rung catches; Table~\ref{tab:ablation_ladder} maps the ladder.
 
 \begin{table}[htbp]
-  \centering
-  \caption{Sampling approaches for centrality approximation. \emph{Source-sampling} runs a full Brandes traversal from each sampled node, updating all reached nodes. \emph{Path-sampling} samples individual shortest paths, updating only nodes along that path. All prior methods target global (unbounded) centrality; our approach replaces node count $n$ with distance-bounded reach $r$ and applies one schedule to both metrics.}
-  \label{tab:bounds_comparison}
-  \small
-  \begin{tabular}{@{}llllll@{}}
-    \toprule
-    \textbf{Method} & \textbf{Primitive} & \textbf{Metric} & \textbf{Guarantee} & \textbf{Samples $k$} & \textbf{Key param.} \\
-    \midrule
-    \multicolumn{6}{@{}l}{\emph{Source-sampling (full Dijkstra tree per sample)}} \\[2pt]
-    Eppstein \& Wang \citeyearpar{Eppstein2004} & Source & Closeness & Additive, all nodes & $O(\log n / \varepsilon^2)$ & $n$ \\
-    Brandes \& Pich \citeyearpar{Brandes2007} & Source & Both & Empirical & User-chosen $k$ & --- \\
-    Bader et al.\ \citeyearpar{Bader2007} & Source & Betweenness & Relative, per vertex & $O(1 / (\varepsilon^2 b(v)))$ & $b(v)$ \\
-    Geisberger et al.\ \citeyearpar{Geisberger2008} & Source & Betweenness & Unbiased estimator & User-chosen $k$ & --- \\[4pt]
-    \multicolumn{6}{@{}l}{\emph{Path-sampling (single shortest path per sample)}} \\[2pt]
-    Riondato et al.\ \citeyearpar{Riondato2016} & Path & Betweenness & Additive, all nodes & $O(\log \text{VD} / \varepsilon^2)$ & VD \\
-    KADABRA \citeyearpar{Borassi2019} & Path & Betweenness & Additive, all nodes & Adaptive & $D$ \\
-    SILVAN \citeyearpar{Pellegrina2023} & Path & Betweenness & Non-uniform & Variance-dep. & Variance \\[4pt]
-    \midrule
-    \textbf{This work} & \textbf{Source} & \textbf{Both} & \textbf{Additive, per neighbourhood\textsuperscript{*}} & $\boldsymbol{O(\log r / \varepsilon^2)}$ & $\boldsymbol{r}$ \\
-    \bottomrule
-  \end{tabular}
-
-  \vspace{0.3em}
-  \footnotesize \textsuperscript{*}Union bound over $r$ nodes within each distance neighbourhood, not over all $n$ nodes globally (see Section~\ref{sec:models}).
+\centering
+\caption{The ablation ladder: three ways to obtain reach.}
+\label{tab:ablation_ladder}
+\small
+\begin{tabular}{@{}llll@{}}
+\toprule
+\textbf{Rung} & \textbf{Reach obtained by} & \textbf{Fails when} & \textbf{Shown in} \\
+\midrule
+1 & Assumed from a grid formula & Real reach falls below it & Figure~\ref{fig:val_reach}, Table~\ref{tab:ablation} \\
+2 & Counted on a map (Euclidean disc) & Circuity crowds the disc rim & Figure~\ref{fig:disc_vs_reach} \\
+3 & Measured on the network (pilot poll) & --- (the method; Section~\ref{sec:validation}) & Figure~\ref{fig:adaptive_accuracy} \\
+\bottomrule
+\end{tabular}
 \end{table}
 
-\emph{Source-sampling} selects a subset of source nodes and runs a full Brandes traversal from each. \citet{Brandes2007} established this approach empirically for both closeness and betweenness, scaling results by $n/k$. \citet{Geisberger2008} improved betweenness estimation with distance-weighted corrections to reduce overestimation near the source. \citet{Bader2007} used adaptive source-sampling with multiplicative per-vertex guarantees, noting that high-centrality nodes require fewer samples. None of these methods provides a deterministic, distance-based sampling schedule suitable for comparative multi-scale analysis.
+\subsection{Rung 1: assume reach from distance}
+\label{sec:canonical}
 
-\emph{Path-sampling} \citep{Riondato2016, Borassi2019, Pellegrina2023} samples random source--target pairs and computes a single shortest path per sample. Sample complexity depends on the vertex diameter (VD) rather than $n$, yielding formal $(\varepsilon, \delta)$ guarantees. However, path-sampling does not adapt straightforwardly to localised analysis: the admissible pair set depends on local morphology (no fixed global pair space), each sample updates only one path (whereas a single source traversal updates all $r$ reached nodes), and path-sampling applies only to betweenness, so closeness would require a separate computation. Our approach instead uses the source-sampling primitive, which serves both metrics from shared Dijkstra trees.
+A network-agnostic schedule can be built by assuming a single reach value per distance. On a regular grid with inter-node spacing $s$, the number of nodes within distance $d$ is the area of a circle divided by the area per node:
+\begin{equation}
+r_c = \frac{\pi d^2}{s^2}.
+\label{eq:canonical_reach}
+\end{equation}
+We call this the \emph{canonical reach}, canonical in the sense of a fixed, network-agnostic reference assumption. With $s = \gridSpacing$\,m, Eq.~\ref{eq:hoeffding_k} yields one fixed sampling rate per distance, $p(d) = \min(1, k(r_c)/r_c)$, shared by every node at that distance. The spacing is deliberately conservative: it sits above typical mean street-segment lengths in European cities (city means $\approx$95--122\,m; \citealp{Strano2013}), and a larger $s$ lowers the assumed reach and so raises the sampling rate, erring toward oversampling. The single free parameter, the tolerance $\varepsilon$, was calibrated once on the sparsest calibration network (Cary, NC), where the grid model is least conservative; $\varepsilon = \hoeffdingEpsilon$ is the loosest value at which Cary meets the $\rho \geq \targetRho$ target at every distance, and the per-node method of Section~\ref{sec:method} inherits it unchanged.
 
-%==============================================================================
-\section{Experimental Setup}
-\label{sec:setup}
-%==============================================================================
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.75\textwidth]{figures/fig6_reach_comparison.pdf}
+\caption{The grid assumption oversamples the metros and under-samples the suburbs, and the held-out network lies lowest of all, which predicts its failure (Table~\ref{tab:ablation}). Mean measured reach vs.\ analysis distance (logarithmic axes) for the four validation networks, against the canonical grid model ($s = \gridSpacing\,$m, grey line); background tints mark the regions above and below the canonical curve. The annotated arrow marks the held-out network's 20\,km gap, where the assumed reach is 2.6 times the measured value.}
+\label{fig:val_reach}
+\end{figure}
 
-\paragraph{Synthetic networks.}
-We generate synthetic networks using \nTopologies{} topology templates: trellis (regular grid with diagonal connections; average degree $\approx 4$), tree (hierarchical branching; average degree $\approx 2.3$), and linear (constrained grid; average degree $\approx 3$). These span the range from highly connected planned cores (trellis) to low-connectivity suburban development (tree). Each topology is tiled to create networks of approximately 12\,km extent; accuracy is evaluated on a central 4\,km$\times$4\,km window to reduce edge effects. We test \nDistances{} distance thresholds from 500\,m to \syntheticMaxDist{}\,m and \nEpsilons{} error tolerances from $\varepsilon = 0.02$ to $0.1$.
+The assumption fails where real reach falls below the curve (Figure~\ref{fig:val_reach}). Table~\ref{tab:ablation} condenses the canonical schedule's record; the per-distance detail is in Appendix Tables~\ref{tab:validation}--\ref{tab:woodlands_validation}. The three calibration networks meet the target at every distance. The held-out network fails at the one distance where its closeness sampled: 20\,km, with $\rho = \woodlandsMinRho$ against the $\targetRho$ target (shorter distances ran exact by construction). In the percentile-point terms of Section~\ref{sec:preliminaries}, passing cells hold the median street within \sampledMedianShiftMax{} percentile points of its exact rank; on this cell the streets shift by \woodlandsBaselineRankDispC{} of the rank range on average, and the shifts cluster in space (Figure~\ref{fig:rank_shift_paired}). The failure has a mechanistic explanation. At 20\,km The Woodlands reaches \woodlandsReachRatioTwentyKm{} of the canonical reach, against \caryReachRatioTwentyKm{} for Cary, so the schedule under-samples it more severely than any network used in calibration. Re-running the held-out network at a tighter tolerance restores the target, confirming under-sampling from overestimated reach rather than a defect of the bound. The schedule carries no information about an individual network's reach; the measured reach identifies the deficit before any centrality run.
 
-\paragraph{Boundary effects.}
-Nodes near network edges have systematically lower centrality because their catchments are truncated. Following standard practice \citep{Gil2017}, we apply an inward buffer from the convex hull boundary equal to the maximum analysis distance; only nodes inside this buffer are included in accuracy calculations. This buffer defines the evaluation window (which nodes' centrality values are compared), not the computation boundary (all nodes serve as potential sources and targets).
+\input{tables/tab8_ablation}
 
-\paragraph{Validation networks.}
-We validate on two real-world street networks: the Greater London Authority (GLA) road network (Ordnance Survey Open Roads; \glaNnodes{} nodes after preprocessing) and the Greater Madrid metropolitan network (\madridNnodes{} nodes). Both networks use a \glaBuffer{}\,km inward buffer. We report the mean over three random seeds; inter-seed variation in $\rho$ is small (standard deviation $< 0.002$ at all distances). Ground truth uses all sources ($p = 1.0$) and is deterministic.
+\subsection{Rung 2: count reach on a map}
+\label{sec:euclidean}
+
+A cheaper measurement counts, for each node, the neighbours within the Euclidean radius (a KD-tree query, no network traversal), then divides by a fixed deflation factor of 2.5, because Euclidean discs hold more nodes than network catchments of the same radius. The deflation exceeds the measured disc-to-reach ratio for all but a small tail of nodes (2.5--5.2\% of live nodes per cell; \texttt{output/euclidean\_reach\_ratios.csv}). The consequence is asymmetric: over-deflation only oversamples, the cheap direction of error, while the tail nodes are under-sampled.
+
+The count is correct on average but blind to circuity and barriers alike. A node counts disc neighbours the network cannot deliver within the distance limit, whether a river severs them or ordinary route indirectness adds the excess travel. Figure~\ref{fig:disc_vs_reach} shows the mechanism at one Cary node: most of its disc population sits near the rim, beyond 10\,km of network travel, so the true ratio exceeds the deflation and the node is under-sampled. The tail is too small to move a network-level rank correlation, but a map count cannot tell its members from typical nodes. The rung is therefore judged by the single-node mechanism rather than by an accuracy score.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\textwidth]{figures/fig14_disc_vs_reach.pdf}
+\caption{Ablation rung 2: a map count claims far more neighbours than the network can deliver, so the fixed deflation under-corrects and the node is under-sampled. Euclidean disc against network reach at 10\,km for the Cary node with the largest disc-to-reach ratio: the disc (dashed circle) contains \barrierDiscCount{} nodes; the network traversal from the node reaches \barrierReach{} (orange), with the solid line marking the smoothed boundary of the reached set. Grey nodes lie inside the disc but beyond 10\,km of network travel. No single barrier severs the eastern block: the exclusion is ordinary path circuity accumulating over a disc population concentrated near the rim. The 2.5 deflation absorbs typical circuity; here the ratio rises to \barrierRatio. The palest points are network nodes outside the disc, shown for context.}
+\label{fig:disc_vs_reach}
+\end{figure}
+
+\subsection{Rung 3: measure reach on the network}
+
+The pilot poll of Section~\ref{sec:pilot} travels on the network itself, so barriers, dead ends, and disconnected fringes are priced into the hit counts, and the confidence bounds convert the remaining uncertainty into oversampling rather than under-sampling. This rung is the method; there is nothing to ablate. Its results are the subject of Section~\ref{sec:validation}.
 
 %==============================================================================
 \section{Validation}
 \label{sec:validation}
 %==============================================================================
 
-\subsection{Synthetic networks}
+\subsection{Setup}
+\label{sec:setup}
 
-Figure~\ref{fig:headline} shows Spearman $\rho$ as a function of $\varepsilon$ across synthetic topologies and distances. At the default $\varepsilon = \hoeffdingEpsilon$, closeness exceeds $\rho = \targetRho$ across all topologies. Betweenness exceeds the threshold for tree and linear topologies by a wide margin; the trellis topology falls slightly below, particularly for betweenness. The trellis's regular grid structure produces many nodes with near-identical centrality values, so small perturbations cause rank swaps that depress $\rho$ even though the spatial pattern is preserved. The trellis therefore represents a worst case for rank-based evaluation. For networks with grid-like regularity, reducing $\varepsilon$ to 0.04 restores $\rho > \targetRho$ at the cost of lower speedup (Table~\ref{tab:ew_comparison}).
+We validate on four real-world street networks spanning the urban density range, each built from official open road-network data. \emph{Greater London} (Ordnance Survey Open Roads; \glaNnodes{} live nodes) and \emph{Greater Madrid} (the official \emph{Red Viaria} road network; \madridNnodes{} live nodes) are dense metropolitan networks. \emph{Cary, NC} (US Census TIGER/Line; \caryNnodes{} live nodes; mean node degree $\approx 2.5$, roughly the number of street segments meeting at a typical junction) is a low-density planned suburb in the Raleigh region. \emph{The Woodlands, TX} (US Census TIGER/Line; \woodlandsNnodes{} live nodes; mean node degree $\approx 2.5$) is a master-planned suburb north of Houston with a strongly dendritic (tree-like, cul-de-sac-heavy) street pattern. Each network is analysed within a \glaBuffer{}\,km buffer (Section~\ref{sec:preliminaries}); in every case the live study area is delimited by the administrative boundary geocoded from OpenStreetMap via OSMnx \citep{Boeing2017}, independently of the road-geometry source.
+
+The tolerance $\varepsilon$ was calibrated on Cary, and the reach deflation of Section~\ref{sec:euclidean} on the calibration networks, so The Woodlands plays no part in selecting the accuracy parameters. It serves as the out-of-sample accuracy test. The one constant set from timings on all four networks is the work-test margin $\gamma$, which affects which distances sample but not the values of sampled estimates (Section~\ref{sec:worktest}); the held-out 20\,km betweenness cell realises a cost far enough below exact that its sampling decision is insensitive to the margin's value.
+
+Ground truth uses all sources ($p = 1$) and is deterministic. All timings are wall-clock on one workstation (Apple M5 Pro, 18 cores, 48\,GB memory); exact and sampled runs use the same parallel traversal code. Each speedup divides the exact reference time, recorded when the ground truth was built, by the mean sampled runtime. The two were timed in separate sessions on the same machine, and small timing differences are sensitive to background load, so the smallest ratios (the 5\,km betweenness cells) are the least certain; the mode decisions and the headline 10--20\,km speedups do not depend on them.
+
+The validation runs each metric at each distance as a separate single-metric call, so the work test's mode is recorded per metric and every sampled cell pays a full pilot; a multi-distance call shares one pilot and costs less. We report the mean over three random seeds; the largest inter-seed standard deviation in $\rho$ across all networks, metrics, and distances is \adaptiveMaxSeedStd.
+
+\subsection{Accuracy and cost}
+
+All four networks meet the $\rho \geq \targetRho$ target for both metrics at every distance from 1--20\,km (Figure~\ref{fig:adaptive_accuracy}; Table~\ref{tab:adaptive_validation} consolidates $\rho$ and measured wall-clock speedups). The minimum sampled value is $\rho = \adaptiveMinRho$, on the held-out network's 20\,km betweenness; distances the work test routed to exact computation equal the ground truth by construction (open markers in Figure~\ref{fig:adaptive_accuracy}). The inter-seed spreads (at most \adaptiveMaxSeedStd) are small enough that every individual seed also clears the target, and the held-out network passes everywhere with no additional tuning. Panel~C validates that network on a 50\,km buffer across the full 1--50\,km range; Section~\ref{sec:limitations} reports the extended distances.
 
 \begin{figure}[htbp]
-  \centering
-  \includegraphics[width=\textwidth]{figures/fig1_rho_vs_epsilon.pdf}
-  \caption{Ranking accuracy (Spearman $\rho$) vs.\ error tolerance $\varepsilon$ for closeness (A) and betweenness (B), across synthetic topologies and distances. Per-topology lines are shown alongside the bold mean. The green dashed line marks $\rho = \targetRho$; the grey dotted line marks the default $\varepsilon = \hoeffdingEpsilon$. The trellis topology falls below the threshold because its regular grid produces many near-identical centrality values, making rank ordering sensitive to small perturbations.}
-  \label{fig:headline}
+\centering
+\includegraphics[width=\textwidth]{figures/fig13_adaptive_accuracy.pdf}
+\caption{Every point on every network meets the $\rho \geq \targetRho$ target (dashed line), the held-out network included. Spearman $\rho$ vs.\ analysis distance under the per-node method. Panel C validates the held-out network across the full 1--50\,km range on a 50\,km buffer, which supports the thresholds beyond the 20\,km extent of the main validation. Open markers denote distances the work test routed to exact computation, where $\rho = 1$ by construction; filled markers are sampled.}
+\label{fig:adaptive_accuracy}
 \end{figure}
 
-\subsection{Greater London}
+\input{tables/tab7_adaptive_validation}
 
-Table~\ref{tab:validation} reports results at five distances from 1--20\,km. Both closeness and betweenness achieve $\rho > \targetRho$ at all distances, with minimum $\rho = \glaMinRhoBetweenness$ (betweenness, 20\,km). Wall-clock speedup reaches \glaTwentyKmSpeedup{}$\times$ (closeness) and \glaTwentyKmSpeedupBetweenness{}$\times$ (betweenness) at 20\,km.
+The work test's decisions follow distance and density (per-cell modes in Table~\ref{tab:adaptive_validation}). No network samples at 1--2\,km, where traversals are cheap; the metropolitan networks sample betweenness from 5\,km and closeness from 10\,km; the suburbs sample only betweenness, at 10--20\,km, because their low live fractions make exact closeness cheap (Section~\ref{sec:worktest}). The suburbs' exact closeness entries record the work test operating as designed: exact closeness on those networks is already inexpensive, and sampling would add cost.
 
-\input{tables/tab2_validation}
+Every sampled cell runs faster than exact computation, and the gain grows with distance (Table~\ref{tab:adaptive_validation}): the smallest speedup is Madrid's 5\,km betweenness, where the pilot absorbs most of the predicted saving, and by 20\,km the sampled cells run \adaptiveTwentyKmSpeedupMin$\times$ to \adaptiveTwentyKmSpeedupMax$\times$.
 
-At distances of 1--2\,km, $p = 1.0$ (exact computation) and the measured speedup falls below 1.0$\times$ because the sampling framework adds overhead without reducing the number of traversals. This overhead arises from the source-selection machinery; the implementation batches exact-computation distances into a single pass but still incurs per-source bookkeeping costs. Wall-clock speedup exceeding 1.0$\times$ is observed at 10\,km and beyond.
+On the cells both designs sample, the comparison with the canonical schedule turns on how a network's measured reach compares with the schedule's assumed reach (per-cell numbers in Tables~\ref{tab:validation}--\ref{tab:woodlands_validation}). London's measured reach exceeds the canonical assumption (Figure~\ref{fig:val_reach}), so the per-node probabilities sit below the schedule's fixed rate and the method is faster at 20\,km. On Madrid the two designs run close together. On suburban betweenness the schedule is faster: its rate derives from an assumed reach above the suburbs' measured reach, so it draws fewer sources, and it pays no pilot and no separate pass per sampled distance. The same under-sampling fails the held-out closeness target (Section~\ref{sec:canonical}), and the schedule cannot detect the failure in advance.
 
-\subsection{Greater Madrid}
-
-Madrid's metropolitan area includes sparser peripheral zones where actual reach falls below the canonical curve (Figure~\ref{fig:val_reach}), so the schedule provides less oversampling than for London. The schedule achieves $\rho > \targetRho$ for both metrics at all tested distances (Table~\ref{tab:madrid_validation}), though the margin is thinnest at 20\,km betweenness ($\rho = \madridMinRhoBetweenness$), the weakest result across both networks. Wall-clock speedup reaches \madridTwentyKmSpeedup{}$\times$ (closeness) and \madridTwentyKmSpeedupBetweenness{}$\times$ (betweenness) at 20\,km.
-
-\input{tables/tab4_madrid_validation}
-
-\subsection{Comparison across networks}
-
-The two networks bracket a range of European urban morphologies (Figure~\ref{fig:val_accuracy}): London is denser, with actual reach consistently above the canonical curve (Figure~\ref{fig:val_reach}), so the schedule oversamples and accuracy margins are wide. Madrid's sparser peripheral zones bring actual reach closer to or below the canonical estimate, providing a harder test. That both networks achieve $\rho \geq \targetRho$ at all distances, with betweenness at 20\,km as the limiting case in each, is consistent with the schedule providing adequate rank preservation across this morphological range, whether oversampling (London) or relying on the Hoeffding slack (Madrid).
+Figure~\ref{fig:adaptive_comparison} places the method next to the canonical schedule of Section~\ref{sec:canonical}: the held-out closeness failure disappears, and the suburb closeness entries are computed exactly. Where both designs look worse (panel C), the streets involved carry almost no traffic and their relative order is meaningless: many low-reach streets have betweenness values at or near zero, so the reach-quartile decomposition shows a within-quartile depression shared by both designs at any sample size.
 
 \begin{figure}[htbp]
-  \centering
-  \includegraphics[width=\textwidth]{figures/fig4_validation_accuracy.pdf}
-  \caption{Spearman $\rho$ vs.\ analysis distance for Greater London (circles, solid) and Greater Madrid (squares, dashed), for closeness (A) and betweenness (B). The green dashed line marks $\rho = \targetRho$. Both networks exceed the target at all distances; betweenness is the limiting factor at long distances.}
-  \label{fig:val_accuracy}
-\end{figure}
-
-\begin{figure}[htbp]
-  \centering
-  \includegraphics[width=\textwidth]{figures/fig5_validation_speedup.pdf}
-  \caption{Measured wall-clock speedup (baseline time / sampled time, log scale) vs.\ analysis distance for Greater London (circles, solid) and Greater Madrid (squares, dashed). At short distances where $p \approx 1$, sampling overhead dominates. Speedup exceeding 1.0$\times$ is observed at 10\,km and beyond, reaching \glaTwentyKmSpeedup{}$\times$ (GLA closeness) and \madridTwentyKmSpeedupBetweenness{}$\times$ (Madrid betweenness) at 20\,km.}
-  \label{fig:val_speedup}
-\end{figure}
-
-\begin{figure}[htbp]
-  \centering
-  \includegraphics[width=0.75\textwidth]{figures/fig6_reach_comparison.pdf}
-  \caption{Mean reach (log scale) vs.\ analysis distance for Greater London, Greater Madrid, and three synthetic topologies, compared against the canonical grid model ($s = \gridSpacing\,$m, black line). Greater London lies consistently above the canonical curve (the schedule oversamples). Greater Madrid falls below at longer distances, reflecting sparser peripheral areas.}
-  \label{fig:val_reach}
+\centering
+\includegraphics[width=\textwidth]{figures/fig12_baseline_vs_adaptive.pdf}
+\caption{Canonical schedule (ablation rung 1) versus the per-node method at 20\,km. In panels A and B the rung-1 held-out failure (Woodlands closeness, below the target line) is resolved; open markers denote per-node closeness entries the work test routed to exact computation; values are means over three seeds (Table~\ref{tab:adaptive_validation}). Where both designs score lower in panel C, the streets involved carry almost no traffic and their relative order is meaningless: the within-quartile depression comes from tie-heavy near-zero values rather than a sample deficit, and both designs share it. The upper three quartiles improve slightly and the lowest-reach quartile shifts by a similar small amount the other way. Panel C omits the target line because the target applies to the full ranking rather than to within-quartile correlations.}
+\label{fig:adaptive_comparison}
 \end{figure}
 
 \subsection{Error structure}
+\label{sec:error_structure}
 
-Figure~\ref{fig:error_crossover} reveals a crossover in error structure: absolute error increases with reach, but relative error (absolute error divided by median true centrality) decreases. High-reach nodes have higher effective sample sizes, so their relative errors are small. This means that precision scales with centrality: the nodes that analysts care about most (high-centrality nodes in dense areas) are estimated most accurately, while low-reach peripheral nodes approach exact computation ($p \to 1$ at low reach).
-
-\begin{figure}[htbp]
-  \centering
-  \includegraphics[width=\textwidth]{figures/fig2_error_vs_reach.pdf}
-  \caption{Per-node median errors pooled across reach quartiles at distances where $p < 1$, for Greater London (circles) and Greater Madrid (squares). (A) Absolute error increases with reach. (B) Relative error (absolute error divided by median true centrality value) decreases with reach, showing that precision scales with centrality importance.}
-  \label{fig:error_crossover}
-\end{figure}
-
-\subsection{Spatial distribution of errors}
-
-Figure~\ref{fig:spatial_error} shows the spatial distribution of sampling residuals (sampled minus true centrality) for both closeness and betweenness on the Greater London and Greater Madrid networks at 20\,km. Residuals are spatially uniform, with no systematic concentration in dense urban cores or sparse peripheral areas. Figure~\ref{fig:decile_transition} shows decile transition matrices: the majority of nodes remain in the same centrality decile under sampling, with diagonal dominance strongest in the upper deciles (high-centrality nodes). Lower-centrality deciles show more off-diagonal spread, particularly for betweenness, consistent with the heavier-tailed contribution structure. However, rank swaps among low-centrality nodes have minimal impact on the analyses for which the schedule is designed (identifying central streets, comparing morphological profiles).
-
-\begin{figure}[htbp]
-  \centering
-  \includegraphics[width=0.85\textwidth]{figures/fig7_spatial_error_gla.png}
-  \caption{Spatial distribution of sampling residuals (sampled minus true centrality) at 20\,km ($\varepsilon = \hoeffdingEpsilon$) for closeness and betweenness on both validation networks. Residuals are spatially uniform, with no systematic concentration in dense urban cores or sparse peripheral areas.}
-  \label{fig:spatial_error}
-\end{figure}
-
-\begin{figure}[htbp]
-  \centering
-  \includegraphics[width=\textwidth]{figures/fig11_decile_transition.pdf}
-  \caption{Decile transition matrices showing the proportion of nodes that remain in the same centrality decile (diagonal) or move to an adjacent decile under sampling, for closeness and betweenness at 20\,km on the Greater London network. Diagonal dominance is strongest in the upper deciles (high-centrality nodes), consistent with the ``precision scales with importance'' property. Lower deciles show more scatter, particularly for betweenness, but rank swaps among low-centrality nodes have minimal practical impact.}
-  \label{fig:decile_transition}
-\end{figure}
+The surviving error has little effect on rankings; the appendix details its structure (Figures~\ref{fig:spatial_error}--\ref{fig:rank_shift_paired}). Median relative error is roughly constant across reach deciles and lowest in the top decile (Figure~\ref{fig:error_vs_reach}), so the highest-value nodes are estimated with the best relative precision, and their ranks barely move because centrality spans orders of magnitude. Betweenness relative error is nevertheless large in the middle deciles, reaching tens of percent on the suburban networks: the true values there sit at or near zero, so small absolute deviations register as large relative errors while barely moving the ranking, and the unbiased weighting makes this error noise around the truth rather than drift. The rank statistics in the same cells stay tight. Rank shifts are small and fall mostly on low-centrality nodes (Figure~\ref{fig:spatial_error}), and most nodes stay in their exact-computation decile (Figure~\ref{fig:decile_transition}). Correlations computed within reach quartiles sit below the network-wide values, largely through range restriction (values within a quartile are close together, so small errors reorder them easily); the within-quartile rank shifts themselves stay small (Appendix, error structure detail). On the held-out network at 20\,km, the canonical schedule's closeness errors cluster in space, whereas the method computes that cell exactly and leaves no residuals (Figure~\ref{fig:rank_shift_paired}). Its betweenness errors are similar in size under the two designs but cluster less under the method.
 
 %==============================================================================
 \section{Discussion}
@@ -326,62 +373,73 @@ Figure~\ref{fig:spatial_error} shows the spatial distribution of sampling residu
 
 \subsection{Practical guidance}
 
-In \cityseer{}, the user sets $\varepsilon$ and the library derives $p(d)$ for each distance threshold, applying it to both metrics. For manual implementations, Algorithm~\ref{alg:deterministic} gives the complete procedure. Table~\ref{tab:distance_lookup} and Figure~\ref{fig:guide} provide the deterministic schedule at standard analysis distances.
+In \cityseer{}, sampling exposes a single configurable parameter, the tolerance $\varepsilon$, set by default to $\varepsilon = \hoeffdingEpsilon$; the library polls the network, assigns per-node probabilities, and selects exact computation where sampling cannot pay, with no further input. The default requires no adjustment, and a user who wants a different balance of speed and precision can change $\varepsilon$ as described below. Algorithm~\ref{alg:adaptive} gives the full procedure for other implementations.
 
-\input{tables/tab_distance_lookup}
+The realised speedup depends on distance, the live fraction, and network size. Distance matters most, because gains concentrate at long thresholds (Table~\ref{tab:adaptive_validation}). The live fraction governs closeness: where few of a network's nodes are live, exact closeness is already cheap, and the work test routes it to exact computation. Network size sets a floor: below about 1{,}000 nodes exact computation completes in seconds and sampling is unnecessary.
 
-\begin{figure}[htbp]
-  \centering
-  \includegraphics[width=\textwidth]{figures/fig3_practical_guide.pdf}
-  \caption{(A) Deterministic sampling probability $p$ vs.\ analysis distance under the canonical grid model ($\varepsilon = \hoeffdingEpsilon$, $\delta = \hoeffdingDelta$), with standard analysis distances annotated. (B) Theoretical speedup $1/p$ vs.\ distance; measured wall-clock speedup is lower at near-unity $p$ due to sampling overhead (see Figure~\ref{fig:val_speedup}).}
-  \label{fig:guide}
-\end{figure}
+Precision and speed trade off through the tolerance $\varepsilon$: halving it quadruples the required samples, and a looser $\varepsilon = 0.08$--$0.1$ buys speed for exploratory work at some cost to ranking accuracy. Betweenness bounds how loose $\varepsilon$ can go: it has heavier-tailed contributions (a single origin can dominate a street's betweenness) and no per-source bound, so it is the first metric to degrade. On an unfamiliar network type, a check against exact computation at one long distance confirms $\rho > \targetRho$ before a full analysis commits to the sampled path.
 
-At the default $\varepsilon = \hoeffdingEpsilon$:
-\begin{itemize}
-  \item At distances of 2\,km or below: $p = 1.0$ (exact computation; no speedup).
-  \item 5\,km: $p \approx 59\%$ ($1.7\times$ theoretical speedup).
-  \item 10\,km: $p \approx 17\%$ ($6\times$ theoretical; $\approx$\,$3\times$ measured).
-  \item 20\,km: $p \approx 5\%$ ($21.7\times$ theoretical; $\approx$\,$10$--$13\times$ measured).
-\end{itemize}
+\subsection{What the guarantee does and does not cover}
+\label{sec:guarantee_scope}
 
-Because $k \propto 1/\varepsilon^2$, halving $\varepsilon$ quadruples the required sources. Tighter tolerance ($\varepsilon = 0.04$) makes computation exact at 5\,km and below and roughly halves the speedup at 20\,km (Table~\ref{tab:ew_comparison}). Looser tolerance ($\varepsilon = 0.1$) yields $\rho > 0.99$ on synthetic networks (Figure~\ref{fig:headline}) and is appropriate for exploratory analysis.
-
-Betweenness is the limiting factor on the schedule. Users computing only closeness may use $\varepsilon = 0.08$ or $0.1$ while maintaining $\rho > \targetRho$ (Figure~\ref{fig:headline}A). Users computing only betweenness should use the default $\varepsilon = \hoeffdingEpsilon$ or tighter; in particular, grid-like networks may warrant $\varepsilon = 0.04$ (Section~\ref{sec:validation}).
-
-The failure probability $\delta$ (default $0.1$) appears logarithmically in $k$, so reducing it from $0.1$ to $0.01$ increases $k$ by $\approx$17--21\% (at distances where $p < 1$), a modest cost for greater confidence.
-
-For small networks ($< 1{,}000$ nodes), exact computation completes in seconds and sampling offers no practical benefit. For untested morphologies, a pilot comparison at one representative long distance (e.g., 10\,km) with and without sampling can verify the schedule: $\rho > \targetRho$ indicates sufficient rank preservation; if not, reducing $\varepsilon$ increases accuracy.
-
-\subsection{Relationship between formal guarantees and rank preservation}
-
-The Hoeffding bound guarantees additive $\varepsilon$ error at every node; validation uses Spearman $\rho$ (rank preservation). These are different quantities, and no formal bound relating them is available. The empirical success of the schedule rests on a favourable structural property of centrality distributions on street networks: centrality values are spread across several orders of magnitude, so additive errors that are small relative to the range are also small relative to the gaps between highly ranked nodes. Moreover, the nodes most sensitive to rank displacement (those with high centrality) have the highest reach and therefore the highest effective sample size, making their estimates the most precise. The Hoeffding bound provides the functional form for the schedule ($p \propto \log r / r$); rank preservation at $\rho \geq \targetRho$ is a validated empirical consequence, not a formal guarantee.
+The Hoeffding bound controls absolute error for the idealised survey of Section~\ref{sec:bound}; the validation measures whether the \emph{ranking} of nodes is preserved, and no formal bound connects the two. The bound is loose in practice, for three reasons. Hoeffding's inequality uses only the range of contributions, not their much smaller variance, and the tolerance is stated relative to a catchment-level bound that can be large in absolute terms (Appendix~\ref{sec:appendix_ht}). The failure-budget allocation treats node-level errors as independent, though they are positively correlated. And rank preservation is more forgiving than additive error, because centrality values span several orders of magnitude (Section~\ref{sec:error_structure}). The pilot's confidence bounds push the remaining uncertainty toward oversampling, and the default $\varepsilon$ was chosen by rank-fidelity calibration on Cary (Section~\ref{sec:canonical}). The pair $(\varepsilon, \delta)$ therefore describes a conservative operating point rather than a certified additive error.
 
 \subsection{Scope and limitations}
 \label{sec:limitations}
 
-First, the schedule applies to shortest-path (metric) distance only. Angular distance (simplest-path), as used in space syntax \citep{Hillier1984, Hillier1993} and road-centre-line analysis \citep{Turner2007}, produces different reach patterns and does not satisfy the subpath optimality property used in the betweenness derivation (Section~\ref{sec:preliminaries}). The schedule's applicability to angular analysis remains to be validated.
+The method applies to shortest-path (metric) distance. Angular (simplest-path) distance \citep{Turner2007} does not satisfy the subpath optimality assumed in the betweenness derivation and remains to be tested. Validation spans dense European metropolitan networks and two low-density US suburbs; morphologies outside this range (informal settlements, gridiron megacities) are untested.
 
-Second, we assume uniform random sampling of source nodes. Non-uniform strategies (e.g., stratification or importance weighting) could achieve higher accuracy with fewer samples, but require proxies for node importance that are unavailable before computation.
+The main four-network validation ends at 20\,km, the largest threshold its buffered extents support. To test beyond it, the held-out network is rebuilt with a 50\,km buffer and validated across the full 1--50\,km range (Figure~\ref{fig:adaptive_accuracy}C): the work test routes closeness to exact computation throughout, and sampled betweenness holds $\rho = 0.953$--$0.955$ through 30, 40, and 50\,km at speedups of 6--14$\times$ (\texttt{output/woodlands\_frontier.csv}). The decline in $\rho$ with distance flattens just above the target rather than crossing it.
 
-Third, substituting canonical grid reach for actual network reach means denser networks are oversampled while sparser networks rely on the Hoeffding slack for accuracy (as observed for Madrid; Figure~\ref{fig:val_reach}). Networks with inter-node spacing substantially exceeding 175\,m (e.g., rural road networks) would warrant separate validation.
+Rank-based evaluation has no formal bridge from the additive bound, and betweenness has no per-source bound; both are validated rather than proven. The sampled closeness evidence comes from the metropolitan networks, because on the suburbs the work test routes closeness-only calls to exact computation at every distance; the held-out sampled evidence is therefore betweenness. A joint call can nevertheless sample suburban closeness (Section~\ref{sec:worktest}), and a supplementary check covers that configuration: forcing the sampled closeness path past the work test at 20\,km meets the target on both suburbs, with every seed above it (three seeds each; \texttt{output/forced\_closeness.csv}).
 
-Fourth, the canonical grid model treats the network as statistically homogeneous: accuracy depends on distance rather than local structure. Validation on the GLA and Madrid networks, which include dense urban cores and sparse suburbs, suggests the schedule is conservative overall (Figure~\ref{fig:spatial_error}), but accuracy may vary locally.
+Two residual effects survive the design. The first is the pilot's tail risk: a node the poll happens to hit unusually often has its catchment overestimated and is under-sampled, with probability bounded by $\alpha$ per node; the other error directions are safe. Because every node is estimated from the same pilot draw, these errors are correlated: an unlucky draw overestimates many nodes at once, though by small margins (Appendix, pilot coverage). The validation seeds include such draws. The second is the betweenness quartile gradient of Section~\ref{sec:validation}, which improves under the method but does not vanish. A diagnostic on the held-out network at 20\,km traces it to the high-traffic streets: nodes crossed by 100 or more of the 400 pilot traversals shift by a median of 1.7 and a 90th percentile of 9.6 percentile points, while the low-traffic periphery holds stable. The surviving noise is therefore the ordering of high-traffic streets, where a few origins dominate an arterial's value.
 
-Fifth, validation covers two European cities with metric-distance centrality. North American grid cities share structural properties with the trellis topology tested here; users working with such networks are advised to use $\varepsilon = 0.04$ or to conduct a pilot comparison as described above. Validation on a broader range of global morphologies would strengthen external validity.
+Natural extensions include a concentration-aware pilot for betweenness, validation on angular distance and a broader range of morphologies, online stopping criteria \citep{Borassi2019}, and variance-aware bounds \citep{Pellegrina2023}.
 
-\subsection{Future work}
+\subsection{Related work}
+\label{sec:related}
 
-Adaptive per-node sampling (varying $p$ with local reach) could improve efficiency in heterogeneous networks. Online stopping criteria \citep{Borassi2019} could replace \emph{a priori} calibration but require new theory for localised centrality. Variance-dependent bounds \citep{Pellegrina2023} offer a path to tighter schedules on well-structured networks. Extending validation to angular distance and to a broader range of global morphologies are natural next steps.
+Table~\ref{tab:bounds_comparison} summarises existing sampling approaches, grouped by computational primitive; \citet{Matta2019} provide a comprehensive empirical comparison for global betweenness. Prior methods differ from ours on two axes: they set one network-wide precision target rather than a per-catchment one, and most estimate a single metric rather than sharing one source sample across both. \emph{Path-sampling} applies only to betweenness, each sample updates only one path, and its adaptive variants \citep{Riondato2018, Borassi2019} adapt to a global additive target, as does the $k$-bounded-distance variant of \citet{Riondato2016}; only \emph{source-sampling} updates every reached node from a single traversal, so only it can serve both metrics from one sample sized to each catchment. All-distances sketches \citep{Cohen2014, Cohen2015} are the closest prior for the closeness half: they give per-node relative-error guarantees and accept distance cutoffs, but they serve no betweenness, estimate every node rather than selecting exact computation where a census is cheaper, and require a dedicated sketch construction rather than the bounded Dijkstra traversals of standard centrality tooling.
+
+\begin{table}[htbp]
+\centering
+\caption{Sampling approaches for centrality approximation. \emph{Source-sampling} traverses the network from each sampled node, updating all reached nodes. \emph{Path-sampling} draws individual shortest paths, updating only nodes along each path. Prior guarantees are uniform over the network; our approach uses distance-bounded reach $r$ instead of the full node count $n$ and serves both metrics from a single sample.}
+\label{tab:bounds_comparison}
+\footnotesize
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{@{}lllll@{}}
+\toprule
+\textbf{Method} & \textbf{Metric} & \textbf{Guarantee} & \textbf{Samples $k$} & \textbf{Key param.} \\
+\midrule
+\multicolumn{5}{@{}l}{\emph{Source-sampling (full traversal per sample)}} \\[2pt]
+Eppstein \& Wang \citeyearpar{Eppstein2004} & Closeness & Additive, global & $O(\log n / \varepsilon^2)$ & $n$ \\
+Brandes \& Pich \citeyearpar{Brandes2007} & Both & Empirical & User-chosen & --- \\
+Bader et al.\ \citeyearpar{Bader2007} & Betw. & Relative, per query & $O(1 / (\varepsilon^2 b(v)))$ & $b(v)$ \\
+Geisberger et al.\ \citeyearpar{Geisberger2008} & Betw. & Heuristic (dist.-scaled) & User-chosen & --- \\[4pt]
+\multicolumn{5}{@{}l}{\emph{Path-sampling (single shortest path per sample)}} \\[2pt]
+Riondato \& Kornaropoulos \citeyearpar{Riondato2016} & Betw. & Additive, global & $O(\log \text{VD} / \varepsilon^2)$ & VD \\
+ABRA \citeyearpar{Riondato2018} & Betw. & Additive, global & Adaptive (Rademacher) & --- \\
+KADABRA \citeyearpar{Borassi2019} & Betw. & Additive, global & Adaptive & $D$ \\
+SILVAN \citeyearpar{Pellegrina2023} & Betw. & Non-uniform & Variance-dep. & Variance \\[4pt]
+\midrule
+\textbf{This work} & Closeness & \textbf{Additive, local\textsuperscript{*}} & $\boldsymbol{O(\log r / \varepsilon^2)}$ & $\boldsymbol{r}$ \\
+\quad (this work) & Betw. & Unbiased; rank-validated & (shared sample) & $r$ \\
+\bottomrule
+\end{tabular}
+
+\vspace{0.3em}
+\footnotesize \textsuperscript{*}Union bound over the $r$ nodes within each distance-bounded catchment, not over all $n$ nodes globally (Section~\ref{sec:bound}). Betweenness shares the closeness sample; it is unbiased under Horvitz--Thompson weighting, has no per-source bound, and is judged empirically (Section~\ref{sec:guaranteed_vs_validated}).
+\end{table}
 
 %==============================================================================
 \section{Conclusion}
 \label{sec:conclusion}
 %==============================================================================
 
-Comparative urban analysis requires that sampled centrality values be directly comparable across networks. We derive a deterministic sampling schedule $p(d)$ by adapting the Eppstein--Wang bound to localised centrality (replacing $n$ with $r$) and substituting a canonical grid model so that $p$ depends only on analysis distance. The schedule serves both closeness and betweenness from shared Brandes traversals. Validation on the Greater London and Greater Madrid street networks at 1--20\,km confirms rank preservation ($\rho \geq \overallMinRho$) with speedups of up to $13\times$, and spatial analysis shows that errors are uniformly distributed rather than concentrated in particular areas.
+Localised centrality is estimated over each node's own catchment, so precision must follow the catchment. The method presented here measures every catchment with a pilot poll, sizes each node's inclusion probability from a confidence bound on its reach, keeps estimates unbiased with inverse-probability weighting, and selects exact computation wherever a census is cheaper than a survey, all governed by one tolerance parameter. On four street networks spanning the urban density range, with one held out from accuracy calibration, the method preserves rank ($\rho \geq \adaptiveMinRhoFloor$) for closeness and betweenness at 1--20\,km. The ablation shows the cheaper stand-ins for measured reach failing exactly where the reach measurements predict. The remaining caveats are the rank-based evaluation, the absence of a per-source bound for betweenness, and the untested angular case.
 
-The schedule is implemented in the open-source \cityseer{} Python package.\footnote{\href{https://github.com/benchmark-urbanism/cityseer-api}{github.com/benchmark-urbanism/cityseer-api}} Analysis scripts and validation data are available in the repository's \texttt{analysis/sampling/} directory.
+The method is implemented in the open-source \cityseer{} Python package.\footnote{\href{https://github.com/benchmark-urbanism/cityseer-api}{github.com/benchmark-urbanism/cityseer-api}} Analysis scripts and validation data are available in the repository's \texttt{analysis/sampling/} directory.
 
 %==============================================================================
 % References
@@ -396,64 +454,60 @@ The schedule is implemented in the open-source \cityseer{} Python package.\footn
 
 \section{Technical Details}
 
-\paragraph{Synthetic network generation.}
-
-Synthetic networks are generated using tile-based templates. Each template defines a connectivity pattern within a single tile; tiles are then arrayed to create networks of the desired extent.
-
-\begin{description}
-  \item[Trellis] A regular grid with diagonal connections, representing highly connected urban cores. Average degree $\approx 4$.
-
-  \item[Tree] A hierarchical branching structure where each node connects to at most 3 others. Represents suburban cul-de-sac development. Average degree $\approx 2.3$.
-
-  \item[Linear] A constrained grid with fewer cross-connections than trellis. Intermediate connectivity. Average degree $\approx 3$.
-\end{description}
-
-Networks are tiled 24$\times$24 to achieve approximately 12\,km extent, then the largest connected component is extracted. Node positions are perturbed slightly to avoid perfectly regular spacing.
-
 \paragraph{GLA network preprocessing.}
 
 The Greater London Authority road network is sourced from Ordnance Survey Open Roads data (GeoPackage format).
 
 Preprocessing steps:
 \begin{enumerate}
-  \item Remove invalid and empty geometries
-  \item Explode multi-part geometries
-  \item Build NetworkX graph from edges
-  \item Remove filler nodes (degree-2 nodes that do not represent junctions)
-  \item Remove dangling nodes (dead-end segments $< 20\,$m)
-  \item Consolidate nearby nodes (threshold 1\,m)
-  \item Extract largest connected component
+\item Remove invalid and empty geometries
+\item Explode multi-part geometries
+\item Build NetworkX graph from edges
+\item Remove filler nodes (degree-2 nodes that do not represent junctions)
+\item Remove dangling nodes (dead-end segments $< 20\,$m)
+\item Consolidate nearby nodes (threshold 1\,m)
+\item Extract largest connected component
 \end{enumerate}
 
-Final network: \glaNnodes{} nodes.
+Final network: \glaNtotal{} nodes, of which \glaNnodes{} are live within the boundary.
 
 \paragraph{Madrid network.}
 
-The Greater Madrid metropolitan network (\madridNnodes{} nodes) is sourced from OpenStreetMap via the OSMnx library \citep{Boeing2017} and preprocessed using the same consolidation pipeline as the GLA network.
+The Greater Madrid metropolitan network (\madridNnodes{} live nodes) is sourced from the official \emph{Red Viaria} road-network dataset for the Community of Madrid and preprocessed using the same consolidation pipeline as the GLA network. As for the other networks, the boundary delimiting the live area is geocoded from OpenStreetMap via OSMnx \citep{Boeing2017}.
 
-\paragraph{Correctness verification against NetworkX.}
+\paragraph{Cary and Woodlands networks.}
 
-We verified the Rust-based \cityseer{} implementation against NetworkX \citep{Hagberg2008} across all three synthetic topologies, distance thresholds from 200\,m to 3200\,m, both distance heuristics (shortest-path and simplest-path), and both metrics. The maximum per-node difference
-\begin{equation}
-  \Delta_v = \left|C_{\text{cityseer}}(v) - C_{\text{NetworkX}}(v)\right|
-\end{equation}
-was $\max_v \Delta_v < 10^{-6}$ in all configurations, attributable to floating-point precision.
+The Cary, NC network (\caryNnodes{} live nodes) and The Woodlands, TX network (\woodlandsNnodes{} live nodes) are built from US Census TIGER/Line \emph{edges}, the topologically integrated road layer, which is natively noded at intersections (the cartographic \emph{roads} layer is not, and does not build a connected graph). Road edges (\texttt{ROADFLG = Y}) are loaded for every county intersecting the analysis area plus its \glaBuffer{}\,km buffer, then passed through the same consolidation pipeline as the GLA network. The live area is the municipal boundary; the surrounding region supplies the buffer.
 
-\paragraph{Horvitz--Thompson estimator.}
+\paragraph{Pilot reach estimator and confidence bounds.}
+\label{sec:appendix_pilot}
+
+On an undirected network the probability that a uniformly drawn pilot source lies within distance $d$ of node $u$ equals $r_u(d)/n$, so $u$'s hit count over the $m$ pilot traversals is a binomial-type estimator of its reach at every distance. The lower and upper reach bounds $\hat{r}^{-}_u$ and $\hat{r}^{+}_u$ are one-sided exact binomial (Clopper--Pearson) bounds at level $\alpha = 0.1$ \citep{Clopper1934}. The pilot draws without replacement, so its hit counts sit slightly more tightly around the truth than independent draws would, and the binomial bounds stay on the conservative side \citep[Theorem~4]{Hoeffding1963}.
+
+A direct check compares the bounds against the exact reach on all four networks (ten pilot draws each; \texttt{pilot\_coverage\_check.py}). Table~\ref{tab:pilot_coverage} summarises the 20\,km cells. The point estimate is unbiased and accurate, with a median relative error of 1.5--3\% at 20\,km. Mean lower-bound coverage sits near the nominal 0.90. Because every node is estimated from the same draw, coverage is correlated across nodes: a single unlucky draw overestimates many nodes at once, so single-draw coverage ranges widely. The overshoot in such draws is small, a median of 1--3\% beyond 5\,km, which perturbs the resulting inclusion probabilities by a similar margin; the end-to-end validation, whose seeds include such draws, absorbs it.
+
+\input{tables/tab9_pilot_coverage}
+
+\paragraph{Inverse-probability weighting.}
 \label{sec:appendix_ht}
 
-The $1/p$ rescaling used in Algorithm~\ref{alg:deterministic} is a Horvitz--Thompson estimator \citep{Horvitz1952}: under Bernoulli source sampling with inclusion probability $\pi_i = p$, the population total is estimated as $\hat{T}_{HT} = \sum_{i \in S} y_i / \pi_i$, where $S$ is the set of sampled sources. This inverse-probability weighting is unbiased whenever $\pi_i > 0$.
+When nodes are sampled as sources with per-node inclusion probabilities $q_u$, each sampled contribution is scaled by the reciprocal of its own inclusion probability. This is a standard Horvitz--Thompson estimator \citep{Horvitz1952} and is unbiased whenever the probabilities are positive; unbiasedness does not depend on how the probabilities were chosen, so a rough pilot reach estimate affects only variance. In the idealised argument of Section~\ref{sec:bound}, $C_{\max} = r_v / d_{\text{near}}$ suffices for harmonic closeness, where $d_{\text{near}}$ is the smallest distance from $v$ to a catchment member; each weighted term then lies in $[0, C_{\max}/k]$, and Hoeffding's inequality covers these without-replacement draws. $C_{\max}$ can be large where a neighbour sits close to $v$, so a tolerance stated relative to $C_{\max}$ can be loose in absolute terms (Section~\ref{sec:guarantee_scope}). In the deployed design the probability floor ($q_u \geq 0.01$) bounds the weights at 100, so a source $u$'s weighted term for target $v$ is at most $100/d(v,u) \leq 100/d_{\text{near}}$, the deployed-design analogue of the per-term bound. The source pool includes both live and buffer nodes (Section~\ref{sec:worktest}), ensuring that every node which contributes in exact mode has a positive probability of being sampled.
 
-For closeness, the per-source contribution $y_s(v) = 1/d(s,v)$ is determined solely by source $s$, so contributions are independent across sources and unbiasedness follows directly. For betweenness, the Brandes decomposition expresses betweenness as $C_B(v) = \sum_s \delta_s(v)$, where $\delta_s(v)$ aggregates all of source $s$'s pair-dependency contributions to $v$ via backpropagation. Because each $\delta_s(v)$ depends only on the shortest-path tree rooted at $s$, the per-source terms are independent under Bernoulli sampling, and the estimator $\hat{C}_B(v) = \sum_{s \in S} \delta_s(v) / p$ is unbiased by the same argument.
+For closeness, sources enter the sample by independent per-node draws, and each source's contribution to a target is a fixed quantity (the inverse distance), so the per-source terms of the estimator are independent. For betweenness, the Brandes decomposition yields a fixed per-source term in the same way, so the same argument applies.
+
+\paragraph{Betweenness over all routes.}
+\label{sec:appendix_betw}
+
+Betweenness counts shortest paths from every node, live or buffer: a path between two buffer nodes that passes through the interior legitimately credits the live intermediate it traverses, so excluding it would under-count boundary nodes. The \emph{live} designation therefore filters only which nodes' values are reported, not which sources run. Each ordered pair $(s,t)$ contributes with weight $\tfrac{1}{2}$ on undirected graphs (the two orderings of a symmetric pair are counted once between them) and $1$ on directed graphs; buffer-to-buffer routes through the interior are included. Under sampling this estimand is unchanged, and the Horvitz--Thompson $1/q_u$ scaling applies uniformly with no per-pair correction.
 
 \paragraph{Implementation in \cityseer{}.}
 
-The sampling model is implemented in the \cityseer{} Python package (version 4.23+). Sampling is enabled via the \texttt{sample=True} flag. The \texttt{node\_centrality\_shortest} function computes both closeness and betweenness from shared Dijkstra traversals in a single call:
+The method is implemented in the \cityseer{} Python package (version 4.25+) and enabled via the \texttt{sample=True} flag. For each call, the library polls the network once (\texttt{estimate\_polled\_reach}), assigns per-node probabilities per distance (\texttt{compute\_node\_p}), and applies the work test of Section~\ref{sec:worktest} once per call and per distance. Distances routed to exact computation are batched into a single pass; each sampled distance runs its own pass under its own per-node probabilities. The \texttt{centrality\_shortest} function computes both closeness and betweenness from shared Dijkstra traversals in a single call:
 
 \begin{verbatim}
 from cityseer.metrics import networks
 
-gdf = networks.node_centrality_shortest(
+gdf = networks.centrality_shortest(
     network_structure,
     nodes_gdf,
     distances=[500,1000,2000,5000,10000,20000],
@@ -461,16 +515,62 @@ gdf = networks.node_centrality_shortest(
 )
 \end{verbatim}
 
-Convenience wrappers (\texttt{closeness\_shortest}, \texttt{betweenness\_shortest}) are available for computing a single metric, but using them separately forgoes the shared-traversal advantage.
+Convenience wrappers (\texttt{closeness\_shortest}, \texttt{betweenness\_shortest}) compute a single metric each; the validation of Section~\ref{sec:validation} ran these wrappers, so they are the tested configuration. A joint \texttt{centrality\_shortest} call shares its traversals between the metrics and costs less; its mode decision can sample suburban closeness, the configuration checked by the forced-sampling run of Section~\ref{sec:limitations}.
 
-The default error tolerance ($\varepsilon = \hoeffdingEpsilon$) and failure probability ($\delta = \hoeffdingDelta$) are set in \texttt{cityseer.config}. The same module provides helper functions for custom workflows:
+The defaults ($\varepsilon = \hoeffdingEpsilon$, $\delta = \hoeffdingDelta$, poll level $\alpha = 0.1$, poll size $m = \min(n, \max(400, 0.025\,n))$, probability floor 0.01) are defined in \texttt{cityseer.sampling}, which also provides helper functions for custom workflows:
 \begin{itemize}
-  \item \texttt{compute\_distance\_p}: deterministic $p$ from distance via canonical grid model (recommended entry point)
-  \item \texttt{compute\_hoeffding\_p}: Hoeffding bound from a given reach value (for experimentation with non-canonical schedules)
+\item \texttt{estimate\_polled\_reach}: the pilot poll, returning lower-bound, point, and upper-bound reach estimates per distance
+\item \texttt{compute\_node\_p}: per-node inclusion probabilities from reach estimates
+\item \texttt{compute\_hoeffding\_p}: the reach-to-probability bound (Eq.~\ref{eq:hoeffding_k})
+\item \texttt{compute\_distance\_p}: the canonical grid reference model of Section~\ref{sec:canonical}, retained for the ablation
 \end{itemize}
 
 \paragraph{Reproducibility.}
 
-All analysis scripts and validation results are available at \href{https://github.com/benchmark-urbanism/cityseer-api/tree/master/analysis/sampling}{analysis/sampling/}. The current script pipeline runs sequentially from \texttt{00\_generate\_cache.py} through \texttt{05\_generate\_macros.py} via \texttt{run\_all.py}, with each script's outputs documented in its header.
+All analysis scripts and validation results are available at \href{https://github.com/benchmark-urbanism/cityseer-api/tree/master/analysis/sampling}{analysis/sampling/}. The pipeline runs via \texttt{run\_all.py}: \texttt{01\_validate\_gla.py} through \texttt{04\_validate\_woodlands.py} build the exact ground truths and the canonical-schedule ablation record (the schedule is driven through the low-level API with an explicit per-distance probability, since the library's \texttt{sample=True} flag now runs the per-node method), \texttt{validate\_adaptive.py} runs the per-node method, and \texttt{05}--\texttt{10} generate the figures, macros, and tables. Supplementary checks run separately: \texttt{measure\_disc\_reach\_ratio.py} (Section~\ref{sec:euclidean}), \texttt{forced\_closeness\_check.py} (Section~\ref{sec:limitations}), and \texttt{epsilon\_sweep.py}. Each script's outputs are documented in its header.
+
+\paragraph{Canonical schedule: per-distance ablation record.}
+
+Tables~\ref{tab:validation}--\ref{tab:woodlands_validation} record the canonical schedule of Section~\ref{sec:canonical} on each network. Rows marked ``exact'' have $p \geq \varphi$, the schedule's fallback threshold; the rule is sized to exact closeness cost and applies to the whole call, so both metrics run exact in those rows and the schedule is not exercised. The held-out failure discussed in Section~\ref{sec:canonical} is the 20\,km closeness row of Table~\ref{tab:woodlands_validation}.
+
+\input{tables/tab2_validation}
+
+\input{tables/tab4_madrid_validation}
+
+\input{tables/tab5_cary_validation}
+
+\input{tables/tab6_woodlands_validation}
+
+\paragraph{Error structure detail.}
+
+The per-node rank-shift maps (Figure~\ref{fig:spatial_error}), the error-vs-reach deciles (Figure~\ref{fig:error_vs_reach}), the decile-transition matrices (Figure~\ref{fig:decile_transition}), and the paired rank-shift maps (Figure~\ref{fig:rank_shift_paired}) support the error-structure summary of Section~\ref{sec:error_structure}. The supporting statistics are as follows. Across the sampled metropolitan closeness cells the minimum within-quartile rank correlation is \adaptiveClosenessQuartileMinRho{} (per-quartile detail in the validation CSVs), and the largest within-quartile median rank shift at 20\,km is \sampledClosenessQuartileShiftMax{} percentile points; the rank-shift statistic does not depend on value separation, so it is the fairer within-quartile measure. On the held-out network at 20\,km under the canonical schedule, the correlation between a node's closeness rank shift and the mean shift of its eight nearest neighbours is \woodlandsBaselineNbrCorrC{} and the mean rank displacement is \woodlandsBaselineRankDispC{} of the rank range; the per-node method computes that cell exactly. For betweenness the mean rank displacement is \woodlandsBaselineRankDispB{} under the schedule and \woodlandsAdaptiveRankDispB{} under the method, while the neighbour correlation falls from \woodlandsBaselineNbrCorrB{} to \woodlandsAdaptiveNbrCorrB.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\textwidth]{figures/fig7_rank_shift.png}
+\caption{Per-node \emph{rank shift} under the per-node method at 20\,km: $|$pctile(true)$-$pctile(sampled)$|$ in percentile points, drawn as hexbin medians on a fixed 0--10 scale; cells above 10 saturate (largest medians: 14.5 points, Madrid closeness; 33.4, Cary betweenness; saturated cells at most 0.2\% of each closeness panel and 1.1--8.4\% of each betweenness panel). Each panel shows a 20\,km window centred on the network, drawn at a common scale, so one scale bar serves all panels. Shifts are larger for betweenness and fall mostly on low-centrality nodes, whose tied values flip easily (Figure~\ref{fig:decile_transition}); panels C and D show zero shift because the suburb closeness cells ran exactly.}
+\label{fig:spatial_error}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\textwidth]{figures/fig8_error_vs_reach.pdf}
+\caption{Median per-node relative error ($|$estimate$-$true$|/$true, zero-true nodes excluded) by reach decile under the per-node method at 20\,km, for closeness (A) and betweenness (B). Each network is binned by its own reach distribution, so a given decile spans different reach values on different networks. Betweenness relative error runs roughly an order of magnitude above closeness error (note the differing y-axes). Panel A shows the metropolitan networks only: the suburban closeness cells ran exactly, leaving zero error and nothing to draw on a log axis. Median relative error is roughly constant across deciles and lowest in the top decile, marked by the shaded vertical band, so the highest-value nodes are estimated with the best relative precision. The held-out network's betweenness curve bumps upward in the middle deciles; its sparse mid-deciles hold few nodes, so the median there is noisy.}
+\label{fig:error_vs_reach}
+\end{figure}
+
+\begin{figure}[p]
+\centering
+\includegraphics[width=0.85\textwidth]{figures/fig11_decile_transition.pdf}
+\caption{Decile transition matrices under the per-node method at 20\,km: the proportion of nodes remaining in their true centrality decile (diagonal) or moving to another; each row sums to 100\%. Panels show metropolitan closeness and betweenness (A--D) and suburb betweenness (E, F); the suburb closeness cells ran exactly and are omitted. Diagonal dominance is strongest in the upper deciles; the tie-heavy lower-middle betweenness deciles hold near-zero values that re-order easily, and top-decile retention stays high throughout.}
+\label{fig:decile_transition}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\textwidth]{figures/fig15_rank_shift_paired.png}
+\caption{Closeness rank shift on the held-out network (The Woodlands) at 20\,km under the canonical schedule (A) and the per-node method (B), drawn as hexbin medians on the fixed 0--10 percentile-point scale of Figure~\ref{fig:spatial_error}; cell medians above 10 saturate at the arrowed cap (the largest in panel A is 35 points). The comparison is between designs, not between two sampling runs: the schedule's fixed rate samples this cell and its rank shifts cluster in space, whereas the per-node method's work test recognises that sampling cannot pay here and routes the cell to exact computation, so panel B shows zero shift. That refusal is the method's answer for this cell; the separate forced-sampling check (Section~\ref{sec:limitations}) confirms the sampled path would also meet the target. Betweenness is compared in Section~\ref{sec:error_structure}: its improvement is reduced spatial clustering at similar magnitude, which a median map cannot show.}
+\label{fig:rank_shift_paired}
+\end{figure}
 
 \end{document}

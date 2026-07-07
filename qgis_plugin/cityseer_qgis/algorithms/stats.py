@@ -69,7 +69,7 @@ def _run_with_feedback(progress_src, func, total, feedback, progress_base=0, pro
     return result
 
 
-# Metrics with both weighted and unweighted variants
+# Core statistics (decay-weighted via decay_fn parameter)
 _PAIRED_STATS = [
     ("sum", "STAT_SUM"),
     ("mean", "STAT_MEAN"),
@@ -78,7 +78,7 @@ _PAIRED_STATS = [
     ("variance", "STAT_VARIANCE"),
     ("mad", "STAT_MAD"),
 ]
-# Metrics without weighted variants
+# Extrema statistics
 _UNPAIRED_STATS = [
     ("max", "STAT_MAX"),
     ("min", "STAT_MIN"),
@@ -440,22 +440,7 @@ class CityseerStatsAlgorithm(CityseerAlgorithmBase):
         stats_obj = stats_result.result[0]
         ang_suffix = "_ang" if angular else ""
 
-        for stat_name in enabled_paired:
-            nw_attr = getattr(stats_obj, stat_name)
-            wt_attr = getattr(stats_obj, f"{stat_name}_wt")
-            for dist_key in distances:
-                col_nw = f"cc_{num_field}_{stat_name}_{dist_key}{ang_suffix}_nw"
-                col_wt = f"cc_{num_field}_{stat_name}_{dist_key}{ang_suffix}_wt"
-                nw_arr = nw_attr[dist_key]
-                wt_arr = wt_attr[dist_key]
-                for i, node_key in enumerate(stats_result.node_keys_py):
-                    if node_key in results:
-                        val_nw = float(nw_arr[i])
-                        results[node_key][col_nw] = val_nw if math.isfinite(val_nw) else None
-                        val_wt = float(wt_arr[i])
-                        results[node_key][col_wt] = val_wt if math.isfinite(val_wt) else None
-
-        for stat_name in enabled_unpaired:
+        for stat_name in enabled_paired + enabled_unpaired:
             attr = getattr(stats_obj, stat_name)
             for dist_key in distances:
                 col = f"cc_{num_field}_{stat_name}_{dist_key}{ang_suffix}"

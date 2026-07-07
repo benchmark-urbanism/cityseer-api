@@ -8,6 +8,16 @@ layout: ../../layouts/PageLayout.astro
 
  Convenience functions for the preparation and conversion of `networkX` graphs to and from `cityseer` data structures. Note that the `cityseer` network data structures can be created and manipulated directly, if so desired.
 
+:::note
+The graph simplification and cleaning functions in this module (e.g. ``nx_remove_filler_nodes``,
+``nx_remove_dangling_nodes``, ``nx_to_dual``) operate on undirected ``MultiGraph`` instances and do not preserve
+edge directionality. Do not pass a ``MultiDiGraph`` through these functions. For directed (one-way) network
+support, use [`CityNetwork.from_nx`](/api/network#from_nx) with a ``MultiDiGraph``,
+[`CityNetwork.from_geopandas`](/api/network#from_geopandas) with ``directed=True``, or build a directed
+``NetworkStructure`` via
+[`io.network_structure_from_nx`](/tools/io#network_structure_from_nx) with a ``MultiDiGraph``.
+:::
+
 
 <div class="function">
 
@@ -76,13 +86,12 @@ layout: ../../layouts/PageLayout.astro
 </div>
 
 
- Remove nodes of degree=2. Nodes of degree=2 represent no route-choice options other than traversal to the next edge. These are frequently found on network topologies as a means of describing roadway geometry, but are meaningless from a network topology point of view. This method will find and deleted these nodes, and replaces the two edges on either side with a new spliced edge. The new edge's `geom` attribute will retain the geometric properties of the original edges.
+ Remove nodes of degree=2 (intermediate points that are not junctions). A degree-2 node has exactly one road in and one road out — it is a waypoint along a street, not an intersection or decision point. These are common in datasets where curved roads are represented by sequences of nodes tracing the road geometry. This method removes such nodes and merges the two edges on either side into a single edge whose `geom` attribute retains the geometric detail of the originals.
 
 :::note
-Filler nodes may be prevalent in poor quality datasets, or in situations where curved roadways have been represented
-through the addition of nodes to describe arced geometries. `cityseer` uses `shapely` `Linestrings` to describe
-arbitrary road geometries without the need for filler nodes. Filler nodes can therefore be removed, thus reducing
-side-effects as a function of varied node intensities when computing network centralities.
+Since `cityseer` uses `shapely` `Linestrings` to describe arbitrary road curvature, intermediate nodes are
+unnecessary. Removing them produces cleaner networks and prevents variations in node density from distorting
+centrality calculations.
 :::
 ### Parameters
 <div class="param-set">
@@ -106,6 +115,17 @@ side-effects as a function of varied node intensities when computing network cen
  A `networkX` `MultiGraph` with nodes of degree=2 removed. Adjacent edges will be combined into a unified new edge with associated `geom` attributes spliced together.</div>
 </div>
 
+### Notes
+
+```python
+from cityseer.tools import mock, graphs
+
+G = mock.mock_graph()
+G = graphs.nx_simple_geoms(G)
+G_clean = graphs.nx_remove_filler_nodes(G)
+```
+
+ For a worked example, see the [Network Simplification](https://cityseer.benchmarkurbanism.com/examples/networks/network-simplification) recipe.
 
 </div>
 
@@ -270,7 +290,7 @@ side-effects as a function of varied node intensities when computing network cen
   </div>
   <div class="desc">
 
- An optional list of OpenStreetMap target highway tags. If provided, only nodes with neighbouring edges containing a tag matching one of the target OSM highway tags will be consolidated. Requires graph prepared with via [`io.osm_graph_from_poly`](/io#osm-graph-from-poly).</div>
+ An optional list of OpenStreetMap target highway tags. If provided, only nodes with neighbouring edges containing a tag matching one of the target OSM highway tags will be consolidated. Requires graph prepared with via [`io.osm_graph_from_poly`](/tools/io#osm_graph_from_poly).</div>
 </div>
 
 <div class="param-set">
@@ -280,7 +300,7 @@ side-effects as a function of varied node intensities when computing network cen
   </div>
   <div class="desc">
 
- Whether to only merge edges with shared OSM `name` or `ref` tags. False by default. Requires graph prepared with via [`io.osm_graph_from_poly`](/io#osm-graph-from-poly).</div>
+ Whether to only merge edges with shared OSM `name` or `ref` tags. False by default. Requires graph prepared with via [`io.osm_graph_from_poly`](/tools/io#osm_graph_from_poly).</div>
 </div>
 
 ### Returns
@@ -595,7 +615,7 @@ side-effects as a function of varied node intensities when computing network cen
 
  The merging of nodes can create parallel edges with mutually shared nodes on either side. These edges are replaced by a single new edge, with the new geometry selected from either:
 - An imaginary centreline of the combined edges if `merge_edges_by_midline` is set to `True`;
-- Else, the shortest edge, with longer edges discarded; See [`nx_merge_parallel_edges`](#nx-merge-parallel-edges) for more information.
+- Else, the shortest edge, with longer edges discarded; See [`nx_merge_parallel_edges`](#nx_merge_parallel_edges) for more information.
 ### Parameters
 <div class="param-set">
   <div class="def">
@@ -654,7 +674,7 @@ side-effects as a function of varied node intensities when computing network cen
   </div>
   <div class="desc">
 
- Whether to prioritise centroid locations by OSM highway tags. For example, trunk roads will have higher priority than residential roads. Requires graph prepared with via [`io.osm_graph_from_poly`](/io#osm-graph-from-poly). Defaults to False.</div>
+ Whether to prioritise centroid locations by OSM highway tags. For example, trunk roads will have higher priority than residential roads. Requires a graph prepared via [`io.osm_graph_from_poly`](/tools/io#osm_graph_from_poly). Defaults to False.</div>
 </div>
 
 <div class="param-set">
@@ -684,7 +704,7 @@ side-effects as a function of varied node intensities when computing network cen
   </div>
   <div class="desc">
 
- An optional list of OpenStreetMap target highway tags. If provided, only nodes with neighbouring edges containing a tag matching one of the target OSM highway tags will be consolidated. Requires graph prepared with via [`io.osm_graph_from_poly`](/io#osm-graph-from-poly).</div>
+ An optional list of OpenStreetMap target highway tags. If provided, only nodes with neighbouring edges containing a tag matching one of the target OSM highway tags will be consolidated. Requires graph prepared with via [`io.osm_graph_from_poly`](/tools/io#osm_graph_from_poly).</div>
 </div>
 
 <div class="param-set">
@@ -694,7 +714,7 @@ side-effects as a function of varied node intensities when computing network cen
   </div>
   <div class="desc">
 
- Whether to only merge edges with shared OSM `name` or `ref` tags. False by default. Requires graph prepared with via [`io.osm_graph_from_poly`](/io#osm-graph-from-poly).</div>
+ Whether to only merge edges with shared OSM `name` or `ref` tags. False by default. Requires graph prepared with via [`io.osm_graph_from_poly`](/tools/io#osm_graph_from_poly).</div>
 </div>
 
 <div class="param-set">
@@ -720,7 +740,7 @@ side-effects as a function of varied node intensities when computing network cen
 
 ### Notes
 
- See the guide on [graph cleaning](/guide#graph-cleaning) for more information.
+ See the guide on [graph cleaning](/guide/fundamentals#automatic-graph-cleaning) for more information.
 
 ![Example raw graph from OSM](/images/graph_raw.png) _The pre-consolidation OSM street network for Soho, London. © OpenStreetMap contributors._
 
@@ -857,7 +877,7 @@ side-effects as a function of varied node intensities when computing network cen
 
  The merging of nodes can create parallel edges with mutually shared nodes on either side. These edges are replaced by a single new edge, with the new geometry selected from either:
 - An imaginary centreline of the combined edges if `merge_edges_by_midline` is set to `True`;
-- Else, the shortest edge, with longer edges discarded. See [`nx_merge_parallel_edges`](#nx-merge-parallel-edges) for more information.
+- Else, the shortest edge, with longer edges discarded. See [`nx_merge_parallel_edges`](#nx_merge_parallel_edges) for more information.
 ### Parameters
 <div class="param-set">
   <div class="def">
@@ -906,7 +926,7 @@ side-effects as a function of varied node intensities when computing network cen
   </div>
   <div class="desc">
 
- Whether to prioritise centroid locations by OSM highway tags. For example, trunk roads will have higher priority than residential roads. Requires graph prepared with via [`io.osm_graph_from_poly`](/io#osm-graph-from-poly). Defaults to False.</div>
+ Whether to prioritise centroid locations by OSM highway tags. For example, trunk roads will have higher priority than residential roads. Requires a graph prepared via [`io.osm_graph_from_poly`](/tools/io#osm_graph_from_poly). Defaults to False.</div>
 </div>
 
 <div class="param-set">
@@ -916,7 +936,7 @@ side-effects as a function of varied node intensities when computing network cen
   </div>
   <div class="desc">
 
- An optional list of OpenStreetMap target highway tags. If provided, only nodes with neighbouring edges containing a tag matching one of the target OSM highway tags will be consolidated. Requires graph prepared with via [`io.osm_graph_from_poly`](/io#osm-graph-from-poly).</div>
+ An optional list of OpenStreetMap target highway tags. If provided, only nodes with neighbouring edges containing a tag matching one of the target OSM highway tags will be consolidated. Requires graph prepared with via [`io.osm_graph_from_poly`](/tools/io#osm_graph_from_poly).</div>
 </div>
 
 <div class="param-set">
@@ -926,7 +946,7 @@ side-effects as a function of varied node intensities when computing network cen
   </div>
   <div class="desc">
 
- Whether to only merge edges with shared OSM `name` or `ref` tags. False by default. Requires graph prepared with via [`io.osm_graph_from_poly`](/io#osm-graph-from-poly).</div>
+ Whether to only merge edges with shared OSM `name` or `ref` tags. False by default. Requires graph prepared with via [`io.osm_graph_from_poly`](/tools/io#osm_graph_from_poly).</div>
 </div>
 
 <div class="param-set">
@@ -1014,7 +1034,7 @@ side-effects as a function of varied node intensities when computing network cen
 </div>
 
 
- Decomposes a graph so that no edge is longer than a set maximum. Decomposition provides a more granular representation of potential variations along street lengths, while reducing network centrality side-effects that arise as a consequence of varied node densities.
+ Decomposes a graph so that no edge is longer than a set maximum. Long street segments are split into shorter pieces of uniform length. This ensures that variations along a street (e.g. land uses at the 100m mark vs. the 300m mark) are captured at finer resolution, and prevents long streets from having disproportionate influence on centrality calculations due to uneven node spacing.
 
 :::note
 Setting the `decompose` parameter too small in relation to the size of the graph may increase the computation time
@@ -1049,7 +1069,7 @@ unnecessarily for subsequent analysis. For larger-scale urban analysis, it is ge
   </div>
   <div class="desc">
 
- An optional list of OpenStreetMap target highway tags. If provided, only nodes with neighbouring edges containing a tag matching one of the target OSM highway tags will be decomposed. Requires graph prepared with via [`io.osm_graph_from_poly`](/io#osm-graph-from-poly).</div>
+ An optional list of OpenStreetMap target highway tags. If provided, only nodes with neighbouring edges containing a tag matching one of the target OSM highway tags will be decomposed. Requires graph prepared with via [`io.osm_graph_from_poly`](/tools/io#osm_graph_from_poly).</div>
 </div>
 
 ### Returns
@@ -1128,7 +1148,7 @@ primal. The same type of situation does not arise in the dual because the nodes 
   </div>
   <div class="desc">
 
- A dual representation `networkX` graph. The new dual nodes will have `x` and `y` node attributes corresponding to the mid-points of the original primal edges. If `live` node attributes were provided, then the `live` attribute for the new dual nodes will be set to `True` if either or both of the adjacent primal nodes were set to `live=True`. Otherwise, all dual nodes wil be set to `live=True`. The primal edges will be split and welded to form the new dual `geom` edges. The primal `LineString` `geom` will be saved to the dual node's `primal_edge` attribute. `primal_edge_node_a`, `primal_edge_node_b`, and `primal_edge_idx` attributes will be added to the new (dual) nodes, and a `primal_node_id` edge attribute will be added to the new (dual) edges.</div>
+ A dual representation `networkX` graph. The new dual nodes will have `x` and `y` node attributes corresponding to the mid-points of the original primal edges. If `live` node attributes were provided, then the `live` attribute for the new dual nodes will be set to `True` if either or both of the adjacent primal nodes were set to `live=True`. Otherwise, all dual nodes wil be set to `live=True`. The primal edges will be split and welded to form the new dual `geom` edges. The primal `LineString` `geom` will be saved to the dual node's `primal_edge` attribute. `primal_edge_node_a`, `primal_edge_node_b`, and `primal_edge_idx` attributes will be added to the new (dual) nodes, and a `primal_node_id` edge attribute will be added to the new (dual) edges. Any per-edge `imp_factor` on the primal graph is propagated to each dual edge as the length-weighted mean of the two adjacent primal segments' impedances (default `1.0`).</div>
 </div>
 
 ### Notes

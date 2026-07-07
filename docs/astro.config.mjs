@@ -1,3 +1,4 @@
+import { unified } from '@astrojs/markdown-remark'
 import sitemap from '@astrojs/sitemap'
 import vue from '@astrojs/vue'
 import remarkAllyEmoji from '@fec/remark-a11y-emoji'
@@ -9,12 +10,11 @@ import rehypeKatex from 'rehype-katex'
 import rehypeSlug from 'rehype-slug'
 import remarkDirective from 'remark-directive'
 import remarkEmoji from 'remark-emoji'
-import remarkGfm from 'remark-gfm'
 import remarkMath from 'remark-math'
 import remarkSmartypants from 'remark-smartypants'
 import { visit } from 'unist-util-visit'
 
-import tailwindcss from '@tailwindcss/vite';
+import tailwindcss from '@tailwindcss/vite'
 
 function admonitionRemarkPlugin() {
   return (tree) => {
@@ -61,94 +61,114 @@ export default defineConfig({
   site: 'https://cityseer.benchmarkurbanism.com/',
   base: '/',
 
-  // firebase hosting is set to false
   trailingSlash: 'never',
 
+  // legacy URLs from the pre-restructure site
+  redirects: {
+    '/intro': '/start',
+    '/guide': '/guide/fundamentals',
+    '/learn': '/start',
+    '/learn/[slug]': '/start/[slug]',
+    '/examples/recipes': '/examples',
+    '/examples/glossary': '/api/glossary',
+  },
+
   output: 'static',
+
+  // Astro 7 defaults to 'jsx' whitespace stripping; keep full compression for prose
+  compressHTML: true,
 
   build: {
     format: 'directory',
   },
 
   markdown: {
-    drafts: false,
     shikiConfig: {
       theme: 'material-theme-darker',
       langs: [],
       wrap: true,
     },
-    remarkPlugins: [
-      remarkGfm,
-      remarkEmoji,
-      remarkAllyEmoji,
-      [
-        remarkSmartypants,
-        {
-          dashes: 'oldschool',
-        },
-      ],
-      remarkMath,
-      remarkDirective,
-      admonitionRemarkPlugin,
-    ],
-    rehypePlugins: [
-      rehypeSlug,
-      replaceUnderscoresInIds,
-      [
-        rehypeAutolinkHeadings,
-        {
-          test: ['h1', 'h2', 'h3'],
-          behavior: 'prepend',
-          content(node) {
-            return [
-              s(
-                'svg',
-                {
-                  xmlns: 'http://www.w3.org/2000/svg',
-                  viewBox: '0 0 20 20',
-                  ariaHidden: 'true',
-                  width: '15px',
-                  height: '15px',
-                  class: 'heading-icon',
-                },
-                [
-                  s('title', 'SVG `<path>` element'),
-                  s('path', {
-                    d: 'M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z',
-                    'fill-rule': 'evenodd',
-                    'clip-rule': 'evenodd',
-                  }),
-                ],
-              ),
-            ]
+    // Astro 7 renders markdown with the native Sätteri pipeline by default;
+    // unified() opts back into remark/rehype so the plugin chain below keeps working
+    processor: unified({
+      gfm: true,
+      // built-in smartypants off: remark-smartypants below carries custom dash options
+      smartypants: false,
+      remarkPlugins: [
+        remarkEmoji,
+        remarkAllyEmoji,
+        [
+          remarkSmartypants,
+          {
+            dashes: 'oldschool',
           },
-        },
+        ],
+        remarkMath,
+        remarkDirective,
+        admonitionRemarkPlugin,
       ],
-      [
-        rehypeKatex,
-        {
-          output: 'htmlAndMathml',
-        },
+      rehypePlugins: [
+        rehypeSlug,
+        replaceUnderscoresInIds,
+        [
+          rehypeAutolinkHeadings,
+          {
+            test: ['h1', 'h2', 'h3'],
+            behavior: 'prepend',
+            properties: { ariaLabel: 'Link to this section' },
+            content() {
+              return [
+                s(
+                  'svg',
+                  {
+                    xmlns: 'http://www.w3.org/2000/svg',
+                    viewBox: '0 0 20 20',
+                    ariaHidden: 'true',
+                    width: '15px',
+                    height: '15px',
+                    class: 'heading-icon',
+                  },
+                  [
+                    s('path', {
+                      d: 'M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z',
+                      'fill-rule': 'evenodd',
+                      'clip-rule': 'evenodd',
+                    }),
+                  ],
+                ),
+              ]
+            },
+          },
+        ],
+        [
+          rehypeKatex,
+          {
+            output: 'htmlAndMathml',
+          },
+        ],
+        [
+          rehypeCitation, // ESM, import manually else doesn't seem to work
+          {
+            bibliography: './src/assets/bib/mendeley.bib',
+            csl: 'harvard1',
+            lang: 'en-US',
+          },
+        ],
       ],
-      [
-        rehypeCitation, // ESM, import manually else doesn't seem to work
-        {
-          bibliography: './src/assets/bib/mendeley.bib',
-          csl: 'harvard1',
-          lang: 'en-US',
-        },
-      ],
-    ],
+    }),
   },
 
-  integrations: [
-    vue(),
-    sitemap(),
-  ],
+  integrations: [vue(), sitemap()],
 
   prefetch: true,
 
   vite: {
-    plugins: [tailwindcss()]
-  }
+    // Astro 7 (rolldown-vite) no longer resolves tsconfig path aliases in CSS; declare explicitly
+    resolve: {
+      alias: {
+        '@src': new URL('./src', import.meta.url).pathname,
+      },
+    },
+    plugins: [tailwindcss()],
+  },
 })

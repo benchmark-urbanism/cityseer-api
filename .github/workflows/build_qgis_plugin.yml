@@ -9,6 +9,13 @@ on:
 permissions:
   contents: write
 
+# Serialise with generate_changelog.yml: both touch the same GitHub Release for a tag via
+# softprops/action-gh-release. A shared, tag-scoped concurrency group (repo-wide by name)
+# prevents them racing to create the release, which fails the loser with "already_exists".
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   build-qgis-plugin:
     runs-on: ubuntu-latest

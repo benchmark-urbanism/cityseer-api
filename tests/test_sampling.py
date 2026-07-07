@@ -17,6 +17,7 @@ import math
 import numpy as np
 import pytest
 from cityseer import rustalgos, sampling
+from cityseer.metrics import networks
 from cityseer.tools import graphs, io, mock
 
 
@@ -47,64 +48,64 @@ class TestSamplingBasics:
         ns, _ = network_structure
 
         res1 = ns.centrality_shortest(
-            compute_closeness=True,
-            compute_betweenness=False,
+            closeness_exprs=[("density", "1")],
+            betweenness_exprs=[],
             distances=[500],
             sample_probability=0.3,
             random_seed=42,
             pbar_disabled=True,
         )
         res2 = ns.centrality_shortest(
-            compute_closeness=True,
-            compute_betweenness=False,
+            closeness_exprs=[("density", "1")],
+            betweenness_exprs=[],
             distances=[500],
             sample_probability=0.3,
             random_seed=42,
             pbar_disabled=True,
         )
 
-        assert np.allclose(res1.node_density[500], res2.node_density[500])
+        assert np.allclose(res1.metrics["density"][500], res2.metrics["density"][500])
 
     def test_reproducibility_different_seed(self, network_structure):
         """Different seeds produce different results."""
         ns, _ = network_structure
 
         res1 = ns.centrality_shortest(
-            compute_closeness=True,
-            compute_betweenness=False,
+            closeness_exprs=[("density", "1")],
+            betweenness_exprs=[],
             distances=[500],
             sample_probability=0.3,
             random_seed=42,
             pbar_disabled=True,
         )
         res2 = ns.centrality_shortest(
-            compute_closeness=True,
-            compute_betweenness=False,
+            closeness_exprs=[("density", "1")],
+            betweenness_exprs=[],
             distances=[500],
             sample_probability=0.3,
             random_seed=43,
             pbar_disabled=True,
         )
 
-        assert not np.allclose(res1.node_density[500], res2.node_density[500])
+        assert not np.allclose(res1.metrics["density"][500], res2.metrics["density"][500])
 
     def test_full_sampling_matches_baseline(self, network_structure):
         """Sampling with p=1.0 matches full computation."""
         ns, _ = network_structure
 
         res_full = ns.centrality_shortest(
-            compute_closeness=True, compute_betweenness=False, distances=[500], pbar_disabled=True
+            closeness_exprs=[("density", "1")], betweenness_exprs=[], distances=[500], pbar_disabled=True
         )
         res_sampled = ns.centrality_shortest(
-            compute_closeness=True,
-            compute_betweenness=False,
+            closeness_exprs=[("density", "1")],
+            betweenness_exprs=[],
             distances=[500],
             sample_probability=1.0,
             random_seed=42,
             pbar_disabled=True,
         )
 
-        assert np.allclose(res_full.node_density[500], res_sampled.node_density[500])
+        assert np.allclose(res_full.metrics["density"][500], res_sampled.metrics["density"][500])
 
 
 class TestIPWCorrection:
@@ -117,20 +118,20 @@ class TestIPWCorrection:
         num_runs = 20
 
         res_full = ns.centrality_shortest(
-            compute_closeness=True, compute_betweenness=False, distances=[distance], pbar_disabled=True
+            closeness_exprs=[("density", "1")], betweenness_exprs=[], distances=[distance], pbar_disabled=True
         )
-        full_density = np.array(res_full.node_density[distance])
+        full_density = np.array(res_full.metrics["density"][distance])
 
         samples = [
             np.array(
                 ns.centrality_shortest(
-                    compute_closeness=True,
-                    compute_betweenness=False,
+                    closeness_exprs=[("density", "1")],
+                    betweenness_exprs=[],
                     distances=[distance],
                     sample_probability=0.5,
                     random_seed=seed,
                     pbar_disabled=True,
-                ).node_density[distance]
+                ).metrics["density"][distance]
             )
             for seed in range(num_runs)
         ]
@@ -148,23 +149,23 @@ class TestIPWCorrection:
         num_runs = 25
 
         res_full = ns.centrality_shortest(
-            compute_closeness=True, compute_betweenness=False, distances=[distance], pbar_disabled=True
+            closeness_exprs=[("density", "1")], betweenness_exprs=[], distances=[distance], pbar_disabled=True
         )
-        full_density = np.array(res_full.node_density[distance])
+        full_density = np.array(res_full.metrics["density"][distance])
         full_mean = np.mean(full_density[full_density > 0])
 
         for prob in [0.3, 0.5, 0.7]:
             sampled_means = []
             for seed in range(num_runs):
                 res = ns.centrality_shortest(
-                    compute_closeness=True,
-                    compute_betweenness=False,
+                    closeness_exprs=[("density", "1")],
+                    betweenness_exprs=[],
                     distances=[distance],
                     sample_probability=prob,
                     random_seed=seed,
                     pbar_disabled=True,
                 )
-                density = np.array(res.node_density[distance])
+                density = np.array(res.metrics["density"][distance])
                 mask = (density > 0) & (full_density > 0)
                 if np.any(mask):
                     sampled_means.append(np.mean(density[mask]))
@@ -183,19 +184,19 @@ class TestTargetAggregation:
         distance = 500
 
         res_full = ns.centrality_shortest(
-            compute_closeness=True, compute_betweenness=False, distances=[distance], pbar_disabled=True
+            closeness_exprs=[("density", "1")], betweenness_exprs=[], distances=[distance], pbar_disabled=True
         )
         res_sampled = ns.centrality_shortest(
-            compute_closeness=True,
-            compute_betweenness=False,
+            closeness_exprs=[("density", "1")],
+            betweenness_exprs=[],
             distances=[distance],
             sample_probability=0.5,
             random_seed=42,
             pbar_disabled=True,
         )
 
-        full = np.array(res_full.node_density[distance])
-        sampled = np.array(res_sampled.node_density[distance])
+        full = np.array(res_full.metrics["density"][distance])
+        sampled = np.array(res_sampled.metrics["density"][distance])
 
         mask = full > 0
         zeros = np.sum((sampled == 0) & mask)
@@ -209,22 +210,27 @@ class TestTargetAggregation:
         distance = 500
 
         res_full = ns.centrality_shortest(
-            compute_closeness=True, compute_betweenness=False, distances=[distance], pbar_disabled=True
+            closeness_exprs=[("density", "1")],
+            betweenness_exprs=[],
+            compute_cycles=True,
+            distances=[distance],
+            pbar_disabled=True,
         )
-        full_cycles = np.array(res_full.node_cycles[distance])
+        full_cycles = np.array(res_full.metrics["cycles"][distance])
 
         if np.sum(full_cycles > 0) == 0:
             pytest.skip("Mock graph has no cycles")
 
         res_sampled = ns.centrality_shortest(
-            compute_closeness=True,
-            compute_betweenness=False,
+            closeness_exprs=[("density", "1")],
+            betweenness_exprs=[],
+            compute_cycles=True,
             distances=[distance],
             sample_probability=0.5,
             random_seed=42,
             pbar_disabled=True,
         )
-        sampled_cycles = np.array(res_sampled.node_cycles[distance])
+        sampled_cycles = np.array(res_sampled.metrics["cycles"][distance])
 
         # Target-aggregated with IPW: sampled should approximate full result.
         # Cycles are small discrete values (0.5 increments), so correlation is noisy
@@ -247,8 +253,8 @@ class TestSamplingWeights:
 
         with pytest.raises(ValueError, match="out of range"):
             ns.centrality_shortest(
-                compute_closeness=True,
-                compute_betweenness=False,
+                closeness_exprs=[("density", "1")],
+                betweenness_exprs=[],
                 distances=[500],
                 sample_probability=0.5,
                 sampling_weights=weights,
@@ -263,8 +269,8 @@ class TestSamplingWeights:
 
         with pytest.raises(ValueError, match="out of range"):
             ns.centrality_shortest(
-                compute_closeness=True,
-                compute_betweenness=False,
+                closeness_exprs=[("density", "1")],
+                betweenness_exprs=[],
                 distances=[500],
                 sample_probability=0.5,
                 sampling_weights=weights,
@@ -278,8 +284,8 @@ class TestSamplingWeights:
 
         with pytest.raises(ValueError, match="must match node_count"):
             ns.centrality_shortest(
-                compute_closeness=True,
-                compute_betweenness=False,
+                closeness_exprs=[("density", "1")],
+                betweenness_exprs=[],
                 distances=[500],
                 sample_probability=0.5,
                 sampling_weights=weights,
@@ -295,8 +301,8 @@ class TestSamplingWeights:
         weights = [1.0 if i < num_nodes // 2 else 0.0 for i in range(num_nodes)]
 
         res = ns.centrality_shortest(
-            compute_closeness=True,
-            compute_betweenness=False,
+            closeness_exprs=[("density", "1")],
+            betweenness_exprs=[],
             distances=[500],
             sample_probability=1.0,
             sampling_weights=weights,
@@ -304,7 +310,7 @@ class TestSamplingWeights:
         )
 
         # Target aggregation: nodes can still receive values from other sources
-        assert np.sum(np.array(res.node_density[500]) > 0) > 0
+        assert np.sum(np.array(res.metrics["density"][500]) > 0) > 0
 
     def test_uniform_weights_equivalent_to_probability(self, network_structure):
         """Uniform weights of 0.5 with p=1.0 ≈ p=0.5 with no weights."""
@@ -315,14 +321,14 @@ class TestSamplingWeights:
         uniform_samples = [
             np.array(
                 ns.centrality_shortest(
-                    compute_closeness=True,
-                    compute_betweenness=False,
+                    closeness_exprs=[("density", "1")],
+                    betweenness_exprs=[],
                     distances=[distance],
                     sample_probability=1.0,
                     sampling_weights=[0.5] * len(nodes_gdf),
                     random_seed=seed,
                     pbar_disabled=True,
-                ).node_density[distance]
+                ).metrics["density"][distance]
             )
             for seed in range(num_runs)
         ]
@@ -330,13 +336,13 @@ class TestSamplingWeights:
         plain_samples = [
             np.array(
                 ns.centrality_shortest(
-                    compute_closeness=True,
-                    compute_betweenness=False,
+                    closeness_exprs=[("density", "1")],
+                    betweenness_exprs=[],
                     distances=[distance],
                     sample_probability=0.5,
                     random_seed=seed,
                     pbar_disabled=True,
-                ).node_density[distance]
+                ).metrics["density"][distance]
             )
             for seed in range(num_runs)
         ]
@@ -358,23 +364,23 @@ class TestSimplestCentrality:
         ns, _ = dual_network_structure
 
         res1 = ns.centrality_simplest(
-            compute_closeness=True,
-            compute_betweenness=False,
+            closeness_exprs=[("density", "1")],
+            betweenness_exprs=[],
             distances=[500],
             sample_probability=0.3,
             random_seed=42,
             pbar_disabled=True,
         )
         res2 = ns.centrality_simplest(
-            compute_closeness=True,
-            compute_betweenness=False,
+            closeness_exprs=[("density", "1")],
+            betweenness_exprs=[],
             distances=[500],
             sample_probability=0.3,
             random_seed=42,
             pbar_disabled=True,
         )
 
-        assert np.allclose(res1.node_density[500], res2.node_density[500])
+        assert np.allclose(res1.metrics["density"][500], res2.metrics["density"][500])
 
     def test_averaged_samples_converge(self, dual_network_structure):
         """Averaged simplest centrality samples converge to true values."""
@@ -383,20 +389,20 @@ class TestSimplestCentrality:
         num_runs = 15
 
         res_full = ns.centrality_simplest(
-            compute_closeness=True, compute_betweenness=False, distances=[distance], pbar_disabled=True
+            closeness_exprs=[("density", "1")], betweenness_exprs=[], distances=[distance], pbar_disabled=True
         )
-        full_density = np.array(res_full.node_density[distance])
+        full_density = np.array(res_full.metrics["density"][distance])
 
         samples = [
             np.array(
                 ns.centrality_simplest(
-                    compute_closeness=True,
-                    compute_betweenness=False,
+                    closeness_exprs=[("density", "1")],
+                    betweenness_exprs=[],
                     distances=[distance],
                     sample_probability=0.5,
                     random_seed=seed,
                     pbar_disabled=True,
-                ).node_density[distance]
+                ).metrics["density"][distance]
             )
             for seed in range(num_runs)
         ]
@@ -412,9 +418,10 @@ class TestSamplingModel:
     """Tests for the Hoeffding/Eppstein–Wang reach → p sampling model."""
 
     def test_constants_match_paper(self):
-        """Default Hoeffding parameters match the paper defaults."""
-        assert sampling.HOEFFDING_EPSILON == 0.06
+        """Default Hoeffding parameters match the paper defaults (eps calibrated on the sparsest network)."""
+        assert sampling.HOEFFDING_EPSILON == 0.05
         assert sampling.HOEFFDING_DELTA == 0.1
+        assert sampling.GRID_SPACING == 175.0
 
     def test_compute_hoeffding_p_matches_formula(self):
         """compute_hoeffding_p implements k=log(2r/δ)/(2ε²), p=min(1,k/r)."""
@@ -493,45 +500,45 @@ class TestBetweennessSampling:
         ns, _ = network_structure
 
         res1 = ns.centrality_shortest(
-            compute_closeness=False,
-            compute_betweenness=True,
+            closeness_exprs=[],
+            betweenness_exprs=[("betweenness", "1"), ("betweenness_decay", "exp(-4 * p)")],
             distances=[500],
             sample_probability=0.3,
             random_seed=42,
             pbar_disabled=True,
         )
         res2 = ns.centrality_shortest(
-            compute_closeness=False,
-            compute_betweenness=True,
+            closeness_exprs=[],
+            betweenness_exprs=[("betweenness", "1"), ("betweenness_decay", "exp(-4 * p)")],
             distances=[500],
             sample_probability=0.3,
             random_seed=42,
             pbar_disabled=True,
         )
 
-        assert np.allclose(res1.node_betweenness[500], res2.node_betweenness[500])
-        assert np.allclose(res1.node_betweenness_beta[500], res2.node_betweenness_beta[500])
+        assert np.allclose(res1.metrics["betweenness"][500], res2.metrics["betweenness"][500])
+        assert np.allclose(res1.metrics["betweenness_decay"][500], res2.metrics["betweenness_decay"][500])
 
     def test_betweenness_full_sampling_matches_baseline(self, network_structure):
         """Betweenness with p=1.0 matches full computation."""
         ns, _ = network_structure
 
         res_full = ns.centrality_shortest(
-            compute_closeness=False,
-            compute_betweenness=True,
+            closeness_exprs=[],
+            betweenness_exprs=[("betweenness", "1")],
             distances=[500],
             pbar_disabled=True,
         )
         res_sampled = ns.centrality_shortest(
-            compute_closeness=False,
-            compute_betweenness=True,
+            closeness_exprs=[],
+            betweenness_exprs=[("betweenness", "1")],
             distances=[500],
             sample_probability=1.0,
             random_seed=42,
             pbar_disabled=True,
         )
 
-        assert np.allclose(res_full.node_betweenness[500], res_sampled.node_betweenness[500])
+        assert np.allclose(res_full.metrics["betweenness"][500], res_sampled.metrics["betweenness"][500])
 
     def test_betweenness_averaged_samples_converge(self, network_structure):
         """Averaged betweenness samples converge to true values."""
@@ -540,23 +547,23 @@ class TestBetweennessSampling:
         num_runs = 20
 
         res_full = ns.centrality_shortest(
-            compute_closeness=False,
-            compute_betweenness=True,
+            closeness_exprs=[],
+            betweenness_exprs=[("betweenness", "1")],
             distances=[distance],
             pbar_disabled=True,
         )
-        full_betw = np.array(res_full.node_betweenness[distance])
+        full_betw = np.array(res_full.metrics["betweenness"][distance])
 
         samples = [
             np.array(
                 ns.centrality_shortest(
-                    compute_closeness=False,
-                    compute_betweenness=True,
+                    closeness_exprs=[],
+                    betweenness_exprs=[("betweenness", "1")],
                     distances=[distance],
                     sample_probability=0.5,
                     random_seed=seed,
                     pbar_disabled=True,
-                ).node_betweenness[distance]
+                ).metrics["betweenness"][distance]
             )
             for seed in range(num_runs)
         ]
@@ -576,43 +583,43 @@ class TestTolerance:
         ns, _ = network_structure
 
         res_default = ns.centrality_shortest(
-            compute_closeness=True,
-            compute_betweenness=True,
+            closeness_exprs=[("harmonic", "1/c")],
+            betweenness_exprs=[("betweenness", "1")],
             distances=[500],
             pbar_disabled=True,
         )
         res_zero = ns.centrality_shortest(
-            compute_closeness=True,
-            compute_betweenness=True,
+            closeness_exprs=[("harmonic", "1/c")],
+            betweenness_exprs=[("betweenness", "1")],
             distances=[500],
             tolerance=0.0,
             pbar_disabled=True,
         )
 
-        assert np.allclose(res_default.node_betweenness[500], res_zero.node_betweenness[500])
-        assert np.allclose(res_default.node_harmonic[500], res_zero.node_harmonic[500])
+        assert np.allclose(res_default.metrics["betweenness"][500], res_zero.metrics["betweenness"][500])
+        assert np.allclose(res_default.metrics["harmonic"][500], res_zero.metrics["harmonic"][500])
 
     def test_tolerance_changes_betweenness(self, network_structure):
         """Positive tolerance redistributes betweenness across near-equal paths."""
         ns, _ = network_structure
 
         res_exact = ns.centrality_shortest(
-            compute_closeness=False,
-            compute_betweenness=True,
+            closeness_exprs=[],
+            betweenness_exprs=[("betweenness", "1")],
             distances=[500],
             tolerance=0.0,
             pbar_disabled=True,
         )
         res_tolerant = ns.centrality_shortest(
-            compute_closeness=False,
-            compute_betweenness=True,
+            closeness_exprs=[],
+            betweenness_exprs=[("betweenness", "1")],
             distances=[500],
             tolerance=10.0,
             pbar_disabled=True,
         )
 
-        betw_exact = np.array(res_exact.node_betweenness[500])
-        betw_tolerant = np.array(res_tolerant.node_betweenness[500])
+        betw_exact = np.array(res_exact.metrics["betweenness"][500])
+        betw_tolerant = np.array(res_tolerant.metrics["betweenness"][500])
         # With tolerance, betweenness credit is spread across more near-equal paths,
         # so the values should differ from exact computation.
         assert not np.allclose(betw_exact, betw_tolerant)
@@ -622,43 +629,43 @@ class TestTolerance:
         ns, _ = dual_network_structure
 
         res_default = ns.centrality_simplest(
-            compute_closeness=True,
-            compute_betweenness=True,
+            closeness_exprs=[("harmonic", "1 / (1 + c / 90)")],
+            betweenness_exprs=[("betweenness", "1")],
             distances=[500],
             pbar_disabled=True,
         )
         res_zero = ns.centrality_simplest(
-            compute_closeness=True,
-            compute_betweenness=True,
+            closeness_exprs=[("harmonic", "1 / (1 + c / 90)")],
+            betweenness_exprs=[("betweenness", "1")],
             distances=[500],
             tolerance=0.0,
             pbar_disabled=True,
         )
 
-        assert np.allclose(res_default.node_betweenness[500], res_zero.node_betweenness[500])
-        assert np.allclose(res_default.node_harmonic[500], res_zero.node_harmonic[500])
+        assert np.allclose(res_default.metrics["betweenness"][500], res_zero.metrics["betweenness"][500])
+        assert np.allclose(res_default.metrics["harmonic"][500], res_zero.metrics["harmonic"][500])
 
     def test_simplest_tolerance_changes_betweenness(self, dual_network_structure):
         """Positive simplest tolerance redistributes betweenness across near-equal angular paths."""
         ns, _ = dual_network_structure
 
         res_exact = ns.centrality_simplest(
-            compute_closeness=False,
-            compute_betweenness=True,
+            closeness_exprs=[],
+            betweenness_exprs=[("betweenness", "1")],
             distances=[500],
             tolerance=0.0,
             pbar_disabled=True,
         )
         res_tolerant = ns.centrality_simplest(
-            compute_closeness=False,
-            compute_betweenness=True,
+            closeness_exprs=[],
+            betweenness_exprs=[("betweenness", "1")],
             distances=[500],
             tolerance=10.0,
             pbar_disabled=True,
         )
 
-        betw_exact = np.array(res_exact.node_betweenness[500])
-        betw_tolerant = np.array(res_tolerant.node_betweenness[500])
+        betw_exact = np.array(res_exact.metrics["betweenness"][500])
+        betw_tolerant = np.array(res_tolerant.metrics["betweenness"][500])
         assert not np.allclose(betw_exact, betw_tolerant)
 
 
@@ -693,11 +700,12 @@ class TestOdBetweenness:
         od = rustalgos.centrality.OdMatrix(origins, destinations, weights)
         result = ns.betweenness_od_shortest(
             od_matrix=od,
+            betweenness_exprs=[("betweenness", "1")],
             distances=[500],
             pbar_disabled=True,
         )
 
-        betw = np.array(result.node_betweenness[500])
+        betw = np.array(result.metrics["betweenness"][500])
         assert len(betw) == len(node_indices)
         assert np.all(betw >= 0)
         assert np.any(betw > 0)
@@ -714,9 +722,114 @@ class TestOdBetweenness:
         od = rustalgos.centrality.OdMatrix(origins, destinations, weights)
         result = ns.betweenness_od_shortest(
             od_matrix=od,
+            betweenness_exprs=[("betweenness", "1")],
             distances=[500],
             pbar_disabled=True,
         )
 
-        betw = np.array(result.node_betweenness[500])
+        betw = np.array(result.metrics["betweenness"][500])
         assert np.allclose(betw, 0.0)
+
+
+class TestAdaptiveSampling:
+    """Tests for per-node (adaptive) sampling: pilot reach, node probabilities, runtime path."""
+
+    def test_compute_node_p_values(self):
+        """Per-node probabilities follow q = min(1, k(r)/r) with clamping and safe fallbacks."""
+        reach = np.array([10.0, 1_000.0, 100_000.0, 0.0, np.nan])
+        q = sampling.compute_node_p(reach)
+        # low reach saturates at 1; invalid reach falls back to 1 (always sample)
+        assert q[0] == 1.0
+        assert q[3] == 1.0
+        assert q[4] == 1.0
+        # high reach: q = k/r
+        k = math.log(2 * 100_000.0 / sampling.HOEFFDING_DELTA) / (2 * sampling.HOEFFDING_EPSILON**2)
+        assert q[2] == pytest.approx(k / 100_000.0, rel=1e-9)
+        # floor is respected
+        q_floored = sampling.compute_node_p(np.array([1e12]), min_probability=0.05)
+        assert q_floored[0] == 0.05
+
+    def test_compute_node_p_monotone(self):
+        """Probabilities do not increase with reach."""
+        reach = np.array([100.0, 1_000.0, 10_000.0, 100_000.0])
+        q = sampling.compute_node_p(reach)
+        assert all(q[i] >= q[i + 1] for i in range(len(q) - 1))
+
+    def test_estimate_euclidean_reach(self):
+        """Euclidean pilot counts neighbours within the radius and applies deflation."""
+        # 3 points on a line, 100m apart: within 150m each end sees 2, middle sees 3 (incl self)
+        xs = [0.0, 100.0, 200.0]
+        ys = [0.0, 0.0, 0.0]
+        reach = sampling.estimate_euclidean_reach(xs, ys, 150.0, deflation=1.0)
+        assert list(reach) == [2.0, 3.0, 2.0]
+        deflated = sampling.estimate_euclidean_reach(xs, ys, 150.0, deflation=2.0)
+        assert list(deflated) == [1.0, 1.5, 1.0]
+
+    def test_estimate_polled_reach_census_is_exact(self):
+        """With every node polled, the point estimate equals exact reach (cc_density)."""
+        G = mock.mock_graph()
+        G = graphs.nx_simple_geoms(G)
+        nodes_gdf, _, ns = io.network_structure_from_nx(G)
+        n = len(ns.node_indices())
+        _, reach_point, _ = sampling.estimate_polled_reach(ns, [800], n_sources=n, random_seed=0)
+        exact = networks.centrality_shortest(ns, nodes_gdf.copy(), distances=[800])
+        density = exact["cc_density_800"].to_numpy(float)
+        # polled reach counts the node itself (self-distance 0); cc_density excludes it
+        assert np.allclose(reach_point[800], density + 1.0)
+
+    def test_estimate_polled_reach_bounds_and_reproducibility(self):
+        """Bounds bracket the point estimate; same seed reproduces."""
+        G = mock.mock_graph()
+        G = graphs.nx_simple_geoms(G)
+        _, _, ns = io.network_structure_from_nx(G)
+        lcb1, point1, ucb1 = sampling.estimate_polled_reach(ns, [400, 800], n_sources=20, random_seed=42)
+        lcb2, _, _ = sampling.estimate_polled_reach(ns, [400, 800], n_sources=20, random_seed=42)
+        for d in (400, 800):
+            assert np.all(lcb1[d] <= point1[d] + 1e-9)
+            assert np.all(point1[d] <= ucb1[d] + 1e-9)
+            # unhit nodes are not priced as free
+            assert np.all(ucb1[d] > 0)
+            assert np.allclose(lcb1[d], lcb2[d])
+        # reach at the larger threshold dominates the smaller
+        assert np.all(point1[800] >= point1[400])
+
+    def test_small_network_falls_back_to_exact(self):
+        """On a small mock network the work test selects exact computation; results match."""
+        G = mock.mock_graph()
+        G = graphs.nx_simple_geoms(G)
+        nodes_gdf, _, ns = io.network_structure_from_nx(G)
+        sampled = networks.centrality_shortest(ns, nodes_gdf.copy(), distances=[800], sample=True)
+        exact = networks.centrality_shortest(ns, nodes_gdf.copy(), distances=[800])
+        assert np.allclose(
+            sampled["cc_harmonic_800"].to_numpy(float),
+            exact["cc_harmonic_800"].to_numpy(float),
+            equal_nan=True,
+        )
+
+    def test_forced_per_node_sampling_unbiased(self):
+        """Per-node weights with IPW average toward exact values across seeds."""
+        G = mock.mock_graph()
+        G = graphs.nx_simple_geoms(G)
+        nodes_gdf, _, ns = io.network_structure_from_nx(G)
+        exact = networks.centrality_shortest(ns, nodes_gdf.copy(), distances=[800])
+        truth = exact["cc_harmonic_800"].to_numpy(float)
+        reach = sampling.estimate_euclidean_reach(ns.node_xs, ns.node_ys, 800, deflation=1.0)
+        q = np.clip(sampling.compute_node_p(reach, epsilon=0.3), 0.3, 0.9)
+        weights = [float(v) for v in q]
+        runs = []
+        for seed in range(120):
+            res = ns.centrality_shortest(
+                distances=[800],
+                closeness_exprs=[("harmonic", "1/c")],
+                betweenness_exprs=[],
+                compute_cycles=False,
+                sample_probability=1.0,
+                sampling_weights=weights,
+                random_seed=seed,
+                pbar_disabled=True,
+            )
+            runs.append(np.array(res.metrics["harmonic"][800]))
+        mean_est = np.nanmean(runs, axis=0)
+        m = np.isfinite(truth) & (truth > 0)
+        rel_bias = float(np.nanmean((mean_est[m] - truth[m]) / truth[m]))
+        assert abs(rel_bias) < 0.05

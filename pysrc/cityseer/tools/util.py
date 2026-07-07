@@ -9,7 +9,7 @@ Note that the `cityseer` network data structures can be created and manipulated 
 from __future__ import annotations
 
 import logging
-from typing import Any
+from typing import Any, cast
 
 import networkx as nx
 import numpy as np
@@ -61,7 +61,7 @@ def validate_cityseer_networkx_graph(
         return g_multi_copy
     # check graph type
     if not isinstance(g_multi_copy, nx.MultiGraph):
-        raise TypeError(f"Expected an undirected networkX MultiGraph but encountered {type(g_multi_copy)}.")
+        raise TypeError(f"Expected a networkX MultiGraph or MultiDiGraph but encountered {type(g_multi_copy)}.")
     # check CRS
     if "crs" not in g_multi_copy.graph:
         raise KeyError('No CRS code found in graph. Please specify a CRS code as a "crs" graph attribute.')
@@ -77,6 +77,9 @@ def validate_cityseer_networkx_graph(
             raise KeyError(f'Encountered node missing "y" coordinate attribute at node {nd_key}.')
     #
     for start_nd_key, end_nd_key, edge_data in g_multi_copy.edges(data=True):
+        # normalise "geometry" to "geom" for compatibility with momepy / geopandas conventions
+        if "geom" not in edge_data and "geometry" in edge_data:
+            edge_data["geom"] = edge_data.pop("geometry")
         # check if geom present
         if "geom" not in edge_data:
             raise KeyError(
@@ -210,7 +213,7 @@ def _snap_linestring_idx(
     # handle 3D
     coord = list(list_linestring_coords[idx])  # tuples don't support indexed assignment
     coord[:2] = x_y
-    list_linestring_coords[idx] = tuple(coord)
+    list_linestring_coords[idx] = cast(CoordsType, tuple(coord))
 
     return list_linestring_coords
 

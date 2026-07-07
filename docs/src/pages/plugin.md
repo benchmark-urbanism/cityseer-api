@@ -2,19 +2,19 @@
 layout: '@src/layouts/PageLayout.astro'
 ---
 
-## QGIS Plugin
+# QGIS Plugin
 
 The `cityseer` QGIS plugin provides Processing algorithms for computing localised network centrality metrics, land-use accessibility, and localised statistics directly within QGIS. It uses a dual graph representation where each road segment becomes a node connected to its neighbours, with support for multiple distance thresholds, shortest and simplest (angular) paths, and deterministic distance-based sampling.
 
 The plugin is experimental and requires QGIS 4.0+.
 
-### Installation
+## Installation
 
 Install the plugin from the QGIS plugin repository: go to **Plugins > Manage and Install Plugins**, search for "Cityseer", and click **Install**. Enable the "Show also experimental plugins" option in the **Settings** tab if the plugin is not visible.
 
 On first load, the plugin will prompt to install the `cityseer` Python library if it is not already available in the QGIS Python environment.
 
-### Common Concepts
+## Common Concepts
 
 The following concepts apply to all three algorithms:
 
@@ -23,11 +23,11 @@ The following concepts apply to all three algorithms:
 - **Boundary polygon**: An optional polygon layer. Nodes whose midpoints fall inside the boundary are "live" (used as analysis sources); nodes outside provide network context only. Multi-polygon layers are supported (features are merged automatically).
 - **Simplest path (angular)**: When enabled, paths minimise cumulative angular change instead of metric distance. This models route choice based on cognitive simplicity rather than physical distance, and uses the plugin's internal dual graph representation.
 
-### Network Centrality
+## Network Centrality
 
 Accessible via **Processing > Cityseer > Network Centrality**.
 
-#### Input Parameters
+## Input Parameters
 
 | Parameter                                     | Description                                                                                                                                                                                 | Default      |
 | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------ |
@@ -37,18 +37,18 @@ Accessible via **Processing > Cityseer > Network Centrality**.
 | **Boundary polygon**                          | Optional polygon layer. Nodes inside the boundary are used as centrality sources; nodes outside provide network context only.                                                               | _(none)_     |
 | **Use deterministic distance-based sampling** | _Experimental._ When enabled, sampling probability is computed per distance threshold. Distances where the probability is 1.0 are computed exactly; larger distances are sampled for speed. | `True`       |
 
-#### Metric Selection
+## Metric Selection
 
 The algorithm dialog provides a 2x2 grid of metric categories. Each category can be toggled on or off independently, and individual metrics within each category are selected independently — enabling a metric in one category does not affect other categories.
 
 |                 | Shortest path                                     | Simplest path (angular)             |
 | --------------- | ------------------------------------------------- | ----------------------------------- |
-| **Closeness**   | harmonic, density, farness, beta, cycles, hillier | harmonic, density, farness, hillier |
-| **Betweenness** | betweenness, betweenness_beta                     | betweenness, betweenness_beta       |
+| **Closeness**   | harmonic, density, farness, decay, cycles, hillier | harmonic, density, farness, hillier |
+| **Betweenness** | betweenness, betweenness_decay                     | betweenness                         |
 
 By default, harmonic closeness and betweenness are enabled for shortest paths. All simplest path categories are off by default.
 
-#### Centrality Output
+## Centrality Output
 
 The output is a line layer with the original street segments and computed centrality values as attributes. Output fields follow the naming convention:
 
@@ -62,7 +62,7 @@ For example, with distances `400,800`:
 - `cc_betweenness_400`, `cc_betweenness_800`
 - `cc_harmonic_400_ang` (if simplest path closeness is enabled)
 
-### Sampling
+## Sampling
 
 Deterministic distance-based sampling is enabled by default. Sampling probability depends only on the distance threshold: smaller distances run exactly while larger distances are sampled for a speed-up. The following table shows approximate sampling rates:
 
@@ -80,11 +80,11 @@ Deterministic distance-based sampling is enabled by default. Sampling probabilit
 
 Disable sampling for exact computation at all distances.
 
-### Accessibility
+## Accessibility
 
 Accessible via **Processing > Cityseer > Accessibility**. Computes land-use accessibility by counting reachable features (from a point or polygon data layer) within distance thresholds along the street network.
 
-#### Accessibility Parameters
+## Accessibility Parameters
 
 | Parameter                       | Description                                                                                                          | Default      |
 | ------------------------------- | -------------------------------------------------------------------------------------------------------------------- | ------------ |
@@ -96,34 +96,33 @@ Accessible via **Processing > Cityseer > Accessibility**. Computes land-use acce
 | **Use simplest path (angular)** | Use angular (simplest) paths instead of shortest (metric) paths on the internally constructed dual graph             | `False`      |
 | **Boundary polygon**            | Optional polygon layer. Nodes inside the boundary are used as sources; nodes outside provide network context only.   | _(none)_     |
 
-#### Land-Use Categories
+## Land-Use Categories
 
 If a land-use field is selected, the dialog provides a **Load categories** button that reads unique values from the selected field. Individual categories can then be checked or unchecked. Categories are unchecked by default — use **Select all** to enable all categories, or check specific ones. Only text (string) columns are available for the land-use field.
 
 If no land-use field is selected, all features are counted together under a single category (`all`).
 
-#### Accessibility Output
+## Accessibility Output
 
-The output is a line layer with the original street segments and computed accessibility values as attributes. For each land-use category and distance threshold, three types of columns are produced:
+The output is a line layer with the original street segments and computed accessibility values as attributes. For each land-use category and distance threshold, two types of columns are produced:
 
 ```text
-cc_<category>_<distance>[_ang]_nw    — unweighted count of reachable features
-cc_<category>_<distance>[_ang]_wt    — distance-weighted count (exponential decay)
+cc_<category>_<distance>[_ang]                  — decay-weighted count of reachable features
 cc_<category>_nearest_max_<max_distance>[_ang]  — distance to nearest feature
 ```
 
 For example, with a `type` field containing `pub` and `shop`, and distances `400,800`:
 
-- `cc_pub_400_nw`, `cc_pub_400_wt`, `cc_pub_800_nw`, `cc_pub_800_wt`
+- `cc_pub_400`, `cc_pub_800`
 - `cc_pub_nearest_max_800`
-- `cc_shop_400_nw`, `cc_shop_400_wt`, `cc_shop_800_nw`, `cc_shop_800_wt`
+- `cc_shop_400`, `cc_shop_800`
 - `cc_shop_nearest_max_800`
 
-### Statistics
+## Statistics
 
 Accessible via **Processing > Cityseer > Statistics**. Computes localised statistics for a numerical data column within distance thresholds along the street network.
 
-#### Statistics Parameters
+## Statistics Parameters
 
 | Parameter                       | Description                                                                                                        | Default      |
 | ------------------------------- | ------------------------------------------------------------------------------------------------------------------ | ------------ |
@@ -137,37 +136,37 @@ Accessible via **Processing > Cityseer > Statistics**. Computes localised statis
 
 Only numeric columns are available for the numerical field selector. Features with missing, null, or non-finite values are skipped automatically.
 
-#### Available Statistics
+## Available Statistics
 
 The algorithm dialog provides checkboxes for selecting which statistics to compute:
 
-| Statistic    | Description               | Weighted variant | Default |
-| ------------ | ------------------------- | :--------------: | :-----: |
-| **Sum**      | Sum of values             |       Yes        |   On    |
-| **Mean**     | Mean of values            |       Yes        |   On    |
-| **Count**    | Number of data points     |       Yes        |   On    |
-| **Median**   | Median of values          |       Yes        |   Off   |
-| **Variance** | Variance of values        |       Yes        |   Off   |
-| **MAD**      | Median Absolute Deviation |       Yes        |   Off   |
-| **Max**      | Maximum value             |        No        |   Off   |
-| **Min**      | Minimum value             |        No        |   Off   |
+| Statistic    | Description               | Default |
+| ------------ | ------------------------- | :-----: |
+| **Sum**      | Sum of values             |   On    |
+| **Mean**     | Mean of values            |   On    |
+| **Count**    | Number of data points     |   On    |
+| **Median**   | Median of values          |   Off   |
+| **Variance** | Variance of values        |   Off   |
+| **MAD**      | Median Absolute Deviation |   Off   |
+| **Max**      | Maximum value             |   Off   |
+| **Min**      | Minimum value             |   Off   |
 
-Statistics with weighted variants produce both unweighted (`_nw`) and distance-weighted (`_wt`) columns. The weighted variant uses exponential distance decay. Max and min have no weighted variant and produce a single column per distance.
+Each statistic produces one column per distance threshold. All statistics use the decay function to weight contributions by distance; the default is flat (no decay).
 
 To compute statistics for multiple numerical columns, run the algorithm once per column.
 
-#### Statistics Output
+## Statistics Output
 
 The output is a line layer with the original street segments and computed statistics as attributes. Output fields follow the naming convention:
 
 ```text
-cc_<field>_<statistic>_<distance>[_ang]_nw    — unweighted statistic
-cc_<field>_<statistic>_<distance>[_ang]_wt    — distance-weighted statistic
-cc_<field>_<statistic>_<distance>[_ang]       — for max/min (no weighted variant)
+cc_<field>_<statistic>_<distance>[_ang]    — computed statistic
 ```
 
 For example, with a `price` field and distances `400,800`:
 
-- `cc_price_sum_400_nw`, `cc_price_sum_400_wt`, `cc_price_sum_800_nw`, `cc_price_sum_800_wt`
-- `cc_price_mean_400_nw`, `cc_price_mean_400_wt`, `cc_price_mean_800_nw`, `cc_price_mean_800_wt`
+- `cc_price_sum_400`, `cc_price_sum_800`
+- `cc_price_mean_400`, `cc_price_mean_800`
 - `cc_price_max_400`, `cc_price_max_800`
+
+For the equivalent Python workflow, from computed metrics to a styled QGIS layer or publication figure, see the [From Results to Maps](/examples/networks/results-to-maps) recipe.

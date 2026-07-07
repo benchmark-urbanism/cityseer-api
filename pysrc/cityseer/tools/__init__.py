@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-__all__ = ["graphs", "io", "mock", "plot", "util"]
+__all__ = ["dual", "graphs", "io", "mock", "plot", "util"]
 
 
 def __getattr__(name: str):

@@ -6,7 +6,16 @@ layout: ../../layouts/PageLayout.astro
 # io
 
 
- Functions for fetching and converting graphs and network structures.
+ Functions for fetching and converting between different network formats and data structures. Use these functions to load networks from OpenStreetMap, convert between NetworkX graphs and cityseer's internal structures, and prepare networks for analysis.
+
+:::note
+``network_structure_from_nx`` and ``nx_from_osm_nx`` accept ``MultiDiGraph`` inputs and will produce directed
+``NetworkStructure`` instances. However, the graph simplification and cleaning pipeline
+(``osm_graph_from_poly``, ``nx_from_osm``, and the functions in the ``graphs`` module) does not preserve edge
+directionality. A ``MultiDiGraph`` should therefore not be passed through those functions before conversion.
+For the high-level API, use [`CityNetwork.from_nx`](/api/network#from_nx) with a ``MultiDiGraph`` or
+[`CityNetwork.from_geopandas`](/api/network#from_geopandas) with ``directed=True`` and an ``oneway`` column.
+:::
 
 
 <div class="function">
@@ -169,7 +178,7 @@ layout: ../../layouts/PageLayout.astro
 </div>
 
 
- Buffer a point and return a `shapely` Polygon. This function can be used to prepare a buffered point `Polygon` for passing to [`osm_graph_from_poly()`](#osm-graph-from-poly). Expects WGS 84 / EPSG 4326 input coordinates. If `projected` is `True` then a UTM converted polygon will be returned. Otherwise returned as WGS 84 polygon in geographic coords.
+ Buffer a point and return a `shapely` Polygon. This function can be used to prepare a buffered point `Polygon` for passing to [`osm_graph_from_poly()`](#osm_graph_from_poly). Expects WGS 84 / EPSG 4326 input coordinates. If `projected` is `True` then a UTM converted polygon will be returned. Otherwise returned as WGS 84 polygon in geographic coords.
 ### Parameters
 <div class="param-set">
   <div class="def">
@@ -269,7 +278,7 @@ layout: ../../layouts/PageLayout.astro
  Fetches an OSM response.
 :::note
 This function requires a valid OSM request. If you prepare a polygonal extents then it may be easier to use
-[`osm_graph_from_poly()`](#osm-graph-from-poly), which would call this method on your behalf and then
+[`osm_graph_from_poly()`](#osm_graph_from_poly), which would call this method on your behalf and then
 builds a graph automatically.
 :::
 ### Parameters
@@ -557,7 +566,7 @@ builds a graph automatically.
 
  The following is the default query which you can adapt for your purposes. Notice the `geom_osm` f-string interpolation key (for injecting the geometry) and the use of `out qt;` instead of `out skel qt;`.
 
-```python
+```text
 /* https://wiki.openstreetmap.org/wiki/Overpass_API/Overpass_QL */
 [out:json];
 (way["highway"]
@@ -656,6 +665,11 @@ out qt;
     <span class="pc">:</span>
     <span class="pa"> float = 0.01</span>
   </div>
+  <div class="param">
+    <span class="pn">directed</span>
+    <span class="pc">:</span>
+    <span class="pa"> bool = False</span>
+  </div>
   <span class="pt">)-&gt;[</span>
   <span class="pr">MultiGraph</span>
   <span class="pt">]</span>
@@ -663,7 +677,9 @@ out qt;
 </div>
 
 
- Copy an [`OSMnx`](https://osmnx.readthedocs.io/) directed `MultiDiGraph` to an undirected `cityseer` `MultiGraph`. See the [`OSMnx`](/guide#osm-and-networkx) section of the guide for a more general discussion (and example) on workflows combining `OSMnx` with `cityseer`.
+ Copy an [`OSMnx`](https://osmnx.readthedocs.io/) directed `MultiDiGraph` to a `cityseer` compatible graph. When ``directed=False`` (default), converts to an undirected ``MultiGraph``. When ``directed=True``, preserves edge directionality as a ``MultiDiGraph``.
+
+ See the [`OSMnx`](/guide/networks#from-openstreetmap-via-osmnx) section of the guide for a more general discussion (and example) on workflows combining `OSMnx` with `cityseer`.
 
  `x` and `y` node attributes will be copied directly and `geometry` edge attributes will be copied to a `geom` edge attribute. The conversion process will snap the `shapely` `LineString` endpoints to the corresponding start and end node coordinates.
 
@@ -711,11 +727,21 @@ out qt;
  Tolerance at which to raise errors for mismatched geometry end-points vis-a-vis corresponding node coordinates. Prior to conversion, this method will check edge geometry end-points for alignment with the corresponding end-point nodes. Where these don't align within the given tolerance an exception will be raised. Otherwise, if within the tolerance, the conversion function will snap the geometry end-points to the corresponding node coordinates so that downstream exceptions are not subsequently raised. It is preferable to minimise graph manipulation prior to conversion to a `cityseer` compatible `MultiGraph` otherwise particularly large tolerances may be required, and this may lead to some unexpected or undesirable effects due to aggressive snapping.</div>
 </div>
 
+<div class="param-set">
+  <div class="def">
+    <div class="name">directed</div>
+    <div class="type">bool</div>
+  </div>
+  <div class="desc">
+
+ If ``True``, return a ``MultiDiGraph`` preserving one-way edge directionality from OSMnx. If ``False`` (default), return an undirected ``MultiGraph``.</div>
+</div>
+
 ### Returns
 <div class="param-set">
   <div class="def">
     <div class="name"></div>
-    <div class="type">nx.MultiGraph</div>
+    <div class="type">nx.MultiGraph | nx.MultiDiGraph</div>
   </div>
   <div class="desc">
 
@@ -737,7 +763,7 @@ out qt;
   <div class="param">
     <span class="pn">open_roads_path</span>
     <span class="pc">:</span>
-    <span class="pa"> str | pathlib.Path</span>
+    <span class="pa"> str | pathlib._local.Path</span>
   </div>
   <div class="param">
     <span class="pn">road_node_layer_key</span>
@@ -845,7 +871,11 @@ out qt;
 </div>
 
 
- Transpose a `networkX` `MultiGraph` into a `gpd.GeoDataFrame` and `NetworkStructure` for use by `cityseer`. Calculates length and angle attributes, as well as in and out bearings, and stores this information in the returned data maps. Optional `z` node attributes (elevation) are supported; when present on both endpoints of an edge, a slope-based walking impedance (Tobler's hiking function) is automatically applied during centrality computations.
+ Transpose a `networkX` `MultiGraph` (or `MultiDiGraph`) into a `gpd.GeoDataFrame` and `NetworkStructure` for use by `cityseer`.
+
+ Calculates length and angle attributes, as well as in and out bearings, and stores this information in the returned data maps. Optional `z` node attributes (elevation) are supported; when present on both endpoints of an edge, a slope-based walking impedance (Tobler's hiking function) is automatically applied during centrality computations.
+
+ When a ``MultiDiGraph`` is passed, the resulting ``NetworkStructure`` will be marked as directed and edges will respect the graph's edge directionality. Note that the graph cleaning and simplification functions in the ``graphs`` module do not preserve directionality, so a ``MultiDiGraph`` should not be passed through those functions before calling this method.
 ### Parameters
 <div class="param-set">
   <div class="def">
@@ -854,7 +884,7 @@ out qt;
   </div>
   <div class="desc">
 
- A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `y` node attributes, and `geom` edge attributes containing `LineString` geoms. Nodes may optionally include a `z` attribute for elevation.</div>
+ A `networkX` `MultiGraph` or `MultiDiGraph` in a projected coordinate system, containing `x` and `y` node attributes, and `geom` edge attributes containing `LineString` geoms. Nodes may optionally include a `z` attribute for elevation. When a `MultiDiGraph` is provided, the resulting `NetworkStructure` is directed.</div>
 </div>
 
 <div class="param-set">
@@ -875,7 +905,7 @@ out qt;
   </div>
   <div class="desc">
 
- A `gpd.GeoDataFrame` with `live`, `weight`, and `geometry` attributes. The original `networkX` graph's node keys will be used for the `GeoDataFrame` index. If `nx_multigraph` is a dual graph prepared with [`graphs.nx_to_dual`](/tools/graphs#nx-to-dual) then the corresponding primal edge `LineString` geometry will be set as the `GeoPandas` geometry for visualisation purposes using `primal_edge` for the column name. The dual node `Point` geometry will be saved in `WKT` format to the `dual_node` column.</div>
+ A `gpd.GeoDataFrame` with `live`, `weight`, and `geometry` attributes. The original `networkX` graph's node keys will be used for the `GeoDataFrame` index. If `nx_multigraph` is a dual graph prepared with [`graphs.nx_to_dual`](/tools/graphs#nx_to_dual) then the corresponding primal edge `LineString` geometry will be set as the `GeoPandas` geometry for visualisation purposes using `primal_edge` for the column name. The dual node `Point` geometry will be saved in `WKT` format to the `dual_node` column.</div>
 </div>
 
 <div class="param-set">
@@ -895,7 +925,7 @@ out qt;
   </div>
   <div class="desc">
 
- A [`rustalgos.graph.NetworkStructure`](/rustalgos/rustalgos#networkstructure) instance.</div>
+ A [`rustalgos.graph.NetworkStructure`](/rustalgos/graph#networkstructure) instance.</div>
 </div>
 
 
@@ -957,7 +987,7 @@ out qt;
   </div>
   <div class="desc">
 
- A [`rustalgos.graph.NetworkStructure`](/rustalgos/rustalgos#networkstructure) instance.</div>
+ A [`rustalgos.graph.NetworkStructure`](/rustalgos/graph#networkstructure) instance.</div>
 </div>
 
 
@@ -1052,7 +1082,7 @@ out qt;
   </div>
   <div class="desc">
 
- An edges `gpd.GeoDataFrame` as derived from [`network_structure_from_nx`](#network-structure-from-nx).</div>
+ An edges `gpd.GeoDataFrame` as derived from [`network_structure_from_nx`](#network_structure_from_nx).</div>
 </div>
 
 ### Returns
@@ -1095,7 +1125,7 @@ out qt;
 </div>
 
 
- Transpose a `cityseer` `networkX` `MultiGraph` into a `gpd.GeoDataFrame` representing the network edges. Converts the `geom` attribute attached to each edge into a GeoPandas GeoDataFrame. This is useful when inspecting or cleaning the network in QGIS. It can then be reimported with [`nx_from_generic_geopandas`](#nx-from-generic-geopandas)
+ Transpose a `cityseer` `networkX` `MultiGraph` into a `gpd.GeoDataFrame` representing the network edges. Converts the `geom` attribute attached to each edge into a GeoPandas GeoDataFrame. This is useful when inspecting or cleaning the network in QGIS. It can then be reimported with [`nx_from_generic_geopandas`](#nx_from_generic_geopandas)
 ### Parameters
 <div class="param-set">
   <div class="def">

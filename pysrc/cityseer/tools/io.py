@@ -1,5 +1,16 @@
 """
-Functions for fetching and converting graphs and network structures.
+Functions for fetching and converting between different network formats and data structures. Use these functions
+to load networks from OpenStreetMap, convert between NetworkX graphs and cityseer's internal structures, and
+prepare networks for analysis.
+
+:::note
+``network_structure_from_nx`` and ``nx_from_osm_nx`` accept ``MultiDiGraph`` inputs and will produce directed
+``NetworkStructure`` instances. However, the graph simplification and cleaning pipeline
+(``osm_graph_from_poly``, ``nx_from_osm``, and the functions in the ``graphs`` module) does not preserve edge
+directionality. A ``MultiDiGraph`` should therefore not be passed through those functions before conversion.
+For the high-level API, use [`CityNetwork.from_nx`](/api/network#from_nx) with a ``MultiDiGraph`` or
+[`CityNetwork.from_geopandas`](/api/network#from_geopandas) with ``directed=True`` and an ``oneway`` column.
+:::
 """
 
 # workaround until networkx adopts types
@@ -149,7 +160,7 @@ def buffered_point_poly(lng: float, lat: float, buffer: int, projected: bool = F
     Buffer a point and return a `shapely` Polygon.
 
     This function can be used to prepare a buffered point `Polygon` for passing to
-    [`osm_graph_from_poly()`](#osm-graph-from-poly). Expects WGS 84 / EPSG 4326 input coordinates. If `projected` is
+    [`osm_graph_from_poly()`](#osm_graph_from_poly). Expects WGS 84 / EPSG 4326 input coordinates. If `projected` is
     `True` then a UTM converted polygon will be returned. Otherwise returned as WGS 84 polygon in geographic coords.
 
     Parameters
@@ -185,7 +196,7 @@ def fetch_osm_network(osm_request: str, timeout: int = 300, max_tries: int = 3) 
 
     :::note
     This function requires a valid OSM request. If you prepare a polygonal extents then it may be easier to use
-    [`osm_graph_from_poly()`](#osm-graph-from-poly), which would call this method on your behalf and then
+    [`osm_graph_from_poly()`](#osm_graph_from_poly), which would call this method on your behalf and then
     builds a graph automatically.
     :::
 
@@ -211,6 +222,8 @@ def fetch_osm_network(osm_request: str, timeout: int = 300, max_tries: int = 3) 
             "https://overpass-api.de/api/interpreter",
             timeout=timeout,
             params={"data": osm_request},
+            # Overpass rejects generic python user agents with 406 Not Acceptable
+            headers={"User-Agent": "cityseer-api (https://cityseer.benchmarkurbanism.com)"},
         )
         # break if OK response
         if osm_response is not None and osm_response.status_code == 200:
@@ -243,9 +256,12 @@ def _extract_gdf(gdf):
         relations_gdf = relations_gdf[relations_gdf.geometry.type == "Polygon"]
     else:
         relations_gdf = gpd.GeoDataFrame(columns=gdf.columns, crs=gdf.crs)  # type: ignore
-    # combine
-    combined_gdf = pd.concat([ways_gdf, relations_gdf])
-    combined_geom = combined_gdf.union_all()  # type: ignore
+    # combine. cast the concat result: pd.concat is typed as returning a plain
+    # DataFrame, which drops the .union_all() geometry method and forces a type: ignore
+    # whose necessity flips across stub versions (unused on some, required on others).
+    # cast has no runtime effect and is never itself flagged as an unused suppression.
+    combined_gdf = cast("gpd.GeoDataFrame", pd.concat([ways_gdf, relations_gdf]))
+    combined_geom = combined_gdf.union_all()
     # extract geoms and explode
     combined_gdf = gpd.GeoDataFrame({"geometry": [combined_geom]}, crs=combined_gdf.crs)  # type: ignore
     area_gdf = combined_gdf.explode(index_parts=False).reset_index(drop=True)
@@ -590,7 +606,7 @@ def osm_graph_from_poly(
     The following is the default query which you can adapt for your purposes. Notice the `geom_osm` f-string
     interpolation key (for injecting the geometry) and the use of `out qt;` instead of `out skel qt;`.
 
-    ```python
+    ```text
     /* https://wiki.openstreetmap.org/wiki/Overpass_API/Overpass_QL */
     [out:json];
     (way["highway"]
@@ -609,7 +625,6 @@ def osm_graph_from_poly(
     >;
     out qt;
     ```
-
     """
     # format for OSM query
     in_transformer = Transformer.from_crs(poly_crs_code, 4326, always_xy=True)
@@ -777,12 +792,16 @@ def nx_from_osm_nx(
     node_attributes: list[str] | None = None,
     edge_attributes: list[str] | None = None,
     tolerance: float = config.ATOL,
+    directed: bool = False,
 ) -> nx.MultiGraph:
     """
-    Copy an [`OSMnx`](https://osmnx.readthedocs.io/) directed `MultiDiGraph` to an undirected `cityseer` `MultiGraph`.
+    Copy an [`OSMnx`](https://osmnx.readthedocs.io/) directed `MultiDiGraph` to a `cityseer` compatible graph.
 
-    See the [`OSMnx`](/guide#osm-and-networkx) section of the guide for a more general discussion (and example) on
-    workflows combining `OSMnx` with `cityseer`.
+    When ``directed=False`` (default), converts to an undirected ``MultiGraph``.
+    When ``directed=True``, preserves edge directionality as a ``MultiDiGraph``.
+
+    See the [`OSMnx`](/guide/networks#from-openstreetmap-via-osmnx) section of the guide for a more general discussion
+    (and example) on workflows combining `OSMnx` with `cityseer`.
 
     `x` and `y` node attributes will be copied directly and `geometry` edge attributes will be copied to a `geom` edge
     attribute. The conversion process will snap the `shapely` `LineString` endpoints to the corresponding start and end
@@ -815,10 +834,13 @@ def nx_from_osm_nx(
         coordinates so that downstream exceptions are not subsequently raised. It is preferable to minimise graph
         manipulation prior to conversion to a `cityseer` compatible `MultiGraph` otherwise particularly large tolerances
         may be required, and this may lead to some unexpected or undesirable effects due to aggressive snapping.
+    directed: bool
+        If ``True``, return a ``MultiDiGraph`` preserving one-way edge directionality from OSMnx.
+        If ``False`` (default), return an undirected ``MultiGraph``.
 
     Returns
     -------
-    nx.MultiGraph
+    nx.MultiGraph | nx.MultiDiGraph
         A `cityseer` compatible `networkX` graph with `x` and `y` node attributes and `geom` edge attributes.
 
     """
@@ -829,9 +851,9 @@ def nx_from_osm_nx(
         raise TypeError("Node attributes to be copied should be provided as either a list or tuple of attribute keys.")
     if edge_attributes is not None and not isinstance(edge_attributes, list | tuple):
         raise TypeError("Edge attributes to be copied should be provided as either a list or tuple of attribute keys.")
-    logger.info("Converting OSMnx MultiDiGraph to cityseer MultiGraph.")
-    # target MultiGraph
-    g_multi = nx.MultiGraph()
+    logger.info("Converting OSMnx MultiDiGraph to cityseer %s.", "MultiDiGraph" if directed else "MultiGraph")
+    # target graph
+    g_multi: nx.MultiGraph = nx.MultiDiGraph() if directed else nx.MultiGraph()
     g_multi.graph["crs"] = CRS(nx_multidigraph.graph["crs"])
 
     def _process_node(nd_key: NodeKey) -> tuple[float, float]:
@@ -844,17 +866,18 @@ def nx_from_osm_nx(
             raise KeyError(f'Encountered node missing "y" coordinate attribute for node {nd_key}.')
         y: float = nx_multidigraph.nodes[nd_key]["y"]
         # add node and attributes if necessary
+        orig_nd_key = nd_key
         nd_key = str(nd_key)
         if nd_key not in g_multi:
             node_kwargs: dict[str, Any] = {"x": x, "y": y}
-            if "z" in nx_multidigraph.nodes[nd_key]:
-                node_kwargs["z"] = nx_multidigraph.nodes[nd_key]["z"]
+            if "z" in nx_multidigraph.nodes[orig_nd_key]:
+                node_kwargs["z"] = nx_multidigraph.nodes[orig_nd_key]["z"]
             g_multi.add_node(nd_key, **node_kwargs)
             if node_attributes is not None:
                 for node_att in node_attributes:
-                    if node_att not in nx_multidigraph.nodes[nd_key]:
+                    if node_att not in nx_multidigraph.nodes[orig_nd_key]:
                         raise ValueError(f"Specified attribute {node_att} is not available for node {nd_key}.")
-                    g_multi.nodes[nd_key][node_att] = nx_multidigraph.nodes[nd_key][node_att]
+                    g_multi.nodes[nd_key][node_att] = nx_multidigraph.nodes[orig_nd_key][node_att]
 
         return x, y
 
@@ -1020,17 +1043,24 @@ def network_structure_from_nx(
     crs: None = None,
 ) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame, rustalgos.graph.NetworkStructure]:
     """
-    Transpose a `networkX` `MultiGraph` into a `gpd.GeoDataFrame` and `NetworkStructure` for use by `cityseer`.
+    Transpose a `networkX` `MultiGraph` (or `MultiDiGraph`) into a `gpd.GeoDataFrame` and `NetworkStructure` for use
+    by `cityseer`.
 
     Calculates length and angle attributes, as well as in and out bearings, and stores this information in the returned
     data maps. Optional `z` node attributes (elevation) are supported; when present on both endpoints of an edge, a
     slope-based walking impedance (Tobler's hiking function) is automatically applied during centrality computations.
 
+    When a ``MultiDiGraph`` is passed, the resulting ``NetworkStructure`` will be marked as directed and edges will
+    respect the graph's edge directionality. Note that the graph cleaning and simplification functions in the
+    ``graphs`` module do not preserve directionality, so a ``MultiDiGraph`` should not be passed through those
+    functions before calling this method.
+
     Parameters
     ----------
     nx_multigraph: nx.MultiGraph
-        A `networkX` `MultiGraph` in a projected coordinate system, containing `x` and `y` node attributes, and `geom`
-        edge attributes containing `LineString` geoms. Nodes may optionally include a `z` attribute for elevation.
+        A `networkX` `MultiGraph` or `MultiDiGraph` in a projected coordinate system, containing `x` and `y` node
+        attributes, and `geom` edge attributes containing `LineString` geoms. Nodes may optionally include a `z`
+        attribute for elevation. When a `MultiDiGraph` is provided, the resulting `NetworkStructure` is directed.
     crs: None
         The `crs` parameter is deprecated and will be removed in a future release. If your network is
         generated via cityseer from OSM or GeoPandas then CRS handling is automatic. Otherwise, the CRS can be set
@@ -1041,7 +1071,7 @@ def network_structure_from_nx(
     gpd.GeoDataFrame
         A `gpd.GeoDataFrame` with `live`, `weight`, and `geometry` attributes. The original `networkX` graph's node keys
         will be used for the `GeoDataFrame` index. If `nx_multigraph` is a dual graph prepared with
-        [`graphs.nx_to_dual`](/tools/graphs#nx-to-dual) then the corresponding primal edge `LineString` geometry will be
+        [`graphs.nx_to_dual`](/tools/graphs#nx_to_dual) then the corresponding primal edge `LineString` geometry will be
         set as the `GeoPandas` geometry for visualisation purposes using `primal_edge` for the column name. The dual
         node `Point` geometry will be saved in `WKT` format to the `dual_node` column.
     gpd.GeoDataFrame
@@ -1049,7 +1079,7 @@ def network_structure_from_nx(
         ,`nx_end_node_key`, `imp_factor`, `total_bearing`, `geom`
         attributes.
     rustalgos.graph.NetworkStructure
-        A [`rustalgos.graph.NetworkStructure`](/rustalgos/rustalgos#networkstructure) instance.
+        A [`rustalgos.graph.NetworkStructure`](/rustalgos/graph#networkstructure) instance.
 
     """
 
@@ -1066,6 +1096,7 @@ def network_structure_from_nx(
     # prepare the network structure
     network_structure = rustalgos.graph.NetworkStructure()
     network_structure.set_is_dual(bool(g_multi_copy.graph.get("is_dual", False)))
+    network_structure.set_is_directed(isinstance(g_multi_copy, nx.MultiDiGraph))
     # generate the network information
     agg_node_data: dict[str, tuple[Any, ...]] = {}
     agg_node_dual_data: dict[str, tuple[Any, Any, Any, Any]] = {}
@@ -1234,7 +1265,7 @@ def network_structure_from_gpd(
     Returns
     -------
     rustalgos.graph.NetworkStructure
-        A [`rustalgos.graph.NetworkStructure`](/rustalgos/rustalgos#networkstructure) instance.
+        A [`rustalgos.graph.NetworkStructure`](/rustalgos/graph#networkstructure) instance.
 
     """
 
@@ -1450,7 +1481,7 @@ def nx_from_cityseer_geopandas(
         A `gpd.GeoDataFrame` with `live`, `weight`, and Point `geometry` attributes. The index will be used for the
         returned `networkX` graph's node keys.
     edges_gdf: gpd.GeoDataFrame
-        An edges `gpd.GeoDataFrame` as derived from [`network_structure_from_nx`](#network-structure-from-nx).
+        An edges `gpd.GeoDataFrame` as derived from [`network_structure_from_nx`](#network_structure_from_nx).
 
     Returns
     -------
@@ -1510,7 +1541,7 @@ def geopandas_from_nx(
 
     Converts the `geom` attribute attached to each edge into a GeoPandas GeoDataFrame. This is useful when
     inspecting or cleaning the network in QGIS. It can then be reimported with
-    [`nx_from_generic_geopandas`](#nx-from-generic-geopandas)
+    [`nx_from_generic_geopandas`](#nx_from_generic_geopandas)
 
     Parameters
     ----------

@@ -17,6 +17,19 @@ _CITYSEER_IMPORT_ERROR = None
 _CITYSEER_VERSION_MISMATCH = False
 
 
+def _normalize_version(version: str) -> str:
+    """Normalise pre-release spellings to PEP 440 canonical form (4.25.0-beta24 / 4.25.0beta24 -> 4.25.0b24).
+
+    Both metadata.txt (QGIS spelling, with or without a hyphen) and importlib.metadata
+    (already canonical) are passed through this so the comparison is spelling-agnostic.
+    """
+    version = version.strip().lower()
+    version = re.sub(r"[-._]?alpha", "a", version)
+    version = re.sub(r"[-._]?beta", "b", version)
+    version = re.sub(r"[-._]?rc", "rc", version)
+    return version
+
+
 def _read_required_version() -> str | None:
     """Read the required cityseer version from metadata.txt (QGIS format)."""
     metadata = _PLUGIN_DIR / "metadata.txt"
@@ -26,12 +39,7 @@ def _read_required_version() -> str | None:
     match = re.search(r"^version=(.+)$", text, re.MULTILINE)
     if not match:
         return None
-    # Convert QGIS format (4.23.0-beta14) back to PEP 440 (4.23.0b14)
-    version = match.group(1).strip()
-    version = re.sub(r"-alpha", "a", version)
-    version = re.sub(r"-beta", "b", version)
-    version = re.sub(r"-rc", "rc", version)
-    return version
+    return _normalize_version(match.group(1))
 
 
 def _get_installed_version() -> str | None:
@@ -54,6 +62,7 @@ def _check_version() -> bool:
     if installed is None:
         # Dev mode or metadata unavailable; skip check
         return True
+    installed = _normalize_version(installed)
     if installed != required:
         _CITYSEER_VERSION_MISMATCH = True
         _CITYSEER_IMPORT_ERROR = f"cityseer {installed} is installed but the plugin requires {required}"

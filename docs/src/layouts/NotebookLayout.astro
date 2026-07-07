@@ -1,0 +1,114 @@
+---
+import CommonLayout from '@src/layouts/CommonLayout.astro'
+import type { NotebookEntry } from '@src/notebooks'
+
+interface Props {
+  notebook: NotebookEntry
+  prev?: NotebookEntry | null
+  next?: NotebookEntry | null
+  backHref: string
+  backLabel: string
+}
+
+const { notebook, prev = null, next = null, backHref, backLabel } = Astro.props
+const githubUrl = `https://github.com/benchmark-urbanism/cityseer-api/blob/master/examples/${notebook.source}`
+const downloadName = notebook.download.split('/').pop()
+---
+
+<CommonLayout title={`cityseer — ${notebook.title}`} description={notebook.description || undefined}>
+  <div id="notebook-page">
+    <header id="notebook-header">
+      <div id="notebook-header-text">
+        <a href={backHref} class="back-link" title={backLabel}>← {backLabel}</a>
+        <h1>{notebook.title}</h1>
+      </div>
+      <div id="notebook-actions">
+        {prev && <a href={`/${prev.section === 'learn' ? 'start' : `examples/${prev.topic}`}/${prev.slug}`} class="action-link" title={prev.title}>← Prev</a>}
+        {next && <a href={`/${next.section === 'learn' ? 'start' : `examples/${next.topic}`}/${next.slug}`} class="action-link" title={next.title}>Next →</a>}
+        <a href={githubUrl} class="action-link" title="View source on GitHub">Source</a>
+        <a
+          href={notebook.download}
+          class="action-button"
+          download
+          title={`Download ${downloadName} (marimo notebook, runs locally)`}
+        >
+          Download notebook
+        </a>
+      </div>
+    </header>
+    <iframe id="notebook-frame" src={notebook.html} title={notebook.title}></iframe>
+  </div>
+</CommonLayout>
+
+<style>
+  @reference "../styles/global.css";
+
+  #notebook-page {
+    @apply flex w-full flex-col;
+
+    height: 100vh;
+  }
+
+  #notebook-header {
+    @apply flex items-center justify-between gap-4 border-b px-4 py-2;
+
+    border-color: var(--color-dark-grey);
+    background-color: var(--color-darker-grey);
+  }
+
+  #notebook-header-text {
+    @apply flex min-w-0 items-baseline gap-4;
+  }
+
+  #notebook-header h1 {
+    @apply truncate p-0 text-base leading-tight;
+  }
+
+  .back-link {
+    @apply text-xs whitespace-nowrap;
+
+    color: var(--color-light-grey);
+  }
+
+  .back-link:hover {
+    color: var(--color-lighter-grey);
+  }
+
+  #notebook-actions {
+    @apply flex items-center gap-3;
+  }
+
+  .action-link {
+    @apply text-xs whitespace-nowrap;
+
+    color: var(--color-light-grey);
+  }
+
+  .action-link:hover {
+    color: var(--color-theme);
+  }
+
+  .action-button {
+    @apply rounded-sm border px-3 py-1 text-xs font-medium whitespace-nowrap transition-all;
+
+    border-color: var(--color-theme);
+    color: var(--color-theme);
+  }
+
+  .action-button:hover {
+    background-color: var(--color-theme);
+    color: var(--color-darker-grey);
+  }
+
+  #notebook-frame {
+    @apply w-full flex-1 border-0;
+
+    background-color: white;
+  }
+
+  @media only screen and (max-width: 958px) {
+    #notebook-header {
+      @apply flex-col items-start gap-2;
+    }
+  }
+</style>

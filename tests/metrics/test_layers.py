@@ -78,6 +78,7 @@ def test_compute_accessibilities(primal_graph, dual_graph):
                     distances=distances,
                     data_id_col=data_id_col,
                     angular=angular,
+                    decay_fn="1",
                 )
                 # test against manual implementation over underlying method
                 landuses_map = dict(data_gdf["categorical_landuses"])  # type: ignore
@@ -96,18 +97,10 @@ def test_compute_accessibilities(primal_graph, dual_graph):
                 )
                 for acc_key in key_set:
                     for dist_key in distances:
-                        acc_data_key_nw = config.prep_gdf_key(acc_key, dist_key, angular, weighted=False)
+                        acc_data_key = config.prep_gdf_key(acc_key, dist_key, angular)
                         assert np.allclose(
-                            nodes_gdf[acc_data_key_nw].values,  # type: ignore
-                            accessibility_data.result[acc_key].unweighted[dist_key],
-                            atol=config.ATOL,
-                            rtol=config.RTOL,
-                            equal_nan=True,
-                        )
-                        acc_data_key_wt = config.prep_gdf_key(acc_key, dist_key, angular, weighted=True)
-                        assert np.allclose(
-                            nodes_gdf[acc_data_key_wt].values,  # type: ignore
-                            accessibility_data.result[acc_key].weighted[dist_key],
+                            nodes_gdf[acc_data_key].values,  # type: ignore
+                            accessibility_data.result[acc_key].count[dist_key],
                             atol=config.ATOL,
                             rtol=config.RTOL,
                             equal_nan=True,
@@ -154,12 +147,12 @@ def test_compute_mixed_uses(primal_graph, dual_graph):
                 network_structure,
                 distances=distances,
                 compute_hill=True,
-                compute_hill_weighted=True,
                 compute_shannon=True,
                 compute_gini=True,
                 data_id_col=data_id_col,
                 angular=angular,
                 max_netw_assign_dist=max_assign_dist,
+                decay_fn="1",
             )
             # generate manually
             data_map = layers.build_data_map(
@@ -173,7 +166,6 @@ def test_compute_mixed_uses(primal_graph, dual_graph):
                 network_structure,
                 landuses_map,
                 compute_hill=True,
-                compute_hill_weighted=True,
                 compute_shannon=True,
                 compute_gini=True,
                 distances=distances,
@@ -181,17 +173,10 @@ def test_compute_mixed_uses(primal_graph, dual_graph):
             )
             for dist_key in distances:
                 for q_key in [0, 1, 2]:
-                    hill_nw_data_key = config.prep_gdf_key(f"hill_q{q_key}", dist_key, angular=angular, weighted=False)
+                    hill_data_key = config.prep_gdf_key(f"hill_q{q_key}", dist_key, angular=angular)
                     assert np.allclose(
-                        nodes_gdf[hill_nw_data_key].values,
+                        nodes_gdf[hill_data_key].values,
                         mu_data.hill[q_key][dist_key],
-                        atol=config.ATOL,
-                        rtol=config.RTOL,
-                    )
-                    hill_wt_data_key = config.prep_gdf_key(f"hill_q{q_key}", dist_key, angular=angular, weighted=True)
-                    assert np.allclose(
-                        nodes_gdf[hill_wt_data_key].values,
-                        mu_data.hill_weighted[q_key][dist_key],
                         atol=config.ATOL,
                         rtol=config.RTOL,
                     )
@@ -238,6 +223,7 @@ def test_compute_stats(primal_graph, dual_graph):
                 distances=distances,
                 angular=angular,
                 max_netw_assign_dist=max_assign_dist,
+                decay_fn="1",
             )
             # compare to manual
             for stats_key in ["mock_numerical_1", "mock_numerical_2"]:
@@ -252,57 +238,29 @@ def test_compute_stats(primal_graph, dual_graph):
                 stats_result = stats_results.result[0]
                 for dist_key in distances:
                     assert np.allclose(
-                        nodes_gdf[config.prep_gdf_key(f"{stats_key}_sum", dist_key, angular=angular, weighted=False)],
+                        nodes_gdf[config.prep_gdf_key(f"{stats_key}_sum", dist_key, angular=angular)],
                         stats_result.sum[dist_key],
                         atol=config.ATOL,
                         rtol=config.RTOL,
                         equal_nan=True,
                     )
                     assert np.allclose(
-                        nodes_gdf[config.prep_gdf_key(f"{stats_key}_sum", dist_key, angular=angular, weighted=True)],
-                        stats_result.sum_wt[dist_key],
-                        atol=config.ATOL,
-                        rtol=config.RTOL,
-                        equal_nan=True,
-                    )
-                    assert np.allclose(
-                        nodes_gdf[config.prep_gdf_key(f"{stats_key}_mean", dist_key, angular=angular, weighted=False)],
+                        nodes_gdf[config.prep_gdf_key(f"{stats_key}_mean", dist_key, angular=angular)],
                         stats_result.mean[dist_key],
                         atol=config.ATOL,
                         rtol=config.RTOL,
                         equal_nan=True,
                     )
                     assert np.allclose(
-                        nodes_gdf[config.prep_gdf_key(f"{stats_key}_mean", dist_key, angular=angular, weighted=True)],
-                        stats_result.mean_wt[dist_key],
-                        atol=config.ATOL,
-                        rtol=config.RTOL,
-                        equal_nan=True,
-                    )
-                    assert np.allclose(
-                        nodes_gdf[config.prep_gdf_key(f"{stats_key}_count", dist_key, angular=angular, weighted=False)],
+                        nodes_gdf[config.prep_gdf_key(f"{stats_key}_count", dist_key, angular=angular)],
                         stats_result.count[dist_key],
                         atol=config.ATOL,
                         rtol=config.RTOL,
                         equal_nan=True,
                     )
                     assert np.allclose(
-                        nodes_gdf[config.prep_gdf_key(f"{stats_key}_count", dist_key, angular=angular, weighted=True)],
-                        stats_result.count_wt[dist_key],
-                        atol=config.ATOL,
-                        rtol=config.RTOL,
-                        equal_nan=True,
-                    )
-                    assert np.allclose(
-                        nodes_gdf[config.prep_gdf_key(f"{stats_key}_var", dist_key, angular=angular, weighted=False)],
+                        nodes_gdf[config.prep_gdf_key(f"{stats_key}_var", dist_key, angular=angular)],
                         stats_result.variance[dist_key],
-                        atol=config.ATOL,
-                        rtol=config.RTOL,
-                        equal_nan=True,
-                    )
-                    assert np.allclose(
-                        nodes_gdf[config.prep_gdf_key(f"{stats_key}_var", dist_key, angular=angular, weighted=True)],
-                        stats_result.variance_wt[dist_key],
                         atol=config.ATOL,
                         rtol=config.RTOL,
                         equal_nan=True,
@@ -364,3 +322,310 @@ def test_angular_layer_wrappers_require_dual_graph(primal_graph):
             distances=[400],
             angular=True,
         )
+
+
+def test_custom_decay_fn(primal_graph):
+    """Test that custom decay_fn expressions produce different results from default."""
+    from cityseer import decay
+
+    nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(primal_graph)
+    numerical_gdf = mock.mock_numerical_data(primal_graph, num_arrs=1)
+    landuse_gdf = mock.mock_landuse_categorical_data(primal_graph)
+    distances = [800]
+    col_mean = config.prep_gdf_key("mock_numerical_1_mean", 800)
+    col_acc = config.prep_gdf_key("a", 800)
+    # --- compute_stats ---
+    n_default, _ = layers.compute_stats(
+        numerical_gdf, ["mock_numerical_1"], nodes_gdf.copy(), network_structure, distances=distances, decay_fn="1"
+    )
+    n_exp, _ = layers.compute_stats(
+        numerical_gdf,
+        ["mock_numerical_1"],
+        nodes_gdf.copy(),
+        network_structure,
+        distances=distances,
+        decay_fn=decay.exponential(),
+    )
+    n_linear, _ = layers.compute_stats(
+        numerical_gdf,
+        ["mock_numerical_1"],
+        nodes_gdf.copy(),
+        network_structure,
+        distances=distances,
+        decay_fn=decay.linear(),
+    )
+    # default is flat ("1"), so default and exponential should differ
+    assert not np.allclose(n_default[col_mean].dropna(), n_exp[col_mean].dropna(), atol=0.1)
+    # default and linear should differ
+    assert not np.allclose(n_default[col_mean].dropna(), n_linear[col_mean].dropna(), atol=0.1)
+    # exponential and linear should also differ from each other
+    assert not np.allclose(n_exp[col_mean].dropna(), n_linear[col_mean].dropna(), atol=0.1)
+    # --- compute_accessibilities ---
+    a_default, _ = layers.compute_accessibilities(
+        landuse_gdf,
+        "categorical_landuses",
+        ["a"],
+        nodes_gdf.copy(),
+        network_structure,
+        distances=distances,
+        decay_fn="1",
+    )
+    a_linear, _ = layers.compute_accessibilities(
+        landuse_gdf,
+        "categorical_landuses",
+        ["a"],
+        nodes_gdf.copy(),
+        network_structure,
+        distances=distances,
+        decay_fn=decay.linear(),
+    )
+    assert not np.allclose(a_default[col_acc].dropna(), a_linear[col_acc].dropna(), atol=0.1)
+    # --- helper-generated expressions ---
+    n_gauss, _ = layers.compute_stats(
+        numerical_gdf,
+        ["mock_numerical_1"],
+        nodes_gdf.copy(),
+        network_structure,
+        distances=[1200],
+        decay_fn=decay.gaussian(peak=400, cutoff=1200, std=150),
+    )
+    col_gauss = config.prep_gdf_key("mock_numerical_1_mean", 1200)
+    assert not n_gauss[col_gauss].dropna().empty
+    # --- invalid expression ---
+    with pytest.raises(ValueError, match="parse"):
+        layers.compute_stats(
+            numerical_gdf,
+            ["mock_numerical_1"],
+            nodes_gdf.copy(),
+            network_structure,
+            distances=distances,
+            decay_fn="invalid !! expression",
+        )
+
+
+def test_per_label_decay_fns(primal_graph):
+    """A dict of {label: decay} computes all decays in one traversal, matching separate calls.
+
+    Also verifies the str/None forms remain byte-identical (no column suffix) for backwards
+    compatibility, across compute_stats, compute_accessibilities, and compute_mixed_uses.
+    """
+    from cityseer import decay
+
+    nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(primal_graph)
+    numerical_gdf = mock.mock_numerical_data(primal_graph, num_arrs=1)
+    landuse_gdf = mock.mock_landuse_categorical_data(primal_graph)
+    distances = [400, 800]
+    gauss = decay.gaussian(peak=200, cutoff=800, std=100)
+    flat = decay.flat()
+
+    # --- compute_stats: dict form vs two separate single-decay calls ---
+    combo, _ = layers.compute_stats(
+        numerical_gdf,
+        ["mock_numerical_1"],
+        nodes_gdf.copy(),
+        network_structure,
+        distances=distances,
+        decay_fn={"grav": gauss, "raw": flat},
+    )
+    sep_g, _ = layers.compute_stats(
+        numerical_gdf,
+        ["mock_numerical_1"],
+        nodes_gdf.copy(),
+        network_structure,
+        distances=distances,
+        decay_fn=gauss,
+    )
+    sep_f, _ = layers.compute_stats(
+        numerical_gdf,
+        ["mock_numerical_1"],
+        nodes_gdf.copy(),
+        network_structure,
+        distances=distances,
+        decay_fn=flat,
+    )
+    for measure in ["mean", "sum", "count", "max", "min", "median", "var", "mad"]:
+        for d in distances:
+            grav_col = config.prep_gdf_key(f"mock_numerical_1_{measure}_grav", d)
+            raw_col = config.prep_gdf_key(f"mock_numerical_1_{measure}_raw", d)
+            base_col = config.prep_gdf_key(f"mock_numerical_1_{measure}", d)
+            # f32 summation order (HashMap iteration) differs between calls, so compare
+            # with the library's standard tolerance rather than bit-exactly.
+            assert np.allclose(combo[grav_col], sep_g[base_col], equal_nan=True, atol=config.ATOL, rtol=config.RTOL)
+            assert np.allclose(combo[raw_col], sep_f[base_col], equal_nan=True, atol=config.ATOL, rtol=config.RTOL)
+    # the two decays must actually produce different results
+    g800 = config.prep_gdf_key("mock_numerical_1_mean_grav", 800)
+    r800 = config.prep_gdf_key("mock_numerical_1_mean_raw", 800)
+    assert not np.allclose(combo[g800].dropna(), combo[r800].dropna(), atol=0.1)
+
+    # --- back-compat: str/None forms produce the original unsuffixed column names ---
+    bc, _ = layers.compute_stats(
+        numerical_gdf,
+        ["mock_numerical_1"],
+        nodes_gdf.copy(),
+        network_structure,
+        distances=distances,
+        decay_fn=gauss,
+    )
+    assert config.prep_gdf_key("mock_numerical_1_mean", 800) in bc.columns
+    assert config.prep_gdf_key("mock_numerical_1_mean_grav", 800) not in bc.columns
+
+    # --- compute_accessibilities: dict form vs separate ---
+    a_combo, _ = layers.compute_accessibilities(
+        landuse_gdf,
+        "categorical_landuses",
+        ["a"],
+        nodes_gdf.copy(),
+        network_structure,
+        distances=distances,
+        decay_fn={"grav": gauss, "raw": flat},
+    )
+    a_sep_g, _ = layers.compute_accessibilities(
+        landuse_gdf,
+        "categorical_landuses",
+        ["a"],
+        nodes_gdf.copy(),
+        network_structure,
+        distances=distances,
+        decay_fn=gauss,
+    )
+    for d in distances:
+        assert np.allclose(
+            a_combo[config.prep_gdf_key("a_grav", d)],
+            a_sep_g[config.prep_gdf_key("a", d)],
+            equal_nan=True,
+            atol=config.ATOL,
+            rtol=config.RTOL,
+        )
+
+    # --- compute_mixed_uses: dict form vs separate ---
+    m_combo, _ = layers.compute_mixed_uses(
+        landuse_gdf,
+        "categorical_landuses",
+        nodes_gdf.copy(),
+        network_structure,
+        distances=distances,
+        decay_fn={"grav": gauss, "raw": flat},
+    )
+    m_sep_g, _ = layers.compute_mixed_uses(
+        landuse_gdf,
+        "categorical_landuses",
+        nodes_gdf.copy(),
+        network_structure,
+        distances=distances,
+        decay_fn=gauss,
+    )
+    for d in distances:
+        assert np.allclose(
+            m_combo[config.prep_gdf_key("hill_q0_grav", d)],
+            m_sep_g[config.prep_gdf_key("hill_q0", d)],
+            equal_nan=True,
+            atol=config.ATOL,
+            rtol=config.RTOL,
+        )
+
+    # --- an empty decay dict is rejected ---
+    with pytest.raises(ValueError, match="at least one"):
+        layers.compute_stats(
+            numerical_gdf,
+            ["mock_numerical_1"],
+            nodes_gdf.copy(),
+            network_structure,
+            distances=distances,
+            decay_fn={},
+        )
+
+
+def test_stats_measures_selection(primal_graph):
+    """`measures` selects which statistics are computed; the subset matches the full run."""
+    from cityseer import decay
+
+    nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(primal_graph)
+    numerical_gdf = mock.mock_numerical_data(primal_graph, num_arrs=1)
+    distances = [400, 800]
+    all_measures = ["sum", "mean", "count", "var", "median", "mad", "max", "min"]
+
+    full, _ = layers.compute_stats(
+        numerical_gdf, ["mock_numerical_1"], nodes_gdf.copy(), network_structure, distances=distances, decay_fn="1"
+    )
+    sub, _ = layers.compute_stats(
+        numerical_gdf,
+        ["mock_numerical_1"],
+        nodes_gdf.copy(),
+        network_structure,
+        distances=distances,
+        measures=["mean", "count"],
+        decay_fn="1",
+    )
+    # selected measures match the full computation exactly
+    for measure in ["mean", "count"]:
+        for d in distances:
+            k = config.prep_gdf_key(f"mock_numerical_1_{measure}", d)
+            assert np.allclose(sub[k], full[k], equal_nan=True)
+    # only the requested measures are emitted
+    sub_cc = [c for c in sub.columns if c.startswith("cc_")]
+    for measure in all_measures:
+        present = any(f"_{measure}_" in c for c in sub_cc)
+        assert present == (measure in {"mean", "count"})
+    # default (None) computes all eight
+    full_cc = [c for c in full.columns if c.startswith("cc_")]
+    for measure in all_measures:
+        assert any(f"_{measure}_" in c for c in full_cc)
+    # invalid measure rejected
+    with pytest.raises(ValueError, match="Unknown stats measure"):
+        layers.compute_stats(
+            numerical_gdf,
+            ["mock_numerical_1"],
+            nodes_gdf.copy(),
+            network_structure,
+            distances=distances,
+            measures=["nope"],
+        )
+    # empty list rejected (use None for all)
+    with pytest.raises(ValueError, match="at least one measure"):
+        layers.compute_stats(
+            numerical_gdf,
+            ["mock_numerical_1"],
+            nodes_gdf.copy(),
+            network_structure,
+            distances=distances,
+            measures=[],
+        )
+    # composes with the decay dict
+    combo, _ = layers.compute_stats(
+        numerical_gdf,
+        ["mock_numerical_1"],
+        nodes_gdf.copy(),
+        network_structure,
+        distances=distances,
+        measures=["mean"],
+        decay_fn={"grav": decay.gaussian(peak=200, cutoff=800, std=150), "raw": decay.flat()},
+    )
+    assert config.prep_gdf_key("mock_numerical_1_mean_grav", 800) in combo.columns
+    assert config.prep_gdf_key("mock_numerical_1_mean_raw", 800) in combo.columns
+
+
+def test_compute_accessibilities_default_back_compat(primal_graph):
+    """A bare compute_accessibilities call restores the pre-4.25 _nw + _wt columns and values."""
+    nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(primal_graph)
+    data_gdf = mock.mock_landuse_categorical_data(primal_graph)
+    distances = [400, 800]
+    common = dict(
+        data_gdf=data_gdf,
+        landuse_column_label="categorical_landuses",
+        accessibility_keys=["a"],
+        network_structure=network_structure,
+        distances=distances,
+    )
+    # bare default -> both legacy columns
+    default_gdf, _ = layers.compute_accessibilities(nodes_gdf=nodes_gdf.copy(), **common)
+    # explicit single-decay equivalents: "1" is the unweighted (_nw), exp(-4*p) is the weighted (_wt)
+    nw_gdf, _ = layers.compute_accessibilities(nodes_gdf=nodes_gdf.copy(), decay_fn="1", **common)
+    wt_gdf, _ = layers.compute_accessibilities(nodes_gdf=nodes_gdf.copy(), decay_fn="exp(-4 * p)", **common)
+    for d in distances:
+        assert f"cc_a_{d}_nw" in default_gdf
+        assert f"cc_a_{d}_wt" in default_gdf
+        assert np.allclose(default_gdf[f"cc_a_{d}_nw"], nw_gdf[f"cc_a_{d}"], equal_nan=True)
+        assert np.allclose(default_gdf[f"cc_a_{d}_wt"], wt_gdf[f"cc_a_{d}"], equal_nan=True)
+    # nearest distance is decay-independent: one unsuffixed column, not duplicated per variant
+    assert f"cc_a_nearest_max_{max(distances)}" in default_gdf
+    assert f"cc_a_nearest_max_{max(distances)}_nw" not in default_gdf

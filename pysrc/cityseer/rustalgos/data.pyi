@@ -14,9 +14,7 @@ class LanduseAccess:
     """Holds accessibility calculation results for a specific land use category."""
 
     @property
-    def weighted(self) -> dict[int, npt.NDArray[np.float64]]: ...
-    @property
-    def unweighted(self) -> dict[int, npt.NDArray[np.float64]]: ...
+    def count(self) -> dict[int, npt.NDArray[np.float64]]: ...
     @property
     def distance(self) -> dict[int, npt.NDArray[np.float64]]: ...
 
@@ -38,8 +36,6 @@ class MixedUsesResult:
     @property
     def hill(self) -> dict[int, dict[int, npt.NDArray[np.float64]]]: ...
     @property
-    def hill_weighted(self) -> dict[int, dict[int, npt.NDArray[np.float64]]]: ...
-    @property
     def shannon(self) -> dict[int, npt.NDArray[np.float64]]: ...
     @property
     def gini(self) -> dict[int, npt.NDArray[np.float64]]: ...
@@ -50,27 +46,15 @@ class Stats:
     @property
     def sum(self) -> dict[int, npt.NDArray[np.float64]]: ...
     @property
-    def sum_wt(self) -> dict[int, npt.NDArray[np.float64]]: ...
-    @property
     def mean(self) -> dict[int, npt.NDArray[np.float64]]: ...
-    @property
-    def mean_wt(self) -> dict[int, npt.NDArray[np.float64]]: ...
     @property
     def median(self) -> dict[int, npt.NDArray[np.float64]]: ...
     @property
-    def median_wt(self) -> dict[int, npt.NDArray[np.float64]]: ...
-    @property
     def count(self) -> dict[int, npt.NDArray[np.float64]]: ...
-    @property
-    def count_wt(self) -> dict[int, npt.NDArray[np.float64]]: ...
     @property
     def variance(self) -> dict[int, npt.NDArray[np.float64]]: ...
     @property
-    def variance_wt(self) -> dict[int, npt.NDArray[np.float64]]: ...
-    @property
     def mad(self) -> dict[int, npt.NDArray[np.float64]]: ...
-    @property
-    def mad_wt(self) -> dict[int, npt.NDArray[np.float64]]: ...
     @property
     def max(self) -> dict[int, npt.NDArray[np.float64]]: ...
     @property
@@ -221,19 +205,17 @@ class DataMap:
         landuses_map: dict[Hashable, str],
         accessibility_keys: list[str],
         distances: list[int] | None = None,
-        betas: list[float] | None = None,
         minutes: list[float] | None = None,
         angular: bool | None = None,
-        spatial_tolerance: int | None = None,
-        min_threshold_wt: float | None = None,
+        decay_fn: str | None = None,
         speed_m_s: float | None = None,
         pbar_disabled: bool | None = None,
     ) -> AccessibilityResult:
         """
-        Calculate accessibility metrics (counts, weighted counts, nearest distance) for specified land uses.
+        Calculate accessibility metrics (counts, nearest distance) for specified land uses.
 
         Aggregates data reachable from each network node within given distance/time thresholds.
-        Requires exactly one of `distances`, `betas`, or `minutes`.
+        Requires exactly one of `distances` or `minutes`.
 
         Parameters
         ----------
@@ -245,16 +227,12 @@ class DataMap:
             List of land use categories to calculate accessibility for.
         distances: list[int] | None
             Distance thresholds (meters).
-        betas: list[float] | None
-            Decay parameters (beta).
         minutes: list[float] | None
             Time thresholds (minutes).
         angular: bool | None
             Use simplest path if True. Angular analysis requires `network_structure.is_dual == True`.
-        spatial_tolerance: int | None
-            Spatial uncertainty buffer for weight clipping.
-        min_threshold_wt: float | None
-            Minimum weight threshold for beta/distance conversion.
+        decay_fn: str | None
+            Optional decay function name for distance-weighted accessibility.
         speed_m_s: float | None
             Travel speed (m/s).
         pbar_disabled: bool | None
@@ -266,20 +244,32 @@ class DataMap:
             Object containing the accessibility metrics. Access detailed results via its `result` attribute.
         """
         ...
+    def accessibility_decays(
+        self,
+        network_structure: NetworkStructure,
+        landuses_map: dict[Hashable, str],
+        accessibility_keys: list[str],
+        decay_fns: list[str],
+        distances: list[int] | None = None,
+        minutes: list[float] | None = None,
+        angular: bool | None = None,
+        speed_m_s: float | None = None,
+        pbar_disabled: bool | None = None,
+    ) -> list[AccessibilityResult]:
+        """Like `accessibility`, but computes one `AccessibilityResult` per decay expression in `decay_fns`,
+        sharing a single network traversal."""
+        ...
     def mixed_uses(
         self,
         network_structure: NetworkStructure,
         landuses_map: dict[Hashable, str],
         distances: list[int] | None = None,
-        betas: list[float] | None = None,
         minutes: list[float] | None = None,
         compute_hill: bool | None = True,
-        compute_hill_weighted: bool | None = True,
         compute_shannon: bool | None = False,
         compute_gini: bool | None = False,
         angular: bool | None = None,
-        spatial_tolerance: int | None = None,
-        min_threshold_wt: float | None = None,
+        decay_fn: str | None = None,
         speed_m_s: float | None = None,
         pbar_disabled: bool | None = None,
     ) -> MixedUsesResult:
@@ -287,7 +277,7 @@ class DataMap:
         Calculate mixed-use diversity metrics (Hill, Shannon, Gini) based on reachable land uses.
 
         Aggregates land use counts within catchments and computes selected diversity indices.
-        Requires exactly one of `distances`, `betas`, or `minutes`.
+        Requires exactly one of `distances` or `minutes`.
 
         Parameters
         ----------
@@ -297,24 +287,18 @@ class DataMap:
             Mapping from `data_key_py` to land use category string.
         distances: list[int] | None
             Distance thresholds (meters).
-        betas: list[float] | None
-            Decay parameters (beta).
         minutes: list[float] | None
             Time thresholds (minutes).
         compute_hill: bool | None
             Compute Hill diversity (q=0, 1, 2) if True. Default True.
-        compute_hill_weighted: bool | None
-            Compute distance-weighted Hill diversity if True. Default True.
         compute_shannon: bool | None
             Compute Shannon diversity if True. Default False.
         compute_gini: bool | None
             Compute Gini-Simpson diversity if True. Default False.
         angular: bool | None
             Use simplest path if True. Angular analysis requires `network_structure.is_dual == True`.
-        spatial_tolerance: int | None
-            Spatial uncertainty buffer for weight clipping.
-        min_threshold_wt: float | None
-            Minimum weight threshold for beta/distance conversion.
+        decay_fn: str | None
+            Optional decay function name for distance-weighted diversity.
         speed_m_s: float | None
             Travel speed (m/s).
         pbar_disabled: bool | None
@@ -326,24 +310,40 @@ class DataMap:
             Object containing the calculated diversity metrics.
         """
         ...
+    def mixed_uses_decays(
+        self,
+        network_structure: NetworkStructure,
+        landuses_map: dict[Hashable, str],
+        decay_fns: list[str],
+        distances: list[int] | None = None,
+        minutes: list[float] | None = None,
+        compute_hill: bool | None = True,
+        compute_shannon: bool | None = False,
+        compute_gini: bool | None = False,
+        angular: bool | None = None,
+        speed_m_s: float | None = None,
+        pbar_disabled: bool | None = None,
+    ) -> list[MixedUsesResult]:
+        """Like `mixed_uses`, but computes one `MixedUsesResult` per decay expression in `decay_fns`,
+        sharing a single network traversal."""
+        ...
     def stats(
         self,
         network_structure: NetworkStructure,
         numerical_maps: list[dict[Hashable, float]],
         distances: list[int] | None = None,
-        betas: list[float] | None = None,
         minutes: list[float] | None = None,
         angular: bool | None = None,
-        spatial_tolerance: int | None = None,
-        min_threshold_wt: float | None = None,
+        decay_fn: str | None = None,
         speed_m_s: float | None = None,
+        measures: list[str] | None = None,
         pbar_disabled: bool | None = None,
     ) -> StatsResult:
         """
         Calculate statistics (sum, mean, count, variance, min, max) for numerical data within catchments.
 
         Aggregates numerical values associated with reachable data entries.
-        Requires exactly one of `distances`, `betas`, or `minutes`.
+        Requires exactly one of `distances` or `minutes`.
 
         Parameters
         ----------
@@ -353,18 +353,18 @@ class DataMap:
             List of dictionaries, each mapping `data_key_py` to a numerical value.
         distances: list[int] | None
             Distance thresholds (meters).
-        betas: list[float] | None
-            Decay parameters (beta).
         minutes: list[float] | None
             Time thresholds (minutes).
         angular: bool | None
             Use simplest path if True. Angular analysis requires `network_structure.is_dual == True`.
-        spatial_tolerance: int | None
-            Spatial uncertainty buffer for weight clipping.
-        min_threshold_wt: float | None
-            Minimum weight threshold for beta/distance conversion.
+        decay_fn: str | None
+            Optional decay function name for distance-weighted statistics.
         speed_m_s: float | None
             Travel speed (m/s).
+        measures: list[str] | None
+            Optional subset of measures to compute (sum, mean, count, var, median, mad, max, min).
+            ``None`` computes all of them. Restricting to the measures you need avoids the weighted
+            median / MAD sort when neither is requested.
         pbar_disabled: bool | None
             Disable progress bar if True.
 
@@ -374,4 +374,20 @@ class DataMap:
             Object containing the statistical results. Access detailed results for each input map via its `result`
             attribute.
         """
+        ...
+    def stats_decays(
+        self,
+        network_structure: NetworkStructure,
+        numerical_maps: list[dict[Hashable, float]],
+        decay_fns: list[str],
+        distances: list[int] | None = None,
+        minutes: list[float] | None = None,
+        angular: bool | None = None,
+        speed_m_s: float | None = None,
+        measures: list[str] | None = None,
+        pbar_disabled: bool | None = None,
+    ) -> list[StatsResult]:
+        """Like `stats`, but computes one `StatsResult` per decay expression in `decay_fns`,
+        sharing a single network traversal. ``measures`` optionally selects which statistics to
+        compute (subset of sum/mean/count/var/median/mad/max/min; ``None`` computes all)."""
         ...

@@ -6,6 +6,7 @@ import threading
 import time
 from collections.abc import Callable
 from queue import Queue
+from typing import TypeVar
 
 import numpy as np
 from tqdm import tqdm
@@ -18,17 +19,13 @@ logger = logging.getLogger(__name__)
 np.seterr(invalid="ignore")
 
 
-def prep_gdf_key(key: str, dist: int, angular: bool = False, weighted: bool | None = None) -> str:
+def prep_gdf_key(key: str, dist: int, angular: bool = False) -> str:
     """Format a column label for GeoPandas."""
     key = key.replace(".0", "")
     key = key.replace(".0_", "_")
     key = f"cc_{key}_{dist}"
     if angular is True:
         key += "_ang"
-    if weighted is True:
-        key += "_wt"
-    elif weighted is False:
-        key += "_nw"
     return key
 
 
@@ -43,6 +40,11 @@ def check_quiet() -> bool:
 
 
 QUIET_MODE = check_quiet()
+if QUIET_MODE:
+    # quiet mode silences progress bars and routine INFO chatter alike, including
+    # chatty third-party loggers (e.g. pyogrio) via the root logger level
+    logging.getLogger("cityseer").setLevel(logging.WARNING)
+    logging.getLogger().setLevel(logging.WARNING)
 
 
 def check_debug() -> bool:
@@ -56,7 +58,7 @@ def check_debug() -> bool:
 DEBUG_MODE: bool = check_debug()
 # for turning off validation
 SKIP_VALIDATION: bool = False
-# for calculating default betas vs. distances
+# default min threshold weight for beta-distance conversions (matches Rust MIN_THRESH_WT)
 MIN_THRESH_WT: float = 0.01831563888873418
 SPEED_M_S = 1.33333
 # for all_close equality checks
@@ -64,60 +66,67 @@ ATOL: float = 0.01
 RTOL: float = 0.0001
 
 
+def resolve_distances(
+    distances: list[int] | None = None,
+    minutes: list[float] | None = None,
+    speed_m_s: float = SPEED_M_S,
+) -> tuple[list[int], list[int]]:
+    """Resolve distance and time thresholds from distances or minutes.
+
+    Exactly one of ``distances`` or ``minutes`` must be provided.
+
+    Returns
+    -------
+    tuple[list[int], list[int]]
+        (distances, seconds).
+    """
+    distances, seconds = rustalgos.pair_distances_and_time(speed_m_s, distances, minutes)
+    return distances, seconds
+
+
 def log_thresholds(
     distances: list[int] | None = None,
-    betas: list[float] | None = None,
     minutes: list[float] | None = None,
-    min_threshold_wt: float = MIN_THRESH_WT,
     speed_m_s: float = SPEED_M_S,
 ):
-    # pair distances, betas, and time for logging - DO AFTER PARTIAL FUNC
-    distances, betas, seconds = rustalgos.pair_distances_betas_time(
-        speed_m_s, distances, betas, minutes, min_threshold_wt=min_threshold_wt
-    )
-    # log distances, betas, minutes
+    """Resolve and log distance thresholds."""
+    distances, seconds = resolve_distances(distances=distances, minutes=minutes, speed_m_s=speed_m_s)
     logger.info("Metrics computed for:")
-    for distance, beta, walking_time in zip(distances, betas, seconds, strict=True):
-        logger.info(f"Distance: {distance}m, Beta: {round(beta, 5)}, Walking Time: {walking_time / 60} minutes.")
+    for distance, walking_time in zip(distances, seconds, strict=True):
+        logger.info(f"Distance: {distance}m, Walking Time: {walking_time / 60} minutes.")
     return distances
 
 
-RustResults = (
-    rustalgos.centrality.CentralityShortestResult
-    | rustalgos.centrality.CentralitySimplestResult
-    | rustalgos.centrality.BetweennessShortestResult
-    | rustalgos.centrality.CentralitySegmentResult
-    | rustalgos.data.AccessibilityResult
-    | rustalgos.data.MixedUsesResult
-    | rustalgos.data.StatsResult
-)
+# Result type of the wrapped rust call; bound per-call (single result or a list of results).
+_RustResult = TypeVar("_RustResult")
 
 
 def wrap_progress(
     total: int,
     rust_struct: rustalgos.graph.NetworkStructure | rustalgos.data.DataMap | rustalgos.viewshed.Viewshed,
-    partial_func: Callable,
+    partial_func: Callable[[], _RustResult],
     desc: str | None = None,
-) -> RustResults:
+) -> _RustResult:
     """Wraps long running parallelised rust functions with a progress counter."""
 
-    def wrapper(queue: Queue[RustResults | Exception]):
+    def wrapper(queue: Queue[_RustResult | Exception]):
         try:
-            result: RustResults = partial_func()
+            result: _RustResult = partial_func()
             queue.put(result)
         except Exception as e:
             queue.put(e)
 
-    result_queue: Queue[RustResults | Exception] = Queue()
+    result_queue: Queue[_RustResult | Exception] = Queue()
     thread = threading.Thread(target=wrapper, args=(result_queue,))
     pbar = tqdm(
         total=total,
         disable=QUIET_MODE,
         desc=desc,
+        mininterval=0.1,
     )
     thread.start()
     while thread.is_alive():
-        time.sleep(0.1)
+        time.sleep(0.01)
         pbar.update(rust_struct.progress() - pbar.n)  # type: ignore
     pbar.update(total - pbar.n)
     pbar.close()

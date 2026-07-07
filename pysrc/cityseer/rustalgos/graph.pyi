@@ -5,10 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from .centrality import (
-    BetweennessShortestResult,
-    CentralitySegmentResult,
-    CentralityShortestResult,
-    CentralitySimplestResult,
+    CentralityResult,
     OdMatrix,
 )
 
@@ -60,24 +57,10 @@ class NodeVisit:
     pred: int | None  # In Rust: Option<usize>
     short_dist: float  # In Rust: f32
     simpl_dist: float  # In Rust: f32
-    origin_seg: int | None  # In Rust: Option<usize>
-    last_seg: int | None  # In Rust: Option<usize>
     agg_seconds: float  # In Rust: f32
     @classmethod
     def new(cls) -> NodeVisit:  # In Rust: #[new] pub fn new() -> Self
         """Initialize a new NodeVisit state."""
-        ...
-
-class EdgeVisit:
-    """State information for an edge during a graph traversal."""
-
-    visited: bool
-    start_nd_idx: int | None  # In Rust: Option<usize>
-    end_nd_idx: int | None  # In Rust: Option<usize>
-    edge_idx: int | None  # In Rust: Option<usize>
-    @classmethod
-    def new(cls) -> EdgeVisit:  # In Rust: #[new] pub fn new() -> Self
-        """Initialize a new EdgeVisit state."""
         ...
 
 class StableGraph: ...  # Placeholder for the internal graph representation (petgraph::stable_graph::StableGraph)
@@ -87,6 +70,7 @@ class NetworkStructure:
 
     graph: StableGraph  # Actual type is petgraph::stable_graph::StableGraph<NodePayload, EdgePayload>
     is_dual: bool
+    is_directed: bool
     edge_rtree: (
         object | None
     )  # R-tree for efficient spatial queries on edges. Type in Rust: Option<RTree<EdgeRtreeItem>>
@@ -108,6 +92,13 @@ class NetworkStructure:
         ...
     def set_is_dual(self, is_dual: bool) -> None:
         """Set whether this network structure represents a dual graph."""
+        ...
+    @property
+    def is_directed(self) -> bool:
+        """Whether this network structure represents a directed graph."""
+        ...
+    def set_is_directed(self, is_directed: bool) -> None:
+        """Set whether this network structure represents a directed graph."""
         ...
     def add_street_node(
         self,
@@ -185,6 +176,9 @@ class NetworkStructure:
         ...
     def get_node_weight(self, node_idx: int) -> float:  # Returns PyResult<f32>
         """Get the weight of a specific node index."""
+        ...
+    def set_node_weight(self, node_idx: int, weight: float) -> None:  # Returns PyResult<()>
+        """Set the weight of a specific node index."""
         ...
     def is_node_live(self, node_idx: int) -> bool:  # Returns PyResult<bool>
         """Check if a specific node index is marked as 'live'."""
@@ -409,6 +403,20 @@ class NetworkStructure:
             (List of reachable node indices, List of NodeVisit states for all nodes).
         """
         ...
+    def poll_reach_hits(
+        self,
+        src_idxs: list[int],
+        distances: list[int],
+        speed_m_s: float,
+    ) -> list[list[int]]:
+        """
+        Count, per distance threshold, how many of the given sources reach each node.
+
+        One bounded Dijkstra per source (parallel, to the largest threshold). Backs the
+        sampling pilot: hit counts are binomial in reach. Returns one list of length
+        node_bound() per distance, indexed by raw node index.
+        """
+        ...
     def dijkstra_tree_simplest(
         self,
         src_idx: int,
@@ -437,152 +445,105 @@ class NetworkStructure:
         Requires `self.is_dual == True`.
         """
         ...
-    def dijkstra_tree_segment(
-        self,
-        src_idx: int,
-        max_seconds: int,
-        speed_m_s: float,
-    ) -> tuple[list[int], list[int], list[NodeVisit], list[EdgeVisit]]:
-        """
-        Compute shortest path tree for segment-based analysis.
-
-        Parameters
-        ----------
-        src_idx: int
-            Starting node index.
-        max_seconds: int
-            Maximum travel time cutoff.
-        speed_m_s: float
-            Travel speed (m/s).
-
-        Returns
-        -------
-        tuple[list[int], list[int], list[NodeVisit], list[EdgeVisit]]
-            (Reachable node indices, Visited edge indices, NodeVisit states, EdgeVisit states).
-        """
-        ...
     def centrality_shortest(
         self,
         distances: list[int] | None = None,
-        betas: list[float] | None = None,
         minutes: list[float] | None = None,
-        compute_closeness: bool | None = None,
-        compute_betweenness: bool | None = None,
-        min_threshold_wt: float | None = None,
+        closeness_exprs: list[tuple[str, str]] | None = None,
+        betweenness_exprs: list[tuple[str, str]] | None = None,
+        compute_cycles: bool | None = None,
         speed_m_s: float | None = None,
         tolerance: float | None = None,
+        segment_weighted: bool | None = None,
         sample_probability: float | None = None,
         sampling_weights: list[float] | None = None,
         random_seed: int | None = None,
-        source_indices: list[int] | None = None,
         pbar_disabled: bool | None = None,
-    ) -> CentralityShortestResult:
+    ) -> CentralityResult:
         """
-        Compute combined closeness and/or betweenness centrality using shortest paths.
-
-        Performs a single Dijkstra traversal per source node, computing both closeness
-        and betweenness metrics simultaneously when both flags are True.
+        Compute centrality using shortest paths. Expressions use ``c`` (metric
+        distance) and ``p`` (normalised progress = c / threshold).
 
         Parameters
         ----------
         distances: list[int] | None
             Distance thresholds (meters).
-        betas: list[float] | None
-            Decay parameters (beta).
         minutes: list[float] | None
             Time thresholds (minutes).
-        compute_closeness: bool | None
-            Compute closeness metrics (density, farness, cycles, harmonic, beta). Default True.
-        compute_betweenness: bool | None
-            Compute betweenness metrics (betweenness, betweenness_beta). Default True.
-        min_threshold_wt: float | None
-            Minimum weight for beta/distance conversion.
+        closeness_exprs: list[tuple[str, str]] | None
+            Named closeness expressions: ``[(name, expr), ...]``.
+        betweenness_exprs: list[tuple[str, str]] | None
+            Named betweenness expressions: ``[(name, expr), ...]``.
+        compute_cycles: bool | None
+            Compute circuit rank. Default False.
         speed_m_s: float | None
             Travel speed (m/s).
         tolerance: float | None
-            Relative tolerance for near-equal path detection in betweenness, as a percentage
-            (e.g. 1.0 = 1%). A tiny internal epsilon is always enforced as a minimum for
-            floating-point stability.
+            Relative tolerance for near-equal path detection in betweenness.
+        segment_weighted: bool | None
+            Weight by primal edge lengths.
         sample_probability: float | None
-            Probability of sampling a node as a source. Used for IPW scaling.
+            Bernoulli sampling probability with IPW.
         sampling_weights: list[float] | None
-            Per-node sampling weights in range [0.0, 1.0]. Mutually exclusive with source_indices.
+            Per-node sampling weights in [0.0, 1.0].
         random_seed: int | None
             Optional seed for reproducible sampling.
-        source_indices: list[int] | None
-            Subset of node indices to use as sources. Mutually exclusive with sampling_weights.
         pbar_disabled: bool | None
             Disable progress bar if True.
 
         Returns
         -------
-        CentralityShortestResult
-            Object containing closeness and/or betweenness centrality metrics.
+        CentralityResult
+            Object with ``metrics`` dict: ``{name: {distance: array}}``.
         """
         ...
     def centrality_simplest(
         self,
         distances: list[int] | None = None,
-        betas: list[float] | None = None,
         minutes: list[float] | None = None,
-        compute_closeness: bool | None = None,
-        compute_betweenness: bool | None = None,
-        min_threshold_wt: float | None = None,
+        closeness_exprs: list[tuple[str, str]] | None = None,
+        betweenness_exprs: list[tuple[str, str]] | None = None,
         speed_m_s: float | None = None,
         tolerance: float | None = None,
-        angular_scaling_unit: float | None = None,
-        farness_scaling_offset: float | None = None,
+        segment_weighted: bool | None = None,
         sample_probability: float | None = None,
         sampling_weights: list[float] | None = None,
         random_seed: int | None = None,
-        source_indices: list[int] | None = None,
         pbar_disabled: bool | None = None,
-    ) -> CentralitySimplestResult:
+    ) -> CentralityResult:
         """
-        Compute combined closeness and/or betweenness centrality using simplest (angular) paths.
-
-        Performs a single angular Dijkstra traversal per source node, computing both closeness
-        and betweenness metrics simultaneously when both flags are True.
+        Compute centrality using simplest (angular) paths. Expressions use ``c``
+        (angular cost) and ``p`` (normalised time progress).
 
         Parameters
         ----------
         distances: list[int] | None
             Distance thresholds (meters).
-        betas: list[float] | None
-            Decay parameters (beta).
         minutes: list[float] | None
             Time thresholds (minutes).
-        compute_closeness: bool | None
-            Compute closeness metrics (density, farness, harmonic). Default True.
-        compute_betweenness: bool | None
-            Compute betweenness metrics (betweenness, betweenness_beta). Default True.
-        min_threshold_wt: float | None
-            Minimum weight for beta/distance conversion.
+        closeness_exprs: list[tuple[str, str]] | None
+            Named closeness expressions: ``[(name, expr), ...]``.
+        betweenness_exprs: list[tuple[str, str]] | None
+            Named betweenness expressions: ``[(name, expr), ...]``.
         speed_m_s: float | None
             Travel speed (m/s).
         tolerance: float | None
-            Relative tolerance for near-equal path detection in angular betweenness, as a
-            percentage (e.g. 1.0 = 1%). A tiny internal epsilon is always enforced as a minimum
-            for floating-point stability.
-        angular_scaling_unit: float | None
-            Scaling unit for angular cost (default: 180 degrees).
-        farness_scaling_offset: float | None
-            Offset for farness calculation (default: 1.0).
+            Relative tolerance for near-equal path detection in betweenness.
+        segment_weighted: bool | None
+            Weight by primal edge lengths.
         sample_probability: float | None
-            Probability of sampling a node as a source.
+            Bernoulli sampling probability with IPW.
         sampling_weights: list[float] | None
-            Per-node sampling weights in range [0.0, 1.0]. Mutually exclusive with source_indices.
+            Per-node sampling weights in [0.0, 1.0].
         random_seed: int | None
             Optional seed for reproducible sampling.
-        source_indices: list[int] | None
-            Subset of node indices to use as sources. Mutually exclusive with sampling_weights.
         pbar_disabled: bool | None
             Disable progress bar if True.
 
         Returns
         -------
-        CentralitySimplestResult
-            Object containing closeness and/or betweenness centrality metrics.
+        CentralityResult
+            Object with ``metrics`` dict: ``{name: {distance: array}}``.
 
         Notes
         -----
@@ -593,13 +554,12 @@ class NetworkStructure:
         self,
         od_matrix: OdMatrix,
         distances: list[int] | None = None,
-        betas: list[float] | None = None,
         minutes: list[float] | None = None,
-        min_threshold_wt: float | None = None,
+        betweenness_exprs: list[tuple[str, str]] | None = None,
         speed_m_s: float | None = None,
         tolerance: float | None = None,
         pbar_disabled: bool | None = None,
-    ) -> BetweennessShortestResult:
+    ) -> CentralityResult:
         """
         Compute OD-weighted betweenness centrality using shortest paths.
 
@@ -609,66 +569,69 @@ class NetworkStructure:
             Sparse OD weight matrix mapping (origin, destination) pairs to trip weights.
         distances: list[int] | None
             Distance thresholds (meters).
-        betas: list[float] | None
-            Decay parameters (beta).
         minutes: list[float] | None
             Time thresholds (minutes).
-        min_threshold_wt: float | None
-            Minimum weight for beta/distance conversion.
+        betweenness_exprs: list[tuple[str, str]] | None
+            Named betweenness expressions: ``[(name, expr), ...]``.
         speed_m_s: float | None
             Travel speed (m/s).
         tolerance: float | None
-            Relative tolerance for near-equal path detection in betweenness, as a percentage
-            (e.g. 1.0 = 1%). A tiny internal epsilon is always enforced as a minimum for
-            floating-point stability.
+            Relative tolerance for near-equal path detection in betweenness.
         pbar_disabled: bool | None
             Disable progress bar if True.
 
         Returns
         -------
-        BetweennessShortestResult
-            Object containing betweenness centrality metrics.
+        CentralityResult
+            Object with ``metrics`` dict: ``{name: {distance: array}}``.
         """
         ...
-    def segment_centrality(
+    def betweenness_demand_shortest(
         self,
+        origins: list[tuple[int, float]],
+        destinations: list[tuple[int, float]],
+        decay_fn: str,
         distances: list[int] | None = None,
-        betas: list[float] | None = None,
         minutes: list[float] | None = None,
-        compute_closeness: bool | None = True,
-        compute_betweenness: bool | None = True,
-        min_threshold_wt: float | None = None,
+        closest_destination: bool = False,
+        metric_name: str | None = None,
         speed_m_s: float | None = None,
+        tolerance: float | None = None,
         pbar_disabled: bool | None = None,
-    ) -> CentralitySegmentResult:
+    ) -> CentralityResult:
         """
-        Calculate local segment centrality metrics based on shortest paths.
+        Demand-weighted (flow) betweenness from a singly / origin-constrained spatial interaction model.
 
-        Computes closeness and/or betweenness centrality for network segments within specified thresholds.
-        Requires exactly one of `distances`, `betas`, or `minutes`.
+        Each origin distributes its full weight across reachable destinations in proportion to
+        ``W_d * decay_fn(c)`` and the allocated flows are routed along shortest paths. Origins and
+        destinations are aggregated by node first (duplicate-snapped points sum their weights).
 
         Parameters
         ----------
+        origins: list[tuple[int, float]]
+            ``(node_idx, weight)`` pairs for demand origins.
+        destinations: list[tuple[int, float]]
+            ``(node_idx, weight)`` pairs for demand destinations / attractors.
+        decay_fn: str
+            Distance-decay expression using ``c`` (metric cost) and ``p`` (normalised progress).
         distances: list[int] | None
             Distance thresholds (meters).
-        betas: list[float] | None
-            Decay parameters (beta).
         minutes: list[float] | None
             Time thresholds (minutes).
-        compute_closeness: bool | None
-            Compute closeness centrality if True.
-        compute_betweenness: bool | None
-            Compute betweenness centrality if True.
-        min_threshold_wt: float | None
-            Minimum weight for beta/distance conversion.
+        closest_destination: bool
+            If True, route each origin's full weight to its single nearest reachable destination.
+        metric_name: str | None
+            Output metric name (default ``"demand"``).
         speed_m_s: float | None
             Travel speed (m/s).
+        tolerance: float | None
+            Relative tolerance for near-equal path detection in betweenness.
         pbar_disabled: bool | None
             Disable progress bar if True.
 
         Returns
         -------
-        CentralitySegmentResult
-            Object containing calculated segment centrality metrics.
+        CentralityResult
+            Object with ``metrics`` dict: ``{name: {distance: array}}``.
         """
         ...

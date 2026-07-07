@@ -1,15 +1,156 @@
 use atomic_float::AtomicF64;
 use numpy::borrow::PyReadonlyArray2;
 use numpy::{PyArray1, ToPyArray};
+use exmex::prelude::*;
+use exmex::{DefaultOpsFactory, MakeOperators, Operator, OwnedFlatEx};
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use std::collections::HashMap;
 use std::sync::atomic::Ordering;
+use std::sync::Arc;
 
 /// Minimum threshold weight for distance and beta calculations.
 static MIN_THRESH_WT: f32 = 0.01831563888873418;
 /// Walking speed in meters per second.
 pub static WALKING_SPEED: f32 = 1.33333;
+/// Default decay expression: flat (no decay). All data points within the distance threshold
+/// receive equal weight. Use a custom `decay_fn` for distance-weighted metrics.
+pub static DEFAULT_DECAY_EXPR: &str = "1";
+/// Extended exmex operator factory: the default float operators plus a few unary functions
+/// (sqrt/abs/floor/ceil/round/signum) so the supported surface matches the previous evaluator.
+#[derive(Clone, Debug)]
+struct CityseerOps;
+impl MakeOperators<f64> for CityseerOps {
+    fn make<'a>() -> Vec<Operator<'a, f64>> {
+        // DefaultOpsFactory already provides ^ * / + -, exp, sqrt, log (= natural log), log2, the trig
+        // family, floor, ceil, trunc, fract, signum. Add the names meval supported that exmex lacks.
+        // (min/max are not supported: exmex has no comma-function syntax.)
+        let mut ops = DefaultOpsFactory::<f64>::make();
+        ops.push(Operator::make_unary("ln", |a: f64| a.ln()));
+        ops.push(Operator::make_unary("log10", |a: f64| a.log10()));
+        ops.push(Operator::make_unary("abs", |a: f64| a.abs()));
+        ops.push(Operator::make_unary("round", |a: f64| a.round()));
+        ops
+    }
+}
+type CityExpr = OwnedFlatEx<f64, CityseerOps>;
+
+fn is_ident_byte(b: u8) -> bool {
+    b.is_ascii_alphanumeric() || b == b'_'
+}
+
+/// True if single-char variable `v` (e.g. 'c'/'p') appears in `s` as a standalone identifier,
+/// not as part of a longer name like `cos`, `ceil`, or `exp`.
+fn uses_var(s: &str, v: char) -> bool {
+    let b = s.as_bytes();
+    let vb = v as u8;
+    b.iter().enumerate().any(|(i, &c)| {
+        c == vb
+            && (i == 0 || !is_ident_byte(b[i - 1]))
+            && (i + 1 >= b.len() || !is_ident_byte(b[i + 1]))
+    })
+}
+
+/// Build a decay evaluator (variable `p`) backed by the exmex interpreter. Restricted to the
+/// variable `p`. Output is NOT clamped here (callers clamp where needed).
+fn build_decay_fn(expr: &str) -> Result<Box<dyn Fn(f32) -> f32 + Send + Sync>, String> {
+    let ex = CityExpr::from_str(expr).map_err(|e| e.to_string())?;
+    let nv = ex.n_vars();
+    if nv > 1 || (nv == 1 && !uses_var(expr, 'p')) {
+        return Err("must use only 'p' as the variable".to_string());
+    }
+    Ok(Box::new(move |p: f32| {
+        let r = if nv == 0 { ex.eval(&[]) } else { ex.eval(&[p as f64]) };
+        r.map(|v| v as f32).unwrap_or(f32::NAN)
+    }))
+}
+
+/// Build a centrality-metric evaluator (variables `c`, `p`) backed by the exmex interpreter.
+/// Restricted to `c`/`p`. Output is NOT clamped.
+fn build_metric_fn(expr: &str) -> Result<Box<dyn Fn(f32, f32) -> f32 + Send + Sync>, String> {
+    let ex = CityExpr::from_str(expr).map_err(|e| e.to_string())?;
+    let has_c = uses_var(expr, 'c');
+    let has_p = uses_var(expr, 'p');
+    if has_c as usize + has_p as usize != ex.n_vars() {
+        return Err("must use only 'c' and/or 'p' as variables".to_string());
+    }
+    Ok(Box::new(move |c: f32, p: f32| {
+        // exmex expects variable values in alphabetical order (c before p)
+        let r = match (has_c, has_p) {
+            (false, false) => ex.eval(&[]),
+            (true, false) => ex.eval(&[c as f64]),
+            (false, true) => ex.eval(&[p as f64]),
+            (true, true) => ex.eval(&[c as f64, p as f64]),
+        };
+        r.map(|v| v as f32).unwrap_or(f32::NAN)
+    }))
+}
+
+/// Validates a decay function expression by building it and test-evaluating across p ∈ [0, 1].
+/// Returns the expression string wrapped in an Arc for sharing across threads.
+pub fn validate_decay_fn(expr_str: &str) -> PyResult<Arc<str>> {
+    let f = build_decay_fn(expr_str).map_err(|e| {
+        PyValueError::new_err(format!(
+            "Failed to parse decay_fn expression '{}': {}",
+            expr_str, e
+        ))
+    })?;
+    for test_p in [0.0, 0.25, 0.5, 0.75, 1.0] {
+        let test_val = f(test_p);
+        if test_val.is_nan() || test_val.is_infinite() {
+            return Err(PyValueError::new_err(format!(
+                "decay_fn expression '{}' returns invalid value ({}) at p={}",
+                expr_str, test_val, test_p
+            )));
+        }
+    }
+    Ok(Arc::from(expr_str))
+}
+
+/// Builds a decay closure that computes a weight from normalised progress p ∈ [0, 1].
+/// Output is clamped to [0, 1]. Known forms run native; others use the exmex interpreter.
+pub fn parse_decay_fn(expr_str: &str) -> Box<dyn Fn(f32) -> f32 + Send + Sync> {
+    let f = build_decay_fn(expr_str).expect("decay_fn validated before parse");
+    Box::new(move |p: f32| f(p).clamp(0.0, 1.0))
+}
+
+/// Validates a centrality metric expression by building it and test-evaluating at several (c, p)
+/// pairs. Expressions use variables `c` (cost) and `p` (normalised progress).
+pub fn validate_metric_expr(expr_str: &str) -> PyResult<Arc<str>> {
+    let f = build_metric_fn(expr_str).map_err(|e| {
+        PyValueError::new_err(format!(
+            "Failed to parse metric expression '{}': {}",
+            expr_str, e
+        ))
+    })?;
+    for (test_c, test_p) in [(0.1, 0.0), (50.0, 0.25), (100.0, 0.5), (200.0, 1.0)] {
+        let test_val = f(test_c, test_p);
+        if test_val.is_nan() || test_val.is_infinite() {
+            return Err(PyValueError::new_err(format!(
+                "Metric expression '{}' returns invalid value ({}) at c={}, p={}",
+                expr_str, test_val, test_c, test_p
+            )));
+        }
+    }
+    Ok(Arc::from(expr_str))
+}
+
+/// Builds a metric closure that computes a value from cost `c` and progress `p`. NOT clamped.
+/// Known forms run native; others use the exmex interpreter.
+pub fn parse_metric_expr(expr_str: &str) -> Box<dyn Fn(f32, f32) -> f32 + Send + Sync> {
+    build_metric_fn(expr_str).expect("metric expression validated before parse")
+}
+
+/// Validates a list of named metric expressions. Returns validated (name, Arc<str>) pairs.
+pub fn validate_metric_exprs(exprs: &[(String, String)]) -> PyResult<Vec<(String, Arc<str>)>> {
+    exprs
+        .iter()
+        .map(|(name, expr)| {
+            let validated = validate_metric_expr(expr)?;
+            Ok((name.clone(), validated))
+        })
+        .collect()
+}
 
 /// Holds metric results, including distances and a 2D matrix of atomic floats.
 /// Uses f64 internally for accumulation precision (f32 loses increments above 2^24),
@@ -236,35 +377,28 @@ pub fn seconds_from_distances(distances: Vec<u32>, speed_m_s: f32) -> PyResult<V
         .collect()
 }
 
+/// Resolve distances and seconds from either distances or minutes.
+///
+/// Exactly one of `distances` or `minutes` must be provided.
 #[pyfunction]
-#[pyo3(signature = (speed_m_s, distances=None, betas=None, minutes=None, min_threshold_wt=None))]
-pub fn pair_distances_betas_time(
+#[pyo3(signature = (speed_m_s, distances=None, minutes=None))]
+pub fn pair_distances_and_time(
     speed_m_s: f32,
     distances: Option<Vec<u32>>,
-    betas: Option<Vec<f32>>,
     minutes: Option<Vec<f32>>,
-    min_threshold_wt: Option<f32>,
-) -> PyResult<(Vec<u32>, Vec<f32>, Vec<u32>)> {
-    let min_threshold_wt = min_threshold_wt.unwrap_or(MIN_THRESH_WT);
-    match (distances, betas, minutes) {
-        (Some(distances), None, None) => {
-            let betas = betas_from_distances(distances.clone(), Some(min_threshold_wt))?;
+) -> PyResult<(Vec<u32>, Vec<u32>)> {
+    match (distances, minutes) {
+        (Some(distances), None) => {
             let seconds = seconds_from_distances(distances.clone(), speed_m_s)?;
-            Ok((distances, betas, seconds))
+            Ok((distances, seconds))
         }
-        (None, Some(betas), None) => {
-            let distances = distances_from_betas(betas.clone(), Some(min_threshold_wt))?;
-            let seconds = seconds_from_distances(distances.clone(), speed_m_s)?;
-            Ok((distances, betas, seconds))
-        }
-        (None, None, Some(minutes)) => {
+        (None, Some(minutes)) => {
             let seconds: Vec<u32> = minutes.iter().map(|&x| (x * 60.0).round() as u32).collect();
             let distances = distances_from_seconds(seconds.clone(), speed_m_s)?;
-            let betas = betas_from_distances(distances.clone(), Some(min_threshold_wt))?;
-            Ok((distances, betas, seconds))
+            Ok((distances, seconds))
         }
         _ => Err(PyValueError::new_err(
-            "Please provide exactly one of the following arguments: 'distances', 'betas', or 'minutes'.",
+            "Please provide exactly one of 'distances' or 'minutes'.",
         )),
     }
 }

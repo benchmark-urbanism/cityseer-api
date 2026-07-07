@@ -1,3 +1,98 @@
+# v5.0.0 Release Notes
+
+## Headline
+
+v5 is a major release centred on a new API: the high-level **`CityNetwork`** class becomes the primary interface, the fixed centrality metric set is replaced by an **expression-based API**, **betweenness** is redefined to count all routes (including routes that both start and end outside the boundary), and **sampling** becomes per-node adaptive, validated on four real networks. The documentation site has been rebuilt around the new API, with all examples and tutorials using `CityNetwork` throughout. Backwards compatibility is a first-class concern: the 4.x function names remain available as deprecated shims that produce the same default columns as before; see `COMPATIBILITY.md` for the full contract and migration table.
+
+## New Features
+
+### Expression-based centrality
+
+`centrality_shortest` and `centrality_simplest` now accept arbitrary metric expressions instead of a fixed metric set. Closeness and betweenness are dicts of `{label: expression}` over the variables `c` (network cost) and `p` (normalised progress, `c / threshold`), and `decay_fn` supplies distance weighting:
+
+```python
+net.centrality_shortest(
+    distances=[800, 2000],
+    closeness={"harmonic": "1/c", "gravity": "exp(-0.005 * c)"},
+    betweenness={"betweenness": "1"},
+    decay_fn="exp(-4 * p)",
+)
+```
+
+Each label becomes a `cc_{label}_{distance}` column. The default expressions reproduce the classic 4.x metrics. Land-use aggregations gain per-label decay functions on the same principle (#175).
+
+### `CityNetwork` high-level API
+
+A new `CityNetwork` class wraps graph preparation and metrics behind a lean interface. Its defaults are intentionally minimal (a single harmonic closeness, a single betweenness, cycles off) and any keyword can be overridden. The classic functional API is unchanged and remains the compatibility surface.
+
+### Directed networks
+
+One-way street routing via directed graphs (#173). Directed betweenness counts each ordered pair fully (see Breaking Changes).
+
+### Demand-weighted betweenness
+
+`betweenness_demand` computes spatial-interaction (origin–destination weighted) flow betweenness (#176).
+
+### Sampling is now per-node adaptive (experimental)
+
+`sample=True` now measures each node's local reach with a cheap pilot (a small number of
+bounded shortest-path traversals polling the network) and assigns each node its own source
+inclusion probability via the Hoeffding bound. Sparse areas
+sample more heavily and dense areas less, so precision is uniform across the network, and
+per-source inverse-probability weighting keeps estimates unbiased. A per-distance work test
+selects exact computation wherever powered sampling would not be cheaper. The default
+tolerance is `epsilon=0.05` (was 0.06), calibrated on real-world networks spanning the urban density
+range, one held out from calibration; all pass Spearman rho >= 0.95 at 1–20 km under
+this method. The previous
+distance-only schedule remains available as a reference model in `cityseer.sampling`
+(`compute_distance_p`) but is no longer used by the runtime. Sampling remains opt-in via
+`sample=True` and experimental.
+
+### Statistics measure selection
+
+`compute_stats` accepts `measures=[...]` (e.g. `["mean", "count"]`) to compute only the statistics you need.
+
+### Other improvements
+
+- Impedances propagate through dual-graph construction.
+- Improved NetworkX round-trip for momepy interoperability.
+- Segment-length weighting via `segment_weighted=True` on the centrality functions.
+- Expression evaluation uses `exmex` (replacing the unmaintained `meval`), with `ln`, `log10`, `abs`, and `round` available in expressions.
+
+## Breaking Changes
+
+### Betweenness counts all routes
+
+Betweenness now sources from **every** node; the `live` designation only filters which nodes' values are reported. This is a deliberate change of definition, not a bug fix. Previously, routes that both started **and** ended outside the boundary were intentionally excluded, a pragmatic scoping choice, since such routes are relatively uncommon yet require every buffer node to run as a source, adding substantial computational weight. In v5 we opt for theoretical strictness: with a buffer at least as deep as the analysis distance, a route between two buffer nodes that passes through the study area is a real shortest path, so it is now counted and credits the live nodes it traverses. These buffer-to-buffer routes are the *only* difference. Consequences: on undirected, fully-live networks values are unchanged; on buffered networks, values near the boundary increase (the newly counted routes accrue there), and exact betweenness costs more to compute since all nodes source, which is part of the motivation for sampling. Separately, on directed networks each ordered origin–destination pair now contributes with weight 1, where previously the undirected pair-weighting of ½ was applied; directed values are therefore twice their 4.x magnitude.
+
+### `segment_centrality` removed
+
+The continuous-segment engine is gone. Calling `networks.segment_centrality` raises `NotImplementedError` with migration guidance; use node-based centrality with `segment_weighted=True` for segment-length weighting.
+
+### Removed parameters
+
+`betas=` and `spatial_tolerance=` are removed and raise `TypeError`. Replace `betas` with the equivalent expression: `decay_fn="exp(-beta * c)"`. `source_indices` is also removed. The full removed-parameter table with migrations is in `COMPATIBILITY.md`.
+
+### Low-level API
+
+The Rust-level result and function signatures changed with the expression API. The low-level surface (`rustalgos`) does not carry a compatibility guarantee; the high-level `cityseer.metrics` functions do.
+
+## Backwards Compatibility
+
+- `node_centrality_shortest` and `node_centrality_simplest` remain available as deprecated shims producing the **same default columns and values** as 4.x (`cc_beta_*`, `cc_harmonic_*`, `cc_betweenness_*`, `cc_betweenness_beta_*`, `cc_cycles_*`, ...). They emit `DeprecationWarning` and will be removed in a future major release.
+- Land-use and statistics functions keep the classic paired `_nw`/`_wt` default columns.
+- Columns prefixed `cc_` are managed by cityseer and are overwritten in place when a metric is recomputed for the same distance.
+- See `COMPATIBILITY.md` for the two-surface policy (classic functional API vs lean `CityNetwork`), the removed-parameter table, and the deprecation timeline.
+
+## Fixes
+
+- OSM fetching sends an identifying `User-Agent`: the Overpass API now rejects generic python user agents with `406 Not Acceptable`, which broke `osm_graph_from_poly` and everything built on it.
+- QGIS plugin: version check no longer reports a false mismatch between the plugin's `beta` spelling and pip's normalised `b` spelling.
+- `nx_from_osm_nx`: fixed a key-lookup bug after node key stringification.
+- Fixed node-weight semantics in centrality aggregation.
+- Docs generator renders deprecation notices instead of crashing (CI fix).
+- Release workflows serialised to avoid a tag race in `action-gh-release`.
+
 # v4.24.0 Release Notes
 
 ## New Features
@@ -12,7 +107,7 @@ Supported in all IO methods: `nx_from_osm_nx`, `nx_from_open_roads`, `nx_from_ge
 
 ### Adaptive sampling (experimental)
 
-`node_centrality_shortest` and `node_centrality_simplest` accept `sample=True` to use distance-based Hoeffding/Eppstein-Wang sampling for approximate centrality, achieving 2-3x speedup while maintaining ρ ≥ 0.95. Sampling probability is derived deterministically from each distance threshold using a canonical grid network model.
+`centrality_shortest` and `centrality_simplest` accept `sample=True` to use distance-based Hoeffding/Eppstein-Wang sampling for approximate centrality, achieving 2-3x speedup while maintaining ρ ≥ 0.95. Sampling probability is derived deterministically from each distance threshold using a canonical grid network model.
 
 ### QGIS plugin updates
 
@@ -22,23 +117,23 @@ New accessibility and statistics processing algorithms. Expanded centrality algo
 
 ### Angular (simplest-path) analysis now requires a dual graph
 
-`node_centrality_simplest` (and the convenience wrappers `closeness_simplest`, `betweenness_simplest`) now raises `ValueError` if the input `NetworkStructure` was not ingested from a dual graph. Angular routing uses endpoint-aware dual-graph traversal instead of the previous bearing-based angular costs. Convert primal graphs with `graphs.nx_to_dual()` before calling `network_structure_from_nx()`.
+`centrality_simplest` (and the convenience wrappers `closeness_simplest`, `betweenness_simplest`) now raises `ValueError` if the input `NetworkStructure` was not ingested from a dual graph. Angular routing uses endpoint-aware dual-graph traversal instead of the previous bearing-based angular costs. Convert primal graphs with `graphs.nx_to_dual()` before calling `network_structure_from_nx()`.
 
 ### `tolerance` parameter semantics changed
 
-The `tolerance` parameter on `node_centrality_shortest`, `node_centrality_simplest`, `betweenness_shortest`, `betweenness_simplest`, and `betweenness_od` now uses **relative percentage** semantics (e.g. `1.0` = 1%) instead of the previous absolute fraction. The default changed from `0.0` to `None`. A tiny internal epsilon is always enforced for floating-point stability. To migrate: multiply old values by 100 (e.g. old `0.05` → new `5.0`).
+The `tolerance` parameter on `centrality_shortest`, `centrality_simplest`, `betweenness_shortest`, `betweenness_simplest`, and `betweenness_od` now uses **relative percentage** semantics (e.g. `1.0` = 1%) instead of the previous absolute fraction. The default changed from `0.0` to `None`. A tiny internal epsilon is always enforced for floating-point stability. To migrate: multiply old values by 100 (e.g. old `0.05` → new `5.0`).
 
-### `tolerance` parameter reordered in `node_centrality_simplest`
+### `tolerance` parameter reordered in `centrality_simplest`
 
 `tolerance` now appears before `angular_scaling_unit` and `farness_scaling_offset`. Code using positional arguments for these parameters will need updating.
 
 ### `betweenness_beta` removed from angular (simplest) results
 
-`CentralitySimplestResult` no longer exposes `node_betweenness_beta`. The `node_centrality_simplest` function no longer writes `cc_betweenness_beta_*` columns. Only `cc_betweenness_*` columns are produced.
+`CentralitySimplestResult` no longer exposes `node_betweenness_beta`. The `centrality_simplest` function no longer writes `cc_betweenness_beta_*` columns. Only `cc_betweenness_*` columns are produced.
 
 ### `cycles` metric changed
 
-The `cycles` output from `node_centrality_shortest` now measures the **circuit rank** of the locally reachable subgraph (m − n + c), providing a more stable measure of network meshedness than the older tree-cycle heuristic.
+The `cycles` output from `centrality_shortest` now measures the **circuit rank** of the locally reachable subgraph (m − n + c), providing a more stable measure of network meshedness than the older tree-cycle heuristic.
 
 ### Sampling functions moved from `config` to `sampling` module
 
@@ -46,7 +141,7 @@ The `cycles` output from `node_centrality_shortest` now measures the **circuit r
 
 ## Other Changes
 
-- All result arrays (`CentralityShortestResult`, `CentralitySimplestResult`, `CentralitySegmentResult`, `Stats`, etc.) now return `np.float64` instead of `np.float32`.
+- All result arrays (`CentralityShortestResult`, `CentralitySimplestResult`, `Stats`, etc.) now return `np.float64` instead of `np.float32`.
 - `betweenness_od` now accepts an optional `tolerance` parameter.
 - `closeness_shortest` and `closeness_simplest` now accept an optional `tolerance` parameter.
 - Bug fix: `is_dual` graph attribute was incorrectly cast via `CRS()` instead of `bool()` in `nx_remove_dangling_nodes` and `nx_merge_parallel_edges`.

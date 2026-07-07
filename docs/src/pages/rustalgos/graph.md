@@ -171,6 +171,43 @@ layout: ../../layouts/PageLayout.astro
 </div>
 </div>
 
+
+ The type of the None singleton.
+
+</div>
+
+ 
+
+<div class="function">
+
+## poll_reach_hits
+
+
+<div class="content">
+<span class="name">poll_reach_hits</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">self</span>
+  </div>
+  <div class="param">
+    <span class="pn">/</span>
+  </div>
+  <div class="param">
+    <span class="pn">src_idxs</span>
+  </div>
+  <div class="param">
+    <span class="pn">distances</span>
+  </div>
+  <div class="param">
+    <span class="pn">speed_m_s</span>
+  </div>
+  <span class="pt">)</span>
+</div>
+</div>
+
+
+ Per-node hit counts from bounded Dijkstra traversals over the given sources. For each distance threshold, counts how many of the sources reach each node within that metric distance (one traversal per source, to the largest threshold). Backs the sampling pilot (cityseer.sampling.estimate_polled_reach): on an undirected network a node's hit count is binomial in its reach, so hits / m * n estimates reach at every threshold from one traversal set. Returns one Vec of length node_bound() per distance, indexed by raw node index.
+
 </div>
 
  
@@ -202,36 +239,8 @@ layout: ../../layouts/PageLayout.astro
 </div>
 </div>
 
-</div>
 
- 
-
-<div class="function">
-
-## dijkstra_tree_segment
-
-
-<div class="content">
-<span class="name">dijkstra_tree_segment</span><div class="signature multiline">
-  <span class="pt">(</span>
-  <div class="param">
-    <span class="pn">self</span>
-  </div>
-  <div class="param">
-    <span class="pn">/</span>
-  </div>
-  <div class="param">
-    <span class="pn">src_idx</span>
-  </div>
-  <div class="param">
-    <span class="pn">max_seconds</span>
-  </div>
-  <div class="param">
-    <span class="pn">speed_m_s</span>
-  </div>
-  <span class="pt">)</span>
-</div>
-</div>
+ The type of the None singleton.
 
 </div>
 
@@ -255,19 +264,16 @@ layout: ../../layouts/PageLayout.astro
     <span class="pn">distances=None</span>
   </div>
   <div class="param">
-    <span class="pn">betas=None</span>
-  </div>
-  <div class="param">
     <span class="pn">minutes=None</span>
   </div>
   <div class="param">
-    <span class="pn">compute_closeness=None</span>
+    <span class="pn">closeness_exprs=None</span>
   </div>
   <div class="param">
-    <span class="pn">compute_betweenness=None</span>
+    <span class="pn">betweenness_exprs=None</span>
   </div>
   <div class="param">
-    <span class="pn">min_threshold_wt=None</span>
+    <span class="pn">compute_cycles=None</span>
   </div>
   <div class="param">
     <span class="pn">speed_m_s=None</span>
@@ -285,9 +291,6 @@ layout: ../../layouts/PageLayout.astro
     <span class="pn">random_seed=None</span>
   </div>
   <div class="param">
-    <span class="pn">source_indices=None</span>
-  </div>
-  <div class="param">
     <span class="pn">pbar_disabled=None</span>
   </div>
   <span class="pt">)</span>
@@ -295,7 +298,9 @@ layout: ../../layouts/PageLayout.astro
 </div>
 
 
- Compute node centrality using shortest paths with a single Dijkstra per source. When both `compute_closeness` and `compute_betweenness` are true, a single Brandes-style Dijkstra traversal per source produces the data for both closeness accumulation and betweenness backpropagation, halving computation time compared to calling `closeness_shortest` and `betweenness_shortest` separately.
+ Compute node centrality using shortest paths with a single Dijkstra per source. Closeness and betweenness metrics are specified as lists of (name, expression) pairs. Expressions use variables `c` (metric distance) and `p` (normalised progress = c / threshold). Each expression is parsed once per thread via `meval` and evaluated per reached node (closeness) or per shortest path (betweenness).
+
+ When `sample_probability` is set, Bernoulli sampling with inverse-probability weighting (IPW) is used.
 
 </div>
 
@@ -319,31 +324,19 @@ layout: ../../layouts/PageLayout.astro
     <span class="pn">distances=None</span>
   </div>
   <div class="param">
-    <span class="pn">betas=None</span>
-  </div>
-  <div class="param">
     <span class="pn">minutes=None</span>
   </div>
   <div class="param">
-    <span class="pn">compute_closeness=None</span>
+    <span class="pn">closeness_exprs=None</span>
   </div>
   <div class="param">
-    <span class="pn">compute_betweenness=None</span>
-  </div>
-  <div class="param">
-    <span class="pn">min_threshold_wt=None</span>
+    <span class="pn">betweenness_exprs=None</span>
   </div>
   <div class="param">
     <span class="pn">speed_m_s=None</span>
   </div>
   <div class="param">
     <span class="pn">tolerance=None</span>
-  </div>
-  <div class="param">
-    <span class="pn">angular_scaling_unit=None</span>
-  </div>
-  <div class="param">
-    <span class="pn">farness_scaling_offset=None</span>
   </div>
   <div class="param">
     <span class="pn">sample_probability=None</span>
@@ -355,9 +348,6 @@ layout: ../../layouts/PageLayout.astro
     <span class="pn">random_seed=None</span>
   </div>
   <div class="param">
-    <span class="pn">source_indices=None</span>
-  </div>
-  <div class="param">
     <span class="pn">pbar_disabled=None</span>
   </div>
   <span class="pt">)</span>
@@ -367,51 +357,7 @@ layout: ../../layouts/PageLayout.astro
 
  Compute node centrality using simplest (angular) paths on the dual graph. Angular routing is evaluated on two directed states per segment. Each source segment seeds both orientations into a single Brandes traversal.
 
-</div>
-
- 
-
-<div class="function">
-
-## segment_centrality
-
-
-<div class="content">
-<span class="name">segment_centrality</span><div class="signature multiline">
-  <span class="pt">(</span>
-  <div class="param">
-    <span class="pn">self</span>
-  </div>
-  <div class="param">
-    <span class="pn">/</span>
-  </div>
-  <div class="param">
-    <span class="pn">distances=None</span>
-  </div>
-  <div class="param">
-    <span class="pn">betas=None</span>
-  </div>
-  <div class="param">
-    <span class="pn">minutes=None</span>
-  </div>
-  <div class="param">
-    <span class="pn">compute_closeness=None</span>
-  </div>
-  <div class="param">
-    <span class="pn">compute_betweenness=None</span>
-  </div>
-  <div class="param">
-    <span class="pn">min_threshold_wt=None</span>
-  </div>
-  <div class="param">
-    <span class="pn">speed_m_s=None</span>
-  </div>
-  <div class="param">
-    <span class="pn">pbar_disabled=None</span>
-  </div>
-  <span class="pt">)</span>
-</div>
-</div>
+ Expressions use `c` (angular cost) and `p` (normalised time progress = agg_seconds / max_seconds).
 
 </div>
 
@@ -438,13 +384,10 @@ layout: ../../layouts/PageLayout.astro
     <span class="pn">distances=None</span>
   </div>
   <div class="param">
-    <span class="pn">betas=None</span>
-  </div>
-  <div class="param">
     <span class="pn">minutes=None</span>
   </div>
   <div class="param">
-    <span class="pn">min_threshold_wt=None</span>
+    <span class="pn">betweenness_exprs=None</span>
   </div>
   <div class="param">
     <span class="pn">speed_m_s=None</span>
@@ -460,7 +403,62 @@ layout: ../../layouts/PageLayout.astro
 </div>
 
 
- Compute OD-weighted betweenness centrality using shortest paths. Uses Brandes multi-predecessor Dijkstra from each source that has outbound OD trips. For each OD destination, backpropagates credit through all equal shortest paths, weighted by the OD flow weight and split by sigma (path count).
+ Compute OD-weighted betweenness centrality using shortest paths. Uses Brandes multi-predecessor Dijkstra from each source that has outbound OD trips. Betweenness expressions use `c` (metric distance) and `p` (normalised progress = c / threshold).
+
+</div>
+
+ 
+
+<div class="function">
+
+## betweenness_demand_shortest
+
+
+<div class="content">
+<span class="name">betweenness_demand_shortest</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">self</span>
+  </div>
+  <div class="param">
+    <span class="pn">/</span>
+  </div>
+  <div class="param">
+    <span class="pn">origins</span>
+  </div>
+  <div class="param">
+    <span class="pn">destinations</span>
+  </div>
+  <div class="param">
+    <span class="pn">decay_fn</span>
+  </div>
+  <div class="param">
+    <span class="pn">distances=None</span>
+  </div>
+  <div class="param">
+    <span class="pn">minutes=None</span>
+  </div>
+  <div class="param">
+    <span class="pn">closest_destination=False</span>
+  </div>
+  <div class="param">
+    <span class="pn">metric_name=None</span>
+  </div>
+  <div class="param">
+    <span class="pn">speed_m_s=None</span>
+  </div>
+  <div class="param">
+    <span class="pn">tolerance=None</span>
+  </div>
+  <div class="param">
+    <span class="pn">pbar_disabled=None</span>
+  </div>
+  <span class="pt">)</span>
+</div>
+</div>
+
+
+ Demand-weighted (flow) betweenness from a singly / origin-constrained spatial interaction model. Each origin distributes its full weight across reachable destinations in proportion to `W_d * decay(c)`, where `decay` is the supplied expression evaluated on `c` (metric cost) and `p` (normalised progress to the threshold) — the gravity model is one instance of this spatial interaction form. The allocated origin-destination flows are then routed along shortest paths via Brandes back-propagation, accumulating flow betweenness at intermediate nodes. Origins and destinations are each aggregated by node first, so several snapped points sharing a node contribute their summed weight (and a node only triggers one Dijkstra). When `closest_destination` is true, an origin routes its full weight to its single nearest reachable destination instead of allocating across all of them.
 
 </div>
 
@@ -484,6 +482,9 @@ layout: ../../layouts/PageLayout.astro
 </div>
 </div>
 
+
+ The type of the None singleton.
+
 </div>
 
  
@@ -505,6 +506,9 @@ layout: ../../layouts/PageLayout.astro
   <span class="pt">)</span>
 </div>
 </div>
+
+
+ The type of the None singleton.
 
 </div>
 
@@ -530,6 +534,37 @@ layout: ../../layouts/PageLayout.astro
   <span class="pt">)</span>
 </div>
 </div>
+
+
+ The type of the None singleton.
+
+</div>
+
+ 
+
+<div class="function">
+
+## set_is_directed
+
+
+<div class="content">
+<span class="name">set_is_directed</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">self</span>
+  </div>
+  <div class="param">
+    <span class="pn">/</span>
+  </div>
+  <div class="param">
+    <span class="pn">is_directed</span>
+  </div>
+  <span class="pt">)</span>
+</div>
+</div>
+
+
+ The type of the None singleton.
 
 </div>
 
@@ -571,6 +606,9 @@ layout: ../../layouts/PageLayout.astro
 </div>
 </div>
 
+
+ The type of the None singleton.
+
 </div>
 
  
@@ -608,6 +646,9 @@ layout: ../../layouts/PageLayout.astro
 </div>
 </div>
 
+
+ The type of the None singleton.
+
 </div>
 
  
@@ -632,6 +673,9 @@ layout: ../../layouts/PageLayout.astro
   <span class="pt">)</span>
 </div>
 </div>
+
+
+ The type of the None singleton.
 
 </div>
 
@@ -658,6 +702,40 @@ layout: ../../layouts/PageLayout.astro
 </div>
 </div>
 
+
+ The type of the None singleton.
+
+</div>
+
+ 
+
+<div class="function">
+
+## set_node_weight
+
+
+<div class="content">
+<span class="name">set_node_weight</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">self</span>
+  </div>
+  <div class="param">
+    <span class="pn">/</span>
+  </div>
+  <div class="param">
+    <span class="pn">node_idx</span>
+  </div>
+  <div class="param">
+    <span class="pn">weight</span>
+  </div>
+  <span class="pt">)</span>
+</div>
+</div>
+
+
+ Set the weight of a node.
+
 </div>
 
  
@@ -682,6 +760,9 @@ layout: ../../layouts/PageLayout.astro
   <span class="pt">)</span>
 </div>
 </div>
+
+
+ The type of the None singleton.
 
 </div>
 
@@ -1070,6 +1151,9 @@ layout: ../../layouts/PageLayout.astro
 </div>
 </div>
 
+
+ The type of the None singleton.
+
 </div>
 
  
@@ -1100,6 +1184,9 @@ layout: ../../layouts/PageLayout.astro
   <span class="pt">)</span>
 </div>
 </div>
+
+
+ The type of the None singleton.
 
 </div>
 
@@ -1132,6 +1219,9 @@ layout: ../../layouts/PageLayout.astro
 </div>
 </div>
 
+
+ The type of the None singleton.
+
 </div>
 
  
@@ -1163,6 +1253,9 @@ layout: ../../layouts/PageLayout.astro
 </div>
 </div>
 
+
+ The type of the None singleton.
+
 </div>
 
  
@@ -1184,6 +1277,9 @@ layout: ../../layouts/PageLayout.astro
   <span class="pt">)</span>
 </div>
 </div>
+
+
+ The type of the None singleton.
 
 </div>
 
@@ -1267,22 +1363,17 @@ layout: ../../layouts/PageLayout.astro
 
  
 
+<span class="name">node_xs</span>
+
+
+ 
+
 <span class="name">node_ys</span>
 
 
  
 
-<span class="name">node_xys</span>
-
-
- 
-
-<span class="name">street_node_lives</span>
-
-
- 
-
-<span class="name">node_xs</span>
+<span class="name">node_xyzs</span>
 
 
  
@@ -1292,7 +1383,12 @@ layout: ../../layouts/PageLayout.astro
 
  
 
-<span class="name">node_xyzs</span>
+<span class="name">street_node_lives</span>
+
+
+ 
+
+<span class="name">node_xys</span>
 
 
  

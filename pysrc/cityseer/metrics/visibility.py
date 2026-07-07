@@ -1,6 +1,8 @@
 # pyright: basic
 """
-Visibility and viewshed analysis.
+Visibility and viewshed analysis. Compute what can be seen from street-level observer locations, accounting for
+building obstructions. Produces visibility density maps (how many points can see each location), visibility
+distances to the horizon, and individual viewsheds (what is visible from a single point).
 """
 
 from __future__ import annotations
@@ -196,7 +198,7 @@ def visibility_from_gpd(
             crs=to_crs_code,
             transform=transform,
         ) as dst:
-            dst.write(bands[band_idx], 1)  # type: ignore
+            dst.write(bands[band_idx], 1)
 
 
 def visibility_graph_from_osm(

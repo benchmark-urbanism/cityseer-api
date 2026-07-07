@@ -6,6 +6,11 @@ layout: ../../layouts/PageLayout.astro
 # layers
 
 
+ Compute land-use accessibility, mixed-use diversity, and statistical aggregations over the street network. Data points (land uses, numerical attributes) are assigned to the nearest street edges and then summarised within walking-distance catchments around each node, measured along the actual street network rather than as straight-line distances. Because these summaries are computed at the same node locations used for centrality, you can directly compare how well-connected a location is with how accessible different amenities are from that location. An optional ``decay_fn`` parameter controls how distance affects the weighting; see the [`cityseer.decay`](/api/decay) module for preset helpers. ``decay_fn`` also accepts a ``{label: expression}`` dict to compute several decay variants in a single network traversal, with each label appended to that variant's output column names.
+
+ For practical worked examples, see the [Cityseer Examples](https://cityseer.benchmarkurbanism.com/examples) site, including the [OSM Accessibility](https://cityseer.benchmarkurbanism.com/examples/accessibility/osm-accessibility), [Mixed Uses](https://cityseer.benchmarkurbanism.com/examples/accessibility/gpd-mixed-uses), and [Statistical Aggregations](https://cityseer.benchmarkurbanism.com/examples/stats/gpd-stats) recipes.
+
+
 <div class="function">
 
 ## build_data_map
@@ -51,7 +56,7 @@ layout: ../../layouts/PageLayout.astro
 </div>
 
 
- Assign a `GeoDataFrame` to a [`rustalgos.graph.NetworkStructure`](/rustalgos/rustalgos#networkstructure). A `NetworkStructure` provides the backbone for the calculation of land-use and statistical aggregations over the network. Points will be assigned to the closest street edge. Polygons will be assigned to the closest `n_nearest_candidates` adjacent street edges. up to
+ Assign a `GeoDataFrame` to a [`rustalgos.graph.NetworkStructure`](/rustalgos/graph#networkstructure). A `NetworkStructure` provides the backbone for the calculation of land-use and statistical aggregations over the network. Points will be assigned to the closest street edge. Polygons will be assigned to the closest `n_nearest_candidates` adjacent street edges.
 ### Parameters
 <div class="param-set">
   <div class="def">
@@ -70,7 +75,7 @@ layout: ../../layouts/PageLayout.astro
   </div>
   <div class="desc">
 
- A [`rustalgos.graph.NetworkStructure`](/rustalgos/rustalgos#networkstructure). Best generated with the [`io.network_structure_from_nx`](/tools/io#network-structure-from-nx) function.</div>
+ A [`rustalgos.graph.NetworkStructure`](/rustalgos/graph#networkstructure). Best generated with the [`io.network_structure_from_nx`](/tools/io#network_structure_from_nx) function.</div>
 </div>
 
 <div class="param-set">
@@ -121,7 +126,7 @@ layout: ../../layouts/PageLayout.astro
   </div>
   <div class="desc">
 
- A [`rustalgos.data.DataMap`](/rustalgos#datamap) instance.</div>
+ A [`rustalgos.data.DataMap`](/rustalgos/data#datamap) instance.</div>
 </div>
 
 
@@ -172,11 +177,6 @@ layout: ../../layouts/PageLayout.astro
     <span class="pa"> list[int] | None = None</span>
   </div>
   <div class="param">
-    <span class="pn">betas</span>
-    <span class="pc">:</span>
-    <span class="pa"> list[float] | None = None</span>
-  </div>
-  <div class="param">
     <span class="pn">minutes</span>
     <span class="pc">:</span>
     <span class="pa"> list[float] | None = None</span>
@@ -202,19 +202,14 @@ layout: ../../layouts/PageLayout.astro
     <span class="pa"> int = 50</span>
   </div>
   <div class="param">
-    <span class="pn">spatial_tolerance</span>
-    <span class="pc">:</span>
-    <span class="pa"> int = 0</span>
-  </div>
-  <div class="param">
-    <span class="pn">min_threshold_wt</span>
-    <span class="pc">:</span>
-    <span class="pa"> float = 0.01831563888873418</span>
-  </div>
-  <div class="param">
     <span class="pn">speed_m_s</span>
     <span class="pc">:</span>
     <span class="pa"> float = 1.33333</span>
+  </div>
+  <div class="param">
+    <span class="pn">decay_fn</span>
+    <span class="pc">:</span>
+    <span class="pa"> str | dict[str, str] | None = None</span>
   </div>
   <span class="pt">)-&gt;[</span>
   <span class="pr">GeoDataFrame</span>
@@ -253,7 +248,7 @@ layout: ../../layouts/PageLayout.astro
   </div>
   <div class="desc">
 
- Land-use keys for which to compute accessibilities. The keys should be selected from the same land-use schema used for the `landuse_labels` parameter, e.g. &quot;pub&quot;. The calculations will be performed in both weighted `wt` and non_weighted `nw` variants.</div>
+ Land-use keys for which to compute accessibilities. The keys should be selected from the same land-use schema used for the `landuse_labels` parameter, e.g. &quot;pub&quot;.</div>
 </div>
 
 <div class="param-set">
@@ -263,7 +258,7 @@ layout: ../../layouts/PageLayout.astro
   </div>
   <div class="desc">
 
- A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe) representing nodes. Best generated with the [`io.network_structure_from_nx`](/tools/io#network-structure-from-nx) function. The outputs of calculations will be written to this `GeoDataFrame`, which is then returned from the function.</div>
+ A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe) representing nodes. Best generated with the [`io.network_structure_from_nx`](/tools/io#network_structure_from_nx) function. The outputs of calculations will be written to this `GeoDataFrame`, which is then returned from the function.</div>
 </div>
 
 <div class="param-set">
@@ -273,7 +268,7 @@ layout: ../../layouts/PageLayout.astro
   </div>
   <div class="desc">
 
- A [`rustalgos.graph.NetworkStructure`](/rustalgos/rustalgos#networkstructure). Best generated with the [`io.network_structure_from_nx`](/tools/io#network-structure-from-nx) function.</div>
+ A [`rustalgos.graph.NetworkStructure`](/rustalgos/graph#networkstructure). Best generated with the [`io.network_structure_from_nx`](/tools/io#network_structure_from_nx) function.</div>
 </div>
 
 <div class="param-set">
@@ -293,17 +288,7 @@ layout: ../../layouts/PageLayout.astro
   </div>
   <div class="desc">
 
- Distances corresponding to the local $d_{max}$ thresholds to be used for calculations. The $\beta$ for distance-weighted metrics will be determined implicitly using `min_threshold_wt`. If the `distances` parameter is not provided, then the `beta` or `minutes` parameters must be provided instead.</div>
-</div>
-
-<div class="param-set">
-  <div class="def">
-    <div class="name">betas</div>
-    <div class="type">list[float]</div>
-  </div>
-  <div class="desc">
-
- A list of $\beta$ to be used for the exponential decay function for weighted metrics. The $d_{max}$ thresholds for unweighted metrics will be determined implicitly. If the `betas` parameter is not provided, then the `distances` or `minutes` parameter must be provided instead.</div>
+ Distance thresholds in metres for the network traversal. Metrics are computed for each threshold independently. If not provided, the `minutes` parameter must be provided instead.</div>
 </div>
 
 <div class="param-set">
@@ -313,7 +298,7 @@ layout: ../../layouts/PageLayout.astro
   </div>
   <div class="desc">
 
- A list of walking times in minutes to be used for calculations. The $d_{max}$ thresholds for unweighted metrics and $\beta$ for distance-weighted metrics will be determined implicitly using the `speed_m_s` and `min_threshold_wt` parameters. If the `minutes` parameter is not provided, then the `distances` or `betas` parameters must be provided instead.</div>
+ Walking time thresholds in minutes. Converted to distance thresholds using `speed_m_s`. If not provided, the `distances` parameter must be provided instead.</div>
 </div>
 
 <div class="param-set">
@@ -348,16 +333,6 @@ layout: ../../layouts/PageLayout.astro
 
 <div class="param-set">
   <div class="def">
-    <div class="name">spatial_tolerance</div>
-    <div class="type">int</div>
-  </div>
-  <div class="desc">
-
- Tolerance in metres indicating a spatial buffer for datapoint accuracy. Intended for situations where datapoint locations are not precise. If greater than zero, weighted functions will clip the spatial impedance curve above weights corresponding to the given spatial tolerance and normalises to the new range. For background, see [`rustalgos.clip_weights_curve`](/rustalgos#clip-weights-curve).</div>
-</div>
-
-<div class="param-set">
-  <div class="def">
     <div class="name">n_nearest_candidates</div>
     <div class="type">int</div>
   </div>
@@ -368,22 +343,22 @@ layout: ../../layouts/PageLayout.astro
 
 <div class="param-set">
   <div class="def">
-    <div class="name">min_threshold_wt</div>
-    <div class="type">float</div>
-  </div>
-  <div class="desc">
-
- The default `min_threshold_wt` parameter can be overridden to generate custom mappings between the `distance` and `beta` parameters. See [`rustalgos.distances_from_beta`](/rustalgos#distances-from-betas) for more information.</div>
-</div>
-
-<div class="param-set">
-  <div class="def">
     <div class="name">speed_m_s</div>
     <div class="type">float</div>
   </div>
   <div class="desc">
 
- The default `speed_m_s` parameter can be configured to generate custom mappings between walking times and distance thresholds $d_{max}$.</div>
+ Walking speed in metres per second used to convert `minutes` to distance thresholds.</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">decay_fn</div>
+    <div class="type">str | dict[str, str]</div>
+  </div>
+  <div class="desc">
+
+ An optional decay function expression using the variable `p`, where `p` is the normalised distance from 0 (source) to 1 (cutoff threshold). Controls how distance affects the accessibility count weighting. When omitted (`None`), the legacy default computes both an unweighted (`_nw`) and a decay-weighted (`_wt`) column; pass a single expression such as `&quot;1&quot;` (flat) to compute one unsuffixed column. For distance-weighted metrics, provide an expression such as `&quot;exp(-4 * p)&quot;` for exponential decay, or use the `cityseer.decay` module helpers to generate expressions from absolute distance units; see [`cityseer.decay`](/api/decay) for details and examples. Pass a dict of `{label: expression}` to compute several decays in a single network traversal; each label is appended to that variant's output column names (a plain string or `None` adds no suffix).</div>
 </div>
 
 ### Returns
@@ -394,7 +369,7 @@ layout: ../../layouts/PageLayout.astro
   </div>
   <div class="desc">
 
- The input `node_gdf` parameter is returned with additional columns populated with the calcualted metrics. Three columns will be returned for each input landuse class and distance combination; a simple count of reachable locations, a distance weighted count of reachable locations, and the smallest distance to the nearest location.</div>
+ The input `node_gdf` parameter is returned with additional columns populated with the calculated metrics. Two columns will be returned for each input landuse class and distance combination; a count of reachable locations, and the smallest distance to the nearest location.</div>
 </div>
 
 <div class="param-set">
@@ -429,14 +404,14 @@ nodes_gdf, landuses_gdf = layers.compute_accessibilities(
     distances=[200, 400, 800],
 )
 print(nodes_gdf.columns)
-# weighted form
-print(nodes_gdf["cc_c_400_wt"])
-# non-weighted form
+# the default emits an unweighted (_nw) and a weighted (_wt) column;
+# pass a single decay_fn (e.g. "1") to compute just one and save time
 print(nodes_gdf["cc_c_400_nw"])
-# nearest distance to landuse
+# nearest distance to landuse (decay-independent: one column)
 print(nodes_gdf["cc_c_nearest_max_800"])
 ```
 
+ For worked examples with real-world data, see the [OSM Accessibility](https://cityseer.benchmarkurbanism.com/examples/accessibility/osm-accessibility) recipe.
 
 </div>
 
@@ -480,11 +455,6 @@ print(nodes_gdf["cc_c_nearest_max_800"])
     <span class="pa"> bool | None = True</span>
   </div>
   <div class="param">
-    <span class="pn">compute_hill_weighted</span>
-    <span class="pc">:</span>
-    <span class="pa"> bool | None = True</span>
-  </div>
-  <div class="param">
     <span class="pn">compute_shannon</span>
     <span class="pc">:</span>
     <span class="pa"> bool | None = False</span>
@@ -498,11 +468,6 @@ print(nodes_gdf["cc_c_nearest_max_800"])
     <span class="pn">distances</span>
     <span class="pc">:</span>
     <span class="pa"> list[int] | None = None</span>
-  </div>
-  <div class="param">
-    <span class="pn">betas</span>
-    <span class="pc">:</span>
-    <span class="pa"> list[float] | None = None</span>
   </div>
   <div class="param">
     <span class="pn">minutes</span>
@@ -530,19 +495,14 @@ print(nodes_gdf["cc_c_nearest_max_800"])
     <span class="pa"> int = 50</span>
   </div>
   <div class="param">
-    <span class="pn">spatial_tolerance</span>
-    <span class="pc">:</span>
-    <span class="pa"> int = 0</span>
-  </div>
-  <div class="param">
-    <span class="pn">min_threshold_wt</span>
-    <span class="pc">:</span>
-    <span class="pa"> float = 0.01831563888873418</span>
-  </div>
-  <div class="param">
     <span class="pn">speed_m_s</span>
     <span class="pc">:</span>
     <span class="pa"> float = 1.33333</span>
+  </div>
+  <div class="param">
+    <span class="pn">decay_fn</span>
+    <span class="pc">:</span>
+    <span class="pa"> str | dict[str, str] | None = None</span>
   </div>
   <span class="pt">)-&gt;[</span>
   <span class="pr">GeoDataFrame</span>
@@ -552,7 +512,7 @@ print(nodes_gdf["cc_c_nearest_max_800"])
 </div>
 
 
- Compute landuse metrics. This function wraps the underlying `rust` optimised functions for aggregating and computing various mixed-use. These are computed simultaneously for any required combinations of measures (and distances). By default, hill and hill weighted measures will be computed, by the available flags e.g. `compute_hill` or `compute_shannon` can be used to configure which classes of measures should run.
+ Compute landuse metrics. This function wraps the underlying `rust` optimised functions for aggregating and computing various mixed-use. These are computed simultaneously for any required combinations of measures (and distances). By default, hill measures will be computed, but the available flags e.g. `compute_hill` or `compute_shannon` can be used to configure which classes of measures should run.
 
  See the accompanying paper on `arXiv` for additional information about methods for computing mixed-use measures at the pedestrian scale.
 
@@ -585,7 +545,7 @@ print(nodes_gdf["cc_c_nearest_max_800"])
   </div>
   <div class="desc">
 
- A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe) representing nodes. Best generated with the [`io.network_structure_from_nx`](/tools/io#network-structure-from-nx) function. The outputs of calculations will be written to this `GeoDataFrame`, which is then returned from the function.</div>
+ A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe) representing nodes. Best generated with the [`io.network_structure_from_nx`](/tools/io#network_structure_from_nx) function. The outputs of calculations will be written to this `GeoDataFrame`, which is then returned from the function.</div>
 </div>
 
 <div class="param-set">
@@ -595,7 +555,7 @@ print(nodes_gdf["cc_c_nearest_max_800"])
   </div>
   <div class="desc">
 
- A [`rustalgos.graph.NetworkStructure`](/rustalgos/rustalgos#networkstructure). Best generated with the [`io.network_structure_from_nx`](/tools/io#network-structure-from-nx) function.</div>
+ A [`rustalgos.graph.NetworkStructure`](/rustalgos/graph#networkstructure). Best generated with the [`io.network_structure_from_nx`](/tools/io#network_structure_from_nx) function.</div>
 </div>
 
 <div class="param-set">
@@ -616,16 +576,6 @@ print(nodes_gdf["cc_c_nearest_max_800"])
   <div class="desc">
 
  Compute Hill diversity. This is the recommended form of diversity index. Computed for q of 0, 1, and 2.</div>
-</div>
-
-<div class="param-set">
-  <div class="def">
-    <div class="name">compute_hill_weighted</div>
-    <div class="type">bool</div>
-  </div>
-  <div class="desc">
-
- Compute distance weighted Hill diversity. This is the recommended form of diversity index. Computed for q of 0, 1, and 2.</div>
 </div>
 
 <div class="param-set">
@@ -655,17 +605,7 @@ print(nodes_gdf["cc_c_nearest_max_800"])
   </div>
   <div class="desc">
 
- Distances corresponding to the local $d_{max}$ thresholds to be used for calculations. The $\beta$ for distance-weighted metrics will be determined implicitly using `min_threshold_wt`. If the `distances` parameter is not provided, then the `beta` or `minutes` parameters must be provided instead.</div>
-</div>
-
-<div class="param-set">
-  <div class="def">
-    <div class="name">betas</div>
-    <div class="type">list[float]</div>
-  </div>
-  <div class="desc">
-
- A list of $\beta$ to be used for the exponential decay function for weighted metrics. The $d_{max}$ thresholds for unweighted metrics will be determined implicitly. If the `betas` parameter is not provided, then the `distances` or `minutes` parameter must be provided instead.</div>
+ Distance thresholds in metres for the network traversal. Metrics are computed for each threshold independently. If not provided, the `minutes` parameter must be provided instead.</div>
 </div>
 
 <div class="param-set">
@@ -675,7 +615,7 @@ print(nodes_gdf["cc_c_nearest_max_800"])
   </div>
   <div class="desc">
 
- A list of walking times in minutes to be used for calculations. The $d_{max}$ thresholds for unweighted metrics and $\beta$ for distance-weighted metrics will be determined implicitly using the `speed_m_s` and `min_threshold_wt` parameters. If the `minutes` parameter is not provided, then the `distances` or `betas` parameters must be provided instead.</div>
+ Walking time thresholds in minutes. Converted to distance thresholds using `speed_m_s`. If not provided, the `distances` parameter must be provided instead.</div>
 </div>
 
 <div class="param-set">
@@ -710,16 +650,6 @@ print(nodes_gdf["cc_c_nearest_max_800"])
 
 <div class="param-set">
   <div class="def">
-    <div class="name">spatial_tolerance</div>
-    <div class="type">int</div>
-  </div>
-  <div class="desc">
-
- Tolerance in metres indicating a spatial buffer for datapoint accuracy. Intended for situations where datapoint locations are not precise. If greater than zero, weighted functions will clip the spatial impedance curve above weights corresponding to the given spatial tolerance and normalises to the new range. For background, see [`rustalgos.clip_weights_curve`](/rustalgos#clip-weights-curve).</div>
-</div>
-
-<div class="param-set">
-  <div class="def">
     <div class="name">n_nearest_candidates</div>
     <div class="type">int</div>
   </div>
@@ -730,22 +660,22 @@ print(nodes_gdf["cc_c_nearest_max_800"])
 
 <div class="param-set">
   <div class="def">
-    <div class="name">min_threshold_wt</div>
-    <div class="type">float</div>
-  </div>
-  <div class="desc">
-
- The default `min_threshold_wt` parameter can be overridden to generate custom mappings between the `distance` and `beta` parameters. See [`rustalgos.distances_from_beta`](/rustalgos#distances-from-betas) for more information.</div>
-</div>
-
-<div class="param-set">
-  <div class="def">
     <div class="name">speed_m_s</div>
     <div class="type">float</div>
   </div>
   <div class="desc">
 
- The default `speed_m_s` parameter can be configured to generate custom mappings between walking times and distance thresholds $d_{max}$.</div>
+ Walking speed in metres per second used to convert `minutes` to distance thresholds.</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">decay_fn</div>
+    <div class="type">str | dict[str, str]</div>
+  </div>
+  <div class="desc">
+
+ An optional decay function expression using the variable `p`, where `p` is the normalised distance from 0 (source) to 1 (cutoff threshold). Controls how distance affects the Hill diversity weighting. When omitted (`None`), the legacy default computes both an unweighted (`_nw`) and a decay-weighted (`_wt`) variant; pass a single expression such as `&quot;1&quot;` (flat) to compute one unsuffixed variant. For distance-weighted metrics, provide an expression such as `&quot;exp(-4 * p)&quot;` for exponential decay, or use the `cityseer.decay` module helpers to generate expressions from absolute distance units; see [`cityseer.decay`](/api/decay) for details and examples. Pass a dict of `{label: expression}` to compute several decays in a single network traversal; each label is appended to that variant's output column names (a plain string or `None` adds no suffix).</div>
 </div>
 
 ### Returns
@@ -774,12 +704,11 @@ print(nodes_gdf["cc_c_nearest_max_800"])
 | key | formula | notes |
 |-----|:-------:|-------|
 | hill | $$q\geq{0},\ q\neq{1} \\ \big(\sum_{i}^{S}p_{i}^q\big)^{1/(1-q)} \\ lim_{q\to1} \\ exp\big(-\sum_{i}^{S}\ p_{i}\ log\ p_{i}\big)$$ | Hill diversity: this is the preferred form of diversity metric because it adheres to the replication principle and uses units of effective species instead of measures of information or uncertainty. The `q` parameter controls the degree of emphasis on the _richness_ of species as opposed to the _balance_ of species. Over-emphasis on balance can be misleading in an urban context, for which reason research finds support for using `q=0`: this reduces to a simple count of distinct land-uses.|
-| hill_wt | $$\big[\sum_{i}^{S}d_{i}\big(\frac{p_{i}}{\bar{T}}\big)^{q} \big]^{1/(1-q)} \\ \bar{T} = \sum_{i}^{S}d_{i}p_{i}$$ | This is a distance-weighted variant of Hill Diversity based on the distances from the point of computation to the nearest example of a particular land-use. It therefore gives a locally representative indication of the intensity of mixed-uses. $d_{i}$ is a negative exponential function where $\beta$ controls the strength of the decay. ($\beta$ is provided by the `Network Layer`, see [`rustalgos.distances_from_beta`](/rustalgos#distances-from-betas).)|
 | shannon | $$ -\sum_{i}^{S}\ p_{i}\ log\ p_{i}$$ | Shannon diversity (or_information entropy_) is one of the classic diversity indices. Note that it is preferable to use Hill Diversity with `q=1`, which is effectively a transformation of Shannon diversity into units of effective species.|
 | gini | $$ 1 - \sum_{i}^{S} p_{i}^2$$ | Gini-Simpson is another classic diversity index. It can behave problematically because it does not adhere to the replication principle and places emphasis on the balance of species, which can be counter-productive for purposes of measuring mixed-uses. Note that where an emphasis on balance is desired, it is preferable to use Hill Diversity with `q=2`, which is effectively a transformation of Gini-Simpson diversity into units of effective species.|
 
 :::note
-`hill_wt` at `q=0` is generally the best choice for granular landuse data, or else `q=1` or
+`hill` at `q=0` is generally the best choice for granular landuse data, or else `q=1` or
 `q=2` for increasingly crude landuse classifications schemas.
 :::
 
@@ -804,7 +733,7 @@ nodes_gdf, landuses_gdf = layers.compute_mixed_uses(
 )
 # the data is written to the GeoDataFrame
 print(nodes_gdf.columns)
-# access accordingly, e.g. hill diversity at q=0 and 800m
+# the default emits _nw and _wt; pass a single decay_fn to compute just one and save time
 print(nodes_gdf["cc_hill_q0_800_nw"])
 ```
 
@@ -813,6 +742,8 @@ Be cognisant that mixed-use and land-use accessibility measures are sensitive to
 has been used. Meaningful comparisons from one location to another are only possible where the same schemas have
 been applied.
 :::
+
+ For a worked example, see the [Mixed Uses](https://cityseer.benchmarkurbanism.com/examples/accessibility/gpd-mixed-uses) recipe.
 
 </div>
 
@@ -856,11 +787,6 @@ been applied.
     <span class="pa"> list[int] | None = None</span>
   </div>
   <div class="param">
-    <span class="pn">betas</span>
-    <span class="pc">:</span>
-    <span class="pa"> list[float] | None = None</span>
-  </div>
-  <div class="param">
     <span class="pn">minutes</span>
     <span class="pc">:</span>
     <span class="pa"> list[float] | None = None</span>
@@ -881,24 +807,24 @@ been applied.
     <span class="pa"> bool = False</span>
   </div>
   <div class="param">
-    <span class="pn">spatial_tolerance</span>
-    <span class="pc">:</span>
-    <span class="pa"> int = 0</span>
-  </div>
-  <div class="param">
     <span class="pn">n_nearest_candidates</span>
     <span class="pc">:</span>
     <span class="pa"> int = 50</span>
   </div>
   <div class="param">
-    <span class="pn">min_threshold_wt</span>
-    <span class="pc">:</span>
-    <span class="pa"> float = 0.01831563888873418</span>
-  </div>
-  <div class="param">
     <span class="pn">speed_m_s</span>
     <span class="pc">:</span>
     <span class="pa"> float = 1.33333</span>
+  </div>
+  <div class="param">
+    <span class="pn">decay_fn</span>
+    <span class="pc">:</span>
+    <span class="pa"> str | dict[str, str] | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">measures</span>
+    <span class="pc">:</span>
+    <span class="pa"> list[str] | None = None</span>
   </div>
   <span class="pt">)-&gt;[</span>
   <span class="pr">GeoDataFrame</span>
@@ -937,7 +863,7 @@ been applied.
   </div>
   <div class="desc">
 
- A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe) representing nodes. Best generated with the [`io.network_structure_from_nx`](/tools/io#network-structure-from-nx) function. The outputs of calculations will be written to this `GeoDataFrame`, which is then returned from the function.</div>
+ A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe) representing nodes. Best generated with the [`io.network_structure_from_nx`](/tools/io#network_structure_from_nx) function. The outputs of calculations will be written to this `GeoDataFrame`, which is then returned from the function.</div>
 </div>
 
 <div class="param-set">
@@ -947,7 +873,7 @@ been applied.
   </div>
   <div class="desc">
 
- A [`rustalgos.graph.NetworkStructure`](/rustalgos/rustalgos#networkstructure). Best generated with the [`io.network_structure_from_nx`](/tools/io#network-structure-from-nx) function.</div>
+ A [`rustalgos.graph.NetworkStructure`](/rustalgos/graph#networkstructure). Best generated with the [`io.network_structure_from_nx`](/tools/io#network_structure_from_nx) function.</div>
 </div>
 
 <div class="param-set">
@@ -967,17 +893,7 @@ been applied.
   </div>
   <div class="desc">
 
- Distances corresponding to the local $d_{max}$ thresholds to be used for calculations. The $\beta$ for distance-weighted metrics will be determined implicitly using `min_threshold_wt`. If the `distances` parameter is not provided, then the `beta` or `minutes` parameters must be provided instead.</div>
-</div>
-
-<div class="param-set">
-  <div class="def">
-    <div class="name">betas</div>
-    <div class="type">list[float]</div>
-  </div>
-  <div class="desc">
-
- A list of $\beta$ to be used for the exponential decay function for weighted metrics. The $d_{max}$ thresholds for unweighted metrics will be determined implicitly. If the `betas` parameter is not provided, then the `distances` or `minutes` parameter must be provided instead.</div>
+ Distance thresholds in metres for the network traversal. Metrics are computed for each threshold independently. If not provided, the `minutes` parameter must be provided instead.</div>
 </div>
 
 <div class="param-set">
@@ -987,7 +903,7 @@ been applied.
   </div>
   <div class="desc">
 
- A list of walking times in minutes to be used for calculations. The $d_{max}$ thresholds for unweighted metrics and $\beta$ for distance-weighted metrics will be determined implicitly using the `speed_m_s` and `min_threshold_wt` parameters. If the `minutes` parameter is not provided, then the `distances` or `betas` parameters must be provided instead.</div>
+ Walking time thresholds in minutes. Converted to distance thresholds using `speed_m_s`. If not provided, the `distances` parameter must be provided instead.</div>
 </div>
 
 <div class="param-set">
@@ -1022,16 +938,6 @@ been applied.
 
 <div class="param-set">
   <div class="def">
-    <div class="name">spatial_tolerance</div>
-    <div class="type">int</div>
-  </div>
-  <div class="desc">
-
- Tolerance in metres indicating a spatial buffer for datapoint accuracy. Intended for situations where datapoint locations are not precise. If greater than zero, weighted functions will clip the spatial impedance curve above weights corresponding to the given spatial tolerance and normalises to the new range. For background, see [`rustalgos.clip_weights_curve`](/rustalgos#clip-weights-curve).</div>
-</div>
-
-<div class="param-set">
-  <div class="def">
     <div class="name">n_nearest_candidates</div>
     <div class="type">int</div>
   </div>
@@ -1042,22 +948,32 @@ been applied.
 
 <div class="param-set">
   <div class="def">
-    <div class="name">min_threshold_wt</div>
-    <div class="type">float</div>
-  </div>
-  <div class="desc">
-
- The default `min_threshold_wt` parameter can be overridden to generate custom mappings between the `distance` and `beta` parameters. See [`rustalgos.distances_from_beta`](/rustalgos#distances-from-betas) for more information.</div>
-</div>
-
-<div class="param-set">
-  <div class="def">
     <div class="name">speed_m_s</div>
     <div class="type">float</div>
   </div>
   <div class="desc">
 
- The default `speed_m_s` parameter can be configured to generate custom mappings between walking times and distance thresholds $d_{max}$.</div>
+ Walking speed in metres per second used to convert `minutes` to distance thresholds.</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">decay_fn</div>
+    <div class="type">str | dict[str, str]</div>
+  </div>
+  <div class="desc">
+
+ An optional decay function expression using the variable `p`, where `p` is the normalised distance from 0 (source) to 1 (cutoff threshold). Controls how distance affects the statistical weighting. When omitted (`None`), the legacy default computes both an unweighted (`_nw`) and a decay-weighted (`_wt`) variant; pass a single expression such as `&quot;1&quot;` (flat) to compute one unsuffixed variant. For distance-weighted metrics, provide an expression such as `&quot;exp(-4 * p)&quot;` for exponential decay, or use the `cityseer.decay` module helpers. Values are clamped to [0, 1]. Supported functions include `exp`, `ln`, `log`, `log10`, `sqrt`, `abs`, `floor`, `ceil`, `round`, `sin`, `cos`, `tan`, and the `^` operator (`min`/`max` are not supported; to negate a power write `-((x)^2)` not `-(x)^2`). When multiple distances are specified, `p` is normalised independently per threshold. See [`cityseer.decay`](/api/decay) for details and examples. Pass a dict of `{label: expression}` to compute several decays in a single network traversal; each label is appended to that variant's output column names (a plain string or `None` adds no suffix).</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">measures</div>
+    <div class="type">list[str]</div>
+  </div>
+  <div class="desc">
+
+ An optional subset of statistical measures to compute, chosen from `&quot;sum&quot;`, `&quot;mean&quot;`, `&quot;count&quot;`, `&quot;var&quot;`, `&quot;median&quot;`, `&quot;mad&quot;`, `&quot;max&quot;`, and `&quot;min&quot;`. Defaults to `None`, which computes all of them. Restricting the set keeps the output `GeoDataFrame` smaller and skips the weighted median / MAD sort when neither `&quot;median&quot;` nor `&quot;mad&quot;` is requested.</div>
 </div>
 
 ### Returns
@@ -1068,7 +984,7 @@ been applied.
   </div>
   <div class="desc">
 
- The input `node_gdf` parameter is returned with additional columns populated with the calcualted metrics.</div>
+ The input `node_gdf` parameter is returned with additional columns populated with the calculated metrics.</div>
 </div>
 
 <div class="param-set">
@@ -1083,7 +999,7 @@ been applied.
 
 ### Notes
 
- A worked example:
+ Default exponential decay at multiple scales:
 
 ```python
 from cityseer.metrics import networks, layers
@@ -1098,16 +1014,56 @@ numerical_gdf = mock.mock_numerical_data(G, num_arrs=3)
 print(numerical_gdf.head())
 nodes_gdf, numerical_gdf = layers.compute_stats(
     data_gdf=numerical_gdf,
-    stats_column_label="mock_numerical_1",
+    stats_column_labels=["mock_numerical_1"],
     nodes_gdf=nodes_gdf,
     network_structure=network_structure,
     distances=[200, 400, 800],
 )
 print(nodes_gdf.columns)
-# weighted form
-print(nodes_gdf["cc_mock_numerical_1_mean_400_wt"])
-# non-weighted form
+# mean at 400m; the default emits _nw and _wt. Pass a single decay_fn for just one,
+# and measures=[...] to compute only the statistics you need — both save time
 print(nodes_gdf["cc_mock_numerical_1_mean_400_nw"])
+```
+
+ Custom decay using the `p` variable directly (Gaussian peaking at 400m within a 1200m cutoff):
+
+```python
+nodes_gdf, numerical_gdf = layers.compute_stats(
+    data_gdf=numerical_gdf,
+    stats_column_labels=["mock_numerical_1"],
+    nodes_gdf=nodes_gdf,
+    network_structure=network_structure,
+    distances=[1200],
+    decay_fn="exp(-((p - 0.333)^2) / (2 * 0.125^2))",  # Gaussian peaking at 400m
+)
+```
+
+ Using the `cityseer.decay` helper module for the same Gaussian curve:
+
+```python
+from cityseer import decay
+
+nodes_gdf, numerical_gdf = layers.compute_stats(
+    data_gdf=numerical_gdf,
+    stats_column_labels=["mock_numerical_1"],
+    nodes_gdf=nodes_gdf,
+    network_structure=network_structure,
+    distances=[1200],
+    decay_fn=decay.gaussian(peak=400, cutoff=1200, std=150),
+)
+```
+
+ Flat (unweighted) metrics:
+
+```python
+nodes_gdf, numerical_gdf = layers.compute_stats(
+    data_gdf=numerical_gdf,
+    stats_column_labels=["mock_numerical_1"],
+    nodes_gdf=nodes_gdf,
+    network_structure=network_structure,
+    distances=[800],
+    decay_fn="1",
+)
 ```
 
 
@@ -1115,13 +1071,18 @@ print(nodes_gdf["cc_mock_numerical_1_mean_400_nw"])
 The following stat types will be available for each `stats_key` for each of the
 computed distances:
 - `max` and `min`
-- `sum` and `sum_wt`
-- `mean` and `mean_wt`
-- `count` and `count_wt`
-- `median` and `median_wt`
-- `variance` and `variance_wt`
-- `mad` and `mad_wt` (deviation from the median)
+- `sum`
+- `mean`
+- `count`
+- `median`
+- `variance`
+- `mad` (median absolute deviation)
+
+The decay function (default exponential, or custom via `decay_fn`) controls how
+distance affects the weighting. Use `decay_fn="1"` for flat (unweighted) metrics.
 :::
+
+ For a worked example, see the [Statistical Aggregations](https://cityseer.benchmarkurbanism.com/examples/stats/gpd-stats) recipe.
 
 </div>
 

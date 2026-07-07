@@ -138,7 +138,16 @@ def custom_process_docstring(doc_str: str) -> str:
                 param_description=raises.description,  # type: ignore
             )
     if parsed_doc_str.deprecation is not None:
-        raise NotImplementedError("Deprecation not implemented.")
+        dep = parsed_doc_str.deprecation
+        notice = " ".join(
+            part
+            for part in (
+                f"Since version {dep.version}." if dep.version else "",
+                dep.description or "",
+            )
+            if part
+        )
+        doc_str_frag += "\n### Deprecated\n\n" + (notice or "This API is deprecated.") + "\n"
     metas: list[docstring_parser.common.DocstringMeta] = []
     for met in parsed_doc_str.meta:
         if not isinstance(
@@ -237,6 +246,8 @@ if __name__ == "__main__":
         ("cityseer.tools.plot", None, here / "src/pages/tools/plot.md"),
         ("cityseer.tools.mock", None, here / "src/pages/tools/mock.md"),
         ("cityseer.tools.util", None, here / "src/pages/tools/util.md"),
+        ("cityseer.network", None, here / "src/pages/api/network.md"),
+        ("cityseer.decay", None, here / "src/pages/api/decay.md"),
     ]
     for module_name, module, output_path in module_file_maps:
         render.configure(template_directory=here / "pdoc_templates", docformat="numpy", math=True)

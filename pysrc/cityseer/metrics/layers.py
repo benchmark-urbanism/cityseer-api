@@ -1,3 +1,20 @@
+"""Compute land-use accessibility, mixed-use diversity, and statistical aggregations over the street network.
+
+Data points (land uses, numerical attributes) are assigned to the nearest street edges and then summarised within
+walking-distance catchments around each node, measured along the actual street network rather than as straight-line
+distances. Because these summaries are computed at the same node locations used for centrality, you can directly
+compare how well-connected a location is with how accessible different amenities are from that location. An optional
+``decay_fn`` parameter controls how distance affects the weighting; see the [`cityseer.decay`](/api/decay) module for
+preset helpers. ``decay_fn`` also accepts a ``{label: expression}`` dict to compute several decay variants in a single
+network traversal, with each label appended to that variant's output column names.
+
+For practical worked examples, see the [Cityseer Examples](https://cityseer.benchmarkurbanism.com/examples)
+site, including the
+[OSM Accessibility](https://cityseer.benchmarkurbanism.com/examples/accessibility/osm-accessibility),
+[Mixed Uses](https://cityseer.benchmarkurbanism.com/examples/accessibility/gpd-mixed-uses), and
+[Statistical Aggregations](https://cityseer.benchmarkurbanism.com/examples/stats/gpd-stats) recipes.
+"""
+
 from __future__ import annotations
 
 import logging
@@ -12,7 +29,6 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # separate out so that ast parser can parse function def
-MIN_THRESH_WT = config.MIN_THRESH_WT
 SPEED_M_S = config.SPEED_M_S
 
 
@@ -27,6 +43,75 @@ def _require_dual_for_angular(
         )
 
 
+def _resolve_decay_fns(decay_fn: str | dict[str, str] | None) -> tuple[list[str], list[str], bool]:
+    """Resolve ``decay_fn`` into aligned ``(labels, expressions, legacy_tail)``.
+
+    - ``None``: the legacy default — both an unweighted (``_nw``) and a beta-weighted (``_wt``)
+      column, matching pre-v5 behaviour. Pass a single ``decay_fn`` to get just one column.
+    - ``str``: a single decay with an empty label (output columns unsuffixed).
+    - ``dict``: ``{label: expression}`` — each label suffixes its output columns, and all decays
+      are computed in a single shared network traversal.
+
+    ``legacy_tail`` is True only for the ``None`` default; it places the ``_nw``/``_wt`` suffix at
+    the end of the column name (``cc_key_dist_nw``), as in pre-v5. The dict form embeds the label
+    in the metric name instead (``cc_key_label_dist``).
+    """
+    if decay_fn is None:
+        # legacy default: unweighted (_nw) + beta-weighted (_wt), matching pre-v5 output.
+        return ["nw", "wt"], ["1", "exp(-4 * p)"], True
+    if isinstance(decay_fn, str):
+        return [""], [decay_fn], False
+    if isinstance(decay_fn, dict):
+        if not decay_fn:
+            raise ValueError("decay_fn dict must contain at least one {label: expression} entry.")
+        labels = [str(label) for label in decay_fn]
+        exprs = [str(expr) for expr in decay_fn.values()]
+        return labels, exprs, False
+    raise TypeError("decay_fn must be a string, a dict of {label: expression}, or None.")
+
+
+def _decay_suffix(label: str) -> str:
+    """Column-key suffix for a decay label; empty label yields no suffix (back-compatible)."""
+    return f"_{label}" if label else ""
+
+
+def _layer_col_key(metric_key: str, dist: int, angular: bool, decay_label: str, legacy_tail: bool) -> str:
+    """Build the output column key for a decay variant.
+
+    The legacy default appends the ``_nw``/``_wt`` suffix at the end (``cc_key_dist_nw``, pre-v5);
+    the dict/per-label form embeds the label in the metric name (``cc_key_label_dist``).
+    """
+    if legacy_tail:
+        return config.prep_gdf_key(metric_key, dist, angular) + _decay_suffix(decay_label)
+    return config.prep_gdf_key(f"{metric_key}{_decay_suffix(decay_label)}", dist, angular)
+
+
+# Statistical measures produced by compute_stats, mapped to their `Stats` result accessor.
+# The dict key is both the user-facing token and the output column suffix.
+_STATS_ACCESSORS: dict[str, str] = {
+    "sum": "sum",
+    "mean": "mean",
+    "count": "count",
+    "var": "variance",
+    "median": "median",
+    "mad": "mad",
+    "max": "max",
+    "min": "min",
+}
+
+
+def _resolve_stats_measures(measures: list[str] | None) -> list[str]:
+    """Validate the ``measures`` selection for compute_stats; ``None`` means all measures."""
+    if measures is None:
+        return list(_STATS_ACCESSORS)
+    if not measures:
+        raise ValueError("measures must contain at least one measure, or be None for all.")
+    invalid = [m for m in measures if m not in _STATS_ACCESSORS]
+    if invalid:
+        raise ValueError(f"Unknown stats measure(s): {invalid}. Allowed: {list(_STATS_ACCESSORS)}.")
+    return list(measures)
+
+
 def build_data_map(
     data_gdf: gpd.GeoDataFrame,
     network_structure: rustalgos.graph.NetworkStructure,
@@ -36,12 +121,11 @@ def build_data_map(
     n_nearest_candidates: int = 50,
 ) -> rustalgos.data.DataMap:
     """
-    Assign a `GeoDataFrame` to a [`rustalgos.graph.NetworkStructure`](/rustalgos/rustalgos#networkstructure).
+    Assign a `GeoDataFrame` to a [`rustalgos.graph.NetworkStructure`](/rustalgos/graph#networkstructure).
 
     A `NetworkStructure` provides the backbone for the calculation of land-use and statistical aggregations over the
     network. Points will be assigned to the closest street edge. Polygons will be assigned to the closest
     `n_nearest_candidates` adjacent street edges.
-    up to
 
     Parameters
     ----------
@@ -51,8 +135,8 @@ def build_data_map(
         location of the feature in space; or, in the case of buildings, should ideally correspond to the location of the
         building entrance.
     network_structure
-        A [`rustalgos.graph.NetworkStructure`](/rustalgos/rustalgos#networkstructure). Best generated with the
-        [`io.network_structure_from_nx`](/tools/io#network-structure-from-nx) function.
+        A [`rustalgos.graph.NetworkStructure`](/rustalgos/graph#networkstructure). Best generated with the
+        [`io.network_structure_from_nx`](/tools/io#network_structure_from_nx) function.
     max_netw_assign_dist: int
         The maximum distance to consider when assigning respective data points to the nearest adjacent network nodes.
     data_id_col: str
@@ -71,7 +155,7 @@ def build_data_map(
     Returns
     -------
     data_map: rustalgos.data.DataMap
-        A [`rustalgos.data.DataMap`](/rustalgos#datamap) instance.
+        A [`rustalgos.data.DataMap`](/rustalgos/data#datamap) instance.
     """
     # check for unique index
     if data_gdf.index.duplicated().any():
@@ -109,15 +193,13 @@ def compute_accessibilities(
     network_structure: rustalgos.graph.NetworkStructure,
     max_netw_assign_dist: int = 100,
     distances: list[int] | None = None,
-    betas: list[float] | None = None,
     minutes: list[float] | None = None,
     data_id_col: str | None = None,
     barriers_gdf: gpd.GeoDataFrame | None = None,
     angular: bool = False,
     n_nearest_candidates: int = 50,
-    spatial_tolerance: int = 0,
-    min_threshold_wt: float = MIN_THRESH_WT,
     speed_m_s: float = SPEED_M_S,
+    decay_fn: str | dict[str, str] | None = None,
 ) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
     r"""
     Compute land-use accessibilities for the specified land-use classification keys over the street network.
@@ -137,31 +219,23 @@ def compute_accessibilities(
         contain "shop", "pub", "school", etc.
     accessibility_keys: tuple[str]
         Land-use keys for which to compute accessibilities. The keys should be selected from the same land-use
-        schema used for the `landuse_labels` parameter, e.g. "pub". The calculations will be performed in both
-        weighted `wt` and non_weighted `nw` variants.
+        schema used for the `landuse_labels` parameter, e.g. "pub".
     nodes_gdf
         A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe)
         representing nodes. Best generated with the
-        [`io.network_structure_from_nx`](/tools/io#network-structure-from-nx) function. The outputs of
+        [`io.network_structure_from_nx`](/tools/io#network_structure_from_nx) function. The outputs of
         calculations will be written to this `GeoDataFrame`, which is then returned from the function.
     network_structure
-        A [`rustalgos.graph.NetworkStructure`](/rustalgos/rustalgos#networkstructure). Best generated with the
-        [`io.network_structure_from_nx`](/tools/io#network-structure-from-nx) function.
+        A [`rustalgos.graph.NetworkStructure`](/rustalgos/graph#networkstructure). Best generated with the
+        [`io.network_structure_from_nx`](/tools/io#network_structure_from_nx) function.
     max_netw_assign_dist: int
         The maximum distance to consider when assigning respective data points to the nearest adjacent network nodes.
     distances: list[int]
-        Distances corresponding to the local $d_{max}$ thresholds to be used for calculations. The $\beta$
-        for distance-weighted metrics will be determined implicitly using `min_threshold_wt`. If the `distances`
-        parameter is not provided, then the `beta` or `minutes` parameters must be provided instead.
-    betas: list[float]
-        A list of $\beta$ to be used for the exponential decay function for weighted metrics. The $d_{max}$ thresholds
-        for unweighted metrics will be determined implicitly. If the `betas` parameter is not provided, then the
-        `distances` or `minutes` parameter must be provided instead.
+        Distance thresholds in metres for the network traversal. Metrics are computed for each
+        threshold independently. If not provided, the `minutes` parameter must be provided instead.
     minutes: list[float]
-        A list of walking times in minutes to be used for calculations. The $d_{max}$ thresholds for unweighted metrics
-        and $\beta$ for distance-weighted metrics will be determined implicitly using the `speed_m_s` and
-        `min_threshold_wt` parameters. If the `minutes` parameter is not provided, then the `distances` or `betas`
-        parameters must be provided instead.
+        Walking time thresholds in minutes. Converted to distance thresholds using `speed_m_s`.
+        If not provided, the `distances` parameter must be provided instead.
     data_id_col: str
         An optional column name for data point keys. This is used for deduplicating points representing a shared source
         of information. For example, where a single greenspace is represented by many entrances as datapoints, only the
@@ -173,28 +247,29 @@ def compute_accessibilities(
     angular: bool
         Whether to use a simplest-path heuristic in-lieu of a shortest-path heuristic when calculating aggregations
         and distances.
-    spatial_tolerance: int
-        Tolerance in metres indicating a spatial buffer for datapoint accuracy. Intended for situations where datapoint
-        locations are not precise. If greater than zero, weighted functions will clip the spatial impedance curve above
-         weights corresponding to the given spatial tolerance and normalises to the new range. For background, see
-        [`rustalgos.clip_weights_curve`](/rustalgos#clip-weights-curve).
     n_nearest_candidates: int
         The number of nearest candidates to consider when assigning respective data points to the nearest adjacent
         streets.
-    min_threshold_wt: float
-        The default `min_threshold_wt` parameter can be overridden to generate custom mappings between the
-        `distance` and `beta` parameters. See [`rustalgos.distances_from_beta`](/rustalgos#distances-from-betas)
-        for more information.
     speed_m_s: float
-        The default `speed_m_s` parameter can be configured to generate custom mappings between walking times and
-        distance thresholds $d_{max}$.
+        Walking speed in metres per second used to convert `minutes` to distance thresholds.
+    decay_fn: str | dict[str, str]
+        An optional decay function expression using the variable `p`, where `p` is the normalised
+        distance from 0 (source) to 1 (cutoff threshold). Controls how distance affects the
+        accessibility count weighting. When omitted (`None`), the legacy default computes both an
+        unweighted (`_nw`) and a decay-weighted (`_wt`) column; pass a single expression such as
+        `"1"` (flat) to compute one unsuffixed column. For
+        distance-weighted metrics, provide an expression such as `"exp(-4 * p)"` for exponential
+        decay, or use the `cityseer.decay` module helpers to generate expressions from absolute
+        distance units; see [`cityseer.decay`](/api/decay) for details and examples. Pass a dict of
+        `{label: expression}` to compute several decays in a single network traversal; each label
+        is appended to that variant's output column names (a plain string or `None` adds no suffix).
 
     Returns
     -------
     nodes_gdf: GeoDataFrame
-        The input `node_gdf` parameter is returned with additional columns populated with the calcualted metrics. Three
-        columns will be returned for each input landuse class and distance combination; a simple count of reachable
-        locations, a distance weighted count of reachable locations, and the smallest distance to the nearest location.
+        The input `node_gdf` parameter is returned with additional columns populated with the calculated metrics. Two
+        columns will be returned for each input landuse class and distance combination; a count of reachable
+        locations, and the smallest distance to the nearest location.
     data_gdf: GeoDataFrame
         The input `data_gdf` is returned with two additional columns: `nearest_assigned` and `next_nearest_assign`.
 
@@ -220,13 +295,16 @@ def compute_accessibilities(
         distances=[200, 400, 800],
     )
     print(nodes_gdf.columns)
-    # weighted form
-    print(nodes_gdf["cc_c_400_wt"])
-    # non-weighted form
+    # the default emits an unweighted (_nw) and a weighted (_wt) column;
+    # pass a single decay_fn (e.g. "1") to compute just one and save time
     print(nodes_gdf["cc_c_400_nw"])
-    # nearest distance to landuse
+    # nearest distance to landuse (decay-independent: one column)
     print(nodes_gdf["cc_c_nearest_max_800"])
     ```
+
+    For worked examples with real-world data, see the
+    [OSM Accessibility](https://cityseer.benchmarkurbanism.com/examples/accessibility/osm-accessibility)
+    recipe.
 
     """
     if angular:
@@ -246,47 +324,44 @@ def compute_accessibilities(
         raise ValueError("The specified landuse column name can't be found in the GeoDataFrame.")
     landuses_map = dict(data_gdf[landuse_column_label])
     # call the underlying function
+    decay_labels, decay_exprs, legacy_tail = _resolve_decay_fns(decay_fn)
     partial_func = partial(
-        data_map.accessibility,
+        data_map.accessibility_decays,
         network_structure=network_structure,
         landuses_map=landuses_map,
         accessibility_keys=accessibility_keys,
+        decay_fns=decay_exprs,
         distances=distances,
-        betas=betas,
         minutes=minutes,
         angular=angular,
-        spatial_tolerance=spatial_tolerance,
-        min_threshold_wt=min_threshold_wt,
         speed_m_s=speed_m_s,
     )
-    # wraps progress bar
-    acc_result = config.wrap_progress(
+    # wraps progress bar (returns one AccessibilityResult per decay label)
+    acc_results = config.wrap_progress(
         total=network_structure.street_node_count(), rust_struct=data_map, partial_func=partial_func
     )
     # unpack
     distances = config.log_thresholds(
         distances=distances,
-        betas=betas,
         minutes=minutes,
-        min_threshold_wt=min_threshold_wt,
         speed_m_s=speed_m_s,
     )
     # intersect computed keys with those available in the gdf index (stations vs. streets)
-    gdf_idx = nodes_gdf.index.intersection(acc_result.node_keys_py)
+    gdf_idx = nodes_gdf.index.intersection(acc_results[0].node_keys_py)
     # create a dictionary to hold the data
     temp_data = {}
-    # unpack accessibility data
-    for acc_key in accessibility_keys:
-        for dist_key in distances:
-            ac_nw_data_key = config.prep_gdf_key(acc_key, dist_key, angular, weighted=False)
-            temp_data[ac_nw_data_key] = acc_result.result[acc_key].unweighted[dist_key]  # type: ignore
-            ac_wt_data_key = config.prep_gdf_key(acc_key, dist_key, angular, weighted=True)
-            temp_data[ac_wt_data_key] = acc_result.result[acc_key].weighted[dist_key]  # type: ignore
-            if dist_key == max(distances):
-                ac_dist_data_key = config.prep_gdf_key(f"{acc_key}_nearest_max", dist_key, angular)
-                temp_data[ac_dist_data_key] = acc_result.result[acc_key].distance[dist_key]  # type: ignore
+    # unpack accessibility data (one result per decay label; empty label -> no suffix)
+    for decay_label, acc_result in zip(decay_labels, acc_results, strict=True):
+        for acc_key in accessibility_keys:
+            for dist_key in distances:
+                ac_data_key = _layer_col_key(acc_key, dist_key, angular, decay_label, legacy_tail)
+                temp_data[ac_data_key] = acc_result.result[acc_key].count[dist_key]
+                if dist_key == max(distances):
+                    # nearest distance is decay-independent: one unsuffixed column
+                    ac_dist_data_key = config.prep_gdf_key(f"{acc_key}_nearest_max", dist_key, angular)
+                    temp_data[ac_dist_data_key] = acc_result.result[acc_key].distance[dist_key]
 
-    temp_df = pd.DataFrame(temp_data, index=acc_result.node_keys_py)
+    temp_df = pd.DataFrame(temp_data, index=acc_results[0].node_keys_py)
     nodes_gdf.loc[gdf_idx, temp_df.columns] = temp_df.loc[gdf_idx, temp_df.columns]
 
     return nodes_gdf, data_gdf
@@ -299,26 +374,23 @@ def compute_mixed_uses(
     network_structure: rustalgos.graph.NetworkStructure,
     max_netw_assign_dist: int = 100,
     compute_hill: bool | None = True,
-    compute_hill_weighted: bool | None = True,
     compute_shannon: bool | None = False,
     compute_gini: bool | None = False,
     distances: list[int] | None = None,
-    betas: list[float] | None = None,
     minutes: list[float] | None = None,
     data_id_col: str | None = None,
     barriers_gdf: gpd.GeoDataFrame | None = None,
     angular: bool = False,
     n_nearest_candidates: int = 50,
-    spatial_tolerance: int = 0,
-    min_threshold_wt: float = MIN_THRESH_WT,
     speed_m_s: float = SPEED_M_S,
+    decay_fn: str | dict[str, str] | None = None,
 ) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
     r"""
     Compute landuse metrics.
 
     This function wraps the underlying `rust` optimised functions for aggregating and computing various mixed-use.
-    These are computed simultaneously for any required combinations of measures (and distances). By default, hill and
-    hill weighted measures will be computed, by the available flags e.g. `compute_hill` or `compute_shannon` can be used
+    These are computed simultaneously for any required combinations of measures (and distances). By default, hill
+    measures will be computed, but the available flags e.g. `compute_hill` or `compute_shannon` can be used
     to configure which classes of measures should run.
 
     See the accompanying paper on `arXiv` for additional information about methods for computing mixed-use measures
@@ -343,35 +415,25 @@ def compute_mixed_uses(
     nodes_gdf
         A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe)
         representing nodes. Best generated with the
-        [`io.network_structure_from_nx`](/tools/io#network-structure-from-nx) function. The outputs of
+        [`io.network_structure_from_nx`](/tools/io#network_structure_from_nx) function. The outputs of
         calculations will be written to this `GeoDataFrame`, which is then returned from the function.
     network_structure
-        A [`rustalgos.graph.NetworkStructure`](/rustalgos/rustalgos#networkstructure). Best generated with the
-        [`io.network_structure_from_nx`](/tools/io#network-structure-from-nx) function.
+        A [`rustalgos.graph.NetworkStructure`](/rustalgos/graph#networkstructure). Best generated with the
+        [`io.network_structure_from_nx`](/tools/io#network_structure_from_nx) function.
     max_netw_assign_dist: int
         The maximum distance to consider when assigning respective data points to the nearest adjacent network nodes.
     compute_hill: bool
         Compute Hill diversity. This is the recommended form of diversity index. Computed for q of 0, 1, and 2.
-    compute_hill_weighted: bool
-        Compute distance weighted Hill diversity. This is the recommended form of diversity index. Computed for q of 0,
-        1, and 2.
     compute_shannon: bool
         Compute shannon entropy. Hill diversity of q=1 is generally preferable.
     compute_gini: bool
         Compute the gini form of diversity index. Hill diversity of q=2 is generally preferable.
     distances: list[int]
-        Distances corresponding to the local $d_{max}$ thresholds to be used for calculations. The $\beta$
-        for distance-weighted metrics will be determined implicitly using `min_threshold_wt`. If the `distances`
-        parameter is not provided, then the `beta` or `minutes` parameters must be provided instead.
-    betas: list[float]
-        A list of $\beta$ to be used for the exponential decay function for weighted metrics. The $d_{max}$ thresholds
-        for unweighted metrics will be determined implicitly. If the `betas` parameter is not provided, then the
-        `distances` or `minutes` parameter must be provided instead.
+        Distance thresholds in metres for the network traversal. Metrics are computed for each
+        threshold independently. If not provided, the `minutes` parameter must be provided instead.
     minutes: list[float]
-        A list of walking times in minutes to be used for calculations. The $d_{max}$ thresholds for unweighted metrics
-        and $\beta$ for distance-weighted metrics will be determined implicitly using the `speed_m_s` and
-        `min_threshold_wt` parameters. If the `minutes` parameter is not provided, then the `distances` or `betas`
-        parameters must be provided instead.
+        Walking time thresholds in minutes. Converted to distance thresholds using `speed_m_s`.
+        If not provided, the `distances` parameter must be provided instead.
     data_id_col: str
         An optional column name for data point keys. This is used for deduplicating points representing a shared source
         of information. For example, where a single greenspace is represented by many entrances as datapoints, only the
@@ -383,21 +445,22 @@ def compute_mixed_uses(
     angular: bool
         Whether to use a simplest-path heuristic in-lieu of a shortest-path heuristic when calculating aggregations
         and distances.
-    spatial_tolerance: int
-        Tolerance in metres indicating a spatial buffer for datapoint accuracy. Intended for situations where datapoint
-        locations are not precise. If greater than zero, weighted functions will clip the spatial impedance curve above
-         weights corresponding to the given spatial tolerance and normalises to the new range. For background, see
-        [`rustalgos.clip_weights_curve`](/rustalgos#clip-weights-curve).
     n_nearest_candidates: int
         The number of nearest candidates to consider when assigning respective data points to the nearest adjacent
         streets.
-    min_threshold_wt: float
-        The default `min_threshold_wt` parameter can be overridden to generate custom mappings between the
-        `distance` and `beta` parameters. See [`rustalgos.distances_from_beta`](/rustalgos#distances-from-betas)
-        for more information.
     speed_m_s: float
-        The default `speed_m_s` parameter can be configured to generate custom mappings between walking times and
-        distance thresholds $d_{max}$.
+        Walking speed in metres per second used to convert `minutes` to distance thresholds.
+    decay_fn: str | dict[str, str]
+        An optional decay function expression using the variable `p`, where `p` is the normalised
+        distance from 0 (source) to 1 (cutoff threshold). Controls how distance affects the
+        Hill diversity weighting. When omitted (`None`), the legacy default computes both an
+        unweighted (`_nw`) and a decay-weighted (`_wt`) variant; pass a single expression such as
+        `"1"` (flat) to compute one unsuffixed variant. For
+        distance-weighted metrics, provide an expression such as `"exp(-4 * p)"` for exponential
+        decay, or use the `cityseer.decay` module helpers to generate expressions from absolute
+        distance units; see [`cityseer.decay`](/api/decay) for details and examples. Pass a dict of
+        `{label: expression}` to compute several decays in a single network traversal; each label
+        is appended to that variant's output column names (a plain string or `None` adds no suffix).
 
     Returns
     -------
@@ -417,12 +480,6 @@ def compute_mixed_uses(
     the _richness_ of species as opposed to the _balance_ of species. Over-emphasis on balance can be misleading in
     an urban context, for which reason research finds support for using `q=0`: this reduces to a simple count of
     distinct land-uses.|
-    | hill_wt | $$\big[\sum_{i}^{S}d_{i}\big(\frac{p_{i}}{\bar{T}}\big)^{q} \big]^{1/(1-q)} \\
-    \bar{T} = \sum_{i}^{S}d_{i}p_{i}$$ | This is a distance-weighted variant of Hill Diversity based
-    on the distances from the point of computation to the nearest example of a particular land-use. It therefore
-    gives a locally representative indication of the intensity of mixed-uses. $d_{i}$ is a negative exponential
-    function where $\beta$ controls the strength of the decay. ($\beta$ is provided by the `Network Layer`, see
-    [`rustalgos.distances_from_beta`](/rustalgos#distances-from-betas).)|
     | shannon | $$ -\sum_{i}^{S}\ p_{i}\ log\ p_{i}$$ | Shannon diversity (or_information entropy_) is
     one of the classic diversity indices. Note that it is preferable to use Hill Diversity with `q=1`, which is
     effectively a transformation of Shannon diversity into units of effective species.|
@@ -433,7 +490,7 @@ def compute_mixed_uses(
     transformation of Gini-Simpson diversity into units of effective species.|
 
     :::note
-    `hill_wt` at `q=0` is generally the best choice for granular landuse data, or else `q=1` or
+    `hill` at `q=0` is generally the best choice for granular landuse data, or else `q=1` or
     `q=2` for increasingly crude landuse classifications schemas.
     :::
 
@@ -458,7 +515,7 @@ def compute_mixed_uses(
     )
     # the data is written to the GeoDataFrame
     print(nodes_gdf.columns)
-    # access accordingly, e.g. hill diversity at q=0 and 800m
+    # the default emits _nw and _wt; pass a single decay_fn to compute just one and save time
     print(nodes_gdf["cc_hill_q0_800_nw"])
     ```
     :::warning
@@ -466,6 +523,10 @@ def compute_mixed_uses(
     has been used. Meaningful comparisons from one location to another are only possible where the same schemas have
     been applied.
     :::
+
+    For a worked example, see the
+    [Mixed Uses](https://cityseer.benchmarkurbanism.com/examples/accessibility/gpd-mixed-uses)
+    recipe.
 
     """
     if angular:
@@ -484,55 +545,52 @@ def compute_mixed_uses(
     if landuse_column_label not in data_gdf.columns:
         raise ValueError("The specified landuse column name can't be found in the GeoDataFrame.")
     landuses_map = dict(data_gdf[landuse_column_label])
+    decay_labels, decay_exprs, legacy_tail = _resolve_decay_fns(decay_fn)
     partial_func = partial(
-        data_map.mixed_uses,
+        data_map.mixed_uses_decays,
         network_structure=network_structure,
         landuses_map=landuses_map,
+        decay_fns=decay_exprs,
         distances=distances,
-        betas=betas,
         minutes=minutes,
         compute_hill=compute_hill,
-        compute_hill_weighted=compute_hill_weighted,
         compute_shannon=compute_shannon,
         compute_gini=compute_gini,
         angular=angular,
-        spatial_tolerance=spatial_tolerance,
-        min_threshold_wt=min_threshold_wt,
         speed_m_s=speed_m_s,
     )
-    # wraps progress bar
-    result = config.wrap_progress(
+    # wraps progress bar (returns one MixedUsesResult per decay label)
+    results = config.wrap_progress(
         total=network_structure.street_node_count(), rust_struct=data_map, partial_func=partial_func
     )
     # unpack
     distances = config.log_thresholds(
         distances=distances,
-        betas=betas,
         minutes=minutes,
-        min_threshold_wt=min_threshold_wt,
         speed_m_s=speed_m_s,
     )
     # intersect computed keys with those available in the gdf index (stations vs. streets)
-    gdf_idx = nodes_gdf.index.intersection(result.node_keys_py)
+    gdf_idx = nodes_gdf.index.intersection(results[0].node_keys_py)
     # create a dictionary to hold the data
     temp_data = {}
-    # unpack mixed-uses data
-    for dist_key in distances:
-        for q_key in [0, 1, 2]:
-            if compute_hill:
-                hill_nw_data_key = config.prep_gdf_key(f"hill_q{q_key}", dist_key, angular, weighted=False)
-                temp_data[hill_nw_data_key] = result.hill[q_key][dist_key]  # type: ignore
-            if compute_hill_weighted:
-                hill_wt_data_key = config.prep_gdf_key(f"hill_q{q_key}", dist_key, angular, weighted=True)
-                temp_data[hill_wt_data_key] = result.hill_weighted[q_key][dist_key]  # type: ignore
-        if compute_shannon:
-            shannon_data_key = config.prep_gdf_key("shannon", dist_key, angular)
-            temp_data[shannon_data_key] = result.shannon[dist_key]  # type: ignore
-        if compute_gini:
-            gini_data_key = config.prep_gdf_key("gini", dist_key, angular)
-            temp_data[gini_data_key] = result.gini[dist_key]  # type: ignore
+    # unpack mixed-uses data (one result per decay label; empty label -> no suffix)
+    # note: shannon and gini are decay-independent, so they repeat across labels.
+    for decay_label, result in zip(decay_labels, results, strict=True):
+        for dist_key in distances:
+            for q_key in [0, 1, 2]:
+                if compute_hill:
+                    hill_data_key = _layer_col_key(f"hill_q{q_key}", dist_key, angular, decay_label, legacy_tail)
+                    temp_data[hill_data_key] = result.hill[q_key][dist_key]
+            if compute_shannon:
+                # shannon is decay-independent: one unsuffixed column
+                shannon_data_key = config.prep_gdf_key("shannon", dist_key, angular)
+                temp_data[shannon_data_key] = result.shannon[dist_key]
+            if compute_gini:
+                # gini is decay-independent: one unsuffixed column
+                gini_data_key = config.prep_gdf_key("gini", dist_key, angular)
+                temp_data[gini_data_key] = result.gini[dist_key]
 
-    temp_df = pd.DataFrame(temp_data, index=result.node_keys_py)
+    temp_df = pd.DataFrame(temp_data, index=results[0].node_keys_py)
     nodes_gdf.loc[gdf_idx, temp_df.columns] = temp_df.loc[gdf_idx, temp_df.columns]
 
     return nodes_gdf, data_gdf
@@ -545,15 +603,14 @@ def compute_stats(
     network_structure: rustalgos.graph.NetworkStructure,
     max_netw_assign_dist: int = 100,
     distances: list[int] | None = None,
-    betas: list[float] | None = None,
     minutes: list[float] | None = None,
     data_id_col: str | None = None,
     barriers_gdf: gpd.GeoDataFrame | None = None,
     angular: bool = False,
-    spatial_tolerance: int = 0,
     n_nearest_candidates: int = 50,
-    min_threshold_wt: float = MIN_THRESH_WT,
     speed_m_s: float = SPEED_M_S,
+    decay_fn: str | dict[str, str] | None = None,
+    measures: list[str] | None = None,
 ) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
     r"""
     Compute numerical statistics over the street network.
@@ -575,26 +632,19 @@ def compute_stats(
     nodes_gdf
         A [`GeoDataFrame`](https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe)
         representing nodes. Best generated with the
-        [`io.network_structure_from_nx`](/tools/io#network-structure-from-nx) function. The outputs of
+        [`io.network_structure_from_nx`](/tools/io#network_structure_from_nx) function. The outputs of
         calculations will be written to this `GeoDataFrame`, which is then returned from the function.
     network_structure
-        A [`rustalgos.graph.NetworkStructure`](/rustalgos/rustalgos#networkstructure). Best generated with the
-        [`io.network_structure_from_nx`](/tools/io#network-structure-from-nx) function.
+        A [`rustalgos.graph.NetworkStructure`](/rustalgos/graph#networkstructure). Best generated with the
+        [`io.network_structure_from_nx`](/tools/io#network_structure_from_nx) function.
     max_netw_assign_dist: int
         The maximum distance to consider when assigning respective data points to the nearest adjacent network nodes.
     distances: list[int]
-        Distances corresponding to the local $d_{max}$ thresholds to be used for calculations. The $\beta$
-        for distance-weighted metrics will be determined implicitly using `min_threshold_wt`. If the `distances`
-        parameter is not provided, then the `beta` or `minutes` parameters must be provided instead.
-    betas: list[float]
-        A list of $\beta$ to be used for the exponential decay function for weighted metrics. The $d_{max}$ thresholds
-        for unweighted metrics will be determined implicitly. If the `betas` parameter is not provided, then the
-        `distances` or `minutes` parameter must be provided instead.
+        Distance thresholds in metres for the network traversal. Metrics are computed for each
+        threshold independently. If not provided, the `minutes` parameter must be provided instead.
     minutes: list[float]
-        A list of walking times in minutes to be used for calculations. The $d_{max}$ thresholds for unweighted metrics
-        and $\beta$ for distance-weighted metrics will be determined implicitly using the `speed_m_s` and
-        `min_threshold_wt` parameters. If the `minutes` parameter is not provided, then the `distances` or `betas`
-        parameters must be provided instead.
+        Walking time thresholds in minutes. Converted to distance thresholds using `speed_m_s`.
+        If not provided, the `distances` parameter must be provided instead.
     data_id_col: str
         An optional column name for data point keys. This is used for deduplicating points representing a shared source
         of information. For example, where a single greenspace is represented by many entrances as datapoints, only the
@@ -606,32 +656,41 @@ def compute_stats(
     angular: bool
         Whether to use a simplest-path heuristic in-lieu of a shortest-path heuristic when calculating aggregations
         and distances.
-    spatial_tolerance: int
-        Tolerance in metres indicating a spatial buffer for datapoint accuracy. Intended for situations where datapoint
-        locations are not precise. If greater than zero, weighted functions will clip the spatial impedance curve above
-         weights corresponding to the given spatial tolerance and normalises to the new range. For background, see
-        [`rustalgos.clip_weights_curve`](/rustalgos#clip-weights-curve).
     n_nearest_candidates: int
         The number of nearest candidates to consider when assigning respective data points to the nearest adjacent
         streets.
-    min_threshold_wt: float
-        The default `min_threshold_wt` parameter can be overridden to generate custom mappings between the
-        `distance` and `beta` parameters. See [`rustalgos.distances_from_beta`](/rustalgos#distances-from-betas)
-        for more information.
     speed_m_s: float
-        The default `speed_m_s` parameter can be configured to generate custom mappings between walking times and
-        distance thresholds $d_{max}$.
+        Walking speed in metres per second used to convert `minutes` to distance thresholds.
+    decay_fn: str | dict[str, str]
+        An optional decay function expression using the variable `p`, where `p` is the normalised
+        distance from 0 (source) to 1 (cutoff threshold). Controls how distance affects the
+        statistical weighting. When omitted (`None`), the legacy default computes both an
+        unweighted (`_nw`) and a decay-weighted (`_wt`) variant; pass a single expression such as
+        `"1"` (flat) to compute one unsuffixed variant. For
+        distance-weighted metrics, provide an expression such as `"exp(-4 * p)"` for exponential
+        decay, or use the `cityseer.decay` module helpers. Values are clamped to [0, 1]. Supported
+        functions include `exp`, `ln`, `log`, `log10`, `sqrt`, `abs`, `floor`, `ceil`, `round`, `sin`,
+        `cos`, `tan`, and the `^` operator (`min`/`max` are not supported; to negate a power write
+        `-((x)^2)` not `-(x)^2`). When multiple distances are specified, `p` is normalised independently per
+        threshold. See [`cityseer.decay`](/api/decay) for details and examples. Pass a dict of
+        `{label: expression}` to compute several decays in a single network traversal; each label
+        is appended to that variant's output column names (a plain string or `None` adds no suffix).
+    measures: list[str]
+        An optional subset of statistical measures to compute, chosen from `"sum"`, `"mean"`,
+        `"count"`, `"var"`, `"median"`, `"mad"`, `"max"`, and `"min"`. Defaults to `None`, which
+        computes all of them. Restricting the set keeps the output `GeoDataFrame` smaller and skips
+        the weighted median / MAD sort when neither `"median"` nor `"mad"` is requested.
 
     Returns
     -------
     nodes_gdf: GeoDataFrame
-        The input `node_gdf` parameter is returned with additional columns populated with the calcualted metrics.
+        The input `node_gdf` parameter is returned with additional columns populated with the calculated metrics.
     data_gdf: GeoDataFrame
         The input `data_gdf` is returned with two additional columns: `nearest_assigned` and `next_nearest_assign`.
 
     Examples
     --------
-    A worked example:
+    Default exponential decay at multiple scales:
 
     ```python
     from cityseer.metrics import networks, layers
@@ -646,29 +705,76 @@ def compute_stats(
     print(numerical_gdf.head())
     nodes_gdf, numerical_gdf = layers.compute_stats(
         data_gdf=numerical_gdf,
-        stats_column_label="mock_numerical_1",
+        stats_column_labels=["mock_numerical_1"],
         nodes_gdf=nodes_gdf,
         network_structure=network_structure,
         distances=[200, 400, 800],
     )
     print(nodes_gdf.columns)
-    # weighted form
-    print(nodes_gdf["cc_mock_numerical_1_mean_400_wt"])
-    # non-weighted form
+    # mean at 400m; the default emits _nw and _wt. Pass a single decay_fn for just one,
+    # and measures=[...] to compute only the statistics you need — both save time
     print(nodes_gdf["cc_mock_numerical_1_mean_400_nw"])
+    ```
+
+    Custom decay using the `p` variable directly (Gaussian peaking at 400m within a 1200m cutoff):
+
+    ```python
+    nodes_gdf, numerical_gdf = layers.compute_stats(
+        data_gdf=numerical_gdf,
+        stats_column_labels=["mock_numerical_1"],
+        nodes_gdf=nodes_gdf,
+        network_structure=network_structure,
+        distances=[1200],
+        decay_fn="exp(-((p - 0.333)^2) / (2 * 0.125^2))",  # Gaussian peaking at 400m
+    )
+    ```
+
+    Using the `cityseer.decay` helper module for the same Gaussian curve:
+
+    ```python
+    from cityseer import decay
+
+    nodes_gdf, numerical_gdf = layers.compute_stats(
+        data_gdf=numerical_gdf,
+        stats_column_labels=["mock_numerical_1"],
+        nodes_gdf=nodes_gdf,
+        network_structure=network_structure,
+        distances=[1200],
+        decay_fn=decay.gaussian(peak=400, cutoff=1200, std=150),
+    )
+    ```
+
+    Flat (unweighted) metrics:
+
+    ```python
+    nodes_gdf, numerical_gdf = layers.compute_stats(
+        data_gdf=numerical_gdf,
+        stats_column_labels=["mock_numerical_1"],
+        nodes_gdf=nodes_gdf,
+        network_structure=network_structure,
+        distances=[800],
+        decay_fn="1",
+    )
     ```
 
     :::note
     The following stat types will be available for each `stats_key` for each of the
     computed distances:
     - `max` and `min`
-    - `sum` and `sum_wt`
-    - `mean` and `mean_wt`
-    - `count` and `count_wt`
-    - `median` and `median_wt`
-    - `variance` and `variance_wt`
-    - `mad` and `mad_wt` (deviation from the median)
+    - `sum`
+    - `mean`
+    - `count`
+    - `median`
+    - `variance`
+    - `mad` (median absolute deviation)
+
+    The decay function (default exponential, or custom via `decay_fn`) controls how
+    distance affects the weighting. Use `decay_fn="1"` for flat (unweighted) metrics.
     :::
+
+    For a worked example, see the
+    [Statistical Aggregations](https://cityseer.benchmarkurbanism.com/examples/stats/gpd-stats)
+    recipe.
 
     """
     if angular:
@@ -690,67 +796,45 @@ def compute_stats(
             raise ValueError("The specified numerical stats column name can't be found in the GeoDataFrame.")
         stats_maps.append(dict(data_gdf[stats_column_label]))
     # stats
+    decay_labels, decay_exprs, legacy_tail = _resolve_decay_fns(decay_fn)
+    selected_measures = _resolve_stats_measures(measures)
     partial_func = partial(
-        data_map.stats,
+        data_map.stats_decays,
         network_structure=network_structure,
         numerical_maps=stats_maps,
+        decay_fns=decay_exprs,
         distances=distances,
-        betas=betas,
         minutes=minutes,
         angular=angular,
-        spatial_tolerance=spatial_tolerance,
-        min_threshold_wt=min_threshold_wt,
         speed_m_s=speed_m_s,
+        measures=measures,
     )
-    # wraps progress bar
-    stats_result = config.wrap_progress(
+    # wraps progress bar (returns one StatsResult per decay label)
+    stats_results = config.wrap_progress(
         total=network_structure.street_node_count(), rust_struct=data_map, partial_func=partial_func
     )
     # unpack
     distances = config.log_thresholds(
         distances=distances,
-        betas=betas,
         minutes=minutes,
-        min_threshold_wt=min_threshold_wt,
         speed_m_s=speed_m_s,
     )
     # intersect computed keys with those available in the gdf index (stations vs. streets)
-    gdf_idx = nodes_gdf.index.intersection(stats_result.node_keys_py)
+    gdf_idx = nodes_gdf.index.intersection(stats_results[0].node_keys_py)
     # create a dictionary to hold the data
     temp_data = {}
-    # unpack the numerical arrays
-    for idx, stats_column_label in enumerate(stats_column_labels):
-        for dist_key in distances:
-            k = config.prep_gdf_key(f"{stats_column_label}_sum", dist_key, angular=angular, weighted=False)
-            temp_data[k] = stats_result.result[idx].sum[dist_key]  # type: ignore
-            k = config.prep_gdf_key(f"{stats_column_label}_sum", dist_key, angular=angular, weighted=True)
-            temp_data[k] = stats_result.result[idx].sum_wt[dist_key]  # type: ignore
-            k = config.prep_gdf_key(f"{stats_column_label}_mean", dist_key, angular=angular, weighted=False)
-            temp_data[k] = stats_result.result[idx].mean[dist_key]  # type: ignore
-            k = config.prep_gdf_key(f"{stats_column_label}_mean", dist_key, angular=angular, weighted=True)
-            temp_data[k] = stats_result.result[idx].mean_wt[dist_key]  # type: ignore
-            k = config.prep_gdf_key(f"{stats_column_label}_count", dist_key, angular=angular, weighted=False)
-            temp_data[k] = stats_result.result[idx].count[dist_key]  # type: ignore
-            k = config.prep_gdf_key(f"{stats_column_label}_count", dist_key, angular=angular, weighted=True)
-            temp_data[k] = stats_result.result[idx].count_wt[dist_key]  # type: ignore
-            k = config.prep_gdf_key(f"{stats_column_label}_median", dist_key, angular=angular, weighted=False)
-            temp_data[k] = stats_result.result[idx].median[dist_key]  # type: ignore
-            k = config.prep_gdf_key(f"{stats_column_label}_median", dist_key, angular=angular, weighted=True)
-            temp_data[k] = stats_result.result[idx].median_wt[dist_key]  # type: ignore
-            k = config.prep_gdf_key(f"{stats_column_label}_var", dist_key, angular=angular, weighted=False)
-            temp_data[k] = stats_result.result[idx].variance[dist_key]  # type: ignore
-            k = config.prep_gdf_key(f"{stats_column_label}_var", dist_key, angular=angular, weighted=True)
-            temp_data[k] = stats_result.result[idx].variance_wt[dist_key]  # type: ignore
-            k = config.prep_gdf_key(f"{stats_column_label}_mad", dist_key, angular=angular, weighted=False)
-            temp_data[k] = stats_result.result[idx].mad[dist_key]  # type: ignore
-            k = config.prep_gdf_key(f"{stats_column_label}_mad", dist_key, angular=angular, weighted=True)
-            temp_data[k] = stats_result.result[idx].mad_wt[dist_key]  # type: ignore
-            k = config.prep_gdf_key(f"{stats_column_label}_max", dist_key, angular=angular)
-            temp_data[k] = stats_result.result[idx].max[dist_key]  # type: ignore
-            k = config.prep_gdf_key(f"{stats_column_label}_min", dist_key, angular=angular)
-            temp_data[k] = stats_result.result[idx].min[dist_key]  # type: ignore
+    # unpack the numerical arrays (one result per decay label; empty label -> no suffix).
+    # Only the selected measures are emitted; each maps to its `Stats` result accessor.
+    for decay_label, stats_result in zip(decay_labels, stats_results, strict=True):
+        for idx, stats_column_label in enumerate(stats_column_labels):
+            stat_obj = stats_result.result[idx]
+            for measure in selected_measures:
+                measure_data = getattr(stat_obj, _STATS_ACCESSORS[measure])
+                for dist_key in distances:
+                    k = _layer_col_key(f"{stats_column_label}_{measure}", dist_key, angular, decay_label, legacy_tail)
+                    temp_data[k] = measure_data[dist_key]
 
-    temp_df = pd.DataFrame(temp_data, index=stats_result.node_keys_py)
+    temp_df = pd.DataFrame(temp_data, index=stats_results[0].node_keys_py)
     nodes_gdf.loc[gdf_idx, temp_df.columns] = temp_df.loc[gdf_idx, temp_df.columns]
 
     return nodes_gdf, data_gdf

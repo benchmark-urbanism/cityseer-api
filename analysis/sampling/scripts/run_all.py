@@ -16,14 +16,21 @@ from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).parent
 
+# Explicit resume ordinals: `--from N` runs every entry whose ordinal is >= N.
+# validate_adaptive.py shares ordinal 5 with 05_figures_validation.py so that a resume
+# at 5 cannot silently skip the adaptive validation the later scripts depend on.
 SCRIPTS = [
-    ("00_generate_cache.py", "Generate synthetic network sampling data", True),
-    ("01_analyse_synthetic.py", "Analyse synthetic data and generate figures", False),
-    ("02_validate_gla.py", "Validate on Greater London network", True),
-    ("03_validate_madrid.py", "Validate on Greater Madrid network", True),
-    ("04_figures_validation.py", "Generate validation figures for GLA and Madrid", False),
-    ("05_generate_macros.py", "Generate LaTeX macros, tables, and practical guide figure", False),
-    ("06_figures_spatial.py", "Generate spatial error figures from per-node caches", False),
+    (1, "01_validate_gla.py", "Validate on Greater London network", True),
+    (2, "02_validate_madrid.py", "Validate on Greater Madrid network", True),
+    (3, "03_validate_cary.py", "Validate on Cary, NC (suburban) network", True),
+    (4, "04_validate_woodlands.py", "Validate on The Woodlands, TX (held-out suburban) network", True),
+    (5, "validate_adaptive.py", "Validate the per-node method on all four networks", False),
+    (5, "05_figures_validation.py", "Generate validation figures (all four networks)", False),
+    (6, "06_generate_macros.py", "Generate LaTeX macros and tables", False),
+    (7, "07_figures_spatial.py", "Generate spatial error figures from per-node caches", False),
+    (8, "08_figure_method.py", "Generate the per-node method schematic", False),
+    (9, "09_figure_adaptive_comparison.py", "Generate adaptive comparison and accuracy figures", False),
+    (10, "10_figure_barrier_example.py", "Generate the ablation disc-vs-reach example figure", False),
 ]
 
 
@@ -36,7 +43,7 @@ def main():
         default=0,
         dest="start_from",
         metavar="N",
-        help="Start from script N (e.g. --from 2 to start at 02_validate_gla.py)",
+        help="Start from script N (e.g. --from 1 to start at 01_validate_gla.py)",
     )
     args = parser.parse_args()
 
@@ -52,9 +59,8 @@ def main():
     total_start = time.time()
     failed = []
 
-    for filename, description, supports_force in SCRIPTS:
-        script_num = int(filename[:2])
-        if script_num < args.start_from:
+    for ordinal, filename, description, supports_force in SCRIPTS:
+        if ordinal < args.start_from:
             continue
 
         print(f"\n{'=' * 70}")

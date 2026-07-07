@@ -113,27 +113,25 @@ layout: ../../layouts/PageLayout.astro
 ### Notes
 
 ```python
-from cityseer.metrics import networks
+from cityseer import rustalgos
 
-# a list of betas
-distances = [400, 200]
-# convert to betas
-betas = networks.beta_from_distance(distances)
-print(betas)  # prints: array([0.01, 0.02])
+betas = [0.01, 0.02]
+distances = rustalgos.distances_from_betas(betas)
+print(distances)  # prints: [400, 200]
 ```
 
- Most `networks` module methods can be invoked with either `distances` or `betas` parameters, but not both. If using the `distances` parameter, then this function will be called in order to extrapolate the decay parameters implicitly, using:
+ Uses the formula:
 
- $$\beta = -\frac{log(w_{min})}{d_{max}}$$
+ $$d_{max} = \frac{log(w_{min})}{-\beta}$$
 
- The default `min_threshold_wt` of $w_{min}=0.01831563888873418$ yields conveniently rounded $\beta$ parameters, for example:
+ The default `min_threshold_wt` of $w_{min}=0.01831563888873418$ yields conveniently rounded distance thresholds, for example:
 
-| $d_{max}$ | $\beta$ |
-|:---------:|:-------:|
-| 200m | 0.02 |
-| 400m | 0.01 |
-| 800m | 0.005 |
-| 1600m | 0.0025 |
+| $\beta$ | $d_{max}$ |
+|:-------:|:---------:|
+| 0.02 | 200m |
+| 0.01 | 400m |
+| 0.005 | 800m |
+| 0.0025 | 1600m |
 
 </div>
 
@@ -212,36 +210,33 @@ print(betas)  # prints: array([0.01, 0.02])
 ```python
 from cityseer import rustalgos
 
-# a list of betas
-betas = [0.01, 0.02]
-# convert to distance thresholds
-d_max = rustalgos.distances_from_betas(betas)
-print(d_max)
-# prints: [400, 200]
+distances = [200, 400, 800, 1600]
+betas = rustalgos.betas_from_distances(distances)
+print(betas)  # prints: [0.02, 0.01, 0.005, 0.0025]
 ```
 
- Weighted measures such as the gravity index, weighted betweenness, and weighted land-use accessibilities are computed using a negative exponential decay function in the form of:
+ The $\beta$ parameter controls the strength of exponential distance decay:
 
  $$weight = exp(-\beta \cdot distance)$$
 
- The strength of the decay is controlled by the $\beta$ parameter, which reflects a decreasing willingness to walk correspondingly farther distances. For example, if $\beta=0.005$ were to represent a person's willingness to walk to a bus stop, then a location 100m distant would be weighted at 60% and a location 400m away would be weighted at 13.5%. After an initially rapid decrease, the weightings decay ever more gradually in perpetuity; thus, once a sufficiently small weight is encountered it becomes computationally expensive to consider locations any farther away. The minimum weight at which this cutoff occurs is represented by $w_{min}$, and the corresponding maximum distance threshold by $d_{max}$.
+ This reflects a decreasing willingness to walk correspondingly farther distances. For example, if $\beta=0.005$ were to represent a person's willingness to walk to a bus stop, then a location 100m distant would be weighted at 60% and a location 400m away would be weighted at 13.5%.
 
 ![Example beta decays](/images/betas.png)
 
- Most `networks` module methods can be invoked with either `distances` or `betas` parameters, but not both. If using the `betas` parameter, then this function will be called in order to extrapolate the distance thresholds implicitly, using:
+ Uses the formula:
 
- $$d_{max} = \frac{log(w_{min})}{-\beta}$$
+ $$\beta = -\frac{log(w_{min})}{d_{max}}$$
 
- The default `min_threshold_wt` of $w_{min}=0.01831563888873418$ yields conveniently rounded $d_{max}$ walking thresholds, for example:
+ The default `min_threshold_wt` of $w_{min}=0.01831563888873418$ yields conveniently rounded $\beta$ values, for example:
 
-| $\beta$ | $d_{max}$ |
-|:-------:|:---------:|
-| 0.02 | 200m |
-| 0.01 | 400m |
-| 0.005 | 800m |
-| 0.0025 | 1600m |
+| $d_{max}$ | $\beta$ |
+|:---------:|:-------:|
+| 200m | 0.02 |
+| 400m | 0.01 |
+| 800m | 0.005 |
+| 1600m | 0.0025 |
 
-Overriding the default $w_{min}$ will adjust the $d_{max}$ accordingly.
+Overriding the default $w_{min}$ will adjust the $\beta$ accordingly.
 
 </div>
 
@@ -398,11 +393,11 @@ Setting the `speed_m_s` to a higher or lower number will affect the walking time
 
 <div class="function">
 
-## pair_distances_betas_time
+## pair_distances_and_time
 
 
 <div class="content">
-<span class="name">pair_distances_betas_time</span><div class="signature multiline">
+<span class="name">pair_distances_and_time</span><div class="signature multiline">
   <span class="pt">(</span>
   <div class="param">
     <span class="pn">speed_m_s</span>
@@ -415,30 +410,19 @@ Setting the `speed_m_s` to a higher or lower number will affect the walking time
     <span class="pa"> list[int] | None = None</span>
   </div>
   <div class="param">
-    <span class="pn">betas</span>
-    <span class="pc">:</span>
-    <span class="pa"> list[float] | None = None</span>
-  </div>
-  <div class="param">
     <span class="pn">minutes</span>
     <span class="pc">:</span>
     <span class="pa"> list[float] | None = None</span>
   </div>
-  <div class="param">
-    <span class="pn">min_threshold_wt</span>
-    <span class="pc">:</span>
-    <span class="pa"> float | None = None</span>
-  </div>
   <span class="pt">)-&gt;[</span>
   <span class="pr">list[int]</span>
-  <span class="pr">list[float]</span>
   <span class="pr">list[int]</span>
   <span class="pt">]</span>
 </div>
 </div>
 
 
- Calculate distances, betas, and seconds, given exactly one of them. Requires exactly one of `distances`, `betas`, or `minutes` to be provided.
+ Resolve distances and seconds from either distances or minutes. Exactly one of `distances` or `minutes` must be provided.
 ### Parameters
 <div class="param-set">
   <div class="def">
@@ -457,17 +441,7 @@ Setting the `speed_m_s` to a higher or lower number will affect the walking time
   </div>
   <div class="desc">
 
- Distance thresholds ($d_{max}$).</div>
-</div>
-
-<div class="param-set">
-  <div class="def">
-    <div class="name">betas</div>
-    <div class="type">list[float] | None</div>
-  </div>
-  <div class="desc">
-
- Decay parameters ($\beta$).</div>
+ Distance thresholds in metres.</div>
 </div>
 
 <div class="param-set">
@@ -480,25 +454,15 @@ Setting the `speed_m_s` to a higher or lower number will affect the walking time
  Time in minutes.</div>
 </div>
 
-<div class="param-set">
-  <div class="def">
-    <div class="name">min_threshold_wt</div>
-    <div class="type">float | None</div>
-  </div>
-  <div class="desc">
-
- Optional cutoff weight $w_{min}$ for conversions.</div>
-</div>
-
 ### Returns
 <div class="param-set">
   <div class="def">
     <div class="name"></div>
-    <div class="type">tuple[list[int], list[float], list[int]]</div>
+    <div class="type">tuple[list[int], list[int]]</div>
   </div>
   <div class="desc">
 
- A tuple containing (distances, betas, seconds).</div>
+ A tuple containing (distances, seconds).</div>
 </div>
 
 ### Raises
@@ -509,18 +473,9 @@ Setting the `speed_m_s` to a higher or lower number will affect the walking time
   </div>
   <div class="desc">
 
- If not exactly one of `distances`, `betas`, `minutes` is provided, or if inputs are invalid.</div>
+ If not exactly one of `distances` or `minutes` is provided, or if inputs are invalid.</div>
 </div>
 
-### Notes
-
-:::warning
-Networks should be buffered according to the largest distance threshold that will be used for analysis. This
-protects nodes near network boundaries from edge falloffs. Nodes outside the area of interest but within these
-buffered extents should be set to 'dead' so that centralities or other forms of measures are not calculated.
-Whereas metrics are not calculated for 'dead' nodes, they can still be traversed by network analysis algorithms
-when calculating shortest paths and landuse accessibilities.
-:::
 
 </div>
 
@@ -586,18 +541,15 @@ when calculating shortest paths and landuse accessibilities.
 ### Notes
 
 ```python
-from cityseer.metrics import networks
-import numpy as np
+from cityseer import rustalgos
 
 distances = [100, 200, 400, 800, 1600]
-print("distances", distances)
-# distances [ 100  200  400  800 1600]
-
-betas = networks.beta_from_distance(distances)
+betas = rustalgos.betas_from_distances(distances)
 print("betas", betas)
-# betas [0.04   0.02   0.01   0.005  0.0025]
+# betas [0.04, 0.02, 0.01, 0.005, 0.0025]
 
-print("avg", networks.avg_distance_for_beta(betas))
+avg = rustalgos.avg_distances_for_betas(betas)
+print("avg", avg)
 ```
 
 

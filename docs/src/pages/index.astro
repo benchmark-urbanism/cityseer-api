@@ -8,10 +8,10 @@ import StripeTitle from '@src/components/StripeTitle.astro'
 import logoURL from '@src/assets/logos/cityseer_logo_light_red.png'
 ---
 
-<CommonLayout>
-  <Fragment slot="metaContent">
-    <title>Cityseer API Docs</title>
-  </Fragment>
+<CommonLayout
+  title="cityseer — Computational tools for urban analysis"
+  description="Python/Rust library for fine-grained street-network and land-use analysis at the pedestrian scale. Compute centrality, accessibility, mixed-use diversity, and statistical aggregations over street networks."
+>
   <div id="home-container" class="w-full justify-center">
     <aside id="left-container">
       <div class="flex flex-auto flex-col items-center justify-center">
@@ -19,16 +19,16 @@ import logoURL from '@src/assets/logos/cityseer_logo_light_red.png'
         <div class="max-w-xs object-contain">
           <img class="h-full w-full px-4 py-16" src={logoURL.src} alt="logo" />
         </div>
-        <a id="go-button" href="/intro" title="Get Started!">
+        <a id="go-button" href="/start" title="Get Started">
           <button
             id="go-button"
             class="border-theme bg-dark-grey text-theme flex h-16 w-16 items-center justify-center rounded-full border shadow-xs shadow-black"
           >
             <BookOpen class="w-8" />
           </button>
-          <h2 class="py-4 leading-none">Documentation</h2>
+          <h2 class="py-4 leading-none">Get Started</h2>
         </a>
-        <div class="flex flex-col items-center py-8 py-10">
+        <div class="flex flex-col items-center py-8">
           <RepoLink />
         </div>
       </div>
@@ -51,7 +51,7 @@ import logoURL from '@src/assets/logos/cityseer_logo_light_red.png'
       </p>
       <h2>Friendly & performant</h2>
       <p>
-        Python package with heavier algorithms implemented in paralellised `rust` code. I/O
+        Python package with heavier algorithms implemented in parallelised <code>rust</code> code. I/O
         convenience methods for NetworkX with advanced cleaning methods for OSM data. Generated
         metrics stored as GeoPandas for export to common geospatial formats.
       </p>

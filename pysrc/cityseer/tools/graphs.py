@@ -3,6 +3,16 @@ Convenience functions for the preparation and conversion of `networkX` graphs to
 
 Note that the `cityseer` network data structures can be created and manipulated directly, if so desired.
 
+:::note
+The graph simplification and cleaning functions in this module (e.g. ``nx_remove_filler_nodes``,
+``nx_remove_dangling_nodes``, ``nx_to_dual``) operate on undirected ``MultiGraph`` instances and do not preserve
+edge directionality. Do not pass a ``MultiDiGraph`` through these functions. For directed (one-way) network
+support, use [`CityNetwork.from_nx`](/api/network#from_nx) with a ``MultiDiGraph``,
+[`CityNetwork.from_geopandas`](/api/network#from_geopandas) with ``directed=True``, or build a directed
+``NetworkStructure`` via
+[`io.network_structure_from_nx`](/tools/io#network_structure_from_nx) with a ``MultiDiGraph``.
+:::
+
 """
 
 # workaround until networkx adopts types
@@ -11,7 +21,7 @@ Note that the `cityseer` network data structures can be created and manipulated 
 from __future__ import annotations
 
 import logging
-from typing import Any
+from typing import Any, cast
 
 import networkx as nx
 import numpy as np
@@ -109,18 +119,17 @@ def nx_simple_geoms(nx_multigraph: nx.MultiGraph) -> nx.MultiGraph:
 
 def nx_remove_filler_nodes(nx_multigraph: nx.MultiGraph) -> nx.MultiGraph:
     """
-    Remove nodes of degree=2.
+    Remove nodes of degree=2 (intermediate points that are not junctions).
 
-    Nodes of degree=2 represent no route-choice options other than traversal to the next edge. These are frequently
-    found on network topologies as a means of describing roadway geometry, but are meaningless from a network topology
-    point of view. This method will find and deleted these nodes, and replaces the two edges on either side with a new
-    spliced edge. The new edge's `geom` attribute will retain the geometric properties of the original edges.
+    A degree-2 node has exactly one road in and one road out — it is a waypoint along a street, not an intersection or
+    decision point. These are common in datasets where curved roads are represented by sequences of nodes tracing the
+    road geometry. This method removes such nodes and merges the two edges on either side into a single edge whose
+    `geom` attribute retains the geometric detail of the originals.
 
     :::note
-    Filler nodes may be prevalent in poor quality datasets, or in situations where curved roadways have been represented
-    through the addition of nodes to describe arced geometries. `cityseer` uses `shapely` `Linestrings` to describe
-    arbitrary road geometries without the need for filler nodes. Filler nodes can therefore be removed, thus reducing
-    side-effects as a function of varied node intensities when computing network centralities.
+    Since `cityseer` uses `shapely` `Linestrings` to describe arbitrary road curvature, intermediate nodes are
+    unnecessary. Removing them produces cleaner networks and prevents variations in node density from distorting
+    centrality calculations.
     :::
 
     Parameters
@@ -134,6 +143,20 @@ def nx_remove_filler_nodes(nx_multigraph: nx.MultiGraph) -> nx.MultiGraph:
     MultiGraph
         A `networkX` `MultiGraph` with nodes of degree=2 removed. Adjacent edges will be combined into a unified new
         edge with associated `geom` attributes spliced together.
+
+    Examples
+    --------
+    ```python
+    from cityseer.tools import mock, graphs
+
+    G = mock.mock_graph()
+    G = graphs.nx_simple_geoms(G)
+    G_clean = graphs.nx_remove_filler_nodes(G)
+    ```
+
+    For a worked example, see the
+    [Network Simplification](https://cityseer.benchmarkurbanism.com/examples/networks/network-simplification)
+    recipe.
 
     """
 
@@ -447,10 +470,10 @@ def nx_merge_parallel_edges(
     osm_hwy_target_tags: list[str]
         An optional list of OpenStreetMap target highway tags. If provided, only nodes with neighbouring edges
         containing a tag matching one of the target OSM highway tags will be consolidated. Requires graph prepared with
-        via [`io.osm_graph_from_poly`](/io#osm-graph-from-poly).
+        via [`io.osm_graph_from_poly`](/tools/io#osm_graph_from_poly).
     osm_matched_tags_only: bool
         Whether to only merge edges with shared OSM `name` or `ref` tags. False by default. Requires graph prepared with
-        via [`io.osm_graph_from_poly`](/io#osm-graph-from-poly).
+        via [`io.osm_graph_from_poly`](/tools/io#osm_graph_from_poly).
 
     Returns
     -------
@@ -530,8 +553,10 @@ def nx_merge_parallel_edges(
             # otherwise weld the geoms, using the shortest as a yardstick
             else:
                 # iterate the coordinates along the shorter geom
-                # starting and endpoint geoms already match
-                new_coords = []
+                # starting and endpoint geoms already match. Annotate so ty doesn't widen the
+                # list to `list[tuple[int|float, ...]]` when mixing 2- and 3-tuples, which would
+                # break the call to snap_linestring_endpoints below.
+                new_coords: list[tuple[float, float] | tuple[float, float, float]] = []
                 use_z = shortest_geom.has_z
                 for coord in shortest_geom.coords:
                     # from the current short_geom coordinate
@@ -555,12 +580,18 @@ def nx_merge_parallel_edges(
                     if use_z:
                         z_vals = [c[2] for c in [p.coords[0] for p in multi_coords] if len(c) == 3]
                         mid_z = float(np.mean(z_vals)) if z_vals else coord[2] if len(coord) == 3 else 0.0
-                        new_coords.append((mid_point.x, mid_point.y, mid_z))
+                        # Cast shapely point coords to float so ty infers a stable tuple type
+                        # across shapely-stub versions (which otherwise leave `.x`/`.y` as Unknown).
+                        new_coords.append((float(mid_point.x), float(mid_point.y), float(mid_z)))
                     else:
-                        new_coords.append((mid_point.x, mid_point.y))
-                # generate the new mid-line geom
-                new_coords = util.snap_linestring_endpoints(deduped_graph, start_nd_key, end_nd_key, new_coords)
-                new_geom = geometry.LineString(new_coords)
+                        new_coords.append((float(mid_point.x), float(mid_point.y)))
+                # generate the new mid-line geom.
+                # `list` is invariant in ty, so the narrower `list[tuple[..] | tuple[..]]` annotation
+                # above isn't accepted where `list[CoordsType]` is required; cast to bridge it.
+                snapped_coords = util.snap_linestring_endpoints(
+                    deduped_graph, start_nd_key, end_nd_key, cast(util.ListCoordsType, new_coords)
+                )
+                new_geom = geometry.LineString(snapped_coords)
                 # Skip degenerate (zero-length) geometries - use shortest_geom as fallback
                 if new_geom.length < 0.001:
                     new_geom = shortest_geom
@@ -992,7 +1023,7 @@ def _squash_adjacent(
                 for edge_data in nx_multigraph[nd_key][nb_nd_key].values():
                     if "geom" not in edge_data:
                         raise KeyError(f'Missing "geom" attribute for edge {nd_key}-{nb_nd_key}')
-                    line_geom: geometry.LineString | None = edge_data["geom"]
+                    line_geom: geometry.LineString = edge_data["geom"]
                     # orient the LineString so that the geom starts from the node's x_y
                     line_coords = util.align_linestring_coords(line_geom.coords, nd_xy)
                     # update geom starting point to new parent node's coordinates
@@ -1092,7 +1123,7 @@ def nx_consolidate_nodes(
     by a single new edge, with the new geometry selected from either:
     - An imaginary centreline of the combined edges if `merge_edges_by_midline` is set to `True`;
     - Else, the shortest edge, with longer edges discarded;
-    See [`nx_merge_parallel_edges`](#nx-merge-parallel-edges) for more information.
+    See [`nx_merge_parallel_edges`](#nx_merge_parallel_edges) for more information.
 
     Parameters
     ----------
@@ -1113,7 +1144,8 @@ def nx_consolidate_nodes(
         used where available. True by default.
     prioritise_by_hwy_tag: bool
         Whether to prioritise centroid locations by OSM highway tags. For example, trunk roads will have higher priority
-        than residential roads. Requires graph prepared with via [`io.osm_graph_from_poly`](/io#osm-graph-from-poly).
+        than residential roads. Requires a graph prepared via
+        [`io.osm_graph_from_poly`](/tools/io#osm_graph_from_poly).
         Defaults to False.
     merge_edges_by_midline: bool
         Whether to merge parallel edges by an imaginary centreline. If set to False, then the shortest edge will be
@@ -1124,10 +1156,10 @@ def nx_consolidate_nodes(
     osm_hwy_target_tags: list[str]
         An optional list of OpenStreetMap target highway tags. If provided, only nodes with neighbouring edges
         containing a tag matching one of the target OSM highway tags will be consolidated. Requires graph prepared with
-        via [`io.osm_graph_from_poly`](/io#osm-graph-from-poly).
+        via [`io.osm_graph_from_poly`](/tools/io#osm_graph_from_poly).
     osm_matched_tags_only: bool
         Whether to only merge edges with shared OSM `name` or `ref` tags. False by default. Requires graph prepared with
-        via [`io.osm_graph_from_poly`](/io#osm-graph-from-poly).
+        via [`io.osm_graph_from_poly`](/tools/io#osm_graph_from_poly).
     simplify_by_max_angle: int
         The optional maximum angle to permit for a given edge. Angles greater than this will be reduced.
 
@@ -1138,7 +1170,7 @@ def nx_consolidate_nodes(
 
     Examples
     --------
-    See the guide on [graph cleaning](/guide#graph-cleaning) for more information.
+    See the guide on [graph cleaning](/guide/fundamentals#automatic-graph-cleaning) for more information.
 
     ![Example raw graph from OSM](/images/graph_raw.png)
     _The pre-consolidation OSM street network for Soho, London. © OpenStreetMap contributors._
@@ -1325,7 +1357,7 @@ def nx_snap_gapped_endings(
         # the spatial index using bounding boxes, so further filtering is required (see further down)
         n_point = geometry.Point(nd_data["x"], nd_data["y"])
         # spatial query from point returns all buffers with buffer_dist
-        node_hits: list[dict] = nodes_tree.query(n_point.buffer(buffer_dist))
+        node_hits = nodes_tree.query(n_point.buffer(buffer_dist))
         # extract the start node, end node, geom
         node_keys: list = []
         for node_hit_idx in node_hits:
@@ -1375,7 +1407,7 @@ def nx_snap_gapped_endings(
                 start_nd_key = edge_lookup["start_nd_key"]
                 end_nd_key = edge_lookup["end_nd_key"]
                 edge_idx = edge_lookup["edge_idx"]
-                edge_geom: dict = nx_multigraph[start_nd_key][end_nd_key][edge_idx]["geom"]
+                edge_geom: geometry.LineString = nx_multigraph[start_nd_key][end_nd_key][edge_idx]["geom"]
                 if edge_geom.crosses(new_geom):
                     bail = True
                     break
@@ -1428,7 +1460,7 @@ def nx_split_opposing_geoms(
     by a single new edge, with the new geometry selected from either:
         - An imaginary centreline of the combined edges if `merge_edges_by_midline` is set to `True`;
         - Else, the shortest edge, with longer edges discarded.
-    See [`nx_merge_parallel_edges`](#nx-merge-parallel-edges) for more information.
+    See [`nx_merge_parallel_edges`](#nx_merge_parallel_edges) for more information.
 
     Parameters
     ----------
@@ -1445,15 +1477,16 @@ def nx_split_opposing_geoms(
         sufficiently adjacent to be merged.
     prioritise_by_hwy_tag: bool
         Whether to prioritise centroid locations by OSM highway tags. For example, trunk roads will have higher priority
-        than residential roads. Requires graph prepared with via [`io.osm_graph_from_poly`](/io#osm-graph-from-poly).
+        than residential roads. Requires a graph prepared via
+        [`io.osm_graph_from_poly`](/tools/io#osm_graph_from_poly).
         Defaults to False.
     osm_hwy_target_tags: list[str]
         An optional list of OpenStreetMap target highway tags. If provided, only nodes with neighbouring edges
         containing a tag matching one of the target OSM highway tags will be consolidated. Requires graph prepared with
-        via [`io.osm_graph_from_poly`](/io#osm-graph-from-poly).
+        via [`io.osm_graph_from_poly`](/tools/io#osm_graph_from_poly).
     osm_matched_tags_only: bool
         Whether to only merge edges with shared OSM `name` or `ref` tags. False by default. Requires graph prepared with
-        via [`io.osm_graph_from_poly`](/io#osm-graph-from-poly).
+        via [`io.osm_graph_from_poly`](/tools/io#osm_graph_from_poly).
     min_node_degree: int
         Only project nodes with at least node degree of `min_node_degree`.
     max_node_degree: int
@@ -1796,7 +1829,7 @@ def nx_split_opposing_geoms(
                     start_nd_key = edge_lookup["start_nd_key"]
                     end_nd_key = edge_lookup["end_nd_key"]
                     edge_idx = edge_lookup["edge_idx"]
-                    edge_geom: dict = nx_multigraph[start_nd_key][end_nd_key][edge_idx]["geom"]
+                    edge_geom: geometry.LineString = nx_multigraph[start_nd_key][end_nd_key][edge_idx]["geom"]
                     # use distance to catch "crossing" where curved geoms lead to issues
                     if new_geom.crosses(edge_geom) and round(new_end_pnt.distance(edge_geom), 3) > 0:
                         bail = True
@@ -1834,8 +1867,9 @@ def nx_decompose(
     """
     Decomposes a graph so that no edge is longer than a set maximum.
 
-    Decomposition provides a more granular representation of potential variations along street lengths, while reducing
-    network centrality side-effects that arise as a consequence of varied node densities.
+    Long street segments are split into shorter pieces of uniform length. This ensures that variations along a
+    street (e.g. land uses at the 100m mark vs. the 300m mark) are captured at finer resolution, and prevents
+    long streets from having disproportionate influence on centrality calculations due to uneven node spacing.
 
     :::note
     Setting the `decompose` parameter too small in relation to the size of the graph may increase the computation time
@@ -1853,7 +1887,7 @@ def nx_decompose(
     osm_hwy_target_tags: list[str]
         An optional list of OpenStreetMap target highway tags. If provided, only nodes with neighbouring edges
         containing a tag matching one of the target OSM highway tags will be decomposed. Requires graph prepared with
-        via [`io.osm_graph_from_poly`](/io#osm-graph-from-poly).
+        via [`io.osm_graph_from_poly`](/tools/io#osm_graph_from_poly).
 
     Returns
     -------
@@ -1991,7 +2025,9 @@ def nx_to_dual(nx_multigraph: nx.MultiGraph) -> nx.MultiGraph:
         to `live=True`. Otherwise, all dual nodes wil be set to `live=True`. The primal edges will be split and welded
         to form the new dual `geom` edges. The primal `LineString` `geom` will be saved to the dual node's `primal_edge`
         attribute. `primal_edge_node_a`, `primal_edge_node_b`, and `primal_edge_idx` attributes will be added to the new
-        (dual) nodes, and a `primal_node_id` edge attribute will be added to the new (dual) edges.
+        (dual) nodes, and a `primal_node_id` edge attribute will be added to the new (dual) edges. Any per-edge
+        `imp_factor` on the primal graph is propagated to each dual edge as the length-weighted mean of the two
+        adjacent primal segments' impedances (default `1.0`).
 
     Examples
     --------
@@ -2103,13 +2139,18 @@ def nx_to_dual(nx_multigraph: nx.MultiGraph) -> nx.MultiGraph:
         set_live(start_nd_key, end_nd_key, dual_node_key)
     # add dual edges
     logger.info("Preparing dual edges (splitting and welding geoms)")
-    for start_nd_key, end_nd_key, edge_idx in tqdm(
+    for start_nd_key, end_nd_key, hub_edge_idx in tqdm(
         nx_multigraph.edges(data=False, keys=True),
         disable=config.QUIET_MODE,
     ):
-        hub_node_dual = prepare_dual_node_key(start_nd_key, end_nd_key, edge_idx)
+        hub_node_dual = prepare_dual_node_key(start_nd_key, end_nd_key, hub_edge_idx)
         # get the first and second half geoms
-        s_half_geom, e_half_geom = get_half_geoms(nx_multigraph, start_nd_key, end_nd_key, edge_idx)
+        s_half_geom, e_half_geom = get_half_geoms(nx_multigraph, start_nd_key, end_nd_key, hub_edge_idx)
+        # cache primal data for the hub edge — impedance will be propagated to each dual edge as
+        # the length-weighted mean of the two adjacent primal segments' imp_factors.
+        hub_edge_data: EdgeData = nx_multigraph[start_nd_key][end_nd_key][hub_edge_idx]
+        hub_len = float(hub_edge_data.get("geom").length)  # type: ignore
+        hub_imp = float(hub_edge_data.get("imp_factor", 1.0))
         # process either side
         for n_side, m_side, half_geom in zip(
             [start_nd_key, end_nd_key],
@@ -2124,13 +2165,13 @@ def nx_to_dual(nx_multigraph: nx.MultiGraph) -> nx.MultiGraph:
                 if nb_nd_key == m_side:
                     continue
                 # add the neighbouring primal edges as dual nodes
-                for edge_idx in nx_multigraph[n_side][nb_nd_key]:
-                    spoke_node_dual = prepare_dual_node_key(n_side, nb_nd_key, edge_idx)  # type: ignore
+                for spoke_edge_idx in nx_multigraph[n_side][nb_nd_key]:
+                    spoke_node_dual = prepare_dual_node_key(n_side, nb_nd_key, spoke_edge_idx)  # type: ignore
                     # skip if the edge has already been processed from another direction
                     if g_dual.has_edge(hub_node_dual, spoke_node_dual):
                         continue
                     # get the near and far half geoms
-                    spoke_half_geom, _discard_geom = get_half_geoms(nx_multigraph, n_side, nb_nd_key, edge_idx)  # type: ignore
+                    spoke_half_geom, _discard_geom = get_half_geoms(nx_multigraph, n_side, nb_nd_key, spoke_edge_idx)  # type: ignore
                     # weld the lines
                     merged_line: geometry.LineString = ops.linemerge([half_geom, spoke_half_geom])
                     if merged_line.geom_type != "LineString":
@@ -2138,12 +2179,20 @@ def nx_to_dual(nx_multigraph: nx.MultiGraph) -> nx.MultiGraph:
                             f'Found {merged_line.geom_type} instead of "LineString" for new geom {merged_line.wkt}. '
                             f"Check that the LineStrings for {start_nd_key}-{end_nd_key} & {n_side}-{nb_nd_key} touch."
                         )
+                    # length-weighted mean of the two primal segments' impedances (the dual edge
+                    # traverses half of each), so an all-1.0 primal yields 1.0 on the dual.
+                    spoke_edge_data: EdgeData = nx_multigraph[n_side][nb_nd_key][spoke_edge_idx]
+                    spoke_len = float(spoke_edge_data.get("geom").length)  # type: ignore
+                    spoke_imp = float(spoke_edge_data.get("imp_factor", 1.0))
+                    total_len = hub_len + spoke_len
+                    dual_imp = (hub_len * hub_imp + spoke_len * spoke_imp) / total_len if total_len > 0.0 else 1.0
                     # add the dual edge
                     g_dual.add_edge(
                         hub_node_dual,
                         spoke_node_dual,
                         primal_node_id=n_side,
                         geom=merged_line,
+                        imp_factor=dual_imp,
                     )
 
     return util.validate_cityseer_networkx_graph(g_dual)

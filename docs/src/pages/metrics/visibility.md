@@ -6,7 +6,7 @@ layout: ../../layouts/PageLayout.astro
 # visibility
 
 
- Visibility and viewshed analysis.
+ Visibility and viewshed analysis. Compute what can be seen from street-level observer locations, accounting for building obstructions. Produces visibility density maps (how many points can see each location), visibility distances to the horizon, and individual viewsheds (what is visible from a single point).
 
 
 <div class="function">

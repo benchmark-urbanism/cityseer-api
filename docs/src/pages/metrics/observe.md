@@ -6,7 +6,7 @@ layout: ../../layouts/PageLayout.astro
 # observe
 
 
- Observe module for computing observations derived from `networkX` graphs. These methods are generally sufficiently simple that further computational optimisation is not required. Network centrality methods (which do require further computational optimisation due to their complexity) are handled separately in the [`networks`](/metrics/networks) module.
+ Street continuity analysis. Identifies continuous street sequences — chains of connected street segments that share the same name, route number, or highway classification — and computes continuity metrics from `NetworkX` graphs. For network centrality methods, see the [`networks`](/metrics/networks) module.
 
 
 <div class="class">
@@ -267,7 +267,7 @@ layout: ../../layouts/PageLayout.astro
 </div>
 
 
- Compute the street continuity for a given graph. This requires a graph with `names`, `routes`, or `highways` edge keys corresponding to the selected `method` parameter. These keys are available if importing an OSM network with [`osm_graph_from_poly`](/tools/io#osm-graph-from-poly) or if importing OS Open Roads data with [nx_from_open_roads](/tools/io#nx-from-open-roads).
+ Compute the street continuity for a given graph. This requires a graph with `names`, `routes`, or `highways` edge keys corresponding to the selected `method` parameter. These keys are available if importing an OSM network with [`osm_graph_from_poly`](/tools/io#osm_graph_from_poly) or if importing OS Open Roads data with [nx_from_open_roads](/tools/io#nx_from_open_roads).
 ### Parameters
 <div class="param-set">
   <div class="def">
@@ -310,6 +310,9 @@ layout: ../../layouts/PageLayout.astro
  An instance of [`StreetContinuityReport`](/metrics/observe#streetcontinuityreport) containing the computed state for the selected method.</div>
 </div>
 
+### Notes
+
+ For worked examples, see the [Street Continuity from OSM](https://cityseer.benchmarkurbanism.com/examples/continuity/continuity-osm) recipe.
 
 </div>
 
@@ -335,7 +338,7 @@ layout: ../../layouts/PageLayout.astro
 </div>
 
 
- Compute the street continuity for a given graph using a hybridisation of routes and names continuity. Hybrid continuity merges route continuity and street continuity information where a route overlaps a street continuity.
+ Compute the street continuity for a given graph by combining route and name-based continuity. Where a named route (e.g. a bus route or highway number) runs along streets with consistent names, the two sources of continuity information are merged to produce a more complete picture of coherent street sequences.
 ### Parameters
 <div class="param-set">
   <div class="def">

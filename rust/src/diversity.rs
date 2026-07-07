@@ -74,12 +74,12 @@ pub fn hill_diversity(class_counts: Vec<u32>, q: f32) -> PyResult<f32> {
 }
 
 /// Internal Hill diversity branch-distance-weighted computation on slices.
+/// Accepts a weight function that computes a weight from a distance value.
 pub fn hill_diversity_branch_distance_wt_core(
     class_counts: &[u32],
     class_distances: &[f32],
     q: f32,
-    beta: f32,
-    max_curve_wt: f32,
+    wt_fn: &dyn Fn(f32) -> f32,
 ) -> PyResult<f32> {
     if class_counts.len() != class_distances.len() {
         return Err(exceptions::PyValueError::new_err(format!(
@@ -87,11 +87,6 @@ pub fn hill_diversity_branch_distance_wt_core(
             class_counts.len(),
             class_distances.len()
         )));
-    }
-    if beta < 0.0 {
-        return Err(exceptions::PyValueError::new_err(
-            "Beta must be non-negative.",
-        ));
     }
     if q < 0.0 {
         return Err(exceptions::PyValueError::new_err(
@@ -110,10 +105,8 @@ pub fn hill_diversity_branch_distance_wt_core(
         .filter_map(|(&count, &dist)| {
             if count > 0 {
                 let proportion = count as f32 / num_f32;
-                match common::clipped_beta_wt(beta, max_curve_wt, dist) {
-                    Ok(wt) => Some(Ok((proportion, wt))),
-                    Err(e) => Some(Err(e)),
-                }
+                let wt = wt_fn(dist);
+                Some(Ok((proportion, wt)))
             } else {
                 None
             }
@@ -182,16 +175,16 @@ pub fn hill_diversity_branch_distance_wt(
     beta: f32,
     max_curve_wt: f32,
 ) -> PyResult<f32> {
-    hill_diversity_branch_distance_wt_core(&class_counts, &class_distances, q, beta, max_curve_wt)
+    let wt_fn = |dist: f32| common::clipped_beta_wt(beta, max_curve_wt, dist).unwrap_or(0.0);
+    hill_diversity_branch_distance_wt_core(&class_counts, &class_distances, q, &wt_fn)
 }
 
-#[pyfunction]
-pub fn hill_diversity_pairwise_distance_wt(
-    class_counts: Vec<u32>,
-    class_distances: Vec<f32>,
+/// Internal pairwise Hill diversity computation on slices with a weight function.
+pub fn hill_diversity_pairwise_distance_wt_core(
+    class_counts: &[u32],
+    class_distances: &[f32],
     q: f32,
-    beta: f32,
-    max_curve_wt: f32,
+    wt_fn: &dyn Fn(f32) -> f32,
 ) -> PyResult<f32> {
     if class_counts.len() != class_distances.len() {
         return Err(exceptions::PyValueError::new_err(format!(
@@ -199,11 +192,6 @@ pub fn hill_diversity_pairwise_distance_wt(
             class_counts.len(),
             class_distances.len()
         )));
-    }
-    if beta < 0.0 {
-        return Err(exceptions::PyValueError::new_err(
-            "Beta must be non-negative.",
-        ));
     }
     if q < 0.0 {
         return Err(exceptions::PyValueError::new_err(
@@ -216,13 +204,11 @@ pub fn hill_diversity_pairwise_distance_wt(
     }
     let num_f32 = num as f32;
 
-    // Compute probabilities once for all indices
     let probabilities: Vec<f32> = class_counts
         .iter()
         .map(|&count| count as f32 / num_f32)
         .collect();
 
-    // Use iterators for both i and j for clarity and consistency
     let mut agg_q = 0.0;
     for i in 0..class_counts.len() {
         let count_i = class_counts[i];
@@ -236,11 +222,7 @@ pub fn hill_diversity_pairwise_distance_wt(
                 continue;
             }
             let a_j = probabilities[j];
-            let wt = common::clipped_beta_wt(
-                beta,
-                max_curve_wt,
-                class_distances[i] + class_distances[j],
-            )?;
+            let wt = wt_fn(class_distances[i] + class_distances[j]);
             agg_q += wt * a_i * a_j;
         }
     }
@@ -263,11 +245,7 @@ pub fn hill_diversity_pairwise_distance_wt(
                     continue;
                 }
                 let a_j = probabilities[j];
-                let wt = common::clipped_beta_wt(
-                    beta,
-                    max_curve_wt,
-                    class_distances[i] + class_distances[j],
-                )?;
+                let wt = wt_fn(class_distances[i] + class_distances[j]);
                 let effective_prop = wt * a_i * a_j / agg_q;
                 if effective_prop > 0.0 {
                     weighted_entropy_sum += effective_prop * effective_prop.ln();
@@ -301,11 +279,7 @@ pub fn hill_diversity_pairwise_distance_wt(
                     continue;
                 }
                 let a_j = probabilities[j];
-                let wt = common::clipped_beta_wt(
-                    beta,
-                    max_curve_wt,
-                    class_distances[i] + class_distances[j],
-                )?;
+                let wt = wt_fn(class_distances[i] + class_distances[j]);
                 diversity_term_sum += wt * (a_i * a_j / agg_q).powf(q);
             }
         }
@@ -335,6 +309,18 @@ pub fn hill_diversity_pairwise_distance_wt(
         }
         Ok(result)
     }
+}
+
+#[pyfunction]
+pub fn hill_diversity_pairwise_distance_wt(
+    class_counts: Vec<u32>,
+    class_distances: Vec<f32>,
+    q: f32,
+    beta: f32,
+    max_curve_wt: f32,
+) -> PyResult<f32> {
+    let wt_fn = |dist: f32| common::clipped_beta_wt(beta, max_curve_wt, dist).unwrap_or(0.0);
+    hill_diversity_pairwise_distance_wt_core(&class_counts, &class_distances, q, &wt_fn)
 }
 
 /// Internal Gini-Simpson diversity computation on slices.
