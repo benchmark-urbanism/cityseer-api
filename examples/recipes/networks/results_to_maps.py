@@ -116,23 +116,13 @@ def _(mo):
 
 @app.cell
 def _(np, plt, results_gdf):
-    from matplotlib.colors import BoundaryNorm
-
-    live_gdf = results_gdf[results_gdf.live]
-    col = "cc_betweenness_800"
-    breaks = np.unique(np.quantile(live_gdf[col], np.linspace(0, 1, 8)))
-    norm = BoundaryNorm(breaks, ncolors=256)
-    fig, ax = plt.subplots(figsize=(8, 8), dpi=150)
-    live_gdf.plot(
-        ax=ax,
-        column=col,
-        cmap="magma",
-        norm=norm,
-        linewidth=0.3 + 1.2 * live_gdf[col].rank(pct=True),
-        legend=True,
-        legend_kwds={"label": "Betweenness, 800 m walking threshold", "shrink": 0.6},
-    )
-    ax.set_title("Streets carrying pedestrian through-movement in the study area")
+    # betweenness intensity: OrRd rank style, width and colour by percentile, no colour bar
+    g = results_gdf[results_gdf.live].copy()
+    g["_r"] = g["cc_betweenness_800"].rank(pct=True)
+    g = g.sort_values("_r")  # strongest drawn last, on top
+    fig, ax = plt.subplots(figsize=(7, 7), dpi=150)
+    g.plot(ax=ax, color=plt.get_cmap("OrRd")(g["_r"]), linewidth=0.15 + 2.25 * g["_r"])
+    ax.set_title("Streets carrying pedestrian through-movement in the study area", loc="left")
     ax.set_axis_off()
     fig.tight_layout()
     fig

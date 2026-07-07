@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 from pathlib import Path
 from typing import Any, cast
 
@@ -41,6 +42,16 @@ from ..tools.util import EdgeData, ListCoordsType, NodeData, NodeKey
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# Default Overpass endpoint. overpass-api.de is fast but rate-limits under heavy use; if you
+# hit 429s, point CITYSEER_OVERPASS_URL (or the overpass_url argument) at a mirror such as
+# https://overpass.kumi.systems/api/interpreter, which is more generous but slower.
+DEFAULT_OVERPASS_URL = "https://overpass-api.de/api/interpreter"
+
+
+def _resolve_overpass_url(overpass_url: str | None) -> str:
+    """Endpoint precedence: explicit argument, then env var, then the default."""
+    return overpass_url or os.environ.get("CITYSEER_OVERPASS_URL") or DEFAULT_OVERPASS_URL
 
 
 SPEED_M_S = config.SPEED_M_S
@@ -190,7 +201,9 @@ def buffered_point_poly(lng: float, lat: float, buffer: int, projected: bool = F
     return util.project_geom(poly_utm, utm_epsg_code, 4326), 4326
 
 
-def fetch_osm_network(osm_request: str, timeout: int = 300, max_tries: int = 3) -> requests.Response | None:
+def fetch_osm_network(
+    osm_request: str, timeout: int = 300, max_tries: int = 3, overpass_url: str | None = None
+) -> requests.Response | None:
     """
     Fetches an OSM response.
 
@@ -209,6 +222,10 @@ def fetch_osm_network(osm_request: str, timeout: int = 300, max_tries: int = 3) 
         Timeout duration for API call in seconds.
     max_tries: int
         The number of attempts to fetch a response before raising.
+    overpass_url: str | None
+        The Overpass API endpoint. If not provided, the `CITYSEER_OVERPASS_URL` environment
+        variable is used, falling back to `https://overpass-api.de/api/interpreter`. Pass a
+        more generous mirror if the default rate-limits.
 
     Returns
     -------
@@ -216,10 +233,11 @@ def fetch_osm_network(osm_request: str, timeout: int = 300, max_tries: int = 3) 
         An OSM API response.
 
     """
+    endpoint = _resolve_overpass_url(overpass_url)
     osm_response: requests.Response | None = None
     while max_tries:
         osm_response = requests.get(
-            "https://overpass-api.de/api/interpreter",
+            endpoint,
             timeout=timeout,
             params={"data": osm_request},
             # Overpass rejects generic python user agents with 406 Not Acceptable
@@ -544,10 +562,10 @@ def osm_graph_from_poly(
     green_service_roads: bool = False,
     timeout: int = 300,
     max_tries: int = 3,
+    overpass_url: str | None = None,
+    cache_path: str | Path | None = None,
 ) -> nx.MultiGraph:  # noqa
-    """
-
-    Prepares a `networkX` `MultiGraph` from an OSM request for the specified shapely polygon. This function will
+    """Prepares a `networkX` `MultiGraph` from an OSM request for the specified shapely polygon. This function will
     retrieve the OSM response and will automatically unpack this into a `networkX` graph. Simplification will be applied
     by default, but can be disabled.
 
@@ -588,6 +606,15 @@ def osm_graph_from_poly(
         Timeout duration for API call in seconds.
     max_tries: int
         The number of attempts to fetch a response before raising.
+    overpass_url: str | None
+        The Overpass API endpoint. If not provided, the `CITYSEER_OVERPASS_URL` environment
+        variable is used, falling back to `https://overpass-api.de/api/interpreter`. Pass a
+        more generous mirror if the default rate-limits.
+    cache_path: str | Path | None
+        An optional file path for caching the raw Overpass response. If the file exists it is
+        loaded instead of querying the API; otherwise the response is fetched and written there.
+        Commit the cache to make repeated or offline builds independent of the live API. Delete
+        the file to force a refresh.
 
     Returns
     -------
@@ -660,10 +687,22 @@ def osm_graph_from_poly(
         >;
         out qt;
         """
-    # generate the query
-    osm_response = fetch_osm_network(request, timeout=timeout, max_tries=max_tries)
+    # fetch the Overpass response, using a committed cache when available so repeated runs and
+    # offline builds do not depend on the (rate-limited) live API. The cache stores the raw
+    # Overpass JSON keyed by the caller's path; delete the file to force a refresh.
+    cache_file = Path(cache_path) if cache_path is not None else None
+    if cache_file is not None and cache_file.exists():
+        logger.info(f"Loading cached OSM response from {cache_file}")
+        osm_json = cache_file.read_text()
+    else:
+        osm_response = fetch_osm_network(request, timeout=timeout, max_tries=max_tries, overpass_url=overpass_url)
+        osm_json = cast("requests.Response", osm_response).text
+        if cache_file is not None:
+            cache_file.parent.mkdir(parents=True, exist_ok=True)
+            cache_file.write_text(osm_json)
+            logger.info(f"Cached OSM response to {cache_file}")
     # build graph
-    graph_wgs = nx_from_osm(osm_json=osm_response.text)  # type: ignore
+    graph_wgs = nx_from_osm(osm_json=osm_json)
     graph_wgs = graphs.nx_simple_geoms(graph_wgs)
     # extract CRS code if necessary
     if to_crs_code is None:

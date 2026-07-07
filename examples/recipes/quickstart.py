@@ -114,17 +114,12 @@ def _():
     # 4. Export with street geometries and plot betweenness at 1000m
     edges_gdf = cn.to_geopandas()
     # betweenness is heavily skewed: map the percentile rank so the pattern is legible
-    edges_gdf["btw_rank"] = edges_gdf["cc_betweenness_1000"].rank(pct=True)
-    fig, ax = plt.subplots(1, 1, figsize=(8, 6), dpi=150)
-    edges_gdf.plot(
-        ax=ax,
-        column="btw_rank",
-        cmap="magma",
-        linewidth=1,
-        legend=True,
-        legend_kwds={"label": "Betweenness, 1000 m (percentile)", "shrink": 0.6},
-    )
-    ax.set_title("Betweenness, 1000 m")
+    g = edges_gdf.copy()
+    g["_r"] = g["cc_betweenness_1000"].rank(pct=True)
+    g = g.sort_values("_r")  # strongest drawn last, on top
+    fig, ax = plt.subplots(1, 1, figsize=(7, 7), dpi=150)
+    g.plot(ax=ax, color=plt.get_cmap("OrRd")(g["_r"]), linewidth=0.15 + 2.25 * g["_r"])
+    ax.set_title("Betweenness, 1000 m", loc="left")
     ax.set_axis_off()
     fig.tight_layout()
     fig

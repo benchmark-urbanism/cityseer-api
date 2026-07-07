@@ -39,7 +39,7 @@ Accessible via **Processing > Cityseer > Network Centrality**.
 
 ## Metric Selection
 
-The algorithm dialog provides a 2x2 grid of metric categories. Each category can be toggled on or off independently, and individual metrics within each category are selected independently — enabling a metric in one category does not affect other categories.
+The algorithm dialog provides a 2x2 grid of metric categories. Each category can be toggled on or off independently, and individual metrics within each category are selected independently. Enabling a metric in one category does not affect other categories.
 
 |                 | Shortest path                                     | Simplest path (angular)             |
 | --------------- | ------------------------------------------------- | ----------------------------------- |
@@ -98,7 +98,7 @@ Accessible via **Processing > Cityseer > Accessibility**. Computes land-use acce
 
 ## Land-Use Categories
 
-If a land-use field is selected, the dialog provides a **Load categories** button that reads unique values from the selected field. Individual categories can then be checked or unchecked. Categories are unchecked by default — use **Select all** to enable all categories, or check specific ones. Only text (string) columns are available for the land-use field.
+If a land-use field is selected, the dialog provides a **Load categories** button that reads unique values from the selected field. Individual categories can then be checked or unchecked. Categories are unchecked by default; use **Select all** to enable all categories, or check specific ones. Only text (string) columns are available for the land-use field.
 
 If no land-use field is selected, all features are counted together under a single category (`all`).
 

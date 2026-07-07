@@ -144,39 +144,47 @@ def _(base_gdf, metro_gdf):
 
 @app.cell
 def _(base_gdf, metro_gdf, plt, stops_gdf):
-    fig, axes = plt.subplots(3, 1, figsize=(8, 20), dpi=150)
-    base_gdf.plot(
-        column="cc_harmonic_1000",
-        cmap="magma",
-        legend=True,
-        legend_kwds={"label": "Harmonic closeness, 1000 m", "shrink": 0.6},
-        ax=axes[0],
-        vmax=5,
-    )
-    axes[0].set_title("Harmonic closeness, 1000 m (without metro)")
-    stops_gdf.plot(ax=axes[0], color="red", markersize=1)
-    metro_gdf.plot(
-        column="cc_harmonic_1000",
-        cmap="magma",
-        legend=True,
-        legend_kwds={"label": "Harmonic closeness, 1000 m", "shrink": 0.6},
-        ax=axes[1],
-        vmax=5,
-    )
-    axes[1].set_title("Harmonic closeness, 1000 m (with metro)")
-    stops_gdf.plot(ax=axes[1], color="red", markersize=1)
-    metro_gdf.plot(
-        column="cc_harmonic_1000_diff",
-        cmap="viridis",
-        legend=True,
-        legend_kwds={"label": "Closeness difference due to metro", "shrink": 0.6},
-        ax=axes[2],
-    )
-    axes[2].set_title("Difference due to metro stops, 1000 m")
+    import matplotlib.colors as mcolors
+
+    fig, axes = plt.subplots(3, 1, figsize=(6.5, 19.5), dpi=150)
+    # sequential closeness panels: OrRd, edge width by percentile rank, no colour bar
+    for _ax, _gdf, _title in [
+        (axes[0], base_gdf, "Harmonic closeness, 1000 m (without metro)"),
+        (axes[1], metro_gdf, "Harmonic closeness, 1000 m (with metro)"),
+    ]:
+        g = _gdf.copy()
+        if "live" in g.columns:
+            g = g[g.live].copy()
+        g["_r"] = g["cc_harmonic_1000"].rank(pct=True)
+        g = g.sort_values("_r")
+        g.plot(ax=_ax, color=plt.get_cmap("OrRd")(g["_r"]), linewidth=0.15 + 2.25 * g["_r"])
+        _ax.set_title(_title, loc="left")
+        # transit stops as neutral dark markers; red now signifies flow intensity
+        stops_gdf.plot(ax=_ax, color="#333333", markersize=1)
+    # difference panel: signed, diverging, colour bar kept
+    try:
+        norm = mcolors.TwoSlopeNorm(vcenter=0)
+        metro_gdf.plot(
+            ax=axes[2],
+            column="cc_harmonic_1000_diff",
+            cmap="coolwarm",
+            norm=norm,
+            legend=True,
+            legend_kwds={"shrink": 0.6},
+        )
+    except ValueError:
+        metro_gdf.plot(
+            ax=axes[2],
+            column="cc_harmonic_1000_diff",
+            cmap="coolwarm",
+            legend=True,
+            legend_kwds={"shrink": 0.6},
+        )
+    axes[2].set_title("Difference due to metro stops, 1000 m", loc="left")
     for ax in axes:
         ax.set_xlim(438500, 438500 + 3500)
         ax.set_ylim(4472500, 4472500 + 3500)
-        ax.axis(False)
+        ax.set_axis_off()
     plt.tight_layout()
     fig
     return

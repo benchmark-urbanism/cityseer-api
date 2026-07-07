@@ -110,34 +110,28 @@ def _(mo):
 
 @app.cell
 def _(nodes_gdf_1, plt):
-    _fig, _ax = plt.subplots(1, 1, figsize=(8, 6), dpi=150)
-    nodes_gdf_1.plot(
-        column="cc_hillier_500",
-        cmap="magma",
-        legend=True,
-        legend_kwds={"label": "Hillier closeness, 500 m", "shrink": 0.6},
-        ax=_ax,
-    )
-    _ax.set_title("Hillier closeness, 500 m")
+    _fig, _ax = plt.subplots(1, 1, figsize=(7, 7), dpi=150)
+    _g = nodes_gdf_1.copy()
+    _g["_r"] = _g["cc_hillier_500"].rank(pct=True)
+    _g = _g.sort_values("_r")  # strongest drawn last, on top
+    _g.plot(ax=_ax, color=plt.get_cmap("OrRd")(_g["_r"]), linewidth=0.15 + 2.25 * _g["_r"])
+    _ax.set_title("Hillier closeness, 500 m", loc="left")
+    _ax.set_axis_off()
     _fig.tight_layout()
-    _ax.axis(False)
     _fig
     return
 
 
 @app.cell
 def _(nodes_gdf_1, plt):
-    _fig, _ax = plt.subplots(1, 1, figsize=(8, 6), dpi=150)
-    nodes_gdf_1.plot(
-        column="cc_betweenness_1000",
-        cmap="magma",
-        legend=True,
-        legend_kwds={"label": "Betweenness, 1000 m", "shrink": 0.6},
-        ax=_ax,
-    )
-    _ax.set_title("Betweenness, 1000 m")
+    _fig, _ax = plt.subplots(1, 1, figsize=(7, 7), dpi=150)
+    _g = nodes_gdf_1.copy()
+    _g["_r"] = _g["cc_betweenness_1000"].rank(pct=True)
+    _g = _g.sort_values("_r")  # strongest drawn last, on top
+    _g.plot(ax=_ax, color=plt.get_cmap("OrRd")(_g["_r"]), linewidth=0.15 + 2.25 * _g["_r"])
+    _ax.set_title("Betweenness, 1000 m", loc="left")
+    _ax.set_axis_off()
     _fig.tight_layout()
-    _ax.axis(False)
     _fig
     return
 

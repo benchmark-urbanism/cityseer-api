@@ -49,7 +49,9 @@ export const sections: Section[] = [
         items: [
           { path: '/guide/fundamentals', label: 'Fundamentals' },
           { path: '/guide/networks', label: 'Networks' },
+          { path: '/guide/cleaning', label: 'Network Cleaning' },
           { path: '/guide/centrality', label: 'Centrality' },
+          { path: '/guide/flows', label: 'Origin-Destination Flows' },
           { path: '/guide/land-use', label: 'Land-Use' },
           { path: '/guide/interpretation', label: 'Interpretation' },
           { path: '/guide/troubleshooting', label: 'Troubleshooting' },
@@ -72,6 +74,7 @@ export const sections: Section[] = [
         items: [
           { path: '/examples/networks', label: 'Network Preparation' },
           { path: '/examples/centrality', label: 'Centrality' },
+          { path: '/examples/flows', label: 'Origin-Destination Flows' },
           { path: '/examples/accessibility', label: 'Accessibility' },
           { path: '/examples/stats', label: 'Statistics' },
           { path: '/examples/visibility', label: 'Visibility' },

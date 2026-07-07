@@ -128,18 +128,15 @@ def _(nodes_gdf_1):
 
 @app.cell
 def _(nodes_gdf_1, plt, prems_gpd_1):
-    _fig, _ax = plt.subplots(1, 1, figsize=(8, 8), dpi=150)
-    nodes_gdf_1.plot(
-        column="cc_retail_400",
-        cmap="inferno",
-        legend=True,
-        legend_kwds={"label": "Retail accessibility, 400 m", "shrink": 0.6},
-        ax=_ax,
-    )
+    _g = nodes_gdf_1[nodes_gdf_1.live].copy()
+    _g["_r"] = _g["cc_retail_400"].rank(pct=True)
+    _g = _g.sort_values("_r")
+    _fig, _ax = plt.subplots(1, 1, figsize=(7, 7), dpi=150)
+    _g.plot(ax=_ax, color=plt.get_cmap("OrRd")(_g["_r"]), linewidth=0.15 + 2.25 * _g["_r"])
     prems_gpd_1[prems_gpd_1["division_desc"] == "retail"].plot(
-        markersize=1, edgecolor=None, color="white", legend=False, ax=_ax
+        markersize=1, edgecolor=None, color="#333333", legend=False, ax=_ax
     )
-    _ax.set_title("Retail accessibility, 400 m")
+    _ax.set_title("Retail accessibility, 400 m", loc="left")
     _ax.set_xlim(439000, 439000 + 2500)
     _ax.set_ylim(4473000, 4473000 + 2500)
     _ax.set_axis_off()
@@ -150,18 +147,15 @@ def _(nodes_gdf_1, plt, prems_gpd_1):
 
 @app.cell
 def _(nodes_gdf_1, plt, prems_gpd_1):
-    _fig, _ax = plt.subplots(1, 1, figsize=(8, 8), dpi=150)
-    nodes_gdf_1.plot(
-        column="cc_food_bev_200",
-        cmap="magma",
-        legend=True,
-        legend_kwds={"label": "Food and beverage accessibility, 200 m", "shrink": 0.6},
-        ax=_ax,
-    )
+    _g = nodes_gdf_1[nodes_gdf_1.live].copy()
+    _g["_r"] = _g["cc_food_bev_200"].rank(pct=True)
+    _g = _g.sort_values("_r")
+    _fig, _ax = plt.subplots(1, 1, figsize=(7, 7), dpi=150)
+    _g.plot(ax=_ax, color=plt.get_cmap("OrRd")(_g["_r"]), linewidth=0.15 + 2.25 * _g["_r"])
     prems_gpd_1[prems_gpd_1["division_desc"] == "food_bev"].plot(
-        markersize=1, edgecolor=None, color="white", legend=False, ax=_ax
+        markersize=1, edgecolor=None, color="#333333", legend=False, ax=_ax
     )
-    _ax.set_title("Food and beverage accessibility, 200 m")
+    _ax.set_title("Food and beverage accessibility, 200 m", loc="left")
     _ax.set_xlim(439000, 439000 + 2500)
     _ax.set_ylim(4473000, 4473000 + 2500)
     _ax.set_axis_off()
@@ -173,18 +167,16 @@ def _(nodes_gdf_1, plt, prems_gpd_1):
 @app.cell
 def _(nodes_gdf_1, plt, prems_gpd_1):
     nodes_gdf_1["cc_creat_entert_nearest_max_800"] = nodes_gdf_1["cc_creat_entert_nearest_max_800"].fillna(800)
-    _fig, _ax = plt.subplots(1, 1, figsize=(8, 8), dpi=150)
-    nodes_gdf_1.plot(
-        column="cc_creat_entert_nearest_max_800",
-        cmap="viridis_r",
-        legend=True,
-        legend_kwds={"label": "Distance to nearest creative or entertainment venue (m)", "shrink": 0.6},
-        ax=_ax,
-    )
+    _g = nodes_gdf_1[nodes_gdf_1.live].copy()
+    # proximity map: invert the rank so the nearest venues (smallest distance) read boldest
+    _g["_r"] = 1 - _g["cc_creat_entert_nearest_max_800"].rank(pct=True)
+    _g = _g.sort_values("_r")
+    _fig, _ax = plt.subplots(1, 1, figsize=(7, 7), dpi=150)
+    _g.plot(ax=_ax, color=plt.get_cmap("OrRd")(_g["_r"]), linewidth=0.15 + 2.25 * _g["_r"])
     prems_gpd_1[prems_gpd_1["division_desc"] == "creat_entert"].plot(
-        markersize=2, edgecolor=None, color="white", legend=False, ax=_ax
+        markersize=2, edgecolor=None, color="#333333", legend=False, ax=_ax
     )
-    _ax.set_title("Distance to nearest creative or entertainment venue, 800 m max")
+    _ax.set_title("Distance to nearest creative or entertainment venue, 800 m max", loc="left")
     _ax.set_xlim(439000, 439000 + 2500)
     _ax.set_ylim(4473000, 4473000 + 2500)
     _ax.set_axis_off()

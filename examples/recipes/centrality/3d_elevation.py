@@ -149,6 +149,8 @@ def _(mo):
 
 @app.cell
 def _(G_primal, griddata, nodes_flat, nodes_hilly, np, plt):
+    import matplotlib.colors as mcolors
+
     d = 1000
     harm_key = f"cc_harmonic_{d}_ang"
     betw_key = f"cc_betweenness_{d}_ang"
@@ -157,99 +159,44 @@ def _(G_primal, griddata, nodes_flat, nodes_hilly, np, plt):
     diff_gdf["betw_diff"] = nodes_hilly[betw_key].values - nodes_flat[betw_key].values
     _xlim = (438200, 441600)
     _ylim = (4521000, 4526000)
-    lw = 1.5
     _xs = np.array([nd["x"] for _, nd in G_primal.nodes(data=True)])
     _ys = np.array([nd["y"] for _, nd in G_primal.nodes(data=True)])
     _zs = np.array([nd["z"] for _, nd in G_primal.nodes(data=True)])
     _grid_x, _grid_y = np.mgrid[_xlim[0] : _xlim[1] : 200j, _ylim[0] : _ylim[1] : 200j]
     _grid_z = griddata((_xs, _ys), _zs, (_grid_x, _grid_y), method="cubic")
-    _fig, axes = plt.subplots(3, 2, figsize=(14, 21), dpi=150, gridspec_kw={"hspace": 0.02, "wspace": 0.02})
+    _fig, axes = plt.subplots(3, 2, figsize=(13, 19.5), dpi=150, gridspec_kw={"hspace": 0.02, "wspace": 0.02})
     for _ax in axes.flat:
         _ax.contour(_grid_x, _grid_y, _grid_z, levels=15, colors="k", linewidths=0.3, alpha=0.3)
-    nodes_flat.plot(
-        ax=axes[0, 0],
-        column=harm_key,
-        cmap="magma",
-        linewidth=lw,
-        legend=True,
-        legend_kwds={"label": f"Angular harmonic closeness, {d} m", "shrink": 0.6},
-    )
-    axes[0, 0].set_title(f"Harmonic closeness {d}m (flat)")
-    axes[0, 0].set_xlim(_xlim)
-    axes[0, 0].set_ylim(_ylim)
-    axes[0, 0].set_aspect("equal")
-    axes[0, 0].axis(False)
-    nodes_flat.plot(
-        ax=axes[0, 1],
-        column=betw_key,
-        cmap="magma",
-        linewidth=lw,
-        legend=True,
-        legend_kwds={"label": f"Angular betweenness, {d} m", "shrink": 0.6},
-    )
-    axes[0, 1].set_title(f"Betweenness {d}m (flat)")
-    axes[0, 1].set_xlim(_xlim)
-    axes[0, 1].set_ylim(_ylim)
-    axes[0, 1].set_aspect("equal")
-    axes[0, 1].axis(False)
-    nodes_hilly.plot(
-        ax=axes[1, 0],
-        column=harm_key,
-        cmap="magma",
-        linewidth=lw,
-        legend=True,
-        legend_kwds={"label": f"Angular harmonic closeness, {d} m", "shrink": 0.6},
-    )
-    axes[1, 0].set_title(f"Harmonic closeness {d}m (hilly)")
-    axes[1, 0].set_xlim(_xlim)
-    axes[1, 0].set_ylim(_ylim)
-    axes[1, 0].set_aspect("equal")
-    axes[1, 0].axis(False)
-    nodes_hilly.plot(
-        ax=axes[1, 1],
-        column=betw_key,
-        cmap="magma",
-        linewidth=lw,
-        legend=True,
-        legend_kwds={"label": f"Angular betweenness, {d} m", "shrink": 0.6},
-    )
-    axes[1, 1].set_title(f"Betweenness {d}m (hilly)")
-    axes[1, 1].set_xlim(_xlim)
-    axes[1, 1].set_ylim(_ylim)
-    axes[1, 1].set_aspect("equal")
-    axes[1, 1].axis(False)
-    vmax_h = np.abs(diff_gdf["harm_diff"]).max()
-    diff_gdf.plot(
-        ax=axes[2, 0],
-        column="harm_diff",
-        cmap="coolwarm",
-        linewidth=lw,
-        legend=True,
-        legend_kwds={"label": "Closeness difference, hilly minus flat", "shrink": 0.6},
-        vmin=-vmax_h,
-        vmax=vmax_h,
-    )
-    axes[2, 0].set_title(f"Harmonic closeness {d}m difference (hilly minus flat)")
-    axes[2, 0].set_xlim(_xlim)
-    axes[2, 0].set_ylim(_ylim)
-    axes[2, 0].set_aspect("equal")
-    axes[2, 0].axis(False)
-    vmax_b = np.abs(diff_gdf["betw_diff"]).max() / 4
-    diff_gdf.plot(
-        ax=axes[2, 1],
-        column="betw_diff",
-        cmap="coolwarm",
-        linewidth=lw,
-        legend=True,
-        legend_kwds={"label": "Betweenness difference, hilly minus flat", "shrink": 0.6},
-        vmin=-vmax_b,
-        vmax=vmax_b,
-    )
-    axes[2, 1].set_title(f"Betweenness {d}m difference (hilly minus flat)")
-    axes[2, 1].set_xlim(_xlim)
-    axes[2, 1].set_ylim(_ylim)
-    axes[2, 1].set_aspect("equal")
-    axes[2, 1].axis(False)
+    # sequential centrality panels: OrRd, edge width by percentile rank, no colour bar
+    for _ax, _gdf, _col, _title in [
+        (axes[0, 0], nodes_flat, harm_key, f"Harmonic closeness {d}m (flat)"),
+        (axes[0, 1], nodes_flat, betw_key, f"Betweenness {d}m (flat)"),
+        (axes[1, 0], nodes_hilly, harm_key, f"Harmonic closeness {d}m (hilly)"),
+        (axes[1, 1], nodes_hilly, betw_key, f"Betweenness {d}m (hilly)"),
+    ]:
+        g = _gdf.copy()
+        if "live" in g.columns:
+            g = g[g.live].copy()
+        g["_r"] = g[_col].rank(pct=True)
+        g = g.sort_values("_r")
+        g.plot(ax=_ax, color=plt.get_cmap("OrRd")(g["_r"]), linewidth=0.15 + 2.25 * g["_r"])
+        _ax.set_title(_title, loc="left")
+    # difference panels: signed, diverging, colour bar kept
+    for _ax, _col, _title in [
+        (axes[2, 0], "harm_diff", f"Harmonic closeness {d}m difference (hilly minus flat)"),
+        (axes[2, 1], "betw_diff", f"Betweenness {d}m difference (hilly minus flat)"),
+    ]:
+        try:
+            _norm = mcolors.TwoSlopeNorm(vcenter=0)
+            diff_gdf.plot(ax=_ax, column=_col, cmap="coolwarm", norm=_norm, legend=True, legend_kwds={"shrink": 0.6})
+        except ValueError:
+            diff_gdf.plot(ax=_ax, column=_col, cmap="coolwarm", legend=True, legend_kwds={"shrink": 0.6})
+        _ax.set_title(_title, loc="left")
+    for _ax in axes.flat:
+        _ax.set_xlim(_xlim)
+        _ax.set_ylim(_ylim)
+        _ax.set_aspect("equal")
+        _ax.set_axis_off()
     plt.show()
     return (d,)
 

@@ -122,15 +122,14 @@ def _(mo):
 
 @app.cell
 def _(nodes_gdf, plt):
-    _fig, _ax = plt.subplots(1, 1, figsize=(8, 6), dpi=150)
-    nodes_gdf.plot(
-        column="cc_harmonic_400",
-        cmap="magma",
-        legend=True,
-        legend_kwds={"label": "Harmonic closeness, 400 m", "shrink": 0.6},
-        ax=_ax,
-    )
-    _ax.set_title("Harmonic closeness, 400 m")
+    _fig, _ax = plt.subplots(1, 1, figsize=(7, 7), dpi=150)
+    # non-live (buffer) nodes have NaN values; draw them as a faint grey context layer
+    nodes_gdf[~nodes_gdf.live].plot(ax=_ax, color="#dddddd", linewidth=0.3)
+    _g = nodes_gdf[nodes_gdf.live].copy()
+    _g["_r"] = _g["cc_harmonic_400"].rank(pct=True)
+    _g = _g.sort_values("_r")  # strongest drawn last, on top
+    _g.plot(ax=_ax, color=plt.get_cmap("OrRd")(_g["_r"]), linewidth=0.15 + 2.25 * _g["_r"])
+    _ax.set_title("Harmonic closeness, 400 m (full network; buffer in grey)", loc="left")
     _ax.set_axis_off()
     _fig.tight_layout()
     _fig
@@ -147,16 +146,12 @@ def _(mo):
 
 @app.cell
 def _(nodes_gdf, plt):
-    _fig, _ax = plt.subplots(1, 1, figsize=(8, 6), dpi=150)
-    nodes_filtered = nodes_gdf[nodes_gdf.live]
-    nodes_filtered.plot(
-        column="cc_harmonic_400",
-        cmap="magma",
-        legend=True,
-        legend_kwds={"label": "Harmonic closeness, 400 m", "shrink": 0.6},
-        ax=_ax,
-    )
-    _ax.set_title("Harmonic closeness, 400 m (live nodes only)")
+    _fig, _ax = plt.subplots(1, 1, figsize=(7, 7), dpi=150)
+    _g = nodes_gdf[nodes_gdf.live].copy()
+    _g["_r"] = _g["cc_harmonic_400"].rank(pct=True)
+    _g = _g.sort_values("_r")  # strongest drawn last, on top
+    _g.plot(ax=_ax, color=plt.get_cmap("OrRd")(_g["_r"]), linewidth=0.15 + 2.25 * _g["_r"])
+    _ax.set_title("Harmonic closeness, 400 m (live nodes only)", loc="left")
     _ax.set_axis_off()
     _fig.tight_layout()
     _fig
