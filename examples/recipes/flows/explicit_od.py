@@ -18,7 +18,7 @@ def _(mo):
 
     When you have observed trips between zones, from a travel survey, ticketing records, or mobile traces, you already know the weight for each origin-destination pair. [`build_od_matrix`](https://cityseer.benchmarkurbanism.com/api/network#build_od_matrix) turns a flow table and a set of zones into a matrix, snapping each zone centroid to the nearest network node, and [`betweenness_od`](https://cityseer.benchmarkurbanism.com/api/network#betweenness_od) routes it: each pair's trips are accumulated along the shortest path between its zones. See the [Origin-Destination Flows guide](https://cityseer.benchmarkurbanism.com/guide/flows) for the background.
 
-    No observed-trip dataset is bundled here, so we synthesise one with a gravity model: trips between two zones grow with the population of each and fall away with the distance between them. This is a standard way to estimate a plausible trip table when only zone populations are known. We build two demand scenarios on the same network, route each at a 2 km threshold, and compare the resulting flow maps. The busy streets follow the demand, not the network alone.
+    No observed-trip dataset is bundled here, so we synthesise one with a gravity model: trips between two zones grow with the population of each and fall away with the distance between them. This is a standard way to estimate a plausible trip table when only zone populations are known. We build two demand scenarios on the same network, route each at a 2 km threshold, and compare the resulting flow maps.
     """)
     return
 
@@ -28,9 +28,10 @@ def _():
     import geopandas as gpd
     import matplotlib.pyplot as plt
     import numpy as np
+    import pandas as pd
     from cityseer.network import CityNetwork
 
-    return CityNetwork, gpd, np, plt
+    return CityNetwork, gpd, np, pd, plt
 
 
 @app.cell(hide_code=True)
@@ -38,7 +39,7 @@ def _(mo):
     mo.md(r"""
     ## Network, zones, and population
 
-    A central-Madrid network, with the city's *barrios* (neighbourhoods) as origin-destination zones. Each zone's total population is summed from the Eurostat census grid, and its centroid is snapped to the nearest network node when the matrix is built.
+    A central-Madrid network, with the city's *barrios* (neighbourhoods) as origin-destination zones. Each zone's total population is summed from the Eurostat census grid.
     """)
     return
 
@@ -104,18 +105,60 @@ def _(np, study_poly, zones):
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
-    ## Route each scenario and snapshot the result
+    ## Access points within each zone
 
-    `build_od_matrix` snaps zone centroids to network nodes and assembles the sparse matrix; `betweenness_od` routes it at the 2 km threshold. We snapshot each result with `to_geopandas` before running the next, because both write to the same `cc_betweenness_2000` column.
+    A zonal trip table records how many trips run between two zones, not where within each zone they start and end. Passing the zone polygons straight to `build_od_matrix` snaps each zone to the single node nearest its centroid, so every pair's trips load onto one shortest path and the map reduces to a sparse set of centroid-to-centroid lines. Transport models handle this by connecting each zone to the network at several points (centroid connectors). We do the same here: a 350 m point grid within each zone, clipped to the study area, with the zone's trips divided evenly among its points.
     """)
     return
 
 
 @app.cell
-def _(cn, commute, local, zones):
+def _(gpd, np, pd, study_poly, zones):
+    clipped = zones[["zone_id", "geometry"]].copy()
+    clipped["geometry"] = clipped.geometry.intersection(study_poly)
+
+    # a 350m point grid, each point assigned to the zone that contains it
+    minx, miny, maxx, maxy = clipped.total_bounds
+    gx, gy = np.meshgrid(np.arange(minx, maxx, 350.0), np.arange(miny, maxy, 350.0))
+    grid = gpd.GeoDataFrame(geometry=gpd.points_from_xy(gx.ravel(), gy.ravel()), crs=zones.crs)
+    sites = gpd.sjoin(grid, clipped, predicate="within")[["zone_id", "geometry"]]
+
+    # a zone too small to catch a grid point falls back to a single interior point
+    missing = clipped[~clipped.zone_id.isin(sites.zone_id)]
+    if len(missing):
+        fallback = missing.assign(geometry=missing.geometry.representative_point())
+        sites = pd.concat([sites, fallback], ignore_index=True)
+
+    sites = sites.reset_index(drop=True)
+    sites["site_id"] = sites.index
+    n_sites = sites.groupby("zone_id").size()
+    print(f"{len(sites)} access points across {len(n_sites)} zones")
+    return n_sites, sites
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ## Route each scenario and snapshot the result
+
+    Each zone-to-zone flow is split evenly across its origin and destination access points, then `build_od_matrix` snaps the points to network nodes and assembles the sparse matrix, and `betweenness_od` routes it at the 2 km threshold. We snapshot each result with `to_geopandas` before running the next, because both write to the same `cc_betweenness_2000` column.
+    """)
+    return
+
+
+@app.cell
+def _(cn, commute, local, n_sites, sites):
+    def expand(od):
+        e = od.merge(sites[["zone_id", "site_id"]], left_on="zone_id_o", right_on="zone_id")
+        e = e.rename(columns={"site_id": "site_o"}).drop(columns="zone_id")
+        e = e.merge(sites[["zone_id", "site_id"]], left_on="zone_id_d", right_on="zone_id")
+        e = e.rename(columns={"site_id": "site_d"}).drop(columns="zone_id")
+        e["trips"] = e["trips"] / (e["zone_id_o"].map(n_sites) * e["zone_id_d"].map(n_sites))
+        return e
+
     def route(od):
         matrix = cn.build_od_matrix(
-            od, zones, origin_col="zone_id_o", destination_col="zone_id_d", weight_col="trips", zone_id_col="zone_id"
+            expand(od), sites, origin_col="site_o", destination_col="site_d", weight_col="trips", zone_id_col="site_id"
         )
         cn.betweenness_od(matrix, distances=[2000])
         return cn.to_geopandas()
@@ -130,7 +173,7 @@ def _(mo):
     mo.md(r"""
     ## Mapping the two flow patterns
 
-    Line width and orange-red colour both scale with a percentile rank of the flow, so busy corridors read as bold and quiet streets fall away to hairlines, no colour bar needed. The same styling is used across the flow recipes.
+    Line width and orange-red colour both scale with a percentile rank of the flow, so the map reads without a colour bar. The same styling is used across the flow recipes.
     """)
     return
 
@@ -159,7 +202,7 @@ def _(mo):
     mo.md(r"""
     ## Interpretation
 
-    The network, threshold, and routing are identical; only the demand differs. The commute scenario concentrates flow on the radial arteries feeding the central barrios, and leaves the outer streets quiet. The local scenario spreads flow across the whole fabric, raising the cross-town and orbital streets that the commute pattern barely touches. With real survey or ticketing data in place of the gravity estimate, `betweenness_od` maps where actual trips load the network, instead of the uniform-demand assumption of standard betweenness.
+    The network, threshold, and routing are identical; only the demand differs. The commute scenario concentrates flow on the streets converging on the central barrios, fading with distance from the centre. The local scenario distributes flow across the densely populated fabric, with cross-town streets carrying more than the centre itself. With real survey or ticketing data in place of the gravity estimate, `betweenness_od` maps where actual trips load the network, instead of the uniform-demand assumption of standard betweenness.
 
     When you have weighted origins and destinations but no trip table at all, model the demand directly with [`betweenness_demand`](https://cityseer.benchmarkurbanism.com/examples/flows/demand-flows).
     """)

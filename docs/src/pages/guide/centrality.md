@@ -84,13 +84,9 @@ Simplest-path centrality does not include decay-weighted metrics by default beca
 
 ## Choosing shortest or angular
 
-The two are not interchangeable. The right choice depends on the network's condition as well as the research question.
+Shortest-path centrality uses metric distance, which is less sensitive to how the network is drawn.
 
-**Shortest-path (metric) centrality is the general-purpose choice.** Metric distance is well defined regardless of how tidy the network representation is, so shortest-path measures degrade gracefully when the geometry carries noise: extra nodes, un-merged dual carriageways, or slightly misplaced junctions shift the numbers only slightly. It applies across morphologies, and it is the safer option for messier or less thoroughly cleaned networks, and for cities where physical travel distance is what governs movement.
-
-**Simplest-path (angular) centrality weights routes by cumulative turning rather than distance**, following the space-syntax idea that people navigate by minimising directional complexity. On a clean, well-consolidated network, angular measures can correspond more closely with observed pedestrian and vehicular movement than metric ones. The important caveat is that angular cost is highly sensitive to the network representation. Spurious nodes, unconsolidated parallel edges, roundabouts left as rings, and noisy geometry all distort the turn angles that the measure is built from, so angular results are only trustworthy on a carefully cleaned network (see [Network Cleaning](/guide/cleaning)). On a messy network, angular centrality can mislead, whereas shortest-path centrality stays robust.
-
-A practical rule: shortest-path always applies. Reach for angular when the network is clean and you specifically want a route-complexity model of movement, and sanity-check the angular pattern against the metric one.
+Simplest-path (angular) centrality weights routes by cumulative turning, following the space-syntax observation that people tend to prefer straighter routes. On a clean, well-consolidated network, angular measures can be preferable and can correspond more closely with observed movement. Angular cost is computed from turn angles, so spurious nodes, unconsolidated parallel edges, and roundabouts drawn as rings distort it (see [Network Cleaning](/guide/cleaning)). When the network has not been cleaned, shortest-path is generally the safer choice.
 
 ## Custom metrics
 
