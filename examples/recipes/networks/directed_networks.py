@@ -117,12 +117,14 @@ def _(cn_directed, cn_undirected, plt):
         (axes[0], cn_undirected, "undirected"),
         (axes[1], cn_directed, "directed (one-way aware)"),
     ):
-        g = cn.nodes_gdf.copy()
-        g["_r"] = g["cc_betweenness_800"].rank(pct=True)
-        g = g.sort_values("_r")  # strongest drawn last, on top
-        g.plot(ax=ax, color=plt.get_cmap("OrRd")(g["_r"]), markersize=0.5 + 12 * g["_r"])
+        streets = cn.to_geopandas()  # values projected back onto the street segments
+        streets = streets[streets.live].copy()
+        streets["_r"] = streets["cc_betweenness_800"].rank(pct=True)
+        streets = streets.sort_values("_r")  # strongest drawn last, on top
+        streets.plot(ax=ax, color=plt.get_cmap("OrRd")(streets["_r"]), linewidth=0.15 + 2.25 * streets["_r"])
         ax.set_title(f"Betweenness, 800 m ({title})", loc="left")
         ax.set_axis_off()
+        ax.set_aspect("equal")
     fig.tight_layout()
     fig
     return
