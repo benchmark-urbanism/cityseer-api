@@ -268,6 +268,11 @@ For the high-level API, use [`CityNetwork.from_nx`](/api/network#from_nx) with a
     <span class="pc">:</span>
     <span class="pa"> int = 3</span>
   </div>
+  <div class="param">
+    <span class="pn">overpass_url</span>
+    <span class="pc">:</span>
+    <span class="pa"> str | None = None</span>
+  </div>
   <span class="pt">)-&gt;[</span>
   <span class="pr">Response | None</span>
   <span class="pt">]</span>
@@ -310,6 +315,16 @@ builds a graph automatically.
   <div class="desc">
 
  The number of attempts to fetch a response before raising.</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">overpass_url</div>
+    <div class="type">str | None</div>
+  </div>
+  <div class="desc">
+
+ The Overpass API endpoint. If not provided, the `CITYSEER_OVERPASS_URL` environment variable is used, falling back to `https://overpass-api.de/api/interpreter`. Pass a more generous mirror if the default rate-limits.</div>
 </div>
 
 ### Returns
@@ -399,6 +414,16 @@ builds a graph automatically.
     <span class="pn">max_tries</span>
     <span class="pc">:</span>
     <span class="pa"> int = 3</span>
+  </div>
+  <div class="param">
+    <span class="pn">overpass_url</span>
+    <span class="pc">:</span>
+    <span class="pa"> str | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">cache_path</span>
+    <span class="pc">:</span>
+    <span class="pa"> str | pathlib._local.Path | None = None</span>
   </div>
   <span class="pt">)-&gt;[</span>
   <span class="pr">MultiGraph</span>
@@ -547,6 +572,26 @@ builds a graph automatically.
   <div class="desc">
 
  The number of attempts to fetch a response before raising.</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">overpass_url</div>
+    <div class="type">str | None</div>
+  </div>
+  <div class="desc">
+
+ The Overpass API endpoint. If not provided, the `CITYSEER_OVERPASS_URL` environment variable is used, falling back to `https://overpass-api.de/api/interpreter`. Pass a more generous mirror if the default rate-limits.</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">cache_path</div>
+    <div class="type">str | Path | None</div>
+  </div>
+  <div class="desc">
+
+ An optional file path for caching the raw Overpass response. If the file exists it is loaded instead of querying the API; otherwise the response is fetched and written there. Commit the cache to make repeated or offline builds independent of the live API. Delete the file to force a refresh.</div>
 </div>
 
 ### Returns
