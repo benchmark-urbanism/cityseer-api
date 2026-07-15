@@ -114,8 +114,23 @@
     }
   }
 
+  ol {
+    @apply pl-2 font-light;
+
+    & li {
+      @apply my-2 ml-6 text-sm font-light;
+
+      list-style-type: decimal;
+    }
+  }
+
   p {
     @apply my-2 text-sm font-light;
+  }
+
+  strong,
+  b {
+    @apply font-medium text-lighter-grey;
   }
 
   img {
@@ -253,18 +268,18 @@
 
 .box,
 blockquote {
-  @apply my-3 rounded-sm border bg-dark-grey px-2 border-mid-grey;
+  @apply my-4 rounded-sm border border-l-3 bg-dark-grey px-3 py-1 border-mid-grey;
 
   & p {
-    @apply text-xs;
+    @apply my-1.5 text-xs leading-relaxed;
   }
 
   &.note {
-    @apply border-mid-grey;
+    @apply border-mid-grey border-l-light-grey;
   }
 
   &.warning {
-    @apply border-theme;
+    @apply border-theme border-l-theme;
   }
 }
 

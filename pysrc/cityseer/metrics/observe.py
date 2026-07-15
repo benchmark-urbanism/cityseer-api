@@ -1,6 +1,6 @@
 """
-Street continuity analysis. Identifies continuous street sequences — chains of connected street segments that
-share the same name, route number, or highway classification — and computes continuity metrics from `NetworkX`
+Street continuity analysis. Identifies continuous street sequences (chains of connected street segments that
+share the same name, route number, or highway classification) and computes continuity metrics from `NetworkX`
 graphs. For network centrality methods, see the
 [`networks`](/metrics/networks) module.
 """

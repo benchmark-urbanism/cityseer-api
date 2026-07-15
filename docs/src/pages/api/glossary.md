@@ -24,7 +24,7 @@ Assesses how consistently named routes, road classifications, or route numbers e
 
 ### CRS / EPSG
 
-A **Coordinate Reference System** defines how geographic coordinates map to locations on the Earth's surface. **EPSG** codes are numeric identifiers for specific CRS definitions (e.g., EPSG:4326 for WGS 84 longitude/latitude, EPSG:3035 for ETRS89-LAEA Europe). Always use a **projected** CRS (with metre units) for distance and area calculations.
+A **Coordinate Reference System** defines how geographic coordinates map to locations on the Earth's surface. **EPSG** codes are numeric identifiers for specific CRS definitions (e.g., `EPSG:4326` for WGS 84 longitude/latitude, `EPSG:3035` for ETRS89-LAEA Europe). Always use a **projected** CRS (with metre units) for distance and area calculations.
 
 ### Density (Network)
 

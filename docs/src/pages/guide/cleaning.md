@@ -4,7 +4,7 @@ layout: '@src/layouts/PageLayout.astro'
 
 # Network Cleaning
 
-Raw street-network data is not ready for analysis. Sources such as OpenStreetMap, Ordnance Survey Open Roads, and US Census TIGER/Line represent the physical road surface, not the topological structure that centrality measures need. A single high street may appear as two parallel carriageways, a roundabout as a ring of segments, a junction as a cluster of slip roads and pedestrian crossings. Each of these adds nodes and edges that do not correspond to distinct decision points in the network.
+Raw street-network data is not ready for analysis. Sources such as OpenStreetMap, Ordnance Survey Open Roads, and US Census TIGER/Line represent the physical road surface, not the topological structure that centrality measures need. A single high street is often drawn as two parallel carriageways. Roundabouts become rings of segments, and complex junctions become clusters of slip roads and pedestrian crossings. These extra nodes and edges do not correspond to distinct decision points in the network.
 
 Left uncleaned, this inflates node counts and distorts the metrics. Closeness and betweenness are pulled towards wherever the source data happens to be most finely subdivided. Angular centrality is affected most, because every spurious node introduces a spurious turn, and the measure is built from turn angles (see [choosing shortest or angular](/guide/centrality#choosing-shortest-or-angular)). Cleaning is a required step before the metrics can be trusted.
 
@@ -18,11 +18,11 @@ On the high-level path, [`CityNetwork.from_osm`](/api/network#from_osm) applies 
 
 The automated defaults suit most cases, but the right consolidation distance for a dense European core differs from a sprawling suburban grid, and some morphologies need more or less aggressive merging. The pipeline is fully exposed through the [`graphs`](/tools/graphs) module, so you can assemble and tune it step by step:
 
-- [`nx_remove_filler_nodes`](/tools/graphs#nx_remove_filler_nodes) — remove degree-2 nodes that only subdivide a street.
-- [`nx_consolidate_nodes`](/tools/graphs#nx_consolidate_nodes) — merge nearby nodes (e.g. the several nodes of one junction) within a buffer distance.
-- [`nx_merge_parallel_edges`](/tools/graphs#nx_merge_parallel_edges) — collapse dual carriageways and other parallel edges.
-- [`nx_remove_dangling_nodes`](/tools/graphs#nx_remove_dangling_nodes) — drop short dead-end stubs (the `despine` length) and disconnected fragments.
-- [`nx_iron_edges`](/tools/graphs#nx_iron_edges) — straighten geometric noise below an angle threshold.
+- [`nx_remove_filler_nodes`](/tools/graphs#nx_remove_filler_nodes) removes degree-2 nodes that only subdivide a street.
+- [`nx_consolidate_nodes`](/tools/graphs#nx_consolidate_nodes) merges nearby nodes (e.g. the several nodes of one junction) within a buffer distance.
+- [`nx_merge_parallel_edges`](/tools/graphs#nx_merge_parallel_edges) collapses dual carriageways and other parallel edges.
+- [`nx_remove_dangling_nodes`](/tools/graphs#nx_remove_dangling_nodes) drops short dead-end stubs (the `despine` length) and disconnected fragments.
+- [`nx_iron_edges`](/tools/graphs#nx_iron_edges) straightens geometric noise below an angle threshold.
 
 Tuning these parameters, and inspecting the result before computing centrality, is the reliable way to get a clean network for a specific dataset and morphology. The [Network Simplification recipe](/examples/networks/network-simplification) works through the configurable pipeline step by step, and the [Network Preparation recipes](/examples/networks) show the full range of construction routes.
 

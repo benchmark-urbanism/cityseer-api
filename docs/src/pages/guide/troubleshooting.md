@@ -10,13 +10,13 @@ Common problems, organised by symptom. Each entry gives the cause, the fix, and 
 
 Your data is in a geographic CRS, so coordinates are degrees rather than metres and every distance calculation is off by roughly five orders of magnitude. `cityseer` requires a projected CRS with metre units.
 
-Check with `gdf.crs` (EPSG:4326 / WGS 84 is the usual culprit) or `gdf.crs.is_projected`, then reproject before passing data to `cityseer`:
+Check with `gdf.crs` (`EPSG:4326` / WGS 84 is the usual culprit) or `gdf.crs.is_projected`, then reproject before passing data to `cityseer`:
 
 ```python
 gdf = gdf.to_crs(epsg=32630)  # a UTM zone or regional projection with metre units
 ```
 
-Search your city at [epsg.io](https://epsg.io) to find a suitable UTM zone, or use a regional projection such as EPSG:3035 (Europe), EPSG:27700 (Great Britain), or EPSG:2154 (France). When building from OSM with `CityNetwork.from_osm` and related `io` functions, `cityseer` selects an appropriate UTM zone automatically; the pitfall arises mainly when loading networks or data layers from files.
+Search your city at [epsg.io](https://epsg.io) to find a suitable UTM zone, or use a regional projection such as `EPSG:3035` (Europe), `EPSG:27700` (Great Britain), or `EPSG:2154` (France). When building from OSM with `CityNetwork.from_osm` and related `io` functions, `cityseer` selects an appropriate UTM zone automatically; the pitfall arises mainly when loading networks or data layers from files.
 
 ## Values fade toward the edge of my study area
 

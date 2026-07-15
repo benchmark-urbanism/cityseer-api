@@ -45,7 +45,7 @@ Each statistic produces one column per field per distance threshold. All statist
 The output is a line layer with the original street segments and computed statistics as attributes. Output fields follow the naming convention:
 
 ```text
-cc_<field>_<statistic>_<distance>[_ang]    — computed statistic
+cc_<field>_<statistic>_<distance>[_ang]    -> computed statistic
 ```
 
 For example, with a `price` field and distances `400,800`:

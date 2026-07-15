@@ -3,36 +3,42 @@ layout: ../../layouts/PageLayout.astro
 ---
 <section class="module">
 
-# Adaptive Sampling for Network Centrality
+# Adaptive Sampling
 
 > **Experimental.** Adaptive sampling is under active development and its API or behaviour may change in future releases.
 
-Computing network centrality at long distance thresholds can be slow because each source node reaches a large portion of the network. Adaptive sampling reduces this cost by using only a subset of nodes as sources, then correcting the results using inverse-probability weighting (IPW) to produce unbiased estimates. The sample size for each distance threshold is determined by the Hoeffding inequality, a concentration bound that guarantees the approximation error stays within a specified tolerance `epsilon`.
+Centrality runs a shortest-path traversal from every node in the network. At long distance thresholds each traversal spans a large part of the network, so run time grows steeply with the threshold: a city-wide analysis at 10 or 20 km can take hours where an 800 m analysis takes seconds.
 
-## How It Works
+Adaptive sampling reduces this cost by running the traversals from a subset of nodes. Each node is given its own probability of being used as a source, and every sampled source's contribution is multiplied by the reciprocal of that probability (inverse-probability weighting), so the estimates remain unbiased. The probabilities are set with the Hoeffding inequality, a statistical bound on how far a sample can stray from the true value, so that the approximation error stays within a chosen tolerance `epsilon`.
 
-Sampling is applied per distance threshold:
+## How it works
 
-1. **Measure reach.** A pilot stage polls the network with a small number of bounded shortest-path traversals (sampled sources, one Dijkstra each) to estimate each node's reach at every requested distance, respecting barriers and dead ends that a straight-line count would miss. Probabilities derive from the lower confidence bound on reach, so estimation error lands on the oversampling side.
-2. **Assign per-node probabilities.** The Hoeffding bound converts each node's reach estimate into its own inclusion probability: sparse areas receive high probabilities and dense areas low ones, so every catchment accumulates approximately the required number of effective samples and precision is uniform across the network.
-3. **Decide whether sampling pays.** For each distance, the estimated sampled work is compared against exact work; if properly powered sampling would not be cheaper, that distance runs exactly instead of being sampled under-powered.
-4. **Correct results.** Each sampled source's contribution is reweighted by the reciprocal of its own inclusion probability (inverse-probability weighting), producing an unbiased estimate of the full computation regardless of how rough the pilot estimate is.
+Sampling is decided separately for each distance threshold:
 
-![Per-node reach-based sampling schematic.](/images/sampling_method_schematic.svg) _The pilot measures each node's catchment (A), converts the measurements into per-node inclusion probabilities (B, marker size proportional to probability), and draws sources under those probabilities so each catchment collects the samples it needs (C); a fixed rate spending the same budget oversamples the dense core while missing most of the sparse catchment it should count in full (D)._
+1. **Measure reach.** A pilot runs a small number of bounded traversals to estimate how many nodes each node can reach at each threshold. Reach is measured along the network, so barriers and dead ends that a straight-line estimate would miss are respected. The pilot works from the cautious end of its confidence interval, so estimation error leads to slightly more sampling rather than less.
+2. **Set per-node probabilities.** The Hoeffding bound converts each reach estimate into a sampling probability. Dense areas can be sampled sparsely because each catchment holds many candidate sources; sparse areas are sampled at high probability, often 1. Every catchment then collects roughly the number of samples it needs, and precision is uniform across the network.
+3. **Check that sampling pays.** The predicted cost of sampling (pilot plus sampled traversals) is compared with the cost of exact computation. If sampling would not be clearly cheaper, that threshold runs exactly.
+4. **Compute and correct.** Sources are drawn under the assigned probabilities and each source's contributions are reweighted by the reciprocal of its probability. The result is unbiased even where the pilot's reach estimates are rough.
 
-![Work test schematic.](/images/sampling_work_test.png) _The per-distance work test: sampling engages only when its predicted cost falls clearly below exact computation (left); where exact computation is already cheap, as for closeness on networks with small live areas, the distance runs exactly (right)._
+![Per-node reach-based sampling schematic.](/images/sampling_method_schematic.svg) _A pilot measures each node's catchment (A) and converts the measurement into a sampling probability (B). Drawing sources under those probabilities supplies every catchment with roughly the samples it needs (C). A single fixed rate spending the same budget oversamples the dense core and starves the sparse catchment (D)._
+
+## When sampling engages
+
+The check in step 3 runs per distance threshold, so a single call can mix modes: long thresholds on a large network are sampled while short thresholds run exactly. Networks with small live areas often run exactly at every threshold because exact computation is already cheap there. This is the intended behaviour, not a missed optimisation.
+
+![Work test schematic.](/images/sampling_work_test.png) _The per-distance decision: sampling engages only when its predicted cost falls clearly below exact computation (left). Where exact computation is already cheap, the threshold runs exactly (right)._
 
 ## Accuracy
 
-A single set of per-node probabilities serves both closeness and betweenness: each sampled source traversal computes both metrics at once, so sharing the sample halves the work relative to sampling each metric separately. Probabilities are derived from measured per-node reach, so they adapt to the network under analysis; pass `random_seed` for reproducible draws.
+The `epsilon` parameter sets the error tolerance. The default of 0.05 is calibrated on real street networks spanning the urban density range so that node rankings are preserved: Spearman ρ ≥ 0.95 against exact computation at thresholds from 1 to 20 km. Because probabilities are derived from measured reach, precision holds in sparse districts and on sparse networks as well as in dense cores.
 
-The `epsilon` parameter controls the error tolerance. The default of 0.05 is calibrated empirically on real street networks spanning the urban density range such that node _rankings_ are preserved: Spearman ρ ≥ 0.95 against exact computation at 1–20 km. Because probabilities are set from measured per-node reach, precision holds in sparse districts and on sparse networks as well as in dense cores; a fourth, very sparse network held out from calibration meets the target at all distances under this method. Loosen `epsilon` (for example 0.08 to 0.1) for exploratory work where approximate rankings suffice; halving `epsilon` roughly quadruples the number of samples. Speedups are largest on dense networks at long distances; on sparse networks with small live areas the work test will often select exact computation, which is the correct outcome rather than a missed optimisation.
+Loosen `epsilon` (for example 0.08 to 0.1) for exploratory work where approximate rankings suffice. Tightening it is expensive: halving `epsilon` roughly quadruples the number of samples.
 
-The full methodology and validation are documented in the sampling study under [`analysis/sampling/`](https://github.com/benchmark-urbanism/cityseer-api/tree/master/analysis/sampling) in the repository.
+One set of probabilities serves both closeness and betweenness, so computing both from the same call shares the sampled traversals. Pass `random_seed` for reproducible draws.
 
 ## Usage
 
-With the high-level API:
+With the recommended [`CityNetwork`](/api/network) interface:
 
 ```python
 cn.centrality_shortest(
@@ -41,7 +47,7 @@ cn.centrality_shortest(
 )
 ```
 
-Or with the lower-level functional API:
+The lower-level [`metrics.networks`](/metrics/networks) functions accept the same `sample` and `epsilon` arguments:
 
 ```python
 from cityseer.metrics import networks
@@ -54,9 +60,9 @@ nodes_gdf = networks.centrality_shortest(
 )
 ```
 
-## API Reference
+## Further reading
 
-- [`centrality_shortest`](/metrics/networks#centrality_shortest)
-- [`centrality_simplest`](/metrics/networks#centrality_simplest)
+- [`centrality_shortest`](/metrics/networks#centrality_shortest) and [`centrality_simplest`](/metrics/networks#centrality_simplest) API reference
+- The full methodology and validation are documented under [`analysis/sampling/`](https://github.com/benchmark-urbanism/cityseer-api/tree/master/analysis/sampling) in the repository
 
 </section>

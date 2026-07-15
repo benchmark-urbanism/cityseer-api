@@ -5,6 +5,11 @@ layout: ../../layouts/PageLayout.astro
 
 # viewshed
 
+:::warning
+**Low-level internals.** This section documents the Rust-backed structures and functions that power `cityseer`. They are provided for reference. For analysis, use the higher-level wrappers instead: the [`CityNetwork`](/api/network) class, or the [`metrics`](/metrics/networks) and [`tools`](/tools/graphs) modules. Symbols on these pages are not part of the public API and may change between releases without a deprecation cycle.
+:::
+
+
 
  Viewshed analysis utilities for spatial visibility studies.
 

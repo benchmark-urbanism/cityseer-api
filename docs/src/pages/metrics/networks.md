@@ -6,10 +6,14 @@ layout: ../../layouts/PageLayout.astro
 # networks
 
 
- Compute network centralities. Two centrality methods are available, using shortest-path (metric) or simplest-path (angular) heuristics:
+ Compute network centralities. If you are using `cityseer` for the first time, use the [`CityNetwork`](/api/network) class instead of this module: it builds the network automatically (including cleaning and the dual graph) and exposes the same centrality methods. The functions here are the lower-level functional API, for direct control over the ``NetworkStructure`` and nodes ``GeoDataFrame``.
+
+ Two centrality functions are available, using shortest-path (metric) or simplest-path (angular) heuristics:
 
 - [`centrality_shortest`](#centrality_shortest)
 - [`centrality_simplest`](#centrality_simplest)
+
+ [`node_centrality_shortest`](#node_centrality_shortest), [`node_centrality_simplest`](#node_centrality_simplest), and [`segment_centrality`](#segment_centrality) are **deprecated**. They are backwards-compatibility shims for pre-5.0 code and will be removed in a future major release; do not use them in new work.
 
  Metrics are specified as ``{name: expression}`` dicts using variables ``c`` (cost) and ``p`` (normalised progress). For shortest paths, ``c`` is metric distance and ``p = c / threshold``. For simplest paths, ``c`` is angular cost and ``p`` is normalised time progress.
 
@@ -29,7 +33,7 @@ layout: ../../layouts/PageLayout.astro
  When `sample=True`, only a subset of nodes are used as sources for centrality computation, with results corrected to approximate the full computation.
 
 :::note
-The reasons for picking one approach over another are varied:
+Cautions that apply when computing centralities with these lower-level functions:
 
 - Columns prefixed ``cc_`` are managed by cityseer: recomputing a metric for the same distance overwrites the
 matching ``cc_`` columns in place (intended for re-runs). Don't store your own data under this prefix.
@@ -37,11 +41,14 @@ matching ``cc_`` columns in place (intended for re-runs). Don't store your own d
 (used to describe road curvature) or overly complex representations of street intersections. Clean the network
 first using the [`graph`](/tools/graphs) module (see the
 [automatic graph cleaning](/guide/fundamentals#automatic-graph-cleaning) for examples).
-- `harmonic` centrality can produce inflated values when nodes are very close together, because the
-inverse-distance calculation amplifies small distances. This is more likely with simplest-path measures or short
-distance thresholds.
-- Simplest (angular) measures require a dual graph representation. Convert primal graphs with
-[`graphs.nx_to_dual`](/tools/graphs#nx_to_dual) before ingesting them.
+- `harmonic` closeness sums inverse distances (``1/c``), so a pair of nodes separated by only a few metres
+contributes a very large value, and a pair below 1 m can inflate a node's score severely. `CityNetwork`
+construction removes near-duplicate edges and short self-loops automatically; when building the network manually,
+consolidate nearby nodes (see [`nx_consolidate_nodes`](/tools/graphs#nx_consolidate_nodes)) before computing
+harmonic closeness.
+- Simplest (angular) measures require a dual graph representation. `CityNetwork` builds the dual automatically;
+this step only applies to the manual method, where primal graphs must be converted with
+[`graphs.nx_to_dual`](/tools/graphs#nx_to_dual) before ingestion.
 - Metrics should only be compared across networks that use the same graph representation (both primal or both
 dual), because the differing number of nodes and edges between representations affects the metric values. For
 example, a four-way intersection consisting of one node with four edges on a primal graph translates to four
@@ -391,7 +398,7 @@ print(nodes_gdf[["cc_harmonic_400", "cc_betweenness_800"]])
   </div>
   <div class="desc">
 
- Zone boundaries (polygons) or centroids (points). Must be in a projected CRS matching the network, or in EPSG:4326 (will be auto-reprojected).</div>
+ Zone boundaries (polygons) or centroids (points). Must be in a projected CRS matching the network, or in ``EPSG:4326`` (will be auto-reprojected).</div>
 </div>
 
 <div class="param-set">
