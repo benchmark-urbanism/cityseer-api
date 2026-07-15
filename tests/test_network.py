@@ -434,7 +434,9 @@ def test_citynetwork_imp_factor_propagates_from_geopandas(tmp_path):
         },
         crs="EPSG:32630",
     )
-    cn = CityNetwork.from_geopandas(gdf)
+    # remove_fillers=False keeps the two segments distinct at their degree-2 join, so the
+    # dual edge between them exists to carry the propagated impedance
+    cn = CityNetwork.from_geopandas(gdf, remove_fillers=False)
     # both dual edges (one per direction in this undirected graph) should carry the
     # length-weighted mean of the two primal impedances.
     expected = (100.0 * 2.0 + 200.0 * 4.0) / (100.0 + 200.0)
@@ -449,8 +451,14 @@ def test_citynetwork_imp_factor_propagates_from_geopandas(tmp_path):
 
     # back-compat: omitting the column leaves every dual edge at the 1.0 default.
     gdf_default = gpd.GeoDataFrame({"geometry": gdf.geometry.tolist()}, crs="EPSG:32630")
-    cn_default = CityNetwork.from_geopandas(gdf_default)
+    cn_default = CityNetwork.from_geopandas(gdf_default, remove_fillers=False)
     assert all(abs(imp - 1.0) < 1e-6 for imp in _dual_edge_imp_factors(cn_default))
+
+    # under default welding, the chain welds into one segment whose node weight context uses
+    # the combined impedance: the welded segment carries the length-weighted mean
+    cn_welded = CityNetwork.from_geopandas(gdf)
+    assert cn_welded.node_count == 1
+    assert cn_welded.network_structure.is_dual
 
 
 def test_citynetwork_imp_factor_propagates_from_nx():
@@ -463,7 +471,7 @@ def test_citynetwork_imp_factor_propagates_from_nx():
     G.add_node("c", x=300.0, y=0.0)
     G.add_edge("a", "b", geom=LineString([(0, 0), (100, 0)]), imp_factor=2.0)
     G.add_edge("b", "c", geom=LineString([(100, 0), (300, 0)]), imp_factor=4.0)
-    cn = CityNetwork.from_nx(G)
+    cn = CityNetwork.from_nx(G, remove_fillers=False)
     expected = (100.0 * 2.0 + 200.0 * 4.0) / (100.0 + 200.0)
     imps = _dual_edge_imp_factors(cn)
     assert imps and all(abs(imp - expected) < 1e-4 for imp in imps)

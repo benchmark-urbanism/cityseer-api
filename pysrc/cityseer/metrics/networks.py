@@ -116,12 +116,20 @@ class _SegmentWeightContext:
         if segment_weighted:
             if not network_structure.is_dual:
                 raise ValueError("segment_weighted requires a dual graph where each node represents a street segment.")
-            if "primal_edge" not in nodes_gdf.columns:
-                raise ValueError("segment_weighted requires primal_edge geometries in nodes_gdf (from a dual graph).")
+            # Segment lengths come from the `primal_edge` geometry column (the nx_to_dual /
+            # network_structure_from_nx path) or the numeric `seg_length` column (CityNetwork).
+            if "primal_edge" in nodes_gdf.columns:
+                seg_lengths = nodes_gdf["primal_edge"].length.values
+            elif "seg_length" in nodes_gdf.columns:
+                seg_lengths = nodes_gdf["seg_length"].values
+            else:
+                raise ValueError(
+                    "segment_weighted requires a primal_edge geometry column or a seg_length column in nodes_gdf "
+                    "(both come from a dual graph build)."
+                )
             node_idxs = network_structure.node_indices()
             self._saved_weights = [(i, network_structure.get_node_weight(i)) for i in node_idxs]
             ns_indices = nodes_gdf["ns_node_idx"].values
-            seg_lengths = nodes_gdf["primal_edge"].length.values
             for ns_idx, seg_len in zip(ns_indices, seg_lengths, strict=True):
                 network_structure.set_node_weight(int(ns_idx), float(seg_len))
 

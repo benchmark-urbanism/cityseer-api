@@ -36,16 +36,9 @@ cn = (
 )
 ```
 
+### Notes
 
-:::note
-The underlying graph construction automatically cleans input geometries by removing short self-loops, near-duplicate
-edges, and short danglers. Use the ``feature_status`` property to inspect which input features were
-filtered and why.
-:::
-
- ### Dual graph architecture
-
- ``CityNetwork`` always constructs a dual graph internally. In the dual representation, each street segment becomes a node (positioned at the segment midpoint) and edges connect segments that share a common intersection. This enables both shortest-path and simplest-path (angular) analysis from a single topology:
+ short self-loops are removed, chains of segments meeting at filler (degree-2) endpoints are welded into single segments, short danglers are removed, and near-duplicate parallel edges are merged. Each step is controlled by a constructor parameter (``remove_fillers``, ``remove_danglers``, ``merge_parallel_dist``) and can be disabled to pass a network through as-is. Use the ``feature_status`` property to inspect which input features were filtered or merged and why.
 
 - **Shortest-path** analysis uses metric distances along street segments.
 - **Simplest-path** analysis uses cumulative angular change along streets and at intersections as the routing cost.
@@ -74,12 +67,23 @@ result_gdf["cc_harmonic_800"]
 
  ### Feature cleaning
 
- Input geometries are automatically cleaned during construction. Short self-loops, near-duplicate edges, and short danglers are removed. The ``feature_status`` property returns a Series indicating the status of each input feature:
+ Input geometries are automatically cleaned during construction, on the primal edge set before dual conversion, in this order:
+
+ 1. **Short self-loops** (under 1 m) are removed as corrupt geometry. 2. **Filler welding** (``remove_fillers=True``): chains of segments meeting at degree-2 endpoints are welded into single segments, so a street subdivided during digitisation is treated as one segment. The welded feature keeps the id of the longest constituent; absorbed features are marked ``"merged"``. 3. **Danglers** (``remove_danglers=10.0``): dead-end stubs up to this length are removed iteratively, judged on the full welded length. ``0`` disables. 4. **Parallel merging** (``merge_parallel_dist=2.0``): edges whose endpoints fall within this distance of another edge's endpoints, with near-identical lengths, are the same street drawn twice; the longest is kept. ``0`` disables.
+
+ Directed networks skip filler welding and parallel merging, which do not preserve one-way semantics. To pass a network through with minimal intervention, disable the steps:
+
+```python
+cn = CityNetwork.from_geopandas(edges_gdf, remove_fillers=False, remove_danglers=0, merge_parallel_dist=0)
+```
+
+ The ``feature_status`` property returns a Series indicating the status of each input feature:
 
 ```python
 cn = CityNetwork.from_geopandas(edges_gdf, crs=32632)
 print(cn.feature_status.value_counts())
 # active              142
+# merged                6
 # short_dangler         3
 # duplicate             1
 ```
@@ -312,6 +316,26 @@ result_gdf.to_file("centrality_results.gpkg")
   <div class="param">
     <span class="pn">impedances</span>
   </div>
+  <div class="param">
+    <span class="pn">remove_fillers</span>
+    <span class="pc">:</span>
+    <span class="pa"> bool = True</span>
+  </div>
+  <div class="param">
+    <span class="pn">remove_danglers</span>
+    <span class="pc">:</span>
+    <span class="pa"> float = 10.0</span>
+  </div>
+  <div class="param">
+    <span class="pn">merge_parallel_dist</span>
+    <span class="pc">:</span>
+    <span class="pa"> float = 2.0</span>
+  </div>
+  <div class="param">
+    <span class="pn">segment_weighted</span>
+    <span class="pc">:</span>
+    <span class="pa"> bool = False</span>
+  </div>
   <span class="pt">)-&gt;[</span>
   <span class="pr">CityNetwork</span>
   <span class="pt">]</span>
@@ -379,6 +403,46 @@ result_gdf.to_file("centrality_results.gpkg")
   <div class="desc">
 
  Optional mapping from primal feature ID to its impedance factor. Each dual edge's ``imp_factor`` becomes the length-weighted mean of its two adjacent primal segments' impedances; missing entries default to ``1.0``. See the [Edge Impedance](/guide/networks#edge-impedance) section of the guide.</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">remove_fillers</div>
+    <div class="type">bool</div>
+  </div>
+  <div class="desc">
+
+ Weld chains of segments meeting at filler (degree-2) endpoints into single segments, so a street subdivided during digitisation is treated as one segment. Welded features keep the id of the longest constituent; absorbed features are marked ``&quot;merged&quot;`` in [`feature_status`](#feature_status). Skipped for directed networks. Default ``True``.</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">remove_danglers</div>
+    <div class="type">float</div>
+  </div>
+  <div class="desc">
+
+ Remove dead-end stubs up to this length in metres (iteratively, after filler welding, so a welded chain is judged on its full length). ``0`` disables. Default ``10.0``.</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">merge_parallel_dist</div>
+    <div class="type">float</div>
+  </div>
+  <div class="desc">
+
+ Merge near-duplicate parallel edges: edges whose endpoints fall within this distance of another edge's endpoints and whose lengths are near-identical are the same street drawn twice; the longest is kept. ``0`` disables. Skipped for directed networks. Default ``2.0``.</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">segment_weighted</div>
+    <div class="type">bool</div>
+  </div>
+  <div class="desc">
+
+ Default for the ``segment_weighted`` option of the centrality methods: weight each node by its street segment length rather than a unit count. Can be overridden per centrality call. Default ``False``.</div>
 </div>
 
 ### Returns
@@ -456,6 +520,26 @@ cn.centrality_shortest(distances=[200])
     <span class="pc">:</span>
     <span class="pa"> bool = False</span>
   </div>
+  <div class="param">
+    <span class="pn">remove_fillers</span>
+    <span class="pc">:</span>
+    <span class="pa"> bool = True</span>
+  </div>
+  <div class="param">
+    <span class="pn">remove_danglers</span>
+    <span class="pc">:</span>
+    <span class="pa"> float = 10.0</span>
+  </div>
+  <div class="param">
+    <span class="pn">merge_parallel_dist</span>
+    <span class="pc">:</span>
+    <span class="pa"> float = 2.0</span>
+  </div>
+  <div class="param">
+    <span class="pn">segment_weighted</span>
+    <span class="pc">:</span>
+    <span class="pa"> bool = False</span>
+  </div>
   <span class="pt">)-&gt;[</span>
   <span class="pr">CityNetwork</span>
   <span class="pt">]</span>
@@ -503,6 +587,46 @@ cn.centrality_shortest(distances=[200])
   <div class="desc">
 
  If ``True``, build a directed network. Requires a boolean ``oneway`` column in the GeoDataFrame. Features with ``oneway=True`` are one-way in LineString coordinate order; features with ``oneway=False`` are bidirectional.</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">remove_fillers</div>
+    <div class="type">bool</div>
+  </div>
+  <div class="desc">
+
+ Weld chains of segments meeting at filler (degree-2) endpoints into single segments, so a street subdivided during digitisation is treated as one segment. Welded features keep the id of the longest constituent; absorbed features are marked ``&quot;merged&quot;`` in [`feature_status`](#feature_status). Skipped for directed networks. Default ``True``.</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">remove_danglers</div>
+    <div class="type">float</div>
+  </div>
+  <div class="desc">
+
+ Remove dead-end stubs up to this length in metres (iteratively, after filler welding, so a welded chain is judged on its full length). ``0`` disables. Default ``10.0``.</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">merge_parallel_dist</div>
+    <div class="type">float</div>
+  </div>
+  <div class="desc">
+
+ Merge near-duplicate parallel edges: edges whose endpoints fall within this distance of another edge's endpoints and whose lengths are near-identical are the same street drawn twice; the longest is kept. ``0`` disables. Skipped for directed networks. Default ``2.0``.</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">segment_weighted</div>
+    <div class="type">bool</div>
+  </div>
+  <div class="desc">
+
+ Default for the ``segment_weighted`` option of the centrality methods: weight each node by its street segment length rather than a unit count. Can be overridden per centrality call. Default ``False``.</div>
 </div>
 
 ### Returns
@@ -597,6 +721,26 @@ cn = CityNetwork.from_geopandas(gdf, directed=True)
     <span class="pc">:</span>
     <span class="pa"> shapely.geometry.base.BaseGeometry | None = None</span>
   </div>
+  <div class="param">
+    <span class="pn">remove_fillers</span>
+    <span class="pc">:</span>
+    <span class="pa"> bool = True</span>
+  </div>
+  <div class="param">
+    <span class="pn">remove_danglers</span>
+    <span class="pc">:</span>
+    <span class="pa"> float = 10.0</span>
+  </div>
+  <div class="param">
+    <span class="pn">merge_parallel_dist</span>
+    <span class="pc">:</span>
+    <span class="pa"> float = 2.0</span>
+  </div>
+  <div class="param">
+    <span class="pn">segment_weighted</span>
+    <span class="pc">:</span>
+    <span class="pa"> bool = False</span>
+  </div>
   <span class="pt">)-&gt;[</span>
   <span class="pr">CityNetwork</span>
   <span class="pt">]</span>
@@ -626,6 +770,46 @@ cn = CityNetwork.from_geopandas(gdf, directed=True)
   <div class="desc">
 
  Optional polygon in the same projected CRS; nodes inside are marked as ``live``, nodes outside as ``dead``.</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">remove_fillers</div>
+    <div class="type">bool</div>
+  </div>
+  <div class="desc">
+
+ Weld chains of segments meeting at filler (degree-2) endpoints into single segments, so a street subdivided during digitisation is treated as one segment. Welded features keep the id of the longest constituent; absorbed features are marked ``&quot;merged&quot;`` in [`feature_status`](#feature_status). Skipped for directed networks. Default ``True``.</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">remove_danglers</div>
+    <div class="type">float</div>
+  </div>
+  <div class="desc">
+
+ Remove dead-end stubs up to this length in metres (iteratively, after filler welding, so a welded chain is judged on its full length). ``0`` disables. Default ``10.0``.</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">merge_parallel_dist</div>
+    <div class="type">float</div>
+  </div>
+  <div class="desc">
+
+ Merge near-duplicate parallel edges: edges whose endpoints fall within this distance of another edge's endpoints and whose lengths are near-identical are the same street drawn twice; the longest is kept. ``0`` disables. Skipped for directed networks. Default ``2.0``.</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">segment_weighted</div>
+    <div class="type">bool</div>
+  </div>
+  <div class="desc">
+
+ Default for the ``segment_weighted`` option of the centrality methods: weight each node by its street segment length rather than a unit count. Can be overridden per centrality call. Default ``False``.</div>
 </div>
 
 ### Returns
@@ -727,6 +911,26 @@ assert cn.is_directed
     <span class="pa"> shapely.geometry.base.BaseGeometry | None = None</span>
   </div>
   <div class="param">
+    <span class="pn">remove_fillers</span>
+    <span class="pc">:</span>
+    <span class="pa"> bool = True</span>
+  </div>
+  <div class="param">
+    <span class="pn">remove_danglers</span>
+    <span class="pc">:</span>
+    <span class="pa"> float = 10.0</span>
+  </div>
+  <div class="param">
+    <span class="pn">merge_parallel_dist</span>
+    <span class="pc">:</span>
+    <span class="pa"> float = 2.0</span>
+  </div>
+  <div class="param">
+    <span class="pn">segment_weighted</span>
+    <span class="pc">:</span>
+    <span class="pa"> bool = False</span>
+  </div>
+  <div class="param">
     <span class="pn">**kwargs</span>
   </div>
   <span class="pt">)-&gt;[</span>
@@ -777,7 +981,7 @@ assert cn.is_directed
   </div>
   <div class="desc">
 
- Whether to simplify the OSM graph topology. Defaults to ``True``.</div>
+ Whether to simplify the OSM graph topology (the aggressive, OSM-tuned pipeline: junction consolidation, parallel carriageway merging by midline, ironing). Defaults to ``True``.</div>
 </div>
 
 <div class="param-set">
@@ -788,6 +992,46 @@ assert cn.is_directed
   <div class="desc">
 
  Optional polygon for live/dead node assignment (in the target projected CRS).</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">remove_fillers</div>
+    <div class="type">bool</div>
+  </div>
+  <div class="desc">
+
+ Weld chains of segments meeting at filler (degree-2) endpoints into single segments during dual construction. Default ``True``.</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">remove_danglers</div>
+    <div class="type">float</div>
+  </div>
+  <div class="desc">
+
+ Remove dead-end stubs up to this length in metres during dual construction. ``0`` disables. Default ``10.0``.</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">merge_parallel_dist</div>
+    <div class="type">float</div>
+  </div>
+  <div class="desc">
+
+ Merge near-duplicate parallel edges (endpoints within this distance, near-identical lengths) during dual construction. ``0`` disables. Default ``2.0``.</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">segment_weighted</div>
+    <div class="type">bool</div>
+  </div>
+  <div class="desc">
+
+ Default for the ``segment_weighted`` option of the centrality methods. Can be overridden per centrality call. Default ``False``.</div>
 </div>
 
 <div class="param-set">

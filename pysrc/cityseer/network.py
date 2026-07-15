@@ -24,7 +24,7 @@ from .metrics import layers, networks
 from .tools import dual, io, util
 
 _BASE_NODE_COLUMNS = {"ns_node_idx", "x", "y", "z", "live", "weight"}
-_NON_PRESERVED_UPDATE_COLUMNS = {"ns_node_idx", "x", "y", "live"}
+_NON_PRESERVED_UPDATE_COLUMNS = {"ns_node_idx", "x", "y", "live", "seg_length"}
 
 
 def _normalize_crs(crs: Any | None) -> CRS | None:
@@ -153,9 +153,12 @@ class CityNetwork:
     ```
 
     :::note
-    The underlying graph construction automatically cleans input geometries by removing short self-loops, near-duplicate
-    edges, and short danglers. Use the ``feature_status`` property to inspect which input features were
-    filtered and why.
+    The underlying graph construction automatically cleans input geometries: short self-loops are removed, chains
+    of segments meeting at filler (degree-2) endpoints are welded into single segments, short danglers are removed,
+    and near-duplicate parallel edges are merged. Each step is controlled by a constructor parameter
+    (``remove_fillers``, ``remove_danglers``, ``merge_parallel_dist``) and can be disabled to pass a network
+    through as-is. Use the ``feature_status`` property to inspect which input features were filtered or merged
+    and why.
     :::
 
     ### Dual graph architecture
@@ -195,14 +198,33 @@ class CityNetwork:
 
     ### Feature cleaning
 
-    Input geometries are automatically cleaned during construction. Short self-loops, near-duplicate edges, and
-    short danglers are removed. The ``feature_status`` property returns a Series indicating the status of each
-    input feature:
+    Input geometries are automatically cleaned during construction, on the primal edge set before dual
+    conversion, in this order:
+
+    1. **Short self-loops** (under 1 m) are removed as corrupt geometry.
+    2. **Filler welding** (``remove_fillers=True``): chains of segments meeting at degree-2 endpoints are welded
+       into single segments, so a street subdivided during digitisation is treated as one segment. The welded
+       feature keeps the id of the longest constituent; absorbed features are marked ``"merged"``.
+    3. **Danglers** (``remove_danglers=10.0``): dead-end stubs up to this length are removed iteratively, judged
+       on the full welded length. ``0`` disables.
+    4. **Parallel merging** (``merge_parallel_dist=2.0``): edges whose endpoints fall within this distance of
+       another edge's endpoints, with near-identical lengths, are the same street drawn twice; the longest is
+       kept. ``0`` disables.
+
+    Directed networks skip filler welding and parallel merging, which do not preserve one-way semantics. To pass
+    a network through with minimal intervention, disable the steps:
+
+    ```python
+    cn = CityNetwork.from_geopandas(edges_gdf, remove_fillers=False, remove_danglers=0, merge_parallel_dist=0)
+    ```
+
+    The ``feature_status`` property returns a Series indicating the status of each input feature:
 
     ```python
     cn = CityNetwork.from_geopandas(edges_gdf, crs=32632)
     print(cn.feature_status.value_counts())
     # active              142
+    # merged                6
     # short_dangler         3
     # duplicate             1
     ```
@@ -370,6 +392,7 @@ class CityNetwork:
         """Status of each input feature after geometry cleaning.
 
         Possible values: ``"active"``, ``"invalid_geometry"``, ``"short_self_loop"``,
+        ``"merged"`` (welded into an adjacent feature by ``remove_fillers``),
         ``"duplicate"``, ``"short_dangler"``, ``"deleted"``.
         """
         return pd.Series(self._state.get("feature_status", {}), name="feature_status")
@@ -396,6 +419,10 @@ class CityNetwork:
         directed: bool = False,
         oneway_fids: set[Any] | None = None,
         impedances: dict[Any, float] | None = None,
+        remove_fillers: bool = True,
+        remove_danglers: float = 10.0,
+        merge_parallel_dist: float = 2.0,
+        segment_weighted: bool = False,
     ) -> CityNetwork:
         """Construct a CityNetwork from a dictionary of WKT strings or Shapely geometries.
 
@@ -421,6 +448,23 @@ class CityNetwork:
             ``imp_factor`` becomes the length-weighted mean of its two adjacent primal segments'
             impedances; missing entries default to ``1.0``. See the [Edge Impedance](/guide/networks#edge-impedance)
             section of the guide.
+        remove_fillers: bool
+            Weld chains of segments meeting at filler (degree-2) endpoints into single segments,
+            so a street subdivided during digitisation is treated as one segment. Welded features
+            keep the id of the longest constituent; absorbed features are marked ``"merged"`` in
+            [`feature_status`](#feature_status). Skipped for directed networks. Default ``True``.
+        remove_danglers: float
+            Remove dead-end stubs up to this length in metres (iteratively, after filler welding,
+            so a welded chain is judged on its full length). ``0`` disables. Default ``10.0``.
+        merge_parallel_dist: float
+            Merge near-duplicate parallel edges: edges whose endpoints fall within this distance
+            of another edge's endpoints and whose lengths are near-identical are the same street
+            drawn twice; the longest is kept. ``0`` disables. Skipped for directed networks.
+            Default ``2.0``.
+        segment_weighted: bool
+            Default for the ``segment_weighted`` option of the centrality methods: weight each
+            node by its street segment length rather than a unit count. Can be overridden per
+            centrality call. Default ``False``.
 
         Returns
         -------
@@ -454,8 +498,16 @@ class CityNetwork:
                 raise ValueError("directed=True requires oneway_fids specifying which features are one-way.")
             directions = {fid: (True, False) if fid in oneway_fids else (True, True) for fid in wkts}
         ns, nodes_gdf, state = dual.build_dual(
-            wkts, crs=normalized_crs, boundary=boundary, directions=directions, impedances=impedances
+            wkts,
+            crs=normalized_crs,
+            boundary=boundary,
+            directions=directions,
+            impedances=impedances,
+            remove_fillers=remove_fillers,
+            remove_danglers=remove_danglers,
+            merge_parallel_dist=merge_parallel_dist,
         )
+        state["segment_weighted_default"] = bool(segment_weighted)
         return cls._from_dual_result(ns, nodes_gdf, state, normalized_crs)
 
     @classmethod
@@ -466,6 +518,10 @@ class CityNetwork:
         crs: Any | None = None,
         boundary: BaseGeometry | None = None,
         directed: bool = False,
+        remove_fillers: bool = True,
+        remove_danglers: float = 10.0,
+        merge_parallel_dist: float = 2.0,
+        segment_weighted: bool = False,
     ) -> CityNetwork:
         """Construct a CityNetwork from a GeoDataFrame of LineString geometries.
 
@@ -487,6 +543,23 @@ class CityNetwork:
             If ``True``, build a directed network. Requires a boolean ``oneway`` column in the
             GeoDataFrame. Features with ``oneway=True`` are one-way in LineString coordinate
             order; features with ``oneway=False`` are bidirectional.
+        remove_fillers: bool
+            Weld chains of segments meeting at filler (degree-2) endpoints into single segments,
+            so a street subdivided during digitisation is treated as one segment. Welded features
+            keep the id of the longest constituent; absorbed features are marked ``"merged"`` in
+            [`feature_status`](#feature_status). Skipped for directed networks. Default ``True``.
+        remove_danglers: float
+            Remove dead-end stubs up to this length in metres (iteratively, after filler welding,
+            so a welded chain is judged on its full length). ``0`` disables. Default ``10.0``.
+        merge_parallel_dist: float
+            Merge near-duplicate parallel edges: edges whose endpoints fall within this distance
+            of another edge's endpoints and whose lengths are near-identical are the same street
+            drawn twice; the longest is kept. ``0`` disables. Skipped for directed networks.
+            Default ``2.0``.
+        segment_weighted: bool
+            Default for the ``segment_weighted`` option of the centrality methods: weight each
+            node by its street segment length rather than a unit count. Can be overridden per
+            centrality call. Default ``False``.
 
         Notes
         -----
@@ -560,10 +633,18 @@ class CityNetwork:
         if "imp_factor" in gdf.columns:
             impedances = {fid: float(val) for fid, val in gdf["imp_factor"].items()}
         ns, nodes_gdf, state = dual.build_dual(
-            gdf, crs=normalized_crs, boundary=boundary, directions=directions, impedances=impedances
+            gdf,
+            crs=normalized_crs,
+            boundary=boundary,
+            directions=directions,
+            impedances=impedances,
+            remove_fillers=remove_fillers,
+            remove_danglers=remove_danglers,
+            merge_parallel_dist=merge_parallel_dist,
         )
         if nodes_gdf is not None:
             nodes_gdf = _merge_input_columns(nodes_gdf, gdf)
+        state["segment_weighted_default"] = bool(segment_weighted)
         return cls._from_dual_result(ns, nodes_gdf, state, normalized_crs)
 
     @classmethod
@@ -572,6 +653,10 @@ class CityNetwork:
         graph: nx.MultiGraph,
         *,
         boundary: BaseGeometry | None = None,
+        remove_fillers: bool = True,
+        remove_danglers: float = 10.0,
+        merge_parallel_dist: float = 2.0,
+        segment_weighted: bool = False,
     ) -> CityNetwork:
         """Construct a CityNetwork from a cityseer-compatible NetworkX graph.
 
@@ -592,6 +677,23 @@ class CityNetwork:
         boundary: BaseGeometry
             Optional polygon in the same projected CRS; nodes inside are marked as ``live``,
             nodes outside as ``dead``.
+        remove_fillers: bool
+            Weld chains of segments meeting at filler (degree-2) endpoints into single segments,
+            so a street subdivided during digitisation is treated as one segment. Welded features
+            keep the id of the longest constituent; absorbed features are marked ``"merged"`` in
+            [`feature_status`](#feature_status). Skipped for directed networks. Default ``True``.
+        remove_danglers: float
+            Remove dead-end stubs up to this length in metres (iteratively, after filler welding,
+            so a welded chain is judged on its full length). ``0`` disables. Default ``10.0``.
+        merge_parallel_dist: float
+            Merge near-duplicate parallel edges: edges whose endpoints fall within this distance
+            of another edge's endpoints and whose lengths are near-identical are the same street
+            drawn twice; the longest is kept. ``0`` disables. Skipped for directed networks.
+            Default ``2.0``.
+        segment_weighted: bool
+            Default for the ``segment_weighted`` option of the centrality methods: weight each
+            node by its street segment length rather than a unit count. Can be overridden per
+            centrality call. Default ``False``.
 
         Returns
         -------
@@ -671,7 +773,14 @@ class CityNetwork:
 
         normalized_crs = _require_projected_crs(primal_graph.graph["crs"])
         ns, nodes_gdf, state = dual.build_dual(
-            wkts, crs=normalized_crs, boundary=boundary, directions=directions, impedances=impedances
+            wkts,
+            crs=normalized_crs,
+            boundary=boundary,
+            directions=directions,
+            impedances=impedances,
+            remove_fillers=remove_fillers,
+            remove_danglers=remove_danglers,
+            merge_parallel_dist=merge_parallel_dist,
         )
         if nodes_gdf is None:
             raise RuntimeError("Fast dual build did not produce nodes GeoDataFrame.")
@@ -685,6 +794,7 @@ class CityNetwork:
             if len(shared_idx) > 0:
                 nodes_gdf.loc[shared_idx, attr_df.columns] = attr_df.loc[shared_idx, attr_df.columns]
         state["nx_source_graph"] = graph
+        state["segment_weighted_default"] = bool(segment_weighted)
         return cls._from_dual_result(ns, nodes_gdf, state, normalized_crs)
 
     @classmethod
@@ -696,6 +806,10 @@ class CityNetwork:
         to_crs_code: int | None = None,
         simplify: bool = True,
         boundary: BaseGeometry | None = None,
+        remove_fillers: bool = True,
+        remove_danglers: float = 10.0,
+        merge_parallel_dist: float = 2.0,
+        segment_weighted: bool = False,
         **kwargs: Any,
     ) -> CityNetwork:
         """Construct a CityNetwork from OpenStreetMap data within a bounding polygon.
@@ -715,9 +829,23 @@ class CityNetwork:
         to_crs_code: int
             Target projected EPSG code. If ``None``, an appropriate UTM zone is inferred.
         simplify: bool
-            Whether to simplify the OSM graph topology. Defaults to ``True``.
+            Whether to simplify the OSM graph topology (the aggressive, OSM-tuned pipeline:
+            junction consolidation, parallel carriageway merging by midline, ironing).
+            Defaults to ``True``.
         boundary: BaseGeometry
             Optional polygon for live/dead node assignment (in the target projected CRS).
+        remove_fillers: bool
+            Weld chains of segments meeting at filler (degree-2) endpoints into single segments
+            during dual construction. Default ``True``.
+        remove_danglers: float
+            Remove dead-end stubs up to this length in metres during dual construction.
+            ``0`` disables. Default ``10.0``.
+        merge_parallel_dist: float
+            Merge near-duplicate parallel edges (endpoints within this distance, near-identical
+            lengths) during dual construction. ``0`` disables. Default ``2.0``.
+        segment_weighted: bool
+            Default for the ``segment_weighted`` option of the centrality methods. Can be
+            overridden per centrality call. Default ``False``.
         **kwargs
             Additional keyword arguments passed to
             [`io.osm_graph_from_poly`](/tools/io#osm_graph_from_poly).
@@ -746,7 +874,14 @@ class CityNetwork:
             simplify=simplify,
             **kwargs,
         )
-        return cls.from_nx(graph, boundary=boundary)
+        return cls.from_nx(
+            graph,
+            boundary=boundary,
+            remove_fillers=remove_fillers,
+            remove_danglers=remove_danglers,
+            merge_parallel_dist=merge_parallel_dist,
+            segment_weighted=segment_weighted,
+        )
 
     def _clear_metric_columns(self) -> None:
         metric_columns = [col for col in self._nodes_gdf.columns if col.startswith("cc_")]
@@ -914,6 +1049,8 @@ class CityNetwork:
             "feature_status": dict(self._state.get("feature_status", {})),
             "directions": self._state.get("directions"),
             "impedances": dict(self._state.get("impedances", {})),
+            "clean_params": dict(self._state.get("clean_params", dual.LEGACY_CLEAN_PARAMS)),
+            "segment_weighted_default": bool(self._state.get("segment_weighted_default", False)),
         }
         with path.with_suffix(".state.pkl").open("wb") as file:
             pickle.dump(payload, file)
@@ -943,6 +1080,9 @@ class CityNetwork:
         source_wkts = payload.get("source_wkts", payload.get("wkts"))
         directions = payload.get("directions")
         impedances = payload.get("impedances")
+        # rebuild with the cleaning parameters the network was saved with; states saved before
+        # these existed imply the legacy behaviour
+        clean_params = payload.get("clean_params", dict(dual.LEGACY_CLEAN_PARAMS))
         # Build state (geoms, edge_records, endpoint_to_fids, etc.)
         # but skip building nodes_gdf — we'll use the saved one.
         _ns, _nodes_gdf, state = dual.build_dual(
@@ -952,8 +1092,10 @@ class CityNetwork:
             build_nodes_gdf=False,
             directions=directions,
             impedances=impedances,
+            **clean_params,
         )
         state["feature_status"] = payload.get("feature_status", state.get("feature_status", {}))
+        state["segment_weighted_default"] = bool(payload.get("segment_weighted_default", False))
         # Merge saved columns (metrics, user attrs) onto fresh topology,
         # then rebuild NS once from the merged result.
         merged_gdf = dual._build_nodes_gdf(
@@ -962,6 +1104,7 @@ class CityNetwork:
             state["node_idx"],
             state["midpoints"],
             saved_nodes_gdf.crs,
+            geoms=state["geoms"],
         )
         merged_gdf = _merge_saved_columns(merged_gdf, saved_nodes_gdf)
         ns, nodes_gdf, state = _rebuild_dual_network(state, merged_gdf)
@@ -1026,6 +1169,7 @@ class CityNetwork:
         kwargs.setdefault("betweenness", {"betweenness": "1"})
         kwargs.setdefault("cycles", False)
         kwargs.setdefault("postprocess", {})
+        kwargs.setdefault("segment_weighted", bool(self._state.get("segment_weighted_default", False)))
         self._nodes_gdf = networks.centrality_shortest(
             network_structure=self._network_structure,
             nodes_gdf=self._nodes_gdf,
@@ -1066,6 +1210,7 @@ class CityNetwork:
         kwargs.setdefault("closeness", {"harmonic": "1 / (1 + c / 90)"})
         kwargs.setdefault("betweenness", {"betweenness": "1"})
         kwargs.setdefault("postprocess", {})
+        kwargs.setdefault("segment_weighted", bool(self._state.get("segment_weighted_default", False)))
         self._nodes_gdf = networks.centrality_simplest(
             network_structure=self._network_structure,
             nodes_gdf=self._nodes_gdf,
