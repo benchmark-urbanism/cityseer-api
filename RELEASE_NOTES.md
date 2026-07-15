@@ -1,3 +1,11 @@
+# v5.4.0 Release Notes
+
+A feature release adding Python 3.14 support. No breaking API changes.
+
+- **Python 3.14 support**: cityseer now builds and is tested on Python 3.10 through 3.14.
+- **Fiona replaced by pyogrio**: the OS Open Roads reader (`io.nx_from_open_roads`) now reads through pyogrio, geopandas' default I/O engine, instead of Fiona. Fiona had stalled at 1.10.1 (September 2024) with no Python 3.14 wheels and is no longer a dependency.
+- **rasterio**: the pinned `==1.4.3` (kept for older Intel Macs) is lifted to `>=1.4.4`, the first release with Python 3.14 wheels. Support for older Intel Macs is dropped.
+
 # v5.3.1 Release Notes
 
 A bugfix release. No breaking changes to the Python API.
