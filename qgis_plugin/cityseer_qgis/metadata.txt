@@ -1,6 +1,7 @@
 [general]
 name=Cityseer
 qgisMinimumVersion=4.0
+qgisMaximumVersion=4.99
 description=Urban network analysis: centrality, demand flows, accessibility, mixed uses, and statistics
 version=5.3.1
 author=Benchmark Urbanism
@@ -15,7 +16,11 @@ about=Cityseer provides Processing algorithms for urban network analysis: networ
     simplest (angular) paths, boundary polygons, and optional adaptive sampling.
     Requires the cityseer Python library: pip install cityseer
 
-changelog=5.3.0
+changelog=5.3.1
+    - Accessibility and Mixed Uses skip features with a missing land-use category instead of erroring
+    - QGIS 4 compatibility: set qgisMaximumVersion and remove the deprecated supportsQt6 flag
+
+    5.3.0
     - New Demand Betweenness (OD Flow) algorithm: spatial-interaction flow allocation from weighted origins to weighted destinations, routed along shortest paths
     - New Mixed Uses algorithm: Hill diversity (q=0,1,2), Shannon entropy, and Gini-Simpson within distance thresholds
     - Statistics accepts multiple numerical fields in one run and only computes the selected statistics
@@ -88,5 +93,4 @@ category=Analysis
 icon=icon.png
 experimental=True
 deprecated=False
-supportsQt6=True
 license=AGPL-3.0
