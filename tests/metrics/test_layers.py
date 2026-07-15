@@ -196,6 +196,106 @@ def test_compute_mixed_uses(primal_graph, dual_graph):
                 )
 
 
+def test_layer_methods_skip_missing_landuse(primal_graph):
+    """Points with a missing (NaN) land-use category are excluded rather than erroring (issue #146).
+
+    A frame with NaN categories must produce the same result as the same frame with those rows
+    already dropped: uncategorised points belong to no land use, so they contribute to neither
+    accessibility counts nor mixed-use diversity.
+    """
+    nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(primal_graph)
+    data_gdf = mock.mock_landuse_categorical_data(primal_graph, random_seed=13)
+    distances = [400, 800]
+    # introduce missing categories on a subset, and a reference frame with those rows removed
+    data_nan = data_gdf.copy()
+    data_nan.loc[data_nan.index[::4], "categorical_landuses"] = np.nan
+    data_dropped = data_nan.dropna(subset=["categorical_landuses"])
+    assert data_nan["categorical_landuses"].isna().any()
+
+    keys = ["a", "b"]
+    acc_nan, ret_gdf = layers.compute_accessibilities(
+        data_nan.copy(),
+        "categorical_landuses",
+        keys,
+        nodes_gdf.copy(),
+        network_structure,
+        distances=distances,
+        decay_fn="1",
+    )
+    acc_dropped, _ = layers.compute_accessibilities(
+        data_dropped.copy(),
+        "categorical_landuses",
+        keys,
+        nodes_gdf.copy(),
+        network_structure,
+        distances=distances,
+        decay_fn="1",
+    )
+    # the returned data frame is the caller's, unchanged (NaN rows preserved)
+    assert ret_gdf["categorical_landuses"].isna().any()
+    for key in keys:
+        for dist_key in distances:
+            col = config.prep_gdf_key(key, dist_key, False)
+            assert np.allclose(acc_nan[col].values, acc_dropped[col].values, atol=config.ATOL, rtol=config.RTOL)
+
+    mu_nan, _ = layers.compute_mixed_uses(
+        data_nan.copy(),
+        "categorical_landuses",
+        nodes_gdf.copy(),
+        network_structure,
+        distances=distances,
+        compute_hill=True,
+        compute_shannon=True,
+        compute_gini=True,
+        decay_fn="1",
+    )
+    mu_dropped, _ = layers.compute_mixed_uses(
+        data_dropped.copy(),
+        "categorical_landuses",
+        nodes_gdf.copy(),
+        network_structure,
+        distances=distances,
+        compute_hill=True,
+        compute_shannon=True,
+        compute_gini=True,
+        decay_fn="1",
+    )
+    for dist_key in distances:
+        for q_key in [0, 1, 2]:
+            col = config.prep_gdf_key(f"hill_q{q_key}", dist_key, angular=False)
+            assert np.allclose(mu_nan[col].values, mu_dropped[col].values, atol=config.ATOL, rtol=config.RTOL)
+
+
+def test_compute_stats_skips_nan(primal_graph):
+    """NaN values in a numeric column are skipped by the aggregation, not errored on or poisoning.
+
+    With a single stats column, skipping NaN values is equivalent to removing those rows, so the
+    result on a frame with NaN must match the result on the same frame with the NaN rows dropped.
+    Guards the Rust-side ``if num.is_nan() { continue }`` behaviour against regression.
+    """
+    nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(primal_graph)
+    data_gdf = mock.mock_numerical_data(primal_graph, num_arrs=1)
+    distances = [400, 800]
+    col = "mock_numerical_1"
+    data_nan = data_gdf.copy()
+    data_nan.loc[data_nan.index[::3], col] = np.nan
+    data_dropped = data_nan.dropna(subset=[col])
+    assert data_nan[col].isna().any()
+
+    res_nan, _ = layers.compute_stats(
+        data_nan.copy(), [col], nodes_gdf.copy(), network_structure, distances=distances, decay_fn="1"
+    )
+    res_dropped, _ = layers.compute_stats(
+        data_dropped.copy(), [col], nodes_gdf.copy(), network_structure, distances=distances, decay_fn="1"
+    )
+    for measure in ["sum", "mean", "count"]:
+        for dist_key in distances:
+            key = config.prep_gdf_key(f"{col}_{measure}", dist_key, angular=False)
+            assert np.allclose(
+                res_nan[key].values, res_dropped[key].values, atol=config.ATOL, rtol=config.RTOL, equal_nan=True
+            )
+
+
 def test_compute_stats(primal_graph, dual_graph):
     """
     Test stats component

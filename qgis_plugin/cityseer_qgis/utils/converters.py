@@ -1,8 +1,12 @@
 """
 Utilities for converting QGIS line layers into a cityseer dual NetworkStructure.
 
-The QGIS plugin keeps the feature-reading and cache-key logic here, but delegates
-the actual dual build and incremental diff logic to ``cityseer.tools.dual``.
+QGIS divergence: this builds a ``NetworkStructure`` straight from QGIS line features, standing in
+for ``cityseer.tools.io.network_structure_from_nx`` (plus the ``cityseer.tools.graphs`` cleaning
+helpers), which the plugin cannot use because they operate on NetworkX graphs and GeoDataFrames and
+so require networkx + geopandas. The feature-reading and cache-key logic lives here; the actual dual
+build and incremental-diff logic is delegated to the lightweight ``cityseer.tools.dual`` module. See
+the dependency-avoidance note in ``algorithms/base.py``.
 """
 
 from __future__ import annotations

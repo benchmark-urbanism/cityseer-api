@@ -270,8 +270,10 @@ class CityseerStatsAlgorithm(CityseerAlgorithmBase):
         assign_base = (step - 1) * step_pct
         feedback.setProgress(int(assign_base))
 
-        # Every inserted entry must appear in every numerical map (a Rust invariant);
-        # missing or invalid values are stored as NaN, which the aggregation skips.
+        # QGIS divergence: build the DataMap and numerical maps directly from QGIS features, in place of
+        # cityseer.metrics.layers.compute_stats (which takes a GeoDataFrame and so needs geopandas).
+        # Every inserted entry must appear in every numerical map (a Rust invariant); missing or invalid
+        # values are stored as NaN, which the Rust aggregation skips. Keep in sync with layers.compute_stats.
         data_map = rustalgos.data.DataMap()
         numerical_maps: list[dict] = [{} for _ in num_fields]
         skipped_geom = 0

@@ -1,3 +1,27 @@
+"""Shared base classes and helpers for the cityseer QGIS processing algorithms.
+
+Dependency-avoidance design
+---------------------------
+The plugin installs cityseer with ``--no-deps`` (see ``cityseer_qgis/__init__.py``) so QGIS does
+not have to pull in the library's heavier dependencies (geopandas, networkx, osmnx, matplotlib,
+tqdm). It therefore cannot use the GeoDataFrame-based high-level API — ``cityseer.metrics.layers``,
+``cityseer.metrics.networks``, and ``cityseer.tools.io`` all take and return ``GeoDataFrame``
+objects and so require geopandas.
+
+Instead the plugin works directly against the lightweight surfaces whose only runtime
+dependencies (numpy, shapely, scipy) ship with QGIS:
+
+- ``cityseer.rustalgos`` — the compiled Rust core (``NetworkStructure``, ``DataMap``).
+- ``cityseer.tools.dual`` — the dual-graph builder, used by ``utils.converters.build_dual_network``
+  in place of ``cityseer.tools.io.network_structure_from_nx`` (which needs networkx + geopandas).
+- ``cityseer.sampling`` — the adaptive-sampling model, kept dependency-light for exactly this use.
+
+Every place that reimplements high-level behaviour for this reason is flagged inline with a
+``# QGIS divergence:`` comment naming the library function it stands in for. When that library
+function's behaviour changes (aggregation semantics, null handling, the sampling plan), the
+mirrored code here must be updated to match.
+"""
+
 from __future__ import annotations
 
 import threading
@@ -31,8 +55,9 @@ def run_with_feedback(progress_src, func, total, feedback, progress_base=0, prog
     slice of the overall algorithm progress, e.g. progress_base=40,
     progress_span=20 means this sub-task fills 40%-60%.
 
-    Mirrors cityseer's config.wrap_progress but replaces tqdm with
-    QgsProcessingFeedback.
+    QGIS divergence: mirrors cityseer.config.wrap_progress but drives
+    QgsProcessingFeedback instead of tqdm, to avoid the tqdm dependency
+    (see the module docstring's dependency-avoidance note).
     """
     result_queue: Queue = Queue()
 
