@@ -80,6 +80,11 @@ def strip_markdown(text: str) -> str:
                 cleaned_text += f"\n{next_line.strip()}"
         elif other_block or next_line.strip().startswith("|") and next_line.strip().endswith("|"):
             cleaned_text += f"\n{next_line.strip()}"
+        # display math: emit a standalone $$...$$ with the delimiters on their own lines. remark-math
+        # only treats the multi-line block form as display (centred); single-line $$...$$ renders inline.
+        elif next_line.strip().startswith("$$") and next_line.strip().endswith("$$") and len(next_line.strip()) > 4:
+            inner = next_line.strip()[2:-2].strip()
+            cleaned_text += f"\n\n$$\n{inner}\n$$\n\n"
         # otherwise weld if possible
         elif weld_candidate(cleaned_text, next_line):
             cleaned_text += f" {next_line.strip()}"
@@ -94,6 +99,30 @@ def strip_markdown(text: str) -> str:
 # Undocumented pyo3 (Rust) methods surface `type(None).__doc__` through pdoc,
 # which would otherwise render "The type of the None singleton." as their description.
 _NONE_DOC_PLACEHOLDER = (type(None).__doc__ or "").strip()
+
+
+# Leaf names of the Rust (pyo3) submodules. pdoc reports their members' ``modulename`` as the
+# bare leaf (e.g. "graph"), not the dotted path, so we match on that too.
+_RUST_MODULE_LEAVES = {"rustalgos", "graph", "data", "centrality", "diversity", "viewshed"}
+
+
+def stable_sort_members(members: list, _module=None) -> list:
+    """Sort members by name for Rust (pyo3) modules only.
+
+    Native pyo3 types expose their members in a non-deterministic order (Rust HashMap iteration),
+    so ``cityseer.rustalgos.*`` pages would otherwise reorder on every regeneration and produce
+    spurious diffs. Membership is decided from each member's own ``modulename`` (robust regardless
+    of Jinja macro scope). Pure-Python modules keep their source order, which is meaningful.
+    """
+    members = list(members)
+
+    def _is_rust(m) -> bool:
+        mn = str(getattr(m, "modulename", "") or "")
+        return mn.startswith("cityseer.rustalgos") or mn.rsplit(".", 1)[-1] in _RUST_MODULE_LEAVES
+
+    if any(_is_rust(m) for m in members):
+        return sorted(members, key=lambda m: m.name)
+    return members
 
 
 def custom_process_docstring(doc_str: str) -> str:
@@ -254,6 +283,7 @@ if __name__ == "__main__":
     # Add custom function
     render.env.filters["custom_process_docstring"] = custom_process_docstring  # type: ignore
     render.env.filters["custom_format_signature"] = custom_format_signature  # type: ignore
+    render.env.filters["stable_sort_members"] = stable_sort_members  # type: ignore
     here = Path(__file__).parent
 
     from cityseer.rustalgos import centrality, data, diversity, graph, viewshed

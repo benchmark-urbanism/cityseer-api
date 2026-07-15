@@ -40,31 +40,6 @@ layout: ../../layouts/PageLayout.astro
 
 <div class="function">
 
-## progress_init
-
-
-<div class="content">
-<span class="name">progress_init</span><div class="signature multiline">
-  <span class="pt">(</span>
-  <div class="param">
-    <span class="pn">self</span>
-  </div>
-  <div class="param">
-    <span class="pn">/</span>
-  </div>
-  <span class="pt">)</span>
-</div>
-</div>
-
-
- Reset the progress counter to zero.
-
-</div>
-
- 
-
-<div class="function">
-
 ## progress
 
 
@@ -90,11 +65,11 @@ layout: ../../layouts/PageLayout.astro
 
 <div class="function">
 
-## visibility
+## progress_init
 
 
 <div class="content">
-<span class="name">visibility</span><div class="signature multiline">
+<span class="name">progress_init</span><div class="signature multiline">
   <span class="pt">(</span>
   <div class="param">
     <span class="pn">self</span>
@@ -102,27 +77,12 @@ layout: ../../layouts/PageLayout.astro
   <div class="param">
     <span class="pn">/</span>
   </div>
-  <div class="param">
-    <span class="pn">bldgs_rast</span>
-  </div>
-  <div class="param">
-    <span class="pn">view_distance</span>
-  </div>
-  <div class="param">
-    <span class="pn">resolution</span>
-  </div>
-  <div class="param">
-    <span class="pn">observer_height</span>
-  </div>
-  <div class="param">
-    <span class="pn">pbar_disabled=None</span>
-  </div>
   <span class="pt">)</span>
 </div>
 </div>
 
 
- Compute the visibility graph for the given raster and view distance.
+ Reset the progress counter to zero.
 
 </div>
 
@@ -166,6 +126,46 @@ layout: ../../layouts/PageLayout.astro
 
 
  Compute the viewshed for a single origin cell.
+
+</div>
+
+ 
+
+<div class="function">
+
+## visibility
+
+
+<div class="content">
+<span class="name">visibility</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">self</span>
+  </div>
+  <div class="param">
+    <span class="pn">/</span>
+  </div>
+  <div class="param">
+    <span class="pn">bldgs_rast</span>
+  </div>
+  <div class="param">
+    <span class="pn">view_distance</span>
+  </div>
+  <div class="param">
+    <span class="pn">resolution</span>
+  </div>
+  <div class="param">
+    <span class="pn">observer_height</span>
+  </div>
+  <div class="param">
+    <span class="pn">pbar_disabled=None</span>
+  </div>
+  <span class="pt">)</span>
+</div>
+</div>
+
+
+ Compute the visibility graph for the given raster and view distance.
 
 </div>
 

@@ -17,60 +17,6 @@ layout: ../../layouts/PageLayout.astro
 <div class="class">
 
 
-## NodePayload
-
-
-
- Payload for a network node.
-
-
-
-<div class="function">
-
-## NodePayload
-
-
-<div class="content">
-<span class="name">NodePayload</span><div class="signature">
-  <span class="pt">(</span>
-  <span class="pt">)</span>
-</div>
-</div>
-
-</div>
-
- 
-
-<div class="function">
-
-## validate
-
-
-<div class="content">
-<span class="name">validate</span><div class="signature multiline">
-  <span class="pt">(</span>
-  <div class="param">
-    <span class="pn">self</span>
-  </div>
-  <div class="param">
-    <span class="pn">/</span>
-  </div>
-  <span class="pt">)</span>
-</div>
-</div>
-
-
- Validates the payload. Returns Ok(()) if valid, Err(PyValueError) otherwise.
-
-</div>
-
- 
-</div>
-
-
-<div class="class">
-
-
 ## EdgePayload
 
 
@@ -151,11 +97,11 @@ layout: ../../layouts/PageLayout.astro
 
 <div class="function">
 
-## dijkstra_tree_shortest
+## add_street_edge
 
 
 <div class="content">
-<span class="name">dijkstra_tree_shortest</span><div class="signature multiline">
+<span class="name">add_street_edge</span><div class="signature multiline">
   <span class="pt">(</span>
   <div class="param">
     <span class="pn">self</span>
@@ -164,13 +110,71 @@ layout: ../../layouts/PageLayout.astro
     <span class="pn">/</span>
   </div>
   <div class="param">
-    <span class="pn">src_idx</span>
+    <span class="pn">start_nd_idx</span>
   </div>
   <div class="param">
-    <span class="pn">max_seconds</span>
+    <span class="pn">end_nd_idx</span>
   </div>
   <div class="param">
-    <span class="pn">speed_m_s</span>
+    <span class="pn">edge_idx</span>
+  </div>
+  <div class="param">
+    <span class="pn">start_nd_key_py</span>
+  </div>
+  <div class="param">
+    <span class="pn">end_nd_key_py</span>
+  </div>
+  <div class="param">
+    <span class="pn">geom_wkt</span>
+  </div>
+  <div class="param">
+    <span class="pn">imp_factor=None</span>
+  </div>
+  <div class="param">
+    <span class="pn">shared_primal_node_key=None</span>
+  </div>
+  <span class="pt">)</span>
+</div>
+</div>
+
+
+ Adds a street edge with geometry. Calculates length, bearings, and angle sum from WKT. Sets seconds to NaN.
+
+</div>
+
+ 
+
+<div class="function">
+
+## add_street_node
+
+
+<div class="content">
+<span class="name">add_street_node</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">self</span>
+  </div>
+  <div class="param">
+    <span class="pn">/</span>
+  </div>
+  <div class="param">
+    <span class="pn">node_key</span>
+  </div>
+  <div class="param">
+    <span class="pn">x</span>
+  </div>
+  <div class="param">
+    <span class="pn">y</span>
+  </div>
+  <div class="param">
+    <span class="pn">live</span>
+  </div>
+  <div class="param">
+    <span class="pn">weight</span>
+  </div>
+  <div class="param">
+    <span class="pn">z=None</span>
   </div>
   <span class="pt">)</span>
 </div>
@@ -183,11 +187,11 @@ layout: ../../layouts/PageLayout.astro
 
 <div class="function">
 
-## poll_reach_hits
+## add_transport_edge
 
 
 <div class="content">
-<span class="name">poll_reach_hits</span><div class="signature multiline">
+<span class="name">add_transport_edge</span><div class="signature multiline">
   <span class="pt">(</span>
   <div class="param">
     <span class="pn">self</span>
@@ -196,20 +200,32 @@ layout: ../../layouts/PageLayout.astro
     <span class="pn">/</span>
   </div>
   <div class="param">
-    <span class="pn">src_idxs</span>
+    <span class="pn">start_nd_idx</span>
   </div>
   <div class="param">
-    <span class="pn">distances</span>
+    <span class="pn">end_nd_idx</span>
   </div>
   <div class="param">
-    <span class="pn">speed_m_s</span>
+    <span class="pn">edge_idx</span>
+  </div>
+  <div class="param">
+    <span class="pn">start_nd_key_py</span>
+  </div>
+  <div class="param">
+    <span class="pn">end_nd_key_py</span>
+  </div>
+  <div class="param">
+    <span class="pn">seconds</span>
+  </div>
+  <div class="param">
+    <span class="pn">imp_factor=None</span>
   </div>
   <span class="pt">)</span>
 </div>
 </div>
 
 
- Per-node hit counts from bounded Dijkstra traversals over the given sources. For each distance threshold, counts how many of the sources reach each node within that metric distance (one traversal per source, to the largest threshold). Backs the sampling pilot (cityseer.sampling.estimate_polled_reach): on an undirected network a node's hit count is binomial in its reach, so hits / m * n estimates reach at every threshold from one traversal set. Returns one Vec of length node_bound() per distance, indexed by raw node index.
+ Adds an abstract transport edge defined by travel time (seconds). Length is set to NaN. Geometry-related fields are NaN/None.
 
 </div>
 
@@ -217,11 +233,11 @@ layout: ../../layouts/PageLayout.astro
 
 <div class="function">
 
-## dijkstra_tree_simplest
+## add_transport_node
 
 
 <div class="content">
-<span class="name">dijkstra_tree_simplest</span><div class="signature multiline">
+<span class="name">add_transport_node</span><div class="signature multiline">
   <span class="pt">(</span>
   <div class="param">
     <span class="pn">self</span>
@@ -230,18 +246,150 @@ layout: ../../layouts/PageLayout.astro
     <span class="pn">/</span>
   </div>
   <div class="param">
-    <span class="pn">src_idx</span>
+    <span class="pn">node_key</span>
   </div>
   <div class="param">
-    <span class="pn">max_seconds</span>
+    <span class="pn">x</span>
   </div>
   <div class="param">
-    <span class="pn">speed_m_s</span>
+    <span class="pn">y</span>
+  </div>
+  <div class="param">
+    <span class="pn">linking_radius=None</span>
+  </div>
+  <div class="param">
+    <span class="pn">z=None</span>
   </div>
   <span class="pt">)</span>
 </div>
 </div>
 
+
+</div>
+
+ 
+
+<div class="function">
+
+## betweenness_demand_shortest
+
+
+<div class="content">
+<span class="name">betweenness_demand_shortest</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">self</span>
+  </div>
+  <div class="param">
+    <span class="pn">/</span>
+  </div>
+  <div class="param">
+    <span class="pn">origins</span>
+  </div>
+  <div class="param">
+    <span class="pn">destinations</span>
+  </div>
+  <div class="param">
+    <span class="pn">decay_fn</span>
+  </div>
+  <div class="param">
+    <span class="pn">distances=None</span>
+  </div>
+  <div class="param">
+    <span class="pn">minutes=None</span>
+  </div>
+  <div class="param">
+    <span class="pn">closest_destination=False</span>
+  </div>
+  <div class="param">
+    <span class="pn">metric_name=None</span>
+  </div>
+  <div class="param">
+    <span class="pn">speed_m_s=None</span>
+  </div>
+  <div class="param">
+    <span class="pn">tolerance=None</span>
+  </div>
+  <div class="param">
+    <span class="pn">pbar_disabled=None</span>
+  </div>
+  <span class="pt">)</span>
+</div>
+</div>
+
+
+ Demand-weighted (flow) betweenness from a singly / origin-constrained spatial interaction model. Each origin distributes its full weight across reachable destinations in proportion to `W_d * decay(c)`, where `decay` is the supplied expression evaluated on `c` (metric cost) and `p` (normalised progress to the threshold) — the gravity model is one instance of this spatial interaction form. The allocated origin-destination flows are then routed along shortest paths via Brandes back-propagation, accumulating flow betweenness at intermediate nodes. Origins and destinations are each aggregated by node first, so several snapped points sharing a node contribute their summed weight (and a node only triggers one Dijkstra). When `closest_destination` is true, an origin routes its full weight to its single nearest reachable destination instead of allocating across all of them.
+
+</div>
+
+ 
+
+<div class="function">
+
+## betweenness_od_shortest
+
+
+<div class="content">
+<span class="name">betweenness_od_shortest</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">self</span>
+  </div>
+  <div class="param">
+    <span class="pn">/</span>
+  </div>
+  <div class="param">
+    <span class="pn">od_matrix</span>
+  </div>
+  <div class="param">
+    <span class="pn">distances=None</span>
+  </div>
+  <div class="param">
+    <span class="pn">minutes=None</span>
+  </div>
+  <div class="param">
+    <span class="pn">betweenness_exprs=None</span>
+  </div>
+  <div class="param">
+    <span class="pn">speed_m_s=None</span>
+  </div>
+  <div class="param">
+    <span class="pn">tolerance=None</span>
+  </div>
+  <div class="param">
+    <span class="pn">pbar_disabled=None</span>
+  </div>
+  <span class="pt">)</span>
+</div>
+</div>
+
+
+ Compute OD-weighted betweenness centrality using shortest paths. Uses Brandes multi-predecessor Dijkstra from each source that has outbound OD trips. Betweenness expressions use `c` (metric distance) and `p` (normalised progress = c / threshold).
+
+</div>
+
+ 
+
+<div class="function">
+
+## build_edge_rtree
+
+
+<div class="content">
+<span class="name">build_edge_rtree</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">self</span>
+  </div>
+  <div class="param">
+    <span class="pn">/</span>
+  </div>
+  <span class="pt">)</span>
+</div>
+</div>
+
+
+ Builds the R-tree for street edge geometries using their bounding boxes. Deduplicates edges based on sorted node pairs and geometric equality. Stores (start_node_idx, end_node_idx, start_node_point, end_node_point, edge_geom) in the R-tree data payload.
 
 </div>
 
@@ -366,11 +514,11 @@ layout: ../../layouts/PageLayout.astro
 
 <div class="function">
 
-## betweenness_od_shortest
+## dijkstra_tree_shortest
 
 
 <div class="content">
-<span class="name">betweenness_od_shortest</span><div class="signature multiline">
+<span class="name">dijkstra_tree_shortest</span><div class="signature multiline">
   <span class="pt">(</span>
   <div class="param">
     <span class="pn">self</span>
@@ -379,32 +527,18 @@ layout: ../../layouts/PageLayout.astro
     <span class="pn">/</span>
   </div>
   <div class="param">
-    <span class="pn">od_matrix</span>
+    <span class="pn">src_idx</span>
   </div>
   <div class="param">
-    <span class="pn">distances=None</span>
+    <span class="pn">max_seconds</span>
   </div>
   <div class="param">
-    <span class="pn">minutes=None</span>
-  </div>
-  <div class="param">
-    <span class="pn">betweenness_exprs=None</span>
-  </div>
-  <div class="param">
-    <span class="pn">speed_m_s=None</span>
-  </div>
-  <div class="param">
-    <span class="pn">tolerance=None</span>
-  </div>
-  <div class="param">
-    <span class="pn">pbar_disabled=None</span>
+    <span class="pn">speed_m_s</span>
   </div>
   <span class="pt">)</span>
 </div>
 </div>
 
-
- Compute OD-weighted betweenness centrality using shortest paths. Uses Brandes multi-predecessor Dijkstra from each source that has outbound OD trips. Betweenness expressions use `c` (metric distance) and `p` (normalised progress = c / threshold).
 
 </div>
 
@@ -412,11 +546,11 @@ layout: ../../layouts/PageLayout.astro
 
 <div class="function">
 
-## betweenness_demand_shortest
+## dijkstra_tree_simplest
 
 
 <div class="content">
-<span class="name">betweenness_demand_shortest</span><div class="signature multiline">
+<span class="name">dijkstra_tree_simplest</span><div class="signature multiline">
   <span class="pt">(</span>
   <div class="param">
     <span class="pn">self</span>
@@ -425,41 +559,18 @@ layout: ../../layouts/PageLayout.astro
     <span class="pn">/</span>
   </div>
   <div class="param">
-    <span class="pn">origins</span>
+    <span class="pn">src_idx</span>
   </div>
   <div class="param">
-    <span class="pn">destinations</span>
+    <span class="pn">max_seconds</span>
   </div>
   <div class="param">
-    <span class="pn">decay_fn</span>
-  </div>
-  <div class="param">
-    <span class="pn">distances=None</span>
-  </div>
-  <div class="param">
-    <span class="pn">minutes=None</span>
-  </div>
-  <div class="param">
-    <span class="pn">closest_destination=False</span>
-  </div>
-  <div class="param">
-    <span class="pn">metric_name=None</span>
-  </div>
-  <div class="param">
-    <span class="pn">speed_m_s=None</span>
-  </div>
-  <div class="param">
-    <span class="pn">tolerance=None</span>
-  </div>
-  <div class="param">
-    <span class="pn">pbar_disabled=None</span>
+    <span class="pn">speed_m_s</span>
   </div>
   <span class="pt">)</span>
 </div>
 </div>
 
-
- Demand-weighted (flow) betweenness from a singly / origin-constrained spatial interaction model. Each origin distributes its full weight across reachable destinations in proportion to `W_d * decay(c)`, where `decay` is the supplied expression evaluated on `c` (metric cost) and `p` (normalised progress to the threshold) — the gravity model is one instance of this spatial interaction form. The allocated origin-destination flows are then routed along shortest paths via Brandes back-propagation, accumulating flow betweenness at intermediate nodes. Origins and destinations are each aggregated by node first, so several snapped points sharing a node contribute their summed weight (and a node only triggers one Dijkstra). When `closest_destination` is true, an origin routes its full weight to its single nearest reachable destination instead of allocating across all of them.
 
 </div>
 
@@ -467,11 +578,36 @@ layout: ../../layouts/PageLayout.astro
 
 <div class="function">
 
-## progress_init
+## edge_bound
 
 
 <div class="content">
-<span class="name">progress_init</span><div class="signature multiline">
+<span class="name">edge_bound</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">self</span>
+  </div>
+  <div class="param">
+    <span class="pn">/</span>
+  </div>
+  <span class="pt">)</span>
+</div>
+</div>
+
+
+ Returns an upper bound on edge indices (all valid indices are < edge_bound).
+
+</div>
+
+ 
+
+<div class="function">
+
+## edge_references
+
+
+<div class="content">
+<span class="name">edge_references</span><div class="signature multiline">
   <span class="pt">(</span>
   <div class="param">
     <span class="pn">self</span>
@@ -490,17 +626,26 @@ layout: ../../layouts/PageLayout.astro
 
 <div class="function">
 
-## progress
+## get_edge_impedance
 
 
 <div class="content">
-<span class="name">progress</span><div class="signature multiline">
+<span class="name">get_edge_impedance</span><div class="signature multiline">
   <span class="pt">(</span>
   <div class="param">
     <span class="pn">self</span>
   </div>
   <div class="param">
     <span class="pn">/</span>
+  </div>
+  <div class="param">
+    <span class="pn">start_nd_idx</span>
+  </div>
+  <div class="param">
+    <span class="pn">end_nd_idx</span>
+  </div>
+  <div class="param">
+    <span class="pn">edge_idx</span>
   </div>
   <span class="pt">)</span>
 </div>
@@ -513,11 +658,11 @@ layout: ../../layouts/PageLayout.astro
 
 <div class="function">
 
-## set_is_dual
+## get_edge_length
 
 
 <div class="content">
-<span class="name">set_is_dual</span><div class="signature multiline">
+<span class="name">get_edge_length</span><div class="signature multiline">
   <span class="pt">(</span>
   <div class="param">
     <span class="pn">self</span>
@@ -526,7 +671,13 @@ layout: ../../layouts/PageLayout.astro
     <span class="pn">/</span>
   </div>
   <div class="param">
-    <span class="pn">is_dual</span>
+    <span class="pn">start_nd_idx</span>
+  </div>
+  <div class="param">
+    <span class="pn">end_nd_idx</span>
+  </div>
+  <div class="param">
+    <span class="pn">edge_idx</span>
   </div>
   <span class="pt">)</span>
 </div>
@@ -539,11 +690,11 @@ layout: ../../layouts/PageLayout.astro
 
 <div class="function">
 
-## set_is_directed
+## get_edge_payload_py
 
 
 <div class="content">
-<span class="name">set_is_directed</span><div class="signature multiline">
+<span class="name">get_edge_payload_py</span><div class="signature multiline">
   <span class="pt">(</span>
   <div class="param">
     <span class="pn">self</span>
@@ -552,86 +703,13 @@ layout: ../../layouts/PageLayout.astro
     <span class="pn">/</span>
   </div>
   <div class="param">
-    <span class="pn">is_directed</span>
-  </div>
-  <span class="pt">)</span>
-</div>
-</div>
-
-
-</div>
-
- 
-
-<div class="function">
-
-## add_street_node
-
-
-<div class="content">
-<span class="name">add_street_node</span><div class="signature multiline">
-  <span class="pt">(</span>
-  <div class="param">
-    <span class="pn">self</span>
+    <span class="pn">start_nd_idx</span>
   </div>
   <div class="param">
-    <span class="pn">/</span>
+    <span class="pn">end_nd_idx</span>
   </div>
   <div class="param">
-    <span class="pn">node_key</span>
-  </div>
-  <div class="param">
-    <span class="pn">x</span>
-  </div>
-  <div class="param">
-    <span class="pn">y</span>
-  </div>
-  <div class="param">
-    <span class="pn">live</span>
-  </div>
-  <div class="param">
-    <span class="pn">weight</span>
-  </div>
-  <div class="param">
-    <span class="pn">z=None</span>
-  </div>
-  <span class="pt">)</span>
-</div>
-</div>
-
-
-</div>
-
- 
-
-<div class="function">
-
-## add_transport_node
-
-
-<div class="content">
-<span class="name">add_transport_node</span><div class="signature multiline">
-  <span class="pt">(</span>
-  <div class="param">
-    <span class="pn">self</span>
-  </div>
-  <div class="param">
-    <span class="pn">/</span>
-  </div>
-  <div class="param">
-    <span class="pn">node_key</span>
-  </div>
-  <div class="param">
-    <span class="pn">x</span>
-  </div>
-  <div class="param">
-    <span class="pn">y</span>
-  </div>
-  <div class="param">
-    <span class="pn">linking_radius=None</span>
-  </div>
-  <div class="param">
-    <span class="pn">z=None</span>
+    <span class="pn">edge_idx</span>
   </div>
   <span class="pt">)</span>
 </div>
@@ -696,37 +774,6 @@ layout: ../../layouts/PageLayout.astro
 
 <div class="function">
 
-## set_node_weight
-
-
-<div class="content">
-<span class="name">set_node_weight</span><div class="signature multiline">
-  <span class="pt">(</span>
-  <div class="param">
-    <span class="pn">self</span>
-  </div>
-  <div class="param">
-    <span class="pn">/</span>
-  </div>
-  <div class="param">
-    <span class="pn">node_idx</span>
-  </div>
-  <div class="param">
-    <span class="pn">weight</span>
-  </div>
-  <span class="pt">)</span>
-</div>
-</div>
-
-
- Set the weight of a node.
-
-</div>
-
- 
-
-<div class="function">
-
 ## is_node_live
 
 
@@ -746,62 +793,6 @@ layout: ../../layouts/PageLayout.astro
 </div>
 </div>
 
-
-</div>
-
- 
-
-<div class="function">
-
-## set_node_live
-
-
-<div class="content">
-<span class="name">set_node_live</span><div class="signature multiline">
-  <span class="pt">(</span>
-  <div class="param">
-    <span class="pn">self</span>
-  </div>
-  <div class="param">
-    <span class="pn">/</span>
-  </div>
-  <div class="param">
-    <span class="pn">node_idx</span>
-  </div>
-  <div class="param">
-    <span class="pn">live</span>
-  </div>
-  <span class="pt">)</span>
-</div>
-</div>
-
-
- Set the live status of a node (e.g. based on a boundary polygon).
-
-</div>
-
- 
-
-<div class="function">
-
-## node_count
-
-
-<div class="content">
-<span class="name">node_count</span><div class="signature multiline">
-  <span class="pt">(</span>
-  <div class="param">
-    <span class="pn">self</span>
-  </div>
-  <div class="param">
-    <span class="pn">/</span>
-  </div>
-  <span class="pt">)</span>
-</div>
-</div>
-
-
- Returns the total count of all nodes (street and transport).
 
 </div>
 
@@ -834,11 +825,11 @@ layout: ../../layouts/PageLayout.astro
 
 <div class="function">
 
-## edge_bound
+## node_count
 
 
 <div class="content">
-<span class="name">edge_bound</span><div class="signature multiline">
+<span class="name">node_count</span><div class="signature multiline">
   <span class="pt">(</span>
   <div class="param">
     <span class="pn">self</span>
@@ -851,32 +842,7 @@ layout: ../../layouts/PageLayout.astro
 </div>
 
 
- Returns an upper bound on edge indices (all valid indices are < edge_bound).
-
-</div>
-
- 
-
-<div class="function">
-
-## street_node_count
-
-
-<div class="content">
-<span class="name">street_node_count</span><div class="signature multiline">
-  <span class="pt">(</span>
-  <div class="param">
-    <span class="pn">self</span>
-  </div>
-  <div class="param">
-    <span class="pn">/</span>
-  </div>
-  <span class="pt">)</span>
-</div>
-</div>
-
-
- Returns the count of non-transport (street) nodes.
+ Returns the total count of all nodes (street and transport).
 
 </div>
 
@@ -932,13 +898,38 @@ layout: ../../layouts/PageLayout.astro
 
  
 
+<span class="name">node_xs</span>
+
+
+ 
+
+<span class="name">node_xys</span>
+
+
+ 
+
+<span class="name">node_xyzs</span>
+
+
+ 
+
+<span class="name">node_ys</span>
+
+
+ 
+
+<span class="name">node_zs</span>
+
+
+ 
+
 <div class="function">
 
-## street_node_indices
+## poll_reach_hits
 
 
 <div class="content">
-<span class="name">street_node_indices</span><div class="signature multiline">
+<span class="name">poll_reach_hits</span><div class="signature multiline">
   <span class="pt">(</span>
   <div class="param">
     <span class="pn">self</span>
@@ -946,12 +937,21 @@ layout: ../../layouts/PageLayout.astro
   <div class="param">
     <span class="pn">/</span>
   </div>
+  <div class="param">
+    <span class="pn">src_idxs</span>
+  </div>
+  <div class="param">
+    <span class="pn">distances</span>
+  </div>
+  <div class="param">
+    <span class="pn">speed_m_s</span>
+  </div>
   <span class="pt">)</span>
 </div>
 </div>
 
 
- Returns a list of indices for non-transport (street) nodes.
+ Per-node hit counts from bounded Dijkstra traversals over the given sources. For each distance threshold, counts how many of the sources reach each node within that metric distance (one traversal per source, to the largest threshold). Backs the sampling pilot (cityseer.sampling.estimate_polled_reach): on an undirected network a node's hit count is binomial in its reach, so hits / m * n estimates reach at every threshold from one traversal set. Returns one Vec of length node_bound() per distance, indexed by raw node index.
 
 </div>
 
@@ -959,11 +959,11 @@ layout: ../../layouts/PageLayout.astro
 
 <div class="function">
 
-## add_street_edge
+## progress
 
 
 <div class="content">
-<span class="name">add_street_edge</span><div class="signature multiline">
+<span class="name">progress</span><div class="signature multiline">
   <span class="pt">(</span>
   <div class="param">
     <span class="pn">self</span>
@@ -971,36 +971,10 @@ layout: ../../layouts/PageLayout.astro
   <div class="param">
     <span class="pn">/</span>
   </div>
-  <div class="param">
-    <span class="pn">start_nd_idx</span>
-  </div>
-  <div class="param">
-    <span class="pn">end_nd_idx</span>
-  </div>
-  <div class="param">
-    <span class="pn">edge_idx</span>
-  </div>
-  <div class="param">
-    <span class="pn">start_nd_key_py</span>
-  </div>
-  <div class="param">
-    <span class="pn">end_nd_key_py</span>
-  </div>
-  <div class="param">
-    <span class="pn">geom_wkt</span>
-  </div>
-  <div class="param">
-    <span class="pn">imp_factor=None</span>
-  </div>
-  <div class="param">
-    <span class="pn">shared_primal_node_key=None</span>
-  </div>
   <span class="pt">)</span>
 </div>
 </div>
 
-
- Adds a street edge with geometry. Calculates length, bearings, and angle sum from WKT. Sets seconds to NaN.
 
 </div>
 
@@ -1008,11 +982,11 @@ layout: ../../layouts/PageLayout.astro
 
 <div class="function">
 
-## remove_street_node
+## progress_init
 
 
 <div class="content">
-<span class="name">remove_street_node</span><div class="signature multiline">
+<span class="name">progress_init</span><div class="signature multiline">
   <span class="pt">(</span>
   <div class="param">
     <span class="pn">self</span>
@@ -1020,17 +994,10 @@ layout: ../../layouts/PageLayout.astro
   <div class="param">
     <span class="pn">/</span>
   </div>
-  <div class="param">
-    <span class="pn">node_idx</span>
-  </div>
   <span class="pt">)</span>
 </div>
 </div>
 
-
- Remove a street node and all its connected edges from the StableGraph. StableGraph::remove_node() cascades to all edges connected to the node, and preserves existing indices for other nodes (no swap-and-compact). This means node indices held externally (e.g. by the QGIS plugin's `node_idx` dict) remain valid after removal.
-
- Returns an error if the node does not exist or is a transport node.
 
 </div>
 
@@ -1072,11 +1039,11 @@ layout: ../../layouts/PageLayout.astro
 
 <div class="function">
 
-## add_transport_edge
+## remove_street_node
 
 
 <div class="content">
-<span class="name">add_transport_edge</span><div class="signature multiline">
+<span class="name">remove_street_node</span><div class="signature multiline">
   <span class="pt">(</span>
   <div class="param">
     <span class="pn">self</span>
@@ -1085,199 +1052,16 @@ layout: ../../layouts/PageLayout.astro
     <span class="pn">/</span>
   </div>
   <div class="param">
-    <span class="pn">start_nd_idx</span>
-  </div>
-  <div class="param">
-    <span class="pn">end_nd_idx</span>
-  </div>
-  <div class="param">
-    <span class="pn">edge_idx</span>
-  </div>
-  <div class="param">
-    <span class="pn">start_nd_key_py</span>
-  </div>
-  <div class="param">
-    <span class="pn">end_nd_key_py</span>
-  </div>
-  <div class="param">
-    <span class="pn">seconds</span>
-  </div>
-  <div class="param">
-    <span class="pn">imp_factor=None</span>
+    <span class="pn">node_idx</span>
   </div>
   <span class="pt">)</span>
 </div>
 </div>
 
 
- Adds an abstract transport edge defined by travel time (seconds). Length is set to NaN. Geometry-related fields are NaN/None.
+ Remove a street node and all its connected edges from the StableGraph. StableGraph::remove_node() cascades to all edges connected to the node, and preserves existing indices for other nodes (no swap-and-compact). This means node indices held externally (e.g. by the QGIS plugin's `node_idx` dict) remain valid after removal.
 
-</div>
-
- 
-
-<div class="function">
-
-## edge_references
-
-
-<div class="content">
-<span class="name">edge_references</span><div class="signature multiline">
-  <span class="pt">(</span>
-  <div class="param">
-    <span class="pn">self</span>
-  </div>
-  <div class="param">
-    <span class="pn">/</span>
-  </div>
-  <span class="pt">)</span>
-</div>
-</div>
-
-
-</div>
-
- 
-
-<div class="function">
-
-## get_edge_payload_py
-
-
-<div class="content">
-<span class="name">get_edge_payload_py</span><div class="signature multiline">
-  <span class="pt">(</span>
-  <div class="param">
-    <span class="pn">self</span>
-  </div>
-  <div class="param">
-    <span class="pn">/</span>
-  </div>
-  <div class="param">
-    <span class="pn">start_nd_idx</span>
-  </div>
-  <div class="param">
-    <span class="pn">end_nd_idx</span>
-  </div>
-  <div class="param">
-    <span class="pn">edge_idx</span>
-  </div>
-  <span class="pt">)</span>
-</div>
-</div>
-
-
-</div>
-
- 
-
-<div class="function">
-
-## get_edge_length
-
-
-<div class="content">
-<span class="name">get_edge_length</span><div class="signature multiline">
-  <span class="pt">(</span>
-  <div class="param">
-    <span class="pn">self</span>
-  </div>
-  <div class="param">
-    <span class="pn">/</span>
-  </div>
-  <div class="param">
-    <span class="pn">start_nd_idx</span>
-  </div>
-  <div class="param">
-    <span class="pn">end_nd_idx</span>
-  </div>
-  <div class="param">
-    <span class="pn">edge_idx</span>
-  </div>
-  <span class="pt">)</span>
-</div>
-</div>
-
-
-</div>
-
- 
-
-<div class="function">
-
-## get_edge_impedance
-
-
-<div class="content">
-<span class="name">get_edge_impedance</span><div class="signature multiline">
-  <span class="pt">(</span>
-  <div class="param">
-    <span class="pn">self</span>
-  </div>
-  <div class="param">
-    <span class="pn">/</span>
-  </div>
-  <div class="param">
-    <span class="pn">start_nd_idx</span>
-  </div>
-  <div class="param">
-    <span class="pn">end_nd_idx</span>
-  </div>
-  <div class="param">
-    <span class="pn">edge_idx</span>
-  </div>
-  <span class="pt">)</span>
-</div>
-</div>
-
-
-</div>
-
- 
-
-<div class="function">
-
-## validate
-
-
-<div class="content">
-<span class="name">validate</span><div class="signature multiline">
-  <span class="pt">(</span>
-  <div class="param">
-    <span class="pn">self</span>
-  </div>
-  <div class="param">
-    <span class="pn">/</span>
-  </div>
-  <span class="pt">)</span>
-</div>
-</div>
-
-
-</div>
-
- 
-
-<div class="function">
-
-## build_edge_rtree
-
-
-<div class="content">
-<span class="name">build_edge_rtree</span><div class="signature multiline">
-  <span class="pt">(</span>
-  <div class="param">
-    <span class="pn">self</span>
-  </div>
-  <div class="param">
-    <span class="pn">/</span>
-  </div>
-  <span class="pt">)</span>
-</div>
-</div>
-
-
- Builds the R-tree for street edge geometries using their bounding boxes. Deduplicates edges based on sorted node pairs and geometric equality. Stores (start_node_idx, end_node_idx, start_node_point, end_node_point, edge_geom) in the R-tree data payload.
+ Returns an error if the node does not exist or is a transport node.
 
 </div>
 
@@ -1313,6 +1097,175 @@ layout: ../../layouts/PageLayout.astro
 
 <div class="function">
 
+## set_is_directed
+
+
+<div class="content">
+<span class="name">set_is_directed</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">self</span>
+  </div>
+  <div class="param">
+    <span class="pn">/</span>
+  </div>
+  <div class="param">
+    <span class="pn">is_directed</span>
+  </div>
+  <span class="pt">)</span>
+</div>
+</div>
+
+
+</div>
+
+ 
+
+<div class="function">
+
+## set_is_dual
+
+
+<div class="content">
+<span class="name">set_is_dual</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">self</span>
+  </div>
+  <div class="param">
+    <span class="pn">/</span>
+  </div>
+  <div class="param">
+    <span class="pn">is_dual</span>
+  </div>
+  <span class="pt">)</span>
+</div>
+</div>
+
+
+</div>
+
+ 
+
+<div class="function">
+
+## set_node_live
+
+
+<div class="content">
+<span class="name">set_node_live</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">self</span>
+  </div>
+  <div class="param">
+    <span class="pn">/</span>
+  </div>
+  <div class="param">
+    <span class="pn">node_idx</span>
+  </div>
+  <div class="param">
+    <span class="pn">live</span>
+  </div>
+  <span class="pt">)</span>
+</div>
+</div>
+
+
+ Set the live status of a node (e.g. based on a boundary polygon).
+
+</div>
+
+ 
+
+<div class="function">
+
+## set_node_weight
+
+
+<div class="content">
+<span class="name">set_node_weight</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">self</span>
+  </div>
+  <div class="param">
+    <span class="pn">/</span>
+  </div>
+  <div class="param">
+    <span class="pn">node_idx</span>
+  </div>
+  <div class="param">
+    <span class="pn">weight</span>
+  </div>
+  <span class="pt">)</span>
+</div>
+</div>
+
+
+ Set the weight of a node.
+
+</div>
+
+ 
+
+<div class="function">
+
+## street_node_count
+
+
+<div class="content">
+<span class="name">street_node_count</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">self</span>
+  </div>
+  <div class="param">
+    <span class="pn">/</span>
+  </div>
+  <span class="pt">)</span>
+</div>
+</div>
+
+
+ Returns the count of non-transport (street) nodes.
+
+</div>
+
+ 
+
+<div class="function">
+
+## street_node_indices
+
+
+<div class="content">
+<span class="name">street_node_indices</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">self</span>
+  </div>
+  <div class="param">
+    <span class="pn">/</span>
+  </div>
+  <span class="pt">)</span>
+</div>
+</div>
+
+
+ Returns a list of indices for non-transport (street) nodes.
+
+</div>
+
+ 
+
+<span class="name">street_node_lives</span>
+
+
+ 
+
+<div class="function">
+
 ## unset_barriers
 
 
@@ -1336,33 +1289,80 @@ layout: ../../layouts/PageLayout.astro
 
  
 
-<span class="name">node_ys</span>
+<div class="function">
 
+## validate
+
+
+<div class="content">
+<span class="name">validate</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">self</span>
+  </div>
+  <div class="param">
+    <span class="pn">/</span>
+  </div>
+  <span class="pt">)</span>
+</div>
+</div>
+
+
+</div>
+
+ 
+</div>
+
+
+<div class="class">
+
+
+## NodePayload
+
+
+
+ Payload for a network node.
+
+
+
+<div class="function">
+
+## NodePayload
+
+
+<div class="content">
+<span class="name">NodePayload</span><div class="signature">
+  <span class="pt">(</span>
+  <span class="pt">)</span>
+</div>
+</div>
+
+</div>
 
  
 
-<span class="name">street_node_lives</span>
+<div class="function">
+
+## validate
 
 
- 
+<div class="content">
+<span class="name">validate</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">self</span>
+  </div>
+  <div class="param">
+    <span class="pn">/</span>
+  </div>
+  <span class="pt">)</span>
+</div>
+</div>
 
-<span class="name">node_zs</span>
 
+ Validates the payload. Returns Ok(()) if valid, Err(PyValueError) otherwise.
 
- 
-
-<span class="name">node_xs</span>
-
-
- 
-
-<span class="name">node_xyzs</span>
-
-
- 
-
-<span class="name">node_xys</span>
-
+</div>
 
  
 </div>

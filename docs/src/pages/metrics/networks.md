@@ -715,7 +715,11 @@ print(nodes_gdf[["cc_harmonic_400", "cc_betweenness_800"]])
 
  Compute demand-weighted (flow) betweenness from a spatial interaction model. Trips are allocated between weighted origins (e.g. population) and weighted destinations (e.g. attractors) using a **singly (origin-)constrained** spatial interaction model, then routed along shortest network paths so that intermediate nodes accumulate the flow that passes through them. For each origin $o$ and reachable destination $d$ the allocated flow is
 
- $$W_{od} = W_o \cdot \frac{W_d \cdot f(c_{od})}{\sum_{d'} W_{d'} \cdot f(c_{od'})}$$
+
+$$
+W_{od} = W_o \cdot \frac{W_d \cdot f(c_{od})}{\sum_{d'} W_{d'} \cdot f(c_{od'})}
+$$
+
 
  where $f$ is ``decay_fn`` and $c_{od}$ is the network distance. Each origin's full weight is conserved and distributed across reachable destinations (destination totals are not constrained — that would require a doubly-constrained / Furness model). The gravity model is the classic instance of this form, recovered with an exponential ``decay_fn``.
 

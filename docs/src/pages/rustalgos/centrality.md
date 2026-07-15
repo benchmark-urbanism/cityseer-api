@@ -17,6 +17,37 @@ layout: ../../layouts/PageLayout.astro
 <div class="class">
 
 
+## CentralityResult
+
+
+
+
+<div class="function">
+
+## CentralityResult
+
+
+<div class="content">
+<span class="name">CentralityResult</span><div class="signature">
+  <span class="pt">(</span>
+  <span class="pt">)</span>
+</div>
+</div>
+
+</div>
+
+ 
+
+<span class="name">metrics</span>
+
+
+ 
+</div>
+
+
+<div class="class">
+
+
 ## OdMatrix
 
 
@@ -88,37 +119,6 @@ layout: ../../layouts/PageLayout.astro
  Number of unique origin nodes.
 
 </div>
-
- 
-</div>
-
-
-<div class="class">
-
-
-## CentralityResult
-
-
-
-
-<div class="function">
-
-## CentralityResult
-
-
-<div class="content">
-<span class="name">CentralityResult</span><div class="signature">
-  <span class="pt">(</span>
-  <span class="pt">)</span>
-</div>
-</div>
-
-</div>
-
- 
-
-<span class="name">metrics</span>
-
 
  
 </div>
