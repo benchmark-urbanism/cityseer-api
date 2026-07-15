@@ -820,6 +820,7 @@ def build_dual(
         "edge_records": edge_records,
         "directions": directions,
         "impedances": dict(impedances),
+        "effective_impedances": dict(effective_impedances),
         "merges": merges,
         "clean_params": {
             "remove_fillers": remove_fillers,

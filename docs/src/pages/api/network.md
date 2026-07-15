@@ -99,17 +99,12 @@ cn.save("my_network")
 cn_restored = CityNetwork.load("my_network")
 ```
 
- ### Incremental updates
+ ### Updating geometries
 
- The [`update`](#update) method performs an incremental topology diff: unchanged features keep their node indices, added features are inserted, and removed features are deleted. Previously computed centrality columns are cleared since they are invalidated by topology changes.
+ To analyse modified geometries, construct a fresh network from the updated data; construction is fast and stateless, and cleaning runs exactly once per construction. (Controlled in-place editing exists for the QGIS plugin via ``tools.dual.incremental_update``, where the layer-edit workflow warrants it.)
 
 ```python
-# Initial build
-cn = CityNetwork.from_geopandas(edges_gdf, crs=32632)
-cn.centrality_shortest(distances=[800])
-
-# Update with modified geometries
-cn.update(updated_edges_gdf)
+cn = CityNetwork.from_geopandas(updated_edges_gdf, crs=32632)
 cn.centrality_shortest(distances=[800])
 ```
 
@@ -1074,57 +1069,6 @@ cn.centrality_shortest(distances=[400, 800])
 
 <div class="function">
 
-## update
-
-
-<div class="content">
-<span class="name">update</span><div class="signature multiline">
-  <span class="pt">(</span>
-  <div class="param">
-    <span class="pn">self</span>
-  </div>
-  <div class="param">
-    <span class="pn">data</span>
-  </div>
-  <span class="pt">)-&gt;[</span>
-  <span class="pr">CityNetwork</span>
-  <span class="pt">]</span>
-</div>
-</div>
-
-
- Update the network topology with new or modified geometries. Performs an incremental diff against the current state: unchanged features retain their node indices, added features are inserted, and removed features are deleted. Previously computed centrality columns are cleared since they are invalidated by topology changes.
-
- For directed networks built via ``from_geopandas(directed=True)``, the incoming GeoDataFrame must include the ``oneway`` column. Direction changes (even without geometry changes) trigger a rebuild.
-### Parameters
-<div class="param-set">
-  <div class="def">
-    <div class="name">data</div>
-    <div class="type">dict[Any, str] | dict[Any, BaseGeometry] | GeoDataFrame</div>
-  </div>
-  <div class="desc">
-
- The complete updated set of geometries (not just the diff).</div>
-</div>
-
-### Returns
-<div class="param-set">
-  <div class="def">
-    <div class="name">self</div>
-    <div class="type">CityNetwork</div>
-  </div>
-  <div class="desc">
-
- Returns self for method chaining.</div>
-</div>
-
-
-</div>
-
- 
-
-<div class="function">
-
 ## set_boundary
 
 
@@ -1230,7 +1174,7 @@ cn.centrality_shortest(distances=[400, 800])
 </div>
 
 
- Save the network to disk as a parquet/pickle pair. Creates two files: ``<path>.nodes.parquet`` (the nodes GeoDataFrame with all computed columns) and ``<path>.state.pkl`` (source WKTs, boundary, and feature status). Use [`load`](#load) to restore.
+ Save the network to disk as a parquet/pickle pair. Creates two files: ``<path>.nodes.parquet`` (the nodes GeoDataFrame with all computed columns) and ``<path>.state.pkl`` (source and cleaned WKTs, boundary, cleaning parameters, and feature status). Use [`load`](#load) to restore.
 ### Parameters
 <div class="param-set">
   <div class="def">
@@ -1283,7 +1227,7 @@ print(cn_restored.nodes_gdf["cc_harmonic_800"])
 </div>
 
 
- Load a previously saved CityNetwork from disk. Rebuilds the full graph topology from the saved source WKTs and merges any previously computed columns (centrality metrics, layer results) from the saved nodes GeoDataFrame.
+ Load a previously saved CityNetwork from disk. Reconstructs the graph topology from the saved cleaned geometries with cleaning disabled, so the loaded network is identical to the saved one (cleaning runs exactly once, at construction), and merges any previously computed columns (centrality metrics, layer results) from the saved nodes GeoDataFrame.
 ### Parameters
 <div class="param-set">
   <div class="def">

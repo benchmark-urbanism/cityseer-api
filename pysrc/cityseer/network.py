@@ -24,7 +24,6 @@ from .metrics import layers, networks
 from .tools import dual, io, util
 
 _BASE_NODE_COLUMNS = {"ns_node_idx", "x", "y", "z", "live", "weight"}
-_NON_PRESERVED_UPDATE_COLUMNS = {"ns_node_idx", "x", "y", "live", "seg_length"}
 
 
 def _normalize_crs(crs: Any | None) -> CRS | None:
@@ -240,19 +239,14 @@ class CityNetwork:
     cn_restored = CityNetwork.load("my_network")
     ```
 
-    ### Incremental updates
+    ### Updating geometries
 
-    The [`update`](#update) method performs an incremental topology diff: unchanged features keep their node
-    indices, added features are inserted, and removed features are deleted. Previously computed centrality columns
-    are cleared since they are invalidated by topology changes.
+    To analyse modified geometries, construct a fresh network from the updated data; construction is fast and
+    stateless, and cleaning runs exactly once per construction. (Controlled in-place editing exists for the QGIS
+    plugin via ``tools.dual.incremental_update``, where the layer-edit workflow warrants it.)
 
     ```python
-    # Initial build
-    cn = CityNetwork.from_geopandas(edges_gdf, crs=32632)
-    cn.centrality_shortest(distances=[800])
-
-    # Update with modified geometries
-    cn.update(updated_edges_gdf)
+    cn = CityNetwork.from_geopandas(updated_edges_gdf, crs=32632)
     cn.centrality_shortest(distances=[800])
     ```
 
@@ -894,87 +888,6 @@ class CityNetwork:
                 self._state["feature_status"].get(fid, "active") for fid in self._nodes_gdf.index
             ]
 
-    def _restore_non_topology_columns(self, previous_nodes_gdf: gpd.GeoDataFrame) -> None:
-        shared_idx = self._nodes_gdf.index.intersection(previous_nodes_gdf.index)
-        geometry_name = previous_nodes_gdf.geometry.name
-        restore_columns = [
-            col
-            for col in previous_nodes_gdf.columns
-            if col not in _NON_PRESERVED_UPDATE_COLUMNS and col != geometry_name and not col.startswith("cc_")
-        ]
-        if restore_columns:
-            self._nodes_gdf.loc[shared_idx, restore_columns] = previous_nodes_gdf.loc[shared_idx, restore_columns]
-
-    def update(
-        self,
-        data: dict[Any, str] | dict[Any, BaseGeometry] | gpd.GeoDataFrame,
-    ) -> CityNetwork:
-        """Update the network topology with new or modified geometries.
-
-        Performs an incremental diff against the current state: unchanged features retain their node indices,
-        added features are inserted, and removed features are deleted. Previously computed centrality columns
-        are cleared since they are invalidated by topology changes.
-
-        For directed networks built via ``from_geopandas(directed=True)``, the incoming GeoDataFrame must
-        include the ``oneway`` column. Direction changes (even without geometry changes) trigger a rebuild.
-
-        Parameters
-        ----------
-        data: dict[Any, str] | dict[Any, BaseGeometry] | GeoDataFrame
-            The complete updated set of geometries (not just the diff).
-
-        Returns
-        -------
-        self: CityNetwork
-            Returns self for method chaining.
-        """
-        # Rebuild directions from the incoming data when directed
-        directions = self._state.get("directions")
-        if directions is not None:
-            if not isinstance(data, gpd.GeoDataFrame) or "oneway" not in data.columns:
-                raise ValueError("Updating a directed network requires a GeoDataFrame with a boolean 'oneway' column.")
-            oneway_raw = data["oneway"]
-            if oneway_raw.isna().any():
-                raise ValueError("The 'oneway' column contains NaN values.")
-            if not pd.api.types.is_bool_dtype(oneway_raw):
-                raise TypeError(f"The 'oneway' column must contain boolean values, but found dtype {oneway_raw.dtype}.")
-            oneway = oneway_raw.astype(bool)
-            directions = {fid: (True, False) if ow else (True, True) for fid, ow in oneway.items()}
-        new_wkts, _discovered_crs = dual.extract_wkts(data)
-        wkts_unchanged = new_wkts == self._state.get("source_wkts", self._state["wkts"])
-        directions_unchanged = directions == self._state.get("directions")
-        if wkts_unchanged and directions_unchanged:
-            return self
-        previous_nodes_gdf = self._nodes_gdf.copy()
-        boundary = _load_boundary(self._state.get("boundary_wkt"))
-        if not wkts_unchanged:
-            ns, nodes_gdf, state = dual.incremental_update(
-                self._state,
-                data,
-                crs=self._crs,
-                boundary=boundary,
-                directions=directions,
-            )
-        else:
-            # Geometry unchanged but directions changed — full rebuild needed
-            ns, nodes_gdf, state = dual.build_dual(
-                new_wkts,
-                crs=self._crs,
-                boundary=boundary,
-                directions=directions,
-                impedances=self._state.get("impedances"),
-            )
-        if nodes_gdf is None:
-            raise RuntimeError("Fast dual update did not produce nodes GeoDataFrame.")
-        self._network_structure = ns
-        self._nodes_gdf = nodes_gdf
-        self._state = state
-        self._state["ns"] = ns
-        self._clear_metric_columns()
-        self._restore_non_topology_columns(previous_nodes_gdf)
-        self._sync_feature_status_column()
-        return self
-
     def set_boundary(self, polygon: BaseGeometry) -> CityNetwork:
         """Set live/dead node status based on a boundary polygon.
 
@@ -1022,7 +935,8 @@ class CityNetwork:
         """Save the network to disk as a parquet/pickle pair.
 
         Creates two files: ``<path>.nodes.parquet`` (the nodes GeoDataFrame with all computed columns) and
-        ``<path>.state.pkl`` (source WKTs, boundary, and feature status). Use [`load`](#load) to restore.
+        ``<path>.state.pkl`` (source and cleaned WKTs, boundary, cleaning parameters, and feature
+        status). Use [`load`](#load) to restore.
 
         Parameters
         ----------
@@ -1051,6 +965,12 @@ class CityNetwork:
             "impedances": dict(self._state.get("impedances", {})),
             "clean_params": dict(self._state.get("clean_params", dual.LEGACY_CLEAN_PARAMS)),
             "segment_weighted_default": bool(self._state.get("segment_weighted_default", False)),
+            # the cleaned (post-weld) geometries are the canonical network: load() reconstructs
+            # from these with cleaning disabled, so cleaning runs exactly once, at construction,
+            # and a reloaded network is identical regardless of cleaning changes between versions
+            "cleaned_wkts": {fid: geom.wkt for fid, geom in self._state.get("geoms", {}).items()},
+            "effective_impedances": dict(self._state.get("effective_impedances", self._state.get("impedances", {}))),
+            "merges": dict(self._state.get("merges", {})),
         }
         with path.with_suffix(".state.pkl").open("wb") as file:
             pickle.dump(payload, file)
@@ -1059,7 +979,9 @@ class CityNetwork:
     def load(cls, path: str | Path) -> CityNetwork:
         """Load a previously saved CityNetwork from disk.
 
-        Rebuilds the full graph topology from the saved source WKTs and merges any previously computed
+        Reconstructs the graph topology from the saved cleaned geometries with cleaning disabled, so the
+        loaded network is identical to the saved one (cleaning runs exactly once, at construction), and
+        merges any previously computed
         columns (centrality metrics, layer results) from the saved nodes GeoDataFrame.
 
         Parameters
@@ -1080,20 +1002,45 @@ class CityNetwork:
         source_wkts = payload.get("source_wkts", payload.get("wkts"))
         directions = payload.get("directions")
         impedances = payload.get("impedances")
-        # rebuild with the cleaning parameters the network was saved with; states saved before
-        # these existed imply the legacy behaviour
         clean_params = payload.get("clean_params", dict(dual.LEGACY_CLEAN_PARAMS))
+        cleaned_wkts = payload.get("cleaned_wkts")
         # Build state (geoms, edge_records, endpoint_to_fids, etc.)
         # but skip building nodes_gdf — we'll use the saved one.
-        _ns, _nodes_gdf, state = dual.build_dual(
-            source_wkts,
-            crs=saved_nodes_gdf.crs,
-            boundary=boundary,
-            build_nodes_gdf=False,
-            directions=directions,
-            impedances=impedances,
-            **clean_params,
-        )
+        if cleaned_wkts:
+            # pure reconstruction: rebuild from the saved cleaned (post-weld) geometries with
+            # cleaning disabled, so cleaning runs exactly once, at construction, and a reloaded
+            # network is identical to the saved one regardless of cleaning changes between versions
+            active_directions = {fid: d for fid, d in directions.items() if fid in cleaned_wkts} if directions else None
+            _ns, _nodes_gdf, state = dual.build_dual(
+                cleaned_wkts,
+                crs=saved_nodes_gdf.crs,
+                boundary=boundary,
+                build_nodes_gdf=False,
+                directions=active_directions,
+                impedances=payload.get("effective_impedances", impedances),
+                remove_fillers=False,
+                remove_danglers=0,
+                merge_parallel_dist=0,
+            )
+            # restore the construction-time bookkeeping: diffs and rebuilds run against the
+            # original source with the original cleaning parameters and impedances
+            state["source_wkts"] = dict(source_wkts)
+            state["impedances"] = dict(impedances or {})
+            state["clean_params"] = clean_params
+            state["merges"] = dict(payload.get("merges", {}))
+            state["directions"] = directions
+        else:
+            # states saved before cleaned geometries were persisted: rebuild from source with
+            # the saved cleaning parameters (legacy behaviour if the state predates those too)
+            _ns, _nodes_gdf, state = dual.build_dual(
+                source_wkts,
+                crs=saved_nodes_gdf.crs,
+                boundary=boundary,
+                build_nodes_gdf=False,
+                directions=directions,
+                impedances=impedances,
+                **clean_params,
+            )
         state["feature_status"] = payload.get("feature_status", state.get("feature_status", {}))
         state["segment_weighted_default"] = bool(payload.get("segment_weighted_default", False))
         # Merge saved columns (metrics, user attrs) onto fresh topology,

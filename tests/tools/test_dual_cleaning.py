@@ -167,16 +167,37 @@ def test_segment_weighted_any_construction_path():
     assert cn3.nodes_gdf["cc_density_5000"].max() <= cn.node_count  # unit counts, not metres
 
 
-def test_update_after_welds_full_rebuild():
+def test_save_load_is_pure_reconstruction(tmp_path):
+    """load() rebuilds from the saved cleaned geometries with cleaning disabled: the loaded
+    network is identical to the saved one (no re-welding, no re-cleaning), including metrics,
+    segment lengths, feature statuses, and dual edge impedances."""
     gdf = _plus_with_filler()
-    cn = CityNetwork.from_geopandas(gdf)
-    assert cn.node_count == 4
-    gdf_upd = gdf.copy()
-    gdf_upd.loc["n", "geometry"] = LineString([(50, 0), (50, 90)])
-    cn.update(gdf_upd)
-    assert cn.node_count == 4
-    assert cn.nodes_gdf.loc["n", "seg_length"] == pytest.approx(90.0)  # not stale after rebuild
-    assert (cn.feature_status == "merged").sum() == 1  # weld re-applied on rebuild
+    gdf["imp_factor"] = [2.0, 4.0, 1.0, 1.0, 1.0]
+    cn = CityNetwork.from_geopandas(gdf, segment_weighted=True)
+    cn.centrality_shortest(distances=[5000], closeness={"density": "1"}, betweenness={})
+    cn.save(tmp_path / "welded_net")
+
+    loaded = CityNetwork.load(tmp_path / "welded_net")
+    assert loaded.node_count == cn.node_count
+    assert set(loaded.nodes_gdf.index) == set(cn.nodes_gdf.index)
+    assert loaded.feature_status.sort_index().equals(cn.feature_status.sort_index())  # "merged" preserved
+    assert loaded.nodes_gdf["seg_length"].sort_index().tolist() == pytest.approx(
+        cn.nodes_gdf["seg_length"].sort_index().tolist()
+    )
+    assert loaded.nodes_gdf["cc_density_5000"].sort_index().tolist() == pytest.approx(
+        cn.nodes_gdf["cc_density_5000"].sort_index().tolist()
+    )
+    # dual edge impedances survive the round-trip exactly (no compounding of welded means)
+    imps = sorted(rec["imp_factor"] for rec in cn._state["edge_records"].values())
+    imps_loaded = sorted(rec["imp_factor"] for rec in loaded._state["edge_records"].values())
+    assert imps == pytest.approx(imps_loaded)
+    # the construction default for segment weighting survives too
+    assert loaded._state["segment_weighted_default"] is True
+    # and a second save/load cycle is stable (reconstruction is idempotent)
+    loaded.save(tmp_path / "welded_net_2")
+    loaded2 = CityNetwork.load(tmp_path / "welded_net_2")
+    imps_loaded2 = sorted(rec["imp_factor"] for rec in loaded2._state["edge_records"].values())
+    assert imps == pytest.approx(imps_loaded2)
 
 
 def test_welded_impedance_is_length_weighted_mean():

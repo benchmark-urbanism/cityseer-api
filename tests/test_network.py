@@ -65,18 +65,25 @@ def test_set_boundary_updates_live_flags():
 
 
 def test_incremental_update_preserves_unchanged_indices():
+    """The QGIS-facing incremental path: unchanged features keep their node indices.
+
+    The plugin drives `dual.incremental_update` directly with the legacy cleaning parameters
+    pinned; the CityNetwork class itself has no in-place editing.
+    """
+    from cityseer.tools import dual
+
     streets_gdf = _simple_streets_gdf()
-    city_network = CityNetwork.from_geopandas(streets_gdf)
-    before = city_network.nodes_gdf["ns_node_idx"].to_dict()
+    _ns, nodes_gdf, state = dual.build_dual(streets_gdf, **dual.LEGACY_CLEAN_PARAMS)
+    before = nodes_gdf["ns_node_idx"].to_dict()
 
     updated_gdf = streets_gdf.copy()
     updated_gdf.at["b", "geometry"] = LineString([(20, 0), (60, 0)])
-    city_network.update(updated_gdf)
+    _ns2, nodes_gdf2, _state2 = dual.incremental_update(state, updated_gdf)
 
-    after = city_network.nodes_gdf["ns_node_idx"].to_dict()
+    after = nodes_gdf2["ns_node_idx"].to_dict()
     assert after["a"] == before["a"]
     assert after["c"] == before["c"]
-    assert city_network.nodes_gdf.at["b", "x"] == 40.0
+    assert nodes_gdf2.at["b", "x"] == 40.0
 
 
 def test_save_load_roundtrip_preserves_metrics_and_fast_state(tmp_path):
@@ -91,10 +98,9 @@ def test_save_load_roundtrip_preserves_metrics_and_fast_state(tmp_path):
         loaded.nodes_gdf["cc_harmonic_50_ang"].sort_index(),
         city_network.nodes_gdf["cc_harmonic_50_ang"].sort_index(),
     )
-    updated_gdf = streets_gdf.copy()
-    updated_gdf.at["c", "geometry"] = LineString([(20, 0), (20, 40)])
-    loaded.update(updated_gdf)
-    assert loaded.nodes_gdf.at["c", "y"] == 20.0
+    # pure reconstruction: identical topology and per-feature status, with no re-cleaning
+    assert loaded.node_count == city_network.node_count
+    assert loaded.feature_status.sort_index().equals(city_network.feature_status.sort_index())
 
 
 def test_to_nx_exports_primal_graph():
@@ -128,7 +134,7 @@ def test_cleanup_thresholds_use_min_self_loop_and_narrow_duplicate_ratio():
     assert city_network.feature_status["wide_bent"] == "active"
 
 
-def test_cleaned_and_deleted_features_are_tagged():
+def test_cleaned_features_are_tagged():
     wkts = {
         "valid": LineString([(0, 0), (20, 0)]).wkt,
         "invalid": "LINESTRING EMPTY",
@@ -137,11 +143,6 @@ def test_cleaned_and_deleted_features_are_tagged():
 
     assert city_network.feature_status["valid"] == "active"
     assert city_network.feature_status["invalid"] == "invalid_geometry"
-
-    city_network.update({"invalid": LineString([(0, 0), (20, 0)]).wkt})
-
-    assert city_network.feature_status["valid"] == "deleted"
-    assert city_network.feature_status["invalid"] == "active"
 
 
 # --- Directed graph tests ---
@@ -284,94 +285,6 @@ def test_directed_from_nx_preserves_distinct_edges():
     assert cn.is_directed is True
     # Both edges must be preserved as separate dual nodes
     assert cn.node_count == 2
-
-
-def test_directed_update_new_feature_with_oneway():
-    """Adding a one-way feature via GeoDataFrame update respects oneway column."""
-    gdf = _directed_streets_gdf()
-    cn = CityNetwork.from_geopandas(gdf, directed=True)
-
-    # Add a new one-way street 'd'
-    updated_gdf = gpd.GeoDataFrame(
-        {
-            "geometry": [
-                LineString([(0, 0), (20, 0)]),
-                LineString([(20, 0), (40, 0)]),
-                LineString([(20, 0), (20, 20)]),
-                LineString([(40, 0), (60, 0)]),
-            ],
-            "oneway": [True, False, False, True],
-        },
-        index=["a", "b", "c", "d"],
-        crs=CRS(32630),
-    )
-    cn.update(updated_gdf)
-
-    assert cn.is_directed is True
-    assert cn.node_count == 4
-
-
-def test_directed_update_flip_oneway():
-    """Changing oneway status without geometry change triggers rebuild."""
-    gdf = _directed_streets_gdf()
-    cn = CityNetwork.from_geopandas(gdf, directed=True)
-    edge_count_oneway = cn.network_structure.edge_count
-
-    # Flip 'a' from one-way to two-way (same geometry)
-    updated_gdf = gpd.GeoDataFrame(
-        {
-            "geometry": [
-                LineString([(0, 0), (20, 0)]),
-                LineString([(20, 0), (40, 0)]),
-                LineString([(20, 0), (20, 20)]),
-            ],
-            "oneway": [False, False, False],  # 'a' now two-way
-        },
-        index=["a", "b", "c"],
-        crs=CRS(32630),
-    )
-    cn.update(updated_gdf)
-
-    assert cn.is_directed is True
-    # More edges now that 'a' is two-way
-    assert cn.network_structure.edge_count > edge_count_oneway
-
-
-def test_directed_update_missing_oneway_column():
-    """ValueError when updating a directed network with a GeoDataFrame missing oneway."""
-    import pytest
-
-    gdf = _directed_streets_gdf()
-    cn = CityNetwork.from_geopandas(gdf, directed=True)
-    bad_gdf = gpd.GeoDataFrame(
-        {"geometry": [LineString([(0, 0), (20, 0)])]},
-        index=["a"],
-        crs=CRS(32630),
-    )
-    with pytest.raises(ValueError, match="oneway"):
-        cn.update(bad_gdf)
-
-
-def test_directed_update_bad_oneway_dtype():
-    """TypeError when updating a directed network with non-boolean oneway values."""
-    import pytest
-
-    gdf = _directed_streets_gdf()
-    cn = CityNetwork.from_geopandas(gdf, directed=True)
-    bad_gdf = gpd.GeoDataFrame(
-        {
-            "geometry": [
-                LineString([(0, 0), (20, 0)]),
-                LineString([(20, 0), (40, 0)]),
-                LineString([(20, 0), (20, 20)]),
-            ],
-            "oneway": ["False", "False", "False"],
-        },
-        index=["a", "b", "c"],
-        crs=CRS(32630),
-    )
-    with pytest.raises(TypeError, match="boolean"):
-        cn.update(bad_gdf)
 
 
 def test_directed_to_nx_raises_without_source_graph():
