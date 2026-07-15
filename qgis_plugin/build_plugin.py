@@ -32,13 +32,16 @@ DEFAULT_ICON_CANDIDATES = [
     PROJECT_ROOT / "docs" / "src" / "assets" / "logos" / "round_logo.png",
 ]
 
-# Standard QGIS plugin directories by platform
+# Standard QGIS plugin directories by platform, newest QGIS version first
 _QGIS_PLUGIN_DIRS = [
     # macOS
+    Path.home() / "Library/Application Support/QGIS/QGIS4/profiles/default/python/plugins",
     Path.home() / "Library/Application Support/QGIS/QGIS3/profiles/default/python/plugins",
     # Linux
+    Path.home() / ".local/share/QGIS/QGIS4/profiles/default/python/plugins",
     Path.home() / ".local/share/QGIS/QGIS3/profiles/default/python/plugins",
     # Windows
+    Path.home() / "AppData/Roaming/QGIS/QGIS4/profiles/default/python/plugins",
     Path.home() / "AppData/Roaming/QGIS/QGIS3/profiles/default/python/plugins",
 ]
 

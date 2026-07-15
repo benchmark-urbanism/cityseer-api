@@ -1,8 +1,9 @@
 """
 Cityseer QGIS Plugin
 
-Provides QGIS Processing algorithms for computing urban network centrality
-metrics (closeness and betweenness) using the cityseer library.
+Provides QGIS Processing algorithms for urban network analysis using the
+cityseer library: network centrality (closeness and betweenness), land-use
+accessibility, and localised statistics.
 """
 
 from __future__ import annotations
@@ -135,8 +136,9 @@ def _install_cityseer(version: str | None = None) -> tuple[bool, str]:
     and sys.executable may point to the QGIS binary, not a usable interpreter.
 
     Installs with --no-deps to avoid pulling in heavy dependencies (networkx,
-    geopandas, matplotlib, etc.) that are not needed by the QGIS plugin.
-    The plugin only uses cityseer.rustalgos (the compiled Rust extension).
+    osmnx, matplotlib, etc.) that are not needed by the QGIS plugin. The plugin
+    uses cityseer.rustalgos, cityseer.tools.dual, and cityseer.sampling, whose
+    runtime dependencies (numpy, shapely, scipy) are bundled with QGIS.
     """
     import contextlib
     import io

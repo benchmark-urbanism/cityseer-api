@@ -16,61 +16,36 @@ from qgis.core import (
 
 from .base import CityseerAlgorithmBase, run_with_feedback
 
-# Core statistics (decay-weighted via decay_fn parameter)
-_PAIRED_STATS = [
-    ("sum", "STAT_SUM"),
-    ("mean", "STAT_MEAN"),
-    ("median", "STAT_MEDIAN"),
-    ("count", "STAT_COUNT"),
-    ("variance", "STAT_VARIANCE"),
-    ("mad", "STAT_MAD"),
-]
-# Extrema statistics
-_UNPAIRED_STATS = [
-    ("max", "STAT_MAX"),
-    ("min", "STAT_MIN"),
-]
 
-
-class CityseerStatsAlgorithm(CityseerAlgorithmBase):
+class CityseerMixedUsesAlgorithm(CityseerAlgorithmBase):
     INPUT_LAYER = "INPUT_LAYER"
     DATA_LAYER = "DATA_LAYER"
-    NUMERICAL_FIELD = "NUMERICAL_FIELD"
+    LANDUSE_FIELD = "LANDUSE_FIELD"
     DISTANCES = "DISTANCES"
+    DECAY_FN = "DECAY_FN"
     MAX_ASSIGN_DIST = "MAX_ASSIGN_DIST"
     ANGULAR = "ANGULAR"
     BOUNDARY_LAYER = "BOUNDARY_LAYER"
-    STAT_SUM = "STAT_SUM"
-    STAT_MEAN = "STAT_MEAN"
-    STAT_MEDIAN = "STAT_MEDIAN"
-    STAT_COUNT = "STAT_COUNT"
-    STAT_VARIANCE = "STAT_VARIANCE"
-    STAT_MAD = "STAT_MAD"
-    STAT_MAX = "STAT_MAX"
-    STAT_MIN = "STAT_MIN"
-    DECAY_FN = "DECAY_FN"
+    COMPUTE_HILL = "COMPUTE_HILL"
+    COMPUTE_SHANNON = "COMPUTE_SHANNON"
+    COMPUTE_GINI = "COMPUTE_GINI"
     OUTPUT = "OUTPUT"
 
     def name(self) -> str:
-        return "statistics"
+        return "mixed_uses"
 
     def displayName(self) -> str:
-        return self.tr("Statistics")
+        return self.tr("Mixed Uses")
 
     def shortDescription(self) -> str:
         return self.tr(
-            "Compute localised statistics (sum, mean, count, etc.) for numerical data columns "
-            "within network distance thresholds, aggregated over the street network rather "
-            "than straight-line buffers."
+            "Compute land-use diversity (mixed-use) metrics within network distance thresholds, "
+            "aggregated over the street network: Hill diversity (q = 0, 1, 2), Shannon entropy, "
+            "and Gini-Simpson."
         )
 
     def createInstance(self):
-        return CityseerStatsAlgorithm()
-
-    def createCustomParametersWidget(self, parent=None):
-        from .stats_widget import StatsDialog
-
-        return StatsDialog(self, parent=parent)
+        return CityseerMixedUsesAlgorithm()
 
     def initAlgorithm(self, config=None):
         self.addParameter(
@@ -83,7 +58,7 @@ class CityseerStatsAlgorithm(CityseerAlgorithmBase):
         self.addParameter(
             QgsProcessingParameterVectorLayer(
                 self.DATA_LAYER,
-                self.tr("Data layer (points or polygons with numerical values)"),
+                self.tr("Data layer (points or polygons with land-use categories)"),
                 [
                     QgsProcessing.SourceType.TypeVectorPoint,
                     QgsProcessing.SourceType.TypeVectorPolygon,
@@ -92,11 +67,10 @@ class CityseerStatsAlgorithm(CityseerAlgorithmBase):
         )
         self.addParameter(
             QgsProcessingParameterField(
-                self.NUMERICAL_FIELD,
-                self.tr("Numerical field(s) to compute statistics on"),
+                self.LANDUSE_FIELD,
+                self.tr("Land-use category field"),
                 parentLayerParameterName=self.DATA_LAYER,
-                type=QgsProcessingParameterField.DataType.Numeric,
-                allowMultiple=True,
+                type=QgsProcessingParameterField.DataType.String,
             )
         )
         self.addParameter(
@@ -110,8 +84,8 @@ class CityseerStatsAlgorithm(CityseerAlgorithmBase):
         decay_param = QgsProcessingParameterString(
             self.DECAY_FN,
             self.tr(
-                "Distance-decay weighting using c (metric distance) and p (progress = c / threshold). "
-                "Default 1 weights all contributions equally; use e.g. exp(-4 * p) for decay-weighted statistics."
+                "Distance-decay weighting for Hill diversity, using c (metric distance) and "
+                "p (progress = c / threshold). Default 1 weights all reachable features equally."
             ),
             defaultValue="1",
         )
@@ -134,6 +108,27 @@ class CityseerStatsAlgorithm(CityseerAlgorithmBase):
             )
         )
         self.addParameter(
+            QgsProcessingParameterBoolean(
+                self.COMPUTE_HILL,
+                self.tr("Hill diversity (q = 0, 1, 2; q0 counts distinct land uses)"),
+                defaultValue=True,
+            )
+        )
+        shannon_param = QgsProcessingParameterBoolean(
+            self.COMPUTE_SHANNON,
+            self.tr("Shannon entropy (prefer Hill q = 1 unless you specifically need entropy)"),
+            defaultValue=False,
+        )
+        shannon_param.setFlags(shannon_param.flags() | QgsProcessingParameterDefinition.Flag.FlagAdvanced)
+        self.addParameter(shannon_param)
+        gini_param = QgsProcessingParameterBoolean(
+            self.COMPUTE_GINI,
+            self.tr("Gini-Simpson diversity (prefer Hill q = 2 unless you specifically need it)"),
+            defaultValue=False,
+        )
+        gini_param.setFlags(gini_param.flags() | QgsProcessingParameterDefinition.Flag.FlagAdvanced)
+        self.addParameter(gini_param)
+        self.addParameter(
             QgsProcessingParameterVectorLayer(
                 self.BOUNDARY_LAYER,
                 self.tr("Boundary polygon (optional — nodes inside are 'live')"),
@@ -141,24 +136,10 @@ class CityseerStatsAlgorithm(CityseerAlgorithmBase):
                 optional=True,
             )
         )
-        # Hidden stat toggles (managed by custom widget)
-        for param_name, label, default in [
-            (self.STAT_SUM, "Sum", True),
-            (self.STAT_MEAN, "Mean", True),
-            (self.STAT_MEDIAN, "Median", False),
-            (self.STAT_COUNT, "Count", True),
-            (self.STAT_VARIANCE, "Variance", False),
-            (self.STAT_MAD, "Median Absolute Deviation (MAD)", False),
-            (self.STAT_MAX, "Maximum", False),
-            (self.STAT_MIN, "Minimum", False),
-        ]:
-            p = QgsProcessingParameterBoolean(param_name, self.tr(label), defaultValue=default)
-            p.setFlags(p.flags() | QgsProcessingParameterDefinition.Flag.FlagHidden)
-            self.addParameter(p)
         self.addParameter(
             QgsProcessingParameterVectorDestination(
                 self.OUTPUT,
-                self.tr("Output layer (street segments with statistics values)"),
+                self.tr("Output layer (street segments with diversity values)"),
             )
         )
 
@@ -167,7 +148,7 @@ class CityseerStatsAlgorithm(CityseerAlgorithmBase):
 
         feedback.setProgressText("Preparing workflow (loading dependencies)…")
         feedback.setProgress(0)
-        feedback.pushInfo("Initialising cityseer statistics workflow.")
+        feedback.pushInfo("Initialising cityseer mixed-uses workflow.")
         self.import_cityseer()
         feedback.setProgressText("Preparing workflow (reading inputs)…")
 
@@ -176,7 +157,6 @@ class CityseerStatsAlgorithm(CityseerAlgorithmBase):
         # ------------------------------------------------------------------
         layer, crs = self.resolve_network_layer(parameters, context, feedback)
 
-        # Data layer
         data_layer = self.parameterAsVectorLayer(parameters, self.DATA_LAYER, context)
         if data_layer is None:
             raise QgsProcessingException("Could not load data layer.")
@@ -188,47 +168,48 @@ class CityseerStatsAlgorithm(CityseerAlgorithmBase):
             )
         feedback.pushInfo(f"Data layer loaded: {data_layer.name()} ({data_layer.featureCount()} features)")
 
-        # Numerical fields
-        num_fields = self.parameterAsFields(parameters, self.NUMERICAL_FIELD, context)
-        if not num_fields:
-            raise QgsProcessingException("At least one numerical field must be selected.")
-        layer_fields = [f.name() for f in data_layer.fields()]
-        for num_field in num_fields:
-            if num_field not in layer_fields:
-                raise QgsProcessingException(f"Field '{num_field}' not found in data layer.")
+        landuse_field = self.parameterAsString(parameters, self.LANDUSE_FIELD, context)
+        if not landuse_field:
+            raise QgsProcessingException("A land-use category field must be selected.")
+        if landuse_field not in [f.name() for f in data_layer.fields()]:
+            raise QgsProcessingException(f"Field '{landuse_field}' not found in data layer.")
+        # Fail before the network build if the category field is empty.
+        field_idx = data_layer.fields().indexFromName(landuse_field)
+        available = set(str(v) for v in data_layer.uniqueValues(field_idx) if v is not None and str(v).strip())
+        if not available:
+            raise QgsProcessingException(
+                f"Field '{landuse_field}' in layer '{data_layer.name()}' contains no non-empty values, "
+                "so there are no land-use categories to compute diversity over. Choose a different field."
+            )
+        if len(available) == 1:
+            feedback.reportError(
+                f"Field '{landuse_field}' contains a single category; diversity metrics will be trivial "
+                "(Hill q0 = 1, Shannon and Gini = 0 wherever anything is reachable)."
+            )
 
-        # Distances
         distances, speed_m_s = self.resolve_thresholds(parameters, context, feedback)
-
         max_assign_dist = self.parameterAsInt(parameters, self.MAX_ASSIGN_DIST, context)
         angular = self.parameterAsBool(parameters, self.ANGULAR, context)
         decay_fn = self.parameterAsString(parameters, self.DECAY_FN, context).strip() or "1"
+        compute_hill = self.parameterAsBool(parameters, self.COMPUTE_HILL, context)
+        compute_shannon = self.parameterAsBool(parameters, self.COMPUTE_SHANNON, context)
+        compute_gini = self.parameterAsBool(parameters, self.COMPUTE_GINI, context)
+        if not (compute_hill or compute_shannon or compute_gini):
+            raise QgsProcessingException("Enable at least one diversity measure.")
 
-        # Resolve enabled stats
-        enabled_paired = [
-            stat_name
-            for stat_name, param_name in _PAIRED_STATS
-            if self.parameterAsBool(parameters, param_name, context)
-        ]
-        enabled_unpaired = [
-            stat_name
-            for stat_name, param_name in _UNPAIRED_STATS
-            if self.parameterAsBool(parameters, param_name, context)
-        ]
-        if not enabled_paired and not enabled_unpaired:
-            raise QgsProcessingException("At least one statistic must be selected.")
-
-        # Boundary polygon
         boundary_poly = self.load_boundary(parameters, context, crs, feedback)
 
-        # Log configuration
         feedback.pushInfo(f"CRS: {crs.authid()}")
-        feedback.pushInfo(f"Numerical fields: {', '.join(num_fields)}")
+        feedback.pushInfo(f"Land-use field: {landuse_field}")
         feedback.pushInfo(f"Distances: {distances}")
         feedback.pushInfo(f"Max assignment distance: {max_assign_dist}m")
         feedback.pushInfo(f"Path type: {'simplest (angular)' if angular else 'shortest'}")
-        all_enabled = enabled_paired + enabled_unpaired
-        feedback.pushInfo(f"Statistics: {', '.join(all_enabled)}")
+        measures = [
+            name
+            for name, on in [("hill q0/q1/q2", compute_hill), ("shannon", compute_shannon), ("gini", compute_gini)]
+            if on
+        ]
+        feedback.pushInfo("Diversity measures: " + ", ".join(measures))
         if decay_fn != "1":
             feedback.pushInfo(f"Decay function: {decay_fn}")
 
@@ -270,45 +251,31 @@ class CityseerStatsAlgorithm(CityseerAlgorithmBase):
         assign_base = (step - 1) * step_pct
         feedback.setProgress(int(assign_base))
 
-        # Every inserted entry must appear in every numerical map (a Rust invariant);
-        # missing or invalid values are stored as NaN, which the aggregation skips.
         data_map = rustalgos.data.DataMap()
-        numerical_maps: list[dict] = [{} for _ in num_fields]
-        skipped_geom = 0
-        n_missing = [0] * len(num_fields)
-
+        landuses_map: dict = {}
+        skipped = 0
         for feat in data_layer.getFeatures():
             qgeom = feat.geometry()
             if qgeom is None or qgeom.isEmpty():
-                skipped_geom += 1
+                skipped += 1
+                continue
+            val = feat[landuse_field]
+            if val is None or not str(val).strip():
+                skipped += 1
                 continue
             fid = feat.id()
             data_map.insert(fid, qgeom.asWkt())
-            for j, num_field in enumerate(num_fields):
-                val = feat[num_field]
-                try:
-                    fval = float(val) if val is not None else float("nan")
-                except (TypeError, ValueError):
-                    fval = float("nan")
-                if not math.isfinite(fval):
-                    fval = float("nan")
-                    n_missing[j] += 1
-                numerical_maps[j][fid] = fval
+            landuses_map[fid] = str(val)
 
         if data_map.is_empty():
             raise QgsProcessingException(
-                f"No usable features found in data layer '{data_layer.name()}': all "
-                f"{data_layer.featureCount()} features have empty geometries."
+                f"No usable features found in data layer '{data_layer.name()}': every feature has an "
+                f"empty geometry or an empty '{landuse_field}' value."
             )
-
-        if skipped_geom > 0:
-            feedback.pushInfo(f"Skipped {skipped_geom} features with empty geometry.")
-        for num_field, n_bad in zip(num_fields, n_missing, strict=True):
-            if n_bad > 0:
-                feedback.pushInfo(f"Field '{num_field}': {n_bad} features with missing or non-finite values.")
+        if skipped > 0:
+            feedback.pushInfo(f"Skipped {skipped} features with empty geometry or missing category.")
         feedback.pushInfo(f"Data entries: {data_map.count()}")
 
-        # Assign data to network
         feedback.pushInfo("Assigning data points to network…")
         try:
             data_map.assign_data_to_network(ns, max_assign_dist, 50)
@@ -326,23 +293,23 @@ class CityseerStatsAlgorithm(CityseerAlgorithmBase):
             return {}
 
         # ------------------------------------------------------------------
-        # Step 3: Compute statistics
+        # Step 3: Compute mixed-use diversity
         # ------------------------------------------------------------------
         compute_base = (step - 1) * step_pct
-        feedback.setProgressText(f"Step {step} of {n_steps}: Computing statistics…")
+        feedback.setProgressText(f"Step {step} of {n_steps}: Computing mixed-use diversity…")
 
-        # Rust measure keys: "variance" is exposed as attribute `variance` but selected as "var"
-        measures = [{"variance": "var"}.get(s, s) for s in enabled_paired + enabled_unpaired]
-        stats_result = run_with_feedback(
+        mu_result = run_with_feedback(
             data_map,
-            lambda: data_map.stats(
+            lambda: data_map.mixed_uses(
                 network_structure=ns,
-                numerical_maps=numerical_maps,
+                landuses_map=landuses_map,
                 distances=distances,
+                compute_hill=compute_hill,
+                compute_shannon=compute_shannon,
+                compute_gini=compute_gini,
                 angular=angular,
                 speed_m_s=speed_m_s,
                 decay_fn=decay_fn,
-                measures=measures,
                 pbar_disabled=False,
             ),
             node_count,
@@ -358,26 +325,29 @@ class CityseerStatsAlgorithm(CityseerAlgorithmBase):
         # ------------------------------------------------------------------
         # Step 4: Write output layer
         # ------------------------------------------------------------------
-        write_base = (step - 1) * step_pct
-        feedback.setProgressText(f"Step {step} of {n_steps}: Writing output layer…")
-        feedback.setProgress(int(write_base))
-
-        # Build results dict: fid -> {col: value}
         results: dict[int, dict[str, float]] = {fid: {} for fid in fid_list}
         ang_suffix = "_ang" if angular else ""
 
-        for j, num_field in enumerate(num_fields):
-            stats_obj = stats_result.result[j]
-            for stat_name in enabled_paired + enabled_unpaired:
-                attr = getattr(stats_obj, stat_name)
-                for dist_key in distances:
-                    col = f"cc_{num_field}_{stat_name}_{dist_key}{ang_suffix}"
-                    arr = attr[dist_key]
-                    for i, node_key in enumerate(stats_result.node_keys_py):
-                        if node_key in results:
-                            val = float(arr[i])
-                            results[node_key][col] = val if math.isfinite(val) else None
+        def _store(metric_by_dist, col_base):
+            for dist_key in distances:
+                arr = metric_by_dist[dist_key]
+                col = f"cc_{col_base}_{dist_key}{ang_suffix}"
+                for i, node_key in enumerate(mu_result.node_keys_py):
+                    if node_key in results:
+                        val = float(arr[i])
+                        results[node_key][col] = val if math.isfinite(val) else None
 
+        if compute_hill:
+            for q_key in [0, 1, 2]:
+                _store(mu_result.hill[q_key], f"hill_q{q_key}")
+        if compute_shannon:
+            _store(mu_result.shannon, "shannon")
+        if compute_gini:
+            _store(mu_result.gini, "gini")
+
+        write_base = (step - 1) * step_pct
+        feedback.setProgressText(f"Step {step} of {n_steps}: Writing output layer…")
+        feedback.setProgress(int(write_base))
         dest_id = self.write_segments_output(
             parameters,
             context,

@@ -45,7 +45,8 @@
       "Bash(uv run poe generate_docs)",
       "Bash(uv run poe docs_build)",
       "Bash(uv run marimo --version)",
-      "Bash(npm install *)"
+      "Bash(npm install *)",
+      "Bash(python /Users/dev/repos/cityseer-api/qgis_plugin/build_plugin.py --deploy)"
     ]
   }
 }

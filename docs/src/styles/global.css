@@ -13,8 +13,8 @@
   --text-lg: 1.05rem;
   --text-xl: 1.1rem;
   --text-2xl: 1.1rem;
-  --text-3xl: 1.3rem;
-  --text-4xl: 2.2rem;
+  --text-3xl: 1.2rem;
+  --text-4xl: 1.8rem;
   --font-weight-extralight: 200;
   --font-weight-light: 300;
   --font-weight-normal: 400;
@@ -150,7 +150,7 @@
     @apply mx-auto my-2 table-auto text-xs;
 
     & th {
-      @apply border-l-1 border-r-1 border-mid-grey bg-dark-grey px-3 py-2 font-semibold;
+      @apply border-l-1 border-r-1 border-mid-grey bg-dark-grey px-3 py-2 font-medium;
     }
 
     & td {

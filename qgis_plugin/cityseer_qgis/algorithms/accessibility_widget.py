@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import traceback
 
-from processing.gui.AlgorithmDialog import AlgorithmDialog
+from processing.gui.algorithm_widget import AlgorithmWidget
 from processing.gui.ParametersPanel import ParametersPanel
 from qgis.core import QgsProject, QgsVectorLayer
 from qgis.PyQt.QtWidgets import (
@@ -202,8 +202,8 @@ class AccessibilityParametersPanel(ParametersPanel):
         return params
 
 
-class AccessibilityDialog(AlgorithmDialog):
-    """Custom dialog that uses the accessibility parameters panel."""
+class AccessibilityDialog(AlgorithmWidget):
+    """Custom algorithm widget that uses the accessibility parameters panel."""
 
     def getParametersPanel(self, alg, parent):
         return AccessibilityParametersPanel(parent, alg)

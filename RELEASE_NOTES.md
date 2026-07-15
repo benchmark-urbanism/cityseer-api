@@ -1,3 +1,10 @@
+# v5.3.0 Release Notes
+
+A QGIS plugin and documentation release. No breaking changes to the Python API.
+
+- **QGIS plugin overhaul**: compatibility with the QGIS 4.2 processing GUI; two new algorithms, Demand Betweenness (OD Flow) and Mixed Uses (Hill, Shannon, Gini-Simpson); Statistics accepts multiple numerical fields in one pass and computes only the selected measures; advanced distance-decay expressions on Accessibility, Statistics, and Mixed Uses; advanced time thresholds (minutes with a walking speed) on all algorithms; adaptive per-node sampling replaces the retired deterministic distance schedule (off by default, with an epsilon control).
+- **Documentation**: the QGIS plugin gains its own site section with a page per algorithm; a "How do I...?" question-and-answer guide; `llms.txt` for AI tools and a sitemap reference in `robots.txt`; lighter navigation typography.
+
 # v5.2.0 Release Notes
 
 A small feature release. No breaking changes.

@@ -162,8 +162,8 @@ const headinganim = () => {
   padding: 0.25rem 0.3rem;
   width: 100%;
   text-align: right;
-  font-size: var(--text-sm);
-  font-weight: var(--font-weight-semibold);
+  font-size: var(--text-xs);
+  font-weight: var(--font-weight-medium);
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--color-light-grey);
@@ -183,8 +183,8 @@ const headinganim = () => {
 .nav-group-title {
   padding: 0.5rem 0.3rem 0.1rem;
   text-align: right;
-  font-size: var(--text-xs);
-  font-weight: var(--font-weight-semibold);
+  font-size: var(--text-xxs);
+  font-weight: var(--font-weight-medium);
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--color-light-grey);
@@ -194,8 +194,8 @@ const headinganim = () => {
   border-bottom: 1px solid var(--color-dark-grey);
   padding: 0.15rem 0.3rem;
   text-align: right;
-  font-size: var(--text-sm);
-  font-weight: var(--font-weight-medium);
+  font-size: var(--text-xs);
+  font-weight: var(--font-weight-normal);
   color: var(--color-theme);
   transition: all 0.3s ease;
 }
@@ -216,7 +216,7 @@ const headinganim = () => {
   border-color: var(--color-theme);
   padding: 0.1rem 0.3rem;
   text-align: right;
-  font-size: var(--text-xs);
+  font-size: var(--text-xxs);
   font-weight: var(--font-weight-extralight);
   color: var(--color-lighter-grey);
   transition: all 0.3s ease;
@@ -236,11 +236,11 @@ const headinganim = () => {
   .nav-group-title,
   .nav-link {
     text-align: left;
-    font-size: var(--text-sm);
+    font-size: var(--text-xs);
   }
 
   .nested-link {
-    font-size: var(--text-xs);
+    font-size: var(--text-xxs);
   }
 }
 </style>

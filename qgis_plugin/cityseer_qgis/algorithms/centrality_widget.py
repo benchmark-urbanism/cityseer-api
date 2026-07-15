@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import traceback
 
-from processing.gui.AlgorithmDialog import AlgorithmDialog
+from processing.gui.algorithm_widget import AlgorithmWidget
 from processing.gui.ParametersPanel import ParametersPanel
 from qgis.PyQt.QtWidgets import (
     QCheckBox,
@@ -27,14 +27,24 @@ _CLOSENESS_METRICS_SHORTEST = [
     ("FARNESS", "Farness", "Sum of distances to all reachable nodes → cc_farness_<d>", False),
     ("DECAY", "Decay-weighted", "Closeness with distance decay weighting → cc_decay_<d>", False),
     ("CYCLES", "Cycles", "Independent loops (circuit rank) in the local reachable subgraph → cc_cycles_<d>", False),
-    ("HILLIER", "Hillier (n²/farness)", "Derived closeness variant (density² / farness) → cc_hillier_<d>", False),
+    (
+        "HILLIER",
+        "Hillier (improved closeness)",
+        "Derived closeness variant (density² / farness) → cc_hillier_<d>",
+        False,
+    ),
 ]
 
 _CLOSENESS_METRICS_SIMPLEST = [
-    ("HARMONIC", "Harmonic", "Sum of inverse distances to reachable nodes → cc_harmonic_<d>_ang", True),
+    ("HARMONIC", "Harmonic", "Sum of inverse distances to reachable nodes → cc_harmonic_<d>_ang", False),
     ("DENSITY", "Density", "Number of nodes reachable within the distance threshold → cc_density_<d>_ang", False),
     ("FARNESS", "Farness", "Sum of distances to all reachable nodes → cc_farness_<d>_ang", False),
-    ("HILLIER", "Hillier (n²/farness)", "Derived closeness variant (density² / farness) → cc_hillier_<d>_ang", False),
+    (
+        "HILLIER",
+        "Hillier (improved closeness)",
+        "Derived closeness variant (density² / farness) → cc_hillier_<d>_ang",
+        True,
+    ),
 ]
 
 _BETWEENNESS_METRICS_SHORTEST = [
@@ -186,8 +196,8 @@ class CentralityParametersPanel(ParametersPanel):
         return params
 
 
-class CentralityDialog(AlgorithmDialog):
-    """Custom dialog that uses the 4-box parameters panel."""
+class CentralityDialog(AlgorithmWidget):
+    """Custom algorithm widget that uses the 4-box parameters panel."""
 
     def getParametersPanel(self, alg, parent):
         return CentralityParametersPanel(parent, alg)
