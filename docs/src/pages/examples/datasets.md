@@ -118,7 +118,7 @@ Cite: Attribute IGN (Instituto Geográfico Nacional de España).
 
 Description: Road network (Red Viaria) for Madrid province from the CNIG/IGN Redes de Transporte dataset. Layer `rt_tramo_vial` containing road segments with classification, surface, lane, and naming attributes.
 
-Preprocessing: Download `RT_MADRID_gpkg.zip` from CNIG Centro de Descargas. Extract `red_viaria.gpkg`, layer `rt_tramo_vial`. Reproject from EPSG:4258 to EPSG:25830. Clip to 20km buffered bounds. Retain `clased` (road class) and `nombre` (road name) attributes only. Set coordinate grid precision to 1m and simplify geometries to 1m tolerance. Further preprocessing performed per [ua-dataset-madrid](https://github.com/songololo/ua-dataset-madrid).
+Preprocessing: Download `RT_MADRID_gpkg.zip` from CNIG Centro de Descargas. Extract `red_viaria.gpkg`, layer `rt_tramo_vial`. Reproject from `EPSG:4258` to `EPSG:25830`. Clip to 20km buffered bounds. Retain `clased` (road class) and `nombre` (road name) attributes only. Set coordinate grid precision to 1m and simplify geometries to 1m tolerance. Further preprocessing performed per [ua-dataset-madrid](https://github.com/songololo/ua-dataset-madrid).
 
 Key columns:
 

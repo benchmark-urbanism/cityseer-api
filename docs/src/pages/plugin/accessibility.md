@@ -32,8 +32,8 @@ If no land-use field is selected, all features are counted together under a sing
 The output is a line layer with the original street segments and computed accessibility values as attributes. For each land-use category and distance threshold, two types of columns are produced:
 
 ```text
-cc_<category>_<distance>[_ang]                  — count of reachable features within the threshold
-cc_<category>_nearest_max_<max_distance>[_ang]  — distance to nearest feature
+cc_<category>_<distance>[_ang]                  -> count of reachable features within the threshold
+cc_<category>_nearest_max_<max_distance>[_ang]  -> distance to nearest feature
 ```
 
 For example, with a `type` field containing `pub` and `shop`, and distances `400,800`:

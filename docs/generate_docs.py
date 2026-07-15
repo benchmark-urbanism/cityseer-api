@@ -91,9 +91,16 @@ def strip_markdown(text: str) -> str:
     return cleaned_text
 
 
+# Undocumented pyo3 (Rust) methods surface `type(None).__doc__` through pdoc,
+# which would otherwise render "The type of the None singleton." as their description.
+_NONE_DOC_PLACEHOLDER = (type(None).__doc__ or "").strip()
+
+
 def custom_process_docstring(doc_str: str) -> str:
     """Process a docstring."""
     doc_str_frag: str = ""
+    if doc_str is not None and doc_str.strip() == _NONE_DOC_PLACEHOLDER:
+        return ""
     parsed_doc_str = docstring_parser.parse(doc_str)
     if parsed_doc_str.short_description is not None:
         desc = parsed_doc_str.short_description
@@ -222,6 +229,27 @@ def custom_format_signature(sig: inspect.Signature, colon: bool = True) -> str:
     return sig_fragment.render()
 
 
+# Low-level-internals notice injected at the top of every rustalgos reference page.
+# These pages document the Rust bindings, which power the public API but carry no
+# stability guarantee of their own.
+_LOWLEVEL_BANNER = """:::warning
+**Low-level internals.** This section documents the Rust-backed structures and functions that power \
+`cityseer`. They are provided for reference. For analysis, use the higher-level wrappers instead: the \
+[`CityNetwork`](/api/network) class, or the [`metrics`](/metrics/networks) and [`tools`](/tools/graphs) modules. \
+Symbols on these pages are not part of the public API and may change between releases without a deprecation cycle.
+:::"""
+
+
+def inject_lowlevel_banner(rendered: str) -> str:
+    """Insert the low-level-internals warning immediately after a rustalgos page's H1 heading."""
+    lines = rendered.split("\n")
+    for idx, line in enumerate(lines):
+        if line.startswith("# "):
+            lines[idx + 1 : idx + 1] = ["", _LOWLEVEL_BANNER, ""]
+            break
+    return "\n".join(lines)
+
+
 if __name__ == "__main__":
     # Add custom function
     render.env.filters["custom_process_docstring"] = custom_process_docstring  # type: ignore
@@ -255,5 +283,7 @@ if __name__ == "__main__":
             module = importlib.import_module(module_name)
         d = doc.Module(module)
         out = render.html_module(module=d, all_modules={module_name: d})
+        if module_name.startswith("cityseer.rustalgos"):
+            out = inject_lowlevel_banner(out)
         with open(output_path, "w") as f:
             f.write(out)

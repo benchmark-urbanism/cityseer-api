@@ -5,6 +5,11 @@ layout: ../../layouts/PageLayout.astro
 
 # data
 
+:::warning
+**Low-level internals.** This section documents the Rust-backed structures and functions that power `cityseer`. They are provided for reference. For analysis, use the higher-level wrappers instead: the [`CityNetwork`](/api/network) class, or the [`metrics`](/metrics/networks) and [`tools`](/tools/graphs) modules. Symbols on these pages are not part of the public API and may change between releases without a deprecation cycle.
+:::
+
+
 
  Data structures and utilities for spatial data analysis.
 
@@ -84,8 +89,6 @@ layout: ../../layouts/PageLayout.astro
 </div>
 
 
- The type of the None singleton.
-
 </div>
 
  
@@ -108,8 +111,6 @@ layout: ../../layouts/PageLayout.astro
 </div>
 </div>
 
-
- The type of the None singleton.
 
 </div>
 
@@ -143,8 +144,6 @@ layout: ../../layouts/PageLayout.astro
 </div>
 
 
- The type of the None singleton.
-
 </div>
 
  
@@ -167,8 +166,6 @@ layout: ../../layouts/PageLayout.astro
 </div>
 </div>
 
-
- The type of the None singleton.
 
 </div>
 
@@ -196,8 +193,6 @@ layout: ../../layouts/PageLayout.astro
 </div>
 
 
- The type of the None singleton.
-
 </div>
 
  
@@ -221,8 +216,6 @@ layout: ../../layouts/PageLayout.astro
 </div>
 
 
- The type of the None singleton.
-
 </div>
 
  
@@ -245,8 +238,6 @@ layout: ../../layouts/PageLayout.astro
 </div>
 </div>
 
-
- The type of the None singleton.
 
 </div>
 
@@ -320,8 +311,6 @@ layout: ../../layouts/PageLayout.astro
 </div>
 
 
- The type of the None singleton.
-
 </div>
 
  
@@ -372,8 +361,6 @@ layout: ../../layouts/PageLayout.astro
 </div>
 
 
- The type of the None singleton.
-
 </div>
 
  
@@ -423,8 +410,6 @@ layout: ../../layouts/PageLayout.astro
 </div>
 </div>
 
-
- The type of the None singleton.
 
 </div>
 
@@ -482,8 +467,6 @@ layout: ../../layouts/PageLayout.astro
 </div>
 
 
- The type of the None singleton.
-
 </div>
 
  
@@ -540,8 +523,6 @@ layout: ../../layouts/PageLayout.astro
 </div>
 
 
- The type of the None singleton.
-
 </div>
 
  
@@ -592,8 +573,6 @@ layout: ../../layouts/PageLayout.astro
 </div>
 
 
- The type of the None singleton.
-
 </div>
 
  
@@ -643,8 +622,6 @@ layout: ../../layouts/PageLayout.astro
 </div>
 </div>
 
-
- The type of the None singleton.
 
 </div>
 

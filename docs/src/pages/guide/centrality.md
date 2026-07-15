@@ -6,6 +6,8 @@ layout: '@src/layouts/PageLayout.astro'
 
 Centrality metrics quantify the structural importance of each location in the street network. `cityseer` computes multiple centrality measures simultaneously for any combination of distance thresholds in a single pass.
 
+The examples on this page use the [`CityNetwork`](/api/network) methods, which are the recommended interface: network construction, cleaning, and the dual graph are handled automatically. The same computations exist as lower-level functions in [`metrics.networks`](/metrics/networks) for direct control over the network structures. The older `node_centrality_shortest`, `node_centrality_simplest`, and `segment_centrality` functions are deprecated: they exist only for backwards compatibility with pre-5.0 code (see the [migration guide](/guide/migration)).
+
 ## Expression-based metrics
 
 Metrics are defined as `{name: expression}` dictionaries using two variables:
@@ -34,7 +36,7 @@ Pass `None` to use the defaults for a category, or `{}` to skip it entirely. The
 | --- | --- | --- | --- |
 | `cc_density_{d}` | `"1"` | $\sum_j 1$ | Count of nodes reachable within distance $d$. A simple measure of local connectivity. |
 | `cc_farness_{d}` | `"c"` | $\sum_j c_j$ | Sum of metric distances to all reachable nodes. Lower values indicate better average proximity. |
-| `cc_harmonic_{d}` | `"1/c"` | $\sum_j 1 / c_j$ | Harmonic closeness: sum of inverse distances. Higher values indicate better proximity. Unlike standard closeness, harmonic closeness handles distance-bounded analysis correctly because unreachable nodes contribute 0 rather than distorting the average. |
+| `cc_harmonic_{d}` | `"1/c"` | $\sum_j 1 / c_j$ | Harmonic closeness: sum of inverse distances. Higher values indicate better proximity. Unlike standard closeness, harmonic closeness handles distance-bounded analysis correctly because unreachable nodes contribute 0 rather than distorting the average. Nodes within a few metres of one another, especially below 1 m, contribute very large $1/c$ values and inflate scores severely; `CityNetwork` construction removes such degenerate edges automatically, but manually built networks must be consolidated first. |
 | `cc_decay_{d}` | `"exp(-4 * p)"` | $\sum_j e^{-4 p_j}$ | Exponential decay-weighted closeness. Nearby nodes contribute most; at the distance threshold ($p = 1$), weight drops to $e^{-4} \approx 1.8\%$. This is the continuous equivalent of the historical $\beta$-weighted metric. |
 
 **Default betweenness** (pass `betweenness=None` or omit):

@@ -29,11 +29,11 @@ Accessible via **Processing > Cityseer > Mixed Uses**. Computes land-use diversi
 The output is a line layer with the original street segments and diversity values as attributes:
 
 ```text
-cc_hill_q0_<distance>[_ang]   — count of distinct reachable land uses
-cc_hill_q1_<distance>[_ang]   — Hill diversity of order 1 (exponential of Shannon)
-cc_hill_q2_<distance>[_ang]   — Hill diversity of order 2 (inverse Simpson)
-cc_shannon_<distance>[_ang]   — Shannon entropy (if enabled)
-cc_gini_<distance>[_ang]      — Gini-Simpson diversity (if enabled)
+cc_hill_q0_<distance>[_ang]   -> count of distinct reachable land uses
+cc_hill_q1_<distance>[_ang]   -> Hill diversity of order 1 (exponential of Shannon)
+cc_hill_q2_<distance>[_ang]   -> Hill diversity of order 2 (inverse Simpson)
+cc_shannon_<distance>[_ang]   -> Shannon entropy (if enabled)
+cc_gini_<distance>[_ang]      -> Gini-Simpson diversity (if enabled)
 ```
 
 Hill diversity is the recommended measure: q = 0 is generally the best choice for granular land-use data, and higher orders progressively discount rare categories. Shannon and Gini-Simpson are provided under the advanced parameters for comparability with older studies; the Hill equivalents (q = 1 and q = 2) are preferable in most cases. See the [land-use guide](/guide/land-use) for interpretation.
