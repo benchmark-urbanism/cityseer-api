@@ -7,8 +7,8 @@
   --font-headings: raleway, sans-serif;
   --font-mono: roboto mono, monospace;
   --text-xxs: 0.7rem;
-  --text-xs: 0.8rem;
-  --text-sm: 0.9rem;
+  --text-xs: 0.78rem;
+  --text-sm: 0.85rem;
   --text-base: 1rem;
   --text-lg: 1.05rem;
   --text-xl: 1.1rem;
@@ -138,7 +138,7 @@
   }
 
   :not(pre) > code {
-    @apply rounded-xs bg-dark-grey px-1 font-mono text-xs font-medium text-lighter-grey;
+    @apply rounded-xs bg-dark-grey px-1 font-mono text-xs font-normal text-lighter-grey;
   }
 
   pre {
@@ -150,15 +150,11 @@
   }
 
   a {
-    @apply text-theme;
+    @apply text-theme font-normal;
 
     & code {
-      @apply text-theme;
+      @apply text-theme font-normal;
     }
-  }
-
-  p > a {
-    @apply font-medium;
   }
 
   table {
