@@ -1,3 +1,12 @@
+# v5.5.0 Release Notes
+
+A feature release for the `CityNetwork` API: configurable construction-time cleaning and universal segment-length weighting. The QGIS plugin pins the established behaviour, so plugin outputs are unchanged.
+
+- **Construction-time cleaning parameters**: every `CityNetwork` constructor cleans the primal edge set before dual conversion, in a deliberate order, with a parameter per step: `remove_fillers=True` welds chains of segments meeting at degree-2 endpoints into single segments (absorbed features are marked `"merged"` in `feature_status`); `remove_danglers=10.0` removes dead-end stubs after welding, judged on the full welded length; `merge_parallel_dist=2.0` merges near-duplicate parallel edges (endpoints within the tolerance, near-identical lengths). Each step can be disabled to pass a network through as-is. Directed networks skip welding and parallel merging automatically. **Behaviour change**: filler welding is on by default, so node counts and centrality magnitudes shift for `from_geopandas`/`from_nx`/`from_wkts` networks relative to 5.4; pass `remove_fillers=False, remove_danglers=0, merge_parallel_dist=0` for the previous behaviour.
+- **Segment-length weighting works on every construction path**: `segment_weighted=True` previously raised for all `CityNetwork` instances (the column it required only existed on the legacy functional path). The dual build now records each segment's length, and the flag can also be set at construction as a default for subsequent centrality calls.
+- **Pure reconstruction on load**: `save()` persists the cleaned geometries; `load()` rebuilds from them with cleaning disabled, so a reloaded network is identical to the saved one regardless of cleaning changes between versions. Files saved by older versions still load via the previous path.
+- **`CityNetwork.update()` removed**: in-place editing exits the library API; construct a fresh network from updated geometries instead. The controlled incremental path remains for the QGIS plugin via `tools.dual.incremental_update`.
+
 # v5.4.1 Release Notes
 
 A feature release adding Python 3.14 support. No breaking API changes. (5.4.0 was not published; it is superseded by 5.4.1.)
