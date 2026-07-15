@@ -261,6 +261,11 @@ class CityseerAccessibilityAlgorithm(CityseerAlgorithmBase):
         assign_base = (step - 1) * step_pct
         feedback.setProgress(int(assign_base))
 
+        # QGIS divergence: build the DataMap and land-use map directly from QGIS features, in place of
+        # cityseer.metrics.layers.compute_accessibilities (which takes a GeoDataFrame and so needs
+        # geopandas). Uncategorised features are mapped to "" and filtered out of the category set
+        # below, matching the library's exclusion of NaN-category points. Keep the null handling and
+        # aggregation in sync with layers.compute_accessibilities. See base.py's dependency note.
         data_map = rustalgos.data.DataMap()
         landuses_map: dict = {}
         skipped = 0

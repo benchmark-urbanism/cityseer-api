@@ -331,7 +331,10 @@ class CityseerDemandAlgorithm(CityseerAlgorithmBase):
             return {}
 
         # ------------------------------------------------------------------
-        # Step 2: Snap origins/destinations and compute demand betweenness
+        # Step 2: Snap origins/destinations and compute demand betweenness.
+        # QGIS divergence: snap the OD points and call NetworkStructure.betweenness_demand_shortest on
+        # the Rust core directly, in place of cityseer.metrics.networks.betweenness_demand (which takes
+        # GeoDataFrames and so needs geopandas). Keep in sync with networks.betweenness_demand.
         # ------------------------------------------------------------------
         origins = self._snap_to_nodes(ns, origin_coords, origin_weights, max_snap_dist, feedback, "origins")
         destinations = self._snap_to_nodes(ns, dest_coords, dest_weights, max_snap_dist, feedback, "destinations")

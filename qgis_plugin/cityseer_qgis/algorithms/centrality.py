@@ -305,8 +305,11 @@ class CityseerCentralityAlgorithm(CityseerAlgorithmBase):
             return {}
 
         # ------------------------------------------------------------------
-        # Sampling: pilot poll + per-run adaptive plan (mirrors
-        # cityseer.metrics.networks._plan_adaptive_sampling).
+        # QGIS divergence: pilot poll + per-run adaptive sampling plan, mirroring
+        # cityseer.metrics.networks._plan_adaptive_sampling. Reimplemented here against the
+        # lightweight cityseer.sampling module because metrics.networks pulls in geopandas.
+        # Keep the plan (per-node probabilities, work test) in sync with _plan_adaptive_sampling.
+        # See base.py's dependency-avoidance note.
         # ------------------------------------------------------------------
         import numpy as np
         from cityseer import sampling as cs_sampling

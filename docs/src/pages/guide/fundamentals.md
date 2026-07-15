@@ -6,6 +6,10 @@ layout: '@src/layouts/PageLayout.astro'
 
 This guide walks through the core concepts and features of `cityseer`. It is aimed at researchers, urban planners, and developers who want to compute street-network centrality, land-use accessibility, or statistical aggregations at the pedestrian scale. Familiarity with Python and `geopandas` is assumed; for a gentler introduction, start with the [Python 101](/start) lessons. For the underlying research methods, see the [associated paper](https://journals.sagepub.com/doi/full/10.1177/23998083221133827).
 
+:::note
+**Working with an LLM?** If you use an AI coding assistant, point it at [`llms.txt`](/llms.txt), a compact machine-readable index of this documentation, and at the [GitHub repository](https://github.com/benchmark-urbanism/cityseer-api). This grounds its answers in the current API rather than guesswork.
+:::
+
 For practical, end-to-end worked examples with real-world data, see the [examples](/examples) section.
 
 This page covers how `cityseer` frames analysis and how to drive the library; [Networks](/guide/networks), [Centrality](/guide/centrality), and [Land-Use](/guide/land-use) cover the respective domains in depth.

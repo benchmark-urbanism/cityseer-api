@@ -185,6 +185,24 @@ def build_data_map(
     return data_map
 
 
+def _landuse_data_source(data_gdf: gpd.GeoDataFrame, landuse_column_label: str) -> gpd.GeoDataFrame:
+    """Return the subset of data points that carry a land-use category.
+
+    Points with a missing (``NaN`` / ``None``) category belong to no land use, so they are dropped
+    before both the network assignment and the land-use map are built. Excluding them keeps the map
+    one-to-one with the assigned points and stops an uncategorised point from registering as its own
+    class in mixed-use diversity. When every point is categorised the original frame is returned
+    unchanged.
+    """
+    if landuse_column_label not in data_gdf.columns:
+        raise ValueError("The specified landuse column name can't be found in the GeoDataFrame.")
+    valid = data_gdf[landuse_column_label].notna()
+    if bool(valid.all()):
+        return data_gdf
+    logger.info(f"Excluding {int((~valid).sum())} data point(s) with a missing land-use category from the aggregation.")
+    return data_gdf.loc[valid]
+
+
 def compute_accessibilities(
     data_gdf: gpd.GeoDataFrame,
     landuse_column_label: str,
@@ -310,19 +328,17 @@ def compute_accessibilities(
     if angular:
         _require_dual_for_angular(network_structure, "compute_accessibilities")
     logger.info(f"Computing land-use accessibility for: {', '.join(accessibility_keys)}")
-    # assign to network
+    # drop uncategorised (NaN) points, then assign to network
+    data_src = _landuse_data_source(data_gdf, landuse_column_label)
     data_map = build_data_map(
-        data_gdf,
+        data_src,
         network_structure,
         max_netw_assign_dist,
         data_id_col,
         barriers_gdf=barriers_gdf,
         n_nearest_candidates=n_nearest_candidates,
     )
-    # extract landuses
-    if landuse_column_label not in data_gdf.columns:
-        raise ValueError("The specified landuse column name can't be found in the GeoDataFrame.")
-    landuses_map = dict(data_gdf[landuse_column_label])
+    landuses_map = dict(data_src[landuse_column_label])
     # call the underlying function
     decay_labels, decay_exprs, legacy_tail = _resolve_decay_fns(decay_fn)
     partial_func = partial(
@@ -532,19 +548,17 @@ def compute_mixed_uses(
     if angular:
         _require_dual_for_angular(network_structure, "compute_mixed_uses")
     logger.info("Computing mixed-use measures.")
-    # assign to network
+    # drop uncategorised (NaN) points, then assign to network
+    data_src = _landuse_data_source(data_gdf, landuse_column_label)
     data_map = build_data_map(
-        data_gdf,
+        data_src,
         network_structure,
         max_netw_assign_dist,
         data_id_col,
         barriers_gdf=barriers_gdf,
         n_nearest_candidates=n_nearest_candidates,
     )
-    # extract landuses
-    if landuse_column_label not in data_gdf.columns:
-        raise ValueError("The specified landuse column name can't be found in the GeoDataFrame.")
-    landuses_map = dict(data_gdf[landuse_column_label])
+    landuses_map = dict(data_src[landuse_column_label])
     decay_labels, decay_exprs, legacy_tail = _resolve_decay_fns(decay_fn)
     partial_func = partial(
         data_map.mixed_uses_decays,

@@ -6,6 +6,10 @@ layout: '@src/layouts/PageLayout.astro'
 
 `cityseer` provides tools for street-network and land-use analysis at the pedestrian scale. It measures how central each street is in the walking network (centrality), how easily pedestrians can reach amenities like shops or parks (accessibility), and how numerical attributes such as property prices are distributed across neighbourhoods (statistical aggregation). All measures are computed along actual walking routes rather than straight-line distances.
 
+:::note
+**Working with an LLM?** If you use an AI coding assistant, point it at [`llms.txt`](/llms.txt), a compact machine-readable index of this documentation, and at the [GitHub repository](https://github.com/benchmark-urbanism/cityseer-api). This grounds its answers in the current API rather than guesswork.
+:::
+
 `cityseer` integrates with [`NetworkX`](https://networkx.github.io/), [`GeoPandas`](https://geopandas.org/en/stable/), [`OSMnx`](https://osmnx.readthedocs.io/), and the broader Python geospatial ecosystem including [`shapely`](https://shapely.readthedocs.io), [`numpy`](http://www.numpy.org/), and [`momepy`](http://docs.momepy.org). The underlying algorithms are implemented in Rust for performance and scale to large networks. Code tests are run against Python versions `3.10` - `3.13`.
 
 ## Installation

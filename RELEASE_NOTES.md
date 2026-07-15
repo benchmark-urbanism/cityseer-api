@@ -1,3 +1,9 @@
+# v5.3.1 Release Notes
+
+A bugfix release. No breaking changes to the Python API.
+
+- **Land-use aggregations skip uncategorised points**: `compute_accessibilities` and `compute_mixed_uses` now exclude data points whose land-use category is missing (`NaN`) instead of raising a `TypeError` at the Rust boundary. Uncategorised points belong to no land use, so they no longer count toward accessibility totals or register as a distinct class in mixed-use diversity, and the number excluded is logged. Resolves the freeze reported in [#146](https://github.com/benchmark-urbanism/cityseer-api/issues/146), which the 5.x rewrite had already turned from a hang into a hard error.
+
 # v5.3.0 Release Notes
 
 A QGIS plugin and documentation release. No breaking changes to the Python API.

@@ -220,6 +220,13 @@ const headinganim = () => {
   font-weight: var(--font-weight-extralight);
   color: var(--color-lighter-grey);
   transition: all 0.3s ease;
+
+  /* keep long headings (e.g. the how-to questions) from flooding the nav */
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
 }
 
 .nested-link:hover,

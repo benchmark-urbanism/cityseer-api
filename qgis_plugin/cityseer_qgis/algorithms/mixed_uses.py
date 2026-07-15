@@ -251,6 +251,10 @@ class CityseerMixedUsesAlgorithm(CityseerAlgorithmBase):
         assign_base = (step - 1) * step_pct
         feedback.setProgress(int(assign_base))
 
+        # QGIS divergence: build the DataMap and land-use map directly from QGIS features, in place of
+        # cityseer.metrics.layers.compute_mixed_uses (which takes a GeoDataFrame and so needs geopandas).
+        # None/blank categories are skipped before insertion, so an uncategorised feature never registers
+        # as its own diversity class, matching the library. Keep in sync with layers.compute_mixed_uses.
         data_map = rustalgos.data.DataMap()
         landuses_map: dict = {}
         skipped = 0

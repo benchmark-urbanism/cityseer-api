@@ -67,7 +67,7 @@ Pass `None` to use the defaults for a category, or `{}` to skip it entirely. The
 | Column | Expression | Formula | Description |
 | --- | --- | --- | --- |
 | `cc_density_{d}_ang` | `"1"` | $\sum_j 1$ | Count of nodes reachable within distance $d$ via angular routing. |
-| `cc_farness_{d}_ang` | `"1 + c / 90"` | $\sum_j (1 + c_j / 90)$ | Angular farness. The $1 + c/90$ transform maps a straight-ahead path ($0°$) to 1 and a single $90°$ turn to 2, giving a meaningful scale that avoids division-by-zero at the source. Equivalent to angular integration in space syntax. |
+| `cc_farness_{d}_ang` | `"1 + c / 90"` | $\sum_j (1 + c_j / 90)$ | Angular farness. The $1 + c/90$ transform maps a straight-ahead path ($0°$) to 1 and a single $90°$ turn to 2, giving a meaningful scale that avoids division-by-zero at the source. |
 | `cc_harmonic_{d}_ang` | `"1 / (1 + c / 90)"` | $\sum_j 1 / (1 + c_j / 90)$ | Angular harmonic closeness: the inverse of the farness expression. Higher values indicate better angular proximity (straighter routes to more destinations). |
 
 **Default betweenness** (pass `betweenness=None` or omit):
@@ -80,15 +80,15 @@ Pass `None` to use the defaults for a category, or `{}` to skip it entirely. The
 
 | Column | Expression | Formula | Description |
 | --- | --- | --- | --- |
-| `cc_hillier_{d}_ang` | `"density**2 / farness"` | $n^2 / \sum_j (1 + c_j / 90)$ | Hillier normalisation for angular metrics. |
+| `cc_hillier_{d}_ang` | `"density**2 / farness"` | $n^2 / \sum_j (1 + c_j / 90)$ | Hillier normalisation for angular metrics. The Hillier formula is also known as _integration_ in the space syntax community, and is more or less a simplified form of improved closeness centrality. |
 
-Simplest-path centrality does not include decay-weighted metrics by default because angular cost is not a distance measure. Decay-weighted angular metrics can be added via custom expressions if needed.
+Simplest-path centrality does not apply decay-weighted forms by default. Angular cost is cumulative turning, which does not decrease continuously with distance, so it is not a meaningful basis for distance decay. If you need a decay-weighted or otherwise custom angular metric, define it with a [custom expression](#custom-metrics).
 
 ## Choosing shortest or angular
 
 Shortest-path centrality uses metric distance, which is less sensitive to how the network is drawn.
 
-Simplest-path (angular) centrality weights routes by cumulative turning, following the space-syntax observation that people tend to prefer straighter routes. On a clean, well-consolidated network, angular measures can be preferable and can correspond more closely with observed movement. Angular cost is computed from turn angles, so spurious nodes, unconsolidated parallel edges, and roundabouts drawn as rings distort it (see [Network Cleaning](/guide/cleaning)). When the network has not been cleaned, shortest-path is generally the safer choice.
+Simplest-path (angular) centrality weights routes by cumulative turning, following the space-syntax observation that people tend to prefer straighter routes. On a clean, well-consolidated network, angular measures can be preferable and can correspond more closely with observed movement. Angular cost is computed from turn angles, so spurious nodes, unconsolidated parallel edges, and roundabouts drawn as rings distort it (see [Network Cleaning](/guide/cleaning)). When the network has not been cleaned to a high standard, the shortest path may be the safer choice.
 
 ## Custom metrics
 
