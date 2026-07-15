@@ -43,6 +43,19 @@ SELF_LOOP_MIN_LENGTH = 1.0
 # This stays intentionally narrow so distinct curved alternatives are preserved.
 DUPLICATE_LENGTH_RATIO = 0.98
 DANGLER_MAX = 10.0
+# Default endpoint tolerance for merging parallel (near-duplicate) edges: edges whose two
+# endpoints each fall within this distance of another edge's endpoints, and whose lengths are
+# near-identical (DUPLICATE_LENGTH_RATIO), are the same street drawn twice.
+MERGE_PARALLEL_DIST = 2.0
+
+# Pre-5.5 cleaning behaviour: no filler welding, and near-duplicate detection at the endpoint
+# rounding precision only. The QGIS plugin pins these to avoid changing plugin outputs, and
+# saved states from older versions fall back to them.
+LEGACY_CLEAN_PARAMS: dict[str, Any] = {
+    "remove_fillers": False,
+    "remove_danglers": DANGLER_MAX,
+    "merge_parallel_dist": 0.1,
+}
 
 
 def _cumulative_lengths(coords: list[tuple[float, float]]) -> list[float]:
@@ -224,42 +237,80 @@ def _make_edge_wkt(
     return _coords_to_wkt(merged)
 
 
-def _clean_geometries(
+def _weld_fillers(
     geoms: dict[Any, LineString],
-    directed: bool = False,
-) -> tuple[dict[Any, LineString], dict[Any, str], int, int, int]:
-    """Apply the same self-loop, duplicate, and dangler cleanup as the QGIS fast path."""
-    geoms = dict(geoms)
-    statuses = {fid: "active" for fid in geoms}
-    n_self_loops = 0
-    n_duplicates = 0
+    statuses: dict[Any, str],
+) -> dict[Any, Any]:
+    """Weld chains of segments meeting at filler (degree-2) endpoints into single segments.
+
+    A filler endpoint joins exactly two distinct segments and no others: it subdivides one
+    continuous street rather than marking a junction. Each weld keeps the id of the longer
+    constituent; absorbed ids are marked ``"merged"`` and recorded in the returned mapping
+    (absorbed id -> kept id), resolved transitively across chained welds. Welds that would
+    close a segment into a ring are skipped, since a ring would detach from the dual graph.
+    Undirected only: callers skip this pass for directed graphs, where welding could join
+    edges with conflicting one-way orientations.
+    """
+    merges: dict[Any, Any] = {}
+    ep_map: dict[tuple[float, float], set[Any]] = collections.defaultdict(set)
+    for fid, line in geoms.items():
+        coords = list(line.coords)
+        k_start, k_end = _ep_key(coords[0]), _ep_key(coords[-1])
+        if k_start == k_end:
+            continue  # rings have no weldable endpoints
+        ep_map[k_start].add(fid)
+        ep_map[k_end].add(fid)
+    queue = collections.deque(key for key, fids in ep_map.items() if len(fids) == 2)
+    while queue:
+        key = queue.popleft()
+        fids = ep_map.get(key)
+        if fids is None or len(fids) != 2:
+            continue
+        fid_a, fid_b = tuple(fids)
+        if fid_a not in geoms or fid_b not in geoms:
+            continue
+        coords_a = list(geoms[fid_a].coords)
+        coords_b = list(geoms[fid_b].coords)
+        # orient a to end at the weld point and b to start at it
+        if _ep_key(coords_a[0]) == key:
+            coords_a = coords_a[::-1]
+        if _ep_key(coords_b[-1]) == key:
+            coords_b = coords_b[::-1]
+        far_a = _ep_key(coords_a[0])
+        far_b = _ep_key(coords_b[-1])
+        if far_a == far_b:
+            continue  # welding would create a ring
+        keep, drop = (fid_a, fid_b) if geoms[fid_a].length >= geoms[fid_b].length else (fid_b, fid_a)
+        geoms[keep] = LineString(coords_a + coords_b[1:])
+        del geoms[drop]
+        statuses[drop] = "merged"
+        merges[drop] = keep
+        for absorbed, kept in merges.items():
+            if kept == drop:
+                merges[absorbed] = keep
+        # update the endpoint map in place: the weld point closes; the far endpoints now
+        # reference the kept id, and may themselves have become weldable
+        del ep_map[key]
+        for far_key, old_fid in ((far_a, fid_a), (far_b, fid_b)):
+            fid_set = ep_map.get(far_key)
+            if fid_set is None:
+                continue
+            fid_set.discard(old_fid)
+            fid_set.add(keep)
+            if len(fid_set) == 2:
+                queue.append(far_key)
+    return merges
+
+
+def _remove_danglers(
+    geoms: dict[Any, LineString],
+    statuses: dict[Any, str],
+    dangler_max: float,
+) -> int:
+    """Iteratively remove short dead-end segments (an endpoint shared with no other segment)."""
     n_danglers = 0
-
-    for fid in list(geoms.keys()):
-        coords = list(geoms[fid].coords)
-        if _ep_key(coords[0]) == _ep_key(coords[-1]) and geoms[fid].length < SELF_LOOP_MIN_LENGTH:
-            statuses[fid] = "short_self_loop"
-            del geoms[fid]
-            n_self_loops += 1
-
-    # Skip duplicate detection for directed graphs: reverse edges sharing the
-    # same endpoint pair are distinct traffic directions, not duplicates.
-    if not directed:
-        ep_pairs: dict[frozenset[tuple[float, float]], list[tuple[Any, float]]] = collections.defaultdict(list)
-        for fid, line in geoms.items():
-            coords = list(line.coords)
-            pair = frozenset({_ep_key(coords[0]), _ep_key(coords[-1])})
-            ep_pairs[pair].append((fid, line.length))
-        for items in ep_pairs.values():
-            if len(items) > 1:
-                items.sort(key=lambda x: x[1], reverse=True)
-                longest = items[0][1]
-                for fid, length in items[1:]:
-                    if fid in geoms and length >= longest * DUPLICATE_LENGTH_RATIO:
-                        statuses[fid] = "duplicate"
-                        del geoms[fid]
-                        n_duplicates += 1
-
+    if dangler_max <= 0:
+        return n_danglers
     while True:
         temp_ep: dict[tuple[float, float], list[Any]] = collections.defaultdict(list)
         for fid, line in geoms.items():
@@ -268,7 +319,7 @@ def _clean_geometries(
                 temp_ep[_ep_key(pt)].append(fid)
         to_remove: set[Any] = set()
         for fid, line in geoms.items():
-            if line.length > DANGLER_MAX:
+            if line.length > dangler_max:
                 continue
             coords = list(line.coords)
             if len(temp_ep.get(_ep_key(coords[0]), [])) <= 1 or len(temp_ep.get(_ep_key(coords[-1]), [])) <= 1:
@@ -279,8 +330,141 @@ def _clean_geometries(
             statuses[fid] = "short_dangler"
             del geoms[fid]
         n_danglers += len(to_remove)
+    return n_danglers
 
-    return geoms, statuses, n_self_loops, n_duplicates, n_danglers
+
+def _cluster_endpoints(
+    geoms: dict[Any, LineString],
+    dist: float,
+) -> dict[tuple[float, float], int]:
+    """Group endpoint keys lying within ``dist`` of each other via grid hashing + union-find."""
+    keys: list[tuple[float, float]] = []
+    key_idx: dict[tuple[float, float], int] = {}
+    for line in geoms.values():
+        coords = list(line.coords)
+        for pt in (coords[0], coords[-1]):
+            key = _ep_key(pt)
+            if key not in key_idx:
+                key_idx[key] = len(keys)
+                keys.append(key)
+    parent = list(range(len(keys)))
+
+    def find(i: int) -> int:
+        while parent[i] != i:
+            parent[i] = parent[parent[i]]
+            i = parent[i]
+        return i
+
+    grid: dict[tuple[int, int], list[int]] = collections.defaultdict(list)
+    for i, (x, y) in enumerate(keys):
+        grid[(int(x // dist), int(y // dist))].append(i)
+    for i, (x, y) in enumerate(keys):
+        cx, cy = int(x // dist), int(y // dist)
+        for gx in (cx - 1, cx, cx + 1):
+            for gy in (cy - 1, cy, cy + 1):
+                for j in grid.get((gx, gy), ()):  # noqa: B905
+                    if j <= i:
+                        continue
+                    jx, jy = keys[j]
+                    if math.hypot(jx - x, jy - y) <= dist:
+                        ri, rj = find(i), find(j)
+                        if ri != rj:
+                            parent[rj] = ri
+    return {key: find(i) for key, i in key_idx.items()}
+
+
+def _merge_parallel(
+    geoms: dict[Any, LineString],
+    statuses: dict[Any, str],
+    parallel_dist: float,
+) -> int:
+    """Remove near-duplicate parallel edges: endpoints within ``parallel_dist``, near-equal length.
+
+    This generalises exact endpoint-pair duplicate detection: endpoints are clustered within
+    the tolerance, and edges spanning the same endpoint clusters with lengths within
+    ``DUPLICATE_LENGTH_RATIO`` of the longest are the same street drawn twice. The longest is
+    kept. Distinctly shorter or longer alternatives between the same clusters are preserved.
+    """
+    n_duplicates = 0
+    if parallel_dist <= 0:
+        return n_duplicates
+    if parallel_dist <= 0.1:
+        # at (or below) the endpoint rounding precision, exact key matching is the legacy
+        # behaviour: only edges sharing both rounded endpoints count as duplicates
+        clusters = {}
+        for line in geoms.values():
+            coords = list(line.coords)
+            for pt in (coords[0], coords[-1]):
+                key = _ep_key(pt)
+                clusters.setdefault(key, len(clusters))
+    else:
+        clusters = _cluster_endpoints(geoms, parallel_dist)
+    ep_pairs: dict[frozenset[int], list[tuple[Any, float]]] = collections.defaultdict(list)
+    for fid, line in geoms.items():
+        coords = list(line.coords)
+        c_start = clusters[_ep_key(coords[0])]
+        c_end = clusters[_ep_key(coords[-1])]
+        if c_start == c_end:
+            continue  # both endpoints in one cluster: a loop at the tolerance, not a parallel pair
+        ep_pairs[frozenset({c_start, c_end})].append((fid, line.length))
+    for items in ep_pairs.values():
+        if len(items) > 1:
+            # pairwise near-equality: an edge is a duplicate of any longer KEPT edge with a
+            # near-identical length, so a distinctly longer alternative between the same
+            # endpoints does not shield true twins from each other
+            items.sort(key=lambda x: x[1], reverse=True)
+            kept_lengths: list[float] = []
+            for fid, length in items:
+                if fid not in geoms:
+                    continue
+                if any(length >= kept_len * DUPLICATE_LENGTH_RATIO for kept_len in kept_lengths):
+                    statuses[fid] = "duplicate"
+                    del geoms[fid]
+                    n_duplicates += 1
+                else:
+                    kept_lengths.append(length)
+    return n_duplicates
+
+
+def _clean_geometries(
+    geoms: dict[Any, LineString],
+    directed: bool = False,
+    *,
+    remove_fillers: bool = True,
+    remove_danglers: float = DANGLER_MAX,
+    merge_parallel_dist: float = MERGE_PARALLEL_DIST,
+) -> tuple[dict[Any, LineString], dict[Any, str], dict[Any, Any]]:
+    """Clean the primal edge set ahead of dual conversion.
+
+    Order matters and is deliberate: tiny self-loops (corrupt geometry) first, then filler
+    welding so that subdivided streets are treated as whole segments, then dangler removal so
+    that a welded chain is judged on its full length, then parallel-edge merging.
+
+    Directed graphs skip filler welding and parallel merging: welding can join edges with
+    conflicting one-way orientations, and reverse edges sharing endpoints are distinct traffic
+    directions rather than duplicates.
+
+    Returns the cleaned geoms, per-feature statuses, and the weld mapping (absorbed id -> kept id).
+    """
+    geoms = dict(geoms)
+    statuses = {fid: "active" for fid in geoms}
+    merges: dict[Any, Any] = {}
+
+    for fid in list(geoms.keys()):
+        coords = list(geoms[fid].coords)
+        if _ep_key(coords[0]) == _ep_key(coords[-1]) and geoms[fid].length < SELF_LOOP_MIN_LENGTH:
+            statuses[fid] = "short_self_loop"
+            del geoms[fid]
+
+    if remove_fillers and not directed:
+        merges = _weld_fillers(geoms, statuses)
+
+    _remove_danglers(geoms, statuses, remove_danglers)
+
+    if not directed:
+        _merge_parallel(geoms, statuses, merge_parallel_dist)
+
+    return geoms, statuses, merges
 
 
 def _build_nodes_gdf(
@@ -289,17 +473,22 @@ def _build_nodes_gdf(
     node_idx: dict[Any, int],
     midpoints: dict[Any, tuple[float, float]],
     crs: Any | None,
+    geoms: dict[Any, LineString] | None = None,
 ) -> Any:
     import geopandas as gpd
 
+    data: dict[str, Any] = {
+        "ns_node_idx": [node_idx[fid] for fid in fid_list],
+        "x": [midpoints[fid][0] for fid in fid_list],
+        "y": [midpoints[fid][1] for fid in fid_list],
+        "live": [ns.is_node_live(node_idx[fid]) for fid in fid_list],
+        "weight": 1.0,
+    }
+    if geoms is not None:
+        # primal segment length: enables segment_weighted centrality (plain float, parquet-safe)
+        data["seg_length"] = [geoms[fid].length for fid in fid_list]
     return gpd.GeoDataFrame(  # type: ignore
-        {
-            "ns_node_idx": [node_idx[fid] for fid in fid_list],
-            "x": [midpoints[fid][0] for fid in fid_list],
-            "y": [midpoints[fid][1] for fid in fid_list],
-            "live": [ns.is_node_live(node_idx[fid]) for fid in fid_list],
-            "weight": 1.0,
-        },
+        data,
         index=fid_list,
         geometry=[Point(midpoints[fid]) for fid in fid_list],
         crs=crs,
@@ -457,8 +646,14 @@ def build_dual(
     progress: bool = True,
     directions: dict[Any, tuple[bool, bool]] | None = None,
     impedances: dict[Any, float] | None = None,
+    remove_fillers: bool = True,
+    remove_danglers: float = DANGLER_MAX,
+    merge_parallel_dist: float = MERGE_PARALLEL_DIST,
 ) -> tuple[rustalgos.graph.NetworkStructure, Any | None, DualState]:
     """Build a dual NetworkStructure directly from line geometries.
+
+    Cleaning runs on the primal edge set before dual conversion, in this order: tiny self-loop
+    removal, filler welding, dangler removal, parallel-edge merging.
 
     Parameters
     ----------
@@ -472,6 +667,18 @@ def build_dual(
         ``imp_factor`` is computed as the length-weighted mean of the two adjacent primal
         segments' impedances. Missing entries default to ``1.0``; ``None`` leaves every dual edge
         at ``1.0``.
+    remove_fillers: bool
+        Weld chains of segments meeting at filler (degree-2) endpoints into single segments, so
+        a street subdivided during digitisation is treated as one segment. Welded features keep
+        the id of the longest constituent; absorbed features are marked ``"merged"`` in the
+        feature statuses. Skipped for directed graphs. Default ``True``.
+    remove_danglers: float
+        Remove dead-end stubs up to this length in metres, iteratively. ``0`` disables.
+        Default ``10.0``.
+    merge_parallel_dist: float
+        Merge near-duplicate parallel edges: edges whose endpoints fall within this distance of
+        another edge's endpoints and whose lengths are near-identical. The longest is kept.
+        ``0`` disables. Skipped for directed graphs. Default ``2.0``.
     """
     if impedances is None:
         impedances = {}
@@ -500,12 +707,36 @@ def build_dual(
     for fid in raw_geoms:
         feature_status[fid] = "active"
 
-    geoms, cleaned_status, _n_self_loops, _n_duplicates, _n_danglers = _clean_geometries(
-        raw_geoms, directed=directions is not None
+    geoms, cleaned_status, merges = _clean_geometries(
+        raw_geoms,
+        directed=directions is not None,
+        remove_fillers=remove_fillers,
+        remove_danglers=remove_danglers,
+        merge_parallel_dist=merge_parallel_dist,
     )
     feature_status.update(cleaned_status)
     if not geoms:
         raise ValueError("No valid network geometries remained after cleanup.")
+
+    # a welded segment inherits the length-weighted mean of its constituents' impedances,
+    # consistent with how dual edges combine the impedances of their two primal halves.
+    # combined values go into a working copy only: the state keeps the caller's input
+    # impedances so that save/load or incremental rebuilds recombine from the originals
+    # rather than compounding already-combined values.
+    effective_impedances = dict(impedances)
+    if impedances and merges:
+        constituents: dict[Any, list[Any]] = collections.defaultdict(list)
+        for absorbed, kept in merges.items():
+            constituents[kept].append(absorbed)
+        for kept, absorbed_fids in constituents.items():
+            if kept not in geoms:
+                continue  # the welded segment was itself removed downstream (e.g. as a dangler)
+            parts = [kept, *absorbed_fids]
+            total_len = sum(raw_geoms[fid].length for fid in parts)
+            if total_len > 0.0:
+                effective_impedances[kept] = (
+                    sum(raw_geoms[fid].length * impedances.get(fid, 1.0) for fid in parts) / total_len
+                )
 
     fid_list = sorted(geoms.keys())
     ns = rustalgos.graph.NetworkStructure()
@@ -550,7 +781,7 @@ def build_dual(
         ep_keys=ep_keys,
         node_idx=node_idx,
         edge_records=edge_records,
-        impedances=impedances,
+        impedances=effective_impedances,
     )
     edge_pairs: list[tuple[Any, Any, tuple[float, float]]] = []
     for endpoint, fids in endpoint_to_fids.items():
@@ -569,7 +800,7 @@ def build_dual(
 
     ns.validate()
     ns.build_edge_rtree()
-    nodes_gdf = _build_nodes_gdf(ns, fid_list, node_idx, midpoints, crs) if build_nodes_gdf else None
+    nodes_gdf = _build_nodes_gdf(ns, fid_list, node_idx, midpoints, crs, geoms=geoms) if build_nodes_gdf else None
     state: DualState = {
         "ns": ns,
         "wkts": _active_wkts(source_wkts, fid_list),
@@ -589,6 +820,13 @@ def build_dual(
         "edge_records": edge_records,
         "directions": directions,
         "impedances": dict(impedances),
+        "effective_impedances": dict(effective_impedances),
+        "merges": merges,
+        "clean_params": {
+            "remove_fillers": remove_fillers,
+            "remove_danglers": remove_danglers,
+            "merge_parallel_dist": merge_parallel_dist,
+        },
     }
     return ns, nodes_gdf, state
 
@@ -621,6 +859,13 @@ def incremental_update(
     to_add = added | modified
     boundary_changed = boundary_wkt != state.get("boundary_wkt")
 
+    # Cleaning params travel with the state; states saved before they existed imply the legacy
+    # behaviour. The per-fid incremental path below reproduces only the legacy cleaning
+    # (exact-endpoint duplicates, no welding), so any topological diff under non-legacy params,
+    # or against a state where welds occurred, falls back to a full rebuild.
+    clean_params: dict[str, Any] = state.get("clean_params", dict(LEGACY_CLEAN_PARAMS))
+    non_legacy_clean = clean_params != LEGACY_CLEAN_PARAMS or bool(state.get("merges"))
+
     ns = state.get("ns", None)
     if ns is None:
         ns, _nodes_gdf, state = build_dual(
@@ -630,11 +875,14 @@ def incremental_update(
             build_nodes_gdf=build_nodes_gdf,
             progress=progress,
             directions=directions,
+            **clean_params,
         )
         state["ns"] = ns
         return ns, _nodes_gdf, state
 
-    if (to_remove or to_add) and _requires_full_rebuild(state, current_source_wkts, to_remove, to_add):
+    if (to_remove or to_add) and (
+        non_legacy_clean or _requires_full_rebuild(state, current_source_wkts, to_remove, to_add)
+    ):
         ns, nodes_gdf, rebuilt_state = build_dual(
             current_source_wkts,
             crs=crs,
@@ -642,6 +890,7 @@ def incremental_update(
             build_nodes_gdf=build_nodes_gdf,
             progress=progress,
             directions=directions,
+            **clean_params,
         )
         feature_status = rebuilt_state.get("feature_status", {})
         for fid in removed:
@@ -662,7 +911,7 @@ def incremental_update(
     feature_status = dict(state.get("feature_status", {}))
 
     if not to_remove and not to_add and not boundary_changed:
-        nodes_gdf = _build_nodes_gdf(ns, fid_list, node_idx, midpoints, crs) if build_nodes_gdf else None
+        nodes_gdf = _build_nodes_gdf(ns, fid_list, node_idx, midpoints, crs, geoms=geoms) if build_nodes_gdf else None
         state["crs"] = crs
         state["ns"] = ns
         state["source_wkts"] = dict(current_source_wkts)
@@ -789,5 +1038,5 @@ def incremental_update(
             "directions": directions,
         }
     )
-    nodes_gdf = _build_nodes_gdf(ns, fid_list, node_idx, midpoints, crs) if build_nodes_gdf else None
+    nodes_gdf = _build_nodes_gdf(ns, fid_list, node_idx, midpoints, crs, geoms=geoms) if build_nodes_gdf else None
     return ns, nodes_gdf, state

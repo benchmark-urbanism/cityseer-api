@@ -132,10 +132,14 @@ Node weights affect **centrality only**. Land-use accessibility, mixed-use diver
 - **Closeness** metrics reflect total reachable street length rather than node counts (e.g. density becomes total metres of reachable street within the threshold).
 - **Betweenness** weights each origin–destination pair by both endpoint segment lengths, so longer streets contribute more to betweenness flows.
 
-This requires a dual graph representation (which `CityNetwork` builds automatically).
+This requires a dual graph representation (which `CityNetwork` builds automatically), and works for every `CityNetwork` construction path. Pass the flag per centrality call, or set it once at construction as the default for all subsequent centrality calls:
 
 ```python
 cn.centrality_shortest(distances=[800], segment_weighted=True)
+
+# or as a construction-time default
+cn = CityNetwork.from_geopandas(edges_gdf, segment_weighted=True)
+cn.centrality_shortest(distances=[800])
 ```
 
 ## Convenience wrappers

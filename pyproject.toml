@@ -1,9 +1,9 @@
 [project]
 name = "cityseer"
-version = '5.3.1'
+version = '5.5.0'
 description = "Computational tools for network-based pedestrian-scale urban analysis"
 readme = "README.md"
-requires-python = ">=3.10, <3.14" # pending fiona support for 3.14
+requires-python = ">=3.10, <3.15"
 license = { text = "AGPL-3.0" }
 keywords = [
   "network-topology",
@@ -33,7 +33,7 @@ classifiers = [
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
-  # "Programming Language :: Python :: 3.14",
+  "Programming Language :: Python :: 3.14",
   "Programming Language :: Rust",
 ]
 dependencies = [
@@ -45,8 +45,8 @@ dependencies = [
   "shapely>=2.0.6",      # colab 2.0.7
   "numpy>=1.26.4",       # colab 1.26.4
   "geopandas>=1.0.1",    # colab 1.0.1
-  "rasterio==1.4.3",     # colab 1.4.3 - cap for older intel macs
-  "fiona>=1.9.0",        # colab 1.10.1
+  "rasterio>=1.4.4",     # 1.4.4 first to ship cp314 wheels (spans 3.10-3.14); intel-mac cap dropped
+  "pyogrio>=0.12.0",     # replaces fiona: ships 3.14 wheels; geopandas' default I/O engine
   "osmnx>=2.0.1",        # colab 2.0.1
   "statsmodels>=0.14.6",
 ]

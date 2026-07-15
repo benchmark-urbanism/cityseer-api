@@ -17,7 +17,7 @@ PRESERVE WHITE SPACE AROUND MARKDOWN BLOCKS FOR PARSER
 {% endblock %}
 
 {% block module_contents %}
-{% for m in module.flattened_own_members if is_public(m) | trim %}
+{% for m in module.flattened_own_members | stable_sort_members(module) if is_public(m) | trim %}
 {{ member(m) }}
 {% endfor %}
 {% endblock %}
@@ -49,7 +49,7 @@ See https://pdoc.dev/docs/pdoc/render_helpers.html#DefaultMacroExtension for an 
 
 {{ docstring(cls) }}
 
-{% for m in cls.own_members if m.kind != "class" and is_public(m) | trim %}
+{% for m in cls.own_members | stable_sort_members(module) if m.kind != "class" and is_public(m) | trim %}
 
 {{ member(m) }} 
 {% endfor %}
@@ -165,7 +165,7 @@ true
 {% for base, members in cls.inherited_members.items() %}
 {% set m = None %}{# workaround for https://github.com/pallets/jinja/issues/1427 #}
 {% set member_html %}
-{% for m in members if is_public(m) | trim %}
+{% for m in members | stable_sort_members(module) if is_public(m) | trim %}
 <dd id="{{ m.qualname }}" class="{{ m.kind }}">
 {{- m.taken_from | link(text=m.name.replace("__init__",base[1])) -}}
 </dd>

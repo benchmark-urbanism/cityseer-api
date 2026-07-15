@@ -16,43 +16,11 @@ layout: ../../layouts/PageLayout.astro
 
 <div class="function">
 
-## check_numerical_data
+## avg_distances_for_betas
 
 
 <div class="content">
-<span class="name">check_numerical_data</span><div class="signature">
-  <span class="pt">(</span>
-  <div class="param">
-    <span class="pn">data_arr</span>
-  </div>
-  <span class="pt">)</span>
-</div>
-</div>
-
-
- Validates that all elements in a 2D numerical array are finite.
-### Raises
-<div class="param-set">
-  <div class="def">
-    <div class="name"></div>
-    <div class="type">ValueError</div>
-  </div>
-  <div class="desc">
-
- If any element is not finite (NaN or infinity).</div>
-</div>
-
-
-</div>
-
-
-<div class="function">
-
-## distances_from_betas
-
-
-<div class="content">
-<span class="name">distances_from_betas</span><div class="signature multiline">
+<span class="name">avg_distances_for_betas</span><div class="signature multiline">
   <span class="pt">(</span>
   <div class="param">
     <span class="pn">betas</span>
@@ -65,13 +33,13 @@ layout: ../../layouts/PageLayout.astro
     <span class="pa"> float | None = None</span>
   </div>
   <span class="pt">)-&gt;[</span>
-  <span class="pr">list[int]</span>
+  <span class="pr">list[float]</span>
   <span class="pt">]</span>
 </div>
 </div>
 
 
- Convert decay parameters (betas) to distance thresholds ($d_{max}$). Requires betas > 0 and sorted in strictly decreasing order. Uses a default minimum weight threshold.
+ Calculate the mean distance corresponding to given beta parameters.
 ### Parameters
 <div class="param-set">
   <div class="def">
@@ -80,7 +48,7 @@ layout: ../../layouts/PageLayout.astro
   </div>
   <div class="desc">
 
- $\beta$ values (&gt; 0, strictly decreasing) to convert.</div>
+ $\beta$ parameters.</div>
 </div>
 
 <div class="param-set">
@@ -90,29 +58,18 @@ layout: ../../layouts/PageLayout.astro
   </div>
   <div class="desc">
 
- Optional cutoff weight $w_{min}$ (default: ~0.0183).</div>
+ Optional cutoff weight $w_{min}$.</div>
 </div>
 
 ### Returns
 <div class="param-set">
   <div class="def">
     <div class="name"></div>
-    <div class="type">list[int]</div>
+    <div class="type">list[float]</div>
   </div>
   <div class="desc">
 
- Corresponding distance thresholds $d_{max}$.</div>
-</div>
-
-### Raises
-<div class="param-set">
-  <div class="def">
-    <div class="name"></div>
-    <div class="type">ValueError</div>
-  </div>
-  <div class="desc">
-
- If inputs are invalid (empty, non-positive, not decreasing).</div>
+ The average walking distance for each beta.</div>
 </div>
 
 ### Notes
@@ -120,23 +77,15 @@ layout: ../../layouts/PageLayout.astro
 ```python
 from cityseer import rustalgos
 
-betas = [0.01, 0.02]
-distances = rustalgos.distances_from_betas(betas)
-print(distances)  # prints: [400, 200]
+distances = [100, 200, 400, 800, 1600]
+betas = rustalgos.betas_from_distances(distances)
+print("betas", betas)
+# betas [0.04, 0.02, 0.01, 0.005, 0.0025]
+
+avg = rustalgos.avg_distances_for_betas(betas)
+print("avg", avg)
 ```
 
- Uses the formula:
-
- $$d_{max} = \frac{log(w_{min})}{-\beta}$$
-
- The default `min_threshold_wt` of $w_{min}=0.01831563888873418$ yields conveniently rounded distance thresholds, for example:
-
-| $\beta$ | $d_{max}$ |
-|:-------:|:---------:|
-| 0.02 | 200m |
-| 0.01 | 400m |
-| 0.005 | 800m |
-| 0.0025 | 1600m |
 
 </div>
 
@@ -222,7 +171,11 @@ print(betas)  # prints: [0.02, 0.01, 0.005, 0.0025]
 
  The $\beta$ parameter controls the strength of exponential distance decay:
 
- $$weight = exp(-\beta \cdot distance)$$
+
+$$
+weight = exp(-\beta \cdot distance)
+$$
+
 
  This reflects a decreasing willingness to walk correspondingly farther distances. For example, if $\beta=0.005$ were to represent a person's willingness to walk to a bus stop, then a location 100m distant would be weighted at 60% and a location 400m away would be weighted at 13.5%.
 
@@ -230,7 +183,11 @@ print(betas)  # prints: [0.02, 0.01, 0.005, 0.0025]
 
  Uses the formula:
 
- $$\beta = -\frac{log(w_{min})}{d_{max}}$$
+
+$$
+\beta = -\frac{log(w_{min})}{d_{max}}
+$$
+
 
  The default `min_threshold_wt` of $w_{min}=0.01831563888873418$ yields conveniently rounded $\beta$ values, for example:
 
@@ -248,228 +205,21 @@ Overriding the default $w_{min}$ will adjust the $\beta$ accordingly.
 
 <div class="function">
 
-## distances_from_seconds
+## check_numerical_data
 
 
 <div class="content">
-<span class="name">distances_from_seconds</span><div class="signature multiline">
+<span class="name">check_numerical_data</span><div class="signature">
   <span class="pt">(</span>
   <div class="param">
-    <span class="pn">seconds</span>
-    <span class="pc">:</span>
-    <span class="pa"> list[int]</span>
+    <span class="pn">data_arr</span>
   </div>
-  <div class="param">
-    <span class="pn">speed_m_s</span>
-    <span class="pc">:</span>
-    <span class="pa"> float</span>
-  </div>
-  <span class="pt">)-&gt;[</span>
-  <span class="pr">list[int]</span>
-  <span class="pt">]</span>
+  <span class="pt">)</span>
 </div>
 </div>
 
 
- Convert time in seconds to distance thresholds ($d_{max}$) based on speed.
-:::note
-It is generally not necessary to utilise this function directly.
-:::
-
- The default `speed_m_s` of $1.333$ yields the following $d_{max}$ walking thresholds:
-
-| $seconds$ | $d_{max}$ |
-|:-------:|:---------:|
-| 300 | 400m |
-| 600 | 800m |
-| 1200 | 1600m |
-
-Setting the `speed_m_s` to a higher or lower number will affect the $d_{max}$ accordingly.]
-### Parameters
-<div class="param-set">
-  <div class="def">
-    <div class="name">seconds</div>
-    <div class="type">list[int]</div>
-  </div>
-  <div class="desc">
-
- Time values in seconds.</div>
-</div>
-
-<div class="param-set">
-  <div class="def">
-    <div class="name">speed_m_s</div>
-    <div class="type">float</div>
-  </div>
-  <div class="desc">
-
- Speed in meters per second.</div>
-</div>
-
-### Returns
-<div class="param-set">
-  <div class="def">
-    <div class="name"></div>
-    <div class="type">list[int]</div>
-  </div>
-  <div class="desc">
-
- Corresponding distance thresholds $d_{max}$.</div>
-</div>
-
-
-</div>
-
-
-<div class="function">
-
-## seconds_from_distances
-
-
-<div class="content">
-<span class="name">seconds_from_distances</span><div class="signature multiline">
-  <span class="pt">(</span>
-  <div class="param">
-    <span class="pn">distances</span>
-    <span class="pc">:</span>
-    <span class="pa"> list[int]</span>
-  </div>
-  <div class="param">
-    <span class="pn">speed_m_s</span>
-    <span class="pc">:</span>
-    <span class="pa"> float</span>
-  </div>
-  <span class="pt">)-&gt;[</span>
-  <span class="pr">list[int]</span>
-  <span class="pt">]</span>
-</div>
-</div>
-
-
- Convert distance thresholds ($d_{max}$) to time in seconds based on speed.
-:::note
-It is generally not necessary to utilise this function directly.
-:::
-
- The default `speed_m_s` of $1.33333$ yields the following walking times:
-
-| $d_{max}$ | $seconds$ |
-|:-------:|:---------:|
-| 400m | 300 |
-| 800m | 600 |
-| 1600m | 1200 |
-
-Setting the `speed_m_s` to a higher or lower number will affect the walking time accordingly.
-### Parameters
-<div class="param-set">
-  <div class="def">
-    <div class="name">distances</div>
-    <div class="type">list[int]</div>
-  </div>
-  <div class="desc">
-
- Distance thresholds $d_{max}$.</div>
-</div>
-
-<div class="param-set">
-  <div class="def">
-    <div class="name">speed_m_s</div>
-    <div class="type">float</div>
-  </div>
-  <div class="desc">
-
- Speed in meters per second.</div>
-</div>
-
-### Returns
-<div class="param-set">
-  <div class="def">
-    <div class="name"></div>
-    <div class="type">list[int]</div>
-  </div>
-  <div class="desc">
-
- Corresponding time values in seconds.</div>
-</div>
-
-
-</div>
-
-
-<div class="function">
-
-## pair_distances_and_time
-
-
-<div class="content">
-<span class="name">pair_distances_and_time</span><div class="signature multiline">
-  <span class="pt">(</span>
-  <div class="param">
-    <span class="pn">speed_m_s</span>
-    <span class="pc">:</span>
-    <span class="pa"> float</span>
-  </div>
-  <div class="param">
-    <span class="pn">distances</span>
-    <span class="pc">:</span>
-    <span class="pa"> list[int] | None = None</span>
-  </div>
-  <div class="param">
-    <span class="pn">minutes</span>
-    <span class="pc">:</span>
-    <span class="pa"> list[float] | None = None</span>
-  </div>
-  <span class="pt">)-&gt;[</span>
-  <span class="pr">list[int]</span>
-  <span class="pr">list[int]</span>
-  <span class="pt">]</span>
-</div>
-</div>
-
-
- Resolve distances and seconds from either distances or minutes. Exactly one of `distances` or `minutes` must be provided.
-### Parameters
-<div class="param-set">
-  <div class="def">
-    <div class="name">speed_m_s</div>
-    <div class="type">float</div>
-  </div>
-  <div class="desc">
-
- Walking speed in meters per second.</div>
-</div>
-
-<div class="param-set">
-  <div class="def">
-    <div class="name">distances</div>
-    <div class="type">list[int] | None</div>
-  </div>
-  <div class="desc">
-
- Distance thresholds in metres.</div>
-</div>
-
-<div class="param-set">
-  <div class="def">
-    <div class="name">minutes</div>
-    <div class="type">list[float] | None</div>
-  </div>
-  <div class="desc">
-
- Time in minutes.</div>
-</div>
-
-### Returns
-<div class="param-set">
-  <div class="def">
-    <div class="name"></div>
-    <div class="type">tuple[list[int], list[int]]</div>
-  </div>
-  <div class="desc">
-
- A tuple containing (distances, seconds).</div>
-</div>
-
+ Validates that all elements in a 2D numerical array are finite.
 ### Raises
 <div class="param-set">
   <div class="def">
@@ -478,84 +228,8 @@ Setting the `speed_m_s` to a higher or lower number will affect the walking time
   </div>
   <div class="desc">
 
- If not exactly one of `distances` or `minutes` is provided, or if inputs are invalid.</div>
+ If any element is not finite (NaN or infinity).</div>
 </div>
-
-
-</div>
-
-
-<div class="function">
-
-## avg_distances_for_betas
-
-
-<div class="content">
-<span class="name">avg_distances_for_betas</span><div class="signature multiline">
-  <span class="pt">(</span>
-  <div class="param">
-    <span class="pn">betas</span>
-    <span class="pc">:</span>
-    <span class="pa"> list[float]</span>
-  </div>
-  <div class="param">
-    <span class="pn">min_threshold_wt</span>
-    <span class="pc">:</span>
-    <span class="pa"> float | None = None</span>
-  </div>
-  <span class="pt">)-&gt;[</span>
-  <span class="pr">list[float]</span>
-  <span class="pt">]</span>
-</div>
-</div>
-
-
- Calculate the mean distance corresponding to given beta parameters.
-### Parameters
-<div class="param-set">
-  <div class="def">
-    <div class="name">betas</div>
-    <div class="type">list[float]</div>
-  </div>
-  <div class="desc">
-
- $\beta$ parameters.</div>
-</div>
-
-<div class="param-set">
-  <div class="def">
-    <div class="name">min_threshold_wt</div>
-    <div class="type">float | None</div>
-  </div>
-  <div class="desc">
-
- Optional cutoff weight $w_{min}$.</div>
-</div>
-
-### Returns
-<div class="param-set">
-  <div class="def">
-    <div class="name"></div>
-    <div class="type">list[float]</div>
-  </div>
-  <div class="desc">
-
- The average walking distance for each beta.</div>
-</div>
-
-### Notes
-
-```python
-from cityseer import rustalgos
-
-distances = [100, 200, 400, 800, 1600]
-betas = rustalgos.betas_from_distances(distances)
-print("betas", betas)
-# betas [0.04, 0.02, 0.01, 0.005, 0.0025]
-
-avg = rustalgos.avg_distances_for_betas(betas)
-print("avg", avg)
-```
 
 
 </div>
@@ -716,6 +390,344 @@ datapoints are not located with high spatial precision.
   <div class="desc">
 
  The calculated (potentially clipped) weight. Returns 0.0 if calculation fails.</div>
+</div>
+
+
+</div>
+
+
+<div class="function">
+
+## distances_from_betas
+
+
+<div class="content">
+<span class="name">distances_from_betas</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">betas</span>
+    <span class="pc">:</span>
+    <span class="pa"> list[float]</span>
+  </div>
+  <div class="param">
+    <span class="pn">min_threshold_wt</span>
+    <span class="pc">:</span>
+    <span class="pa"> float | None = None</span>
+  </div>
+  <span class="pt">)-&gt;[</span>
+  <span class="pr">list[int]</span>
+  <span class="pt">]</span>
+</div>
+</div>
+
+
+ Convert decay parameters (betas) to distance thresholds ($d_{max}$). Requires betas > 0 and sorted in strictly decreasing order. Uses a default minimum weight threshold.
+### Parameters
+<div class="param-set">
+  <div class="def">
+    <div class="name">betas</div>
+    <div class="type">list[float]</div>
+  </div>
+  <div class="desc">
+
+ $\beta$ values (&gt; 0, strictly decreasing) to convert.</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">min_threshold_wt</div>
+    <div class="type">float | None</div>
+  </div>
+  <div class="desc">
+
+ Optional cutoff weight $w_{min}$ (default: ~0.0183).</div>
+</div>
+
+### Returns
+<div class="param-set">
+  <div class="def">
+    <div class="name"></div>
+    <div class="type">list[int]</div>
+  </div>
+  <div class="desc">
+
+ Corresponding distance thresholds $d_{max}$.</div>
+</div>
+
+### Raises
+<div class="param-set">
+  <div class="def">
+    <div class="name"></div>
+    <div class="type">ValueError</div>
+  </div>
+  <div class="desc">
+
+ If inputs are invalid (empty, non-positive, not decreasing).</div>
+</div>
+
+### Notes
+
+```python
+from cityseer import rustalgos
+
+betas = [0.01, 0.02]
+distances = rustalgos.distances_from_betas(betas)
+print(distances)  # prints: [400, 200]
+```
+
+ Uses the formula:
+
+
+$$
+d_{max} = \frac{log(w_{min})}{-\beta}
+$$
+
+
+ The default `min_threshold_wt` of $w_{min}=0.01831563888873418$ yields conveniently rounded distance thresholds, for example:
+
+| $\beta$ | $d_{max}$ |
+|:-------:|:---------:|
+| 0.02 | 200m |
+| 0.01 | 400m |
+| 0.005 | 800m |
+| 0.0025 | 1600m |
+
+</div>
+
+
+<div class="function">
+
+## distances_from_seconds
+
+
+<div class="content">
+<span class="name">distances_from_seconds</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">seconds</span>
+    <span class="pc">:</span>
+    <span class="pa"> list[int]</span>
+  </div>
+  <div class="param">
+    <span class="pn">speed_m_s</span>
+    <span class="pc">:</span>
+    <span class="pa"> float</span>
+  </div>
+  <span class="pt">)-&gt;[</span>
+  <span class="pr">list[int]</span>
+  <span class="pt">]</span>
+</div>
+</div>
+
+
+ Convert time in seconds to distance thresholds ($d_{max}$) based on speed.
+:::note
+It is generally not necessary to utilise this function directly.
+:::
+
+ The default `speed_m_s` of $1.333$ yields the following $d_{max}$ walking thresholds:
+
+| $seconds$ | $d_{max}$ |
+|:-------:|:---------:|
+| 300 | 400m |
+| 600 | 800m |
+| 1200 | 1600m |
+
+Setting the `speed_m_s` to a higher or lower number will affect the $d_{max}$ accordingly.]
+### Parameters
+<div class="param-set">
+  <div class="def">
+    <div class="name">seconds</div>
+    <div class="type">list[int]</div>
+  </div>
+  <div class="desc">
+
+ Time values in seconds.</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">speed_m_s</div>
+    <div class="type">float</div>
+  </div>
+  <div class="desc">
+
+ Speed in meters per second.</div>
+</div>
+
+### Returns
+<div class="param-set">
+  <div class="def">
+    <div class="name"></div>
+    <div class="type">list[int]</div>
+  </div>
+  <div class="desc">
+
+ Corresponding distance thresholds $d_{max}$.</div>
+</div>
+
+
+</div>
+
+
+<div class="function">
+
+## pair_distances_and_time
+
+
+<div class="content">
+<span class="name">pair_distances_and_time</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">speed_m_s</span>
+    <span class="pc">:</span>
+    <span class="pa"> float</span>
+  </div>
+  <div class="param">
+    <span class="pn">distances</span>
+    <span class="pc">:</span>
+    <span class="pa"> list[int] | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">minutes</span>
+    <span class="pc">:</span>
+    <span class="pa"> list[float] | None = None</span>
+  </div>
+  <span class="pt">)-&gt;[</span>
+  <span class="pr">list[int]</span>
+  <span class="pr">list[int]</span>
+  <span class="pt">]</span>
+</div>
+</div>
+
+
+ Resolve distances and seconds from either distances or minutes. Exactly one of `distances` or `minutes` must be provided.
+### Parameters
+<div class="param-set">
+  <div class="def">
+    <div class="name">speed_m_s</div>
+    <div class="type">float</div>
+  </div>
+  <div class="desc">
+
+ Walking speed in meters per second.</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">distances</div>
+    <div class="type">list[int] | None</div>
+  </div>
+  <div class="desc">
+
+ Distance thresholds in metres.</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">minutes</div>
+    <div class="type">list[float] | None</div>
+  </div>
+  <div class="desc">
+
+ Time in minutes.</div>
+</div>
+
+### Returns
+<div class="param-set">
+  <div class="def">
+    <div class="name"></div>
+    <div class="type">tuple[list[int], list[int]]</div>
+  </div>
+  <div class="desc">
+
+ A tuple containing (distances, seconds).</div>
+</div>
+
+### Raises
+<div class="param-set">
+  <div class="def">
+    <div class="name"></div>
+    <div class="type">ValueError</div>
+  </div>
+  <div class="desc">
+
+ If not exactly one of `distances` or `minutes` is provided, or if inputs are invalid.</div>
+</div>
+
+
+</div>
+
+
+<div class="function">
+
+## seconds_from_distances
+
+
+<div class="content">
+<span class="name">seconds_from_distances</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">distances</span>
+    <span class="pc">:</span>
+    <span class="pa"> list[int]</span>
+  </div>
+  <div class="param">
+    <span class="pn">speed_m_s</span>
+    <span class="pc">:</span>
+    <span class="pa"> float</span>
+  </div>
+  <span class="pt">)-&gt;[</span>
+  <span class="pr">list[int]</span>
+  <span class="pt">]</span>
+</div>
+</div>
+
+
+ Convert distance thresholds ($d_{max}$) to time in seconds based on speed.
+:::note
+It is generally not necessary to utilise this function directly.
+:::
+
+ The default `speed_m_s` of $1.33333$ yields the following walking times:
+
+| $d_{max}$ | $seconds$ |
+|:-------:|:---------:|
+| 400m | 300 |
+| 800m | 600 |
+| 1600m | 1200 |
+
+Setting the `speed_m_s` to a higher or lower number will affect the walking time accordingly.
+### Parameters
+<div class="param-set">
+  <div class="def">
+    <div class="name">distances</div>
+    <div class="type">list[int]</div>
+  </div>
+  <div class="desc">
+
+ Distance thresholds $d_{max}$.</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">speed_m_s</div>
+    <div class="type">float</div>
+  </div>
+  <div class="desc">
+
+ Speed in meters per second.</div>
+</div>
+
+### Returns
+<div class="param-set">
+  <div class="def">
+    <div class="name"></div>
+    <div class="type">list[int]</div>
+  </div>
+  <div class="desc">
+
+ Corresponding time values in seconds.</div>
 </div>
 
 

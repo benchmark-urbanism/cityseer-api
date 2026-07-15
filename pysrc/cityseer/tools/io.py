@@ -23,7 +23,6 @@ import os
 from pathlib import Path
 from typing import Any, cast
 
-import fiona
 import geopandas as gpd
 import networkx as nx
 import numpy as np
@@ -1008,65 +1007,52 @@ def nx_from_open_roads(
     # create a networkX multigraph
     g_multi = nx.MultiGraph()
     g_multi.graph["crs"] = CRS(27700)
+    # Read the GPKG layers with pyogrio (via geopandas); pyogrio ships 3.14 wheels, fiona does not.
+    # missing string fields arrive as NaN/None (pd.notna filters both); booleans may be missing too.
     # load the nodes
-    with fiona.open(open_roads_path, layer=road_node_layer_key) as nodes:
-        for node_data in nodes.values(bbox=target_bbox):
-            node_id: str = node_data.properties["id"]
-            coords = node_data.geometry["coordinates"]
-            x: float = coords[0]
-            y: float = coords[1]
-            node_kwargs: dict[str, Any] = {"x": x, "y": y}
-            if len(coords) == 3:
-                node_kwargs["z"] = coords[2]
-            g_multi.add_node(node_id, **node_kwargs)
+    nodes_gdf = gpd.read_file(open_roads_path, layer=road_node_layer_key, bbox=target_bbox, engine="pyogrio")
+    for node in nodes_gdf.itertuples(index=False):
+        geom = node.geometry
+        node_kwargs: dict[str, Any] = {"x": geom.x, "y": geom.y}
+        if geom.has_z:
+            node_kwargs["z"] = geom.z
+        g_multi.add_node(node.id, **node_kwargs)
     # load the edges
     n_dropped = 0
-    with fiona.open(open_roads_path, layer=road_link_layer_key) as edges:
-        for edge_data in edges.values(bbox=target_bbox):
-            # x, y = edge_data['geometry']['coordinates']
-            props: dict = edge_data.properties
-            start_nd: str = props["start_node"]
-            end_nd: str = props["end_node"]
-            names: set[str] = set()
-            for name_key in ["name_1", "name_2"]:
-                name: str | None = props[name_key]
-                if name is not None:
-                    names.add(name)
-            routes: set[str] = set()
-            for ref_key in ["road_classification_number"]:
-                ref: str | None = props[ref_key]
-                if ref is not None:
-                    routes.add(ref)
-            highways: set[str] = set()
-            for highway_key in ["road_function", "road_classification"]:  # 'formOfWay'
-                highway: str | None = props[highway_key]
-                if highway is not None:
-                    highways.add(highway)
-            if props["trunk_road"]:
-                highways.add("Trunk Road")
-            if props["primary_route"]:
-                highways.add("Primary Road")
-            # filter out unwanted highway tags
-            highways.difference_update(
-                {
-                    "Not Classified",
-                    "Unclassified",
-                    "Unknown",
-                    "Restricted Local Access Road",
-                    "Local Road",
-                    "Classified Unnumbered",
-                }
-            )
-            # create the geometry
-            geom = geometry.LineString(edge_data.geometry["coordinates"])
-            geom: geometry.LineString = geom.simplify(5)
-            # do not add edges to clipped extents
-            if start_nd not in g_multi or end_nd not in g_multi:
-                n_dropped += 1
-                continue
-            g_multi.add_edge(
-                start_nd, end_nd, names=list(names), routes=list(routes), highways=list(highways), geom=geom
-            )
+    edges_gdf = gpd.read_file(open_roads_path, layer=road_link_layer_key, bbox=target_bbox, engine="pyogrio")
+    for edge in edges_gdf.itertuples(index=False):
+        start_nd: str = edge.start_node
+        end_nd: str = edge.end_node
+        names: set[str] = {name for name in (edge.name_1, edge.name_2) if pd.notna(name)}
+        routes: set[str] = {r for r in (edge.road_classification_number,) if pd.notna(r)}
+        highways: set[str] = {h for h in (edge.road_function, edge.road_classification) if pd.notna(h)}
+        if pd.notna(edge.trunk_road) and edge.trunk_road:
+            highways.add("Trunk Road")
+        if pd.notna(edge.primary_route) and edge.primary_route:
+            highways.add("Primary Road")
+        # filter out unwanted highway tags
+        highways.difference_update(
+            {
+                "Not Classified",
+                "Unclassified",
+                "Unknown",
+                "Restricted Local Access Road",
+                "Local Road",
+                "Classified Unnumbered",
+            }
+        )
+        # do not add edges to clipped extents
+        if start_nd not in g_multi or end_nd not in g_multi:
+            n_dropped += 1
+            continue
+        g_multi.add_edge(
+            start_nd,
+            end_nd,
+            names=list(names),
+            routes=list(routes),
+            highways=list(highways),
+            geom=edge.geometry.simplify(5),
+        )
     logger.info(f"Nodes: {g_multi.number_of_nodes()}")
     logger.info(f"Edges: {g_multi.number_of_edges()}")
     logger.info(f"Dropped {n_dropped} edges where not both start and end nodes were present.")

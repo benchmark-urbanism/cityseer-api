@@ -3,7 +3,7 @@ name=Cityseer
 qgisMinimumVersion=4.0
 qgisMaximumVersion=4.99
 description=Urban network analysis: centrality, demand flows, accessibility, mixed uses, and statistics
-version=5.3.1
+version=5.5.0
 author=Benchmark Urbanism
 email=gareth.simons@ucl.ac.uk
 
@@ -16,7 +16,15 @@ about=Cityseer provides Processing algorithms for urban network analysis: networ
     simplest (angular) paths, boundary polygons, and optional adaptive sampling.
     Requires the cityseer Python library: pip install cityseer
 
-changelog=5.3.1
+changelog=5.5.0
+    - No change to plugin behaviour: the plugin pins the established cleaning parameters, so networks, caches, and outputs are identical to 5.4
+    - The cityseer library gains construction-time cleaning parameters and universal segment-length weighting (library API only)
+
+    5.4.1
+    - Python 3.14 support; the OS Open Roads reader moves from Fiona to pyogrio
+    - rasterio bumped to >=1.4.4 (support for older Intel Macs dropped)
+
+    5.3.1
     - Accessibility and Mixed Uses skip features with a missing land-use category instead of erroring
     - QGIS 4 compatibility: set qgisMaximumVersion and remove the deprecated supportsQt6 flag
 

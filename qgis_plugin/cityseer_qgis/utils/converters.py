@@ -112,12 +112,19 @@ def build_dual_network(
             progress=False,
         )
     else:
+        # QGIS divergence: pin the pre-5.5 cleaning behaviour (no filler welding, exact-endpoint
+        # duplicate detection only). The library's CityNetwork constructors default to the newer
+        # cleaning (filler welding, 2 m parallel merging), but welding changes the one-feature-
+        # per-segment mapping this plugin relies on for writing results back to the input layer,
+        # and would complicate the incremental cache. Stored in the state, so incremental updates
+        # stay on the same behaviour. See base.py's dependency-avoidance note for the convention.
         ns, _nodes_gdf, state = dual.build_dual(
             current_wkts,
             crs=layer.crs().authid(),
             boundary=boundary,
             build_nodes_gdf=False,
             progress=False,
+            **dual.LEGACY_CLEAN_PARAMS,
         )
 
     state["layer_cache_key"] = layer_cache_key
