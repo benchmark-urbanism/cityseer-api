@@ -1,19 +1,31 @@
 [general]
 name=Cityseer
 qgisMinimumVersion=4.0
-description=Urban network analysis: centrality, accessibility, and statistics
-version=4.25.0beta24
+description=Urban network analysis: centrality, demand flows, accessibility, mixed uses, and statistics
+version=5.3.0
 author=Benchmark Urbanism
 email=gareth.simons@ucl.ac.uk
 
 about=Cityseer provides Processing algorithms for urban network analysis: network centrality
-    (closeness and betweenness), land-use accessibility, and localised statistics. Metrics
+    (closeness and betweenness), demand-weighted flow betweenness from weighted origins and
+    destinations, land-use accessibility, mixed-use diversity, and localised statistics. Metrics
     are computed on a dual graph representation where each road segment is a node connected
-    to its neighbours, with support for multiple distance thresholds, shortest and simplest
-    (angular) paths, boundary polygons, and deterministic distance-based sampling.
+    to its neighbours. All distances are network distances walked along the streets, not
+    straight-line distances, with support for multiple distance thresholds, shortest and
+    simplest (angular) paths, boundary polygons, and optional adaptive sampling.
     Requires the cityseer Python library: pip install cityseer
 
-changelog=4.25.0
+changelog=5.3.0
+    - New Demand Betweenness (OD Flow) algorithm: spatial-interaction flow allocation from weighted origins to weighted destinations, routed along shortest paths
+    - New Mixed Uses algorithm: Hill diversity (q=0,1,2), Shannon entropy, and Gini-Simpson within distance thresholds
+    - Statistics accepts multiple numerical fields in one run and only computes the selected statistics
+    - Advanced distance-decay expressions for Accessibility, Statistics, and Mixed Uses
+    - Advanced time thresholds (minutes with walking speed) as an alternative to metre distances on all algorithms
+    - Adaptive per-node sampling (polled reach pilot, Hoeffding probabilities, work test) replacing the deterministic distance-based schedule; off by default with an advanced epsilon control
+    - Hillier metric labelled "improved closeness"; default metric for simplest-path closeness
+    - Compatibility with the QGIS 4.2 processing GUI (AlgorithmWidget replaces AlgorithmDialog)
+
+    4.25.0
     - New CityNetwork class-based API wrapping network construction, centrality, and layers
     - Fast dual graph builder bypassing NetworkX for direct LineString-to-NetworkStructure construction
     - Incremental diff-based network updates preserving unchanged node indices

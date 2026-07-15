@@ -1,40 +1,27 @@
 # Cityseer QGIS Plugin
 
-## Default Sampling Behaviour
+QGIS Processing algorithms for urban network analysis using the cityseer library: network centrality (closeness and betweenness), land-use accessibility, and localised statistics.
 
-The `Network Centrality` algorithm enables sampling by default.
+## Sampling Behaviour
 
-- Sampling is deterministic by distance threshold using `cityseer.config.compute_distance_p(distance)`.
-- The probability depends only on the distance threshold (canonical model), not local graph size or local reach.
-- The plugin Bernoulli-samples source segments with inclusion probability `p(d)` and passes `sample_probability=p(d)` to cityseer.
-- Distances with `p(d) >= 1` run exactly (no approximation).
+The `Network Centrality` algorithm offers optional adaptive sampling (off by default). When enabled, it mirrors the runtime behaviour of `cityseer.metrics.networks` with `sample=True`:
 
-Default canonical parameters (from `pysrc/cityseer/config.py`):
+- A pilot poll (`cityseer.sampling.estimate_polled_reach`) measures each node's network reach at every distance threshold with bounded shortest-path traversals from a small set of sampled sources.
+- Per-node inclusion probabilities derive from the Hoeffding bound applied to the lower confidence bound on polled reach (`cityseer.sampling.compute_node_p`), so every catchment accumulates approximately the required number of samples.
+- A work test compares predicted sampled work against exact work per distance threshold. A distance runs sampled only when sampling is predicted to be faster; otherwise it runs exactly.
+- Sampled runs pass per-node probabilities to the Rust backend as `sampling_weights`, with inverse-probability weighting keeping estimates unbiased.
 
-- `epsilon = 0.06`
-- `delta = 0.1`
-- `grid_spacing = 175 m`
+The error tolerance `epsilon` is exposed as an advanced parameter (default 0.05, which preserves node rankings at Spearman rho >= 0.95 on the validation networks; loosen towards 0.1 for exploratory work). The methodology is documented in `analysis/sampling/` and in the `cityseer.sampling` module.
 
-With these defaults, sampling stays exact up to about `4558 m` (`p(d) = 1.0`).
+## Development
 
-### Default `p(d)` and Approximate Speed-up
+The plugin source lives in `qgis_plugin/cityseer_qgis/`. When the repository checkout is present, the plugin prefers importing cityseer from `pysrc/` (development mode); otherwise it uses the pip-installed package and checks the version against `metadata.txt`.
 
-Approximate speed-up is shown as `~1/p(d)` and is only a rough upper-bound guide.
-Actual speed-up depends on overheads, graph structure, and the selected metrics.
+Deploy a development symlink into the local QGIS profile:
 
-| Distance (m) | `p(d)` | Approx. sampled sources | Approx. speed-up |
-|---:|---:|---:|---:|
-| 400 | 1.000 | 100.0% | 1.00x |
-| 800 | 1.000 | 100.0% | 1.00x |
-| 1600 | 1.000 | 100.0% | 1.00x |
-| 3200 | 1.000 | 100.0% | 1.00x |
-| 5000 | 0.846 | 84.6% | 1.18x |
-| 6000 | 0.607 | 60.7% | 1.65x |
-| 8000 | 0.359 | 35.9% | 2.79x |
-| 10000 | 0.238 | 23.8% | 4.19x |
-| 12000 | 0.171 | 17.1% | 5.86x |
-| 15000 | 0.113 | 11.3% | 8.85x |
-| 20000 | 0.066 | 6.6% | 15.07x |
+```bash
+python qgis_plugin/build_plugin.py --deploy
+```
 
 ## Building the QGIS Plugin ZIP
 
@@ -44,5 +31,4 @@ Create a distributable QGIS plugin zip:
 python qgis_plugin/build_plugin.py
 ```
 
-This stamps the plugin version from `pyproject.toml`, ensures required plugin assets
-(`metadata.txt`, `LICENSE`, `icon.png`) are present, and writes a ZIP to `qgis_plugin/`.
+This stamps the plugin version from `pyproject.toml`, ensures required plugin assets (`metadata.txt`, `LICENSE`, `icon.png`) are present, and writes a ZIP to `qgis_plugin/`.

@@ -1,15 +1,8 @@
 from __future__ import annotations
 
 import math
-import threading
-import time
-from queue import Queue
 
 from qgis.core import (
-    QgsFeature,
-    QgsField,
-    QgsFields,
-    QgsGeometry,
     QgsProcessing,
     QgsProcessingException,
     QgsProcessingParameterBoolean,
@@ -19,54 +12,9 @@ from qgis.core import (
     QgsProcessingParameterString,
     QgsProcessingParameterVectorDestination,
     QgsProcessingParameterVectorLayer,
-    QgsWkbTypes,
 )
-from qgis.PyQt.QtCore import QVariant
 
-from .base import CityseerAlgorithmBase
-
-
-def _run_with_feedback(progress_src, func, total, feedback, progress_base=0, progress_span=100):
-    """
-    Run a Rust function in a background thread, polling
-    progress_src.progress to drive the QGIS feedback progress bar.
-    """
-    result_queue: Queue = Queue()
-
-    def _worker():
-        try:
-            result_queue.put(func())
-        except Exception as e:
-            result_queue.put(e)
-
-    feedback.setProgress(int(progress_base))
-    thread = threading.Thread(target=_worker)
-    thread.daemon = True
-    thread.start()
-    cancelled = False
-
-    while thread.is_alive():
-        time.sleep(0.1)
-        if total > 0:
-            pct = min(progress_src.progress() / total, 1.0)
-            feedback.setProgress(int(progress_base + pct * progress_span))
-        if feedback.isCanceled():
-            cancelled = True
-            break
-
-    thread.join()
-    feedback.setProgress(int(progress_base + progress_span))
-
-    if cancelled:
-        raise QgsProcessingException("Computation was cancelled.")
-
-    if result_queue.empty():
-        raise QgsProcessingException("Computation was cancelled.")
-
-    result = result_queue.get()
-    if isinstance(result, Exception):
-        raise QgsProcessingException(str(result)) from result
-    return result
+from .base import CityseerAlgorithmBase, run_with_feedback
 
 
 class CityseerAccessibilityAlgorithm(CityseerAlgorithmBase):
@@ -75,6 +23,7 @@ class CityseerAccessibilityAlgorithm(CityseerAlgorithmBase):
     LANDUSE_FIELD = "LANDUSE_FIELD"
     ACCESSIBILITY_KEYS = "ACCESSIBILITY_KEYS"
     DISTANCES = "DISTANCES"
+    DECAY_FN = "DECAY_FN"
     MAX_ASSIGN_DIST = "MAX_ASSIGN_DIST"
     ANGULAR = "ANGULAR"
     BOUNDARY_LAYER = "BOUNDARY_LAYER"
@@ -88,8 +37,9 @@ class CityseerAccessibilityAlgorithm(CityseerAlgorithmBase):
 
     def shortDescription(self) -> str:
         return self.tr(
-            "Compute land-use accessibility on a street network. "
-            "Counts reachable features (weighted and unweighted) within distance thresholds."
+            "Compute land-use accessibility over a street network. Counts the features "
+            "reachable within network distance thresholds (walked along the streets, not "
+            "straight-line) and reports the network distance to the nearest feature per category."
         )
 
     def createInstance(self):
@@ -143,6 +93,17 @@ class CityseerAccessibilityAlgorithm(CityseerAlgorithmBase):
                 defaultValue="400,800",
             )
         )
+        self.add_time_parameters()
+        decay_param = QgsProcessingParameterString(
+            self.DECAY_FN,
+            self.tr(
+                "Distance-decay weighting using c (metric distance) and p (progress = c / threshold). "
+                "Default 1 counts all reachable features equally; use e.g. exp(-4 * p) for decay-weighted counts."
+            ),
+            defaultValue="1",
+        )
+        decay_param.setFlags(decay_param.flags() | QgsProcessingParameterDefinition.Flag.FlagAdvanced)
+        self.addParameter(decay_param)
         self.addParameter(
             QgsProcessingParameterNumber(
                 self.MAX_ASSIGN_DIST,
@@ -175,7 +136,7 @@ class CityseerAccessibilityAlgorithm(CityseerAlgorithmBase):
         )
 
     def processAlgorithm(self, parameters, context, feedback):
-        from ..utils.converters import build_dual_network, parse_distances
+        from ..utils.converters import build_dual_network
 
         feedback.setProgressText("Preparing workflow (loading dependencies)…")
         feedback.setProgress(0)
@@ -186,18 +147,7 @@ class CityseerAccessibilityAlgorithm(CityseerAlgorithmBase):
         # ------------------------------------------------------------------
         # 1. Resolve inputs
         # ------------------------------------------------------------------
-        layer = self.parameterAsVectorLayer(parameters, self.INPUT_LAYER, context)
-        if layer is None:
-            raise QgsProcessingException("Could not load input layer.")
-        if layer.geometryType() != QgsWkbTypes.GeometryType.LineGeometry:
-            raise QgsProcessingException("Input layer must be a line (street network) layer.")
-        crs = layer.crs()
-        if crs.isGeographic():
-            raise QgsProcessingException(
-                f"Input layer CRS ({crs.authid()}) is geographic (degrees). "
-                "Reproject the layer to a projected metre-based CRS before running."
-            )
-        feedback.pushInfo(f"Input layer loaded: {layer.name()} ({crs.authid()})")
+        layer, crs = self.resolve_network_layer(parameters, context, feedback)
 
         # Data layer
         data_layer = self.parameterAsVectorLayer(parameters, self.DATA_LAYER, context)
@@ -217,52 +167,57 @@ class CityseerAccessibilityAlgorithm(CityseerAlgorithmBase):
             raise QgsProcessingException(f"Field '{landuse_field}' not found in data layer.")
 
         # Distances
-        distances_str = self.parameterAsString(parameters, self.DISTANCES, context)
-        try:
-            distances = parse_distances(distances_str)
-        except ValueError as exc:
-            raise QgsProcessingException(str(exc)) from exc
+        distances, speed_m_s = self.resolve_thresholds(parameters, context, feedback)
 
         max_assign_dist = self.parameterAsInt(parameters, self.MAX_ASSIGN_DIST, context)
         angular = self.parameterAsBool(parameters, self.ANGULAR, context)
+        decay_fn = self.parameterAsString(parameters, self.DECAY_FN, context).strip() or "1"
 
         # Boundary polygon
-        boundary_layer = self.parameterAsVectorLayer(parameters, self.BOUNDARY_LAYER, context)
-        boundary_poly = None
-        if boundary_layer is not None:
-            if boundary_layer.crs().isValid() and crs.isValid() and boundary_layer.crs() != crs:
-                raise QgsProcessingException(
-                    "Boundary layer CRS does not match input layer CRS. "
-                    f"Input: {crs.authid()}, boundary: {boundary_layer.crs().authid()}. "
-                    "Reproject the boundary to the same projected CRS as the street layer."
-                )
-            try:
-                from shapely import wkt as shapely_wkt
-                from shapely.ops import unary_union
+        boundary_poly = self.load_boundary(parameters, context, crs, feedback)
 
-                polys = []
-                for feat in boundary_layer.getFeatures():
-                    qgeom = feat.geometry()
-                    if qgeom is not None and not qgeom.isEmpty():
-                        polys.append(shapely_wkt.loads(qgeom.asWkt()))
-                if polys:
-                    boundary_poly = unary_union(polys)
-                    feedback.pushInfo(f"Boundary polygon loaded ({len(polys)} feature(s)).")
-                else:
-                    feedback.reportError(
-                        "Boundary layer has no valid geometries — ignoring boundary. "
-                        "All segments will be treated as live sources."
+        # Validate the category selection against the field BEFORE the network build,
+        # so a stale or empty selection fails in seconds rather than after minutes.
+        selected_keys_str = self.parameterAsString(parameters, self.ACCESSIBILITY_KEYS, context)
+        selected = (
+            set(k.strip() for k in selected_keys_str.split(",") if k.strip())
+            if selected_keys_str and selected_keys_str.strip()
+            else None
+        )
+        if landuse_field:
+            field_idx = data_layer.fields().indexFromName(landuse_field)
+            available = sorted(
+                set(str(v) for v in data_layer.uniqueValues(field_idx) if v is not None and str(v).strip())
+            )
+            if not available:
+                raise QgsProcessingException(
+                    f"Field '{landuse_field}' in layer '{data_layer.name()}' contains no non-empty values, "
+                    "so there are no land-use categories to compute. Choose a different field, or clear "
+                    "the field selection to treat all features as one category."
+                )
+            if selected is not None:
+                matched = [k for k in available if k in selected]
+                missing = sorted(selected - set(available))
+                if not matched:
+                    shown = ", ".join(available[:20]) + ("…" if len(available) > 20 else "")
+                    raise QgsProcessingException(
+                        f"None of the selected land-use categories exist in field '{landuse_field}' of "
+                        f"layer '{data_layer.name()}'. Selected: {', '.join(sorted(selected))}. "
+                        f"Available: {shown}. Click 'Load categories' again after changing the data "
+                        "layer or field, then reselect."
                     )
-            except Exception as exc:
-                raise QgsProcessingException(f"Failed to parse boundary polygon layer: {exc}") from exc
-        else:
-            feedback.pushInfo("No boundary polygon provided (all segments are live sources).")
+                if missing:
+                    feedback.reportError(
+                        f"Ignoring selected categories not present in field '{landuse_field}': {', '.join(missing)}."
+                    )
 
         # Log configuration
         feedback.pushInfo(f"CRS: {crs.authid()}")
         feedback.pushInfo(f"Distances: {distances}")
         feedback.pushInfo(f"Max assignment distance: {max_assign_dist}m")
         feedback.pushInfo(f"Path type: {'simplest (angular)' if angular else 'shortest'}")
+        if decay_fn != "1":
+            feedback.pushInfo(f"Decay function: {decay_fn}")
         if landuse_field:
             feedback.pushInfo(f"Land-use field: {landuse_field}")
         else:
@@ -324,7 +279,10 @@ class CityseerAccessibilityAlgorithm(CityseerAlgorithmBase):
                 landuses_map[fid] = "all"
 
         if data_map.is_empty():
-            raise QgsProcessingException("No valid features found in data layer.")
+            raise QgsProcessingException(
+                f"No usable features found in data layer '{data_layer.name()}': all "
+                f"{data_layer.featureCount()} features have empty geometries."
+            )
 
         if skipped > 0:
             feedback.pushInfo(f"Skipped {skipped} features with empty geometry.")
@@ -332,15 +290,18 @@ class CityseerAccessibilityAlgorithm(CityseerAlgorithmBase):
         # Derive accessibility keys from unique values, filtered by user selection
         all_categories = sorted(set(v for v in landuses_map.values() if v))
         if not all_categories:
-            raise QgsProcessingException("No valid land-use categories found.")
-        selected_keys_str = self.parameterAsString(parameters, self.ACCESSIBILITY_KEYS, context)
-        if selected_keys_str and selected_keys_str.strip():
-            selected = set(k.strip() for k in selected_keys_str.split(",") if k.strip())
-            accessibility_keys = [k for k in all_categories if k in selected]
-        else:
-            accessibility_keys = all_categories
+            raise QgsProcessingException(
+                f"No land-use categories remain after reading layer '{data_layer.name()}': every feature "
+                f"has an empty geometry or an empty '{landuse_field}' value."
+            )
+        accessibility_keys = [k for k in all_categories if k in selected] if selected is not None else all_categories
         if not accessibility_keys:
-            raise QgsProcessingException("No land-use categories selected.")
+            shown = ", ".join(all_categories[:20]) + ("…" if len(all_categories) > 20 else "")
+            raise QgsProcessingException(
+                "None of the selected land-use categories match the categories read from "
+                f"layer '{data_layer.name()}'. Selected: {', '.join(sorted(selected or set()))}. "
+                f"Available: {shown}. Click 'Load categories' in the dialog and reselect."
+            )
         feedback.pushInfo(f"Land-use categories ({len(accessibility_keys)}): {', '.join(accessibility_keys)}")
         feedback.pushInfo(f"Data entries: {data_map.count()}")
 
@@ -367,7 +328,7 @@ class CityseerAccessibilityAlgorithm(CityseerAlgorithmBase):
         compute_base = (step - 1) * step_pct
         feedback.setProgressText(f"Step {step} of {n_steps}: Computing accessibility…")
 
-        acc_result = _run_with_feedback(
+        acc_result = run_with_feedback(
             data_map,
             lambda: data_map.accessibility(
                 network_structure=ns,
@@ -375,6 +336,8 @@ class CityseerAccessibilityAlgorithm(CityseerAlgorithmBase):
                 accessibility_keys=accessibility_keys,
                 distances=distances,
                 angular=angular,
+                speed_m_s=speed_m_s,
+                decay_fn=decay_fn,
                 pbar_disabled=False,
             ),
             node_count,
@@ -423,51 +386,18 @@ class CityseerAccessibilityAlgorithm(CityseerAlgorithmBase):
                             val = float(dist_arr[i])
                             results[node_key][col_dist] = val if math.isfinite(val) else None
 
-        # Collect column names in stable order
-        all_cols: list[str] = []
-        seen_cols: set[str] = set()
-        for fid in fid_list:
-            for col in results[fid]:
-                if col not in seen_cols:
-                    all_cols.append(col)
-                    seen_cols.add(col)
-
-        # Create output fields
-        fields = QgsFields()
-        fields.append(QgsField("fid", QVariant.Int))
-        for col in all_cols:
-            fields.append(QgsField(col, QVariant.Double, "double", 30, 6))
-
-        (sink, dest_id) = self.parameterAsSink(
+        dest_id = self.write_segments_output(
             parameters,
-            self.OUTPUT,
             context,
-            fields,
-            QgsWkbTypes.Type.LineString,
+            feedback,
+            ns,
+            fid_list,
+            geoms,
+            results,
             crs,
+            progress_base=write_base,
+            progress_span=step_pct,
         )
-        if sink is None:
-            raise QgsProcessingException("Could not create output layer.")
-
-        # Only write live nodes
-        live_fid_set = set(
-            key for key, idx in zip(ns.node_keys_py(), ns.node_indices(), strict=True) if ns.is_node_live(idx)
-        )
-        live_fids = [fid for fid in fid_list if fid in live_fid_set]
-        n_features = len(live_fids)
-        if n_features == 0:
-            feedback.reportError(
-                "No live segments to write. If using a boundary polygon, check that it overlaps the street network."
-            )
-        for i, fid in enumerate(live_fids):
-            feat = QgsFeature(fields)
-            feat.setGeometry(QgsGeometry.fromWkt(geoms[fid].wkt))
-            attrs = [fid] + [results[fid].get(col, None) for col in all_cols]
-            feat.setAttributes(attrs)
-            sink.addFeature(feat)
-            if n_features > 0 and (((i + 1) % max(1, n_features // 100)) == 0 or i == n_features - 1):
-                pct = (i + 1) / n_features
-                feedback.setProgress(int(write_base + pct * step_pct))
 
         feedback.setProgress(100)
         feedback.pushInfo("Done.")

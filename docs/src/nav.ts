@@ -1,4 +1,4 @@
-// Site section model: four sections rendered in a single sidebar. Section headers are
+// Site section model: five sections rendered in a single sidebar. Section headers are
 // always visible; the active section reveals its grouped contents.
 
 export interface NavItem {
@@ -48,6 +48,7 @@ export const sections: Section[] = [
       {
         items: [
           { path: '/guide/fundamentals', label: 'Fundamentals' },
+          { path: '/guide/how-to', label: 'How do I…?' },
           { path: '/guide/networks', label: 'Networks' },
           { path: '/guide/cleaning', label: 'Network Cleaning' },
           { path: '/guide/centrality', label: 'Centrality' },
@@ -56,7 +57,26 @@ export const sections: Section[] = [
           { path: '/guide/interpretation', label: 'Interpretation' },
           { path: '/guide/troubleshooting', label: 'Troubleshooting' },
           { path: '/guide/migration', label: 'v4 to v5 Migration' },
-          { path: '/plugin', label: 'QGIS Plugin' },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'plugin',
+    label: 'QGIS Plugin',
+    base: '/plugin',
+    groups: [
+      {
+        items: [{ path: '/plugin', label: 'Overview' }],
+      },
+      {
+        title: 'Algorithms',
+        items: [
+          { path: '/plugin/centrality', label: 'Network Centrality' },
+          { path: '/plugin/demand', label: 'Demand Betweenness' },
+          { path: '/plugin/accessibility', label: 'Accessibility' },
+          { path: '/plugin/mixed-uses', label: 'Mixed Uses' },
+          { path: '/plugin/statistics', label: 'Statistics' },
         ],
       },
     ],
@@ -139,7 +159,7 @@ export const sections: Section[] = [
 const prefixToSection: [string, string][] = [
   ['/start', 'start'],
   ['/guide', 'guide'],
-  ['/plugin', 'guide'],
+  ['/plugin', 'plugin'],
   ['/examples', 'examples'],
   ['/api', 'api'],
   ['/tools', 'api'],

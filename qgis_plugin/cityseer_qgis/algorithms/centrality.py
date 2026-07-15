@@ -1,15 +1,8 @@
 from __future__ import annotations
 
 import math
-import threading
-import time
-from queue import Queue
 
 from qgis.core import (
-    QgsFeature,
-    QgsField,
-    QgsFields,
-    QgsGeometry,
     QgsProcessing,
     QgsProcessingException,
     QgsProcessingParameterBoolean,
@@ -18,62 +11,9 @@ from qgis.core import (
     QgsProcessingParameterString,
     QgsProcessingParameterVectorDestination,
     QgsProcessingParameterVectorLayer,
-    QgsWkbTypes,
 )
-from qgis.PyQt.QtCore import QVariant
 
-from .base import CityseerAlgorithmBase
-
-
-def _run_with_feedback(ns, func, total, feedback, progress_base=0, progress_span=100):
-    """
-    Run a Rust centrality function in a background thread, polling
-    ns.progress to drive the QGIS feedback progress bar.
-
-    progress_base and progress_span map the sub-task's 0–100% onto a
-    slice of the overall algorithm progress, e.g. progress_base=40,
-    progress_span=20 means this sub-task fills 40%–60%.
-
-    Mirrors cityseer's config.wrap_progress but replaces tqdm with
-    QgsProcessingFeedback.
-    """
-    result_queue: Queue = Queue()
-
-    def _worker():
-        try:
-            result_queue.put(func())
-        except Exception as e:
-            result_queue.put(e)
-
-    feedback.setProgress(int(progress_base))
-    thread = threading.Thread(target=_worker)
-    thread.daemon = True
-    thread.start()
-    cancelled = False
-
-    while thread.is_alive():
-        time.sleep(0.1)
-        if total > 0:
-            pct = min(ns.progress() / total, 1.0)
-            feedback.setProgress(int(progress_base + pct * progress_span))
-        if feedback.isCanceled():
-            cancelled = True
-            break
-
-    thread.join()
-    feedback.setProgress(int(progress_base + progress_span))
-
-    if cancelled:
-        raise QgsProcessingException("Computation was cancelled.")
-
-    if result_queue.empty():
-        raise QgsProcessingException("Computation was cancelled.")
-
-    result = result_queue.get()
-    if isinstance(result, Exception):
-        raise QgsProcessingException(str(result)) from result
-    return result
-
+from .base import CityseerAlgorithmBase, run_with_feedback
 
 # Per-category metric parameter definitions.
 # Each entry: (metric_suffix, label, default_on)
@@ -89,10 +29,10 @@ _CLOSENESS_SHORTEST_METRICS = [
     ("HILLIER", "Hillier closeness (shortest)", False),
 ]
 _CLOSENESS_SIMPLEST_METRICS = [
-    ("HARMONIC", "Harmonic closeness (simplest)", True),
+    ("HARMONIC", "Harmonic closeness (simplest)", False),
     ("DENSITY", "Density (simplest)", False),
     ("FARNESS", "Farness (simplest)", False),
-    ("HILLIER", "Hillier closeness (simplest)", False),
+    ("HILLIER", "Hillier closeness (simplest)", True),
 ]
 _BETWEENNESS_SHORTEST_METRICS = [
     ("BETWEENNESS", "Betweenness (shortest)", True),
@@ -112,6 +52,7 @@ class CityseerCentralityAlgorithm(CityseerAlgorithmBase):
     BOUNDARY_LAYER = "BOUNDARY_LAYER"
     DISTANCES = "DISTANCES"
     SAMPLE = "SAMPLE"
+    EPSILON = "EPSILON"
     CLOSENESS_SHORTEST = "CLOSENESS_SHORTEST"
     CLOSENESS_SIMPLEST = "CLOSENESS_SIMPLEST"
     BETWEENNESS_SHORTEST = "BETWEENNESS_SHORTEST"
@@ -129,8 +70,9 @@ class CityseerCentralityAlgorithm(CityseerAlgorithmBase):
     def shortDescription(self) -> str:
         return self.tr(
             "Compute localised closeness and betweenness centrality on a street network "
-            "using a dual graph representation. Deterministic distance-based sampling is "
-            "enabled by default (exact for smaller distance thresholds)."
+            "using a dual graph representation. Optional adaptive sampling: a pilot poll "
+            "measures per-node reach and distances only run sampled when that is "
+            "predicted to be faster than exact computation."
         )
 
     def createInstance(self):
@@ -164,13 +106,28 @@ class CityseerCentralityAlgorithm(CityseerAlgorithmBase):
                 defaultValue="400,800",
             )
         )
+        self.add_time_parameters()
         self.addParameter(
             QgsProcessingParameterBoolean(
                 self.SAMPLE,
-                self.tr("Use deterministic distance-based sampling (faster at larger distances)"),
-                defaultValue=True,
+                self.tr("Use adaptive sampling (unbiased estimates; faster at larger distances)"),
+                defaultValue=False,
             )
         )
+        eps_param = QgsProcessingParameterNumber(
+            self.EPSILON,
+            self.tr(
+                "Sampling error tolerance epsilon (default 0.05 preserves node rankings; "
+                "loosen towards 0.1 for exploratory work)"
+            ),
+            type=QgsProcessingParameterNumber.Type.Double,
+            defaultValue=0.05,
+            optional=False,
+            minValue=0.01,
+            maxValue=0.5,
+        )
+        eps_param.setFlags(eps_param.flags() | QgsProcessingParameterDefinition.Flag.FlagAdvanced)
+        self.addParameter(eps_param)
         # -- Category toggles (hidden — custom widget handles these) --
         for name, label, default in [
             (self.CLOSENESS_SHORTEST, "Closeness (shortest path)", True),
@@ -234,7 +191,7 @@ class CityseerCentralityAlgorithm(CityseerAlgorithmBase):
         return self.parameterAsBool(parameters, _param_name(suffix, cat_short), context)
 
     def processAlgorithm(self, parameters, context, feedback):
-        from ..utils.converters import build_dual_network, parse_distances
+        from ..utils.converters import build_dual_network
 
         feedback.setProgressText("Preparing workflow (loading dependencies)…")
         feedback.setProgress(0)
@@ -245,60 +202,13 @@ class CityseerCentralityAlgorithm(CityseerAlgorithmBase):
         # ------------------------------------------------------------------
         # 1. Resolve inputs
         # ------------------------------------------------------------------
-        layer = self.parameterAsVectorLayer(parameters, self.INPUT_LAYER, context)
-        if layer is None:
-            raise QgsProcessingException("Could not load input layer.")
+        layer, crs = self.resolve_network_layer(parameters, context, feedback)
+        boundary_poly = self.load_boundary(parameters, context, crs, feedback)
 
-        if layer.geometryType() != QgsWkbTypes.GeometryType.LineGeometry:
-            raise QgsProcessingException("Input layer must be a line (street network) layer.")
-
-        crs = layer.crs()
-        if crs.isGeographic():
-            raise QgsProcessingException(
-                f"Input layer CRS ({crs.authid()}) is geographic (degrees). "
-                "Reproject the layer to a projected metre-based CRS before running."
-            )
-        feedback.pushInfo(f"Input layer loaded: {layer.name()} ({crs.authid()})")
-
-        # Optional boundary polygon
-        boundary_layer = self.parameterAsVectorLayer(parameters, self.BOUNDARY_LAYER, context)
-        boundary_poly = None
-        if boundary_layer is not None:
-            if boundary_layer.crs().isValid() and crs.isValid() and boundary_layer.crs() != crs:
-                raise QgsProcessingException(
-                    "Boundary layer CRS does not match input layer CRS. "
-                    f"Input: {crs.authid()}, boundary: {boundary_layer.crs().authid()}. "
-                    "Reproject the boundary to the same projected CRS as the street layer."
-                )
-            try:
-                from shapely import wkt as shapely_wkt
-                from shapely.ops import unary_union
-
-                polys = []
-                for feat in boundary_layer.getFeatures():
-                    qgeom = feat.geometry()
-                    if qgeom is not None and not qgeom.isEmpty():
-                        polys.append(shapely_wkt.loads(qgeom.asWkt()))
-                if polys:
-                    boundary_poly = unary_union(polys)
-                    feedback.pushInfo(f"Boundary polygon loaded ({len(polys)} feature(s)).")
-                else:
-                    feedback.reportError(
-                        "Boundary layer has no valid geometries — ignoring boundary. "
-                        "All segments will be treated as live sources."
-                    )
-            except Exception as exc:
-                raise QgsProcessingException(f"Failed to parse boundary polygon layer: {exc}") from exc
-        else:
-            feedback.pushInfo("No boundary polygon provided (all segments are live sources).")
-
-        distances_str = self.parameterAsString(parameters, self.DISTANCES, context)
-        try:
-            distances = parse_distances(distances_str)
-        except ValueError as exc:
-            raise QgsProcessingException(str(exc)) from exc
+        distances, speed_m_s = self.resolve_thresholds(parameters, context, feedback)
 
         do_sample = self.parameterAsBool(parameters, self.SAMPLE, context)
+        epsilon = self.parameterAsDouble(parameters, self.EPSILON, context)
 
         # -- Category toggles --
         closeness_shortest = self.parameterAsBool(parameters, self.CLOSENESS_SHORTEST, context)
@@ -348,7 +258,8 @@ class CityseerCentralityAlgorithm(CityseerAlgorithmBase):
         feedback.pushInfo(f"CRS: {crs.authid()}")
         feedback.pushInfo(f"Distances: {distances}")
         feedback.pushInfo(
-            "Sampling mode: " + ("deterministic distance-based (default)" if do_sample else "exact (sampling disabled)")
+            "Sampling mode: "
+            + (f"adaptive per-node (epsilon={epsilon:.2f})" if do_sample else "exact (sampling disabled)")
         )
         # Log selected categories
         categories = []
@@ -394,31 +305,49 @@ class CityseerCentralityAlgorithm(CityseerAlgorithmBase):
             return {}
 
         # ------------------------------------------------------------------
-        # Sampling: split distances into full (exact) and sampled batches.
+        # Sampling: pilot poll + per-run adaptive plan (mirrors
+        # cityseer.metrics.networks._plan_adaptive_sampling).
         # ------------------------------------------------------------------
+        import numpy as np
         from cityseer import sampling as cs_sampling
 
-        full_distances: list[int] = []
-        sampled_distances: list[tuple[int, float]] = []  # (distance, p)
-        if not do_sample:
-            full_distances = sorted(distances)
-            feedback.pushInfo("Sampling disabled: all thresholds will run exactly.")
+        reach_lcb: dict[int, np.ndarray] = {}
+        reach_ucb: dict[int, np.ndarray] = {}
+        if do_sample:
+            feedback.pushInfo("Polling network reach for the sampling pilot…")
+            try:
+                reach_lcb, _reach_point, reach_ucb = cs_sampling.estimate_polled_reach(ns, sorted(distances))
+            except ImportError as exc:
+                raise QgsProcessingException(
+                    f"Adaptive sampling requires scipy (install it, or disable sampling): {exc}"
+                ) from exc
         else:
-            # Sampling runs buffer nodes as sources, so it's only faster when
-            # p < live_fraction. Above this threshold exact mode is cheaper.
-            lives = ns.node_lives
-            live_fraction = sum(lives) / len(lives) if lives else 1.0
-            feedback.pushInfo(f"Live fraction: {live_fraction:.2f}")
+            feedback.pushInfo("Sampling disabled: all thresholds will run exactly.")
+
+        lives_arr = np.asarray(ns.node_lives, dtype=bool)
+
+        def _plan_distances(has_betweenness):
+            """Split distances into exact and sampled batches with per-node probabilities.
+
+            Per-node inclusion probabilities derive from the lower confidence bound on
+            polled reach; a distance runs sampled only when the predicted sampled work
+            undercuts exact work by the work-test margin. Exact betweenness sources
+            every node, so its exact work sums over all nodes rather than live ones.
+            """
+            if not do_sample:
+                return sorted(distances), []
+            full: list[int] = []
+            sampled: list[tuple[int, np.ndarray]] = []
             for d in sorted(distances):
-                p = cs_sampling.compute_distance_p(d)
-                if p >= live_fraction:
-                    full_distances.append(d)
+                q = cs_sampling.compute_node_p(reach_lcb[d], epsilon=epsilon)
+                reach_est = reach_ucb[d]
+                sampled_work = float(np.sum(q * reach_est))
+                exact_work = float(np.sum(reach_est)) if has_betweenness else float(np.sum(reach_est[lives_arr]))
+                if sampled_work >= cs_sampling.WORK_TEST_MARGIN * exact_work:
+                    full.append(d)
                 else:
-                    sampled_distances.append((d, p))
-            if sampled_distances:
-                feedback.pushInfo("Sampling: " + ", ".join(f"{d}m @ {p:.0%}" for d, p in sampled_distances))
-            if full_distances:
-                feedback.pushInfo("Exact distances (p=1): " + ", ".join(f"{d}m" for d in full_distances))
+                    sampled.append((d, q))
+            return full, sampled
 
         # ------------------------------------------------------------------
         # Compute centrality metrics
@@ -460,12 +389,14 @@ class CityseerCentralityAlgorithm(CityseerAlgorithmBase):
             metric_names,
             col_prefix,
             derive_hillier=False,
+            has_betweenness=False,
             **extra_kwargs,
         ):
             """Run exact + sampled batches for one metric, distributing progress across the step."""
             nonlocal step
             base = (step - 1) * step_pct
             feedback.setProgressText(f"Step {step} of {n_steps}: Computing {label}…")
+            full_distances, sampled_distances = _plan_distances(has_betweenness)
             n_batches = (1 if full_distances else 0) + len(sampled_distances)
             if n_batches == 0:
                 n_batches = 1
@@ -474,7 +405,7 @@ class CityseerCentralityAlgorithm(CityseerAlgorithmBase):
             if full_distances:
                 _fd = full_distances
                 feedback.pushInfo(f"Running {label} exact batch: " + ", ".join(f"{d}m" for d in _fd))
-                r = _run_with_feedback(
+                r = run_with_feedback(
                     ns,
                     lambda: metric_func(distances=_fd, **extra_kwargs),
                     total_exact,
@@ -484,14 +415,15 @@ class CityseerCentralityAlgorithm(CityseerAlgorithmBase):
                 )
                 _store(r, col_prefix, metric_names, derive_hillier=derive_hillier)
                 batch_idx += 1
-            for d, p in sampled_distances:
-                _d, _p = [d], p
-                feedback.pushInfo(f"Running {label} sampled {d}m: p={p:.1%}")
-                r = _run_with_feedback(
+            for d, q in sampled_distances:
+                mean_q = float(np.mean(q))
+                feedback.pushInfo(f"Running {label} sampled {d}m: mean q={mean_q:.1%}")
+                r = run_with_feedback(
                     ns,
-                    lambda _d=_d, _p=_p: metric_func(
+                    lambda _d=[d], _q=q: metric_func(
                         distances=_d,
-                        sample_probability=_p,
+                        sample_probability=1.0,
+                        sampling_weights=[float(v) for v in _q],
                         **extra_kwargs,
                     ),
                     total_exact,
@@ -539,10 +471,12 @@ class CityseerCentralityAlgorithm(CityseerAlgorithmBase):
                 shortest_metric_names,
                 "",
                 derive_hillier=derive_hillier,
+                has_betweenness=bool(betweenness_exprs),
                 closeness_exprs=closeness_exprs,
                 betweenness_exprs=betweenness_exprs,
                 compute_cycles=cs_cycles and closeness_shortest,
                 tolerance=tolerance,
+                speed_m_s=speed_m_s,
             )
 
         if feedback.isCanceled():
@@ -578,24 +512,15 @@ class CityseerCentralityAlgorithm(CityseerAlgorithmBase):
                     simplest_metric_names,
                     "ang",
                     derive_hillier=derive_hillier,
+                    has_betweenness=bool(betweenness_exprs),
                     closeness_exprs=closeness_exprs,
                     betweenness_exprs=betweenness_exprs,
                     tolerance=angular_tolerance_val,
+                    speed_m_s=speed_m_s,
                 )
 
         if feedback.isCanceled():
             return {}
-
-        # ------------------------------------------------------------------
-        # Collect all column names in stable order
-        # ------------------------------------------------------------------
-        all_cols: list[str] = []
-        seen_cols: set[str] = set()
-        for fid in fid_list:
-            for col in results[fid]:
-                if col not in seen_cols:
-                    all_cols.append(col)
-                    seen_cols.add(col)
 
         # ------------------------------------------------------------------
         # Final step: Write output layer
@@ -603,40 +528,18 @@ class CityseerCentralityAlgorithm(CityseerAlgorithmBase):
         write_base = (step - 1) * step_pct
         feedback.setProgressText(f"Step {step} of {n_steps}: Writing output layer…")
         feedback.setProgress(int(write_base))
-        fields = QgsFields()
-        fields.append(QgsField("fid", QVariant.Int))
-        for col in all_cols:
-            fields.append(QgsField(col, QVariant.Double, "double", 30, 6))
-
-        (sink, dest_id) = self.parameterAsSink(
+        dest_id = self.write_segments_output(
             parameters,
-            self.OUTPUT,
             context,
-            fields,
-            QgsWkbTypes.Type.LineString,
+            feedback,
+            ns,
+            fid_list,
+            geoms,
+            results,
             crs,
+            progress_base=write_base,
+            progress_span=step_pct,
         )
-        if sink is None:
-            raise QgsProcessingException("Could not create output layer.")
-
-        live_fid_set = set(
-            key for key, idx in zip(ns.node_keys_py(), ns.node_indices(), strict=True) if ns.is_node_live(idx)
-        )
-        live_fids = [fid for fid in fid_list if fid in live_fid_set]
-        n_features = len(live_fids)
-        if n_features == 0:
-            feedback.reportError(
-                "No live segments to write. If using a boundary polygon, check that it overlaps the street network."
-            )
-        for i, fid in enumerate(live_fids):
-            feat = QgsFeature(fields)
-            feat.setGeometry(QgsGeometry.fromWkt(geoms[fid].wkt))
-            attrs = [fid] + [results[fid].get(col, None) for col in all_cols]
-            feat.setAttributes(attrs)
-            sink.addFeature(feat)
-            if n_features > 0 and (((i + 1) % max(1, n_features // 100)) == 0 or i == n_features - 1):
-                pct = (i + 1) / n_features
-                feedback.setProgress(int(write_base + pct * step_pct))
 
         feedback.setProgress(100)
         feedback.pushInfo("Done.")
