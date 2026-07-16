@@ -1,3 +1,10 @@
+# v5.6.0 Release Notes
+
+A feature release harmonising `betweenness_demand` with the rest of the library, alongside a representation-aware upgrade to point-to-network assignment shared by all data layers.
+
+- **`betweenness_demand` harmonisation**: origins and destinations are assigned through the data layers' `DataMap` workflow (`build_data_map` / `assign_data_to_network`) instead of a bespoke nearest-node snap, so assignment offsets now enter all routed distances (allocation weights, flow decay, and radius cutoffs), and `barriers_gdf` / `n_nearest_candidates` are supported. Flow weighting is exposed through the same `{name: expression}` `betweenness` dict as `betweenness_od` and `centrality_shortest`: each expression weights the allocated flow by trip distance and emits its own column from a single traversal, with `decay_fn` retaining its separate destination-choice role. The default is now paired, emitting a conserved `cc_demand_{d}` and a distance-attenuated `cc_demand_decay_{d}` column. `max_netw_assign_dist` replaces `max_snap_dist`, matching the data layers. The QGIS Demand algorithm gains the same expressions parameter and defaults.
+- **Representation-aware assignment** (inherited by accessibility, mixed uses, statistics, GTFS linking, and demand): primal graphs assign each point to the two endpoint nodes of the nearest barrier-valid street with along-street offsets (previously straight-line node distances); dual graphs assign to the single nearest street's own node, with the along-street displacement credited or debited by direction of approach at query time (dual nodes now carry their primal street geometry). **Behaviour change**: accessibility, mixed-use, and statistics distances shift slightly relative to 5.5 because offsets are now measured along the street, and a point on a dual graph no longer attaches to two different streets around a corner.
+
 # v5.5.0 Release Notes
 
 A feature release for the `CityNetwork` API: configurable construction-time cleaning and universal segment-length weighting. The QGIS plugin pins the established behaviour, so plugin outputs are unchanged.
