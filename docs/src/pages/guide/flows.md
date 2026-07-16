@@ -33,7 +33,13 @@ Often you do not have observed trips, only where people live and where they migh
 
 $$W_{od} = W_o \cdot \frac{W_d \, f(c_{od})}{\sum_{d'} W_{d'} \, f(c_{od'})}$$
 
-Here $f$ is a distance-decay (deterrence) function, supplied as a [`decay_fn`](/api/decay) expression, and $c_{od}$ is the network distance from origin to destination. With an exponential decay this is the classic gravity model. "Singly constrained" means only the origin totals are held fixed: each origin sends out exactly its own weight, while destination totals are left free (constraining both ends would require a doubly-constrained, or Furness, model). The allocation and the routing happen in one traversal per origin, so no explicit matrix is materialised.
+Here $f$ is a distance-decay (deterrence) function, supplied as a [`decay_fn`](/api/decay) expression, and $c_{od}$ is the network distance from origin to destination. With an exponential decay this is the classic gravity model. "Singly constrained" means only the origin totals are held fixed: each origin sends out exactly its own weight, while destination totals are left free (constraining both ends would require a doubly-constrained, or Furness, model). The allocation and the routing happen in one traversal per origin, so no explicit matrix is materialised. Origins and destinations are assigned to the network with the same workflow as the data layers, and the assignment offsets are included in the allocation distances, the decay, and the radius cutoffs.
+
+### Two decays, two roles
+
+Because the allocation is normalised, `decay_fn` decides only where trips go, never how much travel occurs: every origin emits exactly its weight regardless of how far its destinations sit. Trip volumes falling with distance is a separate effect, trip frequency rather than destination choice, and no constraint scheme can express it, since holding totals fixed is precisely what constraints do. It is expressed instead through the `betweenness` expression dict shared with [`betweenness_od`](/api/network#betweenness_od) and [`centrality_shortest`](/metrics/networks#centrality_shortest): each named expression weights every trip's contribution by that trip's own network distance and emits its own output column, all from the same traversal.
+
+The default computes both channels: `{"demand": "1"}` is conserved flow, where a trip stamps its full allocated weight on every street it crosses, and `{"demand_decay": "exp(-4 * p)"}` attenuates each trip's contribution by its distance. The attenuated channel typically tracks observed pedestrian volumes more closely, because under conserved flow long trips dominate the accumulation on every segment they traverse.
 
 ## Which method to use
 
