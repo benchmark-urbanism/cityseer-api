@@ -457,41 +457,39 @@ def _snap_coords_to_nodes(
     return indices, snap_dists
 
 
-def _snap_weighted_points(
+def _demand_data_map(
     network_structure: rustalgos.graph.NetworkStructure,
     points_gdf: gpd.GeoDataFrame,
     weight_col: str,
-    max_snap_dist: float,
+    max_netw_assign_dist: float,
+    barriers_gdf: gpd.GeoDataFrame | None,
+    n_nearest_candidates: int,
     label: str,
-) -> list[tuple[int, float]]:
-    """Snap weighted point features to network nodes, returning ``(node_idx, weight)`` pairs.
+) -> tuple[rustalgos.data.DataMap, dict[int, float]]:
+    """Assign weighted demand points to the network via the shared data-layer workflow.
 
-    Rows beyond ``max_snap_dist`` from any node, or with NaN / non-positive weight, are dropped
-    (with a logged count). Weights are not aggregated here; the Rust layer sums weights sharing a
-    node so a single Dijkstra is run per node.
+    Builds a [`DataMap`](/rustalgos/data#datamap) with [`build_data_map`](/metrics/layers#build_data_map)
+    — the same representation-aware assignment used by accessibility / mixed-uses / stats and GTFS
+    linking — and returns it with a weights dict keyed by data key. The GeoDataFrame is re-indexed
+    positionally so duplicate indices are tolerated. NaN / non-positive weights are counted here
+    (the Rust layer drops them); unassigned points are dropped by the assignment itself.
     """
-    if len(points_gdf) == 0:
-        return []
-    coords = np.array([(g.x, g.y) for g in points_gdf.geometry])
-    indices, snap_dists = _snap_coords_to_nodes(network_structure, coords)
-    pairs: list[tuple[int, float]] = []
-    n_far = 0
-    n_bad_weight = 0
-    weights = points_gdf[weight_col].to_numpy()
-    for i in range(len(points_gdf)):
-        if snap_dists[i] > max_snap_dist:
-            n_far += 1
-            continue
-        w = float(weights[i])
-        if np.isnan(w) or w <= 0:
-            n_bad_weight += 1
-            continue
-        pairs.append((int(indices[i]), w))
-    if n_far:
-        logger.warning(f"{n_far} {label} exceeded max_snap_dist={max_snap_dist}m and were excluded.")
+    from . import layers  # local import: layers does not import networks, so no cycle
+
+    points_work = points_gdf.reset_index(drop=True)
+    data_map = layers.build_data_map(
+        points_work,
+        network_structure,
+        max_netw_assign_dist=max_netw_assign_dist,
+        barriers_gdf=barriers_gdf,
+        n_nearest_candidates=n_nearest_candidates,
+    )
+    weights = points_work[weight_col].to_numpy()
+    weights_map = {int(i): float(w) for i, w in enumerate(weights)}
+    n_bad_weight = int(sum(1 for w in weights_map.values() if np.isnan(w) or w <= 0))
     if n_bad_weight:
-        logger.info(f"Dropped {n_bad_weight} {label} with NaN or non-positive weight.")
-    return pairs
+        logger.info(f"Dropping {n_bad_weight} {label} with NaN or non-positive weight.")
+    return data_map, weights_map
 
 
 def build_od_matrix(
@@ -669,9 +667,12 @@ def betweenness_demand(
     distances: list[int] | None = None,
     minutes: list[float] | None = None,
     decay_fn: str = "exp(-4 * p)",
+    betweenness: dict[str, str] | None = None,
     closest_destination: bool = False,
     metric_name: str = "demand",
-    max_snap_dist: float = 100.0,
+    max_netw_assign_dist: float = 100.0,
+    barriers_gdf: gpd.GeoDataFrame | None = None,
+    n_nearest_candidates: int = 50,
     speed_m_s: float = SPEED_M_S,
     tolerance: float | None = None,
 ) -> gpd.GeoDataFrame:
@@ -715,14 +716,35 @@ def betweenness_demand(
         Distance-decay expression for the allocation, using `c` (metric cost) and `p` (normalised
         progress = `c / threshold`). Defaults to `"exp(-4 * p)"` (scale-free, re-normalised per
         threshold). For a classic gravity model on absolute distance use e.g. `"exp(-0.002 * c)"`.
+        Because the allocation is normalised per origin, this expression only shapes destination
+        choice; it cannot scale an origin's total outflow. Use `betweenness` expressions for that.
+    betweenness: dict[str, str]
+        Named expressions weighting the allocated flow itself, as in
+        [`betweenness_od`](#betweenness_od) and [`centrality_shortest`](#centrality_shortest). Each
+        expression is evaluated on the revealed network distance (`c`, or `p` = `c / threshold`) and
+        multiplies the per-pair flow before routing, producing one `cc_{name}_{distance}` column per
+        entry from a single traversal. ``None`` uses the paired default (mirroring the shortest-path
+        betweenness defaults): ``{metric_name: "1"}`` — conserved flow, every trip contributing its
+        full allocated weight regardless of length — plus ``{metric_name}_decay: "exp(-4 * p)"``,
+        which attenuates each trip's contribution by its network distance, reflecting trip frequency
+        falling with trip length.
     closest_destination: bool
         If `True`, each origin routes its full weight to its single nearest reachable destination
         instead of allocating across all of them.
     metric_name: str
-        Name used for the output column (`cc_{metric_name}_{distance}`). Defaults to `"demand"`.
-    max_snap_dist: float
-        Maximum distance for snapping origin/destination points to network nodes. Points farther
-        than this are dropped (with a logged count).
+        Name used for the default output columns (`cc_{metric_name}_{distance}` and
+        `cc_{metric_name}_decay_{distance}`) when `betweenness` is `None`. Defaults to `"demand"`.
+    max_netw_assign_dist: float
+        Maximum assignment distance for origin/destination points. Points are assigned to the
+        network with the same workflow as the data layers ([`build_data_map`](/metrics/layers#build_data_map):
+        representation-aware nearest-street assignment, with assignment offsets included in all
+        routed distances — allocation, flow decay, and radius cutoffs alike); points with no valid
+        assignment within this distance are dropped.
+    barriers_gdf: GeoDataFrame
+        Optional barriers to respect during assignment, as in the data layers.
+    n_nearest_candidates: int
+        The number of nearest candidate edges to consider when assigning points to the network,
+        as in the data layers.
     speed_m_s: float
         Speed in metres per second for converting `minutes` to distance thresholds.
     tolerance: float
@@ -734,25 +756,46 @@ def betweenness_demand(
         The input `nodes_gdf` with a flow-betweenness column added per distance threshold.
     """
     logger.info("Computing demand-weighted (flow) betweenness centrality.")
-    origins = _snap_weighted_points(network_structure, origins_gdf, origin_weight_col, max_snap_dist, "origins")
-    destinations = _snap_weighted_points(
-        network_structure, destinations_gdf, destination_weight_col, max_snap_dist, "destinations"
+    origins_map, origin_weights = _demand_data_map(
+        network_structure,
+        origins_gdf,
+        origin_weight_col,
+        max_netw_assign_dist,
+        barriers_gdf,
+        n_nearest_candidates,
+        "origins",
     )
-    logger.info(f"Snapped {len(origins)} origins and {len(destinations)} destinations.")
+    destinations_map, destination_weights = _demand_data_map(
+        network_structure,
+        destinations_gdf,
+        destination_weight_col,
+        max_netw_assign_dist,
+        barriers_gdf,
+        n_nearest_candidates,
+        "destinations",
+    )
+    # Paired default mirroring DEFAULT_SHORTEST_BETWEENNESS: a conserved flow channel and a
+    # distance-attenuated one, from a single traversal.
+    if betweenness is None:
+        betweenness = {metric_name: "1", f"{metric_name}_decay": "exp(-4 * p)"}
+    betweenness_items = list(betweenness.items())
     partial_func = partial(
         network_structure.betweenness_demand_shortest,
-        origins=origins,
-        destinations=destinations,
+        origins=origins_map,
+        origin_weights_map=origin_weights,
+        destinations=destinations_map,
+        destination_weights_map=destination_weights,
         decay_fn=decay_fn,
         distances=distances,
         minutes=minutes,
+        betweenness_exprs=betweenness_items,
         closest_destination=closest_destination,
         metric_name=metric_name,
         speed_m_s=speed_m_s,
         tolerance=tolerance,
     )
     result = config.wrap_progress(
-        total=network_structure.street_node_count(), rust_struct=network_structure, partial_func=partial_func
+        total=max(origins_map.count(), 1), rust_struct=network_structure, partial_func=partial_func
     )
     resolved_distances = config.log_thresholds(distances=distances, minutes=minutes, speed_m_s=speed_m_s)
     results = {d: result for d in resolved_distances}

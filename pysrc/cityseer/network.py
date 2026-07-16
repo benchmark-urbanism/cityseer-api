@@ -74,10 +74,13 @@ def _rebuild_dual_network(
         network_structure.set_is_directed(True)
     node_idx: dict[Any, int] = {}
     rebuilt_nodes_gdf = nodes_gdf.copy()
+    geoms = state.get("geoms", {})
     for node_key, row in rebuilt_nodes_gdf.iterrows():
         z = None
         if "z" in rebuilt_nodes_gdf.columns and pd.notna(row.get("z")):
             z = float(row["z"])
+        # the dual node's primal street geometry (representation-aware data assignment)
+        street_geom = geoms.get(node_key)
         node_idx[node_key] = network_structure.add_street_node(
             node_key=node_key,
             x=float(row["x"]),
@@ -85,6 +88,7 @@ def _rebuild_dual_network(
             live=bool(row["live"]),
             weight=float(row["weight"]),
             z=z,
+            street_geom_wkt=street_geom.wkt if street_geom is not None else None,
         )
     for record in sorted(state["edge_records"].values(), key=lambda item: item["edge_idx"]):
         network_structure.add_street_edge(
@@ -1250,7 +1254,13 @@ class CityNetwork:
 
         Wraps [`betweenness_demand`](/metrics/networks#betweenness_demand). All additional keyword
         arguments are forwarded; see that function for the full parameter list including ``distances``,
-        ``minutes``, ``decay_fn``, ``closest_destination``, ``metric_name``, and ``max_snap_dist``.
+        ``minutes``, ``decay_fn``, ``betweenness``, ``closest_destination``, ``metric_name``,
+        ``max_netw_assign_dist``, and ``barriers_gdf``. Origins and destinations are assigned to the
+        network with the same workflow as the data layers (representation-aware nearest-street
+        assignment, offsets included in routed distances). The ``betweenness`` expression dict (as in
+        [`centrality_shortest`](#centrality_shortest)) weights the allocated flow by network distance;
+        the default ``{"demand": "1", "demand_decay": "exp(-4 * p)"}`` emits a conserved and a
+        distance-attenuated flow column from one traversal.
 
         Parameters
         ----------
@@ -1266,8 +1276,9 @@ class CityNetwork:
         Returns
         -------
         self: CityNetwork
-            Returns self for method chaining. A ``cc_{metric_name}_{distance}`` column (default
-            ``cc_demand_{distance}``) is written to ``nodes_gdf``.
+            Returns self for method chaining. One ``cc_{name}_{distance}`` column is written to
+            ``nodes_gdf`` per ``betweenness`` expression (default: ``cc_demand_{distance}`` and
+            ``cc_demand_decay_{distance}``).
 
         Examples
         --------

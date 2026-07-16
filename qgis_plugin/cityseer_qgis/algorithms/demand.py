@@ -26,6 +26,7 @@ class CityseerDemandAlgorithm(CityseerAlgorithmBase):
     DESTINATION_WEIGHT_FIELD = "DESTINATION_WEIGHT_FIELD"
     DISTANCES = "DISTANCES"
     DECAY_FN = "DECAY_FN"
+    FLOW_EXPRS = "FLOW_EXPRS"
     CLOSEST_DESTINATION = "CLOSEST_DESTINATION"
     MAX_SNAP_DIST = "MAX_SNAP_DIST"
     TOLERANCE = "TOLERANCE"
@@ -134,6 +135,22 @@ class CityseerDemandAlgorithm(CityseerAlgorithmBase):
         )
         decay_param.setFlags(decay_param.flags() | QgsProcessingParameterDefinition.Flag.FlagAdvanced)
         self.addParameter(decay_param)
+        flow_param = QgsProcessingParameterString(
+            self.FLOW_EXPRS,
+            self.tr(
+                "Flow-weighting expressions as semicolon-separated 'name: expression' pairs, "
+                "e.g. 'demand: 1; demand_decay: exp(-4 * p)'. Each expression weights the allocated "
+                "flow by trip distance (c = metres, p = c / threshold) and emits its own output "
+                "column, all from a single traversal. Leave empty for the paired default: a "
+                "conserved 'demand' column and a distance-attenuated 'demand_decay' column. Note "
+                "the distinct roles: the decay expression above shapes destination choice; these "
+                "expressions scale the flow itself (e.g. trip frequency falling with distance)."
+            ),
+            defaultValue="",
+            optional=True,
+        )
+        flow_param.setFlags(flow_param.flags() | QgsProcessingParameterDefinition.Flag.FlagAdvanced)
+        self.addParameter(flow_param)
         tol_param = QgsProcessingParameterNumber(
             self.TOLERANCE,
             self.tr(
@@ -210,55 +227,60 @@ class CityseerDemandAlgorithm(CityseerAlgorithmBase):
         return coords, weights
 
     @staticmethod
-    def _snap_to_nodes(ns, coords, weights, max_snap_dist, feedback, label):
-        """Snap coordinates to nearest network nodes; returns [(raw_node_idx, weight), ...].
+    def _build_demand_data_map(ns, coords, weights, max_snap_dist, feedback, label):
+        """Assign weighted points to the network via the shared DataMap workflow.
 
-        Uses a grid hash with cell size equal to the max snap distance, so each point only
-        compares against nodes in its 3x3 cell neighbourhood (which contains every node
-        within range). Pure numpy: no scipy dependency. Positions in node_xys (present
-        nodes in iteration order) can diverge from raw graph indices after incremental
-        updates, so matches are mapped through node_indices().
+        Uses the same edge-based assignment as the library's data layers and
+        ``networks.betweenness_demand`` (``DataMap.assign_data_to_network``: both endpoints of
+        the nearest barrier-valid edge, with straight-line offsets carried into all routed
+        distances by the Rust core). Returns ``(data_map, weights_map)`` with entries keyed
+        positionally. Keep in sync with ``networks._demand_data_map``.
         """
-        import numpy as np
+        from cityseer import rustalgos
 
-        node_idxs = np.asarray(ns.node_indices(), dtype=np.int64)
-        xys = np.asarray(ns.node_xys, dtype=np.float64)
-        cell = float(max_snap_dist)
-        cell_x = np.floor(xys[:, 0] / cell).astype(np.int64)
-        cell_y = np.floor(xys[:, 1] / cell).astype(np.int64)
-        buckets: dict[tuple[int, int], list[int]] = {}
-        for i in range(len(xys)):
-            buckets.setdefault((int(cell_x[i]), int(cell_y[i])), []).append(i)
-
-        max_d2 = cell * cell
-        pairs: list[tuple[int, float]] = []
-        n_far = 0
-        for (x, y), w in zip(coords, weights, strict=True):
-            cx = math.floor(x / cell)
-            cy = math.floor(y / cell)
-            candidates: list[int] = []
-            for dx in (-1, 0, 1):
-                for dy in (-1, 0, 1):
-                    candidates.extend(buckets.get((cx + dx, cy + dy), ()))
-            if not candidates:
-                n_far += 1
-                continue
-            cand_xys = xys[candidates]
-            d2 = (cand_xys[:, 0] - x) ** 2 + (cand_xys[:, 1] - y) ** 2
-            best = int(np.argmin(d2))
-            if d2[best] > max_d2:
-                n_far += 1
-                continue
-            pairs.append((int(node_idxs[candidates[best]]), float(w)))
+        data_map = rustalgos.data.DataMap()
+        for i, (x, y) in enumerate(coords):
+            data_map.insert(i, f"POINT ({x} {y})")
+        # n_nearest_candidates matches the library default (layers.build_data_map)
+        data_map.assign_data_to_network(ns, float(max_snap_dist), 50)
+        weights_map = {i: float(w) for i, w in enumerate(weights)}
+        assigned_keys = {assignment[0] for pairs in data_map.node_data_map.values() for assignment in pairs}
+        n_far = len(coords) - len(assigned_keys)
         if n_far > 0:
-            feedback.pushInfo(f"Excluded {n_far} {label} beyond the max snap distance ({max_snap_dist}m).")
-        if not pairs:
+            feedback.pushInfo(f"Excluded {n_far} {label} with no valid network assignment within {max_snap_dist}m.")
+        if not assigned_keys:
             raise QgsProcessingException(
-                f"No {label} could be snapped to the network. "
+                f"No {label} could be assigned to the network. "
                 "Check that the layer overlaps the street network and that "
                 "the max snap distance is large enough."
             )
-        return pairs
+        feedback.pushInfo(f"Assigned {len(assigned_keys)} {label} to the network.")
+        return data_map, weights_map
+
+    @staticmethod
+    def _parse_flow_exprs(raw: str) -> list[tuple[str, str]] | None:
+        """Parse 'name: expr; name: expr' into [(name, expr), ...]; empty input returns None."""
+        raw = (raw or "").strip()
+        if not raw:
+            return None
+        exprs: list[tuple[str, str]] = []
+        for part in raw.split(";"):
+            part = part.strip()
+            if not part:
+                continue
+            if ":" not in part:
+                raise QgsProcessingException(f"Flow expression '{part}' must use the form 'name: expression'.")
+            name, expr = part.split(":", 1)
+            name = name.strip()
+            expr = expr.strip()
+            if not name.replace("_", "").isalnum():
+                raise QgsProcessingException(f"Flow expression name '{name}' must be alphanumeric/underscore.")
+            if not expr:
+                raise QgsProcessingException(f"Flow expression '{name}' has an empty expression.")
+            exprs.append((name, expr))
+        if not exprs:
+            return None
+        return exprs
 
     def processAlgorithm(self, parameters, context, feedback):
         from ..utils.converters import build_dual_network
@@ -282,6 +304,11 @@ class CityseerDemandAlgorithm(CityseerAlgorithmBase):
         decay_fn = self.parameterAsString(parameters, self.DECAY_FN, context).strip()
         if not decay_fn:
             decay_fn = "exp(-4 * p)"
+        flow_exprs = self._parse_flow_exprs(self.parameterAsString(parameters, self.FLOW_EXPRS, context))
+        if flow_exprs is None:
+            # paired default matching the library (networks.betweenness_demand): a conserved flow
+            # channel and a distance-attenuated one, from a single traversal
+            flow_exprs = [("demand", "1"), ("demand_decay", "exp(-4 * p)")]
         tolerance = self.parameterAsDouble(parameters, self.TOLERANCE, context)
 
         origin_coords, origin_weights = self._load_weighted_points(
@@ -294,6 +321,8 @@ class CityseerDemandAlgorithm(CityseerAlgorithmBase):
         feedback.pushInfo(f"CRS: {crs.authid()}")
         feedback.pushInfo(f"Distances: {distances}")
         feedback.pushInfo(f"Decay function: {decay_fn}")
+        if flow_exprs:
+            feedback.pushInfo("Flow expressions: " + "; ".join(f"{n}: {e}" for n, e in flow_exprs))
         feedback.pushInfo(
             "Allocation: "
             + ("closest destination only" if closest_destination else "across all reachable destinations")
@@ -331,24 +360,31 @@ class CityseerDemandAlgorithm(CityseerAlgorithmBase):
             return {}
 
         # ------------------------------------------------------------------
-        # Step 2: Snap origins/destinations and compute demand betweenness.
-        # QGIS divergence: snap the OD points and call NetworkStructure.betweenness_demand_shortest on
-        # the Rust core directly, in place of cityseer.metrics.networks.betweenness_demand (which takes
-        # GeoDataFrames and so needs geopandas). Keep in sync with networks.betweenness_demand.
+        # Step 2: Assign origins/destinations and compute demand betweenness.
+        # QGIS divergence: build the DataMaps and call NetworkStructure.betweenness_demand_shortest
+        # on the Rust core directly, in place of cityseer.metrics.networks.betweenness_demand (which
+        # takes GeoDataFrames and so needs geopandas). The assignment mechanism is identical
+        # (DataMap.assign_data_to_network). Keep in sync with networks.betweenness_demand.
         # ------------------------------------------------------------------
-        origins = self._snap_to_nodes(ns, origin_coords, origin_weights, max_snap_dist, feedback, "origins")
-        destinations = self._snap_to_nodes(ns, dest_coords, dest_weights, max_snap_dist, feedback, "destinations")
-        feedback.pushInfo(f"Snapped {len(origins)} origins and {len(destinations)} destinations.")
+        origins_map, origin_weights_map = self._build_demand_data_map(
+            ns, origin_coords, origin_weights, max_snap_dist, feedback, "origins"
+        )
+        destinations_map, destination_weights_map = self._build_demand_data_map(
+            ns, dest_coords, dest_weights, max_snap_dist, feedback, "destinations"
+        )
 
         compute_base = (step - 1) * step_pct
         feedback.setProgressText(f"Step {step} of {n_steps}: Computing demand betweenness…")
         result = run_with_feedback(
             ns,
             lambda: ns.betweenness_demand_shortest(
-                origins=origins,
-                destinations=destinations,
+                origins=origins_map,
+                origin_weights_map=origin_weights_map,
+                destinations=destinations_map,
+                destination_weights_map=destination_weights_map,
                 decay_fn=decay_fn,
                 distances=distances,
+                betweenness_exprs=flow_exprs,
                 closest_destination=closest_destination,
                 speed_m_s=speed_m_s,
                 tolerance=tolerance,
@@ -364,19 +400,21 @@ class CityseerDemandAlgorithm(CityseerAlgorithmBase):
             return {}
 
         # ------------------------------------------------------------------
-        # Step 3: Write output layer
+        # Step 3: Write output layer (one column per flow expression per distance)
         # ------------------------------------------------------------------
+        metric_names = [name for name, _expr in flow_exprs] if flow_exprs else ["demand"]
         results: dict[int, dict[str, float]] = {fid: {} for fid in fid_list}
         metrics = result.metrics
-        for d in result.distances:
-            if "demand" not in metrics or d not in metrics["demand"]:
-                continue
-            arr = metrics["demand"][d]
-            col = f"cc_demand_{d}"
-            for i, fid in enumerate(result.node_keys_py):
-                if fid in results:
-                    val = float(arr[i])
-                    results[fid][col] = val if math.isfinite(val) else None
+        for metric_name in metric_names:
+            for d in result.distances:
+                if metric_name not in metrics or d not in metrics[metric_name]:
+                    continue
+                arr = metrics[metric_name][d]
+                col = f"cc_{metric_name}_{d}"
+                for i, fid in enumerate(result.node_keys_py):
+                    if fid in results:
+                        val = float(arr[i])
+                        results[fid][col] = val if math.isfinite(val) else None
 
         write_base = (step - 1) * step_pct
         feedback.setProgressText(f"Step {step} of {n_steps}: Writing output layer…")

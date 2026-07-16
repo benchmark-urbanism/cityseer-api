@@ -541,7 +541,7 @@ def plot_assignment(
     )
     # draw assignment
     for node_idx, data_assignments in data_map.node_data_map.items():
-        for data_idx, _data_dist in data_assignments:
+        for data_idx, *_assignment_rest in data_assignments:
             # get the data point
             data_entry = data_map.entries[data_idx]
             # get the data point geometry
@@ -662,7 +662,7 @@ def plot_network_structure(
             lw=0.5,
         )
         for node_idx, data_assignments in data_map.node_data_map.items():
-            for data_idx, _data_dist in data_assignments:
+            for data_idx, *_assignment_rest in data_assignments:
                 # get the data point
                 data_entry = data_map.entries[data_idx]
                 # get the data point geometry

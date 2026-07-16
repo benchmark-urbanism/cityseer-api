@@ -412,11 +412,87 @@ def test_betweenness_demand(primal_graph):
 
     # a destination too far to snap is dropped -> no flow, no crash
     far = gpd.GeoDataFrame({"geometry": [Point(1e7, 1e7)], "w": [10.0]}, crs=nodes_gdf.crs)
-    flow_far = run(far, max_snap_dist=50.0)
+    flow_far = run(far, max_netw_assign_dist=50.0)
     assert np.nansum(flow_far) == 0.0
 
 
-def test_node_centrality_shortest_compat(primal_graph):
+def test_betweenness_demand_expressions(primal_graph):
+    """Flow-weighting expressions: default equivalence, multi-channel output, distance attenuation."""
+    import geopandas as gpd
+
+    nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(primal_graph)
+    pts = nodes_gdf.geometry
+    origins_gdf = gpd.GeoDataFrame({"geometry": pts, "pop": np.full(len(pts), 100.0)}, crs=nodes_gdf.crs)
+    dests_gdf = gpd.GeoDataFrame({"geometry": [pts.iloc[0]], "w": [10.0]}, crs=nodes_gdf.crs)
+
+    def run(**kwargs):
+        return networks.betweenness_demand(
+            network_structure=network_structure,
+            nodes_gdf=nodes_gdf.copy(),
+            origins_gdf=origins_gdf,
+            destinations_gdf=dests_gdf,
+            origin_weight_col="pop",
+            destination_weight_col="w",
+            distances=[800],
+            decay_fn="exp(-0.002 * c)",
+            **kwargs,
+        )
+
+    default = run()["cc_demand_800"].to_numpy()
+
+    # an explicit "1" expression reproduces the default (conserved) flow exactly
+    explicit = run(betweenness={"demand": "1"})["cc_demand_800"].to_numpy()
+    assert np.allclose(default, explicit, equal_nan=True, atol=config.ATOL, rtol=config.RTOL)
+
+    # multiple expressions from one traversal: the "1" channel is unchanged and the decayed
+    # channel is attenuated (factor <= 1 everywhere, < 1 for flow that travelled)
+    out = run(betweenness={"demand": "1", "demand_decay": "exp(-0.002 * c)"})
+    plain = out["cc_demand_800"].to_numpy()
+    decayed = out["cc_demand_decay_800"].to_numpy()
+    assert np.allclose(default, plain, equal_nan=True, atol=config.ATOL, rtol=config.RTOL)
+    finite = np.isfinite(plain) & np.isfinite(decayed)
+    assert (decayed[finite] <= plain[finite] + config.ATOL).all()
+    positive = finite & (plain > 0)
+    assert positive.any()
+    assert (decayed[positive] < plain[positive]).any()
+
+    # expressions also apply in closest_destination mode
+    out_closest = run(betweenness={"demand_decay": "exp(-0.002 * c)"}, closest_destination=True)
+    assert np.nanmax(out_closest["cc_demand_decay_800"].to_numpy()) > 0.0
+
+
+def test_betweenness_demand_offsets(primal_graph):
+    """Assignment offsets enter routed distances: composite offset_o + graph + offset_d vs radius."""
+    import geopandas as gpd
+    from shapely.geometry import Point
+
+    nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(primal_graph)
+    pts = nodes_gdf.geometry
+    # a single origin and destination, each held ~60 m off-network from well-separated nodes
+    o_pt = Point(pts.iloc[0].x + 60.0, pts.iloc[0].y)
+    d_pt = Point(pts.iloc[-1].x - 60.0, pts.iloc[-1].y)
+    origins_gdf = gpd.GeoDataFrame({"geometry": [o_pt], "pop": [100.0]}, crs=nodes_gdf.crs)
+    dests_gdf = gpd.GeoDataFrame({"geometry": [d_pt], "w": [10.0]}, crs=nodes_gdf.crs)
+
+    def run(distance):
+        out = networks.betweenness_demand(
+            network_structure=network_structure,
+            nodes_gdf=nodes_gdf.copy(),
+            origins_gdf=origins_gdf,
+            destinations_gdf=dests_gdf,
+            origin_weight_col="pop",
+            destination_weight_col="w",
+            distances=[distance],
+            decay_fn="1",
+            max_netw_assign_dist=200.0,
+        )
+        return np.nansum(out[f"cc_demand_{distance}"].to_numpy())
+
+    # generous radius: the pair connects and flow is routed
+    assert run(5000) > 0.0
+    # radius below the summed offsets alone (~120 m): the composite distance can never fit,
+    # so no flow routes even though both points assign to the network successfully
+    assert run(100) == 0.0
     """The deprecated 4.24 shim reproduces centrality_shortest output under legacy column names."""
     distances = [400, 800]
     nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(primal_graph)

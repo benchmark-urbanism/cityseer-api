@@ -102,7 +102,12 @@ class DataMap:
     """Manages a collection of DataEntry objects and their assignment to a NetworkStructure."""
 
     entries: dict[str, DataEntry]
-    node_data_map: dict[int, list[tuple[str, float]]]
+    node_data_map: dict[int, list[tuple[str, float, float, tuple[float, float] | None]]]
+    """Per-node assignments: ``(data_key, offset, along, toward)``. ``offset`` is the unsigned
+    distance component (primal: along-street distance to the node plus setback; dual: setback
+    only); ``along`` is the dual's signed-component magnitude (0 on primal); ``toward`` is the
+    coordinate of the street end the point leans toward, used to resolve the sign by direction
+    of approach (``None`` on primal)."""
 
     def __init__(self) -> None: ...
     def progress_init(self) -> None:

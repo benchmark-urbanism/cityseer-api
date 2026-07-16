@@ -115,7 +115,7 @@ def _resolve_stats_measures(measures: list[str] | None) -> list[str]:
 def build_data_map(
     data_gdf: gpd.GeoDataFrame,
     network_structure: rustalgos.graph.NetworkStructure,
-    max_netw_assign_dist: int = 100,
+    max_netw_assign_dist: float = 100.0,
     data_id_col: str | None = None,
     barriers_gdf: gpd.GeoDataFrame | None = None,
     n_nearest_candidates: int = 50,
@@ -137,7 +137,7 @@ def build_data_map(
     network_structure
         A [`rustalgos.graph.NetworkStructure`](/rustalgos/graph#networkstructure). Best generated with the
         [`io.network_structure_from_nx`](/tools/io#network_structure_from_nx) function.
-    max_netw_assign_dist: int
+    max_netw_assign_dist: float
         The maximum distance to consider when assigning respective data points to the nearest adjacent network nodes.
     data_id_col: str
         An optional column name for data point keys. This is used for deduplicating points representing a shared source
@@ -209,7 +209,7 @@ def compute_accessibilities(
     accessibility_keys: list[str],
     nodes_gdf: gpd.GeoDataFrame,
     network_structure: rustalgos.graph.NetworkStructure,
-    max_netw_assign_dist: int = 100,
+    max_netw_assign_dist: float = 100.0,
     distances: list[int] | None = None,
     minutes: list[float] | None = None,
     data_id_col: str | None = None,
@@ -246,7 +246,7 @@ def compute_accessibilities(
     network_structure
         A [`rustalgos.graph.NetworkStructure`](/rustalgos/graph#networkstructure). Best generated with the
         [`io.network_structure_from_nx`](/tools/io#network_structure_from_nx) function.
-    max_netw_assign_dist: int
+    max_netw_assign_dist: float
         The maximum distance to consider when assigning respective data points to the nearest adjacent network nodes.
     distances: list[int]
         Distance thresholds in metres for the network traversal. Metrics are computed for each
@@ -388,7 +388,7 @@ def compute_mixed_uses(
     landuse_column_label: str,
     nodes_gdf: gpd.GeoDataFrame,
     network_structure: rustalgos.graph.NetworkStructure,
-    max_netw_assign_dist: int = 100,
+    max_netw_assign_dist: float = 100.0,
     compute_hill: bool | None = True,
     compute_shannon: bool | None = False,
     compute_gini: bool | None = False,
@@ -436,7 +436,7 @@ def compute_mixed_uses(
     network_structure
         A [`rustalgos.graph.NetworkStructure`](/rustalgos/graph#networkstructure). Best generated with the
         [`io.network_structure_from_nx`](/tools/io#network_structure_from_nx) function.
-    max_netw_assign_dist: int
+    max_netw_assign_dist: float
         The maximum distance to consider when assigning respective data points to the nearest adjacent network nodes.
     compute_hill: bool
         Compute Hill diversity. This is the recommended form of diversity index. Computed for q of 0, 1, and 2.
@@ -615,7 +615,7 @@ def compute_stats(
     stats_column_labels: list[str],
     nodes_gdf: gpd.GeoDataFrame,
     network_structure: rustalgos.graph.NetworkStructure,
-    max_netw_assign_dist: int = 100,
+    max_netw_assign_dist: float = 100.0,
     distances: list[int] | None = None,
     minutes: list[float] | None = None,
     data_id_col: str | None = None,
@@ -651,7 +651,7 @@ def compute_stats(
     network_structure
         A [`rustalgos.graph.NetworkStructure`](/rustalgos/graph#networkstructure). Best generated with the
         [`io.network_structure_from_nx`](/tools/io#network_structure_from_nx) function.
-    max_netw_assign_dist: int
+    max_netw_assign_dist: float
         The maximum distance to consider when assigning respective data points to the nearest adjacent network nodes.
     distances: list[int]
         Distance thresholds in metres for the network traversal. Metrics are computed for each
