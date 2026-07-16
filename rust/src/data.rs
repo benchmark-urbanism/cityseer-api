@@ -325,13 +325,52 @@ impl DataEntry {
 }
 
 /// Map of data entries for spatial analysis.
+/// A stored point-to-network assignment: `(data_key, offset, along, toward)`. `offset` is the
+/// unsigned distance component (primal: along-street to the node + setback; dual: setback only);
+/// `along` is the dual's signed-component magnitude (0 on primal); `toward` is the coordinate of
+/// the street end the point leans toward, used to resolve the sign by direction of approach
+/// (`None` on primal). See `graph::resolve_assignment_dist`.
+pub type StoredAssignment = (String, f64, f64, Option<(f64, f64)>);
+
 #[pyclass]
 pub struct DataMap {
     #[pyo3(get)]
     entries: HashMap<String, DataEntry>,
     pub progress: Arc<AtomicUsize>,
     #[pyo3(get)]
-    node_data_map: HashMap<usize, Vec<(String, f64)>>, // Stores (data_key, distance_to_node)
+    node_data_map: HashMap<usize, Vec<StoredAssignment>>,
+}
+
+impl DataMap {
+    /// Crate-internal: number of data entries (mirrors the Python-exposed `count`).
+    pub(crate) fn entry_count(&self) -> usize {
+        self.entries.len()
+    }
+
+    /// Crate-internal: whether a composite data key exists.
+    pub(crate) fn has_entry(&self, data_key: &str) -> bool {
+        self.entries.contains_key(data_key)
+    }
+
+    /// Crate-internal: invert `node_data_map` to per-entry assignment lists,
+    /// `data_key -> [(node_idx, offset, along, toward)]`. Entries with no valid assignment are
+    /// absent. Used by consumers that traverse per data point (e.g. demand betweenness) rather
+    /// than per network node (the aggregation direction used by the data layers).
+    #[allow(clippy::type_complexity)]
+    pub(crate) fn entry_assignments(
+        &self,
+    ) -> HashMap<String, Vec<(usize, f64, f64, Option<(f64, f64)>)>> {
+        let mut out: HashMap<String, Vec<(usize, f64, f64, Option<(f64, f64)>)>> =
+            HashMap::with_capacity(self.entries.len());
+        for (node_idx, pairs) in &self.node_data_map {
+            for (data_key, offset, along, toward) in pairs {
+                out.entry(data_key.clone())
+                    .or_default()
+                    .push((*node_idx, *offset, *along, *toward));
+            }
+        }
+        out
+    }
 }
 
 #[pymethods]
@@ -412,9 +451,9 @@ impl DataMap {
         );
 
         // Collect assignments in parallel using rayon's flat_map
-        // Each call to find_assignments_for_entry returns Vec<(usize, String, f64)>
+        // Each call to find_assignments_for_entry returns Vec<PointAssignment>
         // flat_map combines these Vecs into a single Vec.
-        let assignments: Vec<(usize, String, f64)> = self
+        let assignments: Vec<crate::graph::PointAssignment> = self
             .entries
             .par_iter() // Parallel iterator over entries
             .flat_map(|(data_key, data_entry)| {
@@ -425,9 +464,7 @@ impl DataMap {
                     max_assignment_dist,
                     n_nearest_candidates,
                 )
-                // find_assignments_for_entry returns Vec<(node_idx, data_key, node_dist)>
-                // We need to ensure data_key is owned if it needs to be moved across threads,
-                // but find_assignments_for_entry already returns an owned String.
+                // Returns (node_idx, data_key, offset, along, toward) per assignment.
             })
             .collect(); // Collect all assignments into a single Vec
 
@@ -440,12 +477,11 @@ impl DataMap {
         // This part is done sequentially after parallel collection.
         self.node_data_map.clear();
         let mut assigned_data_count = 0;
-        for (node_idx, data_key, node_dist) in assignments {
-            // Add the assignment (data_key, distance) to the list for the node_idx
+        for (node_idx, data_key, offset, along, toward) in assignments {
             self.node_data_map
                 .entry(node_idx)
                 .or_default()
-                .push((data_key, node_dist));
+                .push((data_key, offset, along, toward));
             assigned_data_count += 1; // Count total assignments added
         }
 
@@ -507,8 +543,14 @@ impl DataMap {
                 None => continue,
             };
 
+            // Resolve the direction of approach once per node: which primal end the tree entered
+            // this (dual) node through. `None` on primal graphs or at the source node itself.
+            let entry_end = node_visit
+                .pred
+                .and_then(|pred| network_structure.entry_end_coord(pred, node_idx));
+
             // Iterate through locally relevant data keys
-            for (data_key, data_dist) in candidate_pairs {
+            for (data_key, offset, along, toward) in candidate_pairs {
                 let data_entry = match self.entries.get(data_key) {
                     Some(entry) => entry,
                     None => continue,
@@ -516,8 +558,15 @@ impl DataMap {
 
                 // Calculate network distance to the current node
                 let network_dist = node_visit.agg_seconds * speed_m_s;
-                // Calculate total distance
-                let current_total_dist = network_dist + *data_dist as f32;
+                // Total distance: unsigned offset always added; the dual's along-street component
+                // is credited or debited by direction of approach.
+                let current_total_dist = crate::graph::resolve_assignment_dist(
+                    network_dist,
+                    *offset,
+                    *along,
+                    toward,
+                    entry_end,
+                );
 
                 // Check total distance limit
                 if current_total_dist <= max_walk_dist {

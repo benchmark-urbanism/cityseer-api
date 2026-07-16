@@ -4,6 +4,7 @@ use geo::algorithm::centroid::Centroid;
 use geo::algorithm::closest_point::ClosestPoint;
 use geo::algorithm::intersects::Intersects;
 use geo::algorithm::line_intersection::{line_intersection, LineIntersection};
+use geo::algorithm::line_locate_point::LineLocatePoint;
 use geo::geometry::{Coord, Line, LineString};
 use geo::BoundingRect;
 use geo::{Distance, Euclidean, Geometry, Length, Point};
@@ -35,6 +36,11 @@ pub struct NodePayload {
     pub weight: f32,
     #[pyo3(get)]
     pub is_transport: bool,
+    /// On dual graphs, the primal street segment this node represents (the node point is its
+    /// midpoint). Used for representation-aware data assignment: points assign to the single
+    /// nearest street with a signed along-street offset. `None` on primal graphs and transport
+    /// nodes.
+    pub street_geom: Option<LineString<f64>>,
 }
 
 impl Clone for NodePayload {
@@ -46,6 +52,7 @@ impl Clone for NodePayload {
             live: self.live,                 // bool is Copy
             weight: self.weight,             // f32 is Copy
             is_transport: self.is_transport, // bool is Copy
+            street_geom: self.street_geom.clone(),
         })
     }
 }
@@ -92,6 +99,7 @@ pub struct EdgePayload {
     pub start_nd_key_py: Option<Py<PyAny>>, // Made optional
     #[pyo3(get)]
     pub end_nd_key_py: Option<Py<PyAny>>, // Made optional
+    #[pyo3(get)]
     pub shared_primal_node_key: Option<String>,
     #[pyo3(get)]
     pub edge_idx: usize,
@@ -286,8 +294,63 @@ impl NodeVisit {
 type EdgeRtreeItem =
     GeomWithData<Rectangle<[f64; 2]>, (usize, usize, Point<f64>, Point<f64>, LineString<f64>)>;
 
+// Dual-graph street R-tree item: (dual_node_idx, primal street geometry)
+type StreetRtreeItem = GeomWithData<Rectangle<[f64; 2]>, (usize, LineString<f64>)>;
+
 // Define type alias for Barrier R-tree item for clarity
 type BarrierRtreeItem = GeomWithData<Rectangle<[f64; 2]>, usize>; // Data is index into barrier_geoms
+
+/// A single point-to-network assignment produced by `find_assignments_for_entry`.
+/// `offset` is the unsigned distance component always added to the routed distance: on primal
+/// graphs the along-street distance from the node to the point's projection plus the setback;
+/// on dual graphs the setback (point to street) only. `along` is the dual's signed component
+/// magnitude — the along-street displacement between the street midpoint and the point's
+/// projection — credited or debited by direction of approach at query time (zero on primal).
+/// `toward` is the primal-intersection coordinate of the street end the point leans toward
+/// (compared against edge `shared_primal_node_key` coordinates to resolve the sign); `None` on
+/// primal graphs.
+pub type PointAssignment = (usize, String, f64, f64, Option<(f64, f64)>);
+
+/// Parse a `shared_primal_node_key` string of the form "(x, y)" back to coordinates.
+pub(crate) fn parse_coord_key(key: &str) -> Option<(f64, f64)> {
+    let trimmed = key.trim().trim_start_matches('(').trim_end_matches(')');
+    let mut parts = trimmed.split(',');
+    let x = parts.next()?.trim().parse::<f64>().ok()?;
+    let y = parts.next()?.trim().parse::<f64>().ok()?;
+    Some((x, y))
+}
+
+/// Tolerance for matching a parsed `shared_primal_node_key` coordinate against a street
+/// endpoint coordinate: keys are rounded to 0.1 m at construction.
+pub(crate) const END_KEY_TOLERANCE: f64 = 0.2;
+
+/// Resolve a signed assignment distance: the unsigned `offset` is always added; the `along`
+/// component is subtracted when the traversal entered the street via the end the point leans
+/// toward (`entry` matches `toward`), added when entering via the far end, and added when there
+/// is no predecessor information (the node is itself the traversal root: midpoint reference).
+pub(crate) fn resolve_assignment_dist(
+    network_dist: f32,
+    offset: f64,
+    along: f64,
+    toward: &Option<(f64, f64)>,
+    entry: Option<(f64, f64)>,
+) -> f32 {
+    match toward {
+        None => network_dist + offset as f32,
+        Some(tw) => match entry {
+            Some(en) => {
+                let matches_toward = (tw.0 - en.0).abs() <= END_KEY_TOLERANCE
+                    && (tw.1 - en.1).abs() <= END_KEY_TOLERANCE;
+                if matches_toward {
+                    (network_dist + offset as f32 - along as f32).max(0.0)
+                } else {
+                    network_dist + offset as f32 + along as f32
+                }
+            }
+            None => network_dist + offset as f32 + along as f32,
+        },
+    }
+}
 
 /// Utility function to compute the bearing (in degrees) between two coordinates.
 fn measure_bearing(a: Coord<f64>, b: Coord<f64>) -> f64 {
@@ -354,6 +417,7 @@ pub struct NetworkStructure {
     pub is_directed: bool,
     pub progress: Arc<AtomicUsize>,
     pub edge_rtree: Option<RTree<EdgeRtreeItem>>,
+    pub street_rtree: Option<RTree<StreetRtreeItem>>,
     pub barrier_geoms: Option<Vec<Geometry<f64>>>,
     pub barrier_rtree: Option<RTree<BarrierRtreeItem>>,
 }
@@ -368,6 +432,7 @@ impl NetworkStructure {
             is_directed: false,
             progress: Arc::new(AtomicUsize::new(0)),
             edge_rtree: None,
+            street_rtree: None,
             barrier_geoms: None,
             barrier_rtree: None,
         }
@@ -401,7 +466,8 @@ impl NetworkStructure {
         self.is_directed = is_directed;
     }
 
-    #[pyo3(signature = (node_key, x, y, live, weight, z=None))]
+    #[pyo3(signature = (node_key, x, y, live, weight, z=None, street_geom_wkt=None))]
+    #[allow(clippy::too_many_arguments)]
     pub fn add_street_node(
         &mut self,
         node_key: Py<PyAny>,
@@ -410,7 +476,20 @@ impl NetworkStructure {
         live: bool,
         weight: f32,
         z: Option<f64>,
+        street_geom_wkt: Option<String>,
     ) -> usize {
+        // On dual graphs the node represents a street segment; its geometry enables
+        // representation-aware data assignment (nearest street, signed along-street offset).
+        let street_geom: Option<LineString<f64>> = match street_geom_wkt {
+            Some(wkt_str) => match Geometry::try_from_wkt_str(&wkt_str) {
+                Ok(Geometry::LineString(ls)) => Some(ls),
+                _ => {
+                    log::warn!("Could not parse street_geom_wkt as a LineString; ignoring.");
+                    None
+                }
+            },
+            None => None,
+        };
         let payload = NodePayload {
             node_key,
             point: Point::new(x, y),
@@ -418,6 +497,7 @@ impl NetworkStructure {
             live,
             weight,
             is_transport: false, // Explicitly false for street nodes
+            street_geom,
         };
         Python::attach(|py| {
             payload
@@ -426,6 +506,7 @@ impl NetworkStructure {
         });
         let new_node_idx = self.graph.add_node(payload);
         self.edge_rtree = None; // Invalidate edge R-tree
+        self.street_rtree = None;
         new_node_idx.index()
     }
 
@@ -452,6 +533,7 @@ impl NetworkStructure {
             live: false, // Transport nodes are typically not "live" destinations themselves
             weight: 0.0, // Transport nodes usually don't have weights
             is_transport: true, // Explicitly true
+            street_geom: None,
         });
         let new_node_idx_usize = new_node_idx.index();
 
@@ -474,7 +556,11 @@ impl NetworkStructure {
         );
 
         let mut links_added = 0;
-        for (street_node_idx, _data_key, dist) in potential_assignments {
+        for (street_node_idx, _data_key, offset, along, _toward) in potential_assignments {
+            // Direction-agnostic link length: the physical link edge cannot vary by approach
+            // direction, so use the midpoint-referenced distance (offset + along; along is 0 on
+            // primal graphs).
+            let dist = offset + along;
             log::debug!(
                 "Linking transport node {} to street node {} with distance {}.",
                 new_node_idx_usize,
@@ -874,6 +960,7 @@ impl NetworkStructure {
         };
 
         self.edge_rtree = None;
+        self.street_rtree = None;
 
         // Pass Python token to internal helper
         self._add_edge_internal(start_nd_idx, end_nd_idx, payload, py)
@@ -903,6 +990,7 @@ impl NetworkStructure {
         }
         self.graph.remove_node(ni);
         self.edge_rtree = None;
+        self.street_rtree = None;
         Ok(())
     }
 
@@ -925,6 +1013,7 @@ impl NetworkStructure {
             Some(eid) => {
                 self.graph.remove_edge(eid);
                 self.edge_rtree = None;
+                self.street_rtree = None;
                 Ok(())
             }
             None => Err(exceptions::PyValueError::new_err(format!(
@@ -1048,6 +1137,44 @@ impl NetworkStructure {
         Ok(())
     }
 
+    /// Builds the R-tree over dual-node street geometries (each dual node's primal segment),
+    /// used for representation-aware data assignment on dual graphs: points assign to the
+    /// single nearest street with a signed along-street offset. Leaves the tree `None` when no
+    /// nodes carry street geometries (primal graphs, or duals built without them, which then
+    /// fall back to the edge-based assignment).
+    pub fn build_street_rtree(&mut self) -> PyResult<()> {
+        let mut rtree_items: Vec<StreetRtreeItem> = Vec::new();
+        for node_idx in self.graph.node_indices() {
+            let payload = self
+                .graph
+                .node_weight(node_idx)
+                .expect("Node payload should exist for valid index");
+            if payload.is_transport {
+                continue;
+            }
+            let Some(street_geom) = payload.street_geom.as_ref() else {
+                continue;
+            };
+            let Some(rect) = street_geom.bounding_rect() else {
+                continue;
+            };
+            let envelope =
+                Rectangle::from_corners([rect.min().x, rect.min().y], [rect.max().x, rect.max().y]);
+            rtree_items.push(GeomWithData::new(
+                envelope,
+                (node_idx.index(), street_geom.clone()),
+            ));
+        }
+        if rtree_items.is_empty() {
+            self.street_rtree = None;
+        } else {
+            let count = rtree_items.len();
+            self.street_rtree = Some(RTree::bulk_load(rtree_items));
+            log::info!("Street R-tree built with {} items.", count);
+        }
+        Ok(())
+    }
+
     /// Builds the R-tree for street edge geometries using their bounding boxes.
     /// Deduplicates edges based on sorted node pairs and geometric equality.
     /// Stores (start_node_idx, end_node_idx, start_node_point, end_node_point, edge_geom)
@@ -1135,6 +1262,10 @@ impl NetworkStructure {
                 .size();
             log::info!("Edge R-tree built successfully with {} items.", built_count,);
         }
+
+        // Keep the dual street R-tree in step: representation-aware assignment relies on it and
+        // both trees share the same invalidation points.
+        self.build_street_rtree()?;
 
         Ok(())
     }
@@ -1302,9 +1433,7 @@ impl NetworkStructure {
         data_geom: &Geometry<f64>,
         max_assignment_dist: f64,
         n_nearest_candidates: usize,
-    ) -> Vec<(usize, String, f64)> {
-        let edge_rtree = self.edge_rtree.as_ref().expect("Edge R-tree should exist.");
-
+    ) -> Vec<PointAssignment> {
         let is_point_geom = matches!(data_geom, Geometry::Point(_));
         let data_cent = match data_geom.centroid() {
             Some(c) => c,
@@ -1316,6 +1445,24 @@ impl NetworkStructure {
                 return Vec::new();
             }
         };
+        // Representation-aware assignment: on dual graphs whose nodes carry street geometries,
+        // assign to the single nearest street node with a signed along-street offset; otherwise
+        // (primal graphs, or duals without street geoms) assign to the two endpoint nodes of the
+        // nearest street edge with along-street offsets.
+        if self.is_dual {
+            if let Some(street_rtree) = self.street_rtree.as_ref() {
+                return self.find_street_assignments(
+                    street_rtree,
+                    data_key,
+                    data_geom,
+                    &data_cent,
+                    is_point_geom,
+                    max_assignment_dist,
+                    n_nearest_candidates,
+                );
+            }
+        }
+        let edge_rtree = self.edge_rtree.as_ref().expect("Edge R-tree should exist.");
         // Get candidates from the R-tree
         let candidate_edges_rtree = if is_point_geom {
             // if the data geometry is a point, use nearest neighbor search
@@ -1360,60 +1507,55 @@ impl NetworkStructure {
         }
         candidates_with_dist.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(Ordering::Equal));
 
-        let mut checked_nodes_for_this_entry: HashMap<usize, Option<(usize, f64)>> = HashMap::new();
+        let mut checked_nodes_for_this_entry: HashMap<usize, bool> = HashMap::new();
         let mut nodes_added_for_this_entry: HashSet<usize> = HashSet::new();
-        let mut local_assignments: Vec<(usize, String, f64)> = Vec::new();
+        let mut local_assignments: Vec<PointAssignment> = Vec::new();
 
-        let check_node_validity_logic =
-            |node_idx: usize, node_point: Point<f64>| -> Option<(usize, f64)> {
-                // Use Euclidean distance from node to geometry directly.
-                // This correctly returns 0 for nodes inside a polygon,
-                // avoiding the closest_point boundary-snap issue where interior
-                // nodes would get inflated distances to the polygon boundary.
-                let node_dist = Euclidean.distance(&node_point, data_geom);
-                if node_dist < 1e-6 {
-                    // Node is inside or on the geometry boundary — distance is 0.
-                    return Some((node_idx, 0.0));
+        let check_node_validity_logic = |node_idx: usize, node_point: Point<f64>| -> bool {
+            // A node inside or on the data geometry is trivially valid.
+            let node_dist = Euclidean.distance(&node_point, data_geom);
+            if node_dist < 1e-6 {
+                return true;
+            }
+            // For exterior nodes, find the closest point on the geometry
+            // to construct the assignment line for barrier/street checks.
+            let closest_point_on_data = match data_geom.closest_point(&node_point) {
+                geo::Closest::SinglePoint(p) => p,
+                geo::Closest::Intersection(p) => p,
+                geo::Closest::Indeterminate => {
+                    log::warn!(
+                        "Indeterminate closest point for node {} to data '{}', using centroid.",
+                        node_idx,
+                        data_key
+                    );
+                    data_cent
                 }
-                // For exterior nodes, find the closest point on the geometry
-                // to construct the assignment line for barrier/street checks.
-                let closest_point_on_data = match data_geom.closest_point(&node_point) {
-                    geo::Closest::SinglePoint(p) => p,
-                    geo::Closest::Intersection(p) => p,
-                    geo::Closest::Indeterminate => {
-                        log::warn!(
-                            "Indeterminate closest point for node {} to data '{}', using centroid.",
-                            node_idx,
-                            data_key
-                        );
-                        data_cent
-                    }
-                };
-                let assignment_line = Line::new(closest_point_on_data.0, node_point.0);
-                if self.line_intersects_barriers(&assignment_line)
-                    || self.line_intersects_streets(&assignment_line)
-                {
-                    return None;
-                }
-                Some((node_idx, node_dist))
             };
+            let assignment_line = Line::new(closest_point_on_data.0, node_point.0);
+            !(self.line_intersects_barriers(&assignment_line)
+                || self.line_intersects_streets(&assignment_line))
+        };
 
         let mut assignments_found = 0;
-        for (_true_edge_dist, edge_rtree_item) in candidates_with_dist {
+        for (true_edge_dist, edge_rtree_item) in candidates_with_dist {
             // Destructure the tuple from the R-tree item.
             // Primitive types (usize, Point<f64>) are Copy and will be copied.
             // Use `ref` for LineString as it's not Copy and we only have a shared reference.
-            let (start_node_idx, end_node_idx, start_node_point, end_node_point, ref _edge_geom) =
+            let (start_node_idx, end_node_idx, start_node_point, end_node_point, ref edge_geom) =
                 edge_rtree_item.data;
 
-            // Check validity for the start node, caching the result.
-            // Dereference the result from the or_insert_with closure as it returns &Option<(usize, f64)>
+            // Offsets are along-street: the distance from each endpoint node to the data point's
+            // projection onto this street, plus the setback (data point to street). The min over
+            // the two endpoint assignments resolves direction of approach positionally.
+            let edge_len = Euclidean.length(edge_geom);
+            let along_from_start = Self::projection_along(edge_geom, edge_len, &data_cent);
+            let offset_start = along_from_start + true_edge_dist;
+            let offset_end = (edge_len - along_from_start) + true_edge_dist;
+
+            // Check validity per node, caching the result across candidate edges.
             let valid_start_node = *checked_nodes_for_this_entry
                 .entry(start_node_idx)
                 .or_insert_with(|| check_node_validity_logic(start_node_idx, start_node_point));
-
-            // Check validity for the end node, caching the result.
-            // Dereference the result from the or_insert_with closure.
             let valid_end_node = *checked_nodes_for_this_entry
                 .entry(end_node_idx)
                 .or_insert_with(|| check_node_validity_logic(end_node_idx, end_node_point));
@@ -1421,18 +1563,20 @@ impl NetworkStructure {
             let mut edge_produced_assignment = false;
 
             // If the start node is valid and hasn't been added yet, add it to assignments.
-            if let Some((node_idx, node_dist)) = valid_start_node {
-                if nodes_added_for_this_entry.insert(node_idx) {
-                    local_assignments.push((node_idx, data_key.to_string(), node_dist));
-                    edge_produced_assignment = true;
-                }
+            if valid_start_node && nodes_added_for_this_entry.insert(start_node_idx) {
+                local_assignments.push((
+                    start_node_idx,
+                    data_key.to_string(),
+                    offset_start,
+                    0.0,
+                    None,
+                ));
+                edge_produced_assignment = true;
             }
             // If the end node is valid and hasn't been added yet, add it to assignments.
-            if let Some((node_idx, node_dist)) = valid_end_node {
-                if nodes_added_for_this_entry.insert(node_idx) {
-                    local_assignments.push((node_idx, data_key.to_string(), node_dist));
-                    edge_produced_assignment = true;
-                }
+            if valid_end_node && nodes_added_for_this_entry.insert(end_node_idx) {
+                local_assignments.push((end_node_idx, data_key.to_string(), offset_end, 0.0, None));
+                edge_produced_assignment = true;
             }
 
             // Optimization: If the data geometry is a point and we found an assignment from this edge,
@@ -1448,6 +1592,131 @@ impl NetworkStructure {
         }
 
         local_assignments
+    }
+
+    /// Along-street distance (from the linestring's start) of the projection of `point` onto
+    /// `line`. Returns 0 when the projection cannot be resolved.
+    fn projection_along(line: &LineString<f64>, line_len: f64, point: &Point<f64>) -> f64 {
+        match line.line_locate_point(point) {
+            Some(frac) if frac.is_finite() => (frac.clamp(0.0, 1.0)) * line_len,
+            _ => 0.0,
+        }
+    }
+
+    /// Dual-graph assignment: each candidate street (a dual node's primal segment) yields a
+    /// single assignment to that node with `offset` = setback (point to street), `along` = the
+    /// along-street displacement between the street midpoint and the point's projection, and
+    /// `toward` = the coordinate of the street end the point leans toward (used to resolve the
+    /// sign by direction of approach at query time). Point geometries take the single nearest
+    /// barrier-valid street; polygons assign to each street within range.
+    #[allow(clippy::too_many_arguments)]
+    fn find_street_assignments(
+        &self,
+        street_rtree: &RTree<StreetRtreeItem>,
+        data_key: &str,
+        data_geom: &Geometry<f64>,
+        data_cent: &Point<f64>,
+        is_point_geom: bool,
+        max_assignment_dist: f64,
+        n_nearest_candidates: usize,
+    ) -> Vec<PointAssignment> {
+        let candidate_items = if is_point_geom {
+            street_rtree
+                .nearest_neighbor_iter(&[data_cent.x(), data_cent.y()])
+                .take(n_nearest_candidates)
+                .collect::<Vec<_>>()
+        } else {
+            let Some(data_rect) = data_geom.bounding_rect() else {
+                log::warn!(
+                    "Data entry '{}' has no bounding rect (empty geometry?), skipping assignment.",
+                    data_key
+                );
+                return Vec::new();
+            };
+            let query_aabb = AABB::from_corners(
+                [
+                    data_rect.min().x - max_assignment_dist,
+                    data_rect.min().y - max_assignment_dist,
+                ],
+                [
+                    data_rect.max().x + max_assignment_dist,
+                    data_rect.max().y + max_assignment_dist,
+                ],
+            );
+            street_rtree
+                .locate_in_envelope_intersecting(&query_aabb)
+                .collect()
+        };
+
+        let mut candidates_with_dist: Vec<(f64, &StreetRtreeItem)> = Vec::new();
+        for item in &candidate_items {
+            let street_geom = &item.data.1;
+            let setback = Euclidean.distance(data_geom, street_geom);
+            if setback <= max_assignment_dist {
+                candidates_with_dist.push((setback, item));
+            }
+        }
+        candidates_with_dist.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(Ordering::Equal));
+
+        let mut local_assignments: Vec<PointAssignment> = Vec::new();
+        for (setback, item) in candidates_with_dist {
+            let (node_idx, ref street_geom) = item.data;
+            // Barrier / street-crossing validity: the line from the closest point on the data
+            // geometry to the closest point on the street.
+            let closest_on_street = match street_geom.closest_point(data_cent) {
+                geo::Closest::SinglePoint(p) => p,
+                geo::Closest::Intersection(p) => p,
+                geo::Closest::Indeterminate => *data_cent,
+            };
+            if setback > 1e-6 {
+                let closest_on_data = match data_geom.closest_point(&closest_on_street) {
+                    geo::Closest::SinglePoint(p) => p,
+                    geo::Closest::Intersection(p) => p,
+                    geo::Closest::Indeterminate => *data_cent,
+                };
+                let assignment_line = Line::new(closest_on_data.0, closest_on_street.0);
+                if self.line_intersects_barriers(&assignment_line)
+                    || self.line_intersects_streets(&assignment_line)
+                {
+                    continue;
+                }
+            }
+            let street_len = Euclidean.length(street_geom);
+            let along_from_start = Self::projection_along(street_geom, street_len, data_cent);
+            let along = (street_len / 2.0 - along_from_start).abs();
+            let coords: Vec<Coord<f64>> = street_geom.coords().copied().collect();
+            let toward = if coords.is_empty() {
+                None
+            } else if along_from_start <= street_len / 2.0 {
+                Some((coords[0].x, coords[0].y))
+            } else {
+                Some((coords[coords.len() - 1].x, coords[coords.len() - 1].y))
+            };
+            local_assignments.push((node_idx, data_key.to_string(), setback, along, toward));
+            if is_point_geom {
+                break;
+            }
+            if local_assignments.len() >= n_nearest_candidates {
+                break;
+            }
+        }
+
+        local_assignments
+    }
+
+    /// Resolve which primal end a dual traversal entered `node` through, parsed from the
+    /// connecting edge's `shared_primal_node_key` coordinate. `None` when no predecessor edge
+    /// carries the key (primal graphs, transport links).
+    pub(crate) fn entry_end_coord(&self, pred_node: usize, node: usize) -> Option<(f64, f64)> {
+        for edge_ref in self
+            .graph
+            .edges_connecting(NodeIndex::new(pred_node), NodeIndex::new(node))
+        {
+            if let Some(key) = edge_ref.weight().shared_primal_node_key.as_deref() {
+                return parse_coord_key(key);
+            }
+        }
+        None
     }
 
     /// Checks if a line segment intersects with any street edge geometry in the R-tree,

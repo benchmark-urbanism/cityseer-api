@@ -1142,6 +1142,11 @@ def network_structure_from_nx(
         weight = 1
         if "weight" in node_data:
             weight = node_data["weight"]
+        # on dual graphs the node represents a primal street segment; pass its geometry through
+        # for representation-aware data assignment
+        street_geom_wkt = None
+        if g_multi_copy.graph.get("is_dual", False) and node_data.get("primal_edge") is not None:
+            street_geom_wkt = node_data["primal_edge"].wkt
         # set node
         ns_node_idx = network_structure.add_street_node(
             node_key,
@@ -1150,6 +1155,7 @@ def network_structure_from_nx(
             is_live,
             weight,
             z=node_z,
+            street_geom_wkt=street_geom_wkt,
         )
         node_geom = geometry.Point(node_x, node_y, node_z) if node_z is not None else geometry.Point(node_x, node_y)
         agg_node_data[node_key] = (ns_node_idx, node_x, node_y, node_z, is_live, weight, node_geom)
@@ -1329,6 +1335,10 @@ def network_structure_from_gpd(
             and not (isinstance(node_data["z"], float) and np.isnan(node_data["z"]))
         ):
             node_z = float(node_data["z"])
+        # dual nodes carry their primal street segment for representation-aware assignment
+        street_geom_wkt = None
+        if "primal_edge" in node_data and node_data["primal_edge"] is not None:
+            street_geom_wkt = node_data["primal_edge"].wkt
         ns_node_idx = network_structure.add_street_node(
             str(nd_key),
             float(node_data["x"]),
@@ -1336,6 +1346,7 @@ def network_structure_from_gpd(
             bool(node_data["live"]),
             float(node_data["weight"]),
             z=node_z,
+            street_geom_wkt=street_geom_wkt,
         )
         # store mapping in dictionary instead of writing back to GeoDataFrame
         node_mapping[nd_key] = ns_node_idx

@@ -176,6 +176,9 @@ layout: ../../layouts/PageLayout.astro
   <div class="param">
     <span class="pn">z=None</span>
   </div>
+  <div class="param">
+    <span class="pn">street_geom_wkt=None</span>
+  </div>
   <span class="pt">)</span>
 </div>
 </div>
@@ -287,7 +290,13 @@ layout: ../../layouts/PageLayout.astro
     <span class="pn">origins</span>
   </div>
   <div class="param">
+    <span class="pn">origin_weights_map</span>
+  </div>
+  <div class="param">
     <span class="pn">destinations</span>
+  </div>
+  <div class="param">
+    <span class="pn">destination_weights_map</span>
   </div>
   <div class="param">
     <span class="pn">decay_fn</span>
@@ -297,6 +306,9 @@ layout: ../../layouts/PageLayout.astro
   </div>
   <div class="param">
     <span class="pn">minutes=None</span>
+  </div>
+  <div class="param">
+    <span class="pn">betweenness_exprs=None</span>
   </div>
   <div class="param">
     <span class="pn">closest_destination=False</span>
@@ -318,7 +330,7 @@ layout: ../../layouts/PageLayout.astro
 </div>
 
 
- Demand-weighted (flow) betweenness from a singly / origin-constrained spatial interaction model. Each origin distributes its full weight across reachable destinations in proportion to `W_d * decay(c)`, where `decay` is the supplied expression evaluated on `c` (metric cost) and `p` (normalised progress to the threshold) — the gravity model is one instance of this spatial interaction form. The allocated origin-destination flows are then routed along shortest paths via Brandes back-propagation, accumulating flow betweenness at intermediate nodes. Origins and destinations are each aggregated by node first, so several snapped points sharing a node contribute their summed weight (and a node only triggers one Dijkstra). When `closest_destination` is true, an origin routes its full weight to its single nearest reachable destination instead of allocating across all of them.
+ Demand-weighted (flow) betweenness from a singly / origin-constrained spatial interaction model. Each origin distributes its full weight across reachable destinations in proportion to `W_d * decay(c)`, where `decay` is the supplied expression evaluated on `c` (metric cost) and `p` (normalised progress to the threshold) — the gravity model is one instance of this spatial interaction form. The allocated origin-destination flows are then routed along shortest paths via Brandes back-propagation, accumulating flow betweenness at intermediate nodes. `betweenness_exprs` mirrors `betweenness_od_shortest`: each named expression weights the allocated flow at seed time (e.g. `("demand_decay", "exp(-4 * p)")` attenuates a trip's contribution by its network distance), and all expressions share one traversal. Note the distinct roles: `decay_fn` shapes the (normalised) destination-choice allocation, so it can never scale an origin's total outflow, while `betweenness_exprs` weight the flow itself. Origins and destinations are `DataMap`s assigned to the network with the shared edge-R-tree assignment (`assign_data_to_network`: both endpoints of the nearest barrier-valid edge), with weights supplied as dicts keyed by data key (the same convention as the data layers' `landuses_map`). Assignment offsets enter every distance — origin offsets as traversal seed costs, destination offsets added when reading route costs and deduped to the nearest assigned node — so the composite origin->destination distance is `offset_o + graph + offset_d` throughout, matching the data layers' `network_dist + data_dist` convention. One traversal runs per origin point. When `closest_destination` is true, an origin routes its full weight to its single nearest reachable destination instead of allocating across all of them.
 
 </div>
 
@@ -390,6 +402,31 @@ layout: ../../layouts/PageLayout.astro
 
 
  Builds the R-tree for street edge geometries using their bounding boxes. Deduplicates edges based on sorted node pairs and geometric equality. Stores (start_node_idx, end_node_idx, start_node_point, end_node_point, edge_geom) in the R-tree data payload.
+
+</div>
+
+ 
+
+<div class="function">
+
+## build_street_rtree
+
+
+<div class="content">
+<span class="name">build_street_rtree</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">self</span>
+  </div>
+  <div class="param">
+    <span class="pn">/</span>
+  </div>
+  <span class="pt">)</span>
+</div>
+</div>
+
+
+ Builds the R-tree over dual-node street geometries (each dual node's primal segment), used for representation-aware data assignment on dual graphs: points assign to the single nearest street with a signed along-street offset. Leaves the tree `None` when no nodes carry street geometries (primal graphs, or duals built without them, which then fall back to the edge-based assignment).
 
 </div>
 

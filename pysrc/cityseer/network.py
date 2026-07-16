@@ -74,10 +74,13 @@ def _rebuild_dual_network(
         network_structure.set_is_directed(True)
     node_idx: dict[Any, int] = {}
     rebuilt_nodes_gdf = nodes_gdf.copy()
+    geoms = state.get("geoms", {})
     for node_key, row in rebuilt_nodes_gdf.iterrows():
         z = None
         if "z" in rebuilt_nodes_gdf.columns and pd.notna(row.get("z")):
             z = float(row["z"])
+        # the dual node's primal street geometry (representation-aware data assignment)
+        street_geom = geoms.get(node_key)
         node_idx[node_key] = network_structure.add_street_node(
             node_key=node_key,
             x=float(row["x"]),
@@ -85,6 +88,7 @@ def _rebuild_dual_network(
             live=bool(row["live"]),
             weight=float(row["weight"]),
             z=z,
+            street_geom_wkt=street_geom.wkt if street_geom is not None else None,
         )
     for record in sorted(state["edge_records"].values(), key=lambda item: item["edge_idx"]):
         network_structure.add_street_edge(
@@ -1250,7 +1254,16 @@ class CityNetwork:
 
         Wraps [`betweenness_demand`](/metrics/networks#betweenness_demand). All additional keyword
         arguments are forwarded; see that function for the full parameter list including ``distances``,
-        ``minutes``, ``decay_fn``, ``closest_destination``, ``metric_name``, and ``max_snap_dist``.
+        ``minutes``, ``decay_fn``, ``closest_destination``, ``participation``, ``metric_name``,
+        ``max_netw_assign_dist``, and ``barriers_gdf``. Origins and destinations are assigned to the
+        network with the same workflow as the data layers (representation-aware nearest-street
+        assignment, offsets included in routed distances). The model has two distance levers, each
+        with one job: ``decay_fn`` shapes destination choice within the allocation, and
+        ``participation`` (the share of people at a typical location who make a trip; ``1.0`` by
+        default, e.g. ``0.2`` for pedestrian flows) makes trip generation accessibility-elastic via
+        a stay-home option in the choice set. The output is a single conserved
+        ``cc_demand_{distance}`` column. For externally weighted or bespoke flow conventions use
+        [`betweenness_od`](#betweenness_od), which retains full expression support.
 
         Parameters
         ----------
@@ -1467,8 +1480,9 @@ class CityNetwork:
         crs: Any
             Optional CRS override for the GTFS data.
         max_netw_assign_dist: int
-            Maximum distance (metres) for snapping transit stops to the nearest network node.
-            Stops beyond this distance are excluded. Defaults to 400.
+            Maximum distance (metres) for assigning transit stops to the network (nearest street,
+            via the shared assignment workflow). Stops beyond this distance are excluded.
+            Defaults to 400.
 
         Returns
         -------

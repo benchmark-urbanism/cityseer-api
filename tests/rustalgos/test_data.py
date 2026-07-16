@@ -281,6 +281,69 @@ def override_coords(nx_multigraph: nx.MultiGraph) -> gpd.GeoDataFrame:
     return data_gdf
 
 
+def test_representation_aware_assignment():
+    """Pin the representation-aware assignment semantics on a deterministic geometry.
+
+    Primal: a point assigns to both endpoint nodes of the nearest street with along-street
+    offsets (projection distance to each end plus setback). Dual: a point assigns to the single
+    nearest street node with the setback as offset and a signed along-street component resolved
+    by direction of approach (credited entering via the end the point leans toward, debited from
+    the far end).
+    """
+    from cityseer.network import CityNetwork
+    from shapely.geometry import LineString
+
+    speed = config.SPEED_M_S
+
+    # --- primal: one street (0,0)-(100,0), point at (30, 10) ---
+    G = nx.MultiGraph()
+    G.add_node("a", x=0.0, y=0.0)
+    G.add_node("b", x=100.0, y=0.0)
+    G.add_edge("a", "b", geom=LineString([(0, 0), (100, 0)]))
+    G.graph["crs"] = 32631
+    _nodes, _edges, ns_p = io.network_structure_from_nx(G)
+    dmap = rustalgos.data.DataMap()
+    dmap.insert(0, geometry.Point(30.0, 10.0).wkt)
+    dmap.assign_data_to_network(ns_p, 100.0, 6)
+    flat = [(node, tuple(entry)) for node, entries in dmap.node_data_map.items() for entry in entries]
+    # both endpoints assigned, offsets are along-street + setback, no signed component
+    offsets = {node: entry[1] for node, entry in flat}
+    assert len(flat) == 2
+    assert all(entry[2] == 0.0 and entry[3] is None for _node, entry in flat)
+    assert sorted(round(v, 3) for v in offsets.values()) == [40.0, 80.0]
+    # aggregate distances follow the along-street convention from each side
+    reach_a = dmap.aggregate_to_src_idx(0, ns_p, int(1000 / speed), speed)
+    reach_b = dmap.aggregate_to_src_idx(1, ns_p, int(1000 / speed), speed)
+    assert abs(reach_a["int:0"] - 40.0) < 0.5  # walk 30 along + 10 setback
+    assert abs(reach_b["int:0"] - 80.0) < 0.5  # walk 70 along + 10 setback
+
+    # --- dual: three collinear streets, point beside the middle one ---
+    segs = [LineString([(0, 0), (100, 0)]), LineString([(100, 0), (200, 0)]), LineString([(200, 0), (300, 0)])]
+    seg_gdf = gpd.GeoDataFrame({"geometry": segs}, crs=32631)
+    cn = CityNetwork.from_geopandas(seg_gdf, remove_fillers=False, remove_danglers=0.0, merge_parallel_dist=0.0)
+    ns_d = cn._network_structure
+    node_of = dict(zip(cn.nodes_gdf.index, cn.nodes_gdf["ns_node_idx"], strict=True))
+    dmap_d = rustalgos.data.DataMap()
+    # point at (130, 5): on street B (midpoint 150), 30m from B's start end -> leans toward (100, 0)
+    dmap_d.insert(0, geometry.Point(130.0, 5.0).wkt)
+    dmap_d.assign_data_to_network(ns_d, 100.0, 6)
+    flat_d = [(node, tuple(entry)) for node, entries in dmap_d.node_data_map.items() for entry in entries]
+    assert len(flat_d) == 1  # single nearest street
+    node_b, entry_d = flat_d[0]
+    assert node_b == node_of[1]
+    assert abs(entry_d[1] - 5.0) < 0.001  # setback
+    assert abs(entry_d[2] - 20.0) < 0.001  # along: |50 - 30|
+    assert entry_d[3] is not None and abs(entry_d[3][0] - 100.0) < 0.2 and abs(entry_d[3][1] - 0.0) < 0.2
+    # signed distances by direction of approach: from A (via the toward end) the along component
+    # is credited; from C (via the far end) it is debited; from B itself the midpoint reference
+    reach_from_a = dmap_d.aggregate_to_src_idx(node_of[0], ns_d, int(1000 / speed), speed)
+    reach_from_c = dmap_d.aggregate_to_src_idx(node_of[2], ns_d, int(1000 / speed), speed)
+    reach_from_b = dmap_d.aggregate_to_src_idx(node_of[1], ns_d, int(1000 / speed), speed)
+    assert abs(reach_from_a["int:0"] - 85.0) < 0.5  # 100 (A mid -> B mid) - 20 + 5: true walk 80 + 5
+    assert abs(reach_from_c["int:0"] - 125.0) < 0.5  # 100 + 20 + 5: true walk 120 + 5
+    assert abs(reach_from_b["int:0"] - 25.0) < 0.5  # midpoint reference: 20 + 5
+
+
 def test_assign_to_network(primal_graph):
     # create additional dead-end scenario
     primal_graph.remove_edge("14", "15")
@@ -300,7 +363,7 @@ def test_assign_to_network(primal_graph):
         # plot.plot_assignment(network_structure, G, data_map)
         for node_idx, data_assignments in data_map.node_data_map.items():
             matches = []
-            for data_idx, data_dist in data_assignments:
+            for data_idx, data_dist, _along, _toward in data_assignments:
                 matches.append(data_idx)
                 # get the data point
                 data_entry = data_map.entries[data_idx]
@@ -330,7 +393,7 @@ def test_assign_to_network(primal_graph):
     # plot.plot_assignment(network_structure, primal_graph, data_map)
     for node_idx, data_assignments in data_map.node_data_map.items():
         matches = []
-        for data_idx, data_dist in data_assignments:
+        for data_idx, data_dist, _along, _toward in data_assignments:
             matches.append(data_idx)
             # get the data point
             data_entry = data_map.entries[data_idx]
@@ -349,7 +412,7 @@ def test_assign_to_network(primal_graph):
     data_map.assign_data_to_network(network_structure, max_assignment_dist=0, n_nearest_candidates=6)
     for node_idx, data_assignments in data_map.node_data_map.items():
         matches = []
-        for data_idx, data_dist in data_assignments:
+        for data_idx, data_dist, _along, _toward in data_assignments:
             matches.append(data_idx)
             # get the data point
             data_entry = data_map.entries[data_idx]
@@ -383,7 +446,7 @@ def test_assign_to_network(primal_graph):
 
     for node_idx, data_assignments in data_map.node_data_map.items():
         matches = []
-        for data_idx, data_dist in data_assignments:
+        for data_idx, data_dist, _along, _toward in data_assignments:
             matches.append(data_idx)
             # get the data point
             data_entry = data_map.entries[data_idx]
@@ -417,27 +480,37 @@ def test_aggregate_to_src_idx(primal_graph, dual_graph):
                 _nodes, tree_map = network_structure_p.dijkstra_tree_shortest(
                     netw_src_idx, int(max_seconds), config.SPEED_M_S
                 )
-                manual_reachable = {}
-                manual_not_reachable = {}
+                # Per key, the candidate signed distances: primal assignments (toward None) yield
+                # one exact candidate; dual assignments yield base +- along, with the sign
+                # resolved by direction of approach on the rust side (so the rust distance must
+                # match one of the two).
+                manual_candidates: dict = {}
                 for node_idx, node_visit in enumerate(tree_map):  # type: ignore
-                    if np.isfinite(node_visit.agg_seconds):
+                    # mirror the rust aggregation's node filter: settled within the walk limit
+                    if np.isfinite(node_visit.agg_seconds) and node_visit.agg_seconds < int(max_seconds):
                         if node_idx not in data_map.node_data_map:
                             continue
-                        for assigned_data_idx, assigned_data_dist in data_map.node_data_map[node_idx]:
-                            dist = node_visit.agg_seconds * config.SPEED_M_S + assigned_data_dist
-                            if dist <= max_dist:
-                                manual_reachable[assigned_data_idx] = dist
-                            else:
-                                manual_not_reachable[assigned_data_idx] = dist
+                        for assigned_data_idx, offset, along, toward in data_map.node_data_map[node_idx]:
+                            base = node_visit.agg_seconds * config.SPEED_M_S + offset
+                            cands = [base] if toward is None else [max(base - along, 0.0), base + along]
+                            manual_candidates.setdefault(assigned_data_idx, []).extend(cands)
                 for reachable_key, reachable_dist in reachable_entries.items():
-                    assert reachable_key in manual_reachable
-                    assert reachable_dist - manual_reachable[reachable_key] < config.ATOL
-                shadowed_dupes = ["int:45", "int:46", "int:47", "int:48"]
+                    assert reachable_key in manual_candidates
+                    assert any(reachable_dist - cand < config.ATOL for cand in manual_candidates[reachable_key])
+                # conservative candidate (max) within range implies rust must also report the key
+                # keyed to the conservative (max) candidate: presence in rust is guaranteed only
+                # when even the worst-case signed distance fits, and the boundary slack below must
+                # measure against that same value (rust's cutoff is int(max_seconds) * speed)
+                manual_reachable = {
+                    key: max(cands) for key, cands in manual_candidates.items() if max(cands) <= max_dist
+                }
+                # items 45-49 share a data_id: deduplication retains at most one of the group
+                dupe_group = ["int:45", "int:46", "int:47", "int:48", "int:49"]
+                if deduplicate is True:
+                    assert len([k for k in dupe_group if k in reachable_entries]) <= 1
                 for reachable_key in manual_reachable:
-                    if deduplicate is True and reachable_key in shadowed_dupes:
-                        assert "int:49" in manual_reachable
-                        assert "int:49" in reachable_entries
-                        assert reachable_key not in reachable_entries
+                    if deduplicate is True and reachable_key in dupe_group:
+                        # which group member survives is a dedupe choice, not a reachability claim
                         continue
                     try:
                         assert reachable_key in reachable_entries
@@ -465,35 +538,38 @@ def test_aggregate_to_src_idx(primal_graph, dual_graph):
                 _nodes, tree_map = network_structure_d.dijkstra_tree_simplest(
                     netw_src_idx, int(max_seconds), config.SPEED_M_S
                 )
-                # check that reachable entries and respective distances are correct
-                # should match against the network structure plus data_map.node_data_map distances
-                manual_reachable = {}
-                manual_not_reachable = {}
+                # check that reachable entries and respective distances are correct: dual
+                # assignments are signed (base +- along by direction of approach), so the rust
+                # distance must match one of the two candidates
+                manual_candidates: dict = {}
                 for node_idx, node_visit in enumerate(tree_map):  # type: ignore
-                    if np.isfinite(node_visit.agg_seconds):
+                    # mirror the rust aggregation's node filter: settled within the walk limit
+                    if np.isfinite(node_visit.agg_seconds) and node_visit.agg_seconds < int(max_seconds):
                         if node_idx not in data_map.node_data_map:
                             continue
-                        for assigned_data_idx, assigned_data_dist in data_map.node_data_map[node_idx]:
-                            dist = node_visit.agg_seconds * config.SPEED_M_S + assigned_data_dist
-                            if dist <= max_dist:
-                                manual_reachable[assigned_data_idx] = dist
-                            else:
-                                manual_not_reachable[assigned_data_idx] = dist
-                # all reachable entries should be in manual reachable and distances should be the same
+                        for assigned_data_idx, offset, along, toward in data_map.node_data_map[node_idx]:
+                            base = node_visit.agg_seconds * config.SPEED_M_S + offset
+                            cands = [base] if toward is None else [max(base - along, 0.0), base + along]
+                            manual_candidates.setdefault(assigned_data_idx, []).extend(cands)
                 for reachable_key, reachable_dist in reachable_entries.items():
-                    assert reachable_key in manual_reachable
-                    assert reachable_dist - manual_reachable[reachable_key] < config.ATOL
-                # manual reachable shouldn't contain keys not in reachable entries
+                    assert reachable_key in manual_candidates
+                    assert any(reachable_dist - cand < config.ATOL for cand in manual_candidates[reachable_key])
+                # conservative candidate (max) within range implies rust must also report the key
                 # allow 1m tolerance for floating point errors
                 # handle shadowed dupe id nodes in deduplication case
-                shadowed_dupes = ["int:45", "int:46", "int:47", "int:48"]
+                # keyed to the conservative (max) candidate: presence in rust is guaranteed only
+                # when even the worst-case signed distance fits, and the boundary slack below must
+                # measure against that same value (rust's cutoff is int(max_seconds) * speed)
+                manual_reachable = {
+                    key: max(cands) for key, cands in manual_candidates.items() if max(cands) <= max_dist
+                }
+                # items 45-49 share a data_id: deduplication retains at most one of the group
+                dupe_group = ["int:45", "int:46", "int:47", "int:48", "int:49"]
+                if deduplicate is True:
+                    assert len([k for k in dupe_group if k in reachable_entries]) <= 1
                 for reachable_key in manual_reachable:
-                    if deduplicate is True and reachable_key in shadowed_dupes:
-                        # if shadowed by closest dedupe node, then it should not be reachable
-                        # but if within max dist, then "int:49" should be reachable
-                        assert "int:49" in manual_reachable
-                        assert "int:49" in reachable_entries
-                        assert reachable_key not in reachable_entries
+                    if deduplicate is True and reachable_key in dupe_group:
+                        # which group member survives is a dedupe choice, not a reachability claim
                         continue
                     try:
                         assert reachable_key in reachable_entries
@@ -532,12 +608,14 @@ def test_accessibility(primal_graph, dual_graph):
         betas = rustalgos.betas_from_distances(distances)
         for dist, beta in zip(distances, betas, strict=True):
             z_counts = []
+            z_ns = []  # unweighted reachable z-item counts (offset-convention invariant)
             for src_idx in network_structure.street_node_indices():  # type: ignore
                 # aggregate
                 a_count = 0
                 b_count = 0
                 c_count = 0
                 z_count = 0  # for deduplication checks on data items 45-49 - which are only z items
+                z_n = 0
                 a_dist = np.nan
                 b_dist = np.nan
                 c_dist = np.nan
@@ -569,6 +647,7 @@ def test_accessibility(primal_graph, dual_graph):
                                 c_dist = data_dist
                         elif data_class == "z":
                             z_count += np.exp(-beta * data_dist)
+                            z_n += 1
                             if np.isnan(z_dist) or data_dist < z_dist:
                                 z_dist = data_dist
                 # assertions
@@ -600,11 +679,14 @@ def test_accessibility(primal_graph, dual_graph):
                     assert dist not in accessibilities.result["z"].distance
                 # check for deduplication
                 z_counts.append(z_count)
+                z_ns.append(z_n)
+            # the five co-located duplicate z items (45-49): deduplication collapses them to at
+            # most one reachable item; without deduplication all five count wherever reachable
             if deduplicate is True:
-                assert np.all(z_counts) <= 1
+                assert max(z_ns) <= 1
             else:
                 if dist >= 800:
-                    assert max(z_counts) >= 1
+                    assert max(z_ns) == 5
     # setup dual data
     with pytest.raises(ValueError, match="dual graph"):
         data_map.accessibility(

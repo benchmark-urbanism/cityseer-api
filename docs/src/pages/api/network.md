@@ -1552,7 +1552,7 @@ cn.centrality_simplest(distances=[400, 800, 1600])
 
  Compute demand-weighted (flow) betweenness from a spatial interaction model. Trips are allocated between weighted origins (e.g. population) and weighted destinations (e.g. attractors) using a singly (origin-)constrained spatial interaction model, then routed along shortest network paths so intermediate streets accumulate the flow passing through them. This is the modelled-matrix counterpart to [`betweenness_od`](#betweenness_od): the per-pair weights are derived from the network distances revealed during routing, rather than supplied as an explicit OD matrix.
 
- Wraps [`betweenness_demand`](/metrics/networks#betweenness_demand). All additional keyword arguments are forwarded; see that function for the full parameter list including ``distances``, ``minutes``, ``decay_fn``, ``closest_destination``, ``metric_name``, and ``max_snap_dist``.
+ Wraps [`betweenness_demand`](/metrics/networks#betweenness_demand). All additional keyword arguments are forwarded; see that function for the full parameter list including ``distances``, ``minutes``, ``decay_fn``, ``betweenness``, ``closest_destination``, ``metric_name``, ``max_netw_assign_dist``, and ``barriers_gdf``. Origins and destinations are assigned to the network with the same workflow as the data layers (representation-aware nearest-street assignment, offsets included in routed distances). The ``betweenness`` expression dict (as in [`centrality_shortest`](#centrality_shortest)) weights the allocated flow by network distance; the default ``{"demand": "1", "demand_decay": "exp(-4 * p)"}`` emits a conserved and a distance-attenuated flow column from one traversal.
 ### Parameters
 <div class="param-set">
   <div class="def">
@@ -1602,7 +1602,7 @@ cn.centrality_simplest(distances=[400, 800, 1600])
   </div>
   <div class="desc">
 
- Returns self for method chaining. A ``cc_{metric_name}_{distance}`` column (default ``cc_demand_{distance}``) is written to ``nodes_gdf``.</div>
+ Returns self for method chaining. One ``cc_{name}_{distance}`` column is written to ``nodes_gdf`` per ``betweenness`` expression (default: ``cc_demand_{distance}`` and ``cc_demand_decay_{distance}``).</div>
 </div>
 
 ### Notes

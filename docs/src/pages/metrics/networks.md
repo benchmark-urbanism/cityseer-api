@@ -682,6 +682,11 @@ print(nodes_gdf[["cc_harmonic_400", "cc_betweenness_800"]])
     <span class="pa"> str = 'exp(-4 * p)'</span>
   </div>
   <div class="param">
+    <span class="pn">betweenness</span>
+    <span class="pc">:</span>
+    <span class="pa"> dict[str, str] | None = None</span>
+  </div>
+  <div class="param">
     <span class="pn">closest_destination</span>
     <span class="pc">:</span>
     <span class="pa"> bool = False</span>
@@ -692,9 +697,19 @@ print(nodes_gdf[["cc_harmonic_400", "cc_betweenness_800"]])
     <span class="pa"> str = 'demand'</span>
   </div>
   <div class="param">
-    <span class="pn">max_snap_dist</span>
+    <span class="pn">max_netw_assign_dist</span>
     <span class="pc">:</span>
     <span class="pa"> float = 100.0</span>
+  </div>
+  <div class="param">
+    <span class="pn">barriers_gdf</span>
+    <span class="pc">:</span>
+    <span class="pa"> geopandas.geodataframe.GeoDataFrame | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">n_nearest_candidates</span>
+    <span class="pc">:</span>
+    <span class="pa"> int = 50</span>
   </div>
   <div class="param">
     <span class="pn">speed_m_s</span>
@@ -812,7 +827,17 @@ $$
   </div>
   <div class="desc">
 
- Distance-decay expression for the allocation, using `c` (metric cost) and `p` (normalised progress = `c / threshold`). Defaults to `&quot;exp(-4 * p)&quot;` (scale-free, re-normalised per threshold). For a classic gravity model on absolute distance use e.g. `&quot;exp(-0.002 * c)&quot;`.</div>
+ Distance-decay expression for the allocation, using `c` (metric cost) and `p` (normalised progress = `c / threshold`). Defaults to `&quot;exp(-4 * p)&quot;` (scale-free, re-normalised per threshold). For a classic gravity model on absolute distance use e.g. `&quot;exp(-0.002 * c)&quot;`. Because the allocation is normalised per origin, this expression only shapes destination choice; it cannot scale an origin's total outflow. Use `betweenness` expressions for that.</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">betweenness</div>
+    <div class="type">dict[str, str]</div>
+  </div>
+  <div class="desc">
+
+ Named expressions weighting the allocated flow itself, as in [`betweenness_od`](#betweenness_od) and [`centrality_shortest`](#centrality_shortest). Each expression is evaluated on the revealed network distance (`c`, or `p` = `c / threshold`) and multiplies the per-pair flow before routing, producing one `cc_{name}_{distance}` column per entry from a single traversal. ``None`` uses the paired default (mirroring the shortest-path betweenness defaults): ``{metric_name: &quot;1&quot;}`` — conserved flow, every trip contributing its full allocated weight regardless of length — plus ``{metric_name}_decay: &quot;exp(-4 * p)&quot;``, which attenuates each trip's contribution by its network distance, reflecting trip frequency falling with trip length.</div>
 </div>
 
 <div class="param-set">
@@ -832,17 +857,37 @@ $$
   </div>
   <div class="desc">
 
- Name used for the output column (`cc_{metric_name}_{distance}`). Defaults to `&quot;demand&quot;`.</div>
+ Name used for the default output columns (`cc_{metric_name}_{distance}` and `cc_{metric_name}_decay_{distance}`) when `betweenness` is `None`. Defaults to `&quot;demand&quot;`.</div>
 </div>
 
 <div class="param-set">
   <div class="def">
-    <div class="name">max_snap_dist</div>
+    <div class="name">max_netw_assign_dist</div>
     <div class="type">float</div>
   </div>
   <div class="desc">
 
- Maximum distance for snapping origin/destination points to network nodes. Points farther than this are dropped (with a logged count).</div>
+ Maximum assignment distance for origin/destination points. Points are assigned to the network with the same workflow as the data layers ([`build_data_map`](/metrics/layers#build_data_map): representation-aware nearest-street assignment, with assignment offsets included in all routed distances — allocation, flow decay, and radius cutoffs alike); points with no valid assignment within this distance are dropped.</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">barriers_gdf</div>
+    <div class="type">GeoDataFrame</div>
+  </div>
+  <div class="desc">
+
+ Optional barriers to respect during assignment, as in the data layers.</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">n_nearest_candidates</div>
+    <div class="type">int</div>
+  </div>
+  <div class="desc">
+
+ The number of nearest candidate edges to consider when assigning points to the network, as in the data layers.</div>
 </div>
 
 <div class="param-set">

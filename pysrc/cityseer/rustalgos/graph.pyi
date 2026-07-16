@@ -8,6 +8,7 @@ from .centrality import (
     CentralityResult,
     OdMatrix,
 )
+from .data import DataMap
 
 __doc__: str
 
@@ -108,6 +109,7 @@ class NetworkStructure:
         live: bool,
         weight: float,
         z: float | None = None,
+        street_geom_wkt: str | None = None,
     ) -> int:  # Returns usize in Rust
         """
         Add a standard street network node.
@@ -128,6 +130,11 @@ class NetworkStructure:
             Optional z-coordinate (elevation). Default None. When z is provided for both endpoints
             of an edge, a slope-based walking impedance (Tobler's hiking function) is automatically
             applied during shortest-path and simplest-path computations.
+        street_geom_wkt: str | None
+            On dual graphs, the WKT of the primal street segment this node represents (the node
+            point is its midpoint). Enables representation-aware data assignment: points assign to
+            the single nearest street with a signed along-street offset. Default None (primal
+            graphs).
         Returns
         -------
         int
@@ -588,12 +595,15 @@ class NetworkStructure:
         ...
     def betweenness_demand_shortest(
         self,
-        origins: list[tuple[int, float]],
-        destinations: list[tuple[int, float]],
+        origins: DataMap,
+        origin_weights_map: dict[Any, float],
+        destinations: DataMap,
+        destination_weights_map: dict[Any, float],
         decay_fn: str,
         distances: list[int] | None = None,
         minutes: list[float] | None = None,
         closest_destination: bool = False,
+        participation: float | None = None,
         metric_name: str | None = None,
         speed_m_s: float | None = None,
         tolerance: float | None = None,
@@ -604,24 +614,41 @@ class NetworkStructure:
 
         Each origin distributes its full weight across reachable destinations in proportion to
         ``W_d * decay_fn(c)`` and the allocated flows are routed along shortest paths. Origins and
-        destinations are aggregated by node first (duplicate-snapped points sum their weights).
+        destinations are ``DataMap``s assigned via ``assign_data_to_network`` (the shared
+        edge-based assignment), with weights as dicts keyed by data key (the ``landuses_map``
+        convention). Assignment offsets enter every routed distance: origin offsets as traversal
+        seed costs, destination offsets added to route costs and deduped to the nearest assigned
+        node, so composite distance is ``offset_o + graph + offset_d``. One traversal runs per
+        origin point.
 
         Parameters
         ----------
-        origins: list[tuple[int, float]]
-            ``(node_idx, weight)`` pairs for demand origins.
-        destinations: list[tuple[int, float]]
-            ``(node_idx, weight)`` pairs for demand destinations / attractors.
+        origins: DataMap
+            Assigned demand origin points.
+        origin_weights_map: dict[Any, float]
+            Weight per origin, keyed by data key (must cover every entry).
+        destinations: DataMap
+            Assigned demand destination / attractor points.
+        destination_weights_map: dict[Any, float]
+            Weight per destination, keyed by data key (must cover every entry).
         decay_fn: str
             Distance-decay expression using ``c`` (metric cost) and ``p`` (normalised progress).
+            Shapes the normalised destination-choice allocation only.
         distances: list[int] | None
             Distance thresholds (meters).
         minutes: list[float] | None
             Time thresholds (minutes).
         closest_destination: bool
-            If True, route each origin's full weight to its single nearest reachable destination.
+            If True, route each origin's participating weight to its single nearest reachable
+            destination.
+        participation: float | None
+            Participation share s in (0, 1]: the share of people at a typical location who make a
+            trip. A stay-home weight K is derived per distance threshold from the run's median
+            origin accessibility (``K = A_med * (1 - s) / s``, logged) and each origin participates
+            at rate ``A_o / (K + A_o)``. ``None`` / ``1.0`` (full participation) conserves full
+            weights at no extra cost; below 1 costs one extra traversal sweep.
         metric_name: str | None
-            Output metric name (default ``"demand"``).
+            Default output metric name when ``betweenness_exprs`` is None (default ``"demand"``).
         speed_m_s: float | None
             Travel speed (m/s).
         tolerance: float | None

@@ -33,7 +33,13 @@ Often you do not have observed trips, only where people live and where they migh
 
 $$W_{od} = W_o \cdot \frac{W_d \, f(c_{od})}{\sum_{d'} W_{d'} \, f(c_{od'})}$$
 
-Here $f$ is a distance-decay (deterrence) function, supplied as a [`decay_fn`](/api/decay) expression, and $c_{od}$ is the network distance from origin to destination. With an exponential decay this is the classic gravity model. "Singly constrained" means only the origin totals are held fixed: each origin sends out exactly its own weight, while destination totals are left free (constraining both ends would require a doubly-constrained, or Furness, model). The allocation and the routing happen in one traversal per origin, so no explicit matrix is materialised.
+Here $f$ is a distance-decay (deterrence) function, supplied as a [`decay_fn`](/api/decay) expression, and $c_{od}$ is the network distance from origin to destination. With an exponential decay this is the classic gravity model. "Singly constrained" means only the origin totals are held fixed: each origin sends out exactly its own weight, while destination totals are left free (constraining both ends would require a doubly-constrained, or Furness, model). The allocation and the routing happen in one traversal per origin, so no explicit matrix is materialised. Origins and destinations are assigned to the network with the same workflow as the data layers, and the assignment offsets are included in the allocation distances, the decay, and the radius cutoffs.
+
+### Two levers, two questions
+
+Because the allocation is normalised, `decay_fn` decides only where trips go, never how much travel occurs: every origin emits exactly its weight regardless of how far its destinations sit. How much travel occurs is a separate question, answered by the `participation` share: a stay-home option joins the destination choice set, so each origin participates at rate $A_o / (K + A_o)$, where $A_o$ is its accessibility and $K$ is derived from `participation` against the run's own median accessibility. Locations with a rich reachable offer send out nearly their full weight; poorly connected locations send out less. This is the standard discrete-choice treatment of trip generation (a logit with a no-travel alternative), and it makes modelled volumes respond to accessibility rather than being fixed by construction.
+
+`participation = 1` (the default) is full participation, the classic conserved model. For predicting pedestrian volumes, walking mode shares suggest starting around `0.2`, one in five people travelling at a typical location; use a local travel survey's share when available. The fit is not knife-edge in this setting.
 
 ## Which method to use
 
