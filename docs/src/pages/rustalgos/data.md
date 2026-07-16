@@ -79,9 +79,6 @@ layout: ../../layouts/PageLayout.astro
 
 
 
- Map of data entries for spatial analysis.
-
-
 
 <div class="function">
 

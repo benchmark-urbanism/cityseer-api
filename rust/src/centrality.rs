@@ -2,6 +2,7 @@ use crate::common;
 
 use crate::common::MetricResult;
 use crate::common::WALKING_SPEED;
+use crate::data::DataMap;
 use crate::graph::{NetworkStructure, NodeVisit};
 use numpy::PyArray1;
 use petgraph::prelude::*;
@@ -20,6 +21,15 @@ use std::collections::HashMap;
 use std::collections::HashSet;
 use std::sync::atomic::AtomicU32;
 use std::sync::atomic::Ordering as AtomicOrdering;
+
+/// Weighted demand points resolved to network assignments:
+/// `(weight, [(node_idx, offset, along, toward)])`. `offset` is the unsigned distance component;
+/// `along` and `toward` carry the dual's signed along-street component, resolved by direction of
+/// approach at query time (see `graph::resolve_assignment_dist`).
+type WeightedAssignments = Vec<(f64, Vec<(usize, f32, f32, Option<(f64, f64)>)>)>;
+
+/// Raw per-entry assignment list as stored by `DataMap` (f64 precision).
+type RawAssignments = Vec<(usize, f64, f64, Option<(f64, f64)>)>;
 
 const ANGULAR_ROUTE_TIE_BREAK_FACTOR: f32 = 1e-6;
 /// Minimum float-comparison tolerance for both shortest-path and angular routing.
@@ -1163,6 +1173,28 @@ impl NetworkStructure {
         tolerance: f32,
         upstream: bool,
     ) -> BrandesTraversal {
+        // Single-source traversal: a source node at zero offset. Delegates to the seeded variant
+        // so centrality / OD callers are byte-identical to the pre-multi-source implementation.
+        self.dijkstra_brandes_shortest_seeded(&[(src_idx, 0.0)], max_seconds, speed_m_s, tolerance, upstream)
+    }
+
+    /// Brandes Dijkstra from one or more seed nodes, each with an initial offset cost (metres).
+    ///
+    /// A single `(node, 0.0)` seed is the classic single-source traversal. Multiple seeds model an
+    /// off-network point assigned to both endpoints of its nearest edge: each endpoint is seeded at
+    /// its straight-line offset to the point, so a path leaving the point exits via whichever
+    /// endpoint gives the shorter total. Each seed is an independent shortest-path root (`sigma = 1`
+    /// at its offset), so downstream sigma accumulates correctly across the two entry routes. For a
+    /// point on edge A–B, `offset_A + |A-B| > offset_B` by the triangle inequality, so no seed's
+    /// direct offset is ever improved by routing through the other seed (no spurious ties).
+    fn dijkstra_brandes_shortest_seeded(
+        &self,
+        seeds: &[(usize, f32)],
+        max_seconds: u32,
+        speed_m_s: f32,
+        tolerance: f32,
+        upstream: bool,
+    ) -> BrandesTraversal {
         assert!(
             tolerance >= TIE_EPSILON,
             "Tolerance must be >= TIE_EPSILON to avoid float-comparison bugs"
@@ -1181,17 +1213,23 @@ impl NetworkStructure {
         let mut best_agg_seconds = vec![f32::INFINITY; node_count];
 
         // Phase 1: Exact Dijkstra — settled distances and predecessors (TIE_EPSILON).
-        states[src_idx].sigma = 1.0;
-        states[src_idx].route_cost = 0.0;
-        states[src_idx].agg_seconds = 0.0;
-        best_route_cost[src_idx] = 0.0;
-        best_agg_seconds[src_idx] = 0.0;
-
+        // Seed each source node at its offset cost; skip a seed already beyond the walk limit.
         let mut active = BinaryHeap::new();
-        active.push(NodeDistance {
-            node_idx: src_idx,
-            metric: 0.0,
-        });
+        for &(seed_idx, offset) in seeds {
+            let offset_seconds = offset / speed_m_s;
+            if offset_seconds > max_seconds as f32 {
+                continue;
+            }
+            states[seed_idx].sigma = 1.0;
+            states[seed_idx].route_cost = offset;
+            states[seed_idx].agg_seconds = offset_seconds;
+            best_route_cost[seed_idx] = offset;
+            best_agg_seconds[seed_idx] = offset_seconds;
+            active.push(NodeDistance {
+                node_idx: seed_idx,
+                metric: offset,
+            });
+        }
 
         while let Some(NodeDistance {
             node_idx: state_idx,
@@ -1273,7 +1311,13 @@ impl NetworkStructure {
                 states[idx].preds.clear();
                 states[idx].sigma = 0.0;
             }
-            states[src_idx].sigma = 1.0;
+            // Re-seed every source root (visited seeds only; a seed beyond the walk limit was
+            // never pushed in Phase 1 and stays at sigma 0).
+            for &(seed_idx, offset) in seeds {
+                if (offset / speed_m_s) <= max_seconds as f32 {
+                    states[seed_idx].sigma = 1.0;
+                }
+            }
             for (pos, &u_idx) in visited_state_indices.iter().enumerate() {
                 let u_node_index = NodeIndex::new(states[u_idx].node_idx);
                 for edge_ref in self.graph.edges_directed(u_node_index, direction) {
@@ -2128,17 +2172,40 @@ impl NetworkStructure {
     /// and `p` (normalised progress to the threshold) — the gravity model is one instance of this
     /// spatial interaction form. The allocated origin-destination flows are then routed along
     /// shortest paths via Brandes back-propagation, accumulating flow betweenness at intermediate
-    /// nodes. Origins and destinations are each aggregated by node first, so several snapped points
-    /// sharing a node contribute their summed weight (and a node only triggers one Dijkstra). When
-    /// `closest_destination` is true, an origin routes its full weight to its single nearest
-    /// reachable destination instead of allocating across all of them.
+    /// nodes into a single output metric named `metric_name`. The model owns its flow weights:
+    /// there is deliberately no per-trip flow re-weighting here (distance damping belongs to
+    /// `decay_fn` for destination choice and `participation` for trip generation; bespoke
+    /// externally-weighted flows belong to `betweenness_od_shortest`).
+    /// Origins and destinations are `DataMap`s assigned to the network with the shared edge-R-tree
+    /// assignment (`assign_data_to_network`: both endpoints of the nearest barrier-valid edge),
+    /// with weights supplied as dicts keyed by data key (the same convention as the data layers'
+    /// `landuses_map`). Assignment offsets enter every distance — origin offsets as traversal seed
+    /// costs, destination offsets added when reading route costs and deduped to the nearest
+    /// assigned node — so the composite origin->destination distance is `offset_o + graph +
+    /// offset_d` throughout, matching the data layers' `network_dist + data_dist` convention. One
+    /// traversal runs per origin point. When `closest_destination` is true, an origin routes its
+    /// full weight to its single nearest reachable destination instead of allocating across all of
+    /// them.
+    ///
+    /// `participation` (s) adds a stay-home alternative to the destination choice set: each
+    /// origin participates at rate `A_o / (K + A_o)` where `A_o` is its accessibility
+    /// (`sum W_d * decay(c)`) and K is derived per distance threshold from the run's own median
+    /// origin accessibility, `K_d = A_med_d * (1 - s) / s` — "s is the share of people at a
+    /// typical location who make a trip". Trip generation therefore falls where accessibility is
+    /// low. Full participation (`s = 1`, the default) means `K = 0` exactly: the derivation
+    /// pre-pass is skipped and behaviour is the classic conserved model at no extra cost. The
+    /// participation rate scales both allocation modes, so `closest_destination` routes the
+    /// participating weight (not the full weight) to the nearest destination when `s < 1`.
     #[pyo3(signature = (
         origins,
+        origin_weights_map,
         destinations,
+        destination_weights_map,
         decay_fn,
         distances=None,
         minutes=None,
         closest_destination=false,
+        participation=None,
         metric_name=None,
         speed_m_s=None,
         tolerance=None,
@@ -2147,12 +2214,15 @@ impl NetworkStructure {
     #[allow(clippy::too_many_arguments)]
     pub fn betweenness_demand_shortest(
         &self,
-        origins: Vec<(usize, f64)>,
-        destinations: Vec<(usize, f64)>,
+        origins: &DataMap,
+        origin_weights_map: Py<PyAny>,
+        destinations: &DataMap,
+        destination_weights_map: Py<PyAny>,
         decay_fn: String,
         distances: Option<Vec<u32>>,
         minutes: Option<Vec<f32>>,
         closest_destination: bool,
+        participation: Option<f64>,
         metric_name: Option<String>,
         speed_m_s: Option<f32>,
         tolerance: Option<f32>,
@@ -2161,6 +2231,22 @@ impl NetworkStructure {
     ) -> PyResult<CentralityResult> {
         let speed_m_s = speed_m_s.unwrap_or(WALKING_SPEED);
         let (distances, seconds) = common::pair_distances_and_time(speed_m_s, distances, minutes)?;
+        let participation = match participation {
+            None => None,
+            Some(s) => {
+                if !(s > 0.0 && s <= 1.0) {
+                    return Err(exceptions::PyValueError::new_err(format!(
+                        "participation must be in (0, 1] (got {})",
+                        s
+                    )));
+                }
+                if s >= 1.0 {
+                    None
+                } else {
+                    Some(s)
+                }
+            }
+        };
         // Validate the decay expression up front via the shared metric-expression path.
         let metric_name = metric_name.unwrap_or_else(|| "demand".to_string());
         let decay_validated = common::validate_metric_exprs(&[(metric_name.clone(), decay_fn)])?;
@@ -2168,36 +2254,96 @@ impl NetworkStructure {
         let max_walk_seconds = *seconds.iter().max().expect("Seconds vector should not be empty");
         let tolerance = validate_tolerance(tolerance)?;
 
+        // Extract weights keyed by composite data key, mirroring the data layers' `landuses_map`
+        // convention: every entry must have a weight; keys are converted with the same composite
+        // key function used at insertion.
+        let extract_weights = |weights_map: Py<PyAny>,
+                               data_map: &DataMap,
+                               label: &str|
+         -> PyResult<std::collections::HashMap<String, f64>> {
+            let dict: &Bound<'_, pyo3::types::PyDict> = weights_map.bind(py).cast()?;
+            if dict.len() != data_map.entry_count() {
+                return Err(exceptions::PyValueError::new_err(format!(
+                    "The number of {} weights must match the number of {} data points",
+                    label, label
+                )));
+            }
+            let mut out: std::collections::HashMap<String, f64> =
+                std::collections::HashMap::with_capacity(dict.len());
+            for (py_key, py_val) in dict.iter() {
+                let comp_key = common::py_key_to_composite(py_key.clone())?;
+                if !data_map.has_entry(&comp_key) {
+                    return Err(exceptions::PyKeyError::new_err(format!(
+                        "{} data entries key missing: {}",
+                        label, comp_key
+                    )));
+                }
+                let w: f64 = py_val.extract()?;
+                out.insert(comp_key, w);
+            }
+            Ok(out)
+        };
+        let origin_weights = extract_weights(origin_weights_map, origins, "origin")?;
+        let destination_weights = extract_weights(destination_weights_map, destinations, "destination")?;
+
         let n = self.node_bound();
-        // Aggregate weights by node so duplicate-snapped points are summed rather than discarded,
-        // and each node is only visited once.
-        let mut origin_weights: std::collections::HashMap<usize, f64> = std::collections::HashMap::new();
-        for (node_idx, w) in origins {
-            if node_idx >= n {
-                return Err(exceptions::PyValueError::new_err(format!(
-                    "Origin node index {} is out of bounds (max {})",
-                    node_idx,
-                    n - 1
-                )));
+        // Resolve each DataMap to per-point `(weight, [(node, offset, along, toward)])` via the
+        // assignments produced by `assign_data_to_network`. Offsets enter every distance: an
+        // origin's traversal is seeded at its assigned nodes with the unsigned offsets as initial
+        // costs, and a destination's distance is the minimum over its assigned nodes of the
+        // direction-resolved composite (`route_cost + offset +- along`), so the composite
+        // origin->destination distance follows `offset_o + graph + offset_d` with the dual's
+        // signed along-street correction applied at the destination end. Unassigned entries are
+        // absent from the assignment map and drop out; so do points with non-positive / NaN
+        // weight, and origins with no live assigned node.
+        let resolve = |data_map: &DataMap,
+                       weights: &std::collections::HashMap<String, f64>,
+                       require_live: bool|
+         -> PyResult<WeightedAssignments> {
+            // Deterministic ordering: HashMap iteration order varies per instance, and a
+            // destination whose two assigned nodes tie on composite distance would otherwise seed
+            // at a run-dependent node. Sort entries by key and assignments by node index.
+            let mut entry_items: Vec<(String, RawAssignments)> =
+                data_map.entry_assignments().into_iter().collect();
+            entry_items.sort_by(|a, b| a.0.cmp(&b.0));
+            let mut out: WeightedAssignments = Vec::new();
+            for (data_key, mut assignments) in entry_items {
+                assignments.sort_by_key(|&(node_idx, ..)| node_idx);
+                let w = *weights.get(&data_key).unwrap_or(&0.0);
+                if w.is_nan() || w <= 0.0 {
+                    continue;
+                }
+                for &(node_idx, ..) in &assignments {
+                    if node_idx >= n {
+                        return Err(exceptions::PyValueError::new_err(format!(
+                            "Data map assignment node index {} is out of bounds (max {}); was the \
+                             data map assigned to a different network?",
+                            node_idx,
+                            n - 1
+                        )));
+                    }
+                }
+                if require_live
+                    && !assignments
+                        .iter()
+                        .any(|&(node_idx, ..)| self.is_node_live_unchecked(node_idx))
+                {
+                    continue;
+                }
+                out.push((
+                    w,
+                    assignments
+                        .iter()
+                        .map(|&(node_idx, offset, along, toward)| {
+                            (node_idx, offset as f32, along as f32, toward)
+                        })
+                        .collect(),
+                ));
             }
-            if w > 0.0 {
-                *origin_weights.entry(node_idx).or_insert(0.0) += w;
-            }
-        }
-        let mut dest_weights: std::collections::HashMap<usize, f64> = std::collections::HashMap::new();
-        for (node_idx, w) in destinations {
-            if node_idx >= n {
-                return Err(exceptions::PyValueError::new_err(format!(
-                    "Destination node index {} is out of bounds (max {})",
-                    node_idx,
-                    n - 1
-                )));
-            }
-            if w > 0.0 {
-                *dest_weights.entry(node_idx).or_insert(0.0) += w;
-            }
-        }
-        let origin_list: Vec<(usize, f64)> = origin_weights.into_iter().collect();
+            Ok(out)
+        };
+        let origin_list = resolve(origins, &origin_weights, true)?;
+        let destinations = resolve(destinations, &destination_weights, false)?;
 
         let node_keys_py = self.node_keys_py(py);
         let node_indices = self.node_indices();
@@ -2216,69 +2362,195 @@ impl NetworkStructure {
         self.progress_init();
 
         let result = py.detach(move || {
-            origin_list.par_iter().for_each(|&(src_idx, o_weight)| {
+            // Resolve each destination to its nearest assigned node for a given origin traversal:
+            // composite distance = route_cost[node] (includes origin offset) + dest offset with the
+            // dual's along-street component credited or debited by direction of approach (entry end
+            // from the first predecessor), deduped to the minimum over the destination's assigned
+            // nodes — the same resolution the data layer uses. Unreachable or beyond-threshold
+            // destinations resolve to None. Shared by the participation pre-pass and the main pass.
+            let dest_reach_for =
+                |traversal: &BrandesTraversal, dist_threshold: f32| -> Vec<Option<(usize, f32)>> {
+                    destinations
+                        .iter()
+                        .map(|(_w_d, d_assignments)| {
+                            let mut best: Option<(usize, f32)> = None;
+                            for &(node_idx, offset, along, ref toward) in d_assignments {
+                                let route_cost = traversal.best_route_cost[node_idx];
+                                if !route_cost.is_finite() {
+                                    continue;
+                                }
+                                let entry_end = if toward.is_some() {
+                                    traversal.state[node_idx].preds.first().and_then(
+                                        |&pred_idx| {
+                                            let pred_node = traversal.state[pred_idx].node_idx;
+                                            self.entry_end_coord(pred_node, node_idx)
+                                        },
+                                    )
+                                } else {
+                                    None
+                                };
+                                let composite = crate::graph::resolve_assignment_dist(
+                                    route_cost,
+                                    offset as f64,
+                                    along as f64,
+                                    toward,
+                                    entry_end,
+                                );
+                                if composite > dist_threshold {
+                                    continue;
+                                }
+                                if best.is_none_or(|(_, c)| composite < c) {
+                                    best = Some((node_idx, composite));
+                                }
+                            }
+                            best
+                        })
+                        .collect()
+                };
+            // Origin accessibility over reachable destinations: A_o = sum W_d * decay(c).
+            let access_for = |dest_reach: &[Option<(usize, f32)>],
+                              decay: &dyn Fn(f32, f32) -> f32,
+                              dist_threshold: f32|
+             -> f64 {
+                let mut access = 0.0f64;
+                for ((w_d, _), reach) in destinations.iter().zip(dest_reach) {
+                    if let Some((_, composite)) = reach {
+                        let p = composite / dist_threshold;
+                        access += w_d * decay(*composite, p) as f64;
+                    }
+                }
+                access
+            };
+
+            // Participation pre-pass: derive a per-threshold K from the run's own median origin
+            // accessibility, K_d = A_med_d * (1 - s) / s. Costs one extra traversal sweep, only
+            // when `participation` is requested.
+            let k_by_threshold: Vec<f64> = if let Some(s) = participation {
+                let collected: Vec<std::sync::Mutex<Vec<f64>>> =
+                    distances.iter().map(|_| std::sync::Mutex::new(Vec::new())).collect();
+                origin_list.par_iter().for_each(|(_o_weight, o_assignments)| {
+                    let seeds: Vec<(usize, f32)> = o_assignments
+                        .iter()
+                        .map(|&(node_idx, offset, ..)| (node_idx, offset))
+                        .collect();
+                    let traversal = self.dijkstra_brandes_shortest_seeded(
+                        &seeds,
+                        max_walk_seconds,
+                        speed_m_s,
+                        tolerance,
+                        false,
+                    );
+                    let decay = common::parse_metric_expr(&decay_expr);
+                    for (d_idx, dist) in distances.iter().enumerate() {
+                        let dist_threshold = *dist as f32;
+                        let dest_reach = dest_reach_for(&traversal, dist_threshold);
+                        let access = access_for(&dest_reach, &decay, dist_threshold);
+                        if access > 0.0 {
+                            collected[d_idx].lock().unwrap().push(access);
+                        }
+                    }
+                });
+                distances
+                    .iter()
+                    .enumerate()
+                    .map(|(d_idx, dist)| {
+                        let mut vals = collected[d_idx].lock().unwrap().clone();
+                        if vals.is_empty() {
+                            return 0.0;
+                        }
+                        vals.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+                        let a_med = vals[vals.len() / 2];
+                        let k = a_med * (1.0 - s) / s;
+                        log::info!(
+                            "Outside option at {}m: median origin accessibility {:.1}, participation {:.2} -> K {:.1}",
+                            dist,
+                            a_med,
+                            s,
+                            k
+                        );
+                        k
+                    })
+                    .collect()
+            } else {
+                vec![0.0; distances.len()]
+            };
+
+            origin_list.par_iter().for_each(|(o_weight, o_assignments)| {
                 if !pbar_disabled {
                     self.progress.fetch_add(1, AtomicOrdering::Relaxed);
                 }
-                if !self.is_node_live_unchecked(src_idx) {
-                    return;
-                }
-                let traversal =
-                    self.dijkstra_brandes_shortest(src_idx, max_walk_seconds, speed_m_s, tolerance, false);
+                let o_weight = *o_weight;
+                // Multi-source traversal: the origin point is a virtual root, its assigned nodes
+                // seeded at their offsets. All route costs therefore include the origin offset.
+                // The dual's signed along-street component is not applied at the origin end: an
+                // exact origin-side sign needs per-direction traversal states (as the angular
+                // traversal has); the unsigned-seed approximation is zero-mean and bounded by
+                // half a segment length.
+                let seeds: Vec<(usize, f32)> = o_assignments
+                    .iter()
+                    .map(|&(node_idx, offset, ..)| (node_idx, offset))
+                    .collect();
+                let traversal = self.dijkstra_brandes_shortest_seeded(
+                    &seeds,
+                    max_walk_seconds,
+                    speed_m_s,
+                    tolerance,
+                    false,
+                );
                 let decay = common::parse_metric_expr(&decay_expr);
                 let sorted_visited = Self::sorted_brandes_state_indices(&traversal);
-                let mut seed = vec![0.0f64; traversal.state.len()];
+                let mut target_seed = vec![0.0f64; traversal.state.len()];
 
                 for d_idx in 0..distances.len() {
                     let dist_threshold = distances[d_idx] as f32;
-                    seed.fill(0.0);
+                    target_seed.fill(0.0);
+
+                    let dest_reach = dest_reach_for(&traversal, dist_threshold);
+
+                    // With the outside option K, the origin participates at rate A_o / (K + A_o);
+                    // K = 0 conserves the full weight (the classic singly constrained model).
+                    let access = access_for(&dest_reach, &decay, dist_threshold);
+                    if access <= 0.0 {
+                        continue;
+                    }
+                    let participating_weight =
+                        o_weight * access / (k_by_threshold[d_idx] + access);
 
                     if closest_destination {
-                        // route the full origin weight to the single nearest reachable destination
+                        // route the participating weight to the single nearest reachable destination
                         let mut nearest: Option<(usize, f32)> = None;
-                        for &dest in dest_weights.keys() {
-                            let cost = traversal.best_route_cost[dest];
-                            if cost > dist_threshold {
-                                continue;
-                            }
-                            if nearest.is_none_or(|(_, c)| cost < c) {
-                                nearest = Some((dest, cost));
+                        for &(node_idx, composite) in dest_reach.iter().flatten() {
+                            if nearest.is_none_or(|(_, c)| composite < c) {
+                                nearest = Some((node_idx, composite));
                             }
                         }
                         match nearest {
-                            Some((dest, _)) => seed[dest] = o_weight,
+                            Some((dest_node, _cost)) => {
+                                target_seed[dest_node] += participating_weight;
+                            }
                             None => continue,
                         }
                     } else {
-                        // single-constrained gravity: distribute o_weight in proportion to
-                        // W_d * decay(c), normalised over reachable destinations.
-                        let mut denom = 0.0f64;
-                        for (&dest, &w_d) in &dest_weights {
-                            let cost = traversal.best_route_cost[dest];
-                            if cost > dist_threshold {
-                                continue;
+                        // single-constrained gravity with outside option: distribute in proportion
+                        // to W_d * decay(c) over K + A_o, i.e. the participating weight over A_o.
+                        // Accumulate: several destinations may resolve to the same node.
+                        for ((w_d, _), reach) in destinations.iter().zip(&dest_reach) {
+                            if let Some((dest_node, composite)) = reach {
+                                let p = composite / dist_threshold;
+                                let flow =
+                                    participating_weight * (w_d * decay(*composite, p) as f64) / access;
+                                target_seed[*dest_node] += flow;
                             }
-                            let p = cost / dist_threshold;
-                            denom += w_d * decay(cost, p) as f64;
-                        }
-                        if denom <= 0.0 {
-                            continue;
-                        }
-                        for (&dest, &w_d) in &dest_weights {
-                            let cost = traversal.best_route_cost[dest];
-                            if cost > dist_threshold {
-                                continue;
-                            }
-                            let p = cost / dist_threshold;
-                            seed[dest] = o_weight * (w_d * decay(cost, p) as f64) / denom;
                         }
                     }
 
-                    let seed_refs: [&[f64]; 1] = [seed.as_slice()];
+                    // The origin is a virtual (off-network) root, so no node is excluded from
+                    // credit: its assigned nodes are real street segments the trip traverses.
+                    let seed_refs: [&[f64]; 1] = [target_seed.as_slice()];
                     Self::brandes_backprop_multi(
                         &traversal,
                         &sorted_visited,
-                        src_idx,
+                        usize::MAX,
                         &seed_refs,
                         |state| state.route_cost <= dist_threshold,
                         |inter_node_idx, credits| {

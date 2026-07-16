@@ -412,11 +412,111 @@ def test_betweenness_demand(primal_graph):
 
     # a destination too far to snap is dropped -> no flow, no crash
     far = gpd.GeoDataFrame({"geometry": [Point(1e7, 1e7)], "w": [10.0]}, crs=nodes_gdf.crs)
-    flow_far = run(far, max_snap_dist=50.0)
+    flow_far = run(far, max_netw_assign_dist=50.0)
     assert np.nansum(flow_far) == 0.0
 
 
-def test_node_centrality_shortest_compat(primal_graph):
+def test_betweenness_demand_outside_option(primal_graph):
+    """Outside option: s=1 identity, participation damping, monotonicity in s, closest-mode scaling."""
+    import geopandas as gpd
+
+    nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(primal_graph)
+    pts = nodes_gdf.geometry
+    origins_gdf = gpd.GeoDataFrame({"geometry": pts, "pop": np.full(len(pts), 100.0)}, crs=nodes_gdf.crs)
+    dests_gdf = gpd.GeoDataFrame({"geometry": [pts.iloc[0], pts.iloc[-1]], "w": [10.0, 5.0]}, crs=nodes_gdf.crs)
+
+    def run(**kwargs):
+        out = networks.betweenness_demand(
+            network_structure=network_structure,
+            nodes_gdf=nodes_gdf.copy(),
+            origins_gdf=origins_gdf,
+            destinations_gdf=dests_gdf,
+            origin_weight_col="pop",
+            destination_weight_col="w",
+            distances=[800],
+            decay_fn="exp(-0.002 * c)",
+            **kwargs,
+        )
+        return out["cc_demand_800"].to_numpy()
+
+    base = run()
+    # full participation (s = 1) reproduces the default exactly (derived K = 0)
+    full = run(participation=1.0)
+    assert np.allclose(base, full, equal_nan=True, atol=config.ATOL, rtol=config.RTOL)
+
+    # s < 1 damps flows everywhere (participation < 1) and never increases them
+    damped = run(participation=0.5)
+    finite = np.isfinite(base) & np.isfinite(damped)
+    assert (damped[finite] <= base[finite] + config.ATOL).all()
+    positive = finite & (base > 0)
+    assert positive.any()
+    assert (damped[positive] < base[positive]).all()
+
+    # monotone: lower participation, lower flows
+    damped_more = run(participation=0.2)
+    finite2 = np.isfinite(damped) & np.isfinite(damped_more)
+    assert (damped_more[finite2] <= damped[finite2] + config.ATOL).all()
+
+    # closest_destination scales by the same participation rate
+    closest_base = run(closest_destination=True)
+    closest_damped = run(closest_destination=True, participation=0.5)
+    finite3 = np.isfinite(closest_base) & np.isfinite(closest_damped)
+    assert (closest_damped[finite3] <= closest_base[finite3] + config.ATOL).all()
+    assert np.nanmax(closest_damped) > 0.0
+
+    # invalid shares rejected
+    with pytest.raises(ValueError):
+        run(participation=0.0)
+    with pytest.raises(ValueError):
+        run(participation=1.5)
+
+    # metric_name renames the output column
+    named = networks.betweenness_demand(
+        network_structure=network_structure,
+        nodes_gdf=nodes_gdf.copy(),
+        origins_gdf=origins_gdf,
+        destinations_gdf=dests_gdf,
+        origin_weight_col="pop",
+        destination_weight_col="w",
+        distances=[800],
+        decay_fn="exp(-0.002 * c)",
+        metric_name="flows",
+    )
+    assert np.allclose(base, named["cc_flows_800"].to_numpy(), equal_nan=True, atol=config.ATOL, rtol=config.RTOL)
+
+
+def test_betweenness_demand_offsets(primal_graph):
+    """Assignment offsets enter routed distances: composite offset_o + graph + offset_d vs radius."""
+    import geopandas as gpd
+    from shapely.geometry import Point
+
+    nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(primal_graph)
+    pts = nodes_gdf.geometry
+    # a single origin and destination, each held ~60 m off-network from well-separated nodes
+    o_pt = Point(pts.iloc[0].x + 60.0, pts.iloc[0].y)
+    d_pt = Point(pts.iloc[-1].x - 60.0, pts.iloc[-1].y)
+    origins_gdf = gpd.GeoDataFrame({"geometry": [o_pt], "pop": [100.0]}, crs=nodes_gdf.crs)
+    dests_gdf = gpd.GeoDataFrame({"geometry": [d_pt], "w": [10.0]}, crs=nodes_gdf.crs)
+
+    def run(distance):
+        out = networks.betweenness_demand(
+            network_structure=network_structure,
+            nodes_gdf=nodes_gdf.copy(),
+            origins_gdf=origins_gdf,
+            destinations_gdf=dests_gdf,
+            origin_weight_col="pop",
+            destination_weight_col="w",
+            distances=[distance],
+            decay_fn="1",
+            max_netw_assign_dist=200.0,
+        )
+        return np.nansum(out[f"cc_demand_{distance}"].to_numpy())
+
+    # generous radius: the pair connects and flow is routed
+    assert run(5000) > 0.0
+    # radius below the summed offsets alone (~120 m): the composite distance can never fit,
+    # so no flow routes even though both points assign to the network successfully
+    assert run(100) == 0.0
     """The deprecated 4.24 shim reproduces centrality_shortest output under legacy column names."""
     distances = [400, 800]
     nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(primal_graph)

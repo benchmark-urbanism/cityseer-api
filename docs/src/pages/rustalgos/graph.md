@@ -176,6 +176,9 @@ layout: ../../layouts/PageLayout.astro
   <div class="param">
     <span class="pn">z=None</span>
   </div>
+  <div class="param">
+    <span class="pn">street_geom_wkt=None</span>
+  </div>
   <span class="pt">)</span>
 </div>
 </div>
@@ -287,7 +290,13 @@ layout: ../../layouts/PageLayout.astro
     <span class="pn">origins</span>
   </div>
   <div class="param">
+    <span class="pn">origin_weights_map</span>
+  </div>
+  <div class="param">
     <span class="pn">destinations</span>
+  </div>
+  <div class="param">
+    <span class="pn">destination_weights_map</span>
   </div>
   <div class="param">
     <span class="pn">decay_fn</span>
@@ -300,6 +309,9 @@ layout: ../../layouts/PageLayout.astro
   </div>
   <div class="param">
     <span class="pn">closest_destination=False</span>
+  </div>
+  <div class="param">
+    <span class="pn">participation=None</span>
   </div>
   <div class="param">
     <span class="pn">metric_name=None</span>
@@ -318,7 +330,9 @@ layout: ../../layouts/PageLayout.astro
 </div>
 
 
- Demand-weighted (flow) betweenness from a singly / origin-constrained spatial interaction model. Each origin distributes its full weight across reachable destinations in proportion to `W_d * decay(c)`, where `decay` is the supplied expression evaluated on `c` (metric cost) and `p` (normalised progress to the threshold) — the gravity model is one instance of this spatial interaction form. The allocated origin-destination flows are then routed along shortest paths via Brandes back-propagation, accumulating flow betweenness at intermediate nodes. Origins and destinations are each aggregated by node first, so several snapped points sharing a node contribute their summed weight (and a node only triggers one Dijkstra). When `closest_destination` is true, an origin routes its full weight to its single nearest reachable destination instead of allocating across all of them.
+ Demand-weighted (flow) betweenness from a singly / origin-constrained spatial interaction model. Each origin distributes its full weight across reachable destinations in proportion to `W_d * decay(c)`, where `decay` is the supplied expression evaluated on `c` (metric cost) and `p` (normalised progress to the threshold) — the gravity model is one instance of this spatial interaction form. The allocated origin-destination flows are then routed along shortest paths via Brandes back-propagation, accumulating flow betweenness at intermediate nodes into a single output metric named `metric_name`. The model owns its flow weights: there is deliberately no per-trip flow re-weighting here (distance damping belongs to `decay_fn` for destination choice and `participation` for trip generation; bespoke externally-weighted flows belong to `betweenness_od_shortest`). Origins and destinations are `DataMap`s assigned to the network with the shared edge-R-tree assignment (`assign_data_to_network`: both endpoints of the nearest barrier-valid edge), with weights supplied as dicts keyed by data key (the same convention as the data layers' `landuses_map`). Assignment offsets enter every distance — origin offsets as traversal seed costs, destination offsets added when reading route costs and deduped to the nearest assigned node — so the composite origin->destination distance is `offset_o + graph + offset_d` throughout, matching the data layers' `network_dist + data_dist` convention. One traversal runs per origin point. When `closest_destination` is true, an origin routes its full weight to its single nearest reachable destination instead of allocating across all of them.
+
+ `participation` (s) adds a stay-home alternative to the destination choice set: each origin participates at rate `A_o / (K + A_o)` where `A_o` is its accessibility (`sum W_d * decay(c)`) and K is derived per distance threshold from the run's own median origin accessibility, `K_d = A_med_d * (1 - s) / s` — "s is the share of people at a typical location who make a trip". Trip generation therefore falls where accessibility is low. Full participation (`s = 1`, the default) means `K = 0` exactly: the derivation pre-pass is skipped and behaviour is the classic conserved model at no extra cost. The participation rate scales both allocation modes, so `closest_destination` routes the participating weight (not the full weight) to the nearest destination when `s < 1`.
 
 </div>
 
@@ -390,6 +404,31 @@ layout: ../../layouts/PageLayout.astro
 
 
  Builds the R-tree for street edge geometries using their bounding boxes. Deduplicates edges based on sorted node pairs and geometric equality. Stores (start_node_idx, end_node_idx, start_node_point, end_node_point, edge_geom) in the R-tree data payload.
+
+</div>
+
+ 
+
+<div class="function">
+
+## build_street_rtree
+
+
+<div class="content">
+<span class="name">build_street_rtree</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">self</span>
+  </div>
+  <div class="param">
+    <span class="pn">/</span>
+  </div>
+  <span class="pt">)</span>
+</div>
+</div>
+
+
+ Builds the R-tree over dual-node street geometries (each dual node's primal segment), used for representation-aware data assignment on dual graphs: points assign to the single nearest street with a signed along-street offset. Leaves the tree `None` when no nodes carry street geometries (primal graphs, or duals built without them, which then fall back to the edge-based assignment).
 
 </div>
 

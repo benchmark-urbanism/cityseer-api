@@ -767,6 +767,9 @@ def build_dual(
             y=mid[1],
             live=live,
             weight=1.0,
+            # the dual node's primal street geometry: enables representation-aware data
+            # assignment (nearest street, signed along-street offset)
+            street_geom_wkt=line.wkt,
         )
         node_idx[fid] = idx
         midpoints[fid] = mid
@@ -975,6 +978,7 @@ def incremental_update(
             y=mid[1],
             live=live,
             weight=1.0,
+            street_geom_wkt=line.wkt,
         )
         node_idx[fid] = idx
         midpoints[fid] = mid

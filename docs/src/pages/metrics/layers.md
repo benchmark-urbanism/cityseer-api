@@ -32,7 +32,7 @@ layout: ../../layouts/PageLayout.astro
   <div class="param">
     <span class="pn">max_netw_assign_dist</span>
     <span class="pc">:</span>
-    <span class="pa"> int = 100</span>
+    <span class="pa"> float = 100.0</span>
   </div>
   <div class="param">
     <span class="pn">data_id_col</span>
@@ -81,7 +81,7 @@ layout: ../../layouts/PageLayout.astro
 <div class="param-set">
   <div class="def">
     <div class="name">max_netw_assign_dist</div>
-    <div class="type">int</div>
+    <div class="type">float</div>
   </div>
   <div class="desc">
 
@@ -169,7 +169,7 @@ layout: ../../layouts/PageLayout.astro
   <div class="param">
     <span class="pn">max_netw_assign_dist</span>
     <span class="pc">:</span>
-    <span class="pa"> int = 100</span>
+    <span class="pa"> float = 100.0</span>
   </div>
   <div class="param">
     <span class="pn">distances</span>
@@ -274,7 +274,7 @@ layout: ../../layouts/PageLayout.astro
 <div class="param-set">
   <div class="def">
     <div class="name">max_netw_assign_dist</div>
-    <div class="type">int</div>
+    <div class="type">float</div>
   </div>
   <div class="desc">
 
@@ -447,7 +447,7 @@ print(nodes_gdf["cc_c_nearest_max_800"])
   <div class="param">
     <span class="pn">max_netw_assign_dist</span>
     <span class="pc">:</span>
-    <span class="pa"> int = 100</span>
+    <span class="pa"> float = 100.0</span>
   </div>
   <div class="param">
     <span class="pn">compute_hill</span>
@@ -561,7 +561,7 @@ print(nodes_gdf["cc_c_nearest_max_800"])
 <div class="param-set">
   <div class="def">
     <div class="name">max_netw_assign_dist</div>
-    <div class="type">int</div>
+    <div class="type">float</div>
   </div>
   <div class="desc">
 
@@ -779,7 +779,7 @@ been applied.
   <div class="param">
     <span class="pn">max_netw_assign_dist</span>
     <span class="pc">:</span>
-    <span class="pa"> int = 100</span>
+    <span class="pa"> float = 100.0</span>
   </div>
   <div class="param">
     <span class="pn">distances</span>
@@ -879,7 +879,7 @@ been applied.
 <div class="param-set">
   <div class="def">
     <div class="name">max_netw_assign_dist</div>
-    <div class="type">int</div>
+    <div class="type">float</div>
   </div>
   <div class="desc">
 
