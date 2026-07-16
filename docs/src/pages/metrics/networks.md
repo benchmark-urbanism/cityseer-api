@@ -682,14 +682,14 @@ print(nodes_gdf[["cc_harmonic_400", "cc_betweenness_800"]])
     <span class="pa"> str = 'exp(-4 * p)'</span>
   </div>
   <div class="param">
-    <span class="pn">betweenness</span>
-    <span class="pc">:</span>
-    <span class="pa"> dict[str, str] | None = None</span>
-  </div>
-  <div class="param">
     <span class="pn">closest_destination</span>
     <span class="pc">:</span>
     <span class="pa"> bool = False</span>
+  </div>
+  <div class="param">
+    <span class="pn">participation</span>
+    <span class="pc">:</span>
+    <span class="pa"> float = 1.0</span>
   </div>
   <div class="param">
     <span class="pn">metric_name</span>
@@ -732,11 +732,11 @@ print(nodes_gdf[["cc_harmonic_400", "cc_betweenness_800"]])
 
 
 $$
-W_{od} = W_o \cdot \frac{W_d \cdot f(c_{od})}{\sum_{d'} W_{d'} \cdot f(c_{od'})}
+W_{od} = W_o \cdot \frac{W_d \cdot f(c_{od})}{K + \sum_{d'} W_{d'} \cdot f(c_{od'})}
 $$
 
 
- where $f$ is ``decay_fn`` and $c_{od}$ is the network distance. Each origin's full weight is conserved and distributed across reachable destinations (destination totals are not constrained — that would require a doubly-constrained / Furness model). The gravity model is the classic instance of this form, recovered with an exponential ``decay_fn``.
+ where $f$ is ``decay_fn``, $c_{od}$ is the network distance, and $K$ is a stay-home alternative in the destination choice set, derived from the ``participation`` share. At full participation ($K = 0$, the default) each origin's full weight is conserved and distributed across reachable destinations (destination totals are not constrained — that would require a doubly-constrained / Furness model), and the gravity model is the classic instance of this form, recovered with an exponential ``decay_fn``. Below full participation each origin participates at rate $A_o / (K + A_o)$, where $A_o$ is its accessibility $\sum_{d'} W_{d'} f(c_{od'})$, so trip generation falls where accessibility is low.
 
  This is the modelled-matrix counterpart to [`betweenness_od`](#betweenness_od): rather than supplying an explicit OD matrix, the per-pair weights are derived from the network distances revealed during routing, computed in a single traversal per origin.
 ### Parameters
@@ -832,22 +832,22 @@ $$
 
 <div class="param-set">
   <div class="def">
-    <div class="name">betweenness</div>
-    <div class="type">dict[str, str]</div>
-  </div>
-  <div class="desc">
-
- Named expressions weighting the allocated flow itself, as in [`betweenness_od`](#betweenness_od) and [`centrality_shortest`](#centrality_shortest). Each expression is evaluated on the revealed network distance (`c`, or `p` = `c / threshold`) and multiplies the per-pair flow before routing, producing one `cc_{name}_{distance}` column per entry from a single traversal. ``None`` uses the paired default (mirroring the shortest-path betweenness defaults): ``{metric_name: &quot;1&quot;}`` — conserved flow, every trip contributing its full allocated weight regardless of length — plus ``{metric_name}_decay: &quot;exp(-4 * p)&quot;``, which attenuates each trip's contribution by its network distance, reflecting trip frequency falling with trip length.</div>
-</div>
-
-<div class="param-set">
-  <div class="def">
     <div class="name">closest_destination</div>
     <div class="type">bool</div>
   </div>
   <div class="desc">
 
- If `True`, each origin routes its full weight to its single nearest reachable destination instead of allocating across all of them.</div>
+ If `True`, each origin routes its participating weight to its single nearest reachable destination instead of allocating across all of them.</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">participation</div>
+    <div class="type">float</div>
+  </div>
+  <div class="desc">
+
+ The share of people at a *typical* location who make a trip, in $(0, 1]$. The default `1.0` is full participation: every origin's full weight travels (the classic conserved model, at no extra cost). Below `1.0`, a stay-home option enters the destination choice set — think of staying home as one phantom destination competing with everything an origin can reach: `participation=0.2` means &quot;at a location of median accessibility, one in five people travels&quot;, and locations with better or worse access participate proportionately more or less, so trip generation becomes accessibility-elastic. The underlying stay-home weight is derived internally per distance threshold from the run's own median origin accessibility ($K = A_{med} \cdot (1 - s) / s$, logged per run), so the setting transfers across datasets and thresholds. For pedestrian flows, walking mode shares suggest starting around `0.2` (European cities range roughly 0.15 to 0.3); use a local travel survey's share when available. Results are not knife-edge in this setting. Costs one extra traversal sweep when below `1.0`, and note that output flows are then participating weights rather than total weights.</div>
 </div>
 
 <div class="param-set">
@@ -857,7 +857,7 @@ $$
   </div>
   <div class="desc">
 
- Name used for the default output columns (`cc_{metric_name}_{distance}` and `cc_{metric_name}_decay_{distance}`) when `betweenness` is `None`. Defaults to `&quot;demand&quot;`.</div>
+ Name used for the output column (`cc_{metric_name}_{distance}`). Defaults to `&quot;demand&quot;`.</div>
 </div>
 
 <div class="param-set">
@@ -867,7 +867,7 @@ $$
   </div>
   <div class="desc">
 
- Maximum assignment distance for origin/destination points. Points are assigned to the network with the same workflow as the data layers ([`build_data_map`](/metrics/layers#build_data_map): representation-aware nearest-street assignment, with assignment offsets included in all routed distances — allocation, flow decay, and radius cutoffs alike); points with no valid assignment within this distance are dropped.</div>
+ Maximum assignment distance for origin/destination points. Points are assigned to the network with the same workflow as the data layers ([`build_data_map`](/metrics/layers#build_data_map): representation-aware nearest-street assignment, with assignment offsets included in all routed distances — allocation and radius cutoffs alike); points with no valid assignment within this distance are dropped.</div>
 </div>
 
 <div class="param-set">
@@ -907,7 +907,7 @@ $$
   </div>
   <div class="desc">
 
- Relative tolerance for shortest-path equality, as a percentage.</div>
+ Relative tolerance for shortest-path equality, as a percentage. Paths within this margin of the shortest are treated as ties and flow splits across them, so this is the multipath control — the counterpart of a detour ratio in other tools (a 5% tolerance corresponds to a 1.05 detour ratio). Small tolerances can improve conserved-flow fits by spreading flow off knife-edge shortest paths; large ones blur the routing.</div>
 </div>
 
 ### Returns
