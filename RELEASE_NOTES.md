@@ -1,3 +1,9 @@
+# v5.7.2 Release Notes
+
+A packaging fix. Newer `maturin` declares `License-File: LICENSE.txt` in the sdist metadata but does not include the root license file in the tarball, so PyPI rejects the upload under PEP 639. The sdist now includes `LICENSE.txt`. No functional or API change.
+
+(v5.7.0 and v5.7.1 were not published, their CI failed on a `ty` check and this packaging issue respectively, so this release also carries the v5.7.0 `build_od_matrix` harmonisation described below.)
+
 # v5.7.1 Release Notes
 
 A patch release. `ty` type-check compatibility: a blanket `# type: ignore` in `observe.street_continuity`, which newer `ty` versions narrow and flag as unused, is replaced with an explicit cast. No functional or API change.
