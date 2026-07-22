@@ -63,16 +63,25 @@ def _(mo):
 
 @app.cell
 def _(CityNetwork, Path, gpd, io, pd, tempfile, urllib):
-    # central-London study area; fetch and build the OSM network in the British National Grid.
+    # central-London study area; build the OSM network in the British National Grid.
     # green_footways / green_service_roads keep the paths through parks (Regent's Park,
     # Hyde Park), which cyclists use but which a roads-only network omits, forcing detours.
-    lng, lat = -0.12, 51.51
-    poly_wgs, _epsg = io.buffered_point_poly(lng, lat, 4000)
-    cn = CityNetwork.from_osm(poly_wgs, to_crs_code=27700, green_footways=True, green_service_roads=True)
-
-    # download + cache the PCT London cycle-commute data
+    # cache_path caches the Overpass response to a temp file so re-runs reuse it rather than
+    # re-querying (Overpass rate-limits by request volume, so caching is what helps; if a first
+    # run hits a busy Overpass, simply retry).
     cache = Path(tempfile.gettempdir()) / "cityseer_pct_london"
     cache.mkdir(exist_ok=True)
+    lng, lat = -0.12, 51.51
+    poly_wgs, _epsg = io.buffered_point_poly(lng, lat, 4000)
+    cn = CityNetwork.from_osm(
+        poly_wgs,
+        to_crs_code=27700,
+        green_footways=True,
+        green_service_roads=True,
+        cache_path=str(cache / "osm_network.json"),
+    )
+
+    # PCT London cycle-commute data, downloaded once to the same temp cache
     base = "https://raw.githubusercontent.com/Robinlovelace/pct-data/master/london"
     for _name in ("l.csv", "z.geojson"):
         if not (cache / _name).exists():
