@@ -43,7 +43,7 @@ def _(mo):
     mo.md(r"""
     ## Data: population origins and hospitality destinations
 
-    We model home-to-amenity movement in central Madrid: **origins** are the Eurostat census grid (column `T`, total population per cell), and **destinations** are hospitality premises (`section_id == "I"`), each weighted equally. Both are snapped to the nearest network node.
+    We model home-to-amenity movement in central Madrid: **origins** are the Eurostat census grid (column `T`, total population per cell), and **destinations** are hospitality premises (`section_id == "I"`), each weighted equally. Both are assigned to the network with the library's shared, representation-aware assignment, so the along-street offset from each point to the network enters every routed distance.
     """)
     return
 
@@ -148,6 +148,7 @@ def _(mo):
 
     - swap the destination set (parks, schools, transit stops), or weight destinations by a capacity column such as floorspace;
     - adjust the deterrence: a steeper decay (`"exp(-0.008 * c)"`) localises flows, a flat function (`"1"`) removes distance deterrence entirely;
+    - lower `participation` below its default of `1.0` (for example `0.2`) to make trip generation accessibility-elastic: a stay-home option enters each origin's choice set, so locations with poorer access generate fewer trips;
     - when you have observed flows rather than modelled demand, route an explicit matrix with [`build_od_matrix`](https://cityseer.benchmarkurbanism.com/api/network#build_od_matrix) and [`betweenness_od`](https://cityseer.benchmarkurbanism.com/api/network#betweenness_od);
     - compare against the uniform betweenness baseline from the [metric centrality recipe](https://cityseer.benchmarkurbanism.com/examples/centrality/gpd-metric-centrality) to see how demand weighting shifts the pattern.
     """)

@@ -16,7 +16,7 @@ def _(mo):
     mo.md(r"""
     # Routing an Explicit OD Matrix
 
-    When you have observed trips between zones, from a travel survey, ticketing records, or mobile traces, you already know the weight for each origin-destination pair. [`build_od_matrix`](https://cityseer.benchmarkurbanism.com/api/network#build_od_matrix) turns a flow table and a set of zones into a matrix, snapping each zone centroid to the nearest network node, and [`betweenness_od`](https://cityseer.benchmarkurbanism.com/api/network#betweenness_od) routes it: each pair's trips are accumulated along the shortest path between its zones. See the [Origin-Destination Flows guide](https://cityseer.benchmarkurbanism.com/guide/flows) for the background.
+    When you have observed trips between zones, from a travel survey, ticketing records, or mobile traces, you already know the weight for each origin-destination pair. [`build_od_matrix`](https://cityseer.benchmarkurbanism.com/api/network#build_od_matrix) turns a flow table and a set of zones into a matrix, assigning each zone centroid to its nearest network node with the library's shared assignment, and [`betweenness_od`](https://cityseer.benchmarkurbanism.com/api/network#betweenness_od) routes it: each pair's trips are accumulated along the shortest path between its zones. See the [Origin-Destination Flows guide](https://cityseer.benchmarkurbanism.com/guide/flows) for the background.
 
     No observed-trip dataset is bundled here, so we synthesise one with a gravity model: trips between two zones grow with the population of each and fall away with the distance between them. This is a standard way to estimate a plausible trip table when only zone populations are known. We build two demand scenarios on the same network, route each at a 2 km threshold, and compare the resulting flow maps.
     """)
@@ -107,7 +107,7 @@ def _(mo):
     mo.md(r"""
     ## Access points within each zone
 
-    A zonal trip table records how many trips run between two zones, not where within each zone they start and end. Passing the zone polygons straight to `build_od_matrix` snaps each zone to the single node nearest its centroid, so every pair's trips load onto one shortest path and the map reduces to a sparse set of centroid-to-centroid lines. Transport models handle this by connecting each zone to the network at several points (centroid connectors). We do the same here: a 350 m point grid within each zone, clipped to the study area, with the zone's trips divided evenly among its points.
+    A zonal trip table records how many trips run between two zones, not where within each zone they start and end. Passing the zone polygons straight to `build_od_matrix` assigns each zone to the single network node nearest its centroid, so every pair's trips load onto one shortest path and the map reduces to a sparse set of centroid-to-centroid lines. Transport models handle this by connecting each zone to the network at several points (centroid connectors). We do the same here: a 350 m point grid within each zone, clipped to the study area, with the zone's trips divided evenly among its points.
     """)
     return
 
@@ -141,7 +141,7 @@ def _(mo):
     mo.md(r"""
     ## Route each scenario and snapshot the result
 
-    Each zone-to-zone flow is split evenly across its origin and destination access points, then `build_od_matrix` snaps the points to network nodes and assembles the sparse matrix, and `betweenness_od` routes it at the 2 km threshold. We snapshot each result with `to_geopandas` before running the next, because both write to the same `cc_betweenness_2000` column.
+    Each zone-to-zone flow is split evenly across its origin and destination access points, then `build_od_matrix` assigns the points to network nodes and assembles the sparse matrix, and `betweenness_od` routes it at the 2 km threshold. We snapshot each result with `to_geopandas` before running the next, because both write to the same `cc_betweenness_2000` column.
     """)
     return
 

@@ -442,21 +442,6 @@ def centrality_shortest(
     return _extract_results(results, nodes_gdf, postprocess)
 
 
-def _snap_coords_to_nodes(
-    network_structure: rustalgos.graph.NetworkStructure,
-    coords: np.ndarray,
-) -> tuple[np.ndarray, np.ndarray]:
-    """Snap ``(x, y)`` coordinates to their nearest network node via a KDTree.
-
-    Returns ``(node_indices, snap_distances)`` aligned to the input rows.
-    """
-    from scipy.spatial import KDTree
-
-    tree = KDTree(network_structure.node_xys)
-    snap_dists, indices = tree.query(coords)
-    return indices, snap_dists
-
-
 def _demand_data_map(
     network_structure: rustalgos.graph.NetworkStructure,
     points_gdf: gpd.GeoDataFrame,
@@ -500,12 +485,17 @@ def build_od_matrix(
     destination_col: str,
     weight_col: str,
     zone_id_col: str | None = None,
-    max_snap_dist: float = 500.0,
+    max_netw_assign_dist: float = 500.0,
+    barriers_gdf: gpd.GeoDataFrame | None = None,
+    n_nearest_candidates: int = 50,
 ) -> rustalgos.centrality.OdMatrix:
     """Build an OdMatrix from OD flow data and zone boundaries.
 
-    Computes zone centroids, snaps them to the nearest network nodes,
-    and constructs a sparse OD weight matrix for use with `betweenness_od`.
+    Computes zone centroids, assigns them to the network with the shared data-layer workflow
+    ([`build_data_map`](/metrics/layers#build_data_map) — the same representation-aware assignment
+    used by accessibility, mixed-uses, stats, and `betweenness_demand`), and constructs a sparse OD
+    weight matrix for use with `betweenness_od`. Each zone is represented by its nearest assigned
+    network node.
 
     Parameters
     ----------
@@ -515,7 +505,7 @@ def build_od_matrix(
         Zone boundaries (polygons) or centroids (points). Must be in a projected CRS
         matching the network, or in ``EPSG:4326`` (will be auto-reprojected).
     network_structure : rustalgos.graph.NetworkStructure
-        The network to snap zone centroids to.
+        The network to assign zone centroids to.
     origin_col : str
         Column in od_df containing origin zone identifiers.
     destination_col : str
@@ -525,51 +515,76 @@ def build_od_matrix(
     zone_id_col : str | None
         Column in zones_gdf containing zone identifiers matching origin_col/destination_col.
         If None, uses the GeoDataFrame index.
-    max_snap_dist : float
-        Maximum distance (in CRS units, typically metres) for snapping a centroid to a network node.
-        Centroids beyond this distance are excluded with a warning.
+    max_netw_assign_dist : float
+        Maximum distance (in CRS units, typically metres) for assigning a centroid to the network.
+        Centroids with no valid assignment within this distance are excluded with a warning.
+    barriers_gdf : gpd.GeoDataFrame | None
+        Optional barriers to respect during assignment, as in the data layers.
+    n_nearest_candidates : int
+        The number of nearest candidate edges to consider when assigning centroids to the network,
+        as in the data layers.
 
     Returns
     -------
     rustalgos.centrality.OdMatrix
         Sparse OD matrix ready for use with `betweenness_od`.
     """
+    from . import layers  # local import: layers does not import networks, so no cycle
+
     geom_types = set(zones_gdf.geometry.geom_type)
     centroids = zones_gdf.geometry.centroid if geom_types & {"Polygon", "MultiPolygon"} else zones_gdf.geometry
 
-    zones_work = zones_gdf.copy()
-    zones_work["_centroid"] = centroids
-    if zones_work.crs is not None and zones_work.crs.to_epsg() == 4326:
+    zone_ids = list(zones_gdf[zone_id_col]) if zone_id_col is not None else list(zones_gdf.index)
+    centroid_gdf = gpd.GeoDataFrame({"geometry": centroids}, crs=zones_gdf.crs)  # type: ignore
+    centroid_gdf.index = pd.Index(zone_ids)
+    if centroid_gdf.index.duplicated().any():
+        raise ValueError("Zone identifiers must be unique.")
+
+    if centroid_gdf.crs is not None and centroid_gdf.crs.to_epsg() == 4326:
         node_xys = network_structure.node_xys
         mean_x = np.mean([xy[0] for xy in node_xys[:100]])
         target_crs = 27700 if 100_000 < mean_x < 700_000 else 32630
         logger.info(f"Reprojecting zone centroids from EPSG:4326 to EPSG:{target_crs}")
-        centroid_gdf = gpd.GeoDataFrame({"geometry": zones_work["_centroid"]}, crs=zones_work.crs)  # type: ignore
         centroid_gdf = centroid_gdf.to_crs(epsg=target_crs)
-        zones_work["_centroid"] = centroid_gdf.geometry
 
-    zone_ids = zones_work[zone_id_col].values if zone_id_col is not None else zones_work.index.values
-    centroid_coords = np.array([(g.x, g.y) for g in zones_work["_centroid"]])
-
-    # Snap centroids to nearest network nodes
-    indices, distances_snap = _snap_coords_to_nodes(network_structure, centroid_coords)
-
-    zone_to_node: dict = {}
-    n_excluded = 0
-    for i, zone_id in enumerate(zone_ids):
-        if distances_snap[i] > max_snap_dist:
-            n_excluded += 1
-            continue
-        zone_to_node[zone_id] = int(indices[i])
-
-    if n_excluded > 0:
-        logger.warning(f"{n_excluded} zone centroids exceeded max_snap_dist={max_snap_dist}m and were excluded")
-    logger.info(
-        f"Snapped {len(zone_to_node)} zone centroids to network nodes "
-        f"(median distance: {np.median(distances_snap):.0f}m)"
+    # Assign zone centroids to the network via the shared data-layer assignment.
+    data_map = layers.build_data_map(
+        centroid_gdf,
+        network_structure,
+        max_netw_assign_dist=max_netw_assign_dist,
+        barriers_gdf=barriers_gdf,
+        n_nearest_candidates=n_nearest_candidates,
     )
 
-    # Build COO arrays
+    # DataMap keys entries by a type-tagged string; map each back to its original zone identifier.
+    key_to_zone: dict = {}
+    for k in data_map.entry_keys():
+        entry = data_map.get_entry(k)
+        if entry is not None:
+            key_to_zone[k] = entry.data_key_py
+
+    # Reduce each zone's assignment to its nearest network node (smallest along-street offset).
+    zone_to_node: dict = {}
+    zone_offset: dict = {}
+    for node_idx, assignments in data_map.node_data_map.items():
+        for data_key, offset, _along, _toward in assignments:
+            zone_id = key_to_zone[data_key]
+            if zone_id not in zone_offset or offset < zone_offset[zone_id]:
+                zone_offset[zone_id] = offset
+                zone_to_node[zone_id] = int(node_idx)
+
+    n_excluded = len(zone_ids) - len(zone_to_node)
+    if n_excluded > 0:
+        logger.warning(
+            f"{n_excluded} zone centroids exceeded max_netw_assign_dist={max_netw_assign_dist}m and were excluded."
+        )
+    if zone_offset:
+        logger.info(
+            f"Assigned {len(zone_to_node)} zone centroids to network nodes "
+            f"(median offset: {np.median(list(zone_offset.values())):.0f}m)."
+        )
+
+    # Build COO arrays.
     origins_arr: list[int] = []
     dests_arr: list[int] = []
     weights_arr: list[float] = []
@@ -588,7 +603,7 @@ def build_od_matrix(
         dests_arr.append(zone_to_node[d_zone])
         weights_arr.append(float(w))
 
-    logger.info(f"Built OD matrix: {len(origins_arr)} pairs, {sum(weights_arr):.0f} total trips")
+    logger.info(f"Built OD matrix: {len(origins_arr)} pairs, {sum(weights_arr):.0f} total trips.")
 
     return rustalgos.centrality.OdMatrix(origins_arr, dests_arr, weights_arr)
 

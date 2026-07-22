@@ -22,7 +22,7 @@ Weighting the flows by demand corrects this. Streets on the routes people actual
 
 When you have observed trip data, a travel survey, ticketing records, or mobile-phone traces, you already know the weight for each origin-destination pair. Build an OD matrix from that table and the zones it refers to, then route it:
 
-- [`build_od_matrix`](/api/network#build_od_matrix) takes a flow table (origin zone, destination zone, trip weight) and a `GeoDataFrame` of zones, snaps each zone centroid to the nearest network node, and returns a sparse matrix.
+- [`build_od_matrix`](/api/network#build_od_matrix) takes a flow table (origin zone, destination zone, trip weight) and a `GeoDataFrame` of zones, assigns each zone centroid to the network with the library's shared assignment, and returns a sparse matrix.
 - [`betweenness_od`](/api/network#betweenness_od) routes that matrix: only origins with outbound trips are traversed, and each shortest-path contribution is scaled by its pair weight.
 
 ### Modelled demand

@@ -416,6 +416,59 @@ def test_betweenness_demand(primal_graph):
     assert np.nansum(flow_far) == 0.0
 
 
+def test_build_od_matrix(primal_graph):
+    """build_od_matrix assigns zones via the shared data-layer workflow, then filters OD flows."""
+    import geopandas as gpd
+    import pandas as pd
+    from shapely.geometry import Point
+
+    nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(primal_graph)
+    pts = nodes_gdf.geometry
+    # four zones placed at the first four network node coordinates
+    zone_ids = [f"Z{i}" for i in range(4)]
+    zones_gdf = gpd.GeoDataFrame({"geo_code": zone_ids, "geometry": [pts.iloc[i] for i in range(4)]}, crs=nodes_gdf.crs)
+    od_df = pd.DataFrame(
+        {
+            "o": ["Z0", "Z0", "Z1", "Z2", "ZX"],
+            "d": ["Z1", "Z2", "Z3", "Z3", "Z0"],
+            "w": [10.0, 5.0, 0.0, 3.0, 99.0],  # w=0 dropped; ZX is an unknown zone -> dropped
+        }
+    )
+    od = networks.build_od_matrix(
+        od_df,
+        zones_gdf,
+        network_structure,
+        origin_col="o",
+        destination_col="d",
+        weight_col="w",
+        zone_id_col="geo_code",
+    )
+    # three valid pairs (Z0->Z1, Z0->Z2, Z2->Z3); two unique origins (Z0, Z2)
+    assert od.len() == 3
+    assert od.n_origins() == 2
+
+    out = networks.betweenness_od(network_structure, nodes_gdf.copy(), od_matrix=od, distances=[2000])
+    betw = out["cc_betweenness_2000"].to_numpy()
+    assert np.nanmax(betw) > 0.0
+
+    # a zone too far to assign is excluded, dropping every pair that references it
+    far_zones = gpd.GeoDataFrame(
+        {"geo_code": ["Z0", "Z1"], "geometry": [pts.iloc[0], Point(1e7, 1e7)]}, crs=nodes_gdf.crs
+    )
+    od_df_far = pd.DataFrame({"o": ["Z0"], "d": ["Z1"], "w": [10.0]})
+    od_far = networks.build_od_matrix(
+        od_df_far,
+        far_zones,
+        network_structure,
+        origin_col="o",
+        destination_col="d",
+        weight_col="w",
+        zone_id_col="geo_code",
+        max_netw_assign_dist=50.0,
+    )
+    assert od_far.len() == 0
+
+
 def test_betweenness_demand_outside_option(primal_graph):
     """Outside option: s=1 identity, participation damping, monotonicity in s, closest-mode scaling."""
     import geopandas as gpd
