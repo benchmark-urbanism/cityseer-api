@@ -1,3 +1,10 @@
+# v5.7.0 Release Notes
+
+A feature release harmonising `build_od_matrix` with the rest of the library, so the explicit origin-destination path now shares the assignment used by the demand model and the data layers.
+
+- **`build_od_matrix` harmonisation**: zone centroids are assigned through the data layers' `DataMap` workflow (`build_data_map` / `assign_data_to_network`) instead of a bespoke nearest-node snap, so assignment is representation-aware (primal vs dual) and barrier-valid. `max_netw_assign_dist` replaces `max_snap_dist`, and `barriers_gdf` / `n_nearest_candidates` are now supported, matching the rest of the library. Each zone is represented by its nearest assigned network node, so `OdMatrix` and `betweenness_od` are unchanged and existing OD results are effectively the same.
+- **Documentation**: the origin-destination and demand-flow examples and guides are updated to describe the shared assignment (rather than a nearest-node snap), and the demand recipe notes the `participation` lever added in 5.6.1.
+
 # v5.6.1 Release Notes
 
 A feature release harmonising `betweenness_demand` with the rest of the library: shared point-to-network assignment, a participation (outside) option for trip generation, and a representation-aware upgrade to assignment shared by all data layers.

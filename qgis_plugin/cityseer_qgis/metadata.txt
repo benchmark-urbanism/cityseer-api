@@ -3,7 +3,7 @@ name=Cityseer
 qgisMinimumVersion=4.0
 qgisMaximumVersion=4.99
 description=Urban network analysis: centrality, demand flows, accessibility, mixed uses, and statistics
-version=5.6.1
+version=5.7.0
 author=Benchmark Urbanism
 email=gareth.simons@ucl.ac.uk
 
@@ -16,7 +16,10 @@ about=Cityseer provides Processing algorithms for urban network analysis: networ
     simplest (angular) paths, boundary polygons, and optional adaptive sampling.
     Requires the cityseer Python library: pip install cityseer
 
-changelog=5.6.1
+changelog=5.7.0
+    - No change to plugin behaviour: the library's build_od_matrix helper now assigns zone centroids via the shared data-layer assignment (library API only)
+
+    5.6.1
     - Demand Betweenness: new advanced Participation parameter (stay-home outside option) making trip generation accessibility-elastic; 1 = everyone travels (unchanged behaviour), walking mode shares suggest 0.15-0.3
     - Demand Betweenness: origins and destinations are assigned via the shared data-layer workflow (nearest street, offsets included in routed distances) instead of a nearest-node snap
     - All algorithms: representation-aware assignment on the dual graph (single nearest street with direction-of-approach offsets), so accessibility, mixed-use, and statistics distances shift slightly
