@@ -1,3 +1,9 @@
+# v5.7.1 Release Notes
+
+A patch release. `ty` type-check compatibility: a blanket `# type: ignore` in `observe.street_continuity`, which newer `ty` versions narrow and flag as unused, is replaced with an explicit cast. No functional or API change.
+
+(v5.7.0 was not published — its CI failed on the above `ty` check — so this release also carries the v5.7.0 `build_od_matrix` harmonisation described below.)
+
 # v5.7.0 Release Notes
 
 A feature release harmonising `build_od_matrix` with the rest of the library, so the explicit origin-destination path now shares the assignment used by the demand model and the data layers.
