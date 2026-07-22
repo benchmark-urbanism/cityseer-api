@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import copy
 import logging
-from typing import Any
+from typing import Any, cast
 
 import networkx as nx
 import numpy as np
@@ -261,7 +261,7 @@ def street_continuity(
                     visited_edges: set[str] = set()
                     _recurse_edges(
                         nx_multi_copy,
-                        method,  # type: ignore
+                        cast("str", method),
                         match_target,
                         a_nd_key,
                         b_nd_key,
