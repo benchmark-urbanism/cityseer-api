@@ -124,6 +124,9 @@ python-source = "pysrc"
 module-name = 'cityseer.rustalgos'
 features = ["pyo3/extension-module"]
 release = true
+# maturin auto-declares `License-File: LICENSE.txt` in the metadata but does not otherwise
+# pull the root license file into the sdist; include it so PyPI's PEP 639 check passes.
+include = [{ path = "LICENSE.txt", format = "sdist" }]
 
 [tool.setuptools]
 packages = ["cityseer"]
