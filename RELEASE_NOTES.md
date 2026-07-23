@@ -1,3 +1,24 @@
+# v5.8.0 Release Notes
+
+A tidy-up release that retires a legacy return value from the data-layer methods. Earlier versions wrote assignment details onto the data GeoDataFrame and returned it; since the representation-aware assignment of v5.6.1 that information lives in the Rust `DataMap`, so the returned frame is no longer needed. Migration is a one-line change.
+
+## Breaking Changes
+
+- **Data-layer methods no longer return the data GeoDataFrame.** `compute_accessibilities`, `compute_mixed_uses`, and `compute_stats` previously returned a two-value tuple whose second element was the data GeoDataFrame, a carry-over from when assignment details were written back onto it. That assignment now lives entirely in the Rust `DataMap`, so the second value is no longer needed and has been removed. On `CityNetwork` the methods now return the `CityNetwork` itself, so they chain like `centrality_shortest`; on the functional `layers` API they return the `nodes_gdf`.
+
+  ```python
+  # before
+  cn, data_gdf = cn.compute_accessibilities(...)
+  nodes_gdf, data_gdf = layers.compute_stats(...)
+  # after
+  cn = cn.compute_accessibilities(...)
+  nodes_gdf = layers.compute_stats(...)
+  ```
+
+  Unpacking a `CityNetwork` into two values now raises a `TypeError` that names this change. To inspect or plot assignment for debugging, build a `DataMap` with `layers.build_data_map(...)` and pass it to `tools.plot.plot_assignment`; that path is unchanged.
+
+- **Documentation**: the Land-Use guide gains a "How distances to data features are measured" section covering point, line, and polygon assignment and the primal versus dual distance offset, with figures.
+
 # v5.7.2 Release Notes
 
 A packaging fix. Newer `maturin` declares `License-File: LICENSE.txt` in the sdist metadata but does not include the root license file in the tarball, so PyPI rejects the upload under PEP 639. The sdist now includes `LICENSE.txt`. No functional or API change.

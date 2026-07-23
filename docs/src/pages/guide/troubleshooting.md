@@ -57,10 +57,10 @@ cn = CityNetwork.load("my_network")
 
 Data points are assigned to the nearest street edge before aggregation, and points further than the maximum assignment distance (default 100m) from any edge are silently excluded. Points outside the network's extent entirely can never be reached and contribute nothing.
 
-The land-use methods return the data `GeoDataFrame` with `nearest_assigned` and `next_nearest_assign` columns; rows with no assignment are the excluded points. If legitimate points are being dropped, for example building centroids set back from the street, raise the assignment distance:
+If legitimate points are being dropped, for example building centroids set back from the street, raise the assignment distance:
 
 ```python
-cn, data_gdf = cn.compute_accessibilities(data_gdf=data_gdf, ..., max_netw_assign_dist=400)
+cn = cn.compute_accessibilities(data_gdf=data_gdf, ..., max_netw_assign_dist=400)
 ```
 
 Also confirm the data layer covers the buffered network extent (see [Edge Rolloff](/guide/fundamentals#edge-rolloff)) and shares the network's projected CRS.

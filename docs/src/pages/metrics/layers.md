@@ -372,16 +372,6 @@ layout: ../../layouts/PageLayout.astro
  The input `node_gdf` parameter is returned with additional columns populated with the calculated metrics. Two columns will be returned for each input landuse class and distance combination; a count of reachable locations, and the smallest distance to the nearest location.</div>
 </div>
 
-<div class="param-set">
-  <div class="def">
-    <div class="name">data_gdf</div>
-    <div class="type">GeoDataFrame</div>
-  </div>
-  <div class="desc">
-
- The input `data_gdf` is returned with two additional columns: `nearest_assigned` and `next_nearest_assign`.</div>
-</div>
-
 ### Notes
 
 ```python
@@ -395,7 +385,7 @@ nodes_gdf, edges_gdf, network_structure = io.network_structure_from_nx(G)
 print(nodes_gdf.head())
 landuses_gdf = mock.mock_landuse_categorical_data(G)
 print(landuses_gdf.head())
-nodes_gdf, landuses_gdf = layers.compute_accessibilities(
+nodes_gdf = layers.compute_accessibilities(
     data_gdf=landuses_gdf,
     landuse_column_label="categorical_landuses",
     accessibility_keys=["a", "c"],
@@ -689,16 +679,6 @@ print(nodes_gdf["cc_c_nearest_max_800"])
  The input `node_gdf` parameter is returned with additional columns populated with the calculated metrics.</div>
 </div>
 
-<div class="param-set">
-  <div class="def">
-    <div class="name">data_gdf</div>
-    <div class="type">GeoDataFrame</div>
-  </div>
-  <div class="desc">
-
- The input `data_gdf` is returned with two additional columns: `nearest_assigned` and `next_nearest_assign`.</div>
-</div>
-
 ### Notes
 
 | key | formula | notes |
@@ -724,7 +704,7 @@ nodes_gdf, edges_gdf, network_structure = io.network_structure_from_nx(G)
 print(nodes_gdf.head())
 landuses_gdf = mock.mock_landuse_categorical_data(G)
 print(landuses_gdf.head())
-nodes_gdf, landuses_gdf = layers.compute_mixed_uses(
+nodes_gdf = layers.compute_mixed_uses(
     data_gdf=landuses_gdf,
     landuse_column_label="categorical_landuses",
     nodes_gdf=nodes_gdf,
@@ -987,16 +967,6 @@ been applied.
  The input `node_gdf` parameter is returned with additional columns populated with the calculated metrics.</div>
 </div>
 
-<div class="param-set">
-  <div class="def">
-    <div class="name">data_gdf</div>
-    <div class="type">GeoDataFrame</div>
-  </div>
-  <div class="desc">
-
- The input `data_gdf` is returned with two additional columns: `nearest_assigned` and `next_nearest_assign`.</div>
-</div>
-
 ### Notes
 
  Default exponential decay at multiple scales:
@@ -1012,7 +982,7 @@ nodes_gdf, edges_gdf, network_structure = io.network_structure_from_nx(G)
 print(nodes_gdf.head())
 numerical_gdf = mock.mock_numerical_data(G, num_arrs=3)
 print(numerical_gdf.head())
-nodes_gdf, numerical_gdf = layers.compute_stats(
+nodes_gdf = layers.compute_stats(
     data_gdf=numerical_gdf,
     stats_column_labels=["mock_numerical_1"],
     nodes_gdf=nodes_gdf,
@@ -1028,7 +998,7 @@ print(nodes_gdf["cc_mock_numerical_1_mean_400_nw"])
  Custom decay using the `p` variable directly (Gaussian peaking at 400m within a 1200m cutoff):
 
 ```python
-nodes_gdf, numerical_gdf = layers.compute_stats(
+nodes_gdf = layers.compute_stats(
     data_gdf=numerical_gdf,
     stats_column_labels=["mock_numerical_1"],
     nodes_gdf=nodes_gdf,
@@ -1043,7 +1013,7 @@ nodes_gdf, numerical_gdf = layers.compute_stats(
 ```python
 from cityseer import decay
 
-nodes_gdf, numerical_gdf = layers.compute_stats(
+nodes_gdf = layers.compute_stats(
     data_gdf=numerical_gdf,
     stats_column_labels=["mock_numerical_1"],
     nodes_gdf=nodes_gdf,
@@ -1056,7 +1026,7 @@ nodes_gdf, numerical_gdf = layers.compute_stats(
  Flat (unweighted) metrics:
 
 ```python
-nodes_gdf, numerical_gdf = layers.compute_stats(
+nodes_gdf = layers.compute_stats(
     data_gdf=numerical_gdf,
     stats_column_labels=["mock_numerical_1"],
     nodes_gdf=nodes_gdf,

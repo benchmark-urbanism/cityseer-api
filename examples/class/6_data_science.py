@@ -96,14 +96,14 @@ def _(mo):
     3. `accessibility_keys=["restaurant"]` tells the method to calculate accessibility specifically for features labelled as 'restaurant'.
     4. `distances=[200, 400, 800]` specifies the distance thresholds (in meters) at which accessibility should be measured. For each node, this will count how many restaurants are reachable within 200m, 400m, and 800m along the network.
 
-    The results are written to the network's nodes GeoDataFrame as new columns for these accessibility scores (e.g. `cc_restaurant_200` for the count of restaurants within 200m), and the method also returns the land use GeoDataFrame with assignment information. The snapshot taken with `cn.to_geopandas()` (here assigned to `nodes_gdf_acc`) joins all computed columns to the street geometries.
+    The results are written to the network's nodes GeoDataFrame as new columns for these accessibility scores (e.g. `cc_restaurant_200` for the count of restaurants within 200m). The snapshot taken with `cn.to_geopandas()` (here assigned to `nodes_gdf_acc`) joins all computed columns to the street geometries.
     """)
     return
 
 
 @app.cell
 def _(cn, gdf_rest):
-    _cn, _gdf_rest = cn.compute_accessibilities(
+    cn.compute_accessibilities(
         gdf_rest,
         landuse_column_label="amenity",
         accessibility_keys=["restaurant"],

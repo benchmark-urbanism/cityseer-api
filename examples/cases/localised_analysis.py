@@ -239,7 +239,7 @@ def local_analysis(line_geom: geometry.LineString, location_key: str) -> None:
     landuses_gdf = landuses_gdf[["cat_key", "geom"]]
     landuses_gdf.to_file(f"../temp/{location_key}_places.gpkg")
     # compute accessibilities
-    cn, landuses_gdf = cn.compute_accessibilities(
+    cn = cn.compute_accessibilities(
         landuses_gdf,
         landuse_column_label="cat_key",
         accessibility_keys=list(SCHEMA.keys()),

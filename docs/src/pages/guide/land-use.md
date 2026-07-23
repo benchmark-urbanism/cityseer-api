@@ -6,6 +6,53 @@ layout: '@src/layouts/PageLayout.astro'
 
 Land-use methods aggregate data points (shops, parks, building attributes) over the network from each node. Distance decay is central to how they weight nearby versus distant features, so both topics are covered on this page.
 
+## How distances to data features are measured
+
+Several `cityseer` methods aggregate data over the network and need the distance from each network node to each data feature: land-use accessibility, mixed-use diversity, statistical aggregations, and the demand and origin-destination models. A data feature may be a point, a line, or a polygon. The distance is measured along the streets, with a final step off the network to the feature itself. It is computed in two phases: assignment, done once when the data layer is built, and aggregation, done from every source node as the shortest paths are computed.
+
+### Assignment: binding a feature to the network
+
+Assignment determines which street each feature is measured from and records an **offset** for the match. A point is matched to its closest adjacent street. A line or polygon is more diffuse, so its closest street cannot reliably be taken as the point of access; it is matched to every street directly surrounding it instead. The offset has two parts, added together: an along-street distance and a perpendicular **setback** `s`, the gap between the feature and the street. The streets are selected in this order:
+
+1. A spatial index returns several nearby candidate streets. For a point, these are the nearest by distance. For a line or polygon, the index returns every street whose bounding box lies within `max_netw_assign_dist`.
+2. The true distance from the feature to each candidate is measured, and any candidate beyond `max_netw_assign_dist` (default 100m) is dropped.
+3. The surviving candidates are sorted, nearest first.
+4. Each candidate is tested in that order. A street that lies inside or touches the feature is accepted at once. Otherwise the connector, the straight line from the feature's nearest point to the street, must not cross a barrier (from `barriers_gdf`) or another street; this keeps a feature from binding across a road a pedestrian would have to cross. A candidate whose connector crosses either is skipped.
+5. A point keeps only the first candidate that passes. A line or polygon keeps all that pass.
+
+A feature with no valid street within `max_netw_assign_dist` is left unassigned and takes no part in any aggregation.
+
+### Aggregation: measuring from each node
+
+From each source node, a shortest-path traversal (or a simplest-path traversal, with `angular=True`) gives the network distance to every reachable node. The distance to a feature is the network distance to its assigned street plus the offset recorded during assignment, and it depends on the direction of approach: a feature can be reached from either end of its street, and the offset that applies is set by the end the route arrives through. `cc_{category}_nearest_max_{distance}` reports the nearest such distance for a category; accessibility counts and weighted statistics use the same distance to decide threshold membership and decay weight.
+
+How the offset is recorded, and how the direction of approach is resolved, depends on the graph representation.
+
+![Distance from a point to the network, primal versus dual.](/images/data_distance_schematic.svg) _The final distance depends on the direction the route approaches from. Amber marks the point and its measured offset; the street is drawn the same in both panels. Primal (left): the point attaches to both junction nodes; the distance through an end is the network distance to that node, plus the along-street part (`a` from one end, `L − a` from the other), plus the setback `s`, and the direction of approach settles which end applies. Dual (right): the point attaches to one segment node at the midpoint `M`; the along-street term `|L/2 − a|` is added or subtracted according to which end the route enters through, plus `s`._
+
+**Primal: both ends of the street.** On a primal graph the point attaches to both ends of its nearest street, with the along-street distance to its projection recorded at each: `a` from one end, `L − a` from the other, where `L` is the segment length. The route arrives through the nearer end, and the distance is the network distance to that end, plus that end's along-street part, plus the setback `s`. The direction of approach sets which end is nearer, and so which distance applies.
+
+**Dual: the segment's centre point.** On a dual graph the point cannot attach to two ends, because each junction is shared by several streets. It attaches instead to one node, the segment's centre point `M`. Depending on the direction of approach, the along-street offset `|L/2 − a|` is added to or subtracted from the network distance, and the setback `s` is added. This single-segment binding applies from version 5.6 onward.
+
+**Deduplication.** A single real-world feature is sometimes recorded as several points; a building, for instance, may have a separate point for each entrance. Give those points a common value and pass it as `data_id_col` to mark them as one feature. During aggregation only the closest of them is counted from each source node, so the building is measured to its nearest entrance.
+
+**Lines and polygons.** If more precise alignment is wanted, a point data type can be used instead, placed at the actual entrance to the building or feature (figure below). Where there are several entrances, denote each with its own point but give them a shared `data_id_col`, so the algorithm counts only the distance to the nearest and does not double count.
+
+![A point binds to one street; a line or polygon binds to every street it faces.](/images/data_polygon_schematic.svg) _On a primal graph. Left: the point reaches only its nearest street, so only that street's two junction nodes are reached. Right: the polygon faces three streets within range and binds to each, so every one of those streets' nodes can reach it._
+
+Two parameters control assignment on any of these methods. `max_netw_assign_dist` sets how far a feature may sit from a street before it is dropped. `data_id_col` names a column holding a unique identifier for the original feature that several points represent. Points sharing that identifier are treated as one feature, so only the nearest is counted.
+
+```python
+cn = cn.compute_accessibilities(
+    data_gdf=data_gdf,
+    landuse_column_label="category",
+    accessibility_keys=["park"],
+    distances=[800],
+    max_netw_assign_dist=100,
+    data_id_col="feature_id",
+)
+```
+
 ## Decay Functions
 
 Distance decay controls how feature importance or metric weighting decreases with distance from an analysis point. For **centrality**, decay is built into the metric expressions (e.g. the default `"exp(-4 * p)"` closeness and betweenness metrics described on the [Centrality](/guide/centrality) page). For **land-use methods** (`compute_accessibilities`, `compute_mixed_uses`, `compute_stats`), an optional `decay_fn` parameter accepts a string expression using a variable `p` that ranges from 0 at the source to 1 at the distance cutoff (`p = network_distance / max_distance`). The [`cityseer.decay`](/api/decay) module provides helper functions that return pre-built expression strings for common decay shapes.
@@ -45,7 +92,7 @@ cn.centrality_shortest(
 )
 
 # Gaussian decay for land-use stats
-cn, data_gdf = cn.compute_stats(
+cn = cn.compute_stats(
     data_gdf=prices_gdf,
     stats_column_labels=["price"],
     distances=[1200],
@@ -68,7 +115,7 @@ The expensive part of a land-use computation is the network traversal from every
 
 ```python
 # gravity-weighted AND plain-count accessibility to retail, in one pass
-cn, landuses_gdf = cn.compute_accessibilities(
+cn = cn.compute_accessibilities(
     data_gdf=landuses_gdf,
     landuse_column_label="category",
     accessibility_keys=["retail"],
@@ -102,7 +149,7 @@ Pass `decay_fn` to weight counts by distance, including the `{label: expression}
 The column names above reflect the `CityNetwork` method, whose default `decay_fn` of `"1"` yields a plain count. When `decay_fn` is omitted on the lower-level [`layers.compute_accessibilities`](/metrics/layers#compute_accessibilities) function, the legacy default writes both an unweighted `cc_{category}_{distance}_nw` and a decay-weighted `cc_{category}_{distance}_wt` column; passing a single expression produces one unsuffixed column.
 
 ```python
-cn, landuses_gdf = cn.compute_accessibilities(
+cn = cn.compute_accessibilities(
     data_gdf=landuses_gdf,
     landuse_column_label="category",
     accessibility_keys=["retail", "cafe", "park"],
@@ -143,7 +190,7 @@ See the [Mixed Uses](/examples/accessibility/gpd-mixed-uses) recipe.
 Pass a list of `stats_column_labels` to summarise several columns in one call, and a `decay_fn` to weight each value by distance, including the `{label: expression}` dict form for multiple weightings in a single traversal. By default all eight measures are produced; pass `measures=[...]` (any subset of the suffixes above) to compute only the ones you need. This keeps the output `GeoDataFrame` smaller and skips the weighted median/MAD sort when neither is requested.
 
 ```python
-cn, prices_gdf = cn.compute_stats(
+cn = cn.compute_stats(
     data_gdf=prices_gdf,
     stats_column_labels=["price"],
     distances=[1200],

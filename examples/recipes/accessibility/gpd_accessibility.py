@@ -100,14 +100,14 @@ def _(mo):
 def _(cn, prems_gpd):
     # compute accessibility
     distances = [100, 200, 400, 800]
-    _cn, prems_gpd_1 = cn.compute_accessibilities(
+    cn.compute_accessibilities(
         prems_gpd,
         landuse_column_label="division_desc",
         accessibility_keys=["food_bev", "creat_entert", "retail"],
         distances=distances,
     )
     nodes_gdf_1 = cn.to_geopandas()
-    return nodes_gdf_1, prems_gpd_1
+    return (nodes_gdf_1,)
 
 
 @app.cell(hide_code=True)
@@ -127,13 +127,13 @@ def _(nodes_gdf_1):
 
 
 @app.cell
-def _(nodes_gdf_1, plt, prems_gpd_1):
+def _(nodes_gdf_1, plt, prems_gpd):
     _g = nodes_gdf_1[nodes_gdf_1.live].copy()
     _g["_r"] = _g["cc_retail_400"].rank(pct=True)
     _g = _g.sort_values("_r")
     _fig, _ax = plt.subplots(1, 1, figsize=(7, 7), dpi=150)
     _g.plot(ax=_ax, color=plt.get_cmap("OrRd")(_g["_r"]), linewidth=0.15 + 2.25 * _g["_r"])
-    prems_gpd_1[prems_gpd_1["division_desc"] == "retail"].plot(
+    prems_gpd[prems_gpd["division_desc"] == "retail"].plot(
         markersize=1, edgecolor=None, color="#333333", legend=False, ax=_ax
     )
     _ax.set_title("Retail accessibility, 400 m", loc="left")
@@ -146,13 +146,13 @@ def _(nodes_gdf_1, plt, prems_gpd_1):
 
 
 @app.cell
-def _(nodes_gdf_1, plt, prems_gpd_1):
+def _(nodes_gdf_1, plt, prems_gpd):
     _g = nodes_gdf_1[nodes_gdf_1.live].copy()
     _g["_r"] = _g["cc_food_bev_200"].rank(pct=True)
     _g = _g.sort_values("_r")
     _fig, _ax = plt.subplots(1, 1, figsize=(7, 7), dpi=150)
     _g.plot(ax=_ax, color=plt.get_cmap("OrRd")(_g["_r"]), linewidth=0.15 + 2.25 * _g["_r"])
-    prems_gpd_1[prems_gpd_1["division_desc"] == "food_bev"].plot(
+    prems_gpd[prems_gpd["division_desc"] == "food_bev"].plot(
         markersize=1, edgecolor=None, color="#333333", legend=False, ax=_ax
     )
     _ax.set_title("Food and beverage accessibility, 200 m", loc="left")
@@ -165,7 +165,7 @@ def _(nodes_gdf_1, plt, prems_gpd_1):
 
 
 @app.cell
-def _(nodes_gdf_1, plt, prems_gpd_1):
+def _(nodes_gdf_1, plt, prems_gpd):
     nodes_gdf_1["cc_creat_entert_nearest_max_800"] = nodes_gdf_1["cc_creat_entert_nearest_max_800"].fillna(800)
     _g = nodes_gdf_1[nodes_gdf_1.live].copy()
     # proximity map: invert the rank so the nearest venues (smallest distance) read boldest
@@ -173,7 +173,7 @@ def _(nodes_gdf_1, plt, prems_gpd_1):
     _g = _g.sort_values("_r")
     _fig, _ax = plt.subplots(1, 1, figsize=(7, 7), dpi=150)
     _g.plot(ax=_ax, color=plt.get_cmap("OrRd")(_g["_r"]), linewidth=0.15 + 2.25 * _g["_r"])
-    prems_gpd_1[prems_gpd_1["division_desc"] == "creat_entert"].plot(
+    prems_gpd[prems_gpd["division_desc"] == "creat_entert"].plot(
         markersize=2, edgecolor=None, color="#333333", legend=False, ax=_ax
     )
     _ax.set_title("Distance to nearest creative or entertainment venue, 800 m max", loc="left")

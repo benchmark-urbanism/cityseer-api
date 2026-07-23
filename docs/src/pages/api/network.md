@@ -127,7 +127,7 @@ cn.centrality_simplest(distances=[400, 800, 1600])
 
 # 4. Compute land-use accessibility
 landuses_gdf = gpd.read_file("landuses.gpkg")
-cn, landuses_gdf = cn.compute_accessibilities(
+cn = cn.compute_accessibilities(
     data_gdf=landuses_gdf,
     landuse_column_label="category",
     accessibility_keys=["retail", "park"],
@@ -137,7 +137,7 @@ cn, landuses_gdf = cn.compute_accessibilities(
 
 # 5. Compute statistical aggregations
 prices_gdf = gpd.read_file("property_prices.gpkg")
-cn, prices_gdf = cn.compute_stats(
+cn = cn.compute_stats(
     data_gdf=prices_gdf,
     stats_column_labels=["price"],
     distances=[800, 1600],
@@ -1645,7 +1645,6 @@ result_gdf = cn.to_geopandas()  # cc_demand_800 projected onto the street segmen
   </div>
   <span class="pt">)-&gt;[</span>
   <span class="pr">CityNetwork</span>
-  <span class="pr">GeoDataFrame</span>
   <span class="pt">]</span>
 </div>
 </div>
@@ -1676,22 +1675,12 @@ result_gdf = cn.to_geopandas()  # cc_demand_800 projected onto the street segmen
  Returns self with accessibility columns added to ``nodes_gdf``.</div>
 </div>
 
-<div class="param-set">
-  <div class="def">
-    <div class="name">data_gdf</div>
-    <div class="type">GeoDataFrame</div>
-  </div>
-  <div class="desc">
-
- The input data GeoDataFrame with nearest network assignments.</div>
-</div>
-
 ### Notes
 
 ```python
 from cityseer import decay
 
-cn, landuses_gdf = cn.compute_accessibilities(
+cn = cn.compute_accessibilities(
     data_gdf=landuses_gdf,
     landuse_column_label="category",
     accessibility_keys=["retail", "cafe", "park"],
@@ -1730,7 +1719,6 @@ print(cn.nodes_gdf["cc_park_nearest_max_800"])
   </div>
   <span class="pt">)-&gt;[</span>
   <span class="pr">CityNetwork</span>
-  <span class="pr">GeoDataFrame</span>
   <span class="pt">]</span>
 </div>
 </div>
@@ -1761,20 +1749,10 @@ print(cn.nodes_gdf["cc_park_nearest_max_800"])
  Returns self with mixed-use columns added to ``nodes_gdf``.</div>
 </div>
 
-<div class="param-set">
-  <div class="def">
-    <div class="name">data_gdf</div>
-    <div class="type">GeoDataFrame</div>
-  </div>
-  <div class="desc">
-
- The input data GeoDataFrame with nearest network assignments.</div>
-</div>
-
 ### Notes
 
 ```python
-cn, landuses_gdf = cn.compute_mixed_uses(
+cn = cn.compute_mixed_uses(
     data_gdf=landuses_gdf,
     landuse_column_label="category",
     distances=[400, 800],
@@ -1809,7 +1787,6 @@ print(cn.nodes_gdf["cc_hill_q0_800"])
   </div>
   <span class="pt">)-&gt;[</span>
   <span class="pr">CityNetwork</span>
-  <span class="pr">GeoDataFrame</span>
   <span class="pt">]</span>
 </div>
 </div>
@@ -1840,22 +1817,12 @@ print(cn.nodes_gdf["cc_hill_q0_800"])
  Returns self with statistical columns added to ``nodes_gdf``.</div>
 </div>
 
-<div class="param-set">
-  <div class="def">
-    <div class="name">data_gdf</div>
-    <div class="type">GeoDataFrame</div>
-  </div>
-  <div class="desc">
-
- The input data GeoDataFrame with nearest network assignments.</div>
-</div>
-
 ### Notes
 
 ```python
 from cityseer import decay
 
-cn, prices_gdf = cn.compute_stats(
+cn = cn.compute_stats(
     data_gdf=prices_gdf,
     stats_column_labels=["price", "floor_area"],
     distances=[800, 1600],

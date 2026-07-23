@@ -939,7 +939,7 @@ def test_nx_from_cityseer_geopandas(primal_graph):
         network_structure=network_structure, nodes_gdf=nodes_gdf, betweenness={}, distances=[500, 1000]
     )
     data_gdf = mock.mock_landuse_categorical_data(primal_graph, length=50)
-    nodes_gdf, data_gdf = layers.compute_accessibilities(
+    nodes_gdf = layers.compute_accessibilities(
         data_gdf,
         landuse_column_label="categorical_landuses",
         accessibility_keys=["a", "c"],

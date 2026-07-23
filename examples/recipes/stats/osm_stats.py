@@ -138,14 +138,14 @@ def _(mo):
 @app.cell
 def _(bldgs_gpd, cn):
     distances = [100, 200]
-    _cn, bldgs_gpd_1 = cn.compute_stats(
+    cn.compute_stats(
         bldgs_gpd,
         stats_column_labels=["area", "perimeter", "compactness", "orientation", "shape_index"],
         distances=distances,
         measures=["mean", "count"],
     )
     nodes_gdf_1 = cn.to_geopandas()
-    return bldgs_gpd_1, nodes_gdf_1
+    return (nodes_gdf_1,)
 
 
 @app.cell(hide_code=True)
@@ -177,13 +177,13 @@ def _(nodes_gdf_1, sns):
 
 
 @app.cell
-def _(bldgs_gpd_1, colors, nodes_gdf_1, plt):
+def _(bldgs_gpd, colors, nodes_gdf_1, plt):
     fig, ax = plt.subplots(1, 1, figsize=(7, 7), dpi=150)
     _g = nodes_gdf_1.copy()
     _g["_r"] = _g["cc_area_mean_100"].rank(pct=True)
     _g = _g.sort_values("_r")  # strongest drawn last
     _g.plot(ax=ax, color=plt.get_cmap("OrRd")(_g["_r"]), linewidth=0.15 + 2.25 * _g["_r"])
-    bldgs_gpd_1.plot(color="#cccccc", edgecolor="#bbbbbb", alpha=0.5, ax=ax)
+    bldgs_gpd.plot(color="#cccccc", edgecolor="#bbbbbb", alpha=0.5, ax=ax)
     ax.set_title("Mean building area, 100 m", loc="left")
     ax.set_axis_off()
     fig.tight_layout()

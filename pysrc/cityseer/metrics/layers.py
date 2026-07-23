@@ -288,8 +288,6 @@ def compute_accessibilities(
         The input `node_gdf` parameter is returned with additional columns populated with the calculated metrics. Two
         columns will be returned for each input landuse class and distance combination; a count of reachable
         locations, and the smallest distance to the nearest location.
-    data_gdf: GeoDataFrame
-        The input `data_gdf` is returned with two additional columns: `nearest_assigned` and `next_nearest_assign`.
 
     Examples
     --------
@@ -304,7 +302,7 @@ def compute_accessibilities(
     print(nodes_gdf.head())
     landuses_gdf = mock.mock_landuse_categorical_data(G)
     print(landuses_gdf.head())
-    nodes_gdf, landuses_gdf = layers.compute_accessibilities(
+    nodes_gdf = layers.compute_accessibilities(
         data_gdf=landuses_gdf,
         landuse_column_label="categorical_landuses",
         accessibility_keys=["a", "c"],
@@ -380,7 +378,7 @@ def compute_accessibilities(
     temp_df = pd.DataFrame(temp_data, index=acc_results[0].node_keys_py)
     nodes_gdf.loc[gdf_idx, temp_df.columns] = temp_df.loc[gdf_idx, temp_df.columns]
 
-    return nodes_gdf, data_gdf
+    return nodes_gdf
 
 
 def compute_mixed_uses(
@@ -482,8 +480,6 @@ def compute_mixed_uses(
     -------
     nodes_gdf: GeoDataFrame
         The input `node_gdf` parameter is returned with additional columns populated with the calculated metrics.
-    data_gdf: GeoDataFrame
-        The input `data_gdf` is returned with two additional columns: `nearest_assigned` and `next_nearest_assign`.
 
     Examples
     --------
@@ -522,7 +518,7 @@ def compute_mixed_uses(
     print(nodes_gdf.head())
     landuses_gdf = mock.mock_landuse_categorical_data(G)
     print(landuses_gdf.head())
-    nodes_gdf, landuses_gdf = layers.compute_mixed_uses(
+    nodes_gdf = layers.compute_mixed_uses(
         data_gdf=landuses_gdf,
         landuse_column_label="categorical_landuses",
         nodes_gdf=nodes_gdf,
@@ -607,7 +603,7 @@ def compute_mixed_uses(
     temp_df = pd.DataFrame(temp_data, index=results[0].node_keys_py)
     nodes_gdf.loc[gdf_idx, temp_df.columns] = temp_df.loc[gdf_idx, temp_df.columns]
 
-    return nodes_gdf, data_gdf
+    return nodes_gdf
 
 
 def compute_stats(
@@ -699,8 +695,6 @@ def compute_stats(
     -------
     nodes_gdf: GeoDataFrame
         The input `node_gdf` parameter is returned with additional columns populated with the calculated metrics.
-    data_gdf: GeoDataFrame
-        The input `data_gdf` is returned with two additional columns: `nearest_assigned` and `next_nearest_assign`.
 
     Examples
     --------
@@ -717,7 +711,7 @@ def compute_stats(
     print(nodes_gdf.head())
     numerical_gdf = mock.mock_numerical_data(G, num_arrs=3)
     print(numerical_gdf.head())
-    nodes_gdf, numerical_gdf = layers.compute_stats(
+    nodes_gdf = layers.compute_stats(
         data_gdf=numerical_gdf,
         stats_column_labels=["mock_numerical_1"],
         nodes_gdf=nodes_gdf,
@@ -733,7 +727,7 @@ def compute_stats(
     Custom decay using the `p` variable directly (Gaussian peaking at 400m within a 1200m cutoff):
 
     ```python
-    nodes_gdf, numerical_gdf = layers.compute_stats(
+    nodes_gdf = layers.compute_stats(
         data_gdf=numerical_gdf,
         stats_column_labels=["mock_numerical_1"],
         nodes_gdf=nodes_gdf,
@@ -748,7 +742,7 @@ def compute_stats(
     ```python
     from cityseer import decay
 
-    nodes_gdf, numerical_gdf = layers.compute_stats(
+    nodes_gdf = layers.compute_stats(
         data_gdf=numerical_gdf,
         stats_column_labels=["mock_numerical_1"],
         nodes_gdf=nodes_gdf,
@@ -761,7 +755,7 @@ def compute_stats(
     Flat (unweighted) metrics:
 
     ```python
-    nodes_gdf, numerical_gdf = layers.compute_stats(
+    nodes_gdf = layers.compute_stats(
         data_gdf=numerical_gdf,
         stats_column_labels=["mock_numerical_1"],
         nodes_gdf=nodes_gdf,
@@ -851,4 +845,4 @@ def compute_stats(
     temp_df = pd.DataFrame(temp_data, index=stats_results[0].node_keys_py)
     nodes_gdf.loc[gdf_idx, temp_df.columns] = temp_df.loc[gdf_idx, temp_df.columns]
 
-    return nodes_gdf, data_gdf
+    return nodes_gdf

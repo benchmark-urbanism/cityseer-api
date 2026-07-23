@@ -75,14 +75,14 @@ def _(mo):
 def _(cn_base, prems_gpd):
     # compute baseline accessibility
     distances = [800, 1600]
-    _cn, prems_gpd_1 = cn_base.compute_accessibilities(
+    cn_base.compute_accessibilities(
         prems_gpd,
         landuse_column_label="division_desc",
         accessibility_keys=["retail"],
         distances=distances,
     )
     base_gdf = cn_base.to_geopandas()
-    return base_gdf, distances, prems_gpd_1
+    return base_gdf, distances
 
 
 @app.cell(hide_code=True)
@@ -123,15 +123,15 @@ def _(mo):
 
 
 @app.cell
-def _(cn_metro, distances, prems_gpd_1):
-    _cn, prems_gpd_2 = cn_metro.compute_accessibilities(
-        prems_gpd_1,
+def _(cn_metro, distances, prems_gpd):
+    cn_metro.compute_accessibilities(
+        prems_gpd,
         landuse_column_label="division_desc",
         accessibility_keys=["retail"],
         distances=distances,
     )
     metro_gdf = cn_metro.to_geopandas()
-    return metro_gdf, prems_gpd_2
+    return (metro_gdf,)
 
 
 @app.cell(hide_code=True)
@@ -163,7 +163,7 @@ def _(base_gdf, metro_gdf):
 
 
 @app.cell
-def _(base_gdf, metro_gdf, plt, prems_gpd_2, stops_gdf):
+def _(base_gdf, metro_gdf, plt, prems_gpd, stops_gdf):
     import matplotlib.colors as mcolors
 
     fig, axes = plt.subplots(3, 1, figsize=(8, 20), dpi=150)
@@ -200,7 +200,7 @@ def _(base_gdf, metro_gdf, plt, prems_gpd_2, stops_gdf):
     axes[2].set_title("Difference due to metro, 800 m", loc="left")
     for ax in axes:
         # context overlays on top: retail premises and metro stops in neutral dark
-        prems_gpd_2[prems_gpd_2["division_desc"] == "retail"].plot(
+        prems_gpd[prems_gpd["division_desc"] == "retail"].plot(
             markersize=1, edgecolor=None, color="#333333", legend=False, ax=ax
         )
         stops_gdf.plot(ax=ax, color="#333333", markersize=1)

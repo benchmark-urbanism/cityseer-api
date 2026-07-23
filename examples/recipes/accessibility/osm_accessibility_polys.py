@@ -85,14 +85,14 @@ def _(mo):
 def _(cn, data_gdf):
     # compute park accessibility
     distances = [100, 200, 400, 800]
-    _cn, data_gdf_1 = cn.compute_accessibilities(
+    cn.compute_accessibilities(
         data_gdf,
         landuse_column_label="leisure",
         accessibility_keys=["park"],
         distances=distances,
     )
     nodes_gdf_1 = cn.to_geopandas()
-    return data_gdf_1, nodes_gdf_1
+    return (nodes_gdf_1,)
 
 
 @app.cell(hide_code=True)
@@ -112,14 +112,14 @@ def _(nodes_gdf_1):
 
 
 @app.cell
-def _(data_gdf_1, nodes_gdf_1, plt):
+def _(data_gdf, nodes_gdf_1, plt):
     fig, ax = plt.subplots(1, 1, figsize=(7, 7), dpi=150)
     _g = nodes_gdf_1.copy()
     # distance-to-nearest: lower is better, so invert the rank to draw the closest streets boldest
     _g["_r"] = 1 - _g["cc_park_nearest_max_800"].rank(pct=True)
     _g = _g.sort_values("_r")
     _g.plot(ax=ax, color=plt.get_cmap("OrRd")(_g["_r"]), linewidth=0.15 + 2.25 * _g["_r"])
-    data_gdf_1.plot(color="#cccccc", edgecolor="#bbbbbb", ax=ax)
+    data_gdf.plot(color="#cccccc", edgecolor="#bbbbbb", ax=ax)
     ax.set_title("Distance to nearest park, 800 m max", loc="left")
     ax.set_axis_off()
     fig.tight_layout()

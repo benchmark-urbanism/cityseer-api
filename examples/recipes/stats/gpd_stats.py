@@ -98,14 +98,14 @@ def _(mo):
 @app.cell
 def _(bldgs_gpd, cn):
     distances = [100, 200]
-    _cn, bldgs_gpd_1 = cn.compute_stats(
+    cn.compute_stats(
         bldgs_gpd,
         stats_column_labels=["area", "perimeter", "compactness", "orientation", "shape_index"],
         distances=distances,
         measures=["mean", "median", "mad", "var"],
     )
     nodes_gdf_1 = cn.to_geopandas()
-    return bldgs_gpd_1, nodes_gdf_1
+    return (nodes_gdf_1,)
 
 
 @app.cell(hide_code=True)
@@ -204,14 +204,14 @@ def _(nodes_gdf_1, np, plt, sns):
 
 
 @app.cell
-def _(bldgs_gpd_1, nodes_gdf_1, plt):
+def _(bldgs_gpd, nodes_gdf_1, plt):
     g = nodes_gdf_1[nodes_gdf_1.live].copy()
     g["_r"] = g["cc_orientation_median_200"].rank(pct=True)
     g = g.sort_values("_r")
     _fig, _ax = plt.subplots(1, 1, figsize=(7, 7), dpi=150)
     g.plot(ax=_ax, color=plt.get_cmap("OrRd")(g["_r"]), linewidth=0.15 + 2.25 * g["_r"])
     # buildings as light-grey context
-    bldgs_gpd_1.plot(color="#cccccc", edgecolor="#bbbbbb", linewidth=0.1, ax=_ax)
+    bldgs_gpd.plot(color="#cccccc", edgecolor="#bbbbbb", linewidth=0.1, ax=_ax)
     _ax.set_title("Median building orientation, 200 m", loc="left")
     _ax.set_xlim(438500, 438500 + 3500)
     _ax.set_ylim(4472500, 4472500 + 3500)

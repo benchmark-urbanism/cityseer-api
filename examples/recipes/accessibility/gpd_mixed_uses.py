@@ -100,13 +100,13 @@ def _(mo):
 def _(cn, prems_gpd):
     # compute mixed uses
     distances = [100, 200, 400, 800]
-    _cn, prems_gpd_1 = cn.compute_mixed_uses(
+    cn.compute_mixed_uses(
         prems_gpd,
         landuse_column_label="division_desc",
         distances=distances,
     )
     nodes_gdf_1 = cn.to_geopandas()
-    return nodes_gdf_1, prems_gpd_1
+    return (nodes_gdf_1,)
 
 
 @app.cell(hide_code=True)
@@ -126,14 +126,14 @@ def _(nodes_gdf_1):
 
 
 @app.cell
-def _(nodes_gdf_1, plt, prems_gpd_1):
+def _(nodes_gdf_1, plt, prems_gpd):
     g = nodes_gdf_1[nodes_gdf_1.live].copy()
     g["_r"] = g["cc_hill_q0_400"].rank(pct=True)
     g = g.sort_values("_r")
     fig, ax = plt.subplots(1, 1, figsize=(7, 7), dpi=150)
     g.plot(ax=ax, color=plt.get_cmap("OrRd")(g["_r"]), linewidth=0.15 + 2.25 * g["_r"])
     # categorical land-use overlay kept as-is (discrete classes)
-    prems_gpd_1.plot(column="division_desc", cmap="tab20", markersize=1, edgecolor=None, legend=False, ax=ax)
+    prems_gpd.plot(column="division_desc", cmap="tab20", markersize=1, edgecolor=None, legend=False, ax=ax)
     ax.set_title("Hill diversity q=0, 400 m", loc="left")
     ax.set_xlim(439000, 439000 + 2500)
     ax.set_ylim(4473000, 4473000 + 2500)

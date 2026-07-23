@@ -225,7 +225,7 @@ def _(cn, data_dir, gpd):
 
     bldgs_gpd = gpd.read_file(data_dir / "madrid_buildings" / "madrid_bldgs.gpkg")
     _before = set(cn.nodes_gdf.columns)
-    _cn, bldgs_assigned = cn.compute_stats(
+    cn.compute_stats(
         bldgs_gpd,
         stats_column_labels=["mean_height"],
         distances=[400, 800],
