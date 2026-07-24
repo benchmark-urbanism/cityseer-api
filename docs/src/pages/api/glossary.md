@@ -8,7 +8,7 @@ Key terms used throughout the examples and guide.
 
 ### Accessibility
 
-A measure of how easily land uses (shops, parks, restaurants, etc.) can be reached from each point in the street network. Computed using network distance, not straight-line distance. See [Accessibility recipes](/examples/accessibility) and [`compute_accessibilities`](/metrics/layers#compute-accessibilities).
+A measure of how easily land uses (shops, parks, restaurants, etc.) can be reached from each point in the street network. Computed using network distance, not straight-line distance. See [Accessibility recipes](/examples/accessibility) and [`compute_accessibilities`](/metrics/layers#compute_accessibilities).
 
 ### Betweenness Centrality
 
@@ -36,7 +36,7 @@ A weighting that reduces the influence of features as distance from the analysis
 
 ### Dual Graph
 
-A graph representation where **streets become nodes** and **intersections become edges**. This is the inverse of a primal graph. Working with the dual graph is recommended for centrality analysis because it expresses metrics relative to street segments rather than intersections, and it is required for angular (simplest-path) analysis. `CityNetwork` builds the dual graph automatically; when using the lower-level API, convert manually with [`nx_to_dual`](/tools/graphs#nx-to-dual).
+A graph representation where **streets become nodes** and **intersections become edges**. This is the inverse of a primal graph. Working with the dual graph is recommended for centrality analysis because it expresses metrics relative to street segments rather than intersections, and it is required for angular (simplest-path) analysis. `CityNetwork` builds the dual graph automatically; when using the lower-level API, convert manually with [`nx_to_dual`](/tools/graphs#nx_to_dual).
 
 ### Edge Rolloff
 
@@ -48,7 +48,7 @@ Nodes with `live=True` are within the study area and will have metrics computed.
 
 ### Mixed-Use
 
-A measure of the diversity of land uses reachable from each node within a given distance threshold. Higher mixed-use values indicate areas where many different types of amenities are accessible. See [`compute_mixed_uses`](/metrics/layers#compute-mixed-uses).
+A measure of the diversity of land uses reachable from each node within a given distance threshold. Higher mixed-use values indicate areas where many different types of amenities are accessible. See [`compute_mixed_uses`](/metrics/layers#compute_mixed_uses).
 
 ### Network Distance
 
@@ -56,7 +56,7 @@ The shortest-path distance along the street network between two points, as oppos
 
 ### NetworkStructure
 
-A `cityseer` data structure (backed by Rust) that holds the network topology for efficient metric computation. `CityNetwork` creates and manages this structure automatically; in the lower-level API it is created from a `networkx` graph using [`network_structure_from_nx`](/tools/io#network-structure-from-nx). Can be reused across multiple metric calculations as long as the network doesn't change.
+A `cityseer` data structure (backed by Rust) that holds the network topology for efficient metric computation. `CityNetwork` creates and manages this structure automatically; in the lower-level API it is created from a `networkx` graph using [`network_structure_from_nx`](/tools/io#network_structure_from_nx). Can be reused across multiple metric calculations as long as the network doesn't change.
 
 ### Primal Graph
 

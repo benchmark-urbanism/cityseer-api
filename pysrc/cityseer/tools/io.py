@@ -579,8 +579,6 @@ def osm_graph_from_poly(
         An optional `pyproj` compatible `str` or `int` representing a valid CRS for the generated network returned from
         this function. If this parameter is provided, then the network will be converted to the specified CRS. If not
         provided, then the OSM network will be projected into a local UTM coordinate reference system.
-    buffer_dist: int
-        A distance to use for buffering and cleaning operations. 15m by default.
     custom_request: str
         An optional custom OSM request. If provided, this must include a "geom_osm" string formatting key for inserting
         the geometry passed to the OSM API query. See the discussion below.
@@ -588,7 +586,7 @@ def osm_graph_from_poly(
         Whether to automatically simplify the OSM graph.
     final_clean_distances: tuple[int]
         A tuple of distances to use for the final cleaning step. These will be applied incrementally.
-        (6, 12) by default.
+        (4, 8) by default.
     remove_disconnected: int
         Remove disconnected components containing fewer nodes than specified. 100 nodes by default.
     cycleways: bool

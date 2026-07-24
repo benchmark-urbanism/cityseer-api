@@ -262,10 +262,11 @@ def custom_format_signature(sig: inspect.Signature, colon: bool = True) -> str:
 # These pages document the Rust bindings, which power the public API but carry no
 # stability guarantee of their own.
 _LOWLEVEL_BANNER = """:::warning
-**Low-level internals.** This section documents the Rust-backed structures and functions that power \
-`cityseer`. They are provided for reference. For analysis, use the higher-level wrappers instead: the \
-[`CityNetwork`](/api/network) class, or the [`metrics`](/metrics/networks) and [`tools`](/tools/graphs) modules. \
-Symbols on these pages are not part of the public API and may change between releases without a deprecation cycle.
+**Low-level internals.** These are the Rust-backed structures and functions that power `cityseer`. They \
+carry no stability guarantee and are subject to breaking changes from time to time. Users are encouraged to \
+use the higher-level wrappers instead, which are more stable: the [`CityNetwork`](/api/network) class, or the \
+[`metrics`](/metrics/networks) and [`tools`](/tools/graphs) modules. The basic information below is provided \
+for those who do wish to work with the lower-level internals.
 :::"""
 
 

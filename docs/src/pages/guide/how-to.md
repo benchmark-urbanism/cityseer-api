@@ -8,7 +8,7 @@ Short answers to common questions, each pointing to the part of the API that han
 
 ## Count the schools reachable within 800 m of each street?
 
-Use accessibility. Pass a GeoDataFrame of points or polygons with a category column and specify the required categories: `cn.compute_accessibilities(data_gdf, landuse_column_label="type", accessibility_keys=["school"], distances=[800])`. Each street segment receives count columns (`cc_school_800_nw` unweighted, `cc_school_800_wt` decay-weighted) and a `cc_school_nearest_max_800` distance to the closest feature. In QGIS, use the [Accessibility](/plugin/accessibility) algorithm.
+Use accessibility. Pass a GeoDataFrame of points or polygons with a category column and specify the required categories: `cn.compute_accessibilities(data_gdf, landuse_column_label="type", accessibility_keys=["school"], distances=[800])`. Each street segment receives a count column (`cc_school_800`) and a `cc_school_nearest_max_800` distance to the closest feature. Pass a `decay_fn` to weight the count by distance. In QGIS, use the [Accessibility](/plugin/accessibility) algorithm.
 
 ## Find the distance to the nearest supermarket?
 
@@ -16,11 +16,11 @@ The same accessibility call computes it: the `cc_<category>_nearest_max_<distanc
 
 ## Aggregate building areas around each street?
 
-Use statistics. Give each building polygon an area column (`gdf["area"] = gdf.geometry.area`), then `cn.compute_stats(gdf, stats_column_labels=["area"], distances=[400, 800])`. The `cc_area_sum_400_nw` column is the total built area reachable within 400 m of each street (pass `decay_fn="1"` for a single unsuffixed column). In QGIS, use the [Statistics](/plugin/statistics) algorithm.
+Use statistics. Give each building polygon an area column (`gdf["area"] = gdf.geometry.area`), then `cn.compute_stats(gdf, stats_column_labels=["area"], distances=[400, 800])`. The `cc_area_sum_400` column is the total built area reachable within 400 m of each street. In QGIS, use the [Statistics](/plugin/statistics) algorithm.
 
 ## Get the average income around each street?
 
-Use statistics with the mean: attach the income value to census points or polygon centroids and read `cc_income_mean_<distance>_nw`. Pass `measures=["mean"]` to compute only the required statistics. See [compute_stats](/api/network).
+Use statistics with the mean: attach the income value to census points or polygon centroids and read `cc_income_mean_<distance>`. Pass `measures=["mean"]` to compute only the required statistics. See [compute_stats](/api/network).
 
 ## Aggregate several columns at once?
 
@@ -28,7 +28,7 @@ Pass them together: `stats_column_labels=["income", "age", "density"]` computes 
 
 ## Measure how mixed the land uses are around each street?
 
-Use mixed uses: `cn.compute_mixed_uses(data_gdf, landuse_column_label="type", distances=[800])`. Hill diversity at q = 0 (`cc_hill_q0_800_nw`) counts the distinct land uses reachable within the threshold. See the [land-use guide](/guide/land-use).
+Use mixed uses: `cn.compute_mixed_uses(data_gdf, landuse_column_label="type", distances=[800])`. Hill diversity at q = 0 (`cc_hill_q0_800`) counts the distinct land uses reachable within the threshold. See the [land-use guide](/guide/land-use).
 
 ## Find the streets likely to carry the most movement?
 

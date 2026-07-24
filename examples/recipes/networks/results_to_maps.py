@@ -107,9 +107,9 @@ def _(mo):
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
-    ## A publication-quality figure in matplotlib
+    ## Rendering the figure in matplotlib
 
-    The same principles apply when producing the figure in code: quantile class breaks, a single sequential colormap, line width following the value, and a colorbar labelled with the metric and its distance threshold. We filter to `live` segments so the buffer zone does not appear in the figure, and compute the breaks with `numpy` (`np.unique` guards against repeated break values in the zero-heavy tail of the distribution).
+    We filter to `live` segments so the buffer zone does not appear, rank `cc_betweenness_800` by percentile, and map that rank to both the line colour (a single sequential `OrRd` colormap) and the line width. Sorting by rank draws the strongest streets last, on top.
     """)
     return
 

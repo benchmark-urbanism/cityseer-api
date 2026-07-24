@@ -213,7 +213,6 @@ layout: ../../layouts/PageLayout.astro
   </div>
   <span class="pt">)-&gt;[</span>
   <span class="pr">GeoDataFrame</span>
-  <span class="pr">GeoDataFrame</span>
   <span class="pt">]</span>
 </div>
 </div>
@@ -495,7 +494,6 @@ print(nodes_gdf["cc_c_nearest_max_800"])
     <span class="pa"> str | dict[str, str] | None = None</span>
   </div>
   <span class="pt">)-&gt;[</span>
-  <span class="pr">GeoDataFrame</span>
   <span class="pr">GeoDataFrame</span>
   <span class="pt">]</span>
 </div>
@@ -807,7 +805,6 @@ been applied.
     <span class="pa"> list[str] | None = None</span>
   </div>
   <span class="pt">)-&gt;[</span>
-  <span class="pr">GeoDataFrame</span>
   <span class="pr">GeoDataFrame</span>
   <span class="pt">]</span>
 </div>

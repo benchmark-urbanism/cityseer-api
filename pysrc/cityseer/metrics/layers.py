@@ -218,7 +218,7 @@ def compute_accessibilities(
     n_nearest_candidates: int = 50,
     speed_m_s: float = SPEED_M_S,
     decay_fn: str | dict[str, str] | None = None,
-) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
+) -> gpd.GeoDataFrame:
     r"""
     Compute land-use accessibilities for the specified land-use classification keys over the street network.
 
@@ -398,7 +398,7 @@ def compute_mixed_uses(
     n_nearest_candidates: int = 50,
     speed_m_s: float = SPEED_M_S,
     decay_fn: str | dict[str, str] | None = None,
-) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
+) -> gpd.GeoDataFrame:
     r"""
     Compute landuse metrics.
 
@@ -621,7 +621,7 @@ def compute_stats(
     speed_m_s: float = SPEED_M_S,
     decay_fn: str | dict[str, str] | None = None,
     measures: list[str] | None = None,
-) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
+) -> gpd.GeoDataFrame:
     r"""
     Compute numerical statistics over the street network.
 
