@@ -35,12 +35,23 @@ def finalize_export(nb: Path, html_out: Path) -> None:
 
     - Injects <base target="_top"> so links inside the notebook iframe open at the top
       level instead of navigating the iframe itself (skipped if a <base> already exists).
+    - Injects an aspect-ratio guard: marimo renders matplotlib output as an <img> whose
+      box a flex parent can stretch vertically; object-fit: contain keeps each figure at
+      its true aspect (a no-op for images already displayed at their intrinsic size).
     - Publishes any local images/ directory next to the notebook source (png/jpg/webp)
       alongside the exported HTML, since notebooks reference them relatively.
     """
     html = html_out.read_text()
-    if "<base" not in html and "<head>" in html:
-        html_out.write_text(html.replace("<head>", '<head><base target="_top">', 1))
+    # refresh the figure-aspect guard so re-runs pick up changes: strip any prior
+    # version, then re-inject. marimo can force the matplotlib <img> box taller than
+    # the figure; height:auto keeps the box at the figure's own aspect (no distortion
+    # and no dead space), object-fit is a fallback if a parent still constrains height.
+    html = re.sub(r'<style id="cs-figure-guard">.*?</style>', "", html, flags=re.DOTALL)
+    guard = '<style id="cs-figure-guard">img{height:auto!important;align-self:center;object-fit:contain}</style>'
+    head_inject = guard if "<base" in html else f'<base target="_top">{guard}'
+    if "<head>" in html:
+        html = html.replace("<head>", f"<head>{head_inject}", 1)
+        html_out.write_text(html)
     src_images = nb.parent / "images"
     if src_images.is_dir():
         dst = html_out.parent / "images"
