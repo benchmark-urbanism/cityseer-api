@@ -6,6 +6,18 @@ layout: '@src/layouts/PageLayout.astro'
 
 Centrality metrics quantify the structural importance of each location in the street network. `cityseer` computes multiple centrality measures simultaneously for any combination of distance thresholds in a single pass.
 
+## Closeness and betweenness
+
+Most centrality measures answer one of two questions.
+
+**Closeness** asks how near a location is to everywhere it can reach within the threshold. A street within a short walk of many destinations scores high; one at the end of a long cul-de-sac scores low. High closeness marks places that are well-placed to reach their surroundings, typically local centres.
+
+**Betweenness** asks how many of the shortest routes between other places pass through a location. A street that lies on the way between many origins and destinations scores high and carries through-movement; a quiet back street that no route uses scores low. High betweenness marks the through-routes and high streets.
+
+The two often diverge. A local centre can be easy to reach from its neighbourhood (high closeness) without lying on any through-route (low betweenness); a bypass can carry heavy through-movement (high betweenness) while being cut off from its immediate surroundings (low closeness). Computing both, at several distance thresholds, is usually more informative than either alone.
+
+The rest of this page covers how these measures are defined and read: the expression engine, the default metrics, and the shortest-path and angular variants.
+
 The examples on this page use the [`CityNetwork`](/api/network) methods, which are the recommended interface: network construction, cleaning, and the dual graph are handled automatically. The same computations exist as lower-level functions in [`metrics.networks`](/metrics/networks) for direct control over the network structures. The older `node_centrality_shortest`, `node_centrality_simplest`, and `segment_centrality` functions are deprecated: they exist only for backwards compatibility with pre-5.0 code (see the [migration guide](/guide/migration)).
 
 ## Expression-based metrics
@@ -122,7 +134,7 @@ Every node carries a `weight` (default `1.0`). Set it on the nodes `GeoDataFrame
 The same weighting is applied identically whether or not [adaptive sampling](#adaptive-sampling) is used. With the default weights of `1.0` the results are unchanged from an unweighted analysis.
 
 :::note
-Node weights affect **centrality only**. Land-use accessibility, mixed-use diversity, and statistical aggregations are intentionally *not* node-weighted; they weight reachable land-use data points (optionally by [distance decay](/guide/land-use#decay-functions)), not network nodes.
+Node weights affect **centrality only**. Land-use accessibility, mixed-use diversity, and statistical aggregations are intentionally *not* node-weighted; they weight reachable land-use data features (optionally by [distance decay](/guide/land-use#decay-functions)), not network nodes.
 :::
 
 ## Segment-weighted centrality
@@ -162,11 +174,11 @@ Standard betweenness treats every node pair equally. When you have real or model
 - [Sampled Centrality](/examples/centrality/sampled-centrality) -- adaptive sampling on a large network, validated against exact results
 - [OD Betweenness](/examples/centrality/od-betweenness) -- demand-weighted flows from a singly constrained spatial interaction model
 
-## Performance and Scale
+## Performance and scale
 
 The underlying algorithms are parallelised in Rust and scale to large networks. Computation scales with the number of edges, the number of distance thresholds, and the reachability at each threshold. Simplest-path (angular) centrality is typically faster than shortest-path because angular routing explores fewer paths. For large networks at long distance thresholds, consider [adaptive sampling](#adaptive-sampling).
 
-## Adaptive Sampling
+## Adaptive sampling
 
 For large networks at long distance thresholds, `cityseer` offers an experimental adaptive sampling feature. Rather than using every node as a source, each node is included with its own probability derived from its measured local reach: a cheap pilot polls the network with bounded shortest-path traversals from a small sample of sources to estimate each node's reach, and the Hoeffding inequality converts that reach into the minimum sampling rate needed to keep the approximation error within a specified tolerance. Sparse areas are sampled more heavily and dense areas less, so precision is uniform across the network. Results are corrected using inverse-probability weighting (IPW): if a node had a 25% chance of being selected as a source, its contribution is multiplied by 4 (the reciprocal of 0.25), so that the sampled subset approximates the result of using all nodes without bias.
 

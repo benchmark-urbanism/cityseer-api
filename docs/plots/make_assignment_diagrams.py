@@ -26,7 +26,7 @@ import matplotlib.pyplot as plt  # noqa: E402
 from matplotlib.lines import Line2D  # noqa: E402
 from matplotlib.patches import Polygon  # noqa: E402
 
-OUT = os.path.dirname(os.path.abspath(__file__))
+OUT = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "public", "images"))
 
 BG = "#19181b"
 STREET = "#e9e9e9"
@@ -141,7 +141,7 @@ def make_fig1():
         Line2D([], [], marker="s", ls="none", ms=9, c=DATA, mec=BG, label="data point"),
         Line2D([], [], color=DATA, lw=2.0, ls=(0, (2, 2)), label="measured"),
     ])
-    for ext in ("svg", "png"):
+    for ext in ("svg",):
         fig.savefig(os.path.join(OUT, f"data_distance_schematic.{ext}"), bbox_inches="tight", facecolor=BG)
     plt.close(fig)
 
@@ -194,7 +194,7 @@ def make_fig2():
         Line2D([], [], marker="s", ls="none", ms=9, c=DATA, mec=BG, label="data feature"),
         Line2D([], [], color=DATA, lw=2.0, ls=(0, (2, 2)), label="setback to a street"),
     ])
-    for ext in ("svg", "png"):
+    for ext in ("svg",):
         fig.savefig(os.path.join(OUT, f"data_polygon_schematic.{ext}"), bbox_inches="tight", facecolor=BG)
     plt.close(fig)
 
@@ -202,4 +202,4 @@ def make_fig2():
 if __name__ == "__main__":
     make_fig1()
     make_fig2()
-    print("saved data_distance_schematic and data_polygon_schematic (svg + png)")
+    print("saved data_distance_schematic and data_polygon_schematic (svg)")

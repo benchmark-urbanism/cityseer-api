@@ -15,54 +15,6 @@ print(f"images path: {IMAGES_PATH}")
 
 FORMAT = "png"
 
-###
-# INTRO PLOT
-G = mock.mock_graph()
-plot.plot_nx(G, labels=True, node_size=80, path=f"{IMAGES_PATH}/graph.{FORMAT}", dpi=200, figsize=(5, 5))
-
-# INTRO EXAMPLE PLOTS
-G = graphs.nx_simple_geoms(G)
-G = graphs.nx_decompose(G, 20)
-nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(G)
-nodes_gdf = networks.centrality_shortest(network_structure=network_structure, nodes_gdf=nodes_gdf, distances=[400, 800])
-data_gdf = mock.mock_landuse_categorical_data(G, random_seed=25)
-nodes_gdf, data_gdf = layers.compute_mixed_uses(
-    data_gdf,
-    landuse_column_label="categorical_landuses",
-    nodes_gdf=nodes_gdf,
-    network_structure=network_structure,
-    distances=[400, 800],
-)
-# custom colourmap
-segment_harmonic_vals = nodes_gdf["cc_harmonic_800"]
-mixed_uses_vals = nodes_gdf["cc_hill_q0_800"]
-cmap = colors.LinearSegmentedColormap.from_list("cityseer", ["#64c1ff", "#d32f2f"])
-segment_harmonic_vals = colors.Normalize()(segment_harmonic_vals)
-segment_harmonic_cols = cmap(segment_harmonic_vals)
-plot.plot_nx(
-    G,
-    plot_geoms=True,
-    node_colour=segment_harmonic_cols,
-    path=f"{IMAGES_PATH}/intro_segment_harmonic.{FORMAT}",
-    dpi=200,
-    figsize=(5, 5),
-)
-# plot hill mixed uses
-mixed_uses_vals = colors.Normalize()(mixed_uses_vals)
-mixed_uses_cols = cmap(mixed_uses_vals)
-data_map = mock.mock_data_map(data_gdf)
-data_map.assign_data_to_network(network_structure, max_assignment_dist=400, n_nearest_candidates=6)
-plot.plot_assignment(
-    network_structure,
-    G,
-    data_map,
-    path=f"{IMAGES_PATH}/intro_mixed_uses.{FORMAT}",
-    node_colour=mixed_uses_cols,
-    data_labels=data_gdf["categorical_landuses"],
-    dpi=200,
-    figsize=(5, 5),
-)
-
 #
 #
 # MOCK MODULE
@@ -120,56 +72,24 @@ def simple_plot(_G, _path, plot_geoms=True):
 
 simple_plot(graph_raw, f"{IMAGES_PATH}/graph_raw.{FORMAT}")
 simple_plot(graph_utm, f"{IMAGES_PATH}/graph_clean.{FORMAT}")
-# LAYERS MODULE
-# show assignment to network
-# random seed 25
-G = mock.mock_graph()
-G = graphs.nx_simple_geoms(G)
-nodes_gdf, _edges_gdf, network_structure = io.network_structure_from_nx(G)
-data_gdf = mock.mock_data_gdf(G, random_seed=25)
-data_map = layers.build_data_map(data_gdf, network_structure, max_netw_assign_dist=400)
-plot.plot_assignment(
-    network_structure,
-    G,
-    data_map,
-    path=f"{IMAGES_PATH}/assignment.{FORMAT}",
-    dpi=200,
-    figsize=(5, 5),
-)
-G_decomposed = graphs.nx_decompose(G, 50)
-nodes_gdf_decomp, _edges_gdf, network_structure_decomp = io.network_structure_from_nx(G_decomposed)
-data_gdf = mock.mock_data_gdf(G, random_seed=25)
-data_map = layers.build_data_map(data_gdf, network_structure_decomp, max_netw_assign_dist=400)
-plot.plot_assignment(
-    network_structure_decomp,
-    G_decomposed,
-    data_map,
-    path=f"{IMAGES_PATH}/assignment_decomposed.{FORMAT}",
-    dpi=200,
-    figsize=(5, 5),
-)
 
 # PLOT MODULE
-G = mock.mock_graph()
-G_simple = graphs.nx_simple_geoms(G)
-# generate a MultiGraph and compute gravity
+# compute closeness and colour the nodes by it
 G = mock.mock_graph()
 G = graphs.nx_simple_geoms(G)
 G = graphs.nx_decompose(G, 50)
 nodes_gdf, edges_gdf, network_structure = io.network_structure_from_nx(G)
 networks.centrality_shortest(network_structure=network_structure, nodes_gdf=nodes_gdf, distances=[800])
 G_after = io.nx_from_cityseer_geopandas(nodes_gdf, edges_gdf)
-# let's extract and normalise the values
+# extract and normalise the values
 vals = []
 for _node, data in G_after.nodes(data=True):
-    vals.append(data["cc_beta_800"])
-# let's create a custom colourmap using matplotlib
+    vals.append(data["cc_harmonic_800"])
+# custom colourmap using matplotlib
 cmap = colors.LinearSegmentedColormap.from_list(
     "cityseer", [(100 / 255, 193 / 255, 255 / 255, 255 / 255), (211 / 255, 47 / 255, 47 / 255, 1 / 255)]
 )
-# normalise the values
 vals = colors.Normalize()(vals)
-# cast against the colour map
 cols = cmap(vals)
 plot.plot_nx(
     G_after,
@@ -226,7 +146,7 @@ ax.set_ylabel("Weighting")
 ax.set_facecolor("#19181B")
 leg = ax.legend(
     loc="upper right",
-    title="$exp(-\\beta \cdot d[i,j])$",
+    title="$exp(-\\beta \\cdot d[i,j])$",
     fancybox=True,
     facecolor="#19181B",
 )

@@ -25,7 +25,7 @@ Decomposition splits long street segments into shorter pieces of uniform maximum
 
 Decomposition multiplies the node count, and computation scales with it. A 50m decomposition of a large city network can grow it by an order of magnitude, so decompose district-scale extents rather than whole cities, and prefer coarser maxima (50-100m) unless the analysis genuinely needs finer sampling. Decomposition is part of the lower-level workflow (`tools.graphs.nx_decompose` before [`network_structure_from_nx`](/tools/io#network-structure-from-nx)); the high-level `CityNetwork` API does not decompose. For worked examples, see the [statistics recipes](/examples/stats), which use decomposition for street-front resolution.
 
-## Directed Graphs and One-Way Streets
+## Directed graphs and one-way streets
 
 By default, `cityseer` builds undirected networks where every street is traversable in both directions. This is correct for pedestrian analysis. For cycling or vehicular analysis where one-way streets matter, enable directed mode: one-way streets are restricted to their designated direction while two-way streets remain bidirectional.
 
@@ -64,7 +64,7 @@ cn = CityNetwork.from_nx(G_cityseer)
 Graph cleaning functions in the [`graphs`](/tools/graphs) module do not preserve edge directionality. Pass directed graphs directly to `CityNetwork.from_nx` or `CityNetwork.from_geopandas(directed=True)`. For a worked example, see the [Directed Networks recipe](/examples/networks/directed-networks).
 :::
 
-## Elevation and Slope
+## Elevation and slope
 
 `cityseer` supports optional z (elevation) coordinates on network geometries. When present, elevation data is preserved through all processing steps (graph cleaning, decomposition, dual graph conversion, CRS reprojection, and serialisation). [Tobler's hiking function](https://en.wikipedia.org/wiki/Tobler%27s_hiking_function) automatically adjusts traversal costs based on the gradient: uphill segments incur a penalty proportional to the grade (for example, a 20% slope approximately doubles the effective distance), steep downhill segments are also penalised due to reduced walking speed, and gentle downhill slopes (~3%) receive a slight bonus matching the empirically observed optimal walking gradient. The penalty is a dimensionless multiplier on effective distance, computed directionally (A to B differs from B to A) and composing correctly with any configured walking speed.
 
@@ -74,7 +74,7 @@ When z coordinates are absent, all slope penalties default to 1.0 (no effect). T
 
 See the [3D Elevation](/examples/centrality/3d-elevation) example.
 
-## Edge Impedance
+## Edge impedance
 
 Each network edge carries an `imp_factor` (default `1.0`) that multiplicatively scales its effective traversal cost, which is useful for representing road surface, road class, or any other static per-segment penalty. Impedance composes with the slope penalty above: the effective edge cost is `length × imp_factor × slope_pen`, so both factors apply together.
 

@@ -4,7 +4,7 @@ layout: '@src/layouts/PageLayout.astro'
 
 # Fundamentals
 
-This guide walks through the core concepts and features of `cityseer`. It is aimed at researchers, urban planners, and developers who want to compute street-network centrality, land-use accessibility, or statistical aggregations at the pedestrian scale. Familiarity with Python and `geopandas` is assumed; for a gentler introduction, start with the [Python 101](/start) lessons. For the underlying research methods, see the [associated paper](https://journals.sagepub.com/doi/full/10.1177/23998083221133827).
+This guide covers the core concepts and features of `cityseer`. It is aimed at researchers, urban planners, and developers who want to compute street-network centrality, land-use accessibility, or statistical aggregations at the pedestrian scale. Familiarity with Python and `geopandas` is assumed; for a gentler introduction, start with the [Python 101](/start) lessons. For the underlying research methods, see the [associated paper](https://journals.sagepub.com/doi/full/10.1177/23998083221133827).
 
 :::note
 **Working with an LLM?** If you use an AI coding assistant, point it at [`llms.txt`](/llms.txt), a compact machine-readable index of this documentation, and at the [GitHub repository](https://github.com/benchmark-urbanism/cityseer-api). This grounds its answers in the current API rather than guesswork.
@@ -109,7 +109,7 @@ result_gdf.to_file("results.gpkg")
 
 Input geometries are automatically cleaned during construction: short self-loops, near-duplicate edges, and short danglers are removed. The [`feature_status`](/api/network#citynetwork) property returns a Series with values such as `"active"`, `"short_self_loop"`, `"duplicate"`, `"short_dangler"`, or `"invalid_geometry"`, indicating what happened to each input feature. When using the lower-level API, the [`tools.graphs`](/tools/graphs) module provides manual graph cleaning functions; see the [Network Simplification](/examples/networks/network-simplification) example.
 
-## Column Naming Conventions
+## Column naming conventions
 
 All computed metrics are written to columns on the `nodes_gdf` GeoDataFrame following a consistent pattern:
 
@@ -145,7 +145,7 @@ cols_800 = [c for c in cn.nodes_gdf.columns if c.endswith("_800")]
 bt_cols = [c for c in cn.nodes_gdf.columns if "betweenness" in c]
 ```
 
-## Additional Modules
+## Additional modules
 
 ### Visibility
 

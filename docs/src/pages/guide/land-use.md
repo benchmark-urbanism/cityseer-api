@@ -4,7 +4,7 @@ layout: '@src/layouts/PageLayout.astro'
 
 # Land-Use Analysis
 
-Land-use methods aggregate data points (shops, parks, building attributes) over the network from each node. Distance decay is central to how they weight nearby versus distant features, so both topics are covered on this page.
+Land-use methods aggregate data features (shops, parks, building attributes) over the network from each node. Distance decay is central to how they weight nearby versus distant features, so both topics are covered on this page.
 
 ## How distances to data features are measured
 
@@ -43,7 +43,7 @@ How the offset is recorded, and how the direction of approach is resolved, depen
 Two parameters control assignment on any of these methods. `max_netw_assign_dist` sets how far a feature may sit from a street before it is dropped. `data_id_col` names a column holding a unique identifier for the original feature that several points represent. Points sharing that identifier are treated as one feature, so only the nearest is counted.
 
 ```python
-cn = cn.compute_accessibilities(
+cn.compute_accessibilities(
     data_gdf=data_gdf,
     landuse_column_label="category",
     accessibility_keys=["park"],
@@ -53,13 +53,13 @@ cn = cn.compute_accessibilities(
 )
 ```
 
-## Decay Functions
+## Decay functions
 
 Distance decay controls how feature importance or metric weighting decreases with distance from an analysis point. For **centrality**, decay is built into the metric expressions (e.g. the default `"exp(-4 * p)"` closeness and betweenness metrics described on the [Centrality](/guide/centrality) page). For **land-use methods** (`compute_accessibilities`, `compute_mixed_uses`, `compute_stats`), an optional `decay_fn` parameter accepts a string expression using a variable `p` that ranges from 0 at the source to 1 at the distance cutoff (`p = network_distance / max_distance`). The [`cityseer.decay`](/api/decay) module provides helper functions that return pre-built expression strings for common decay shapes.
 
 ### How decay weighting works
 
-A decay function maps **normalised progress** `p` to a weight. `p = 0` at the analysis node (the source) and `p = 1` at the distance (or time) cutoff, so `p = network_distance / threshold`. The function is evaluated **once per reached element**, for every reachable node in a centrality calculation, or every reachable data point in a land-use calculation, and the resulting weight scales that element's contribution to the metric (a count, a numerical value, or a diversity contribution).
+A decay function maps **normalised progress** `p` to a weight. `p = 0` at the analysis node (the source) and `p = 1` at the distance (or time) cutoff, so `p = network_distance / threshold`. The function is evaluated **once per reached element**, for every reachable node in a centrality calculation, or every reachable data feature in a land-use calculation, and the resulting weight scales that element's contribution to the metric (a count, a numerical value, or a diversity contribution).
 
 A few properties are worth understanding:
 
@@ -92,7 +92,7 @@ cn.centrality_shortest(
 )
 
 # Gaussian decay for land-use stats
-cn = cn.compute_stats(
+cn.compute_stats(
     data_gdf=prices_gdf,
     stats_column_labels=["price"],
     distances=[1200],
@@ -107,7 +107,7 @@ cn = cn.compute_stats(
 
 ## Multiple decays in one traversal
 
-The expensive part of a land-use computation is the network traversal from every node; applying a decay weight to the reachable points is cheap by comparison. So instead of calling a method once per decay shape, repeating the traversal each time, the land-use methods (`compute_accessibilities`, `compute_mixed_uses`, `compute_stats`) let `decay_fn` be a `{label: expression}` dict and compute **every decay variant in a single shared traversal**.
+The expensive part of a land-use computation is the network traversal from every node; applying a decay weight to the reachable features is cheap by comparison. So instead of calling a method once per decay shape, repeating the traversal each time, the land-use methods (`compute_accessibilities`, `compute_mixed_uses`, `compute_stats`) let `decay_fn` be a `{label: expression}` dict and compute **every decay variant in a single shared traversal**.
 
 - **Input.** `decay_fn` may be a single expression string, `None` (flat, the default), or a `{label: expression}` dict.
 - **Output naming.** Each label is appended to that variant's output columns: `decay_fn={"grav": ..., "raw": ...}` yields `cc_retail_grav_800`, `cc_retail_raw_800`, and so on. A plain string or `None` adds **no** suffix, so existing column names, and their values, are unchanged. The dict form is therefore purely additive and backwards compatible.
@@ -115,7 +115,7 @@ The expensive part of a land-use computation is the network traversal from every
 
 ```python
 # gravity-weighted AND plain-count accessibility to retail, in one pass
-cn = cn.compute_accessibilities(
+cn.compute_accessibilities(
     data_gdf=landuses_gdf,
     landuse_column_label="category",
     accessibility_keys=["retail"],
@@ -133,11 +133,13 @@ Centrality expressions use two variables: `c` (raw cost) and `p` (normalised pro
 
 The centrality `postprocess` parameter is the one exception: it is evaluated in Python over previously computed metric columns and supports only `+`, `-`, `*`, `/`, and `**` (power), with no functions; see [Custom metrics](/guide/centrality#custom-metrics). See the [`cityseer.decay`](/api/decay) API reference for full details.
 
-## Land-Use Methods
+## Land-use methods
 
 `cityseer` computes land-use and statistical aggregations at the same node locations used for centrality. Because the results share a common spatial index, you can directly compare how well-connected a location is (centrality) with what amenities are reachable from it (accessibility). All land-use methods accept an `angular=True` parameter for simplest-path routing (`CityNetwork` handles the required dual graph automatically).
 
 ## Accessibility
+
+Accessibility answers a resident's question: from here, how much of a given kind of place can I reach on foot, and how far is the nearest one? A node with high retail accessibility sits within reach of many shops; a large `nearest_max` distance means the closest one is far away.
 
 [`compute_accessibilities`](/metrics/layers#compute_accessibilities) measures how many instances of each specified land-use category are reachable from every network node, and how far away the nearest instance is. For each category key and distance threshold it writes two kinds of column:
 
@@ -149,7 +151,7 @@ Pass `decay_fn` to weight counts by distance, including the `{label: expression}
 The column names above reflect the `CityNetwork` method, whose default `decay_fn` of `"1"` yields a plain count. When `decay_fn` is omitted on the lower-level [`layers.compute_accessibilities`](/metrics/layers#compute_accessibilities) function, the legacy default writes both an unweighted `cc_{category}_{distance}_nw` and a decay-weighted `cc_{category}_{distance}_wt` column; passing a single expression produces one unsuffixed column.
 
 ```python
-cn = cn.compute_accessibilities(
+cn.compute_accessibilities(
     data_gdf=landuses_gdf,
     landuse_column_label="category",
     accessibility_keys=["retail", "cafe", "park"],
@@ -163,11 +165,13 @@ See the [OSM Accessibility](/examples/accessibility/osm-accessibility) recipe.
 
 ## Mixed-use diversity
 
-[`compute_mixed_uses`](/metrics/layers#compute_mixed_uses) measures the diversity of land-use categories reachable from each node. Hill numbers are computed by default (`compute_hill=True`); Shannon and Gini-Simpson indices are available via the `compute_shannon` and `compute_gini` flags. The three Hill orders differ in how strongly they weight common versus rare categories:
+Mixed-use diversity measures how varied the surroundings are, beyond a plain count. A street where all ten premises are cafes is less mixed than one where the ten are spread across cafes, shops, a school, and a clinic, though both have the same number of premises. Hill numbers express this as an effective number of land-use types: the count you would have if every type present were equally common.
 
-- **Hill q=0** (`cc_hill_q0_{d}`, equivalent to species richness) counts how many different land-use types are present. Best when using many fine-grained categories.
-- **Hill q=1** (`cc_hill_q1_{d}`, equivalent to the exponential of Shannon entropy) accounts for both the number of land-use types and how evenly distributed they are.
-- **Hill q=2** (`cc_hill_q2_{d}`, equivalent to the inverse Simpson concentration) focuses on the most common land-use types, downweighting rare ones. Best when using broad categories where the balance of dominant types matters most.
+[`compute_mixed_uses`](/metrics/layers#compute_mixed_uses) measures this diversity from every network node. Hill numbers are computed by default (`compute_hill=True`); Shannon and Gini-Simpson indices are available via the `compute_shannon` and `compute_gini` flags. The order `q` sets how much the balance of common versus rare types counts:
+
+- **Hill q=0** (`cc_hill_q0_{d}`) counts how many different land-use types are present, ignoring their balance (species richness). Best with many fine-grained categories.
+- **Hill q=1** (`cc_hill_q1_{d}`) reflects both how many types are present and how evenly they are represented (the exponential of Shannon entropy).
+- **Hill q=2** (`cc_hill_q2_{d}`) is dominated by the most common types and largely discounts rare ones (the inverse Simpson concentration). Best with broad categories where the balance of dominant types matters most.
 
 The Hill measures are distance-weighted through a branch-distance form, so a `decay_fn` shapes how strongly nearer instances count. Shannon (`cc_shannon_{d}`) and Gini (`cc_gini_{d}`) are computed from raw category counts and are not affected by `decay_fn`.
 
@@ -175,7 +179,9 @@ See the [Mixed Uses](/examples/accessibility/gpd-mixed-uses) recipe.
 
 ## Statistical aggregations
 
-[`compute_stats`](/metrics/layers#compute_stats) computes descriptive statistics for one or more numerical columns over the street network. For each input column and distance threshold it writes eight measures, named `cc_{column}_{measure}_{distance}`:
+Statistical aggregation summarises a numeric attribute of the features around each node, measured over the network rather than a straight-line buffer. Given a column such as building height, dwelling price, or plot area, it reports what you would meet within a walk of each street: the mean value, the total, the spread, and so on. The summary uses the same distance decay as the other methods, so nearer features can count for more than distant ones.
+
+[`compute_stats`](/metrics/layers#compute_stats) computes these statistics for one or more numerical columns. For each input column and distance threshold it writes eight measures, named `cc_{column}_{measure}_{distance}`:
 
 | Measure | Column suffix | Notes |
 | --- | --- | --- |
@@ -190,7 +196,7 @@ See the [Mixed Uses](/examples/accessibility/gpd-mixed-uses) recipe.
 Pass a list of `stats_column_labels` to summarise several columns in one call, and a `decay_fn` to weight each value by distance, including the `{label: expression}` dict form for multiple weightings in a single traversal. By default all eight measures are produced; pass `measures=[...]` (any subset of the suffixes above) to compute only the ones you need. This keeps the output `GeoDataFrame` smaller and skips the weighted median/MAD sort when neither is requested.
 
 ```python
-cn = cn.compute_stats(
+cn.compute_stats(
     data_gdf=prices_gdf,
     stats_column_labels=["price"],
     distances=[1200],
