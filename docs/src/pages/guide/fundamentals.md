@@ -67,7 +67,7 @@ When calculating network or layer metrics, the network must be buffered by a dis
 
 The `live` node attribute controls this. Nodes within the original (non-buffered) extents are set to `live=True`, while nodes in the surrounding buffer are set to `live=False`. The shortest-path algorithms have access to both, preventing edge rolloff, but derivative metrics are only computed for `live=True` nodes. If boundary rolloff is not a concern, the default behaviour sets all nodes to `live=True`.
 
-The [live nodes notebook](/examples/recipes/live-nodes) shows how to demarcate the study area with [`CityNetwork.set_boundary`](/api/network#set_boundary), which sets the node status based on whether each node falls inside the original boundary.
+The [live nodes notebook](/examples/recipes/live-nodes) shows how to demarcate the study area with [`CityNetwork.set_boundary`](/api/network#set_boundary), which sets the node status based on whether each node falls inside the original boundary. [`set_all_live`](/api/network#set_all_live) clears any boundary and marks every node live again.
 
 ## CityNetwork API
 
@@ -105,6 +105,8 @@ Because `CityNetwork` uses a dual graph internally, the `nodes_gdf` property exp
 result_gdf = cn.to_geopandas()
 result_gdf.to_file("results.gpkg")
 ```
+
+To export the network back to a NetworkX graph, with the computed metrics attached to its nodes, use [`to_nx()`](/api/network#to_nx).
 
 ## Automatic graph cleaning
 

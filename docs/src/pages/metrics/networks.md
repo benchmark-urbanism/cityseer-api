@@ -1262,7 +1262,7 @@ print(nodes_gdf[["cc_harmonic_400_ang", "cc_betweenness_800_ang"]])
 </div>
 
 
- Compute closeness centrality using shortest paths. Wraps `centrality_shortest` with betweenness disabled.
+ Compute closeness centrality using shortest paths. Wraps `centrality_shortest` with betweenness disabled; see it for parameter descriptions.
 
 </div>
 
@@ -1327,7 +1327,7 @@ print(nodes_gdf[["cc_harmonic_400_ang", "cc_betweenness_800_ang"]])
 </div>
 
 
- Compute closeness centrality using simplest (angular) paths. Wraps `centrality_simplest` with betweenness disabled.
+ Compute closeness centrality using simplest (angular) paths. Wraps `centrality_simplest` with betweenness disabled; see it for parameter descriptions.
 
 </div>
 
@@ -1392,7 +1392,7 @@ print(nodes_gdf[["cc_harmonic_400_ang", "cc_betweenness_800_ang"]])
 </div>
 
 
- Compute betweenness centrality using shortest paths. Wraps `centrality_shortest` with closeness disabled.
+ Compute betweenness centrality using shortest paths. Wraps `centrality_shortest` with closeness disabled; see it for parameter descriptions.
 
 </div>
 
@@ -1457,7 +1457,7 @@ print(nodes_gdf[["cc_harmonic_400_ang", "cc_betweenness_800_ang"]])
 </div>
 
 
- Compute betweenness centrality using simplest (angular) paths. Wraps `centrality_simplest` with closeness disabled.
+ Compute betweenness centrality using simplest (angular) paths. Wraps `centrality_simplest` with closeness disabled; see it for parameter descriptions.
 
 </div>
 

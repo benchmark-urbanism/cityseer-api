@@ -634,7 +634,7 @@ G_clean = graphs.nx_remove_filler_nodes(G)
   </div>
   <div class="desc">
 
- The buffer distance to be used for consolidating nearby nodes. Defaults to 5.</div>
+ The buffer distance to be used for consolidating nearby nodes. Defaults to 12.</div>
 </div>
 
 <div class="param-set">
@@ -788,6 +788,61 @@ G_clean = graphs.nx_remove_filler_nodes(G)
 </div>
 </div>
 
+
+ Snap gapped dead-end endings to nearby dead-end endings. Where two dead-end (degree-1) endings fall within `buffer_dist` of each other, the endings are snapped together to close the gap. This repairs small breaks between segments that should connect, for example digitisation gaps in OSM pedestrian routes.
+### Parameters
+<div class="param-set">
+  <div class="def">
+    <div class="name">nx_multigraph</div>
+    <div class="type">MultiGraph</div>
+  </div>
+  <div class="desc">
+
+ A `networkX` `MultiGraph` with a `crs` attribute denoting a projected coordinate system, containing `x` and `y` node attributes, and `geom` edge attributes containing `LineString` geoms.</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">buffer_dist</div>
+    <div class="type">float</div>
+  </div>
+  <div class="desc">
+
+ The maximum distance between two dead-end endings for them to be snapped together. Defaults to 12.</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">osm_hwy_target_tags</div>
+    <div class="type">list[str]</div>
+  </div>
+  <div class="desc">
+
+ An optional list of OpenStreetMap target highway tags. If provided, only endings whose neighbouring edges contain a matching tag are considered. Requires a graph prepared via [`io.osm_graph_from_poly`](/tools/io#osm_graph_from_poly).</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">osm_matched_tags_only</div>
+    <div class="type">bool</div>
+  </div>
+  <div class="desc">
+
+ Whether to only snap endings with shared OSM `name` or `ref` tags. False by default. Requires a graph prepared via [`io.osm_graph_from_poly`](/tools/io#osm_graph_from_poly).</div>
+</div>
+
+### Returns
+<div class="param-set">
+  <div class="def">
+    <div class="name"></div>
+    <div class="type">MultiGraph</div>
+  </div>
+  <div class="desc">
+
+ A `networkX` `MultiGraph` with gapped dead-end endings snapped together.</div>
+</div>
+
+
 </div>
 
 
@@ -896,7 +951,7 @@ G_clean = graphs.nx_remove_filler_nodes(G)
   </div>
   <div class="desc">
 
- The buffer distance to be used for splitting nearby nodes. Defaults to 5.</div>
+ The buffer distance to be used for splitting nearby nodes. Defaults to 12.</div>
 </div>
 
 <div class="param-set">
@@ -977,6 +1032,16 @@ G_clean = graphs.nx_remove_filler_nodes(G)
   <div class="desc">
 
  Whether to automatically squash new node pairings resulting from splitting a nearby edge. If set to `False` then a line will be added instead. Defaults to `True`.</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">centroid_by_itx</div>
+    <div class="type">bool</div>
+  </div>
+  <div class="desc">
+
+ Whether to place the merged centroid using through-route intersections, as in [`nx_consolidate_nodes`](#nx_consolidate_nodes). Defaults to `False`.</div>
 </div>
 
 <div class="param-set">

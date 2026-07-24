@@ -1042,7 +1042,7 @@ computed distances:
 - `mean`
 - `count`
 - `median`
-- `variance`
+- `var` (variance)
 - `mad` (median absolute deviation)
 
 The decay function (default exponential, or custom via `decay_fn`) controls how

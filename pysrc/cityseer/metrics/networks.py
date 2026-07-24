@@ -991,7 +991,7 @@ def closeness_shortest(
 ) -> gpd.GeoDataFrame:
     """Compute closeness centrality using shortest paths.
 
-    Wraps `centrality_shortest` with betweenness disabled.
+    Wraps `centrality_shortest` with betweenness disabled; see it for parameter descriptions.
     """
     return centrality_shortest(
         network_structure=network_structure,
@@ -1020,7 +1020,7 @@ def closeness_simplest(
 ) -> gpd.GeoDataFrame:
     """Compute closeness centrality using simplest (angular) paths.
 
-    Wraps `centrality_simplest` with betweenness disabled.
+    Wraps `centrality_simplest` with betweenness disabled; see it for parameter descriptions.
     """
     return centrality_simplest(
         network_structure=network_structure,
@@ -1049,7 +1049,7 @@ def betweenness_shortest(
 ) -> gpd.GeoDataFrame:
     """Compute betweenness centrality using shortest paths.
 
-    Wraps `centrality_shortest` with closeness disabled.
+    Wraps `centrality_shortest` with closeness disabled; see it for parameter descriptions.
     """
     return centrality_shortest(
         network_structure=network_structure,
@@ -1079,7 +1079,7 @@ def betweenness_simplest(
 ) -> gpd.GeoDataFrame:
     """Compute betweenness centrality using simplest (angular) paths.
 
-    Wraps `centrality_simplest` with closeness disabled.
+    Wraps `centrality_simplest` with closeness disabled; see it for parameter descriptions.
     """
     return centrality_simplest(
         network_structure=network_structure,

@@ -172,7 +172,7 @@ Standard betweenness treats every node pair equally. When you have real or model
 - [OSM Centrality](/examples/centrality/osm-centrality) -- end-to-end from OpenStreetMap
 - [Custom Expressions](/examples/centrality/custom-expressions) -- defining custom metrics, selecting only what you need, postprocess, and statistic selection
 - [Sampled Centrality](/examples/centrality/sampled-centrality) -- adaptive sampling on a large network, validated against exact results
-- [OD Betweenness](/examples/centrality/od-betweenness) -- demand-weighted flows from a singly constrained spatial interaction model
+- [Demand Betweenness](/examples/flows/demand-flows) -- demand-weighted flows from a singly constrained spatial interaction model
 
 ## Performance and scale
 
