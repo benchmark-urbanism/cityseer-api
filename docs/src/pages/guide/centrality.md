@@ -4,7 +4,7 @@ layout: '@src/layouts/PageLayout.astro'
 
 # Centrality
 
-Centrality metrics quantify the structural importance of each location in the street network. `cityseer` computes multiple centrality measures simultaneously for any combination of distance thresholds in a single pass.
+Centrality metrics describe each location's position in the street network: how easily it reaches its surroundings, and how much movement passes through it. `cityseer` computes multiple centrality measures simultaneously for any combination of distance thresholds in a single pass.
 
 ## Closeness and betweenness
 
@@ -25,7 +25,7 @@ The examples on this page use the [`CityNetwork`](/api/network) methods, which a
 Metrics are defined as `{name: expression}` dictionaries using two variables:
 
 - **`c`** (cost): the raw routing cost to each reached node. For shortest paths, `c` is the metric distance in metres. For simplest paths, `c` is the cumulative angular change in degrees.
-- **`p`** (progress): normalised progress from 0 at the source to 1 at the distance threshold. For shortest paths, `p = c / threshold`. For simplest paths, `p = elapsed_time / max_time`.
+- **`p`** (progress): normalised progress from 0 at the source to 1 at the threshold. For shortest paths this is `p = c / threshold`. For simplest paths the routing cost `c` is angular, so `p` instead tracks the metric budget consumed (`elapsed_time / max_time`), not the angular change.
 
 Metrics fall into four categories:
 
@@ -92,7 +92,7 @@ Pass `None` to use the defaults for a category, or `{}` to skip it entirely. The
 
 | Column | Expression | Formula | Description |
 | --- | --- | --- | --- |
-| `cc_hillier_{d}_ang` | `"density**2 / farness"` | $n^2 / \sum_j (1 + c_j / 90)$ | Hillier normalisation for angular metrics. The Hillier formula is also known as _integration_ in the space syntax community, and is more or less a simplified form of improved closeness centrality. |
+| `cc_hillier_{d}_ang` | `"density**2 / farness"` | $n^2 / \sum_j (1 + c_j / 90)$ | A node-count normalisation of angular closeness ($n^2$ over angular farness). This is one classical form of what space syntax calls _integration_. |
 
 Simplest-path centrality does not apply decay-weighted forms by default. Angular cost is cumulative turning, which does not decrease continuously with distance, so it is not a meaningful basis for distance decay. If you need a decay-weighted or otherwise custom angular metric, define it with a [custom expression](#custom-metrics).
 

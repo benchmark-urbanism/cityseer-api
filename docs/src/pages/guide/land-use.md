@@ -4,7 +4,7 @@ layout: '@src/layouts/PageLayout.astro'
 
 # Land-Use Analysis
 
-Land-use methods aggregate data features (shops, parks, building attributes) over the network from each node. Distance decay is central to how they weight nearby versus distant features, so both topics are covered on this page.
+Land-use methods aggregate data features (shops, parks, building attributes) over the network from each node. Distance decay controls how they weight nearby versus distant features, so both topics are covered on this page.
 
 ## How distances to data features are measured
 
@@ -55,7 +55,7 @@ cn.compute_accessibilities(
 
 ## Decay functions
 
-Distance decay controls how feature importance or metric weighting decreases with distance from an analysis point. For **centrality**, decay is built into the metric expressions (e.g. the default `"exp(-4 * p)"` closeness and betweenness metrics described on the [Centrality](/guide/centrality) page). For **land-use methods** (`compute_accessibilities`, `compute_mixed_uses`, `compute_stats`), an optional `decay_fn` parameter accepts a string expression using a variable `p` that ranges from 0 at the source to 1 at the distance cutoff (`p = network_distance / max_distance`). The [`cityseer.decay`](/api/decay) module provides helper functions that return pre-built expression strings for common decay shapes.
+Distance decay controls how the weight given to a feature, or a metric contribution, decreases with distance from an analysis point. For **centrality**, decay is built into the metric expressions (e.g. the default `"exp(-4 * p)"` closeness and betweenness metrics described on the [Centrality](/guide/centrality) page). For **land-use methods** (`compute_accessibilities`, `compute_mixed_uses`, `compute_stats`), an optional `decay_fn` parameter accepts a string expression using a variable `p` that ranges from 0 at the source to 1 at the distance cutoff (`p = network_distance / max_distance`). The [`cityseer.decay`](/api/decay) module provides helper functions that return pre-built expression strings for common decay shapes.
 
 ### How decay weighting works
 
@@ -72,10 +72,10 @@ A few properties are worth understanding:
 
 | Preset | Helper | When to use |
 | --- | --- | --- |
-| Exponential | `decay.exponential()` | Pedestrian catchments where nearby destinations matter far more than distant ones. Default for centrality. |
+| Exponential | `decay.exponential()` | Pedestrian catchments where nearby destinations count far more than distant ones. Default for centrality. |
 | Linear | `decay.linear()` | Uniform distance penalty with no abrupt boundary. |
 | Flat | `decay.flat()` | Simple counts within a threshold, with no distance weighting. Default for accessibility and stats. |
-| Gaussian | `decay.gaussian(peak, cutoff)` | Use cases where peak relevance is at some distance from the source rather than immediately adjacent. |
+| Gaussian | `decay.gaussian(peak, cutoff, std)` | Use cases where peak relevance sits at some distance from the source, not immediately adjacent. |
 | Logistic | `decay.logistic(midpoint, cutoff)` | Catchment boundaries with a gradual transition rather than a hard cutoff. |
 
 ### Code examples
@@ -171,7 +171,7 @@ Mixed-use diversity measures how varied the surroundings are, beyond a plain cou
 
 - **Hill q=0** (`cc_hill_q0_{d}`) counts how many different land-use types are present, ignoring their balance (species richness). Best with many fine-grained categories.
 - **Hill q=1** (`cc_hill_q1_{d}`) reflects both how many types are present and how evenly they are represented (the exponential of Shannon entropy).
-- **Hill q=2** (`cc_hill_q2_{d}`) is dominated by the most common types and largely discounts rare ones (the inverse Simpson concentration). Best with broad categories where the balance of dominant types matters most.
+- **Hill q=2** (`cc_hill_q2_{d}`) is dominated by the most common types and largely discounts rare ones (the inverse of the Simpson concentration index). Best with broad categories where the balance of dominant types matters most.
 
 The Hill measures are distance-weighted through a branch-distance form, so a `decay_fn` shapes how strongly nearer instances count. Shannon (`cc_shannon_{d}`) and Gini (`cc_gini_{d}`) are computed from raw category counts and are not affected by `decay_fn`.
 

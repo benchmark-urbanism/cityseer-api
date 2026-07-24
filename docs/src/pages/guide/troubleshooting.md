@@ -67,7 +67,7 @@ Also confirm the data layer covers the buffered network extent (see [Edge Rollof
 
 ## My accessibility values don't reflect proximity
 
-With `CityNetwork`, accessibility counts are plain (unweighted) by default: a shop 50m away counts the same as one 750m away. Pass a `decay_fn` expression so that nearer features contribute more; the lower-level `layers` functions instead default to emitting both variants, suffixed `_nw` (non-weighted) and `_wt` (decay-weighted). Use a decay when proximity matters (walkability studies); use a plain count when presence alone matters (counting all parks within reach). See [Decay Functions](/guide/land-use#decay-functions).
+With `CityNetwork`, accessibility counts are plain (unweighted) by default: a shop 50m away counts the same as one 750m away. Pass a `decay_fn` expression so that nearer features contribute more; the lower-level `layers` functions instead default to emitting both variants, suffixed `_nw` (non-weighted) and `_wt` (decay-weighted). Use a decay for proximity-sensitive questions such as walkability; use a plain count when presence alone is the question, such as counting all parks within reach. See [Decay Functions](/guide/land-use#decay-functions).
 
 ## Angular centrality raises an error
 

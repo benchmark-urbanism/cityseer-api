@@ -1,6 +1,6 @@
 # cityseer
 
-A `Python` package for pedestrian-scale network-based urban analysis: network analysis, landuse accessibilities & mixed uses, statistical aggregations.
+A `Python` package for pedestrian-scale network-based urban analysis: network centrality, land-use accessibility and mixed uses, statistical aggregation, pedestrian-flow (demand and origin-destination) betweenness, and street-level visibility.
 
 [![PyPI version](https://badge.fury.io/py/cityseer.svg)](https://badge.fury.io/py/cityseer)
 

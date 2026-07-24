@@ -7,7 +7,7 @@ layout: '@src/layouts/PageLayout.astro'
 This guide covers the core concepts and features of `cityseer`. It is aimed at researchers, urban planners, and developers who want to compute street-network centrality, land-use accessibility, or statistical aggregations at the pedestrian scale. Familiarity with Python and `geopandas` is assumed; for a gentler introduction, start with the [Python 101](/start) lessons. For the underlying research methods, see the [associated paper](https://journals.sagepub.com/doi/full/10.1177/23998083221133827).
 
 :::note
-**Working with an LLM?** If you use an AI coding assistant, point it at [`llms.txt`](/llms.txt), a compact machine-readable index of this documentation, and at the [GitHub repository](https://github.com/benchmark-urbanism/cityseer-api). This grounds its answers in the current API rather than guesswork.
+**Working with an LLM?** If you use an AI coding assistant, point it at [`llms.txt`](/llms.txt), a compact machine-readable index of this documentation, and at the [GitHub repository](https://github.com/benchmark-urbanism/cityseer-api), so its answers reflect the current API.
 :::
 
 For practical, end-to-end worked examples with real-world data, see the [examples](/examples) section.
@@ -16,39 +16,40 @@ This page covers how `cityseer` frames analysis and how to drive the library; [N
 
 ## Localised analysis
 
-`cityseer` computes metrics locally rather than globally. For each node in the network, the surrounding subgraph is isolated up to a specified distance threshold (for example, all streets within 800m walking distance), metrics are computed within that local subgraph, and the process repeats for every node. This avoids the boundary effects inherent in global network measures, where nodes near the edge of the study area receive artificially low scores.
+`cityseer` computes network metrics locally rather than globally. For each node in the network, it isolates the surrounding subgraph out to a chosen distance radius, for example all streets within 800m walking distance. It computes the metrics within that local subgraph, then repeats the process for every node. These distances are network distances, measured along the streets, not straight-line (Euclidean) distances.
 
-Localised metrics are directly comparable across different locations and cities because the analysis window is defined by the distance threshold, not by the extent of the dataset. Shorter distance thresholds capture local neighbourhood structure while longer thresholds reveal city-wide patterns.
+Because every location is measured to the same radius, locations can be compared like for like. In contrast, a global measure depends on the size of the whole network, so its values are not comparable in this way. Another advantage of localised methods is that the radius can be set by the analyst to any value (50m, 800m, and 20km are examples), so the same network can be analysed at a fine local scale or a broad structural one. A global measure, in contrast, is fixed to a single scale, the whole network.
 
-Nodes at the periphery of a study area can be marked as "dead" (non-live) using a boundary polygon. Dead nodes participate fully in network traversal but their own values are not reported: results are only written for live nodes. For closeness, dead nodes are skipped as sources in exact mode (a pure cost saving); for betweenness, every node serves as a source so that all routes passing through the study area, by design including routes that both start and end among dead nodes, credit the live nodes they traverse. This prevents artificially depressed values at the edges of the study area without discarding network connectivity. See the [Live Nodes](/examples/recipes/live-nodes) recipe for a worked example.
+A global measure is inherently subject to edge rolloff, the boundary effect at the limits of the data. Localised analysis avoids this: buffer the area of interest by the radius in use, so that every node within it has a full radius of network around it and is not affected by the boundary (see [Edge rolloff](#edge-rolloff)).
 
-## Shortest-path and simplest-path heuristics
+## Shortest and simplest heuristics
 
 `cityseer` supports two routing heuristics:
 
 - **Shortest path**: Routes minimise cumulative physical distance along the network. A 400m route is preferred over a 600m route, regardless of how many turns are involved.
-- **Simplest path (angular)**: Routes minimise cumulative angular change, that is, the total amount of turning at each junction. A pedestrian following a simplest path prefers to continue straight ahead rather than turning, even if a shorter alternative exists.
+- **Simplest path (angular)**: Routes minimise cumulative angular change, the total amount of turning along the route, counted both at junctions and along the curve of each street segment. A pedestrian following a simplest path prefers a route with fewer turns, even if a shorter alternative exists.
 
-When to use each:
+The choice is not either/or, and computing both is common. Which one fits depends on the network's cleanliness, the kind of movement being modelled, and how the results are read.
 
-- **Shortest path** is appropriate for accessibility analysis (how far is the nearest park?), walkability scoring, and situations where physical distance is the primary concern.
-- **Simplest path** is appropriate for predicting pedestrian flows and commercial activity, because research shows that people tend to follow cognitively simple routes. It is also the basis for angular integration and choice measures used in space syntax research.
+**Shortest path** depends only on distances, so it can be more robust on a messy network: unconsolidated junctions, spurious nodes, and roundabouts drawn as rings distort the turn counts that simplest path relies on, while distorting metric distance less. Over-represented geometry (a dual carriageway drawn as two parallel lines, say) still inflates distances, so it is not immune; even so, it tends to hold up better than simplest path in these cases. Use it for accessibility (how far is the nearest park?), walkability, and anywhere physical distance is the main concern; it is often the safer default when the network has not been cleaned to a high standard.
 
-Both heuristics can be computed from a single `CityNetwork` instance at any combination of distance thresholds. When in doubt, compute both.
+**Simplest path** tends to have an advantage on a clean, well-consolidated network when modelling pedestrian flows, commercial activity, or land-use behaviour, since people tend to follow cognitively simple routes. In space-syntax terms, its angular closeness corresponds to integration and its angular betweenness to choice (closeness and betweenness are covered under [Centrality](/guide/centrality#closeness-and-betweenness)).
 
-## Converting the network
+Both heuristics can be computed from a single `CityNetwork` instance at any combination of distance thresholds, so computing both and comparing is often the most informative approach.
 
-`cityseer` converts the network into a `rust` data structure prior to computing derivative metrics. When using the [`CityNetwork`](/api/network) class described below, this conversion happens automatically during construction, including the dual graph representation required for angular analysis, and no manual steps are needed.
+## Creating the network
 
-All distances used when computing metrics are network distances (shortest paths along the network), not Euclidean distances.
+When you create a network with the [`CityNetwork`](/api/network) class described below, `cityseer` internalises it in a `rust` data structure, so the analysis scales efficiently to large cities and regions.
+
+Internally it uses a dual representation rather than a primal one. In the **primal** graph, junctions are nodes and streets are edges; the **dual** inverts this, so each street segment becomes a node at its midpoint and each junction becomes a connection between these midpoints. The geometry linking the midpoints stays faithful to the distances and angular changes along the network. The reason for the dual is that results are easier to reason about on the street segments themselves than on junctions, which dilute the influence of the streets entering them and which are harder to visualise intuitively. See [Networks](/guide/networks) for the fuller treatment.
 
 :::note
-For advanced users: the lower-level API exposes the conversion directly. [`network_structure_from_nx`](/tools/io#network-structure-from-nx) produces nodes and edges `GeoDataFrames` plus the internal `NetworkStructure`, and [`graphs.nx_to_dual`](/tools/graphs#nx_to_dual) converts a primal graph to the dual representation required for angular analysis. The [network preparation recipes](/examples/networks) teach this route step by step, with each recipe handing the prepared graph back to `CityNetwork.from_nx`.
+For advanced users: the lower-level API builds these structures directly. [`network_structure_from_nx`](/tools/io#network-structure-from-nx) produces nodes and edges `GeoDataFrames` plus the internal `NetworkStructure`, and [`graphs.nx_to_dual`](/tools/graphs#nx_to_dual) produces the dual representation. The [network preparation recipes](/examples/networks) teach this route step by step, with each recipe handing the prepared graph back to `CityNetwork.from_nx`.
 :::
 
 ## Distance thresholds
 
-Most `cityseer` functions accept a `distances` parameter specifying the network distance thresholds (in metres) at which to compute metrics. You can compute multiple thresholds simultaneously:
+Most `cityseer` functions accept a `distances` parameter: the network distance thresholds, in metres, at which to compute metrics, with several computed at once. Instead of distance, the same thresholds can be expressed as walking times through the `minutes` parameter, converted with a walking speed set by the optional `speed_m_s` parameter (default 1.33 m/s). The table below relates the two:
 
 | Distance | Walking time | Typical use                   |
 | -------- | ------------ | ----------------------------- |
@@ -58,7 +59,7 @@ Most `cityseer` functions accept a `distances` parameter specifying the network 
 | 1600m    | ~20 min      | District-scale patterns       |
 | 5000m+   | ~60 min+     | City-wide structural analysis |
 
-Computing metrics at multiple distances simultaneously reveals how urban structure varies across scales. For example, a street may be highly central at 800m (locally important) but not at 5000m (not a major through-route). The `minutes` parameter can also be used as an alternative to specifying distances directly.
+Computing metrics at multiple distances reveals how urban structure varies across scales. For example, a street may be highly central at 800m (locally important) but not at 5000m (not a major through-route).
 
 ## Edge rolloff
 
@@ -107,7 +108,11 @@ result_gdf.to_file("results.gpkg")
 
 ## Automatic graph cleaning
 
-Input geometries are automatically cleaned during construction: short self-loops, near-duplicate edges, and short danglers are removed. The [`feature_status`](/api/network#citynetwork) property returns a Series with values such as `"active"`, `"short_self_loop"`, `"duplicate"`, `"short_dangler"`, or `"invalid_geometry"`, indicating what happened to each input feature. When using the lower-level API, the [`tools.graphs`](/tools/graphs) module provides manual graph cleaning functions; see the [Network Simplification](/examples/networks/network-simplification) example.
+Input geometries are cleaned automatically during construction, in this order: short self-loops under 1m are removed, chains of segments meeting at degree-2 points are welded into single segments (`remove_fillers`, on by default), dead-end stubs up to 10m are removed (`remove_danglers=10.0`), and near-duplicate parallel edges within 2m are merged (`merge_parallel_dist=2.0`). Each step can be disabled through its constructor parameter. Directed networks skip filler welding and parallel merging, which do not preserve one-way semantics.
+
+[`from_osm`](/api/network#from_osm) additionally runs an OSM-tuned simplification pipeline by default (`simplify=True`): junction consolidation, parallel carriageway merging by midline, and ironing. Pass `simplify=False` to skip it.
+
+The [`feature_status`](/api/network#citynetwork) property returns a Series recording what happened to each input feature, with values such as `"active"`, `"merged"`, `"short_self_loop"`, `"short_dangler"`, `"duplicate"`, or `"invalid_geometry"`. For more extensive or custom simplification of non-OSM networks, the lower-level [`tools.graphs`](/tools/graphs) module provides manual cleaning functions; see the [Network Simplification](/examples/networks/network-simplification) example. The automated cleaning method and its trade-offs for centrality analysis are evaluated by [Abdeldayem et al. (2026)](https://journals.sagepub.com/doi/10.1177/23998083261433647); the [Network cleaning](/guide/cleaning) guide covers the pipeline and its parameters in full.
 
 ## Column naming conventions
 
@@ -116,20 +121,20 @@ All computed metrics are written to columns on the `nodes_gdf` GeoDataFrame foll
 ```text
 cc_{metric}_{distance}            -- shortest-path metric
 cc_{metric}_{distance}_ang        -- simplest-path (angular) metric
-cc_{metric}_{label}_{distance}    -- land-use metric under a named decay label
+cc_{metric}_{label}_{distance}    -- land-use / data metric under a named decay label
 ```
 
-The `cc_` prefix identifies columns generated by `cityseer`. The optional `{label}` segment appears only when a land-use method is called with a `{label: expression}` decay dict (see [Multiple decays in one traversal](/guide/land-use#multiple-decays-in-one-traversal)); a single decay expression or `None` produces no label segment. Examples:
+The `cc_` prefix identifies columns generated by `cityseer`. For the land-use and data methods (accessibility, mixed-use, statistics), the `CityNetwork` methods default to a single unweighted column per metric (`decay_fn="1"`). Pass a `decay_fn` expression to weight by distance, or a `{label: expression}` dict to embed each `{label}` in the metric name and compute several weightings in one pass (see [Multiple decays in one traversal](/guide/land-use#multiple-decays-in-one-traversal)). The lower-level `layers` functions instead default to two columns per metric, an unweighted `_nw` and a decay-weighted `_wt`. Examples:
 
 ```text
 cc_harmonic_800         -- harmonic closeness at 800m
 cc_betweenness_800_ang  -- angular betweenness at 800m
 cc_hill_q0_400          -- Hill diversity q=0 at 400m
-cc_retail_200               -- accessibility count for "retail" at 200m
+cc_retail_200           -- "retail" count at 200m
 cc_retail_nearest_max_800   -- nearest distance to "retail" at max threshold
-cc_price_mean_1200          -- mean of "price" column at 1200m
-cc_retail_grav_800          -- "retail" count at 800m under the "grav" decay label
-cc_price_mean_grav_1200     -- mean of "price" at 1200m under the "grav" decay label
+cc_price_mean_1200      -- mean of "price" at 1200m
+cc_retail_grav_800      -- "retail" count at 800m under the "grav" decay label
+cc_price_mean_grav_1200 -- mean of "price" at 1200m under the "grav" decay label
 ```
 
 When analysing results programmatically, you can select subsets of the computed columns by pattern:
@@ -146,6 +151,10 @@ bt_cols = [c for c in cn.nodes_gdf.columns if "betweenness" in c]
 ```
 
 ## Additional modules
+
+:::note
+These modules are experimental. Feedback and bug reports are welcome on the [issues tracker](https://github.com/benchmark-urbanism/cityseer-api/issues) and in [discussions](https://github.com/benchmark-urbanism/cityseer-api/discussions).
+:::
 
 ### Visibility
 
