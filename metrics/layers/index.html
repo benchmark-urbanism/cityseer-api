@@ -1,0 +1,894 @@
+<!DOCTYPE html><html lang="en-GB" data-astro-cid-dmey6y7i> <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="author" content="Benchmark Urbanism (Cityseer Ltd.)"><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"><!-- favicons --><link rel="icon" href="/favicons/favicon.ico"><link rel="icon" href="/favicons/icon.svg" type="image/svg+xml"><link rel="apple-touch-icon" href="/favicons/apple-touch-icon.png"><link rel="manifest" href="/manifest.webmanifest"><link rel="preconnect" href="https://fonts.gstatic.com"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Raleway:ital,wght@0,200;0,300;0,400;0,500;0,600;0,700;1,300&display=swap"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@200;300;400;500;600;700&display=swap"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16/dist/katex.min.css"><!-- SEO --><title>cityseer — layers</title><meta name="description" content="API reference for cityseer.metrics.layers: land-use accessibility, mixed-use diversity, and statistical aggregations over street networks."><meta name="keywords" content="cityseer, urban, metrics, analytics, network analysis, centrality, accessibility, pedestrian, urban design, planning, GIS, Python, Rust"><link rel="canonical" href="https://cityseer.benchmarkurbanism.com/metrics/layers"><!-- Open Graph --><meta property="og:title" content="cityseer — layers"><meta property="og:description" content="API reference for cityseer.metrics.layers: land-use accessibility, mixed-use diversity, and statistical aggregations over street networks."><meta property="og:type" content="website"><meta property="og:url" content="https://cityseer.benchmarkurbanism.com/metrics/layers"><meta property="og:image" content="https://cityseer.benchmarkurbanism.com/logos/cityseer_logo_light_red.png"><meta property="og:site_name" content="cityseer"><meta property="og:locale" content="en_GB"><!-- Twitter Card --><meta name="twitter:card" content="summary"><meta name="twitter:title" content="cityseer — layers"><meta name="twitter:description" content="API reference for cityseer.metrics.layers: land-use accessibility, mixed-use diversity, and statistical aggregations over street networks."><meta name="twitter:image" content="https://cityseer.benchmarkurbanism.com/logos/cityseer_logo_light_red.png"><!-- JSON-LD Structured Data --><script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"cityseer","applicationCategory":"DeveloperApplication","operatingSystem":"Cross-platform","url":"https://cityseer.benchmarkurbanism.com","description":"Cityseer API is a collection of computational tools for fine-grained network and land-use analysis, useful for assessing the morphological precursors to vibrant neighbourhoods. It is underpinned by rigorous network-based methods that have been developed from the ground-up specifically for hyperlocal analysis at the pedestrian scale.","author":{"@type":"Organization","name":"Benchmark Urbanism","url":"https://benchmarkurbanism.com"},"license":"https://www.gnu.org/licenses/agpl-3.0.html","programmingLanguage":["Python","Rust"],"offers":{"@type":"Offer","price":"0","priceCurrency":"USD"}}</script><link rel="stylesheet" href="/_astro/CommonLayout.DvW0gENx.css"><style>/*! tailwindcss v4.3.2 | MIT License | https://tailwindcss.com */
+@layer properties{@supports (((-webkit-hyphens:none)) and (not (margin-trim:inline))) or ((-moz-orient:inline) and (not (color:rgb(from red r g b)))){*,:before,:after,::backdrop{--tw-scale-x:1;--tw-scale-y:1;--tw-scale-z:1;--tw-border-style:solid}}}#repo-link[data-astro-cid-gf3o2gw7]{width:100%;color:var(--color-light-grey,#a8a8a8);transition-property:all;transition-timing-function:var(--tw-ease,var(--default-transition-timing-function,cubic-bezier(.4, 0, .2, 1)));transition-duration:var(--tw-duration,var(--default-transition-duration,.15s));flex-direction:column;align-items:center;display:flex}#repo-link[data-astro-cid-gf3o2gw7]:hover{--tw-scale-x:105%;--tw-scale-y:105%;--tw-scale-z:105%;scale:var(--tw-scale-x) var(--tw-scale-y);color:var(--color-theme,#d32333)}@property --tw-scale-x{syntax:"*";inherits:false;initial-value:1}@property --tw-scale-y{syntax:"*";inherits:false;initial-value:1}@property --tw-scale-z{syntax:"*";inherits:false;initial-value:1}#stripe[data-astro-cid-ddyhvr7a]{border-left-style:var(--tw-border-style);border-left-width:1px;border-color:var(--border-color-mid-grey,#404040);padding-inline:var(--spacing,.25rem);padding-block:calc(var(--spacing,.25rem) * 3);writing-mode:vertical-lr;position:sticky;top:0}@property --tw-border-style{syntax:"*";inherits:false;initial-value:solid}
+</style><link rel="stylesheet" href="/_astro/PageLayout.CXkTWSKU.css"><script type="module" src="/_astro/page.CZ9xv0XX.js"></script></head> <body data-astro-cid-dmey6y7i> <main id="app-container" data-astro-cid-dmey6y7i>  <div id="cols" data-astro-cid-xa52sxzc> <div id="nav-col" data-astro-cid-xa52sxzc> <div class="flex flex-col items-end object-contain" data-astro-cid-xa52sxzc> <a href="/" title="home" class="object-contain transition-all hover:scale-105" data-astro-cid-xa52sxzc> <img src="/_astro/cityseer_logo_light_red.CnItq_gG.png" alt="logo" class="h-full w-full max-w-xs px-4 py-10" data-astro-cid-xa52sxzc> </a> <div id="site-search" class="w-full px-4 pb-2"></div> <script type="module">var e=(function(){let e=typeof document<`u`&&document.createElement(`link`).relList;return e&&e.supports&&e.supports(`modulepreload`)?`modulepreload`:`preload`})(),t=function(e){return`/`+e},n={},r=function(r,i,a){let o=Promise.resolve();if(i&&i.length>0){let r=document.getElementsByTagName(`link`),s=document.querySelector(`meta[property=csp-nonce]`),c=s?.nonce||s?.getAttribute(`nonce`);function l(e){return Promise.all(e.map(e=>Promise.resolve(e).then(e=>({status:`fulfilled`,value:e}),e=>({status:`rejected`,reason:e}))))}function u(e){return import.meta.resolve?import.meta.resolve(e):new URL(e,new URL(`../../../src/node/plugins/importAnalysisBuild.ts`,import.meta.url)).href}o=l(i.map(i=>{if(i=t(i,a),i=u(i),i in n)return;n[i]=!0;let o=i.endsWith(`.css`);for(let e=r.length-1;e>=0;e--){let t=r[e];if(t.href===i&&(!o||t.rel===`stylesheet`))return}let s=document.createElement(`link`);if(s.rel=o?`stylesheet`:e,o||(s.as=`script`),s.crossOrigin=``,s.href=i,c&&s.setAttribute(`nonce`,c),document.head.appendChild(s),o)return new Promise((e,t)=>{s.addEventListener(`load`,e),s.addEventListener(`error`,()=>t(Error(`Unable to preload CSS for ${i}`)))})}))}function s(e){let t=new Event(`vite:preloadError`,{cancelable:!0});if(t.payload=e,window.dispatchEvent(t),!t.defaultPrevented)throw e}return o.then(e=>{for(let t of e||[])t.status===`rejected`&&s(t.reason);return r().catch(s)})};(async()=>{let e=document.getElementById(`site-search`);if(e)try{await r(()=>import(`/pagefind/pagefind-ui.js`),__VITE_PRELOAD__);let e=window.PagefindUI;if(!e)throw Error(`PagefindUI unavailable`);let t=document.createElement(`link`);t.rel=`stylesheet`,t.href=`/pagefind/pagefind-ui.css`,document.head.appendChild(t),new e({element:`#site-search`,showImages:!1,showSubResults:!0,resetStyles:!1})}catch{e.style.display=`none`}})();</script> <style>astro-island,astro-slot,astro-static-slot{display:contents}</style><script>(()=>{var a=(s,i,o)=>{let r=async()=>{await(await s())()},t=typeof i.value=="object"?i.value:void 0,c={rootMargin:t==null?void 0:t.rootMargin},n=new IntersectionObserver(e=>{for(let l of e)if(l.isIntersecting){n.disconnect(),r();break}},c);for(let e of o.children)n.observe(e)};(self.Astro||(self.Astro={})).visible=a;window.dispatchEvent(new Event("astro:visible"));})();</script><script>(()=>{var g=Object.defineProperty;var w=(c,s,d)=>s in c?g(c,s,{enumerable:!0,configurable:!0,writable:!0,value:d}):c[s]=d;var l=(c,s,d)=>w(c,typeof s!="symbol"?s+"":s,d);var E=new Set(["__proto__","constructor","prototype"]);{let c={0:t=>y(t),1:t=>d(t),2:t=>new RegExp(t),3:t=>new Date(t),4:t=>new Map(d(t)),5:t=>new Set(d(t)),6:t=>BigInt(t),7:t=>new URL(t),8:t=>new Uint8Array(t),9:t=>new Uint16Array(t),10:t=>new Uint32Array(t),11:t=>Number.POSITIVE_INFINITY*t},s=t=>{let[p,e]=t;return p in c?c[p](e):void 0},d=t=>t.map(s),y=t=>typeof t!="object"||t===null?t:Object.fromEntries(Object.entries(t).map(([p,e])=>[p,s(e)]));class f extends HTMLElement{constructor(){super(...arguments);l(this,"Component");l(this,"hydrator");l(this,"hydrate",async()=>{var b;if(!this.hydrator||!this.isConnected)return;let e=(b=this.parentElement)==null?void 0:b.closest("astro-island[ssr]");if(e){e.addEventListener("astro:hydrate",this.hydrate,{once:!0});return}let n=this.querySelectorAll("astro-slot"),r={},i=this.querySelectorAll("template[data-astro-template]");for(let o of i){let a=o.closest(this.tagName);a!=null&&a.isSameNode(this)&&(r[o.getAttribute("data-astro-template")||"default"]=o.innerHTML,o.remove())}for(let o of n){let a=o.closest(this.tagName);a!=null&&a.isSameNode(this)&&(r[o.getAttribute("name")||"default"]=o.innerHTML)}let u;try{u=this.hasAttribute("props")?y(JSON.parse(this.getAttribute("props"))):{}}catch(o){let a=this.getAttribute("component-url")||"<unknown>",v=this.getAttribute("component-export");throw v&&(a+=` (export ${v})`),console.error(`[hydrate] Error parsing props for component ${a}`,this.getAttribute("props"),o),o}let h;await this.hydrator(this)(this.Component,u,r,{client:this.getAttribute("client")}),this.removeAttribute("ssr"),this.dispatchEvent(new CustomEvent("astro:hydrate"))});l(this,"unmount",()=>{this.isConnected||this.dispatchEvent(new CustomEvent("astro:unmount"))})}disconnectedCallback(){document.removeEventListener("astro:after-swap",this.unmount),document.addEventListener("astro:after-swap",this.unmount,{once:!0})}connectedCallback(){if(!this.hasAttribute("await-children")||document.readyState==="interactive"||document.readyState==="complete")this.childrenConnectedCallback();else{let e=()=>{document.removeEventListener("DOMContentLoaded",e),n.disconnect(),this.childrenConnectedCallback()},n=new MutationObserver(()=>{var r;((r=this.lastChild)==null?void 0:r.nodeType)===Node.COMMENT_NODE&&this.lastChild.nodeValue==="astro:end"&&(this.lastChild.remove(),e())});n.observe(this,{childList:!0}),document.addEventListener("DOMContentLoaded",e)}}async childrenConnectedCallback(){let e=this.getAttribute("before-hydration-url");e&&await import(e),this.start()}getRetryImportUrl(e){let n=new URL(e,document.baseURI),r=`astro-retry=${Date.now()}`,i=n.hash.replace(/^#/,"");return n.hash=i?`${i}&${r}`:r,n.toString()}async importWithRetry(e){try{return await import(e)}catch(n){return await new Promise(r=>setTimeout(r,1e3)),import(this.getRetryImportUrl(e))}}handleHydrationError(e){let n=this.getAttribute("component-url"),r=new CustomEvent("astro:hydration-error",{cancelable:!0,bubbles:!0,composed:!0,detail:{error:e,componentUrl:n}});this.dispatchEvent(r)&&console.error(`[astro-island] Error hydrating ${n}`,e)}async start(){let e=JSON.parse(this.getAttribute("opts")),n=this.getAttribute("client");if(Astro[n]===void 0){window.addEventListener(`astro:${n}`,()=>this.start(),{once:!0});return}try{await Astro[n](async()=>{let r=this.getAttribute("renderer-url");try{let[i,{default:u}]=await Promise.all([this.importWithRetry(this.getAttribute("component-url")),r?this.importWithRetry(r):Promise.resolve({default:()=>()=>{}})]),h=this.getAttribute("component-export")||"default";if(h.includes(".")){this.Component=i;for(let m of h.split(".")){if(E.has(m)||!this.Component||typeof this.Component!="object"&&typeof this.Component!="function"||!Object.hasOwn(this.Component,m))throw new Error(`Invalid component export path: ${h}`);this.Component=this.Component[m]}}else{if(E.has(h))throw new Error(`Invalid component export path: ${h}`);this.Component=i[h]}return this.hydrator=u,this.hydrate}catch(i){return this.handleHydrationError(i),()=>{}}},e,this)}catch(r){this.handleHydrationError(r)}}attributeChangedCallback(){this.hydrate()}}l(f,"observedAttributes",["props"]),customElements.get("astro-island")||customElements.define("astro-island",f)}})();</script><astro-island uid="Z2dppsV" prefix="s0" component-url="/_astro/NavColumn.BCcG9Imd.js" component-export="default" renderer-url="/_astro/client.CdL3hvDT.js" props="{&quot;sections&quot;:[1,[[0,{&quot;id&quot;:[0,&quot;start&quot;],&quot;label&quot;:[0,&quot;Getting Started&quot;],&quot;base&quot;:[0,&quot;/start&quot;],&quot;groups&quot;:[1,[[0,{&quot;items&quot;:[1,[[0,{&quot;path&quot;:[0,&quot;/start&quot;],&quot;label&quot;:[0,&quot;Overview&quot;]}]]]}],[0,{&quot;title&quot;:[0,&quot;Python 101&quot;],&quot;items&quot;:[1,[[0,{&quot;path&quot;:[0,&quot;/start/1-notebooks&quot;],&quot;label&quot;:[0,&quot;1 · Notebooks&quot;]}],[0,{&quot;path&quot;:[0,&quot;/start/2-basics&quot;],&quot;label&quot;:[0,&quot;2 · Python Basics&quot;]}],[0,{&quot;path&quot;:[0,&quot;/start/3-spatial&quot;],&quot;label&quot;:[0,&quot;3 · Spatial Data&quot;]}],[0,{&quot;path&quot;:[0,&quot;/start/4-geopandas&quot;],&quot;label&quot;:[0,&quot;4 · GeoPandas&quot;]}],[0,{&quot;path&quot;:[0,&quot;/start/5-urban&quot;],&quot;label&quot;:[0,&quot;5 · Urban Analytics&quot;]}],[0,{&quot;path&quot;:[0,&quot;/start/6-data-science&quot;],&quot;label&quot;:[0,&quot;6 · Data Science&quot;]}]]]}]]]}],[0,{&quot;id&quot;:[0,&quot;guide&quot;],&quot;label&quot;:[0,&quot;Guide&quot;],&quot;base&quot;:[0,&quot;/guide/fundamentals&quot;],&quot;groups&quot;:[1,[[0,{&quot;items&quot;:[1,[[0,{&quot;path&quot;:[0,&quot;/guide/fundamentals&quot;],&quot;label&quot;:[0,&quot;Fundamentals&quot;]}],[0,{&quot;path&quot;:[0,&quot;/guide/how-to&quot;],&quot;label&quot;:[0,&quot;How do I…?&quot;]}],[0,{&quot;path&quot;:[0,&quot;/guide/networks&quot;],&quot;label&quot;:[0,&quot;Networks&quot;]}],[0,{&quot;path&quot;:[0,&quot;/guide/cleaning&quot;],&quot;label&quot;:[0,&quot;Network Cleaning&quot;]}],[0,{&quot;path&quot;:[0,&quot;/guide/centrality&quot;],&quot;label&quot;:[0,&quot;Centrality&quot;]}],[0,{&quot;path&quot;:[0,&quot;/guide/flows&quot;],&quot;label&quot;:[0,&quot;Origin-Destination Flows&quot;]}],[0,{&quot;path&quot;:[0,&quot;/guide/land-use&quot;],&quot;label&quot;:[0,&quot;Land-Use&quot;]}],[0,{&quot;path&quot;:[0,&quot;/guide/interpretation&quot;],&quot;label&quot;:[0,&quot;Interpretation&quot;]}],[0,{&quot;path&quot;:[0,&quot;/guide/troubleshooting&quot;],&quot;label&quot;:[0,&quot;Troubleshooting&quot;]}],[0,{&quot;path&quot;:[0,&quot;/guide/migration&quot;],&quot;label&quot;:[0,&quot;v4 to v5 Migration&quot;]}]]]}]]]}],[0,{&quot;id&quot;:[0,&quot;plugin&quot;],&quot;label&quot;:[0,&quot;QGIS Plugin&quot;],&quot;base&quot;:[0,&quot;/plugin&quot;],&quot;groups&quot;:[1,[[0,{&quot;items&quot;:[1,[[0,{&quot;path&quot;:[0,&quot;/plugin&quot;],&quot;label&quot;:[0,&quot;Overview&quot;]}]]]}],[0,{&quot;title&quot;:[0,&quot;Algorithms&quot;],&quot;items&quot;:[1,[[0,{&quot;path&quot;:[0,&quot;/plugin/centrality&quot;],&quot;label&quot;:[0,&quot;Network Centrality&quot;]}],[0,{&quot;path&quot;:[0,&quot;/plugin/demand&quot;],&quot;label&quot;:[0,&quot;Demand Betweenness&quot;]}],[0,{&quot;path&quot;:[0,&quot;/plugin/accessibility&quot;],&quot;label&quot;:[0,&quot;Accessibility&quot;]}],[0,{&quot;path&quot;:[0,&quot;/plugin/mixed-uses&quot;],&quot;label&quot;:[0,&quot;Mixed Uses&quot;]}],[0,{&quot;path&quot;:[0,&quot;/plugin/statistics&quot;],&quot;label&quot;:[0,&quot;Statistics&quot;]}]]]}]]]}],[0,{&quot;id&quot;:[0,&quot;examples&quot;],&quot;label&quot;:[0,&quot;Examples&quot;],&quot;base&quot;:[0,&quot;/examples&quot;],&quot;groups&quot;:[1,[[0,{&quot;items&quot;:[1,[[0,{&quot;path&quot;:[0,&quot;/examples&quot;],&quot;label&quot;:[0,&quot;Overview&quot;]}]]]}],[0,{&quot;title&quot;:[0,&quot;Recipes&quot;],&quot;items&quot;:[1,[[0,{&quot;path&quot;:[0,&quot;/examples/networks&quot;],&quot;label&quot;:[0,&quot;Network Preparation&quot;]}],[0,{&quot;path&quot;:[0,&quot;/examples/centrality&quot;],&quot;label&quot;:[0,&quot;Centrality&quot;]}],[0,{&quot;path&quot;:[0,&quot;/examples/flows&quot;],&quot;label&quot;:[0,&quot;Origin-Destination Flows&quot;]}],[0,{&quot;path&quot;:[0,&quot;/examples/accessibility&quot;],&quot;label&quot;:[0,&quot;Accessibility&quot;]}],[0,{&quot;path&quot;:[0,&quot;/examples/stats&quot;],&quot;label&quot;:[0,&quot;Statistics&quot;]}],[0,{&quot;path&quot;:[0,&quot;/examples/visibility&quot;],&quot;label&quot;:[0,&quot;Visibility&quot;]}],[0,{&quot;path&quot;:[0,&quot;/examples/continuity&quot;],&quot;label&quot;:[0,&quot;Continuity&quot;]}]]]}],[0,{&quot;items&quot;:[1,[[0,{&quot;path&quot;:[0,&quot;/examples/datasets&quot;],&quot;label&quot;:[0,&quot;Datasets&quot;]}]]]}]]]}],[0,{&quot;id&quot;:[0,&quot;api&quot;],&quot;label&quot;:[0,&quot;API Reference&quot;],&quot;base&quot;:[0,&quot;/api/network&quot;],&quot;groups&quot;:[1,[[0,{&quot;title&quot;:[0,&quot;High-level&quot;],&quot;items&quot;:[1,[[0,{&quot;path&quot;:[0,&quot;/api/network&quot;],&quot;label&quot;:[0,&quot;CityNetwork&quot;]}],[0,{&quot;path&quot;:[0,&quot;/api/decay&quot;],&quot;label&quot;:[0,&quot;decay&quot;]}]]]}],[0,{&quot;title&quot;:[0,&quot;Tools&quot;],&quot;items&quot;:[1,[[0,{&quot;path&quot;:[0,&quot;/tools/io&quot;],&quot;label&quot;:[0,&quot;io&quot;]}],[0,{&quot;path&quot;:[0,&quot;/tools/graphs&quot;],&quot;label&quot;:[0,&quot;graphs&quot;]}],[0,{&quot;path&quot;:[0,&quot;/tools/plot&quot;],&quot;label&quot;:[0,&quot;plot&quot;]}],[0,{&quot;path&quot;:[0,&quot;/tools/mock&quot;],&quot;label&quot;:[0,&quot;mock&quot;]}],[0,{&quot;path&quot;:[0,&quot;/tools/util&quot;],&quot;label&quot;:[0,&quot;util&quot;]}]]]}],[0,{&quot;title&quot;:[0,&quot;Metrics&quot;],&quot;items&quot;:[1,[[0,{&quot;path&quot;:[0,&quot;/metrics/networks&quot;],&quot;label&quot;:[0,&quot;networks&quot;]}],[0,{&quot;path&quot;:[0,&quot;/metrics/layers&quot;],&quot;label&quot;:[0,&quot;layers&quot;]}],[0,{&quot;path&quot;:[0,&quot;/metrics/observe&quot;],&quot;label&quot;:[0,&quot;observe&quot;]}],[0,{&quot;path&quot;:[0,&quot;/metrics/visibility&quot;],&quot;label&quot;:[0,&quot;visibility&quot;]}],[0,{&quot;path&quot;:[0,&quot;/metrics/sampling&quot;],&quot;label&quot;:[0,&quot;sampling&quot;]}]]]}],[0,{&quot;title&quot;:[0,&quot;Rust Algos&quot;],&quot;items&quot;:[1,[[0,{&quot;path&quot;:[0,&quot;/rustalgos/rustalgos&quot;],&quot;label&quot;:[0,&quot;rustalgos&quot;]}],[0,{&quot;path&quot;:[0,&quot;/rustalgos/graph&quot;],&quot;label&quot;:[0,&quot;graph&quot;]}],[0,{&quot;path&quot;:[0,&quot;/rustalgos/centrality&quot;],&quot;label&quot;:[0,&quot;centrality&quot;]}],[0,{&quot;path&quot;:[0,&quot;/rustalgos/diversity&quot;],&quot;label&quot;:[0,&quot;diversity&quot;]}],[0,{&quot;path&quot;:[0,&quot;/rustalgos/data&quot;],&quot;label&quot;:[0,&quot;data&quot;]}],[0,{&quot;path&quot;:[0,&quot;/rustalgos/viewshed&quot;],&quot;label&quot;:[0,&quot;viewshed&quot;]}]]]}],[0,{&quot;items&quot;:[1,[[0,{&quot;path&quot;:[0,&quot;/api/glossary&quot;],&quot;label&quot;:[0,&quot;Glossary&quot;]}]]]}]]]}]]],&quot;activeSectionId&quot;:[0,&quot;api&quot;],&quot;currentPath&quot;:[0,&quot;/metrics/layers&quot;],&quot;data-astro-cid-xa52sxzc&quot;:[0,true]}" ssr client="visible" opts="{&quot;name&quot;:&quot;NavColumn&quot;,&quot;value&quot;:true}" await-children><nav id="nav-tree" data-astro-cid-xa52sxzc="true" data-v-89398da1><!--[--><!--]--></nav><!--astro:end--></astro-island> <div class="grow" data-astro-cid-xa52sxzc></div> <div class="self-start px-8 py-2" data-astro-cid-xa52sxzc> <a id="repo-link" href="https://github.com/benchmark-urbanism/cityseer-api/" target="_blank" data-astro-cid-gf3o2gw7> <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 496 512" class="text-theme w-12" data-astro-cid-gf3o2gw7="true"><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6c-3.3.3-5.6-1.3-5.6-3.6c0-2 2.3-3.6 5.2-3.6c3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9c2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9c.3 2 2.9 3.3 5.9 2.6c2.9-.7 4.9-2.6 4.6-4.6c-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2c12.8 2.3 17.3-5.6 17.3-12.1c0-6.2-.3-40.4-.3-61.4c0 0-70 15-84.7-29.8c0 0-11.4-29.1-27.8-36.6c0 0-22.9-15.7 1.6-15.4c0 0 24.9 2 38.6 25.8c21.9 38.6 58.6 27.5 72.9 20.9c2.3-16 8.8-27.1 16-33.7c-55.9-6.2-112.3-14.3-112.3-110.5c0-27.5 7.6-41.3 23.6-58.9c-2.6-6.5-11.1-33.3 2.6-67.9c20.9-6.5 69 27 69 27c20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27c13.7 34.7 5.2 61.4 2.6 67.9c16 17.7 25.8 31.5 25.8 58.9c0 96.5-58.9 104.2-114.8 110.5c9.2 7.9 17 22.9 17 46.4c0 33.7-.3 75.4-.3 83.6c0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252C496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2c1.6 1.6 3.9 2.3 5.2 1c1.3-1 1-3.3-.7-5.2c-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9c1.6 1 3.6.7 4.3-.7c.7-1.3-.3-2.9-2.3-3.9c-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2c2.3 2.3 5.2 2.6 6.5 1c1.3-1.3.7-4.3-1.3-6.2c-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9c1.6 2.3 4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2c-1.4-2.3-4-3.3-5.6-2z" fill="currentColor"></path></svg> <h2 class="py-4 leading-none" data-astro-cid-gf3o2gw7>Github</h2> </a> </div> </div> <div id="stripe" data-astro-cid-ddyhvr7a> <h2 class="py-0" data-astro-cid-ddyhvr7a>Cityseer API Docs</h2> </div> </div> <div id="content-col" data-pagefind-body data-astro-cid-xa52sxzc> <section class="module">
+<h1 id="layers"><a aria-label="Link to this section" href="#layers"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>layers</h1>
+<p>Compute land-use accessibility, mixed-use diversity, and statistical aggregations over the street network. Data points (land uses, numerical attributes) are assigned to the nearest street edges and then summarised within walking-distance catchments around each node, measured along the actual street network rather than as straight-line distances. Because these summaries are computed at the same node locations used for centrality, you can directly compare how well-connected a location is with how accessible different amenities are from that location. An optional <code>decay_fn</code> parameter controls how distance affects the weighting; see the <a href="/api/decay"><code>cityseer.decay</code></a> module for preset helpers. <code>decay_fn</code> also accepts a <code>{label: expression}</code> dict to compute several decay variants in a single network traversal, with each label appended to that variant’s output column names.</p>
+<p>For practical worked examples, see the <a href="https://cityseer.benchmarkurbanism.com/examples">Cityseer Examples</a> site, including the <a href="https://cityseer.benchmarkurbanism.com/examples/accessibility/osm-accessibility">OSM Accessibility</a>, <a href="https://cityseer.benchmarkurbanism.com/examples/accessibility/gpd-mixed-uses">Mixed Uses</a>, and <a href="https://cityseer.benchmarkurbanism.com/examples/stats/gpd-stats">Statistical Aggregations</a> recipes.</p>
+<div class="function">
+<h2 id="build-data-map"><a aria-label="Link to this section" href="#build-data-map"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>build_data_map</h2>
+<div class="content">
+<span class="name">build_data_map</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">data_gdf</span>
+    <span class="pc">:</span>
+    <span class="pa"> geopandas.geodataframe.GeoDataFrame</span>
+  </div>
+  <div class="param">
+    <span class="pn">network_structure</span>
+    <span class="pc">:</span>
+    <span class="pa"> NetworkStructure</span>
+  </div>
+  <div class="param">
+    <span class="pn">max_netw_assign_dist</span>
+    <span class="pc">:</span>
+    <span class="pa"> float = 100.0</span>
+  </div>
+  <div class="param">
+    <span class="pn">data_id_col</span>
+    <span class="pc">:</span>
+    <span class="pa"> str | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">barriers_gdf</span>
+    <span class="pc">:</span>
+    <span class="pa"> geopandas.geodataframe.GeoDataFrame | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">n_nearest_candidates</span>
+    <span class="pc">:</span>
+    <span class="pa"> int = 50</span>
+  </div>
+  <span class="pt">)->[</span>
+  <span class="pr">DataMap</span>
+  <span class="pt">]</span>
+</div>
+</div>
+<p>Assign a <code>GeoDataFrame</code> to a <a href="/rustalgos/graph#networkstructure"><code>rustalgos.graph.NetworkStructure</code></a>. A <code>NetworkStructure</code> provides the backbone for the calculation of land-use and statistical aggregations over the network. Points will be assigned to the closest street edge. Polygons will be assigned to the closest <code>n_nearest_candidates</code> adjacent street edges.</p>
+<h3 id="parameters"><a aria-label="Link to this section" href="#parameters"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>Parameters</h3>
+<div class="param-set">
+  <div class="def">
+    <div class="name">data_gdf</div>
+    <div class="type">GeoDataFrame</div>
+  </div>
+  <div class="desc">
+<p>A <a href="https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe"><code>GeoDataFrame</code></a> representing data points. The coordinates of data points should correspond as precisely as possible to the location of the feature in space; or, in the case of buildings, should ideally correspond to the location of the building entrance.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">network_structure</div>
+    <div class="type">None</div>
+  </div>
+  <div class="desc">
+<p>A <a href="/rustalgos/graph#networkstructure"><code>rustalgos.graph.NetworkStructure</code></a>. Best generated with the <a href="/tools/io#network-structure-from-nx"><code>io.network_structure_from_nx</code></a> function.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">max_netw_assign_dist</div>
+    <div class="type">float</div>
+  </div>
+  <div class="desc">
+<p>The maximum distance to consider when assigning respective data points to the nearest adjacent network nodes.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">data_id_col</div>
+    <div class="type">str</div>
+  </div>
+  <div class="desc">
+<p>An optional column name for data point keys. This is used for deduplicating points representing a shared source of information. For example, where a single greenspace is represented by many entrances as datapoints, only the nearest entrance (from a respective location) will be considered (during aggregations) when the points share a datapoint identifier.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">barriers_gdf</div>
+    <div class="type">GeoDataFrame</div>
+  </div>
+  <div class="desc">
+<p>A <a href="https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe"><code>GeoDataFrame</code></a> representing barriers. These barriers will be considered during the assignment of data points to the network.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">n_nearest_candidates</div>
+    <div class="type">int</div>
+  </div>
+  <div class="desc">
+<p>The number of nearest street edge candidates to consider when assigning data points to the network. This is used to determine the best assignments based on proximity. Edges are sorted by distance and the closest <code>n_nearest_candidates</code> are considered.</p></div><p></p>
+</div>
+<h3 id="returns"><a aria-label="Link to this section" href="#returns"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>Returns</h3>
+<div class="param-set">
+  <div class="def">
+    <div class="name">data_map</div>
+    <div class="type">rustalgos.data.DataMap</div>
+  </div>
+  <div class="desc">
+<p>A <a href="/rustalgos/data#datamap"><code>rustalgos.data.DataMap</code></a> instance.</p></div><p></p>
+</div>
+</div>
+<div class="function">
+<h2 id="compute-accessibilities"><a aria-label="Link to this section" href="#compute-accessibilities"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>compute_accessibilities</h2>
+<div class="content">
+<span class="name">compute_accessibilities</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">data_gdf</span>
+    <span class="pc">:</span>
+    <span class="pa"> geopandas.geodataframe.GeoDataFrame</span>
+  </div>
+  <div class="param">
+    <span class="pn">landuse_column_label</span>
+    <span class="pc">:</span>
+    <span class="pa"> str</span>
+  </div>
+  <div class="param">
+    <span class="pn">accessibility_keys</span>
+    <span class="pc">:</span>
+    <span class="pa"> list[str]</span>
+  </div>
+  <div class="param">
+    <span class="pn">nodes_gdf</span>
+    <span class="pc">:</span>
+    <span class="pa"> geopandas.geodataframe.GeoDataFrame</span>
+  </div>
+  <div class="param">
+    <span class="pn">network_structure</span>
+    <span class="pc">:</span>
+    <span class="pa"> NetworkStructure</span>
+  </div>
+  <div class="param">
+    <span class="pn">max_netw_assign_dist</span>
+    <span class="pc">:</span>
+    <span class="pa"> float = 100.0</span>
+  </div>
+  <div class="param">
+    <span class="pn">distances</span>
+    <span class="pc">:</span>
+    <span class="pa"> list[int] | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">minutes</span>
+    <span class="pc">:</span>
+    <span class="pa"> list[float] | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">data_id_col</span>
+    <span class="pc">:</span>
+    <span class="pa"> str | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">barriers_gdf</span>
+    <span class="pc">:</span>
+    <span class="pa"> geopandas.geodataframe.GeoDataFrame | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">angular</span>
+    <span class="pc">:</span>
+    <span class="pa"> bool = False</span>
+  </div>
+  <div class="param">
+    <span class="pn">n_nearest_candidates</span>
+    <span class="pc">:</span>
+    <span class="pa"> int = 50</span>
+  </div>
+  <div class="param">
+    <span class="pn">speed_m_s</span>
+    <span class="pc">:</span>
+    <span class="pa"> float = 1.33333</span>
+  </div>
+  <div class="param">
+    <span class="pn">decay_fn</span>
+    <span class="pc">:</span>
+    <span class="pa"> str | dict[str, str] | None = None</span>
+  </div>
+  <span class="pt">)->[</span>
+  <span class="pr">GeoDataFrame</span>
+  <span class="pt">]</span>
+</div>
+</div>
+<p>Compute land-use accessibilities for the specified land-use classification keys over the street network. The landuses are aggregated and computed over the street network relative to the network nodes, with the implication that the measures are generated from the same locations as those used for centrality computations.</p>
+<h3 id="parameters-1"><a aria-label="Link to this section" href="#parameters-1"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>Parameters</h3>
+<div class="param-set">
+  <div class="def">
+    <div class="name">data_gdf</div>
+    <div class="type">GeoDataFrame</div>
+  </div>
+  <div class="desc">
+<p>A <a href="https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe"><code>GeoDataFrame</code></a> representing data points. The coordinates of data points should correspond as precisely as possible to the location of the feature in space; or, in the case of buildings, should ideally correspond to the location of the building entrance.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">landuse_column_label</div>
+    <div class="type">str</div>
+  </div>
+  <div class="desc">
+<p>The column label from which to take landuse categories, e.g. a column labelled “landuse_categories” might contain “shop”, “pub”, “school”, etc.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">accessibility_keys</div>
+    <div class="type">tuple[str]</div>
+  </div>
+  <div class="desc">
+<p>Land-use keys for which to compute accessibilities. The keys should be selected from the same land-use schema used for the <code>landuse_labels</code> parameter, e.g. “pub”.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">nodes_gdf</div>
+    <div class="type">None</div>
+  </div>
+  <div class="desc">
+<p>A <a href="https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe"><code>GeoDataFrame</code></a> representing nodes. Best generated with the <a href="/tools/io#network-structure-from-nx"><code>io.network_structure_from_nx</code></a> function. The outputs of calculations will be written to this <code>GeoDataFrame</code>, which is then returned from the function.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">network_structure</div>
+    <div class="type">None</div>
+  </div>
+  <div class="desc">
+<p>A <a href="/rustalgos/graph#networkstructure"><code>rustalgos.graph.NetworkStructure</code></a>. Best generated with the <a href="/tools/io#network-structure-from-nx"><code>io.network_structure_from_nx</code></a> function.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">max_netw_assign_dist</div>
+    <div class="type">float</div>
+  </div>
+  <div class="desc">
+<p>The maximum distance to consider when assigning respective data points to the nearest adjacent network nodes.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">distances</div>
+    <div class="type">list[int]</div>
+  </div>
+  <div class="desc">
+<p>Distance thresholds in metres for the network traversal. Metrics are computed for each threshold independently. If not provided, the <code>minutes</code> parameter must be provided instead.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">minutes</div>
+    <div class="type">list[float]</div>
+  </div>
+  <div class="desc">
+<p>Walking time thresholds in minutes. Converted to distance thresholds using <code>speed_m_s</code>. If not provided, the <code>distances</code> parameter must be provided instead.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">data_id_col</div>
+    <div class="type">str</div>
+  </div>
+  <div class="desc">
+<p>An optional column name for data point keys. This is used for deduplicating points representing a shared source of information. For example, where a single greenspace is represented by many entrances as datapoints, only the nearest entrance (from a respective location) will be considered (during aggregations) when the points share a datapoint identifier.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">barriers_gdf</div>
+    <div class="type">GeoDataFrame</div>
+  </div>
+  <div class="desc">
+<p>A <a href="https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe"><code>GeoDataFrame</code></a> representing barriers. These barriers will be considered during the assignment of data points to the network.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">angular</div>
+    <div class="type">bool</div>
+  </div>
+  <div class="desc">
+<p>Whether to use a simplest-path heuristic in-lieu of a shortest-path heuristic when calculating aggregations and distances.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">n_nearest_candidates</div>
+    <div class="type">int</div>
+  </div>
+  <div class="desc">
+<p>The number of nearest candidates to consider when assigning respective data points to the nearest adjacent streets.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">speed_m_s</div>
+    <div class="type">float</div>
+  </div>
+  <div class="desc">
+<p>Walking speed in metres per second used to convert <code>minutes</code> to distance thresholds.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">decay_fn</div>
+    <div class="type">str | dict[str, str]</div>
+  </div>
+  <div class="desc">
+<p>An optional decay function expression using the variable <code>p</code>, where <code>p</code> is the normalised distance from 0 (source) to 1 (cutoff threshold). Controls how distance affects the accessibility count weighting. When omitted (<code>None</code>), the legacy default computes both an unweighted (<code>_nw</code>) and a decay-weighted (<code>_wt</code>) column; pass a single expression such as <code>&#x26;quot;1&#x26;quot;</code> (flat) to compute one unsuffixed column. For distance-weighted metrics, provide an expression such as <code>&#x26;quot;exp(-4 * p)&#x26;quot;</code> for exponential decay, or use the <code>cityseer.decay</code> module helpers to generate expressions from absolute distance units; see <a href="/api/decay"><code>cityseer.decay</code></a> for details and examples. Pass a dict of <code>{label: expression}</code> to compute several decays in a single network traversal; each label is appended to that variant’s output column names (a plain string or <code>None</code> adds no suffix).</p></div><p></p>
+</div>
+<h3 id="returns-1"><a aria-label="Link to this section" href="#returns-1"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>Returns</h3>
+<div class="param-set">
+  <div class="def">
+    <div class="name">nodes_gdf</div>
+    <div class="type">GeoDataFrame</div>
+  </div>
+  <div class="desc">
+<p>The input <code>node_gdf</code> parameter is returned with additional columns populated with the calculated metrics. Two columns will be returned for each input landuse class and distance combination; a count of reachable locations, and the smallest distance to the nearest location.</p></div><p></p>
+</div>
+<h3 id="notes"><a aria-label="Link to this section" href="#notes"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>Notes</h3>
+<pre class="astro-code material-theme-darker" style="background-color:#212121;color:#EEFFFF; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="python"><code><span class="line"><span style="color:#89DDFF;font-style:italic">from</span><span style="color:#EEFFFF"> cityseer</span><span style="color:#89DDFF">.</span><span style="color:#EEFFFF">metrics </span><span style="color:#89DDFF;font-style:italic">import</span><span style="color:#EEFFFF"> networks</span><span style="color:#89DDFF">,</span><span style="color:#EEFFFF"> layers</span></span>
+<span class="line"><span style="color:#89DDFF;font-style:italic">from</span><span style="color:#EEFFFF"> cityseer</span><span style="color:#89DDFF">.</span><span style="color:#EEFFFF">tools </span><span style="color:#89DDFF;font-style:italic">import</span><span style="color:#EEFFFF"> mock</span><span style="color:#89DDFF">,</span><span style="color:#EEFFFF"> graphs</span><span style="color:#89DDFF">,</span><span style="color:#EEFFFF"> io</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#545454;font-style:italic"># prepare a mock graph</span></span>
+<span class="line"><span style="color:#EEFFFF">G </span><span style="color:#89DDFF">=</span><span style="color:#EEFFFF"> mock</span><span style="color:#89DDFF">.</span><span style="color:#82AAFF">mock_graph</span><span style="color:#89DDFF">()</span></span>
+<span class="line"><span style="color:#EEFFFF">G </span><span style="color:#89DDFF">=</span><span style="color:#EEFFFF"> graphs</span><span style="color:#89DDFF">.</span><span style="color:#82AAFF">nx_simple_geoms</span><span style="color:#89DDFF">(</span><span style="color:#82AAFF">G</span><span style="color:#89DDFF">)</span></span>
+<span class="line"><span style="color:#EEFFFF">nodes_gdf</span><span style="color:#89DDFF">,</span><span style="color:#EEFFFF"> edges_gdf</span><span style="color:#89DDFF">,</span><span style="color:#EEFFFF"> network_structure </span><span style="color:#89DDFF">=</span><span style="color:#EEFFFF"> io</span><span style="color:#89DDFF">.</span><span style="color:#82AAFF">network_structure_from_nx</span><span style="color:#89DDFF">(</span><span style="color:#82AAFF">G</span><span style="color:#89DDFF">)</span></span>
+<span class="line"><span style="color:#82AAFF">print</span><span style="color:#89DDFF">(</span><span style="color:#82AAFF">nodes_gdf</span><span style="color:#89DDFF">.</span><span style="color:#82AAFF">head</span><span style="color:#89DDFF">())</span></span>
+<span class="line"><span style="color:#EEFFFF">landuses_gdf </span><span style="color:#89DDFF">=</span><span style="color:#EEFFFF"> mock</span><span style="color:#89DDFF">.</span><span style="color:#82AAFF">mock_landuse_categorical_data</span><span style="color:#89DDFF">(</span><span style="color:#82AAFF">G</span><span style="color:#89DDFF">)</span></span>
+<span class="line"><span style="color:#82AAFF">print</span><span style="color:#89DDFF">(</span><span style="color:#82AAFF">landuses_gdf</span><span style="color:#89DDFF">.</span><span style="color:#82AAFF">head</span><span style="color:#89DDFF">())</span></span>
+<span class="line"><span style="color:#EEFFFF">nodes_gdf </span><span style="color:#89DDFF">=</span><span style="color:#EEFFFF"> layers</span><span style="color:#89DDFF">.</span><span style="color:#82AAFF">compute_accessibilities</span><span style="color:#89DDFF">(</span></span>
+<span class="line"><span style="color:#EEFFFF;font-style:italic">    data_gdf</span><span style="color:#89DDFF">=</span><span style="color:#82AAFF">landuses_gdf</span><span style="color:#89DDFF">,</span></span>
+<span class="line"><span style="color:#EEFFFF;font-style:italic">    landuse_column_label</span><span style="color:#89DDFF">=</span><span style="color:#89DDFF">"</span><span style="color:#C3E88D">categorical_landuses</span><span style="color:#89DDFF">"</span><span style="color:#89DDFF">,</span></span>
+<span class="line"><span style="color:#EEFFFF;font-style:italic">    accessibility_keys</span><span style="color:#89DDFF">=[</span><span style="color:#89DDFF">"</span><span style="color:#C3E88D">a</span><span style="color:#89DDFF">"</span><span style="color:#89DDFF">,</span><span style="color:#89DDFF"> "</span><span style="color:#C3E88D">c</span><span style="color:#89DDFF">"</span><span style="color:#89DDFF">],</span></span>
+<span class="line"><span style="color:#EEFFFF;font-style:italic">    nodes_gdf</span><span style="color:#89DDFF">=</span><span style="color:#82AAFF">nodes_gdf</span><span style="color:#89DDFF">,</span></span>
+<span class="line"><span style="color:#EEFFFF;font-style:italic">    network_structure</span><span style="color:#89DDFF">=</span><span style="color:#82AAFF">network_structure</span><span style="color:#89DDFF">,</span></span>
+<span class="line"><span style="color:#EEFFFF;font-style:italic">    distances</span><span style="color:#89DDFF">=[</span><span style="color:#F78C6C">200</span><span style="color:#89DDFF">,</span><span style="color:#F78C6C"> 400</span><span style="color:#89DDFF">,</span><span style="color:#F78C6C"> 800</span><span style="color:#89DDFF">],</span></span>
+<span class="line"><span style="color:#89DDFF">)</span></span>
+<span class="line"><span style="color:#82AAFF">print</span><span style="color:#89DDFF">(</span><span style="color:#82AAFF">nodes_gdf</span><span style="color:#89DDFF">.</span><span style="color:#F07178">columns</span><span style="color:#89DDFF">)</span></span>
+<span class="line"><span style="color:#545454;font-style:italic"># the default emits an unweighted (_nw) and a weighted (_wt) column;</span></span>
+<span class="line"><span style="color:#545454;font-style:italic"># pass a single decay_fn (e.g. "1") to compute just one and save time</span></span>
+<span class="line"><span style="color:#82AAFF">print</span><span style="color:#89DDFF">(</span><span style="color:#82AAFF">nodes_gdf</span><span style="color:#89DDFF">[</span><span style="color:#89DDFF">"</span><span style="color:#C3E88D">cc_c_400_nw</span><span style="color:#89DDFF">"</span><span style="color:#89DDFF">])</span></span>
+<span class="line"><span style="color:#545454;font-style:italic"># nearest distance to landuse (decay-independent: one column)</span></span>
+<span class="line"><span style="color:#82AAFF">print</span><span style="color:#89DDFF">(</span><span style="color:#82AAFF">nodes_gdf</span><span style="color:#89DDFF">[</span><span style="color:#89DDFF">"</span><span style="color:#C3E88D">cc_c_nearest_max_800</span><span style="color:#89DDFF">"</span><span style="color:#89DDFF">])</span></span></code></pre>
+<p>For worked examples with real-world data, see the <a href="https://cityseer.benchmarkurbanism.com/examples/accessibility/osm-accessibility">OSM Accessibility</a> recipe.</p>
+</div>
+<div class="function">
+<h2 id="compute-mixed-uses"><a aria-label="Link to this section" href="#compute-mixed-uses"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>compute_mixed_uses</h2>
+<div class="content">
+<span class="name">compute_mixed_uses</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">data_gdf</span>
+    <span class="pc">:</span>
+    <span class="pa"> geopandas.geodataframe.GeoDataFrame</span>
+  </div>
+  <div class="param">
+    <span class="pn">landuse_column_label</span>
+    <span class="pc">:</span>
+    <span class="pa"> str</span>
+  </div>
+  <div class="param">
+    <span class="pn">nodes_gdf</span>
+    <span class="pc">:</span>
+    <span class="pa"> geopandas.geodataframe.GeoDataFrame</span>
+  </div>
+  <div class="param">
+    <span class="pn">network_structure</span>
+    <span class="pc">:</span>
+    <span class="pa"> NetworkStructure</span>
+  </div>
+  <div class="param">
+    <span class="pn">max_netw_assign_dist</span>
+    <span class="pc">:</span>
+    <span class="pa"> float = 100.0</span>
+  </div>
+  <div class="param">
+    <span class="pn">compute_hill</span>
+    <span class="pc">:</span>
+    <span class="pa"> bool | None = True</span>
+  </div>
+  <div class="param">
+    <span class="pn">compute_shannon</span>
+    <span class="pc">:</span>
+    <span class="pa"> bool | None = False</span>
+  </div>
+  <div class="param">
+    <span class="pn">compute_gini</span>
+    <span class="pc">:</span>
+    <span class="pa"> bool | None = False</span>
+  </div>
+  <div class="param">
+    <span class="pn">distances</span>
+    <span class="pc">:</span>
+    <span class="pa"> list[int] | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">minutes</span>
+    <span class="pc">:</span>
+    <span class="pa"> list[float] | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">data_id_col</span>
+    <span class="pc">:</span>
+    <span class="pa"> str | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">barriers_gdf</span>
+    <span class="pc">:</span>
+    <span class="pa"> geopandas.geodataframe.GeoDataFrame | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">angular</span>
+    <span class="pc">:</span>
+    <span class="pa"> bool = False</span>
+  </div>
+  <div class="param">
+    <span class="pn">n_nearest_candidates</span>
+    <span class="pc">:</span>
+    <span class="pa"> int = 50</span>
+  </div>
+  <div class="param">
+    <span class="pn">speed_m_s</span>
+    <span class="pc">:</span>
+    <span class="pa"> float = 1.33333</span>
+  </div>
+  <div class="param">
+    <span class="pn">decay_fn</span>
+    <span class="pc">:</span>
+    <span class="pa"> str | dict[str, str] | None = None</span>
+  </div>
+  <span class="pt">)->[</span>
+  <span class="pr">GeoDataFrame</span>
+  <span class="pt">]</span>
+</div>
+</div>
+<p>Compute landuse metrics. This function wraps the underlying <code>rust</code> optimised functions for aggregating and computing various mixed-use. These are computed simultaneously for any required combinations of measures (and distances). By default, hill measures will be computed, but the available flags e.g. <code>compute_hill</code> or <code>compute_shannon</code> can be used to configure which classes of measures should run.</p>
+<p>See the accompanying paper on <code>arXiv</code> for additional information about methods for computing mixed-use measures at the pedestrian scale.</p>
+<p>The data is aggregated and computed over the street network, with the implication that mixed-use and land-use accessibility aggregations are generated from the same locations as for centrality computations, which can therefore be correlated or otherwise compared. The outputs of the calculations are written to the corresponding node indices in the same <code>node_gdf</code> <code>GeoDataFrame</code> used for centrality methods, and which will display the calculated metrics under correspondingly labelled columns.</p>
+<h3 id="parameters-2"><a aria-label="Link to this section" href="#parameters-2"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>Parameters</h3>
+<div class="param-set">
+  <div class="def">
+    <div class="name">data_gdf</div>
+    <div class="type">GeoDataFrame</div>
+  </div>
+  <div class="desc">
+<p>A <a href="https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe"><code>GeoDataFrame</code></a> representing data points. The coordinates of data points should correspond as precisely as possible to the location of the feature in space; or, in the case of buildings, should ideally correspond to the location of the building entrance.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">landuse_column_label</div>
+    <div class="type">str</div>
+  </div>
+  <div class="desc">
+<p>The column label from which to take landuse categories, e.g. a column labelled “landuse_categories” might contain “shop”, “pub”, “school”, etc., landuse categories.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">nodes_gdf</div>
+    <div class="type">None</div>
+  </div>
+  <div class="desc">
+<p>A <a href="https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe"><code>GeoDataFrame</code></a> representing nodes. Best generated with the <a href="/tools/io#network-structure-from-nx"><code>io.network_structure_from_nx</code></a> function. The outputs of calculations will be written to this <code>GeoDataFrame</code>, which is then returned from the function.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">network_structure</div>
+    <div class="type">None</div>
+  </div>
+  <div class="desc">
+<p>A <a href="/rustalgos/graph#networkstructure"><code>rustalgos.graph.NetworkStructure</code></a>. Best generated with the <a href="/tools/io#network-structure-from-nx"><code>io.network_structure_from_nx</code></a> function.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">max_netw_assign_dist</div>
+    <div class="type">float</div>
+  </div>
+  <div class="desc">
+<p>The maximum distance to consider when assigning respective data points to the nearest adjacent network nodes.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">compute_hill</div>
+    <div class="type">bool</div>
+  </div>
+  <div class="desc">
+<p>Compute Hill diversity. This is the recommended form of diversity index. Computed for q of 0, 1, and 2.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">compute_shannon</div>
+    <div class="type">bool</div>
+  </div>
+  <div class="desc">
+<p>Compute shannon entropy. Hill diversity of q=1 is generally preferable.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">compute_gini</div>
+    <div class="type">bool</div>
+  </div>
+  <div class="desc">
+<p>Compute the gini form of diversity index. Hill diversity of q=2 is generally preferable.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">distances</div>
+    <div class="type">list[int]</div>
+  </div>
+  <div class="desc">
+<p>Distance thresholds in metres for the network traversal. Metrics are computed for each threshold independently. If not provided, the <code>minutes</code> parameter must be provided instead.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">minutes</div>
+    <div class="type">list[float]</div>
+  </div>
+  <div class="desc">
+<p>Walking time thresholds in minutes. Converted to distance thresholds using <code>speed_m_s</code>. If not provided, the <code>distances</code> parameter must be provided instead.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">data_id_col</div>
+    <div class="type">str</div>
+  </div>
+  <div class="desc">
+<p>An optional column name for data point keys. This is used for deduplicating points representing a shared source of information. For example, where a single greenspace is represented by many entrances as datapoints, only the nearest entrance (from a respective location) will be considered (during aggregations) when the points share a datapoint identifier.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">barriers_gdf</div>
+    <div class="type">GeoDataFrame</div>
+  </div>
+  <div class="desc">
+<p>A <a href="https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe"><code>GeoDataFrame</code></a> representing barriers. These barriers will be considered during the assignment of data points to the network.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">angular</div>
+    <div class="type">bool</div>
+  </div>
+  <div class="desc">
+<p>Whether to use a simplest-path heuristic in-lieu of a shortest-path heuristic when calculating aggregations and distances.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">n_nearest_candidates</div>
+    <div class="type">int</div>
+  </div>
+  <div class="desc">
+<p>The number of nearest candidates to consider when assigning respective data points to the nearest adjacent streets.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">speed_m_s</div>
+    <div class="type">float</div>
+  </div>
+  <div class="desc">
+<p>Walking speed in metres per second used to convert <code>minutes</code> to distance thresholds.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">decay_fn</div>
+    <div class="type">str | dict[str, str]</div>
+  </div>
+  <div class="desc">
+<p>An optional decay function expression using the variable <code>p</code>, where <code>p</code> is the normalised distance from 0 (source) to 1 (cutoff threshold). Controls how distance affects the Hill diversity weighting. When omitted (<code>None</code>), the legacy default computes both an unweighted (<code>_nw</code>) and a decay-weighted (<code>_wt</code>) variant; pass a single expression such as <code>&#x26;quot;1&#x26;quot;</code> (flat) to compute one unsuffixed variant. For distance-weighted metrics, provide an expression such as <code>&#x26;quot;exp(-4 * p)&#x26;quot;</code> for exponential decay, or use the <code>cityseer.decay</code> module helpers to generate expressions from absolute distance units; see <a href="/api/decay"><code>cityseer.decay</code></a> for details and examples. Pass a dict of <code>{label: expression}</code> to compute several decays in a single network traversal; each label is appended to that variant’s output column names (a plain string or <code>None</code> adds no suffix).</p></div><p></p>
+</div>
+<h3 id="returns-2"><a aria-label="Link to this section" href="#returns-2"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>Returns</h3>
+<div class="param-set">
+  <div class="def">
+    <div class="name">nodes_gdf</div>
+    <div class="type">GeoDataFrame</div>
+  </div>
+  <div class="desc">
+<p>The input <code>node_gdf</code> parameter is returned with additional columns populated with the calculated metrics.</p></div><p></p>
+</div>
+<h3 id="notes-1"><a aria-label="Link to this section" href="#notes-1"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>Notes</h3>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<table><thead><tr><th>key</th><th align="center">formula</th><th>notes</th></tr></thead><tbody><tr><td>hill</td><td align="center"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>q</mi><mo>≥</mo><mn>0</mn><mo separator="true">,</mo><mtext> </mtext><mi>q</mi><mo mathvariant="normal">≠</mo><mn>1</mn><mspace linebreak="newline"></mspace><mo fence="false" stretchy="true" minsize="1.2em" maxsize="1.2em">(</mo><msubsup><mo>∑</mo><mi>i</mi><mi>S</mi></msubsup><msubsup><mi>p</mi><mi>i</mi><mi>q</mi></msubsup><msup><mo fence="false" stretchy="true" minsize="1.2em" maxsize="1.2em">)</mo><mrow><mn>1</mn><mi mathvariant="normal">/</mi><mo stretchy="false">(</mo><mn>1</mn><mo>−</mo><mi>q</mi><mo stretchy="false">)</mo></mrow></msup><mspace linebreak="newline"></mspace><mi>l</mi><mi>i</mi><msub><mi>m</mi><mrow><mi>q</mi><mo>→</mo><mn>1</mn></mrow></msub><mspace linebreak="newline"></mspace><mi>e</mi><mi>x</mi><mi>p</mi><mo fence="false" stretchy="true" minsize="1.2em" maxsize="1.2em">(</mo><mo>−</mo><msubsup><mo>∑</mo><mi>i</mi><mi>S</mi></msubsup><mtext> </mtext><msub><mi>p</mi><mi>i</mi></msub><mtext> </mtext><mi>l</mi><mi>o</mi><mi>g</mi><mtext> </mtext><msub><mi>p</mi><mi>i</mi></msub><mo fence="false" stretchy="true" minsize="1.2em" maxsize="1.2em">)</mo></mrow><annotation encoding="application/x-tex">q\geq{0},\ q\neq{1} \\ \big(\sum_{i}^{S}p_{i}^q\big)^{1/(1-q)} \\ lim_{q\to1} \\ exp\big(-\sum_{i}^{S}\ p_{i}\ log\ p_{i}\big)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8304em;vertical-align:-0.1944em;"></span><span class="mord mathnormal" style="margin-right:0.03588em;">q</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">≥</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:0.8889em;vertical-align:-0.1944em;"></span><span class="mord"><span class="mord">0</span></span><span class="mpunct">,</span><span class="mspace"> </span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal" style="margin-right:0.03588em;">q</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel"><span class="mrel"><span class="mord vbox"><span class="thinbox"><span class="rlap"><span class="strut" style="height:0.8889em;vertical-align:-0.1944em;"></span><span class="inner"><span class="mord"><span class="mrel"></span></span></span><span class="fix"></span></span></span></span></span><span class="mrel">=</span></span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:0.6444em;"></span><span class="mord"><span class="mord">1</span></span></span><span class="mspace newline"></span><span class="base"><span class="strut" style="height:1.4779em;vertical-align:-0.35em;"></span><span class="mord"><span class="delimsizing size1">(</span></span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mop"><span class="mop op-symbol small-op" style="position:relative;top:0em;">∑</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.9812em;"><span style="top:-2.4003em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">i</span></span></span></span><span style="top:-3.2029em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight" style="margin-right:0.05764em;">S</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.2997em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord"><span class="mord mathnormal">p</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.7823em;"><span style="top:-2.4231em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">i</span></span></span></span><span style="top:-3.1809em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight" style="margin-right:0.03588em;">q</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.2769em;"><span></span></span></span></span></span></span><span class="mord"><span class="mord"><span class="delimsizing size1">)</span></span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:1.1279em;"><span style="top:-3.3029em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight">1/</span><span class="mopen mtight">(</span><span class="mord mtight">1</span><span class="mbin mtight">−</span><span class="mord mathnormal mtight" style="margin-right:0.03588em;">q</span><span class="mclose mtight">)</span></span></span></span></span></span></span></span></span></span><span class="mspace newline"></span><span class="base"><span class="strut" style="height:0.9805em;vertical-align:-0.2861em;"></span><span class="mord mathnormal" style="margin-right:0.01968em;">l</span><span class="mord mathnormal">i</span><span class="mord"><span class="mord mathnormal">m</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3011em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight" style="margin-right:0.03588em;">q</span><span class="mrel mtight">→</span><span class="mord mtight">1</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.2861em;"><span></span></span></span></span></span></span></span><span class="mspace newline"></span><span class="base"><span class="strut" style="height:1.2em;vertical-align:-0.35em;"></span><span class="mord mathnormal">e</span><span class="mord mathnormal">x</span><span class="mord mathnormal">p</span><span class="mord"><span class="delimsizing size1">(</span></span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">−</span><span class="mspace" style="margin-right:0.2222em;"></span></span><span class="base"><span class="strut" style="height:1.3312em;vertical-align:-0.35em;"></span><span class="mop"><span class="mop op-symbol small-op" style="position:relative;top:0em;">∑</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.9812em;"><span style="top:-2.4003em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">i</span></span></span></span><span style="top:-3.2029em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight" style="margin-right:0.05764em;">S</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.2997em;"><span></span></span></span></span></span></span><span class="mspace"> </span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord"><span class="mord mathnormal">p</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3117em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">i</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mspace"> </span><span class="mord mathnormal" style="margin-right:0.01968em;">l</span><span class="mord mathnormal">o</span><span class="mord mathnormal" style="margin-right:0.03588em;">g</span><span class="mspace"> </span><span class="mord"><span class="mord mathnormal">p</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3117em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">i</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mord"><span class="delimsizing size1">)</span></span></span></span></span></td><td>Hill diversity: this is the preferred form of diversity metric because it adheres to the replication principle and uses units of effective species instead of measures of information or uncertainty. The <code>q</code> parameter controls the degree of emphasis on the <em>richness</em> of species as opposed to the <em>balance</em> of species. Over-emphasis on balance can be misleading in an urban context, for which reason research finds support for using <code>q=0</code>: this reduces to a simple count of distinct land-uses.</td></tr><tr><td>shannon</td><td align="center"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>−</mo><msubsup><mo>∑</mo><mi>i</mi><mi>S</mi></msubsup><mtext> </mtext><msub><mi>p</mi><mi>i</mi></msub><mtext> </mtext><mi>l</mi><mi>o</mi><mi>g</mi><mtext> </mtext><msub><mi>p</mi><mi>i</mi></msub></mrow><annotation encoding="application/x-tex"> -\sum_{i}^{S}\ p_{i}\ log\ p_{i}</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1.2809em;vertical-align:-0.2997em;"></span><span class="mord">−</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mop"><span class="mop op-symbol small-op" style="position:relative;top:0em;">∑</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.9812em;"><span style="top:-2.4003em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">i</span></span></span></span><span style="top:-3.2029em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight" style="margin-right:0.05764em;">S</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.2997em;"><span></span></span></span></span></span></span><span class="mspace"> </span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord"><span class="mord mathnormal">p</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3117em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">i</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mspace"> </span><span class="mord mathnormal" style="margin-right:0.01968em;">l</span><span class="mord mathnormal">o</span><span class="mord mathnormal" style="margin-right:0.03588em;">g</span><span class="mspace"> </span><span class="mord"><span class="mord mathnormal">p</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3117em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">i</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span></span></span></span></td><td>Shannon diversity (or_information entropy_) is one of the classic diversity indices. Note that it is preferable to use Hill Diversity with <code>q=1</code>, which is effectively a transformation of Shannon diversity into units of effective species.</td></tr><tr><td>gini</td><td align="center"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>1</mn><mo>−</mo><msubsup><mo>∑</mo><mi>i</mi><mi>S</mi></msubsup><msubsup><mi>p</mi><mi>i</mi><mn>2</mn></msubsup></mrow><annotation encoding="application/x-tex"> 1 - \sum_{i}^{S} p_{i}^2</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.7278em;vertical-align:-0.0833em;"></span><span class="mord">1</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">−</span><span class="mspace" style="margin-right:0.2222em;"></span></span><span class="base"><span class="strut" style="height:1.2809em;vertical-align:-0.2997em;"></span><span class="mop"><span class="mop op-symbol small-op" style="position:relative;top:0em;">∑</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.9812em;"><span style="top:-2.4003em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">i</span></span></span></span><span style="top:-3.2029em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight" style="margin-right:0.05764em;">S</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.2997em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord"><span class="mord mathnormal">p</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.8141em;"><span style="top:-2.4413em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">i</span></span></span></span><span style="top:-3.063em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight">2</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.2587em;"><span></span></span></span></span></span></span></span></span></span></td><td>Gini-Simpson is another classic diversity index. It can behave problematically because it does not adhere to the replication principle and places emphasis on the balance of species, which can be counter-productive for purposes of measuring mixed-uses. Note that where an emphasis on balance is desired, it is preferable to use Hill Diversity with <code>q=2</code>, which is effectively a transformation of Gini-Simpson diversity into units of effective species.</td></tr></tbody></table>
+<div class="box note"><p><code>hill</code> at <code>q=0</code> is generally the best choice for granular landuse data, or else <code>q=1</code> or
+<code>q=2</code> for increasingly crude landuse classifications schemas.</p></div>
+<p>A worked example:</p>
+<pre class="astro-code material-theme-darker" style="background-color:#212121;color:#EEFFFF; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="python"><code><span class="line"><span style="color:#89DDFF;font-style:italic">from</span><span style="color:#EEFFFF"> cityseer</span><span style="color:#89DDFF">.</span><span style="color:#EEFFFF">metrics </span><span style="color:#89DDFF;font-style:italic">import</span><span style="color:#EEFFFF"> networks</span><span style="color:#89DDFF">,</span><span style="color:#EEFFFF"> layers</span></span>
+<span class="line"><span style="color:#89DDFF;font-style:italic">from</span><span style="color:#EEFFFF"> cityseer</span><span style="color:#89DDFF">.</span><span style="color:#EEFFFF">tools </span><span style="color:#89DDFF;font-style:italic">import</span><span style="color:#EEFFFF"> mock</span><span style="color:#89DDFF">,</span><span style="color:#EEFFFF"> graphs</span><span style="color:#89DDFF">,</span><span style="color:#EEFFFF"> io</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#545454;font-style:italic"># prepare a mock graph</span></span>
+<span class="line"><span style="color:#EEFFFF">G </span><span style="color:#89DDFF">=</span><span style="color:#EEFFFF"> mock</span><span style="color:#89DDFF">.</span><span style="color:#82AAFF">mock_graph</span><span style="color:#89DDFF">()</span></span>
+<span class="line"><span style="color:#EEFFFF">G </span><span style="color:#89DDFF">=</span><span style="color:#EEFFFF"> graphs</span><span style="color:#89DDFF">.</span><span style="color:#82AAFF">nx_simple_geoms</span><span style="color:#89DDFF">(</span><span style="color:#82AAFF">G</span><span style="color:#89DDFF">)</span></span>
+<span class="line"><span style="color:#EEFFFF">nodes_gdf</span><span style="color:#89DDFF">,</span><span style="color:#EEFFFF"> edges_gdf</span><span style="color:#89DDFF">,</span><span style="color:#EEFFFF"> network_structure </span><span style="color:#89DDFF">=</span><span style="color:#EEFFFF"> io</span><span style="color:#89DDFF">.</span><span style="color:#82AAFF">network_structure_from_nx</span><span style="color:#89DDFF">(</span><span style="color:#82AAFF">G</span><span style="color:#89DDFF">)</span></span>
+<span class="line"><span style="color:#82AAFF">print</span><span style="color:#89DDFF">(</span><span style="color:#82AAFF">nodes_gdf</span><span style="color:#89DDFF">.</span><span style="color:#82AAFF">head</span><span style="color:#89DDFF">())</span></span>
+<span class="line"><span style="color:#EEFFFF">landuses_gdf </span><span style="color:#89DDFF">=</span><span style="color:#EEFFFF"> mock</span><span style="color:#89DDFF">.</span><span style="color:#82AAFF">mock_landuse_categorical_data</span><span style="color:#89DDFF">(</span><span style="color:#82AAFF">G</span><span style="color:#89DDFF">)</span></span>
+<span class="line"><span style="color:#82AAFF">print</span><span style="color:#89DDFF">(</span><span style="color:#82AAFF">landuses_gdf</span><span style="color:#89DDFF">.</span><span style="color:#82AAFF">head</span><span style="color:#89DDFF">())</span></span>
+<span class="line"><span style="color:#EEFFFF">nodes_gdf </span><span style="color:#89DDFF">=</span><span style="color:#EEFFFF"> layers</span><span style="color:#89DDFF">.</span><span style="color:#82AAFF">compute_mixed_uses</span><span style="color:#89DDFF">(</span></span>
+<span class="line"><span style="color:#EEFFFF;font-style:italic">    data_gdf</span><span style="color:#89DDFF">=</span><span style="color:#82AAFF">landuses_gdf</span><span style="color:#89DDFF">,</span></span>
+<span class="line"><span style="color:#EEFFFF;font-style:italic">    landuse_column_label</span><span style="color:#89DDFF">=</span><span style="color:#89DDFF">"</span><span style="color:#C3E88D">categorical_landuses</span><span style="color:#89DDFF">"</span><span style="color:#89DDFF">,</span></span>
+<span class="line"><span style="color:#EEFFFF;font-style:italic">    nodes_gdf</span><span style="color:#89DDFF">=</span><span style="color:#82AAFF">nodes_gdf</span><span style="color:#89DDFF">,</span></span>
+<span class="line"><span style="color:#EEFFFF;font-style:italic">    network_structure</span><span style="color:#89DDFF">=</span><span style="color:#82AAFF">network_structure</span><span style="color:#89DDFF">,</span></span>
+<span class="line"><span style="color:#EEFFFF;font-style:italic">    distances</span><span style="color:#89DDFF">=[</span><span style="color:#F78C6C">200</span><span style="color:#89DDFF">,</span><span style="color:#F78C6C"> 400</span><span style="color:#89DDFF">,</span><span style="color:#F78C6C"> 800</span><span style="color:#89DDFF">],</span></span>
+<span class="line"><span style="color:#89DDFF">)</span></span>
+<span class="line"><span style="color:#545454;font-style:italic"># the data is written to the GeoDataFrame</span></span>
+<span class="line"><span style="color:#82AAFF">print</span><span style="color:#89DDFF">(</span><span style="color:#82AAFF">nodes_gdf</span><span style="color:#89DDFF">.</span><span style="color:#F07178">columns</span><span style="color:#89DDFF">)</span></span>
+<span class="line"><span style="color:#545454;font-style:italic"># the default emits _nw and _wt; pass a single decay_fn to compute just one and save time</span></span>
+<span class="line"><span style="color:#82AAFF">print</span><span style="color:#89DDFF">(</span><span style="color:#82AAFF">nodes_gdf</span><span style="color:#89DDFF">[</span><span style="color:#89DDFF">"</span><span style="color:#C3E88D">cc_hill_q0_800_nw</span><span style="color:#89DDFF">"</span><span style="color:#89DDFF">])</span></span></code></pre>
+<div class="box warning"><p>Be cognisant that mixed-use and land-use accessibility measures are sensitive to the classification schema that
+has been used. Meaningful comparisons from one location to another are only possible where the same schemas have
+been applied.</p></div>
+<p>For a worked example, see the <a href="https://cityseer.benchmarkurbanism.com/examples/accessibility/gpd-mixed-uses">Mixed Uses</a> recipe.</p>
+</div>
+<div class="function">
+<h2 id="compute-stats"><a aria-label="Link to this section" href="#compute-stats"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>compute_stats</h2>
+<div class="content">
+<span class="name">compute_stats</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">data_gdf</span>
+    <span class="pc">:</span>
+    <span class="pa"> geopandas.geodataframe.GeoDataFrame</span>
+  </div>
+  <div class="param">
+    <span class="pn">stats_column_labels</span>
+    <span class="pc">:</span>
+    <span class="pa"> list[str]</span>
+  </div>
+  <div class="param">
+    <span class="pn">nodes_gdf</span>
+    <span class="pc">:</span>
+    <span class="pa"> geopandas.geodataframe.GeoDataFrame</span>
+  </div>
+  <div class="param">
+    <span class="pn">network_structure</span>
+    <span class="pc">:</span>
+    <span class="pa"> NetworkStructure</span>
+  </div>
+  <div class="param">
+    <span class="pn">max_netw_assign_dist</span>
+    <span class="pc">:</span>
+    <span class="pa"> float = 100.0</span>
+  </div>
+  <div class="param">
+    <span class="pn">distances</span>
+    <span class="pc">:</span>
+    <span class="pa"> list[int] | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">minutes</span>
+    <span class="pc">:</span>
+    <span class="pa"> list[float] | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">data_id_col</span>
+    <span class="pc">:</span>
+    <span class="pa"> str | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">barriers_gdf</span>
+    <span class="pc">:</span>
+    <span class="pa"> geopandas.geodataframe.GeoDataFrame | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">angular</span>
+    <span class="pc">:</span>
+    <span class="pa"> bool = False</span>
+  </div>
+  <div class="param">
+    <span class="pn">n_nearest_candidates</span>
+    <span class="pc">:</span>
+    <span class="pa"> int = 50</span>
+  </div>
+  <div class="param">
+    <span class="pn">speed_m_s</span>
+    <span class="pc">:</span>
+    <span class="pa"> float = 1.33333</span>
+  </div>
+  <div class="param">
+    <span class="pn">decay_fn</span>
+    <span class="pc">:</span>
+    <span class="pa"> str | dict[str, str] | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">measures</span>
+    <span class="pc">:</span>
+    <span class="pa"> list[str] | None = None</span>
+  </div>
+  <span class="pt">)->[</span>
+  <span class="pr">GeoDataFrame</span>
+  <span class="pt">]</span>
+</div>
+</div>
+<p>Compute numerical statistics over the street network. This function wraps the underlying <code>rust</code> optimised function for computing statistical measures. The data is aggregated and computed over the street network relative to the network nodes, with the implication that statistical aggregations are generated from the same locations as for centrality computations, which can therefore be correlated or otherwise compared.</p>
+<h3 id="parameters-3"><a aria-label="Link to this section" href="#parameters-3"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>Parameters</h3>
+<div class="param-set">
+  <div class="def">
+    <div class="name">data_gdf</div>
+    <div class="type">GeoDataFrame</div>
+  </div>
+  <div class="desc">
+<p>A <a href="https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe"><code>GeoDataFrame</code></a> representing data points. The coordinates of data points should correspond as precisely as possible to the location of the feature in space; or, in the case of buildings, should ideally correspond to the location of the building entrance.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">stats_column_labels</div>
+    <div class="type">list[str]</div>
+  </div>
+  <div class="desc">
+<p>The column labels corresponding to the columns in <code>data_gdf</code> from which to take numerical information.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">nodes_gdf</div>
+    <div class="type">None</div>
+  </div>
+  <div class="desc">
+<p>A <a href="https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe"><code>GeoDataFrame</code></a> representing nodes. Best generated with the <a href="/tools/io#network-structure-from-nx"><code>io.network_structure_from_nx</code></a> function. The outputs of calculations will be written to this <code>GeoDataFrame</code>, which is then returned from the function.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">network_structure</div>
+    <div class="type">None</div>
+  </div>
+  <div class="desc">
+<p>A <a href="/rustalgos/graph#networkstructure"><code>rustalgos.graph.NetworkStructure</code></a>. Best generated with the <a href="/tools/io#network-structure-from-nx"><code>io.network_structure_from_nx</code></a> function.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">max_netw_assign_dist</div>
+    <div class="type">float</div>
+  </div>
+  <div class="desc">
+<p>The maximum distance to consider when assigning respective data points to the nearest adjacent network nodes.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">distances</div>
+    <div class="type">list[int]</div>
+  </div>
+  <div class="desc">
+<p>Distance thresholds in metres for the network traversal. Metrics are computed for each threshold independently. If not provided, the <code>minutes</code> parameter must be provided instead.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">minutes</div>
+    <div class="type">list[float]</div>
+  </div>
+  <div class="desc">
+<p>Walking time thresholds in minutes. Converted to distance thresholds using <code>speed_m_s</code>. If not provided, the <code>distances</code> parameter must be provided instead.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">data_id_col</div>
+    <div class="type">str</div>
+  </div>
+  <div class="desc">
+<p>An optional column name for data point keys. This is used for deduplicating points representing a shared source of information. For example, where a single greenspace is represented by many entrances as datapoints, only the nearest entrance (from a respective location) will be considered (during aggregations) when the points share a datapoint identifier.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">barriers_gdf</div>
+    <div class="type">GeoDataFrame</div>
+  </div>
+  <div class="desc">
+<p>A <a href="https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe"><code>GeoDataFrame</code></a> representing barriers. These barriers will be considered during the assignment of data points to the network.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">angular</div>
+    <div class="type">bool</div>
+  </div>
+  <div class="desc">
+<p>Whether to use a simplest-path heuristic in-lieu of a shortest-path heuristic when calculating aggregations and distances.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">n_nearest_candidates</div>
+    <div class="type">int</div>
+  </div>
+  <div class="desc">
+<p>The number of nearest candidates to consider when assigning respective data points to the nearest adjacent streets.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">speed_m_s</div>
+    <div class="type">float</div>
+  </div>
+  <div class="desc">
+<p>Walking speed in metres per second used to convert <code>minutes</code> to distance thresholds.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">decay_fn</div>
+    <div class="type">str | dict[str, str]</div>
+  </div>
+  <div class="desc">
+<p>An optional decay function expression using the variable <code>p</code>, where <code>p</code> is the normalised distance from 0 (source) to 1 (cutoff threshold). Controls how distance affects the statistical weighting. When omitted (<code>None</code>), the legacy default computes both an unweighted (<code>_nw</code>) and a decay-weighted (<code>_wt</code>) variant; pass a single expression such as <code>&#x26;quot;1&#x26;quot;</code> (flat) to compute one unsuffixed variant. For distance-weighted metrics, provide an expression such as <code>&#x26;quot;exp(-4 * p)&#x26;quot;</code> for exponential decay, or use the <code>cityseer.decay</code> module helpers. Values are clamped to [0, 1]. Supported functions include <code>exp</code>, <code>ln</code>, <code>log</code>, <code>log10</code>, <code>sqrt</code>, <code>abs</code>, <code>floor</code>, <code>ceil</code>, <code>round</code>, <code>sin</code>, <code>cos</code>, <code>tan</code>, and the <code>^</code> operator (<code>min</code>/<code>max</code> are not supported; to negate a power write <code>-((x)^2)</code> not <code>-(x)^2</code>). When multiple distances are specified, <code>p</code> is normalised independently per threshold. See <a href="/api/decay"><code>cityseer.decay</code></a> for details and examples. Pass a dict of <code>{label: expression}</code> to compute several decays in a single network traversal; each label is appended to that variant’s output column names (a plain string or <code>None</code> adds no suffix).</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">measures</div>
+    <div class="type">list[str]</div>
+  </div>
+  <div class="desc">
+<p>An optional subset of statistical measures to compute, chosen from <code>&#x26;quot;sum&#x26;quot;</code>, <code>&#x26;quot;mean&#x26;quot;</code>, <code>&#x26;quot;count&#x26;quot;</code>, <code>&#x26;quot;var&#x26;quot;</code>, <code>&#x26;quot;median&#x26;quot;</code>, <code>&#x26;quot;mad&#x26;quot;</code>, <code>&#x26;quot;max&#x26;quot;</code>, and <code>&#x26;quot;min&#x26;quot;</code>. Defaults to <code>None</code>, which computes all of them. Restricting the set keeps the output <code>GeoDataFrame</code> smaller and skips the weighted median / MAD sort when neither <code>&#x26;quot;median&#x26;quot;</code> nor <code>&#x26;quot;mad&#x26;quot;</code> is requested.</p></div><p></p>
+</div>
+<h3 id="returns-3"><a aria-label="Link to this section" href="#returns-3"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>Returns</h3>
+<div class="param-set">
+  <div class="def">
+    <div class="name">nodes_gdf</div>
+    <div class="type">GeoDataFrame</div>
+  </div>
+  <div class="desc">
+<p>The input <code>node_gdf</code> parameter is returned with additional columns populated with the calculated metrics.</p></div><p></p>
+</div>
+<h3 id="notes-2"><a aria-label="Link to this section" href="#notes-2"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>Notes</h3>
+<p>Default exponential decay at multiple scales:</p>
+<pre class="astro-code material-theme-darker" style="background-color:#212121;color:#EEFFFF; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="python"><code><span class="line"><span style="color:#89DDFF;font-style:italic">from</span><span style="color:#EEFFFF"> cityseer</span><span style="color:#89DDFF">.</span><span style="color:#EEFFFF">metrics </span><span style="color:#89DDFF;font-style:italic">import</span><span style="color:#EEFFFF"> networks</span><span style="color:#89DDFF">,</span><span style="color:#EEFFFF"> layers</span></span>
+<span class="line"><span style="color:#89DDFF;font-style:italic">from</span><span style="color:#EEFFFF"> cityseer</span><span style="color:#89DDFF">.</span><span style="color:#EEFFFF">tools </span><span style="color:#89DDFF;font-style:italic">import</span><span style="color:#EEFFFF"> mock</span><span style="color:#89DDFF">,</span><span style="color:#EEFFFF"> graphs</span><span style="color:#89DDFF">,</span><span style="color:#EEFFFF"> io</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#545454;font-style:italic"># prepare a mock graph</span></span>
+<span class="line"><span style="color:#EEFFFF">G </span><span style="color:#89DDFF">=</span><span style="color:#EEFFFF"> mock</span><span style="color:#89DDFF">.</span><span style="color:#82AAFF">mock_graph</span><span style="color:#89DDFF">()</span></span>
+<span class="line"><span style="color:#EEFFFF">G </span><span style="color:#89DDFF">=</span><span style="color:#EEFFFF"> graphs</span><span style="color:#89DDFF">.</span><span style="color:#82AAFF">nx_simple_geoms</span><span style="color:#89DDFF">(</span><span style="color:#82AAFF">G</span><span style="color:#89DDFF">)</span></span>
+<span class="line"><span style="color:#EEFFFF">nodes_gdf</span><span style="color:#89DDFF">,</span><span style="color:#EEFFFF"> edges_gdf</span><span style="color:#89DDFF">,</span><span style="color:#EEFFFF"> network_structure </span><span style="color:#89DDFF">=</span><span style="color:#EEFFFF"> io</span><span style="color:#89DDFF">.</span><span style="color:#82AAFF">network_structure_from_nx</span><span style="color:#89DDFF">(</span><span style="color:#82AAFF">G</span><span style="color:#89DDFF">)</span></span>
+<span class="line"><span style="color:#82AAFF">print</span><span style="color:#89DDFF">(</span><span style="color:#82AAFF">nodes_gdf</span><span style="color:#89DDFF">.</span><span style="color:#82AAFF">head</span><span style="color:#89DDFF">())</span></span>
+<span class="line"><span style="color:#EEFFFF">numerical_gdf </span><span style="color:#89DDFF">=</span><span style="color:#EEFFFF"> mock</span><span style="color:#89DDFF">.</span><span style="color:#82AAFF">mock_numerical_data</span><span style="color:#89DDFF">(</span><span style="color:#82AAFF">G</span><span style="color:#89DDFF">,</span><span style="color:#EEFFFF;font-style:italic"> num_arrs</span><span style="color:#89DDFF">=</span><span style="color:#F78C6C">3</span><span style="color:#89DDFF">)</span></span>
+<span class="line"><span style="color:#82AAFF">print</span><span style="color:#89DDFF">(</span><span style="color:#82AAFF">numerical_gdf</span><span style="color:#89DDFF">.</span><span style="color:#82AAFF">head</span><span style="color:#89DDFF">())</span></span>
+<span class="line"><span style="color:#EEFFFF">nodes_gdf </span><span style="color:#89DDFF">=</span><span style="color:#EEFFFF"> layers</span><span style="color:#89DDFF">.</span><span style="color:#82AAFF">compute_stats</span><span style="color:#89DDFF">(</span></span>
+<span class="line"><span style="color:#EEFFFF;font-style:italic">    data_gdf</span><span style="color:#89DDFF">=</span><span style="color:#82AAFF">numerical_gdf</span><span style="color:#89DDFF">,</span></span>
+<span class="line"><span style="color:#EEFFFF;font-style:italic">    stats_column_labels</span><span style="color:#89DDFF">=[</span><span style="color:#89DDFF">"</span><span style="color:#C3E88D">mock_numerical_1</span><span style="color:#89DDFF">"</span><span style="color:#89DDFF">],</span></span>
+<span class="line"><span style="color:#EEFFFF;font-style:italic">    nodes_gdf</span><span style="color:#89DDFF">=</span><span style="color:#82AAFF">nodes_gdf</span><span style="color:#89DDFF">,</span></span>
+<span class="line"><span style="color:#EEFFFF;font-style:italic">    network_structure</span><span style="color:#89DDFF">=</span><span style="color:#82AAFF">network_structure</span><span style="color:#89DDFF">,</span></span>
+<span class="line"><span style="color:#EEFFFF;font-style:italic">    distances</span><span style="color:#89DDFF">=[</span><span style="color:#F78C6C">200</span><span style="color:#89DDFF">,</span><span style="color:#F78C6C"> 400</span><span style="color:#89DDFF">,</span><span style="color:#F78C6C"> 800</span><span style="color:#89DDFF">],</span></span>
+<span class="line"><span style="color:#89DDFF">)</span></span>
+<span class="line"><span style="color:#82AAFF">print</span><span style="color:#89DDFF">(</span><span style="color:#82AAFF">nodes_gdf</span><span style="color:#89DDFF">.</span><span style="color:#F07178">columns</span><span style="color:#89DDFF">)</span></span>
+<span class="line"><span style="color:#545454;font-style:italic"># mean at 400m; the default emits _nw and _wt. Pass a single decay_fn for just one,</span></span>
+<span class="line"><span style="color:#545454;font-style:italic"># and measures=[...] to compute only the statistics you need — both save time</span></span>
+<span class="line"><span style="color:#82AAFF">print</span><span style="color:#89DDFF">(</span><span style="color:#82AAFF">nodes_gdf</span><span style="color:#89DDFF">[</span><span style="color:#89DDFF">"</span><span style="color:#C3E88D">cc_mock_numerical_1_mean_400_nw</span><span style="color:#89DDFF">"</span><span style="color:#89DDFF">])</span></span></code></pre>
+<p>Custom decay using the <code>p</code> variable directly (Gaussian peaking at 400m within a 1200m cutoff):</p>
+<pre class="astro-code material-theme-darker" style="background-color:#212121;color:#EEFFFF; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="python"><code><span class="line"><span style="color:#EEFFFF">nodes_gdf </span><span style="color:#89DDFF">=</span><span style="color:#EEFFFF"> layers</span><span style="color:#89DDFF">.</span><span style="color:#82AAFF">compute_stats</span><span style="color:#89DDFF">(</span></span>
+<span class="line"><span style="color:#EEFFFF;font-style:italic">    data_gdf</span><span style="color:#89DDFF">=</span><span style="color:#82AAFF">numerical_gdf</span><span style="color:#89DDFF">,</span></span>
+<span class="line"><span style="color:#EEFFFF;font-style:italic">    stats_column_labels</span><span style="color:#89DDFF">=[</span><span style="color:#89DDFF">"</span><span style="color:#C3E88D">mock_numerical_1</span><span style="color:#89DDFF">"</span><span style="color:#89DDFF">],</span></span>
+<span class="line"><span style="color:#EEFFFF;font-style:italic">    nodes_gdf</span><span style="color:#89DDFF">=</span><span style="color:#82AAFF">nodes_gdf</span><span style="color:#89DDFF">,</span></span>
+<span class="line"><span style="color:#EEFFFF;font-style:italic">    network_structure</span><span style="color:#89DDFF">=</span><span style="color:#82AAFF">network_structure</span><span style="color:#89DDFF">,</span></span>
+<span class="line"><span style="color:#EEFFFF;font-style:italic">    distances</span><span style="color:#89DDFF">=[</span><span style="color:#F78C6C">1200</span><span style="color:#89DDFF">],</span></span>
+<span class="line"><span style="color:#EEFFFF;font-style:italic">    decay_fn</span><span style="color:#89DDFF">=</span><span style="color:#89DDFF">"</span><span style="color:#C3E88D">exp(-((p - 0.333)^2) / (2 * 0.125^2))</span><span style="color:#89DDFF">"</span><span style="color:#89DDFF">,</span><span style="color:#545454;font-style:italic">  # Gaussian peaking at 400m</span></span>
+<span class="line"><span style="color:#89DDFF">)</span></span></code></pre>
+<p>Using the <code>cityseer.decay</code> helper module for the same Gaussian curve:</p>
+<pre class="astro-code material-theme-darker" style="background-color:#212121;color:#EEFFFF; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="python"><code><span class="line"><span style="color:#89DDFF;font-style:italic">from</span><span style="color:#EEFFFF"> cityseer </span><span style="color:#89DDFF;font-style:italic">import</span><span style="color:#EEFFFF"> decay</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#EEFFFF">nodes_gdf </span><span style="color:#89DDFF">=</span><span style="color:#EEFFFF"> layers</span><span style="color:#89DDFF">.</span><span style="color:#82AAFF">compute_stats</span><span style="color:#89DDFF">(</span></span>
+<span class="line"><span style="color:#EEFFFF;font-style:italic">    data_gdf</span><span style="color:#89DDFF">=</span><span style="color:#82AAFF">numerical_gdf</span><span style="color:#89DDFF">,</span></span>
+<span class="line"><span style="color:#EEFFFF;font-style:italic">    stats_column_labels</span><span style="color:#89DDFF">=[</span><span style="color:#89DDFF">"</span><span style="color:#C3E88D">mock_numerical_1</span><span style="color:#89DDFF">"</span><span style="color:#89DDFF">],</span></span>
+<span class="line"><span style="color:#EEFFFF;font-style:italic">    nodes_gdf</span><span style="color:#89DDFF">=</span><span style="color:#82AAFF">nodes_gdf</span><span style="color:#89DDFF">,</span></span>
+<span class="line"><span style="color:#EEFFFF;font-style:italic">    network_structure</span><span style="color:#89DDFF">=</span><span style="color:#82AAFF">network_structure</span><span style="color:#89DDFF">,</span></span>
+<span class="line"><span style="color:#EEFFFF;font-style:italic">    distances</span><span style="color:#89DDFF">=[</span><span style="color:#F78C6C">1200</span><span style="color:#89DDFF">],</span></span>
+<span class="line"><span style="color:#EEFFFF;font-style:italic">    decay_fn</span><span style="color:#89DDFF">=</span><span style="color:#82AAFF">decay</span><span style="color:#89DDFF">.</span><span style="color:#82AAFF">gaussian</span><span style="color:#89DDFF">(</span><span style="color:#EEFFFF;font-style:italic">peak</span><span style="color:#89DDFF">=</span><span style="color:#F78C6C">400</span><span style="color:#89DDFF">,</span><span style="color:#EEFFFF;font-style:italic"> cutoff</span><span style="color:#89DDFF">=</span><span style="color:#F78C6C">1200</span><span style="color:#89DDFF">,</span><span style="color:#EEFFFF;font-style:italic"> std</span><span style="color:#89DDFF">=</span><span style="color:#F78C6C">150</span><span style="color:#89DDFF">),</span></span>
+<span class="line"><span style="color:#89DDFF">)</span></span></code></pre>
+<p>Flat (unweighted) metrics:</p>
+<pre class="astro-code material-theme-darker" style="background-color:#212121;color:#EEFFFF; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="python"><code><span class="line"><span style="color:#EEFFFF">nodes_gdf </span><span style="color:#89DDFF">=</span><span style="color:#EEFFFF"> layers</span><span style="color:#89DDFF">.</span><span style="color:#82AAFF">compute_stats</span><span style="color:#89DDFF">(</span></span>
+<span class="line"><span style="color:#EEFFFF;font-style:italic">    data_gdf</span><span style="color:#89DDFF">=</span><span style="color:#82AAFF">numerical_gdf</span><span style="color:#89DDFF">,</span></span>
+<span class="line"><span style="color:#EEFFFF;font-style:italic">    stats_column_labels</span><span style="color:#89DDFF">=[</span><span style="color:#89DDFF">"</span><span style="color:#C3E88D">mock_numerical_1</span><span style="color:#89DDFF">"</span><span style="color:#89DDFF">],</span></span>
+<span class="line"><span style="color:#EEFFFF;font-style:italic">    nodes_gdf</span><span style="color:#89DDFF">=</span><span style="color:#82AAFF">nodes_gdf</span><span style="color:#89DDFF">,</span></span>
+<span class="line"><span style="color:#EEFFFF;font-style:italic">    network_structure</span><span style="color:#89DDFF">=</span><span style="color:#82AAFF">network_structure</span><span style="color:#89DDFF">,</span></span>
+<span class="line"><span style="color:#EEFFFF;font-style:italic">    distances</span><span style="color:#89DDFF">=[</span><span style="color:#F78C6C">800</span><span style="color:#89DDFF">],</span></span>
+<span class="line"><span style="color:#EEFFFF;font-style:italic">    decay_fn</span><span style="color:#89DDFF">=</span><span style="color:#89DDFF">"</span><span style="color:#C3E88D">1</span><span style="color:#89DDFF">"</span><span style="color:#89DDFF">,</span></span>
+<span class="line"><span style="color:#89DDFF">)</span></span></code></pre>
+<div class="box note"><p>The following stat types will be available for each <code>stats_key</code> for each of the
+computed distances:</p><ul>
+<li><code>max</code> and <code>min</code></li>
+<li><code>sum</code></li>
+<li><code>mean</code></li>
+<li><code>count</code></li>
+<li><code>median</code></li>
+<li><code>var</code> (variance)</li>
+<li><code>mad</code> (median absolute deviation)</li>
+</ul><p>The decay function (default exponential, or custom via <code>decay_fn</code>) controls how
+distance affects the weighting. Use <code>decay_fn="1"</code> for flat (unweighted) metrics.</p></div>
+<p>For a worked example, see the <a href="https://cityseer.benchmarkurbanism.com/examples/stats/gpd-stats">Statistical Aggregations</a> recipe.</p>
+</div>
+</section> <div class="w-full flex items-center pt-12"> <footer class="text-xxs font-light text-light-grey">
+Copyright © 2018-present Gareth Simons
+</footer> </div> </div> </div>  </main> </body> </html>

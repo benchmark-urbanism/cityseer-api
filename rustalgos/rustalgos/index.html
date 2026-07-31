@@ -1,0 +1,621 @@
+<!DOCTYPE html><html lang="en-GB" data-astro-cid-dmey6y7i> <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="author" content="Benchmark Urbanism (Cityseer Ltd.)"><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"><!-- favicons --><link rel="icon" href="/favicons/favicon.ico"><link rel="icon" href="/favicons/icon.svg" type="image/svg+xml"><link rel="apple-touch-icon" href="/favicons/apple-touch-icon.png"><link rel="manifest" href="/manifest.webmanifest"><link rel="preconnect" href="https://fonts.gstatic.com"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Raleway:ital,wght@0,200;0,300;0,400;0,500;0,600;0,700;1,300&display=swap"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@200;300;400;500;600;700&display=swap"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16/dist/katex.min.css"><!-- SEO --><title>cityseer — rustalgos</title><meta name="description" content="API reference for cityseer.rustalgos: low-level Rust-optimised algorithms and utility functions."><meta name="keywords" content="cityseer, urban, metrics, analytics, network analysis, centrality, accessibility, pedestrian, urban design, planning, GIS, Python, Rust"><link rel="canonical" href="https://cityseer.benchmarkurbanism.com/rustalgos/rustalgos"><!-- Open Graph --><meta property="og:title" content="cityseer — rustalgos"><meta property="og:description" content="API reference for cityseer.rustalgos: low-level Rust-optimised algorithms and utility functions."><meta property="og:type" content="website"><meta property="og:url" content="https://cityseer.benchmarkurbanism.com/rustalgos/rustalgos"><meta property="og:image" content="https://cityseer.benchmarkurbanism.com/logos/cityseer_logo_light_red.png"><meta property="og:site_name" content="cityseer"><meta property="og:locale" content="en_GB"><!-- Twitter Card --><meta name="twitter:card" content="summary"><meta name="twitter:title" content="cityseer — rustalgos"><meta name="twitter:description" content="API reference for cityseer.rustalgos: low-level Rust-optimised algorithms and utility functions."><meta name="twitter:image" content="https://cityseer.benchmarkurbanism.com/logos/cityseer_logo_light_red.png"><!-- JSON-LD Structured Data --><script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"cityseer","applicationCategory":"DeveloperApplication","operatingSystem":"Cross-platform","url":"https://cityseer.benchmarkurbanism.com","description":"Cityseer API is a collection of computational tools for fine-grained network and land-use analysis, useful for assessing the morphological precursors to vibrant neighbourhoods. It is underpinned by rigorous network-based methods that have been developed from the ground-up specifically for hyperlocal analysis at the pedestrian scale.","author":{"@type":"Organization","name":"Benchmark Urbanism","url":"https://benchmarkurbanism.com"},"license":"https://www.gnu.org/licenses/agpl-3.0.html","programmingLanguage":["Python","Rust"],"offers":{"@type":"Offer","price":"0","priceCurrency":"USD"}}</script><link rel="stylesheet" href="/_astro/CommonLayout.DvW0gENx.css"><style>/*! tailwindcss v4.3.2 | MIT License | https://tailwindcss.com */
+@layer properties{@supports (((-webkit-hyphens:none)) and (not (margin-trim:inline))) or ((-moz-orient:inline) and (not (color:rgb(from red r g b)))){*,:before,:after,::backdrop{--tw-scale-x:1;--tw-scale-y:1;--tw-scale-z:1;--tw-border-style:solid}}}#repo-link[data-astro-cid-gf3o2gw7]{width:100%;color:var(--color-light-grey,#a8a8a8);transition-property:all;transition-timing-function:var(--tw-ease,var(--default-transition-timing-function,cubic-bezier(.4, 0, .2, 1)));transition-duration:var(--tw-duration,var(--default-transition-duration,.15s));flex-direction:column;align-items:center;display:flex}#repo-link[data-astro-cid-gf3o2gw7]:hover{--tw-scale-x:105%;--tw-scale-y:105%;--tw-scale-z:105%;scale:var(--tw-scale-x) var(--tw-scale-y);color:var(--color-theme,#d32333)}@property --tw-scale-x{syntax:"*";inherits:false;initial-value:1}@property --tw-scale-y{syntax:"*";inherits:false;initial-value:1}@property --tw-scale-z{syntax:"*";inherits:false;initial-value:1}#stripe[data-astro-cid-ddyhvr7a]{border-left-style:var(--tw-border-style);border-left-width:1px;border-color:var(--border-color-mid-grey,#404040);padding-inline:var(--spacing,.25rem);padding-block:calc(var(--spacing,.25rem) * 3);writing-mode:vertical-lr;position:sticky;top:0}@property --tw-border-style{syntax:"*";inherits:false;initial-value:solid}
+</style><link rel="stylesheet" href="/_astro/PageLayout.CXkTWSKU.css"><script type="module" src="/_astro/page.CZ9xv0XX.js"></script></head> <body data-astro-cid-dmey6y7i> <main id="app-container" data-astro-cid-dmey6y7i>  <div id="cols" data-astro-cid-xa52sxzc> <div id="nav-col" data-astro-cid-xa52sxzc> <div class="flex flex-col items-end object-contain" data-astro-cid-xa52sxzc> <a href="/" title="home" class="object-contain transition-all hover:scale-105" data-astro-cid-xa52sxzc> <img src="/_astro/cityseer_logo_light_red.CnItq_gG.png" alt="logo" class="h-full w-full max-w-xs px-4 py-10" data-astro-cid-xa52sxzc> </a> <div id="site-search" class="w-full px-4 pb-2"></div> <script type="module">var e=(function(){let e=typeof document<`u`&&document.createElement(`link`).relList;return e&&e.supports&&e.supports(`modulepreload`)?`modulepreload`:`preload`})(),t=function(e){return`/`+e},n={},r=function(r,i,a){let o=Promise.resolve();if(i&&i.length>0){let r=document.getElementsByTagName(`link`),s=document.querySelector(`meta[property=csp-nonce]`),c=s?.nonce||s?.getAttribute(`nonce`);function l(e){return Promise.all(e.map(e=>Promise.resolve(e).then(e=>({status:`fulfilled`,value:e}),e=>({status:`rejected`,reason:e}))))}function u(e){return import.meta.resolve?import.meta.resolve(e):new URL(e,new URL(`../../../src/node/plugins/importAnalysisBuild.ts`,import.meta.url)).href}o=l(i.map(i=>{if(i=t(i,a),i=u(i),i in n)return;n[i]=!0;let o=i.endsWith(`.css`);for(let e=r.length-1;e>=0;e--){let t=r[e];if(t.href===i&&(!o||t.rel===`stylesheet`))return}let s=document.createElement(`link`);if(s.rel=o?`stylesheet`:e,o||(s.as=`script`),s.crossOrigin=``,s.href=i,c&&s.setAttribute(`nonce`,c),document.head.appendChild(s),o)return new Promise((e,t)=>{s.addEventListener(`load`,e),s.addEventListener(`error`,()=>t(Error(`Unable to preload CSS for ${i}`)))})}))}function s(e){let t=new Event(`vite:preloadError`,{cancelable:!0});if(t.payload=e,window.dispatchEvent(t),!t.defaultPrevented)throw e}return o.then(e=>{for(let t of e||[])t.status===`rejected`&&s(t.reason);return r().catch(s)})};(async()=>{let e=document.getElementById(`site-search`);if(e)try{await r(()=>import(`/pagefind/pagefind-ui.js`),__VITE_PRELOAD__);let e=window.PagefindUI;if(!e)throw Error(`PagefindUI unavailable`);let t=document.createElement(`link`);t.rel=`stylesheet`,t.href=`/pagefind/pagefind-ui.css`,document.head.appendChild(t),new e({element:`#site-search`,showImages:!1,showSubResults:!0,resetStyles:!1})}catch{e.style.display=`none`}})();</script> <style>astro-island,astro-slot,astro-static-slot{display:contents}</style><script>(()=>{var a=(s,i,o)=>{let r=async()=>{await(await s())()},t=typeof i.value=="object"?i.value:void 0,c={rootMargin:t==null?void 0:t.rootMargin},n=new IntersectionObserver(e=>{for(let l of e)if(l.isIntersecting){n.disconnect(),r();break}},c);for(let e of o.children)n.observe(e)};(self.Astro||(self.Astro={})).visible=a;window.dispatchEvent(new Event("astro:visible"));})();</script><script>(()=>{var g=Object.defineProperty;var w=(c,s,d)=>s in c?g(c,s,{enumerable:!0,configurable:!0,writable:!0,value:d}):c[s]=d;var l=(c,s,d)=>w(c,typeof s!="symbol"?s+"":s,d);var E=new Set(["__proto__","constructor","prototype"]);{let c={0:t=>y(t),1:t=>d(t),2:t=>new RegExp(t),3:t=>new Date(t),4:t=>new Map(d(t)),5:t=>new Set(d(t)),6:t=>BigInt(t),7:t=>new URL(t),8:t=>new Uint8Array(t),9:t=>new Uint16Array(t),10:t=>new Uint32Array(t),11:t=>Number.POSITIVE_INFINITY*t},s=t=>{let[p,e]=t;return p in c?c[p](e):void 0},d=t=>t.map(s),y=t=>typeof t!="object"||t===null?t:Object.fromEntries(Object.entries(t).map(([p,e])=>[p,s(e)]));class f extends HTMLElement{constructor(){super(...arguments);l(this,"Component");l(this,"hydrator");l(this,"hydrate",async()=>{var b;if(!this.hydrator||!this.isConnected)return;let e=(b=this.parentElement)==null?void 0:b.closest("astro-island[ssr]");if(e){e.addEventListener("astro:hydrate",this.hydrate,{once:!0});return}let n=this.querySelectorAll("astro-slot"),r={},i=this.querySelectorAll("template[data-astro-template]");for(let o of i){let a=o.closest(this.tagName);a!=null&&a.isSameNode(this)&&(r[o.getAttribute("data-astro-template")||"default"]=o.innerHTML,o.remove())}for(let o of n){let a=o.closest(this.tagName);a!=null&&a.isSameNode(this)&&(r[o.getAttribute("name")||"default"]=o.innerHTML)}let u;try{u=this.hasAttribute("props")?y(JSON.parse(this.getAttribute("props"))):{}}catch(o){let a=this.getAttribute("component-url")||"<unknown>",v=this.getAttribute("component-export");throw v&&(a+=` (export ${v})`),console.error(`[hydrate] Error parsing props for component ${a}`,this.getAttribute("props"),o),o}let h;await this.hydrator(this)(this.Component,u,r,{client:this.getAttribute("client")}),this.removeAttribute("ssr"),this.dispatchEvent(new CustomEvent("astro:hydrate"))});l(this,"unmount",()=>{this.isConnected||this.dispatchEvent(new CustomEvent("astro:unmount"))})}disconnectedCallback(){document.removeEventListener("astro:after-swap",this.unmount),document.addEventListener("astro:after-swap",this.unmount,{once:!0})}connectedCallback(){if(!this.hasAttribute("await-children")||document.readyState==="interactive"||document.readyState==="complete")this.childrenConnectedCallback();else{let e=()=>{document.removeEventListener("DOMContentLoaded",e),n.disconnect(),this.childrenConnectedCallback()},n=new MutationObserver(()=>{var r;((r=this.lastChild)==null?void 0:r.nodeType)===Node.COMMENT_NODE&&this.lastChild.nodeValue==="astro:end"&&(this.lastChild.remove(),e())});n.observe(this,{childList:!0}),document.addEventListener("DOMContentLoaded",e)}}async childrenConnectedCallback(){let e=this.getAttribute("before-hydration-url");e&&await import(e),this.start()}getRetryImportUrl(e){let n=new URL(e,document.baseURI),r=`astro-retry=${Date.now()}`,i=n.hash.replace(/^#/,"");return n.hash=i?`${i}&${r}`:r,n.toString()}async importWithRetry(e){try{return await import(e)}catch(n){return await new Promise(r=>setTimeout(r,1e3)),import(this.getRetryImportUrl(e))}}handleHydrationError(e){let n=this.getAttribute("component-url"),r=new CustomEvent("astro:hydration-error",{cancelable:!0,bubbles:!0,composed:!0,detail:{error:e,componentUrl:n}});this.dispatchEvent(r)&&console.error(`[astro-island] Error hydrating ${n}`,e)}async start(){let e=JSON.parse(this.getAttribute("opts")),n=this.getAttribute("client");if(Astro[n]===void 0){window.addEventListener(`astro:${n}`,()=>this.start(),{once:!0});return}try{await Astro[n](async()=>{let r=this.getAttribute("renderer-url");try{let[i,{default:u}]=await Promise.all([this.importWithRetry(this.getAttribute("component-url")),r?this.importWithRetry(r):Promise.resolve({default:()=>()=>{}})]),h=this.getAttribute("component-export")||"default";if(h.includes(".")){this.Component=i;for(let m of h.split(".")){if(E.has(m)||!this.Component||typeof this.Component!="object"&&typeof this.Component!="function"||!Object.hasOwn(this.Component,m))throw new Error(`Invalid component export path: ${h}`);this.Component=this.Component[m]}}else{if(E.has(h))throw new Error(`Invalid component export path: ${h}`);this.Component=i[h]}return this.hydrator=u,this.hydrate}catch(i){return this.handleHydrationError(i),()=>{}}},e,this)}catch(r){this.handleHydrationError(r)}}attributeChangedCallback(){this.hydrate()}}l(f,"observedAttributes",["props"]),customElements.get("astro-island")||customElements.define("astro-island",f)}})();</script><astro-island uid="Z1noo9i" prefix="s0" component-url="/_astro/NavColumn.BCcG9Imd.js" component-export="default" renderer-url="/_astro/client.CdL3hvDT.js" props="{&quot;sections&quot;:[1,[[0,{&quot;id&quot;:[0,&quot;start&quot;],&quot;label&quot;:[0,&quot;Getting Started&quot;],&quot;base&quot;:[0,&quot;/start&quot;],&quot;groups&quot;:[1,[[0,{&quot;items&quot;:[1,[[0,{&quot;path&quot;:[0,&quot;/start&quot;],&quot;label&quot;:[0,&quot;Overview&quot;]}]]]}],[0,{&quot;title&quot;:[0,&quot;Python 101&quot;],&quot;items&quot;:[1,[[0,{&quot;path&quot;:[0,&quot;/start/1-notebooks&quot;],&quot;label&quot;:[0,&quot;1 · Notebooks&quot;]}],[0,{&quot;path&quot;:[0,&quot;/start/2-basics&quot;],&quot;label&quot;:[0,&quot;2 · Python Basics&quot;]}],[0,{&quot;path&quot;:[0,&quot;/start/3-spatial&quot;],&quot;label&quot;:[0,&quot;3 · Spatial Data&quot;]}],[0,{&quot;path&quot;:[0,&quot;/start/4-geopandas&quot;],&quot;label&quot;:[0,&quot;4 · GeoPandas&quot;]}],[0,{&quot;path&quot;:[0,&quot;/start/5-urban&quot;],&quot;label&quot;:[0,&quot;5 · Urban Analytics&quot;]}],[0,{&quot;path&quot;:[0,&quot;/start/6-data-science&quot;],&quot;label&quot;:[0,&quot;6 · Data Science&quot;]}]]]}]]]}],[0,{&quot;id&quot;:[0,&quot;guide&quot;],&quot;label&quot;:[0,&quot;Guide&quot;],&quot;base&quot;:[0,&quot;/guide/fundamentals&quot;],&quot;groups&quot;:[1,[[0,{&quot;items&quot;:[1,[[0,{&quot;path&quot;:[0,&quot;/guide/fundamentals&quot;],&quot;label&quot;:[0,&quot;Fundamentals&quot;]}],[0,{&quot;path&quot;:[0,&quot;/guide/how-to&quot;],&quot;label&quot;:[0,&quot;How do I…?&quot;]}],[0,{&quot;path&quot;:[0,&quot;/guide/networks&quot;],&quot;label&quot;:[0,&quot;Networks&quot;]}],[0,{&quot;path&quot;:[0,&quot;/guide/cleaning&quot;],&quot;label&quot;:[0,&quot;Network Cleaning&quot;]}],[0,{&quot;path&quot;:[0,&quot;/guide/centrality&quot;],&quot;label&quot;:[0,&quot;Centrality&quot;]}],[0,{&quot;path&quot;:[0,&quot;/guide/flows&quot;],&quot;label&quot;:[0,&quot;Origin-Destination Flows&quot;]}],[0,{&quot;path&quot;:[0,&quot;/guide/land-use&quot;],&quot;label&quot;:[0,&quot;Land-Use&quot;]}],[0,{&quot;path&quot;:[0,&quot;/guide/interpretation&quot;],&quot;label&quot;:[0,&quot;Interpretation&quot;]}],[0,{&quot;path&quot;:[0,&quot;/guide/troubleshooting&quot;],&quot;label&quot;:[0,&quot;Troubleshooting&quot;]}],[0,{&quot;path&quot;:[0,&quot;/guide/migration&quot;],&quot;label&quot;:[0,&quot;v4 to v5 Migration&quot;]}]]]}]]]}],[0,{&quot;id&quot;:[0,&quot;plugin&quot;],&quot;label&quot;:[0,&quot;QGIS Plugin&quot;],&quot;base&quot;:[0,&quot;/plugin&quot;],&quot;groups&quot;:[1,[[0,{&quot;items&quot;:[1,[[0,{&quot;path&quot;:[0,&quot;/plugin&quot;],&quot;label&quot;:[0,&quot;Overview&quot;]}]]]}],[0,{&quot;title&quot;:[0,&quot;Algorithms&quot;],&quot;items&quot;:[1,[[0,{&quot;path&quot;:[0,&quot;/plugin/centrality&quot;],&quot;label&quot;:[0,&quot;Network Centrality&quot;]}],[0,{&quot;path&quot;:[0,&quot;/plugin/demand&quot;],&quot;label&quot;:[0,&quot;Demand Betweenness&quot;]}],[0,{&quot;path&quot;:[0,&quot;/plugin/accessibility&quot;],&quot;label&quot;:[0,&quot;Accessibility&quot;]}],[0,{&quot;path&quot;:[0,&quot;/plugin/mixed-uses&quot;],&quot;label&quot;:[0,&quot;Mixed Uses&quot;]}],[0,{&quot;path&quot;:[0,&quot;/plugin/statistics&quot;],&quot;label&quot;:[0,&quot;Statistics&quot;]}]]]}]]]}],[0,{&quot;id&quot;:[0,&quot;examples&quot;],&quot;label&quot;:[0,&quot;Examples&quot;],&quot;base&quot;:[0,&quot;/examples&quot;],&quot;groups&quot;:[1,[[0,{&quot;items&quot;:[1,[[0,{&quot;path&quot;:[0,&quot;/examples&quot;],&quot;label&quot;:[0,&quot;Overview&quot;]}]]]}],[0,{&quot;title&quot;:[0,&quot;Recipes&quot;],&quot;items&quot;:[1,[[0,{&quot;path&quot;:[0,&quot;/examples/networks&quot;],&quot;label&quot;:[0,&quot;Network Preparation&quot;]}],[0,{&quot;path&quot;:[0,&quot;/examples/centrality&quot;],&quot;label&quot;:[0,&quot;Centrality&quot;]}],[0,{&quot;path&quot;:[0,&quot;/examples/flows&quot;],&quot;label&quot;:[0,&quot;Origin-Destination Flows&quot;]}],[0,{&quot;path&quot;:[0,&quot;/examples/accessibility&quot;],&quot;label&quot;:[0,&quot;Accessibility&quot;]}],[0,{&quot;path&quot;:[0,&quot;/examples/stats&quot;],&quot;label&quot;:[0,&quot;Statistics&quot;]}],[0,{&quot;path&quot;:[0,&quot;/examples/visibility&quot;],&quot;label&quot;:[0,&quot;Visibility&quot;]}],[0,{&quot;path&quot;:[0,&quot;/examples/continuity&quot;],&quot;label&quot;:[0,&quot;Continuity&quot;]}]]]}],[0,{&quot;items&quot;:[1,[[0,{&quot;path&quot;:[0,&quot;/examples/datasets&quot;],&quot;label&quot;:[0,&quot;Datasets&quot;]}]]]}]]]}],[0,{&quot;id&quot;:[0,&quot;api&quot;],&quot;label&quot;:[0,&quot;API Reference&quot;],&quot;base&quot;:[0,&quot;/api/network&quot;],&quot;groups&quot;:[1,[[0,{&quot;title&quot;:[0,&quot;High-level&quot;],&quot;items&quot;:[1,[[0,{&quot;path&quot;:[0,&quot;/api/network&quot;],&quot;label&quot;:[0,&quot;CityNetwork&quot;]}],[0,{&quot;path&quot;:[0,&quot;/api/decay&quot;],&quot;label&quot;:[0,&quot;decay&quot;]}]]]}],[0,{&quot;title&quot;:[0,&quot;Tools&quot;],&quot;items&quot;:[1,[[0,{&quot;path&quot;:[0,&quot;/tools/io&quot;],&quot;label&quot;:[0,&quot;io&quot;]}],[0,{&quot;path&quot;:[0,&quot;/tools/graphs&quot;],&quot;label&quot;:[0,&quot;graphs&quot;]}],[0,{&quot;path&quot;:[0,&quot;/tools/plot&quot;],&quot;label&quot;:[0,&quot;plot&quot;]}],[0,{&quot;path&quot;:[0,&quot;/tools/mock&quot;],&quot;label&quot;:[0,&quot;mock&quot;]}],[0,{&quot;path&quot;:[0,&quot;/tools/util&quot;],&quot;label&quot;:[0,&quot;util&quot;]}]]]}],[0,{&quot;title&quot;:[0,&quot;Metrics&quot;],&quot;items&quot;:[1,[[0,{&quot;path&quot;:[0,&quot;/metrics/networks&quot;],&quot;label&quot;:[0,&quot;networks&quot;]}],[0,{&quot;path&quot;:[0,&quot;/metrics/layers&quot;],&quot;label&quot;:[0,&quot;layers&quot;]}],[0,{&quot;path&quot;:[0,&quot;/metrics/observe&quot;],&quot;label&quot;:[0,&quot;observe&quot;]}],[0,{&quot;path&quot;:[0,&quot;/metrics/visibility&quot;],&quot;label&quot;:[0,&quot;visibility&quot;]}],[0,{&quot;path&quot;:[0,&quot;/metrics/sampling&quot;],&quot;label&quot;:[0,&quot;sampling&quot;]}]]]}],[0,{&quot;title&quot;:[0,&quot;Rust Algos&quot;],&quot;items&quot;:[1,[[0,{&quot;path&quot;:[0,&quot;/rustalgos/rustalgos&quot;],&quot;label&quot;:[0,&quot;rustalgos&quot;]}],[0,{&quot;path&quot;:[0,&quot;/rustalgos/graph&quot;],&quot;label&quot;:[0,&quot;graph&quot;]}],[0,{&quot;path&quot;:[0,&quot;/rustalgos/centrality&quot;],&quot;label&quot;:[0,&quot;centrality&quot;]}],[0,{&quot;path&quot;:[0,&quot;/rustalgos/diversity&quot;],&quot;label&quot;:[0,&quot;diversity&quot;]}],[0,{&quot;path&quot;:[0,&quot;/rustalgos/data&quot;],&quot;label&quot;:[0,&quot;data&quot;]}],[0,{&quot;path&quot;:[0,&quot;/rustalgos/viewshed&quot;],&quot;label&quot;:[0,&quot;viewshed&quot;]}]]]}],[0,{&quot;items&quot;:[1,[[0,{&quot;path&quot;:[0,&quot;/api/glossary&quot;],&quot;label&quot;:[0,&quot;Glossary&quot;]}]]]}]]]}]]],&quot;activeSectionId&quot;:[0,&quot;api&quot;],&quot;currentPath&quot;:[0,&quot;/rustalgos/rustalgos&quot;],&quot;data-astro-cid-xa52sxzc&quot;:[0,true]}" ssr client="visible" opts="{&quot;name&quot;:&quot;NavColumn&quot;,&quot;value&quot;:true}" await-children><nav id="nav-tree" data-astro-cid-xa52sxzc="true" data-v-89398da1><!--[--><!--]--></nav><!--astro:end--></astro-island> <div class="grow" data-astro-cid-xa52sxzc></div> <div class="self-start px-8 py-2" data-astro-cid-xa52sxzc> <a id="repo-link" href="https://github.com/benchmark-urbanism/cityseer-api/" target="_blank" data-astro-cid-gf3o2gw7> <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 496 512" class="text-theme w-12" data-astro-cid-gf3o2gw7="true"><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6c-3.3.3-5.6-1.3-5.6-3.6c0-2 2.3-3.6 5.2-3.6c3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9c2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9c.3 2 2.9 3.3 5.9 2.6c2.9-.7 4.9-2.6 4.6-4.6c-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2c12.8 2.3 17.3-5.6 17.3-12.1c0-6.2-.3-40.4-.3-61.4c0 0-70 15-84.7-29.8c0 0-11.4-29.1-27.8-36.6c0 0-22.9-15.7 1.6-15.4c0 0 24.9 2 38.6 25.8c21.9 38.6 58.6 27.5 72.9 20.9c2.3-16 8.8-27.1 16-33.7c-55.9-6.2-112.3-14.3-112.3-110.5c0-27.5 7.6-41.3 23.6-58.9c-2.6-6.5-11.1-33.3 2.6-67.9c20.9-6.5 69 27 69 27c20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27c13.7 34.7 5.2 61.4 2.6 67.9c16 17.7 25.8 31.5 25.8 58.9c0 96.5-58.9 104.2-114.8 110.5c9.2 7.9 17 22.9 17 46.4c0 33.7-.3 75.4-.3 83.6c0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252C496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2c1.6 1.6 3.9 2.3 5.2 1c1.3-1 1-3.3-.7-5.2c-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9c1.6 1 3.6.7 4.3-.7c.7-1.3-.3-2.9-2.3-3.9c-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2c2.3 2.3 5.2 2.6 6.5 1c1.3-1.3.7-4.3-1.3-6.2c-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9c1.6 2.3 4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2c-1.4-2.3-4-3.3-5.6-2z" fill="currentColor"></path></svg> <h2 class="py-4 leading-none" data-astro-cid-gf3o2gw7>Github</h2> </a> </div> </div> <div id="stripe" data-astro-cid-ddyhvr7a> <h2 class="py-0" data-astro-cid-ddyhvr7a>Cityseer API Docs</h2> </div> </div> <div id="content-col" data-pagefind-body data-astro-cid-xa52sxzc> <section class="module">
+<h1 id="rustalgos"><a aria-label="Link to this section" href="#rustalgos"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>rustalgos</h1>
+<div class="box warning"><p><strong>Low-level internals.</strong> These are the Rust-backed structures and functions that power <code>cityseer</code>. They carry no stability guarantee and are subject to breaking changes from time to time. Users are encouraged to use the higher-level wrappers instead, which are more stable: the <a href="/api/network"><code>CityNetwork</code></a> class, or the <a href="/metrics/networks"><code>metrics</code></a> and <a href="/tools/graphs"><code>tools</code></a> modules. The basic information below is provided for those who do wish to work with the lower-level internals.</p></div>
+<p>Cityseer high-performance algorithms implemented in Rust.</p>
+<div class="function">
+<h2 id="avg-distances-for-betas"><a aria-label="Link to this section" href="#avg-distances-for-betas"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>avg_distances_for_betas</h2>
+<div class="content">
+<span class="name">avg_distances_for_betas</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">betas</span>
+    <span class="pc">:</span>
+    <span class="pa"> list[float]</span>
+  </div>
+  <div class="param">
+    <span class="pn">min_threshold_wt</span>
+    <span class="pc">:</span>
+    <span class="pa"> float | None = None</span>
+  </div>
+  <span class="pt">)->[</span>
+  <span class="pr">list[float]</span>
+  <span class="pt">]</span>
+</div>
+</div>
+<p>Calculate the mean distance corresponding to given beta parameters.</p>
+<h3 id="parameters"><a aria-label="Link to this section" href="#parameters"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>Parameters</h3>
+<div class="param-set">
+  <div class="def">
+    <div class="name">betas</div>
+    <div class="type">list[float]</div>
+  </div>
+  <div class="desc">
+<p><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>β</mi></mrow><annotation encoding="application/x-tex">\beta</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8889em;vertical-align:-0.1944em;"></span><span class="mord mathnormal" style="margin-right:0.05278em;">β</span></span></span></span> parameters.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">min_threshold_wt</div>
+    <div class="type">float | None</div>
+  </div>
+  <div class="desc">
+<p>Optional cutoff weight <span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>w</mi><mrow><mi>m</mi><mi>i</mi><mi>n</mi></mrow></msub></mrow><annotation encoding="application/x-tex">w_{min}</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.5806em;vertical-align:-0.15em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.02691em;">w</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3117em;"><span style="top:-2.55em;margin-left:-0.0269em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">min</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span></span></span></span>.</p></div><p></p>
+</div>
+<h3 id="returns"><a aria-label="Link to this section" href="#returns"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>Returns</h3>
+<div class="param-set">
+  <div class="def">
+    <div class="name"></div>
+    <div class="type">list[float]</div>
+  </div>
+  <div class="desc">
+<p>The average walking distance for each beta.</p></div><p></p>
+</div>
+<h3 id="notes"><a aria-label="Link to this section" href="#notes"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>Notes</h3>
+<pre class="astro-code material-theme-darker" style="background-color:#212121;color:#EEFFFF; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="python"><code><span class="line"><span style="color:#89DDFF;font-style:italic">from</span><span style="color:#EEFFFF"> cityseer </span><span style="color:#89DDFF;font-style:italic">import</span><span style="color:#EEFFFF"> rustalgos</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#EEFFFF">distances </span><span style="color:#89DDFF">=</span><span style="color:#89DDFF"> [</span><span style="color:#F78C6C">100</span><span style="color:#89DDFF">,</span><span style="color:#F78C6C"> 200</span><span style="color:#89DDFF">,</span><span style="color:#F78C6C"> 400</span><span style="color:#89DDFF">,</span><span style="color:#F78C6C"> 800</span><span style="color:#89DDFF">,</span><span style="color:#F78C6C"> 1600</span><span style="color:#89DDFF">]</span></span>
+<span class="line"><span style="color:#EEFFFF">betas </span><span style="color:#89DDFF">=</span><span style="color:#EEFFFF"> rustalgos</span><span style="color:#89DDFF">.</span><span style="color:#82AAFF">betas_from_distances</span><span style="color:#89DDFF">(</span><span style="color:#82AAFF">distances</span><span style="color:#89DDFF">)</span></span>
+<span class="line"><span style="color:#82AAFF">print</span><span style="color:#89DDFF">(</span><span style="color:#89DDFF">"</span><span style="color:#C3E88D">betas</span><span style="color:#89DDFF">"</span><span style="color:#89DDFF">,</span><span style="color:#82AAFF"> betas</span><span style="color:#89DDFF">)</span></span>
+<span class="line"><span style="color:#545454;font-style:italic"># betas [0.04, 0.02, 0.01, 0.005, 0.0025]</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#EEFFFF">avg </span><span style="color:#89DDFF">=</span><span style="color:#EEFFFF"> rustalgos</span><span style="color:#89DDFF">.</span><span style="color:#82AAFF">avg_distances_for_betas</span><span style="color:#89DDFF">(</span><span style="color:#82AAFF">betas</span><span style="color:#89DDFF">)</span></span>
+<span class="line"><span style="color:#82AAFF">print</span><span style="color:#89DDFF">(</span><span style="color:#89DDFF">"</span><span style="color:#C3E88D">avg</span><span style="color:#89DDFF">"</span><span style="color:#89DDFF">,</span><span style="color:#82AAFF"> avg</span><span style="color:#89DDFF">)</span></span></code></pre>
+</div>
+<div class="function">
+<h2 id="betas-from-distances"><a aria-label="Link to this section" href="#betas-from-distances"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>betas_from_distances</h2>
+<div class="content">
+<span class="name">betas_from_distances</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">distances</span>
+    <span class="pc">:</span>
+    <span class="pa"> list[int]</span>
+  </div>
+  <div class="param">
+    <span class="pn">min_threshold_wt</span>
+    <span class="pc">:</span>
+    <span class="pa"> float | None = None</span>
+  </div>
+  <span class="pt">)->[</span>
+  <span class="pr">list[float]</span>
+  <span class="pt">]</span>
+</div>
+</div>
+<p>Convert distance thresholds (<span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>d</mi><mrow><mi>m</mi><mi>a</mi><mi>x</mi></mrow></msub></mrow><annotation encoding="application/x-tex">d_{max}</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8444em;vertical-align:-0.15em;"></span><span class="mord"><span class="mord mathnormal">d</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.1514em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">ma</span><span class="mord mathnormal mtight">x</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span></span></span></span>) to decay parameters (betas). Requires distances > 0 and sorted in strictly increasing order. Uses a default minimum weight threshold.</p>
+<h3 id="parameters-1"><a aria-label="Link to this section" href="#parameters-1"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>Parameters</h3>
+<div class="param-set">
+  <div class="def">
+    <div class="name">distances</div>
+    <div class="type">list[int]</div>
+  </div>
+  <div class="desc">
+<p><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>d</mi><mrow><mi>m</mi><mi>a</mi><mi>x</mi></mrow></msub></mrow><annotation encoding="application/x-tex">d_{max}</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8444em;vertical-align:-0.15em;"></span><span class="mord"><span class="mord mathnormal">d</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.1514em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">ma</span><span class="mord mathnormal mtight">x</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span></span></span></span> values (> 0, strictly increasing) to convert.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">min_threshold_wt</div>
+    <div class="type">float | None</div>
+  </div>
+  <div class="desc">
+<p>Optional cutoff weight <span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>w</mi><mrow><mi>m</mi><mi>i</mi><mi>n</mi></mrow></msub></mrow><annotation encoding="application/x-tex">w_{min}</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.5806em;vertical-align:-0.15em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.02691em;">w</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3117em;"><span style="top:-2.55em;margin-left:-0.0269em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">min</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span></span></span></span> (default: ~0.0183).</p></div><p></p>
+</div>
+<h3 id="returns-1"><a aria-label="Link to this section" href="#returns-1"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>Returns</h3>
+<div class="param-set">
+  <div class="def">
+    <div class="name"></div>
+    <div class="type">list[float]</div>
+  </div>
+  <div class="desc">
+<p>Corresponding decay parameters <span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>β</mi></mrow><annotation encoding="application/x-tex">\beta</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8889em;vertical-align:-0.1944em;"></span><span class="mord mathnormal" style="margin-right:0.05278em;">β</span></span></span></span>.</p></div><p></p>
+</div>
+<h3 id="raises"><a aria-label="Link to this section" href="#raises"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>Raises</h3>
+<div class="param-set">
+  <div class="def">
+    <div class="name"></div>
+    <div class="type">ValueError</div>
+  </div>
+  <div class="desc">
+<p>If inputs are invalid (empty, non-positive, not increasing).</p></div><p></p>
+</div>
+<h3 id="notes-1"><a aria-label="Link to this section" href="#notes-1"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>Notes</h3>
+<pre class="astro-code material-theme-darker" style="background-color:#212121;color:#EEFFFF; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="python"><code><span class="line"><span style="color:#89DDFF;font-style:italic">from</span><span style="color:#EEFFFF"> cityseer </span><span style="color:#89DDFF;font-style:italic">import</span><span style="color:#EEFFFF"> rustalgos</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#EEFFFF">distances </span><span style="color:#89DDFF">=</span><span style="color:#89DDFF"> [</span><span style="color:#F78C6C">200</span><span style="color:#89DDFF">,</span><span style="color:#F78C6C"> 400</span><span style="color:#89DDFF">,</span><span style="color:#F78C6C"> 800</span><span style="color:#89DDFF">,</span><span style="color:#F78C6C"> 1600</span><span style="color:#89DDFF">]</span></span>
+<span class="line"><span style="color:#EEFFFF">betas </span><span style="color:#89DDFF">=</span><span style="color:#EEFFFF"> rustalgos</span><span style="color:#89DDFF">.</span><span style="color:#82AAFF">betas_from_distances</span><span style="color:#89DDFF">(</span><span style="color:#82AAFF">distances</span><span style="color:#89DDFF">)</span></span>
+<span class="line"><span style="color:#82AAFF">print</span><span style="color:#89DDFF">(</span><span style="color:#82AAFF">betas</span><span style="color:#89DDFF">)</span><span style="color:#545454;font-style:italic">  # prints: [0.02, 0.01, 0.005, 0.0025]</span></span></code></pre>
+<p>The <span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>β</mi></mrow><annotation encoding="application/x-tex">\beta</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8889em;vertical-align:-0.1944em;"></span><span class="mord mathnormal" style="margin-right:0.05278em;">β</span></span></span></span> parameter controls the strength of exponential distance decay:</p>
+<span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><mi>w</mi><mi>e</mi><mi>i</mi><mi>g</mi><mi>h</mi><mi>t</mi><mo>=</mo><mi>e</mi><mi>x</mi><mi>p</mi><mo stretchy="false">(</mo><mo>−</mo><mi>β</mi><mo>⋅</mo><mi>d</mi><mi>i</mi><mi>s</mi><mi>t</mi><mi>a</mi><mi>n</mi><mi>c</mi><mi>e</mi><mo stretchy="false">)</mo></mrow><annotation encoding="application/x-tex">weight = exp(-\beta \cdot distance)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8889em;vertical-align:-0.1944em;"></span><span class="mord mathnormal" style="margin-right:0.02691em;">w</span><span class="mord mathnormal">e</span><span class="mord mathnormal">i</span><span class="mord mathnormal" style="margin-right:0.03588em;">g</span><span class="mord mathnormal">h</span><span class="mord mathnormal">t</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathnormal">e</span><span class="mord mathnormal">x</span><span class="mord mathnormal">p</span><span class="mopen">(</span><span class="mord">−</span><span class="mord mathnormal" style="margin-right:0.05278em;">β</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">⋅</span><span class="mspace" style="margin-right:0.2222em;"></span></span><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathnormal">d</span><span class="mord mathnormal">i</span><span class="mord mathnormal">s</span><span class="mord mathnormal">t</span><span class="mord mathnormal">an</span><span class="mord mathnormal">ce</span><span class="mclose">)</span></span></span></span></span>
+<p>This reflects a decreasing willingness to walk correspondingly farther distances. For example, if <span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>β</mi><mo>=</mo><mn>0.005</mn></mrow><annotation encoding="application/x-tex">\beta=0.005</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8889em;vertical-align:-0.1944em;"></span><span class="mord mathnormal" style="margin-right:0.05278em;">β</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:0.6444em;"></span><span class="mord">0.005</span></span></span></span> were to represent a person’s willingness to walk to a bus stop, then a location 100m distant would be weighted at 60% and a location 400m away would be weighted at 13.5%.</p>
+<p><img src="/images/betas.png" alt="Example beta decays"></p>
+<p>Uses the formula:</p>
+<span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><mi>β</mi><mo>=</mo><mo>−</mo><mfrac><mrow><mi>l</mi><mi>o</mi><mi>g</mi><mo stretchy="false">(</mo><msub><mi>w</mi><mrow><mi>m</mi><mi>i</mi><mi>n</mi></mrow></msub><mo stretchy="false">)</mo></mrow><msub><mi>d</mi><mrow><mi>m</mi><mi>a</mi><mi>x</mi></mrow></msub></mfrac></mrow><annotation encoding="application/x-tex">\beta = -\frac{log(w_{min})}{d_{max}}</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8889em;vertical-align:-0.1944em;"></span><span class="mord mathnormal" style="margin-right:0.05278em;">β</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:2.263em;vertical-align:-0.836em;"></span><span class="mord">−</span><span class="mord"><span class="mopen nulldelimiter"></span><span class="mfrac"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.427em;"><span style="top:-2.314em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord"><span class="mord mathnormal">d</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.1514em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">ma</span><span class="mord mathnormal mtight">x</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span></span></span><span style="top:-3.23em;"><span class="pstrut" style="height:3em;"></span><span class="frac-line" style="border-bottom-width:0.04em;"></span></span><span style="top:-3.677em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.01968em;">l</span><span class="mord mathnormal">o</span><span class="mord mathnormal" style="margin-right:0.03588em;">g</span><span class="mopen">(</span><span class="mord"><span class="mord mathnormal" style="margin-right:0.02691em;">w</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3117em;"><span style="top:-2.55em;margin-left:-0.0269em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">min</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mclose">)</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.836em;"><span></span></span></span></span></span><span class="mclose nulldelimiter"></span></span></span></span></span></span>
+<p>The default <code>min_threshold_wt</code> of <span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>w</mi><mrow><mi>m</mi><mi>i</mi><mi>n</mi></mrow></msub><mo>=</mo><mn>0.01831563888873418</mn></mrow><annotation encoding="application/x-tex">w_{min}=0.01831563888873418</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.5806em;vertical-align:-0.15em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.02691em;">w</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3117em;"><span style="top:-2.55em;margin-left:-0.0269em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">min</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:0.6444em;"></span><span class="mord">0.01831563888873418</span></span></span></span> yields conveniently rounded <span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>β</mi></mrow><annotation encoding="application/x-tex">\beta</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8889em;vertical-align:-0.1944em;"></span><span class="mord mathnormal" style="margin-right:0.05278em;">β</span></span></span></span> values, for example:</p>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<table><thead><tr><th align="center"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>d</mi><mrow><mi>m</mi><mi>a</mi><mi>x</mi></mrow></msub></mrow><annotation encoding="application/x-tex">d_{max}</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8444em;vertical-align:-0.15em;"></span><span class="mord"><span class="mord mathnormal">d</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.1514em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">ma</span><span class="mord mathnormal mtight">x</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span></span></span></span></th><th align="center"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>β</mi></mrow><annotation encoding="application/x-tex">\beta</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8889em;vertical-align:-0.1944em;"></span><span class="mord mathnormal" style="margin-right:0.05278em;">β</span></span></span></span></th></tr></thead><tbody><tr><td align="center">200m</td><td align="center">0.02</td></tr><tr><td align="center">400m</td><td align="center">0.01</td></tr><tr><td align="center">800m</td><td align="center">0.005</td></tr><tr><td align="center">1600m</td><td align="center">0.0025</td></tr></tbody></table>
+<p>Overriding the default <span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>w</mi><mrow><mi>m</mi><mi>i</mi><mi>n</mi></mrow></msub></mrow><annotation encoding="application/x-tex">w_{min}</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.5806em;vertical-align:-0.15em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.02691em;">w</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3117em;"><span style="top:-2.55em;margin-left:-0.0269em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">min</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span></span></span></span> will adjust the <span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>β</mi></mrow><annotation encoding="application/x-tex">\beta</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8889em;vertical-align:-0.1944em;"></span><span class="mord mathnormal" style="margin-right:0.05278em;">β</span></span></span></span> accordingly.</p>
+</div>
+<div class="function">
+<h2 id="check-numerical-data"><a aria-label="Link to this section" href="#check-numerical-data"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>check_numerical_data</h2>
+<div class="content">
+<span class="name">check_numerical_data</span><div class="signature">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">data_arr</span>
+  </div>
+  <span class="pt">)</span>
+</div>
+</div>
+<p>Validates that all elements in a 2D numerical array are finite.</p>
+<h3 id="raises-1"><a aria-label="Link to this section" href="#raises-1"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>Raises</h3>
+<div class="param-set">
+  <div class="def">
+    <div class="name"></div>
+    <div class="type">ValueError</div>
+  </div>
+  <div class="desc">
+<p>If any element is not finite (NaN or infinity).</p></div><p></p>
+</div>
+</div>
+<div class="function">
+<h2 id="clip-wts-curve"><a aria-label="Link to this section" href="#clip-wts-curve"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>clip_wts_curve</h2>
+<div class="content">
+<span class="name">clip_wts_curve</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">distances</span>
+    <span class="pc">:</span>
+    <span class="pa"> list[int]</span>
+  </div>
+  <div class="param">
+    <span class="pn">betas</span>
+    <span class="pc">:</span>
+    <span class="pa"> list[float]</span>
+  </div>
+  <div class="param">
+    <span class="pn">spatial_tolerance</span>
+    <span class="pc">:</span>
+    <span class="pa"> int</span>
+  </div>
+  <span class="pt">)->[</span>
+  <span class="pr">list[float]</span>
+  <span class="pt">]</span>
+</div>
+</div>
+<p>Calculate upper weight bounds for clipping distance decay curves based on spatial tolerance. Used when data point location has uncertainty defined by <code>spatial_tolerance</code>. Determine the upper weights threshold of the distance decay curve for a given <span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>β</mi></mrow><annotation encoding="application/x-tex">\beta</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8889em;vertical-align:-0.1944em;"></span><span class="mord mathnormal" style="margin-right:0.05278em;">β</span></span></span></span> based on the <code>spatial_tolerance</code> parameter. This is used by downstream functions to determine the upper extent at which weights derived for spatial impedance functions are flattened and normalised. This functionality is only intended for situations where the location of datapoints is uncertain for a given spatial tolerance.</p>
+<div class="box warning"><p>Use distance based clipping with caution for smaller distance thresholds. For example, if using a 200m distance
+threshold clipped by 100m, then substantial distortion is introduced by the process of clipping and normalising the
+distance decay curve. More generally, smaller distance thresholds should generally be avoided for situations where
+datapoints are not located with high spatial precision.</p></div>
+<h3 id="parameters-2"><a aria-label="Link to this section" href="#parameters-2"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>Parameters</h3>
+<div class="param-set">
+  <div class="def">
+    <div class="name">distances</div>
+    <div class="type">list[int]</div>
+  </div>
+  <div class="desc">
+<p>Distance thresholds (<span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>d</mi><mrow><mi>m</mi><mi>a</mi><mi>x</mi></mrow></msub></mrow><annotation encoding="application/x-tex">d_{max}</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8444em;vertical-align:-0.15em;"></span><span class="mord"><span class="mord mathnormal">d</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.1514em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">ma</span><span class="mord mathnormal mtight">x</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span></span></span></span>).</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">betas</div>
+    <div class="type">list[float]</div>
+  </div>
+  <div class="desc">
+<p>Decay parameters (<span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>β</mi></mrow><annotation encoding="application/x-tex">\beta</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8889em;vertical-align:-0.1944em;"></span><span class="mord mathnormal" style="margin-right:0.05278em;">β</span></span></span></span>).</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">spatial_tolerance</div>
+    <div class="type">int</div>
+  </div>
+  <div class="desc">
+<p>Spatial buffer distance (uncertainty).</p></div><p></p>
+</div>
+<h3 id="returns-2"><a aria-label="Link to this section" href="#returns-2"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>Returns</h3>
+<div class="param-set">
+  <div class="def">
+    <div class="name"></div>
+    <div class="type">list[float]</div>
+  </div>
+  <div class="desc">
+<p>Maximum weights for clipping the decay curve for each beta.</p></div><p></p>
+</div>
+</div>
+<div class="function">
+<h2 id="clipped-beta-wt"><a aria-label="Link to this section" href="#clipped-beta-wt"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>clipped_beta_wt</h2>
+<div class="content">
+<span class="name">clipped_beta_wt</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">beta</span>
+    <span class="pc">:</span>
+    <span class="pa"> float</span>
+  </div>
+  <div class="param">
+    <span class="pn">max_curve_wt</span>
+    <span class="pc">:</span>
+    <span class="pa"> float</span>
+  </div>
+  <div class="param">
+    <span class="pn">data_dist</span>
+    <span class="pc">:</span>
+    <span class="pa"> float</span>
+  </div>
+  <span class="pt">)->[</span>
+  <span class="pr">float</span>
+  <span class="pt">]</span>
+</div>
+</div>
+<p>Calculate a single weight using beta decay, clipped by a maximum weight. Applies <span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>w</mi><mi>e</mi><mi>i</mi><mi>g</mi><mi>h</mi><mi>t</mi><mo>=</mo><mi>e</mi><mi>x</mi><mi>p</mi><mo stretchy="false">(</mo><mo>−</mo><mi>β</mi><mo>⋅</mo><mi>d</mi><mi>i</mi><mi>s</mi><mi>t</mi><mi>a</mi><mi>n</mi><mi>c</mi><mi>e</mi><mo stretchy="false">)</mo></mrow><annotation encoding="application/x-tex">weight = exp(-\beta \cdot distance)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8889em;vertical-align:-0.1944em;"></span><span class="mord mathnormal" style="margin-right:0.02691em;">w</span><span class="mord mathnormal">e</span><span class="mord mathnormal">i</span><span class="mord mathnormal" style="margin-right:0.03588em;">g</span><span class="mord mathnormal">h</span><span class="mord mathnormal">t</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathnormal">e</span><span class="mord mathnormal">x</span><span class="mord mathnormal">p</span><span class="mopen">(</span><span class="mord">−</span><span class="mord mathnormal" style="margin-right:0.05278em;">β</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">⋅</span><span class="mspace" style="margin-right:0.2222em;"></span></span><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathnormal">d</span><span class="mord mathnormal">i</span><span class="mord mathnormal">s</span><span class="mord mathnormal">t</span><span class="mord mathnormal">an</span><span class="mord mathnormal">ce</span><span class="mclose">)</span></span></span></span>, ensuring the result does not exceed <code>max_curve_wt</code>.</p>
+<h3 id="parameters-3"><a aria-label="Link to this section" href="#parameters-3"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>Parameters</h3>
+<div class="param-set">
+  <div class="def">
+    <div class="name">beta</div>
+    <div class="type">float</div>
+  </div>
+  <div class="desc">
+<p>The decay parameter <span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>β</mi></mrow><annotation encoding="application/x-tex">\beta</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8889em;vertical-align:-0.1944em;"></span><span class="mord mathnormal" style="margin-right:0.05278em;">β</span></span></span></span>.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">max_curve_wt</div>
+    <div class="type">float</div>
+  </div>
+  <div class="desc">
+<p>The maximum allowed weight (from <code>clip_wts_curve</code>).</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">data_dist</div>
+    <div class="type">float</div>
+  </div>
+  <div class="desc">
+<p>The distance to the data point.</p></div><p></p>
+</div>
+<h3 id="returns-3"><a aria-label="Link to this section" href="#returns-3"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>Returns</h3>
+<div class="param-set">
+  <div class="def">
+    <div class="name"></div>
+    <div class="type">float</div>
+  </div>
+  <div class="desc">
+<p>The calculated (potentially clipped) weight. Returns 0.0 if calculation fails.</p></div><p></p>
+</div>
+</div>
+<div class="function">
+<h2 id="distances-from-betas"><a aria-label="Link to this section" href="#distances-from-betas"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>distances_from_betas</h2>
+<div class="content">
+<span class="name">distances_from_betas</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">betas</span>
+    <span class="pc">:</span>
+    <span class="pa"> list[float]</span>
+  </div>
+  <div class="param">
+    <span class="pn">min_threshold_wt</span>
+    <span class="pc">:</span>
+    <span class="pa"> float | None = None</span>
+  </div>
+  <span class="pt">)->[</span>
+  <span class="pr">list[int]</span>
+  <span class="pt">]</span>
+</div>
+</div>
+<p>Convert decay parameters (betas) to distance thresholds (<span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>d</mi><mrow><mi>m</mi><mi>a</mi><mi>x</mi></mrow></msub></mrow><annotation encoding="application/x-tex">d_{max}</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8444em;vertical-align:-0.15em;"></span><span class="mord"><span class="mord mathnormal">d</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.1514em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">ma</span><span class="mord mathnormal mtight">x</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span></span></span></span>). Requires betas > 0 and sorted in strictly decreasing order. Uses a default minimum weight threshold.</p>
+<h3 id="parameters-4"><a aria-label="Link to this section" href="#parameters-4"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>Parameters</h3>
+<div class="param-set">
+  <div class="def">
+    <div class="name">betas</div>
+    <div class="type">list[float]</div>
+  </div>
+  <div class="desc">
+<p><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>β</mi></mrow><annotation encoding="application/x-tex">\beta</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8889em;vertical-align:-0.1944em;"></span><span class="mord mathnormal" style="margin-right:0.05278em;">β</span></span></span></span> values (> 0, strictly decreasing) to convert.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">min_threshold_wt</div>
+    <div class="type">float | None</div>
+  </div>
+  <div class="desc">
+<p>Optional cutoff weight <span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>w</mi><mrow><mi>m</mi><mi>i</mi><mi>n</mi></mrow></msub></mrow><annotation encoding="application/x-tex">w_{min}</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.5806em;vertical-align:-0.15em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.02691em;">w</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3117em;"><span style="top:-2.55em;margin-left:-0.0269em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">min</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span></span></span></span> (default: ~0.0183).</p></div><p></p>
+</div>
+<h3 id="returns-4"><a aria-label="Link to this section" href="#returns-4"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>Returns</h3>
+<div class="param-set">
+  <div class="def">
+    <div class="name"></div>
+    <div class="type">list[int]</div>
+  </div>
+  <div class="desc">
+<p>Corresponding distance thresholds <span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>d</mi><mrow><mi>m</mi><mi>a</mi><mi>x</mi></mrow></msub></mrow><annotation encoding="application/x-tex">d_{max}</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8444em;vertical-align:-0.15em;"></span><span class="mord"><span class="mord mathnormal">d</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.1514em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">ma</span><span class="mord mathnormal mtight">x</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span></span></span></span>.</p></div><p></p>
+</div>
+<h3 id="raises-2"><a aria-label="Link to this section" href="#raises-2"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>Raises</h3>
+<div class="param-set">
+  <div class="def">
+    <div class="name"></div>
+    <div class="type">ValueError</div>
+  </div>
+  <div class="desc">
+<p>If inputs are invalid (empty, non-positive, not decreasing).</p></div><p></p>
+</div>
+<h3 id="notes-2"><a aria-label="Link to this section" href="#notes-2"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>Notes</h3>
+<pre class="astro-code material-theme-darker" style="background-color:#212121;color:#EEFFFF; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="python"><code><span class="line"><span style="color:#89DDFF;font-style:italic">from</span><span style="color:#EEFFFF"> cityseer </span><span style="color:#89DDFF;font-style:italic">import</span><span style="color:#EEFFFF"> rustalgos</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#EEFFFF">betas </span><span style="color:#89DDFF">=</span><span style="color:#89DDFF"> [</span><span style="color:#F78C6C">0.01</span><span style="color:#89DDFF">,</span><span style="color:#F78C6C"> 0.02</span><span style="color:#89DDFF">]</span></span>
+<span class="line"><span style="color:#EEFFFF">distances </span><span style="color:#89DDFF">=</span><span style="color:#EEFFFF"> rustalgos</span><span style="color:#89DDFF">.</span><span style="color:#82AAFF">distances_from_betas</span><span style="color:#89DDFF">(</span><span style="color:#82AAFF">betas</span><span style="color:#89DDFF">)</span></span>
+<span class="line"><span style="color:#82AAFF">print</span><span style="color:#89DDFF">(</span><span style="color:#82AAFF">distances</span><span style="color:#89DDFF">)</span><span style="color:#545454;font-style:italic">  # prints: [400, 200]</span></span></code></pre>
+<p>Uses the formula:</p>
+<span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><msub><mi>d</mi><mrow><mi>m</mi><mi>a</mi><mi>x</mi></mrow></msub><mo>=</mo><mfrac><mrow><mi>l</mi><mi>o</mi><mi>g</mi><mo stretchy="false">(</mo><msub><mi>w</mi><mrow><mi>m</mi><mi>i</mi><mi>n</mi></mrow></msub><mo stretchy="false">)</mo></mrow><mrow><mo>−</mo><mi>β</mi></mrow></mfrac></mrow><annotation encoding="application/x-tex">d_{max} = \frac{log(w_{min})}{-\beta}</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8444em;vertical-align:-0.15em;"></span><span class="mord"><span class="mord mathnormal">d</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.1514em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">ma</span><span class="mord mathnormal mtight">x</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:2.3074em;vertical-align:-0.8804em;"></span><span class="mord"><span class="mopen nulldelimiter"></span><span class="mfrac"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.427em;"><span style="top:-2.314em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord">−</span><span class="mord mathnormal" style="margin-right:0.05278em;">β</span></span></span><span style="top:-3.23em;"><span class="pstrut" style="height:3em;"></span><span class="frac-line" style="border-bottom-width:0.04em;"></span></span><span style="top:-3.677em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.01968em;">l</span><span class="mord mathnormal">o</span><span class="mord mathnormal" style="margin-right:0.03588em;">g</span><span class="mopen">(</span><span class="mord"><span class="mord mathnormal" style="margin-right:0.02691em;">w</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3117em;"><span style="top:-2.55em;margin-left:-0.0269em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">min</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mclose">)</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.8804em;"><span></span></span></span></span></span><span class="mclose nulldelimiter"></span></span></span></span></span></span>
+<p>The default <code>min_threshold_wt</code> of <span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>w</mi><mrow><mi>m</mi><mi>i</mi><mi>n</mi></mrow></msub><mo>=</mo><mn>0.01831563888873418</mn></mrow><annotation encoding="application/x-tex">w_{min}=0.01831563888873418</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.5806em;vertical-align:-0.15em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.02691em;">w</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3117em;"><span style="top:-2.55em;margin-left:-0.0269em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">min</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:0.6444em;"></span><span class="mord">0.01831563888873418</span></span></span></span> yields conveniently rounded distance thresholds, for example:</p>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<table><thead><tr><th align="center"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>β</mi></mrow><annotation encoding="application/x-tex">\beta</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8889em;vertical-align:-0.1944em;"></span><span class="mord mathnormal" style="margin-right:0.05278em;">β</span></span></span></span></th><th align="center"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>d</mi><mrow><mi>m</mi><mi>a</mi><mi>x</mi></mrow></msub></mrow><annotation encoding="application/x-tex">d_{max}</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8444em;vertical-align:-0.15em;"></span><span class="mord"><span class="mord mathnormal">d</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.1514em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">ma</span><span class="mord mathnormal mtight">x</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span></span></span></span></th></tr></thead><tbody><tr><td align="center">0.02</td><td align="center">200m</td></tr><tr><td align="center">0.01</td><td align="center">400m</td></tr><tr><td align="center">0.005</td><td align="center">800m</td></tr><tr><td align="center">0.0025</td><td align="center">1600m</td></tr></tbody></table>
+</div>
+<div class="function">
+<h2 id="distances-from-seconds"><a aria-label="Link to this section" href="#distances-from-seconds"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>distances_from_seconds</h2>
+<div class="content">
+<span class="name">distances_from_seconds</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">seconds</span>
+    <span class="pc">:</span>
+    <span class="pa"> list[int]</span>
+  </div>
+  <div class="param">
+    <span class="pn">speed_m_s</span>
+    <span class="pc">:</span>
+    <span class="pa"> float</span>
+  </div>
+  <span class="pt">)->[</span>
+  <span class="pr">list[int]</span>
+  <span class="pt">]</span>
+</div>
+</div>
+<p>Convert time in seconds to distance thresholds (<span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>d</mi><mrow><mi>m</mi><mi>a</mi><mi>x</mi></mrow></msub></mrow><annotation encoding="application/x-tex">d_{max}</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8444em;vertical-align:-0.15em;"></span><span class="mord"><span class="mord mathnormal">d</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.1514em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">ma</span><span class="mord mathnormal mtight">x</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span></span></span></span>) based on speed.</p>
+<div class="box note"><p>It is generally not necessary to utilise this function directly.</p></div>
+<p>The default <code>speed_m_s</code> of <span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>1.333</mn></mrow><annotation encoding="application/x-tex">1.333</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.6444em;"></span><span class="mord">1.333</span></span></span></span> yields the following <span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>d</mi><mrow><mi>m</mi><mi>a</mi><mi>x</mi></mrow></msub></mrow><annotation encoding="application/x-tex">d_{max}</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8444em;vertical-align:-0.15em;"></span><span class="mord"><span class="mord mathnormal">d</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.1514em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">ma</span><span class="mord mathnormal mtight">x</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span></span></span></span> walking thresholds:</p>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<table><thead><tr><th align="center"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>s</mi><mi>e</mi><mi>c</mi><mi>o</mi><mi>n</mi><mi>d</mi><mi>s</mi></mrow><annotation encoding="application/x-tex">seconds</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.6944em;"></span><span class="mord mathnormal">seco</span><span class="mord mathnormal">n</span><span class="mord mathnormal">d</span><span class="mord mathnormal">s</span></span></span></span></th><th align="center"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>d</mi><mrow><mi>m</mi><mi>a</mi><mi>x</mi></mrow></msub></mrow><annotation encoding="application/x-tex">d_{max}</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8444em;vertical-align:-0.15em;"></span><span class="mord"><span class="mord mathnormal">d</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.1514em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">ma</span><span class="mord mathnormal mtight">x</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span></span></span></span></th></tr></thead><tbody><tr><td align="center">300</td><td align="center">400m</td></tr><tr><td align="center">600</td><td align="center">800m</td></tr><tr><td align="center">1200</td><td align="center">1600m</td></tr></tbody></table>
+<p>Setting the <code>speed_m_s</code> to a higher or lower number will affect the <span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>d</mi><mrow><mi>m</mi><mi>a</mi><mi>x</mi></mrow></msub></mrow><annotation encoding="application/x-tex">d_{max}</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8444em;vertical-align:-0.15em;"></span><span class="mord"><span class="mord mathnormal">d</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.1514em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">ma</span><span class="mord mathnormal mtight">x</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span></span></span></span> accordingly.]</p>
+<h3 id="parameters-5"><a aria-label="Link to this section" href="#parameters-5"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>Parameters</h3>
+<div class="param-set">
+  <div class="def">
+    <div class="name">seconds</div>
+    <div class="type">list[int]</div>
+  </div>
+  <div class="desc">
+<p>Time values in seconds.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">speed_m_s</div>
+    <div class="type">float</div>
+  </div>
+  <div class="desc">
+<p>Speed in meters per second.</p></div><p></p>
+</div>
+<h3 id="returns-5"><a aria-label="Link to this section" href="#returns-5"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>Returns</h3>
+<div class="param-set">
+  <div class="def">
+    <div class="name"></div>
+    <div class="type">list[int]</div>
+  </div>
+  <div class="desc">
+<p>Corresponding distance thresholds <span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>d</mi><mrow><mi>m</mi><mi>a</mi><mi>x</mi></mrow></msub></mrow><annotation encoding="application/x-tex">d_{max}</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8444em;vertical-align:-0.15em;"></span><span class="mord"><span class="mord mathnormal">d</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.1514em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">ma</span><span class="mord mathnormal mtight">x</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span></span></span></span>.</p></div><p></p>
+</div>
+</div>
+<div class="function">
+<h2 id="pair-distances-and-time"><a aria-label="Link to this section" href="#pair-distances-and-time"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>pair_distances_and_time</h2>
+<div class="content">
+<span class="name">pair_distances_and_time</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">speed_m_s</span>
+    <span class="pc">:</span>
+    <span class="pa"> float</span>
+  </div>
+  <div class="param">
+    <span class="pn">distances</span>
+    <span class="pc">:</span>
+    <span class="pa"> list[int] | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">minutes</span>
+    <span class="pc">:</span>
+    <span class="pa"> list[float] | None = None</span>
+  </div>
+  <span class="pt">)->[</span>
+  <span class="pr">list[int]</span>
+  <span class="pr">list[int]</span>
+  <span class="pt">]</span>
+</div>
+</div>
+<p>Resolve distances and seconds from either distances or minutes. Exactly one of <code>distances</code> or <code>minutes</code> must be provided.</p>
+<h3 id="parameters-6"><a aria-label="Link to this section" href="#parameters-6"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>Parameters</h3>
+<div class="param-set">
+  <div class="def">
+    <div class="name">speed_m_s</div>
+    <div class="type">float</div>
+  </div>
+  <div class="desc">
+<p>Walking speed in meters per second.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">distances</div>
+    <div class="type">list[int] | None</div>
+  </div>
+  <div class="desc">
+<p>Distance thresholds in metres.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">minutes</div>
+    <div class="type">list[float] | None</div>
+  </div>
+  <div class="desc">
+<p>Time in minutes.</p></div><p></p>
+</div>
+<h3 id="returns-6"><a aria-label="Link to this section" href="#returns-6"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>Returns</h3>
+<div class="param-set">
+  <div class="def">
+    <div class="name"></div>
+    <div class="type">tuple[list[int], list[int]]</div>
+  </div>
+  <div class="desc">
+<p>A tuple containing (distances, seconds).</p></div><p></p>
+</div>
+<h3 id="raises-3"><a aria-label="Link to this section" href="#raises-3"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>Raises</h3>
+<div class="param-set">
+  <div class="def">
+    <div class="name"></div>
+    <div class="type">ValueError</div>
+  </div>
+  <div class="desc">
+<p>If not exactly one of <code>distances</code> or <code>minutes</code> is provided, or if inputs are invalid.</p></div><p></p>
+</div>
+</div>
+<div class="function">
+<h2 id="seconds-from-distances"><a aria-label="Link to this section" href="#seconds-from-distances"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>seconds_from_distances</h2>
+<div class="content">
+<span class="name">seconds_from_distances</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">distances</span>
+    <span class="pc">:</span>
+    <span class="pa"> list[int]</span>
+  </div>
+  <div class="param">
+    <span class="pn">speed_m_s</span>
+    <span class="pc">:</span>
+    <span class="pa"> float</span>
+  </div>
+  <span class="pt">)->[</span>
+  <span class="pr">list[int]</span>
+  <span class="pt">]</span>
+</div>
+</div>
+<p>Convert distance thresholds (<span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>d</mi><mrow><mi>m</mi><mi>a</mi><mi>x</mi></mrow></msub></mrow><annotation encoding="application/x-tex">d_{max}</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8444em;vertical-align:-0.15em;"></span><span class="mord"><span class="mord mathnormal">d</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.1514em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">ma</span><span class="mord mathnormal mtight">x</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span></span></span></span>) to time in seconds based on speed.</p>
+<div class="box note"><p>It is generally not necessary to utilise this function directly.</p></div>
+<p>The default <code>speed_m_s</code> of <span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>1.33333</mn></mrow><annotation encoding="application/x-tex">1.33333</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.6444em;"></span><span class="mord">1.33333</span></span></span></span> yields the following walking times:</p>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<table><thead><tr><th align="center"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>d</mi><mrow><mi>m</mi><mi>a</mi><mi>x</mi></mrow></msub></mrow><annotation encoding="application/x-tex">d_{max}</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8444em;vertical-align:-0.15em;"></span><span class="mord"><span class="mord mathnormal">d</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.1514em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">ma</span><span class="mord mathnormal mtight">x</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span></span></span></span></th><th align="center"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>s</mi><mi>e</mi><mi>c</mi><mi>o</mi><mi>n</mi><mi>d</mi><mi>s</mi></mrow><annotation encoding="application/x-tex">seconds</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.6944em;"></span><span class="mord mathnormal">seco</span><span class="mord mathnormal">n</span><span class="mord mathnormal">d</span><span class="mord mathnormal">s</span></span></span></span></th></tr></thead><tbody><tr><td align="center">400m</td><td align="center">300</td></tr><tr><td align="center">800m</td><td align="center">600</td></tr><tr><td align="center">1600m</td><td align="center">1200</td></tr></tbody></table>
+<p>Setting the <code>speed_m_s</code> to a higher or lower number will affect the walking time accordingly.</p>
+<h3 id="parameters-7"><a aria-label="Link to this section" href="#parameters-7"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>Parameters</h3>
+<div class="param-set">
+  <div class="def">
+    <div class="name">distances</div>
+    <div class="type">list[int]</div>
+  </div>
+  <div class="desc">
+<p>Distance thresholds <span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>d</mi><mrow><mi>m</mi><mi>a</mi><mi>x</mi></mrow></msub></mrow><annotation encoding="application/x-tex">d_{max}</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8444em;vertical-align:-0.15em;"></span><span class="mord"><span class="mord mathnormal">d</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.1514em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">ma</span><span class="mord mathnormal mtight">x</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span></span></span></span>.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">speed_m_s</div>
+    <div class="type">float</div>
+  </div>
+  <div class="desc">
+<p>Speed in meters per second.</p></div><p></p>
+</div>
+<h3 id="returns-7"><a aria-label="Link to this section" href="#returns-7"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>Returns</h3>
+<div class="param-set">
+  <div class="def">
+    <div class="name"></div>
+    <div class="type">list[int]</div>
+  </div>
+  <div class="desc">
+<p>Corresponding time values in seconds.</p></div><p></p>
+</div>
+</div>
+</section> <div class="w-full flex items-center pt-12"> <footer class="text-xxs font-light text-light-grey">
+Copyright © 2018-present Gareth Simons
+</footer> </div> </div> </div>  </main> </body> </html>

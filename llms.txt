@@ -1,0 +1,51 @@
+# cityseer
+
+> cityseer is a Python package (with a Rust computational core) for fine-grained street-network and land-use analysis at the pedestrian scale: localised network centrality (closeness, betweenness, shortest and simplest/angular paths), demand-weighted origin-destination flows, land-use accessibility, mixed-use diversity, and statistical aggregations. A QGIS plugin exposes the same algorithms without code. Install with `pip install cityseer`. Source: https://github.com/benchmark-urbanism/cityseer-api
+
+Key facts: every metric is computed over the street network itself; distances are shortest-path network distances, not Euclidean (crow-flies) distances, and aggregations run over network catchments rather than straight-line buffers; analysis is localised over distance thresholds (metres or walking minutes); networks use a dual graph representation; the high-level entry point is the CityNetwork class; results are written to GeoDataFrames with `cc_<metric>_<distance>` columns.
+
+## Guide
+
+- [How do I...?](https://cityseer.benchmarkurbanism.com/guide/how-to): short answers to common analysis questions (counting reachable amenities, aggregating values, mapping flows, scenario comparison), each pointing to the relevant API.
+- [Fundamentals](https://cityseer.benchmarkurbanism.com/guide/fundamentals): how cityseer frames analysis; localised computation, routing heuristics, distance thresholds, edge rolloff, and the CityNetwork API.
+- [Networks](https://cityseer.benchmarkurbanism.com/guide/networks): primal and dual graphs, directed one-way streets, elevation and slope, and edge impedances.
+- [Network Cleaning](https://cityseer.benchmarkurbanism.com/guide/cleaning): preparing and simplifying street network data.
+- [Centrality](https://cityseer.benchmarkurbanism.com/guide/centrality): expression-based metrics, shortest and simplest path measures, node weights, performance, and adaptive sampling.
+- [Origin-Destination Flows](https://cityseer.benchmarkurbanism.com/guide/flows): OD-weighted and demand-weighted betweenness from spatial interaction models.
+- [Land-Use](https://cityseer.benchmarkurbanism.com/guide/land-use): accessibility, mixed-use diversity, statistical aggregations, and distance decay functions.
+- [Interpretation](https://cityseer.benchmarkurbanism.com/guide/interpretation): which metric answers which planning question, and how to read the numbers.
+- [Troubleshooting](https://cityseer.benchmarkurbanism.com/guide/troubleshooting): CRS mistakes, edge rolloff, slow runs, OSM download failures, and data assignment issues.
+- [v4 to v5 Migration](https://cityseer.benchmarkurbanism.com/guide/migration): the CityNetwork API, renamed functions, removed parameters, and the betweenness redefinition.
+
+## API Reference
+
+- [CityNetwork](https://cityseer.benchmarkurbanism.com/api/network): the high-level class; constructors, centrality, accessibility, mixed uses, statistics, OD flows, and export methods.
+- [decay](https://cityseer.benchmarkurbanism.com/api/decay): helpers for exponential, linear, flat, Gaussian, and logistic decay expressions.
+- [metrics.networks](https://cityseer.benchmarkurbanism.com/metrics/networks): functional API for node centrality, segment centrality, and OD/demand betweenness.
+- [metrics.layers](https://cityseer.benchmarkurbanism.com/metrics/layers): land-use accessibility, mixed-use diversity, and statistical aggregations.
+- [metrics.sampling](https://cityseer.benchmarkurbanism.com/metrics/sampling): adaptive sampling for centrality using polled reach and the Hoeffding bound.
+- [metrics.observe](https://cityseer.benchmarkurbanism.com/metrics/observe): street continuity analysis.
+- [metrics.visibility](https://cityseer.benchmarkurbanism.com/metrics/visibility): viewshed analysis from street-level observers.
+- [tools.io](https://cityseer.benchmarkurbanism.com/tools/io): network I/O, OSM graph construction, CRS conversion.
+- [tools.graphs](https://cityseer.benchmarkurbanism.com/tools/graphs): graph cleaning, simplification, decomposition, consolidation, dual graph conversion.
+- [rustalgos](https://cityseer.benchmarkurbanism.com/rustalgos/rustalgos): low-level Rust-optimised algorithms (graph, centrality, data, diversity, viewshed).
+- [Glossary](https://cityseer.benchmarkurbanism.com/api/glossary): definitions of key terms.
+
+## QGIS Plugin
+
+- [Overview](https://cityseer.benchmarkurbanism.com/plugin): installation and common concepts.
+- [Network Centrality](https://cityseer.benchmarkurbanism.com/plugin/centrality): closeness and betweenness with per-category metric selection and optional adaptive sampling.
+- [Demand Betweenness](https://cityseer.benchmarkurbanism.com/plugin/demand): flow betweenness from weighted origins and destinations.
+- [Accessibility](https://cityseer.benchmarkurbanism.com/plugin/accessibility): reachable land-use counts and nearest distances.
+- [Mixed Uses](https://cityseer.benchmarkurbanism.com/plugin/mixed-uses): Hill, Shannon, and Gini-Simpson diversity.
+- [Statistics](https://cityseer.benchmarkurbanism.com/plugin/statistics): localised statistics for numerical columns.
+
+## Examples
+
+- [Recipes overview](https://cityseer.benchmarkurbanism.com/examples): worked recipes with bundled real-world data.
+- [Datasets](https://cityseer.benchmarkurbanism.com/examples/datasets): the datasets used by the recipes, with licensing.
+
+## Optional
+
+- [Getting Started](https://cityseer.benchmarkurbanism.com/start): installation, quickstart, and a Python learning path.
+- Raw documentation markdown and full source code: https://github.com/benchmark-urbanism/cityseer-api (docs pages under `docs/src/pages/`, Python under `pysrc/cityseer/`, Rust under `rust/src/`).

@@ -1,0 +1,1002 @@
+<!DOCTYPE html><html lang="en-GB" data-astro-cid-dmey6y7i> <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="author" content="Benchmark Urbanism (Cityseer Ltd.)"><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"><!-- favicons --><link rel="icon" href="/favicons/favicon.ico"><link rel="icon" href="/favicons/icon.svg" type="image/svg+xml"><link rel="apple-touch-icon" href="/favicons/apple-touch-icon.png"><link rel="manifest" href="/manifest.webmanifest"><link rel="preconnect" href="https://fonts.gstatic.com"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Raleway:ital,wght@0,200;0,300;0,400;0,500;0,600;0,700;1,300&display=swap"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@200;300;400;500;600;700&display=swap"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16/dist/katex.min.css"><!-- SEO --><title>cityseer — io</title><meta name="description" content="API reference for cityseer.tools.io: network I/O, OSM graph construction, CRS conversion, and NetworkStructure creation."><meta name="keywords" content="cityseer, urban, metrics, analytics, network analysis, centrality, accessibility, pedestrian, urban design, planning, GIS, Python, Rust"><link rel="canonical" href="https://cityseer.benchmarkurbanism.com/tools/io"><!-- Open Graph --><meta property="og:title" content="cityseer — io"><meta property="og:description" content="API reference for cityseer.tools.io: network I/O, OSM graph construction, CRS conversion, and NetworkStructure creation."><meta property="og:type" content="website"><meta property="og:url" content="https://cityseer.benchmarkurbanism.com/tools/io"><meta property="og:image" content="https://cityseer.benchmarkurbanism.com/logos/cityseer_logo_light_red.png"><meta property="og:site_name" content="cityseer"><meta property="og:locale" content="en_GB"><!-- Twitter Card --><meta name="twitter:card" content="summary"><meta name="twitter:title" content="cityseer — io"><meta name="twitter:description" content="API reference for cityseer.tools.io: network I/O, OSM graph construction, CRS conversion, and NetworkStructure creation."><meta name="twitter:image" content="https://cityseer.benchmarkurbanism.com/logos/cityseer_logo_light_red.png"><!-- JSON-LD Structured Data --><script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"cityseer","applicationCategory":"DeveloperApplication","operatingSystem":"Cross-platform","url":"https://cityseer.benchmarkurbanism.com","description":"Cityseer API is a collection of computational tools for fine-grained network and land-use analysis, useful for assessing the morphological precursors to vibrant neighbourhoods. It is underpinned by rigorous network-based methods that have been developed from the ground-up specifically for hyperlocal analysis at the pedestrian scale.","author":{"@type":"Organization","name":"Benchmark Urbanism","url":"https://benchmarkurbanism.com"},"license":"https://www.gnu.org/licenses/agpl-3.0.html","programmingLanguage":["Python","Rust"],"offers":{"@type":"Offer","price":"0","priceCurrency":"USD"}}</script><link rel="stylesheet" href="/_astro/CommonLayout.DvW0gENx.css"><style>/*! tailwindcss v4.3.2 | MIT License | https://tailwindcss.com */
+@layer properties{@supports (((-webkit-hyphens:none)) and (not (margin-trim:inline))) or ((-moz-orient:inline) and (not (color:rgb(from red r g b)))){*,:before,:after,::backdrop{--tw-scale-x:1;--tw-scale-y:1;--tw-scale-z:1;--tw-border-style:solid}}}#repo-link[data-astro-cid-gf3o2gw7]{width:100%;color:var(--color-light-grey,#a8a8a8);transition-property:all;transition-timing-function:var(--tw-ease,var(--default-transition-timing-function,cubic-bezier(.4, 0, .2, 1)));transition-duration:var(--tw-duration,var(--default-transition-duration,.15s));flex-direction:column;align-items:center;display:flex}#repo-link[data-astro-cid-gf3o2gw7]:hover{--tw-scale-x:105%;--tw-scale-y:105%;--tw-scale-z:105%;scale:var(--tw-scale-x) var(--tw-scale-y);color:var(--color-theme,#d32333)}@property --tw-scale-x{syntax:"*";inherits:false;initial-value:1}@property --tw-scale-y{syntax:"*";inherits:false;initial-value:1}@property --tw-scale-z{syntax:"*";inherits:false;initial-value:1}#stripe[data-astro-cid-ddyhvr7a]{border-left-style:var(--tw-border-style);border-left-width:1px;border-color:var(--border-color-mid-grey,#404040);padding-inline:var(--spacing,.25rem);padding-block:calc(var(--spacing,.25rem) * 3);writing-mode:vertical-lr;position:sticky;top:0}@property --tw-border-style{syntax:"*";inherits:false;initial-value:solid}
+</style><link rel="stylesheet" href="/_astro/PageLayout.CXkTWSKU.css"><script type="module" src="/_astro/page.CZ9xv0XX.js"></script></head> <body data-astro-cid-dmey6y7i> <main id="app-container" data-astro-cid-dmey6y7i>  <div id="cols" data-astro-cid-xa52sxzc> <div id="nav-col" data-astro-cid-xa52sxzc> <div class="flex flex-col items-end object-contain" data-astro-cid-xa52sxzc> <a href="/" title="home" class="object-contain transition-all hover:scale-105" data-astro-cid-xa52sxzc> <img src="/_astro/cityseer_logo_light_red.CnItq_gG.png" alt="logo" class="h-full w-full max-w-xs px-4 py-10" data-astro-cid-xa52sxzc> </a> <div id="site-search" class="w-full px-4 pb-2"></div> <script type="module">var e=(function(){let e=typeof document<`u`&&document.createElement(`link`).relList;return e&&e.supports&&e.supports(`modulepreload`)?`modulepreload`:`preload`})(),t=function(e){return`/`+e},n={},r=function(r,i,a){let o=Promise.resolve();if(i&&i.length>0){let r=document.getElementsByTagName(`link`),s=document.querySelector(`meta[property=csp-nonce]`),c=s?.nonce||s?.getAttribute(`nonce`);function l(e){return Promise.all(e.map(e=>Promise.resolve(e).then(e=>({status:`fulfilled`,value:e}),e=>({status:`rejected`,reason:e}))))}function u(e){return import.meta.resolve?import.meta.resolve(e):new URL(e,new URL(`../../../src/node/plugins/importAnalysisBuild.ts`,import.meta.url)).href}o=l(i.map(i=>{if(i=t(i,a),i=u(i),i in n)return;n[i]=!0;let o=i.endsWith(`.css`);for(let e=r.length-1;e>=0;e--){let t=r[e];if(t.href===i&&(!o||t.rel===`stylesheet`))return}let s=document.createElement(`link`);if(s.rel=o?`stylesheet`:e,o||(s.as=`script`),s.crossOrigin=``,s.href=i,c&&s.setAttribute(`nonce`,c),document.head.appendChild(s),o)return new Promise((e,t)=>{s.addEventListener(`load`,e),s.addEventListener(`error`,()=>t(Error(`Unable to preload CSS for ${i}`)))})}))}function s(e){let t=new Event(`vite:preloadError`,{cancelable:!0});if(t.payload=e,window.dispatchEvent(t),!t.defaultPrevented)throw e}return o.then(e=>{for(let t of e||[])t.status===`rejected`&&s(t.reason);return r().catch(s)})};(async()=>{let e=document.getElementById(`site-search`);if(e)try{await r(()=>import(`/pagefind/pagefind-ui.js`),__VITE_PRELOAD__);let e=window.PagefindUI;if(!e)throw Error(`PagefindUI unavailable`);let t=document.createElement(`link`);t.rel=`stylesheet`,t.href=`/pagefind/pagefind-ui.css`,document.head.appendChild(t),new e({element:`#site-search`,showImages:!1,showSubResults:!0,resetStyles:!1})}catch{e.style.display=`none`}})();</script> <style>astro-island,astro-slot,astro-static-slot{display:contents}</style><script>(()=>{var a=(s,i,o)=>{let r=async()=>{await(await s())()},t=typeof i.value=="object"?i.value:void 0,c={rootMargin:t==null?void 0:t.rootMargin},n=new IntersectionObserver(e=>{for(let l of e)if(l.isIntersecting){n.disconnect(),r();break}},c);for(let e of o.children)n.observe(e)};(self.Astro||(self.Astro={})).visible=a;window.dispatchEvent(new Event("astro:visible"));})();</script><script>(()=>{var g=Object.defineProperty;var w=(c,s,d)=>s in c?g(c,s,{enumerable:!0,configurable:!0,writable:!0,value:d}):c[s]=d;var l=(c,s,d)=>w(c,typeof s!="symbol"?s+"":s,d);var E=new Set(["__proto__","constructor","prototype"]);{let c={0:t=>y(t),1:t=>d(t),2:t=>new RegExp(t),3:t=>new Date(t),4:t=>new Map(d(t)),5:t=>new Set(d(t)),6:t=>BigInt(t),7:t=>new URL(t),8:t=>new Uint8Array(t),9:t=>new Uint16Array(t),10:t=>new Uint32Array(t),11:t=>Number.POSITIVE_INFINITY*t},s=t=>{let[p,e]=t;return p in c?c[p](e):void 0},d=t=>t.map(s),y=t=>typeof t!="object"||t===null?t:Object.fromEntries(Object.entries(t).map(([p,e])=>[p,s(e)]));class f extends HTMLElement{constructor(){super(...arguments);l(this,"Component");l(this,"hydrator");l(this,"hydrate",async()=>{var b;if(!this.hydrator||!this.isConnected)return;let e=(b=this.parentElement)==null?void 0:b.closest("astro-island[ssr]");if(e){e.addEventListener("astro:hydrate",this.hydrate,{once:!0});return}let n=this.querySelectorAll("astro-slot"),r={},i=this.querySelectorAll("template[data-astro-template]");for(let o of i){let a=o.closest(this.tagName);a!=null&&a.isSameNode(this)&&(r[o.getAttribute("data-astro-template")||"default"]=o.innerHTML,o.remove())}for(let o of n){let a=o.closest(this.tagName);a!=null&&a.isSameNode(this)&&(r[o.getAttribute("name")||"default"]=o.innerHTML)}let u;try{u=this.hasAttribute("props")?y(JSON.parse(this.getAttribute("props"))):{}}catch(o){let a=this.getAttribute("component-url")||"<unknown>",v=this.getAttribute("component-export");throw v&&(a+=` (export ${v})`),console.error(`[hydrate] Error parsing props for component ${a}`,this.getAttribute("props"),o),o}let h;await this.hydrator(this)(this.Component,u,r,{client:this.getAttribute("client")}),this.removeAttribute("ssr"),this.dispatchEvent(new CustomEvent("astro:hydrate"))});l(this,"unmount",()=>{this.isConnected||this.dispatchEvent(new CustomEvent("astro:unmount"))})}disconnectedCallback(){document.removeEventListener("astro:after-swap",this.unmount),document.addEventListener("astro:after-swap",this.unmount,{once:!0})}connectedCallback(){if(!this.hasAttribute("await-children")||document.readyState==="interactive"||document.readyState==="complete")this.childrenConnectedCallback();else{let e=()=>{document.removeEventListener("DOMContentLoaded",e),n.disconnect(),this.childrenConnectedCallback()},n=new MutationObserver(()=>{var r;((r=this.lastChild)==null?void 0:r.nodeType)===Node.COMMENT_NODE&&this.lastChild.nodeValue==="astro:end"&&(this.lastChild.remove(),e())});n.observe(this,{childList:!0}),document.addEventListener("DOMContentLoaded",e)}}async childrenConnectedCallback(){let e=this.getAttribute("before-hydration-url");e&&await import(e),this.start()}getRetryImportUrl(e){let n=new URL(e,document.baseURI),r=`astro-retry=${Date.now()}`,i=n.hash.replace(/^#/,"");return n.hash=i?`${i}&${r}`:r,n.toString()}async importWithRetry(e){try{return await import(e)}catch(n){return await new Promise(r=>setTimeout(r,1e3)),import(this.getRetryImportUrl(e))}}handleHydrationError(e){let n=this.getAttribute("component-url"),r=new CustomEvent("astro:hydration-error",{cancelable:!0,bubbles:!0,composed:!0,detail:{error:e,componentUrl:n}});this.dispatchEvent(r)&&console.error(`[astro-island] Error hydrating ${n}`,e)}async start(){let e=JSON.parse(this.getAttribute("opts")),n=this.getAttribute("client");if(Astro[n]===void 0){window.addEventListener(`astro:${n}`,()=>this.start(),{once:!0});return}try{await Astro[n](async()=>{let r=this.getAttribute("renderer-url");try{let[i,{default:u}]=await Promise.all([this.importWithRetry(this.getAttribute("component-url")),r?this.importWithRetry(r):Promise.resolve({default:()=>()=>{}})]),h=this.getAttribute("component-export")||"default";if(h.includes(".")){this.Component=i;for(let m of h.split(".")){if(E.has(m)||!this.Component||typeof this.Component!="object"&&typeof this.Component!="function"||!Object.hasOwn(this.Component,m))throw new Error(`Invalid component export path: ${h}`);this.Component=this.Component[m]}}else{if(E.has(h))throw new Error(`Invalid component export path: ${h}`);this.Component=i[h]}return this.hydrator=u,this.hydrate}catch(i){return this.handleHydrationError(i),()=>{}}},e,this)}catch(r){this.handleHydrationError(r)}}attributeChangedCallback(){this.hydrate()}}l(f,"observedAttributes",["props"]),customElements.get("astro-island")||customElements.define("astro-island",f)}})();</script><astro-island uid="sDBv3" prefix="s0" component-url="/_astro/NavColumn.BCcG9Imd.js" component-export="default" renderer-url="/_astro/client.CdL3hvDT.js" props="{&quot;sections&quot;:[1,[[0,{&quot;id&quot;:[0,&quot;start&quot;],&quot;label&quot;:[0,&quot;Getting Started&quot;],&quot;base&quot;:[0,&quot;/start&quot;],&quot;groups&quot;:[1,[[0,{&quot;items&quot;:[1,[[0,{&quot;path&quot;:[0,&quot;/start&quot;],&quot;label&quot;:[0,&quot;Overview&quot;]}]]]}],[0,{&quot;title&quot;:[0,&quot;Python 101&quot;],&quot;items&quot;:[1,[[0,{&quot;path&quot;:[0,&quot;/start/1-notebooks&quot;],&quot;label&quot;:[0,&quot;1 · Notebooks&quot;]}],[0,{&quot;path&quot;:[0,&quot;/start/2-basics&quot;],&quot;label&quot;:[0,&quot;2 · Python Basics&quot;]}],[0,{&quot;path&quot;:[0,&quot;/start/3-spatial&quot;],&quot;label&quot;:[0,&quot;3 · Spatial Data&quot;]}],[0,{&quot;path&quot;:[0,&quot;/start/4-geopandas&quot;],&quot;label&quot;:[0,&quot;4 · GeoPandas&quot;]}],[0,{&quot;path&quot;:[0,&quot;/start/5-urban&quot;],&quot;label&quot;:[0,&quot;5 · Urban Analytics&quot;]}],[0,{&quot;path&quot;:[0,&quot;/start/6-data-science&quot;],&quot;label&quot;:[0,&quot;6 · Data Science&quot;]}]]]}]]]}],[0,{&quot;id&quot;:[0,&quot;guide&quot;],&quot;label&quot;:[0,&quot;Guide&quot;],&quot;base&quot;:[0,&quot;/guide/fundamentals&quot;],&quot;groups&quot;:[1,[[0,{&quot;items&quot;:[1,[[0,{&quot;path&quot;:[0,&quot;/guide/fundamentals&quot;],&quot;label&quot;:[0,&quot;Fundamentals&quot;]}],[0,{&quot;path&quot;:[0,&quot;/guide/how-to&quot;],&quot;label&quot;:[0,&quot;How do I…?&quot;]}],[0,{&quot;path&quot;:[0,&quot;/guide/networks&quot;],&quot;label&quot;:[0,&quot;Networks&quot;]}],[0,{&quot;path&quot;:[0,&quot;/guide/cleaning&quot;],&quot;label&quot;:[0,&quot;Network Cleaning&quot;]}],[0,{&quot;path&quot;:[0,&quot;/guide/centrality&quot;],&quot;label&quot;:[0,&quot;Centrality&quot;]}],[0,{&quot;path&quot;:[0,&quot;/guide/flows&quot;],&quot;label&quot;:[0,&quot;Origin-Destination Flows&quot;]}],[0,{&quot;path&quot;:[0,&quot;/guide/land-use&quot;],&quot;label&quot;:[0,&quot;Land-Use&quot;]}],[0,{&quot;path&quot;:[0,&quot;/guide/interpretation&quot;],&quot;label&quot;:[0,&quot;Interpretation&quot;]}],[0,{&quot;path&quot;:[0,&quot;/guide/troubleshooting&quot;],&quot;label&quot;:[0,&quot;Troubleshooting&quot;]}],[0,{&quot;path&quot;:[0,&quot;/guide/migration&quot;],&quot;label&quot;:[0,&quot;v4 to v5 Migration&quot;]}]]]}]]]}],[0,{&quot;id&quot;:[0,&quot;plugin&quot;],&quot;label&quot;:[0,&quot;QGIS Plugin&quot;],&quot;base&quot;:[0,&quot;/plugin&quot;],&quot;groups&quot;:[1,[[0,{&quot;items&quot;:[1,[[0,{&quot;path&quot;:[0,&quot;/plugin&quot;],&quot;label&quot;:[0,&quot;Overview&quot;]}]]]}],[0,{&quot;title&quot;:[0,&quot;Algorithms&quot;],&quot;items&quot;:[1,[[0,{&quot;path&quot;:[0,&quot;/plugin/centrality&quot;],&quot;label&quot;:[0,&quot;Network Centrality&quot;]}],[0,{&quot;path&quot;:[0,&quot;/plugin/demand&quot;],&quot;label&quot;:[0,&quot;Demand Betweenness&quot;]}],[0,{&quot;path&quot;:[0,&quot;/plugin/accessibility&quot;],&quot;label&quot;:[0,&quot;Accessibility&quot;]}],[0,{&quot;path&quot;:[0,&quot;/plugin/mixed-uses&quot;],&quot;label&quot;:[0,&quot;Mixed Uses&quot;]}],[0,{&quot;path&quot;:[0,&quot;/plugin/statistics&quot;],&quot;label&quot;:[0,&quot;Statistics&quot;]}]]]}]]]}],[0,{&quot;id&quot;:[0,&quot;examples&quot;],&quot;label&quot;:[0,&quot;Examples&quot;],&quot;base&quot;:[0,&quot;/examples&quot;],&quot;groups&quot;:[1,[[0,{&quot;items&quot;:[1,[[0,{&quot;path&quot;:[0,&quot;/examples&quot;],&quot;label&quot;:[0,&quot;Overview&quot;]}]]]}],[0,{&quot;title&quot;:[0,&quot;Recipes&quot;],&quot;items&quot;:[1,[[0,{&quot;path&quot;:[0,&quot;/examples/networks&quot;],&quot;label&quot;:[0,&quot;Network Preparation&quot;]}],[0,{&quot;path&quot;:[0,&quot;/examples/centrality&quot;],&quot;label&quot;:[0,&quot;Centrality&quot;]}],[0,{&quot;path&quot;:[0,&quot;/examples/flows&quot;],&quot;label&quot;:[0,&quot;Origin-Destination Flows&quot;]}],[0,{&quot;path&quot;:[0,&quot;/examples/accessibility&quot;],&quot;label&quot;:[0,&quot;Accessibility&quot;]}],[0,{&quot;path&quot;:[0,&quot;/examples/stats&quot;],&quot;label&quot;:[0,&quot;Statistics&quot;]}],[0,{&quot;path&quot;:[0,&quot;/examples/visibility&quot;],&quot;label&quot;:[0,&quot;Visibility&quot;]}],[0,{&quot;path&quot;:[0,&quot;/examples/continuity&quot;],&quot;label&quot;:[0,&quot;Continuity&quot;]}]]]}],[0,{&quot;items&quot;:[1,[[0,{&quot;path&quot;:[0,&quot;/examples/datasets&quot;],&quot;label&quot;:[0,&quot;Datasets&quot;]}]]]}]]]}],[0,{&quot;id&quot;:[0,&quot;api&quot;],&quot;label&quot;:[0,&quot;API Reference&quot;],&quot;base&quot;:[0,&quot;/api/network&quot;],&quot;groups&quot;:[1,[[0,{&quot;title&quot;:[0,&quot;High-level&quot;],&quot;items&quot;:[1,[[0,{&quot;path&quot;:[0,&quot;/api/network&quot;],&quot;label&quot;:[0,&quot;CityNetwork&quot;]}],[0,{&quot;path&quot;:[0,&quot;/api/decay&quot;],&quot;label&quot;:[0,&quot;decay&quot;]}]]]}],[0,{&quot;title&quot;:[0,&quot;Tools&quot;],&quot;items&quot;:[1,[[0,{&quot;path&quot;:[0,&quot;/tools/io&quot;],&quot;label&quot;:[0,&quot;io&quot;]}],[0,{&quot;path&quot;:[0,&quot;/tools/graphs&quot;],&quot;label&quot;:[0,&quot;graphs&quot;]}],[0,{&quot;path&quot;:[0,&quot;/tools/plot&quot;],&quot;label&quot;:[0,&quot;plot&quot;]}],[0,{&quot;path&quot;:[0,&quot;/tools/mock&quot;],&quot;label&quot;:[0,&quot;mock&quot;]}],[0,{&quot;path&quot;:[0,&quot;/tools/util&quot;],&quot;label&quot;:[0,&quot;util&quot;]}]]]}],[0,{&quot;title&quot;:[0,&quot;Metrics&quot;],&quot;items&quot;:[1,[[0,{&quot;path&quot;:[0,&quot;/metrics/networks&quot;],&quot;label&quot;:[0,&quot;networks&quot;]}],[0,{&quot;path&quot;:[0,&quot;/metrics/layers&quot;],&quot;label&quot;:[0,&quot;layers&quot;]}],[0,{&quot;path&quot;:[0,&quot;/metrics/observe&quot;],&quot;label&quot;:[0,&quot;observe&quot;]}],[0,{&quot;path&quot;:[0,&quot;/metrics/visibility&quot;],&quot;label&quot;:[0,&quot;visibility&quot;]}],[0,{&quot;path&quot;:[0,&quot;/metrics/sampling&quot;],&quot;label&quot;:[0,&quot;sampling&quot;]}]]]}],[0,{&quot;title&quot;:[0,&quot;Rust Algos&quot;],&quot;items&quot;:[1,[[0,{&quot;path&quot;:[0,&quot;/rustalgos/rustalgos&quot;],&quot;label&quot;:[0,&quot;rustalgos&quot;]}],[0,{&quot;path&quot;:[0,&quot;/rustalgos/graph&quot;],&quot;label&quot;:[0,&quot;graph&quot;]}],[0,{&quot;path&quot;:[0,&quot;/rustalgos/centrality&quot;],&quot;label&quot;:[0,&quot;centrality&quot;]}],[0,{&quot;path&quot;:[0,&quot;/rustalgos/diversity&quot;],&quot;label&quot;:[0,&quot;diversity&quot;]}],[0,{&quot;path&quot;:[0,&quot;/rustalgos/data&quot;],&quot;label&quot;:[0,&quot;data&quot;]}],[0,{&quot;path&quot;:[0,&quot;/rustalgos/viewshed&quot;],&quot;label&quot;:[0,&quot;viewshed&quot;]}]]]}],[0,{&quot;items&quot;:[1,[[0,{&quot;path&quot;:[0,&quot;/api/glossary&quot;],&quot;label&quot;:[0,&quot;Glossary&quot;]}]]]}]]]}]]],&quot;activeSectionId&quot;:[0,&quot;api&quot;],&quot;currentPath&quot;:[0,&quot;/tools/io&quot;],&quot;data-astro-cid-xa52sxzc&quot;:[0,true]}" ssr client="visible" opts="{&quot;name&quot;:&quot;NavColumn&quot;,&quot;value&quot;:true}" await-children><nav id="nav-tree" data-astro-cid-xa52sxzc="true" data-v-89398da1><!--[--><!--]--></nav><!--astro:end--></astro-island> <div class="grow" data-astro-cid-xa52sxzc></div> <div class="self-start px-8 py-2" data-astro-cid-xa52sxzc> <a id="repo-link" href="https://github.com/benchmark-urbanism/cityseer-api/" target="_blank" data-astro-cid-gf3o2gw7> <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 496 512" class="text-theme w-12" data-astro-cid-gf3o2gw7="true"><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6c-3.3.3-5.6-1.3-5.6-3.6c0-2 2.3-3.6 5.2-3.6c3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9c2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9c.3 2 2.9 3.3 5.9 2.6c2.9-.7 4.9-2.6 4.6-4.6c-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2c12.8 2.3 17.3-5.6 17.3-12.1c0-6.2-.3-40.4-.3-61.4c0 0-70 15-84.7-29.8c0 0-11.4-29.1-27.8-36.6c0 0-22.9-15.7 1.6-15.4c0 0 24.9 2 38.6 25.8c21.9 38.6 58.6 27.5 72.9 20.9c2.3-16 8.8-27.1 16-33.7c-55.9-6.2-112.3-14.3-112.3-110.5c0-27.5 7.6-41.3 23.6-58.9c-2.6-6.5-11.1-33.3 2.6-67.9c20.9-6.5 69 27 69 27c20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27c13.7 34.7 5.2 61.4 2.6 67.9c16 17.7 25.8 31.5 25.8 58.9c0 96.5-58.9 104.2-114.8 110.5c9.2 7.9 17 22.9 17 46.4c0 33.7-.3 75.4-.3 83.6c0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252C496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2c1.6 1.6 3.9 2.3 5.2 1c1.3-1 1-3.3-.7-5.2c-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9c1.6 1 3.6.7 4.3-.7c.7-1.3-.3-2.9-2.3-3.9c-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2c2.3 2.3 5.2 2.6 6.5 1c1.3-1.3.7-4.3-1.3-6.2c-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9c1.6 2.3 4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2c-1.4-2.3-4-3.3-5.6-2z" fill="currentColor"></path></svg> <h2 class="py-4 leading-none" data-astro-cid-gf3o2gw7>Github</h2> </a> </div> </div> <div id="stripe" data-astro-cid-ddyhvr7a> <h2 class="py-0" data-astro-cid-ddyhvr7a>Cityseer API Docs</h2> </div> </div> <div id="content-col" data-pagefind-body data-astro-cid-xa52sxzc> <section class="module">
+<h1 id="io"><a aria-label="Link to this section" href="#io"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>io</h1>
+<p>Functions for fetching and converting between different network formats and data structures. Use these functions to load networks from OpenStreetMap, convert between NetworkX graphs and cityseer’s internal structures, and prepare networks for analysis.</p>
+<div class="box note"><p><code>network_structure_from_nx</code> and <code>nx_from_osm_nx</code> accept <code>MultiDiGraph</code> inputs and will produce directed
+<code>NetworkStructure</code> instances. However, the graph simplification and cleaning pipeline
+(<code>osm_graph_from_poly</code>, <code>nx_from_osm</code>, and the functions in the <code>graphs</code> module) does not preserve edge
+directionality. A <code>MultiDiGraph</code> should therefore not be passed through those functions before conversion.
+For the high-level API, use <a href="/api/network#from-nx"><code>CityNetwork.from_nx</code></a> with a <code>MultiDiGraph</code> or
+<a href="/api/network#from-geopandas"><code>CityNetwork.from_geopandas</code></a> with <code>directed=True</code> and an <code>oneway</code> column.</p></div>
+<div class="function">
+<h2 id="nx-epsg-conversion"><a aria-label="Link to this section" href="#nx-epsg-conversion"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>nx_epsg_conversion</h2>
+<div class="content">
+<span class="name">nx_epsg_conversion</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">nx_multigraph</span>
+    <span class="pc">:</span>
+    <span class="pa"> networkx.classes.multigraph.MultiGraph</span>
+  </div>
+  <div class="param">
+    <span class="pn">to_crs_code</span>
+    <span class="pc">:</span>
+    <span class="pa"> int | str</span>
+  </div>
+  <div class="param">
+    <span class="pn">from_crs_code</span>
+    <span class="pc">:</span>
+    <span class="pa"> None = None</span>
+  </div>
+  <span class="pt">)->[</span>
+  <span class="pr">MultiGraph</span>
+  <span class="pt">]</span>
+</div>
+</div>
+<p>Convert a graph from the <code>from_crs_code</code> EPSG CRS to the <code>to_crs_code</code> EPSG CRS. The <code>to_crs_code</code> must be for a projected CRS. If edge <code>geom</code> attributes are found, the associated <code>LineString</code> geometries will also be converted.</p>
+<h3 id="parameters"><a aria-label="Link to this section" href="#parameters"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>Parameters</h3>
+<div class="param-set">
+  <div class="def">
+    <div class="name">nx_multigraph</div>
+    <div class="type">nx.MultiGraph</div>
+  </div>
+  <div class="desc">
+<p>A <code>networkX</code> <code>MultiGraph</code> with <code>x</code> and <code>y</code> node attributes in the <code>from_crs_code</code> coordinate system. Optional <code>geom</code> edge attributes containing <code>LineString</code> geoms to be converted.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">to_crs_code</div>
+    <div class="type">int | str</div>
+  </div>
+  <div class="desc">
+<p>A <code>pyproj</code> compatible <code>str</code> or <code>int</code> representing a valid CRS into which the graph must be projected. For example, <a href="https://epsg.io/27700">27700</a> if converting to British National Grid.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">from_crs_code</div>
+    <div class="type">None</div>
+  </div>
+  <div class="desc">
+<p>The <code>from_crs_code</code> parameter is deprecated and will be removed in a future release. If your network is generated via cityseer from OSM or GeoPandas then CRS handling is automatic. Otherwise, the CRS can be set directly in the graph if necessary at G.graph[“crs”]; for example: G.graph[“crs”] = 4326</p></div><p></p>
+</div>
+<h3 id="returns"><a aria-label="Link to this section" href="#returns"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>Returns</h3>
+<div class="param-set">
+  <div class="def">
+    <div class="name"></div>
+    <div class="type">nx.MultiGraph</div>
+  </div>
+  <div class="desc">
+<p>A <code>networkX</code> <code>MultiGraph</code> with <code>x</code> and <code>y</code> node attributes converted to the specified <code>to_crs_code</code> coordinate system. Edge <code>geom</code> attributes will also be converted if found.</p></div><p></p>
+</div>
+</div>
+<div class="function">
+<h2 id="nx-wgs-to-utm"><a aria-label="Link to this section" href="#nx-wgs-to-utm"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>nx_wgs_to_utm</h2>
+<div class="content">
+<span class="name">nx_wgs_to_utm</span><div class="signature">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">nx_multigraph</span>
+    <span class="pc">:</span>
+    <span class="pa"> networkx.classes.multigraph.MultiGraph</span>
+  </div>
+  <span class="pt">)->[</span>
+  <span class="pr">MultiGraph</span>
+  <span class="pt">]</span>
+</div>
+</div>
+<p>Convert a graph from WGS84 geographic coordinates to UTM projected coordinates. Converts <code>x</code> and <code>y</code> node attributes from <a href="https://epsg.io/4326">WGS84</a> <code>lng</code>, <code>lat</code> geographic coordinates to the local UTM projected coordinate system. If edge <code>geom</code> attributes are found, the associated <code>LineString</code> geometries will also be converted. The UTM zone derived from the first processed node will be used for the conversion of all other nodes and geometries contained in the graph. This ensures consistent behaviour in cases where a graph spans a UTM boundary.</p>
+<h3 id="parameters-1"><a aria-label="Link to this section" href="#parameters-1"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>Parameters</h3>
+<div class="param-set">
+  <div class="def">
+    <div class="name">nx_multigraph</div>
+    <div class="type">nx.MultiGraph</div>
+  </div>
+  <div class="desc">
+<p>A <code>networkX</code> <code>MultiGraph</code> with <code>x</code> and <code>y</code> node attributes in the WGS84 coordinate system. Optional <code>geom</code> edge attributes containing <code>LineString</code> geoms to be converted.</p></div><p></p>
+</div>
+<h3 id="returns-1"><a aria-label="Link to this section" href="#returns-1"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>Returns</h3>
+<div class="param-set">
+  <div class="def">
+    <div class="name"></div>
+    <div class="type">nx.MultiGraph</div>
+  </div>
+  <div class="desc">
+<p>A <code>networkX</code> <code>MultiGraph</code> with <code>x</code> and <code>y</code> node attributes converted to the local UTM coordinate system. If edge <code>geom</code> attributes are present, these will also be converted.</p></div><p></p>
+</div>
+</div>
+<div class="function">
+<h2 id="buffered-point-poly"><a aria-label="Link to this section" href="#buffered-point-poly"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>buffered_point_poly</h2>
+<div class="content">
+<span class="name">buffered_point_poly</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">lng</span>
+    <span class="pc">:</span>
+    <span class="pa"> float</span>
+  </div>
+  <div class="param">
+    <span class="pn">lat</span>
+    <span class="pc">:</span>
+    <span class="pa"> float</span>
+  </div>
+  <div class="param">
+    <span class="pn">buffer</span>
+    <span class="pc">:</span>
+    <span class="pa"> int</span>
+  </div>
+  <div class="param">
+    <span class="pn">projected</span>
+    <span class="pc">:</span>
+    <span class="pa"> bool = False</span>
+  </div>
+  <span class="pt">)->[</span>
+  <span class="pr">Polygon</span>
+  <span class="pr">int</span>
+  <span class="pt">]</span>
+</div>
+</div>
+<p>Buffer a point and return a <code>shapely</code> Polygon. This function can be used to prepare a buffered point <code>Polygon</code> for passing to <a href="#osm-graph-from-poly"><code>osm_graph_from_poly()</code></a>. Expects WGS 84 / EPSG 4326 input coordinates. If <code>projected</code> is <code>True</code> then a UTM converted polygon will be returned. Otherwise returned as WGS 84 polygon in geographic coords.</p>
+<h3 id="parameters-2"><a aria-label="Link to this section" href="#parameters-2"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>Parameters</h3>
+<div class="param-set">
+  <div class="def">
+    <div class="name">lng</div>
+    <div class="type">float</div>
+  </div>
+  <div class="desc">
+<p>The longitudinal WGS coordinate in degrees.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">lat</div>
+    <div class="type">float</div>
+  </div>
+  <div class="desc">
+<p>The latitudinal WGS coordinate in degrees.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">buffer</div>
+    <div class="type">int</div>
+  </div>
+  <div class="desc">
+<p>The buffer distance in metres.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">projected</div>
+    <div class="type">bool</div>
+  </div>
+  <div class="desc">
+<p>Whether to project the returned polygon to a local UTM projected coordinate reference system.</p></div><p></p>
+</div>
+<h3 id="returns-2"><a aria-label="Link to this section" href="#returns-2"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>Returns</h3>
+<div class="param-set">
+  <div class="def">
+    <div class="name"></div>
+    <div class="type">geometry.Polygon</div>
+  </div>
+  <div class="desc">
+<p>A <code>shapely</code> <code>Polygon</code> in WGS coordinates.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name"></div>
+    <div class="type">int</div>
+  </div>
+  <div class="desc">
+<p>The UTM EPSG code.</p></div><p></p>
+</div>
+</div>
+<div class="function">
+<h2 id="fetch-osm-network"><a aria-label="Link to this section" href="#fetch-osm-network"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>fetch_osm_network</h2>
+<div class="content">
+<span class="name">fetch_osm_network</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">osm_request</span>
+    <span class="pc">:</span>
+    <span class="pa"> str</span>
+  </div>
+  <div class="param">
+    <span class="pn">timeout</span>
+    <span class="pc">:</span>
+    <span class="pa"> int = 300</span>
+  </div>
+  <div class="param">
+    <span class="pn">max_tries</span>
+    <span class="pc">:</span>
+    <span class="pa"> int = 3</span>
+  </div>
+  <div class="param">
+    <span class="pn">overpass_url</span>
+    <span class="pc">:</span>
+    <span class="pa"> str | None = None</span>
+  </div>
+  <span class="pt">)->[</span>
+  <span class="pr">Response | None</span>
+  <span class="pt">]</span>
+</div>
+</div>
+<p>Fetches an OSM response.</p>
+<div class="box note"><p>This function requires a valid OSM request. If you prepare a polygonal extents then it may be easier to use
+<a href="#osm-graph-from-poly"><code>osm_graph_from_poly()</code></a>, which would call this method on your behalf and then
+builds a graph automatically.</p></div>
+<h3 id="parameters-3"><a aria-label="Link to this section" href="#parameters-3"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>Parameters</h3>
+<div class="param-set">
+  <div class="def">
+    <div class="name">osm_request</div>
+    <div class="type">str</div>
+  </div>
+  <div class="desc">
+<p>A valid OSM request as a string. Use <a href="https://wiki.openstreetmap.org/wiki/Overpass_API/Overpass_QL">OSM Overpass</a> for testing custom queries.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">timeout</div>
+    <div class="type">int</div>
+  </div>
+  <div class="desc">
+<p>Timeout duration for API call in seconds.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">max_tries</div>
+    <div class="type">int</div>
+  </div>
+  <div class="desc">
+<p>The number of attempts to fetch a response before raising.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">overpass_url</div>
+    <div class="type">str | None</div>
+  </div>
+  <div class="desc">
+<p>The Overpass API endpoint. If not provided, the <code>CITYSEER_OVERPASS_URL</code> environment variable is used, falling back to <code>https://overpass-api.de/api/interpreter</code>. Pass a more generous mirror if the default rate-limits.</p></div><p></p>
+</div>
+<h3 id="returns-3"><a aria-label="Link to this section" href="#returns-3"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>Returns</h3>
+<div class="param-set">
+  <div class="def">
+    <div class="name"></div>
+    <div class="type">requests.Response</div>
+  </div>
+  <div class="desc">
+<p>An OSM API response.</p></div><p></p>
+</div>
+</div>
+<div class="function">
+<h2 id="osm-graph-from-poly"><a aria-label="Link to this section" href="#osm-graph-from-poly"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>osm_graph_from_poly</h2>
+<div class="content">
+<span class="name">osm_graph_from_poly</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">poly_geom</span>
+    <span class="pc">:</span>
+    <span class="pa"> shapely.geometry.polygon.Polygon</span>
+  </div>
+  <div class="param">
+    <span class="pn">poly_crs_code</span>
+    <span class="pc">:</span>
+    <span class="pa"> int | str = 4326</span>
+  </div>
+  <div class="param">
+    <span class="pn">to_crs_code</span>
+    <span class="pc">:</span>
+    <span class="pa"> int | str | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">custom_request</span>
+    <span class="pc">:</span>
+    <span class="pa"> str | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">simplify</span>
+    <span class="pc">:</span>
+    <span class="pa"> bool = True</span>
+  </div>
+  <div class="param">
+    <span class="pn">final_clean_distances</span>
+    <span class="pc">:</span>
+    <span class="pa"> tuple[int, ...] = (4, 8)</span>
+  </div>
+  <div class="param">
+    <span class="pn">remove_disconnected</span>
+    <span class="pc">:</span>
+    <span class="pa"> int = 100</span>
+  </div>
+  <div class="param">
+    <span class="pn">cycleways</span>
+    <span class="pc">:</span>
+    <span class="pa"> bool = True</span>
+  </div>
+  <div class="param">
+    <span class="pn">busways</span>
+    <span class="pc">:</span>
+    <span class="pa"> bool = False</span>
+  </div>
+  <div class="param">
+    <span class="pn">green_footways</span>
+    <span class="pc">:</span>
+    <span class="pa"> bool = False</span>
+  </div>
+  <div class="param">
+    <span class="pn">green_service_roads</span>
+    <span class="pc">:</span>
+    <span class="pa"> bool = False</span>
+  </div>
+  <div class="param">
+    <span class="pn">timeout</span>
+    <span class="pc">:</span>
+    <span class="pa"> int = 300</span>
+  </div>
+  <div class="param">
+    <span class="pn">max_tries</span>
+    <span class="pc">:</span>
+    <span class="pa"> int = 3</span>
+  </div>
+  <div class="param">
+    <span class="pn">overpass_url</span>
+    <span class="pc">:</span>
+    <span class="pa"> str | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">cache_path</span>
+    <span class="pc">:</span>
+    <span class="pa"> str | pathlib._local.Path | None = None</span>
+  </div>
+  <span class="pt">)->[</span>
+  <span class="pr">MultiGraph</span>
+  <span class="pt">]</span>
+</div>
+</div>
+<p>Prepares a <code>networkX</code> <code>MultiGraph</code> from an OSM request for the specified shapely polygon. This function will retrieve the OSM response and will automatically unpack this into a <code>networkX</code> graph. Simplification will be applied by default, but can be disabled.</p>
+<h3 id="parameters-4"><a aria-label="Link to this section" href="#parameters-4"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>Parameters</h3>
+<div class="param-set">
+  <div class="def">
+    <div class="name">poly_geom</div>
+    <div class="type">shapely.Polygon</div>
+  </div>
+  <div class="desc">
+<p>A shapely Polygon representing the extents for which to fetch the OSM network.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">poly_crs_code</div>
+    <div class="type">int | str</div>
+  </div>
+  <div class="desc">
+<p>An integer representing a valid EPSG code for the provided polygon. For example, <a href="https://epsg.io/4326">4326</a> if using WGS lng / lat, or <a href="https://epsg.io/27700">27700</a> if using the British National Grid.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">to_crs_code</div>
+    <div class="type">int | str</div>
+  </div>
+  <div class="desc">
+<p>An optional <code>pyproj</code> compatible <code>str</code> or <code>int</code> representing a valid CRS for the generated network returned from this function. If this parameter is provided, then the network will be converted to the specified CRS. If not provided, then the OSM network will be projected into a local UTM coordinate reference system.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">custom_request</div>
+    <div class="type">str</div>
+  </div>
+  <div class="desc">
+<p>An optional custom OSM request. If provided, this must include a “geom_osm” string formatting key for inserting the geometry passed to the OSM API query. See the discussion below.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">simplify</div>
+    <div class="type">bool</div>
+  </div>
+  <div class="desc">
+<p>Whether to automatically simplify the OSM graph.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">final_clean_distances</div>
+    <div class="type">tuple[int]</div>
+  </div>
+  <div class="desc">
+<p>A tuple of distances to use for the final cleaning step. These will be applied incrementally. (4, 8) by default.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">remove_disconnected</div>
+    <div class="type">int</div>
+  </div>
+  <div class="desc">
+<p>Remove disconnected components containing fewer nodes than specified. 100 nodes by default.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">cycleways</div>
+    <div class="type">bool</div>
+  </div>
+  <div class="desc">
+<p>Whether to include cycleways. True by default.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">busways</div>
+    <div class="type">bool</div>
+  </div>
+  <div class="desc">
+<p>Whether to include busways. False by default.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">green_footways</div>
+    <div class="type">bool</div>
+  </div>
+  <div class="desc">
+<p>Whether to include footways contained by green areas. When True, footways contained by green areas are kept but are labelled as <code>footway_green</code> and can be removed manually if required. False by default.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">green_service_roads</div>
+    <div class="type">bool</div>
+  </div>
+  <div class="desc">
+<p>Whether to include service roads contained by green areas. When True, service roads contained by green areas are kept but are labelled as <code>service_green</code> and can be removed manually if required. False by default.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">timeout</div>
+    <div class="type">int</div>
+  </div>
+  <div class="desc">
+<p>Timeout duration for API call in seconds.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">max_tries</div>
+    <div class="type">int</div>
+  </div>
+  <div class="desc">
+<p>The number of attempts to fetch a response before raising.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">overpass_url</div>
+    <div class="type">str | None</div>
+  </div>
+  <div class="desc">
+<p>The Overpass API endpoint. If not provided, the <code>CITYSEER_OVERPASS_URL</code> environment variable is used, falling back to <code>https://overpass-api.de/api/interpreter</code>. Pass a more generous mirror if the default rate-limits.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">cache_path</div>
+    <div class="type">str | Path | None</div>
+  </div>
+  <div class="desc">
+<p>An optional file path for caching the raw Overpass response. If the file exists it is loaded instead of querying the API; otherwise the response is fetched and written there. Commit the cache to make repeated or offline builds independent of the live API. Delete the file to force a refresh.</p></div><p></p>
+</div>
+<h3 id="returns-4"><a aria-label="Link to this section" href="#returns-4"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>Returns</h3>
+<div class="param-set">
+  <div class="def">
+    <div class="name"></div>
+    <div class="type">nx.MultiGraph</div>
+  </div>
+  <div class="desc">
+<p>A <code>networkX</code> <code>MultiGraph</code> with <code>x</code> and <code>y</code> node attributes that have been converted to UTM. The network will be simplified if the <code>simplify</code> parameter is <code>True</code>.</p></div><p></p>
+</div>
+<h3 id="notes"><a aria-label="Link to this section" href="#notes"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>Notes</h3>
+<p>If you wish to provide your own OSM request, then provide a valid OSM API request to the <code>custom_request</code> parameter. The string must contain a <code>geom_osm</code> f-string formatting key. This allows for the geometry parameter passed to the OSM API to be injected into the request. It is also recommended to not use the <code>skel</code> output option so that <code>cityseer</code> can use street name and highway reference information for cleaning purposes. See <a href="https://wiki.openstreetmap.org/wiki/Overpass_API/Overpass_QL">OSM Overpass</a> for experimenting with custom queries.</p>
+<p>The following is the default query which you can adapt for your purposes. Notice the <code>geom_osm</code> f-string interpolation key (for injecting the geometry) and the use of <code>out qt;</code> instead of <code>out skel qt;</code>.</p>
+<pre class="astro-code material-theme-darker" style="background-color:#212121;color:#EEFFFF; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="text"><code><span class="line"><span>/* https://wiki.openstreetmap.org/wiki/Overpass_API/Overpass_QL */</span></span>
+<span class="line"><span>[out:json];</span></span>
+<span class="line"><span>(way["highway"]</span></span>
+<span class="line"><span>    ["highway"!~"bus_guideway|busway|escape|raceway|proposed|planned|abandoned|platform|</span></span>
+<span class="line"><span>        emergency_bay|rest_area|disused|corridor|ladder|bus_stop|elevator|services"]</span></span>
+<span class="line"><span>    ["area"!="yes"]</span></span>
+<span class="line"><span>    ["footway"!="sidewalk"]</span></span>
+<span class="line"><span>    ["amenity"!~"charging_station|parking|fuel|motorcycle_parking|parking_entrance|parking_space"]</span></span>
+<span class="line"><span>    ["indoor"!="yes"]</span></span>
+<span class="line"><span>    ["level"!="-2"]</span></span>
+<span class="line"><span>    ["level"!="-3"]</span></span>
+<span class="line"><span>    ["level"!="-4"]</span></span>
+<span class="line"><span>    ["level"!="-5"](poly:"{geom_osm}");</span></span>
+<span class="line"><span>);</span></span>
+<span class="line"><span>out body;</span></span>
+<span class="line"><span>>;</span></span>
+<span class="line"><span>out qt;</span></span></code></pre>
+</div>
+<div class="function">
+<h2 id="nx-from-osm"><a aria-label="Link to this section" href="#nx-from-osm"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>nx_from_osm</h2>
+<div class="content">
+<span class="name">nx_from_osm</span><div class="signature">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">osm_json</span>
+    <span class="pc">:</span>
+    <span class="pa"> str</span>
+  </div>
+  <span class="pt">)->[</span>
+  <span class="pr">MultiGraph</span>
+  <span class="pt">]</span>
+</div>
+</div>
+<p>Generate a <code>NetworkX</code> <code>MultiGraph</code> from <a href="https://www.openstreetmap.org">Open Street Map</a> data.</p>
+<h3 id="parameters-5"><a aria-label="Link to this section" href="#parameters-5"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>Parameters</h3>
+<div class="param-set">
+  <div class="def">
+    <div class="name">osm_json</div>
+    <div class="type">str</div>
+  </div>
+  <div class="desc">
+<p>A <code>json</code> string response from the <a href="https://wiki.openstreetmap.org/wiki/Overpass_API">OSM overpass API</a>, consisting of <code>nodes</code> and <code>ways</code>.</p></div><p></p>
+</div>
+<h3 id="returns-5"><a aria-label="Link to this section" href="#returns-5"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>Returns</h3>
+<div class="param-set">
+  <div class="def">
+    <div class="name"></div>
+    <div class="type">nx.MultiGraph</div>
+  </div>
+  <div class="desc">
+<p>A <code>NetworkX</code> <code>MultiGraph</code> with <code>x</code> and <code>y</code> attributes in <a href="https://epsg.io/4326">WGS84</a> <code>lng</code>, <code>lat</code> geographic coordinates.</p></div><p></p>
+</div>
+</div>
+<div class="function">
+<h2 id="nx-from-osm-nx"><a aria-label="Link to this section" href="#nx-from-osm-nx"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>nx_from_osm_nx</h2>
+<div class="content">
+<span class="name">nx_from_osm_nx</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">nx_multidigraph</span>
+    <span class="pc">:</span>
+    <span class="pa"> networkx.classes.multidigraph.MultiDiGraph</span>
+  </div>
+  <div class="param">
+    <span class="pn">node_attributes</span>
+    <span class="pc">:</span>
+    <span class="pa"> list[str] | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">edge_attributes</span>
+    <span class="pc">:</span>
+    <span class="pa"> list[str] | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">tolerance</span>
+    <span class="pc">:</span>
+    <span class="pa"> float = 0.01</span>
+  </div>
+  <div class="param">
+    <span class="pn">directed</span>
+    <span class="pc">:</span>
+    <span class="pa"> bool = False</span>
+  </div>
+  <span class="pt">)->[</span>
+  <span class="pr">MultiGraph</span>
+  <span class="pt">]</span>
+</div>
+</div>
+<p>Copy an <a href="https://osmnx.readthedocs.io/"><code>OSMnx</code></a> directed <code>MultiDiGraph</code> to a <code>cityseer</code> compatible graph. When <code>directed=False</code> (default), converts to an undirected <code>MultiGraph</code>. When <code>directed=True</code>, preserves edge directionality as a <code>MultiDiGraph</code>.</p>
+<p>See the <a href="/guide/networks#from-openstreetmap-via-osmnx"><code>OSMnx</code></a> section of the guide for a more general discussion (and example) on workflows combining <code>OSMnx</code> with <code>cityseer</code>.</p>
+<p><code>x</code> and <code>y</code> node attributes will be copied directly and <code>geometry</code> edge attributes will be copied to a <code>geom</code> edge attribute. The conversion process will snap the <code>shapely</code> <code>LineString</code> endpoints to the corresponding start and end node coordinates.</p>
+<p>Note that <code>OSMnx</code> <code>geometry</code> attributes only exist for simplified edges: if a <code>geometry</code> edge attribute is not found, then a simple (straight) <code>shapely</code> <code>LineString</code> geometry will be inferred from the respective start and end nodes.</p>
+<p>Other attributes will be ignored to avoid potential downstream misinterpretations of the attributes as a consequence of subsequent steps of graph manipulation, i.e. to avoid situations where attributes may fall out of lock-step with the state of the graph. If particular attributes need to be copied across, and assuming cognisance of downstream implications, then these can be manually specified by providing a list of node attributes keys per the <code>node_attributes</code> parameter or edge attribute keys per the <code>edge_attributes</code> parameter.</p>
+<h3 id="parameters-6"><a aria-label="Link to this section" href="#parameters-6"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>Parameters</h3>
+<div class="param-set">
+  <div class="def">
+    <div class="name">nx_multidigraph</div>
+    <div class="type">MultiDiGraph</div>
+  </div>
+  <div class="desc">
+<p>A <code>OSMnx</code> derived <code>networkX</code> <code>MultiDiGraph</code> containing <code>x</code> and <code>y</code> node attributes, with optional <code>geometry</code> edge attributes containing <code>LineString</code> geoms (for simplified edges).</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">node_attributes</div>
+    <div class="type">tuple[str]</div>
+  </div>
+  <div class="desc">
+<p>Optional node attributes to copy to the new MultiGraph. (In addition to the default <code>x</code> and <code>y</code> attributes.)</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">edge_attributes</div>
+    <div class="type">tuple[str]</div>
+  </div>
+  <div class="desc">
+<p>Optional edge attributes to copy to the new MultiGraph. (In addition to the optional <code>geometry</code> attribute.)</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">tolerance</div>
+    <div class="type">float</div>
+  </div>
+  <div class="desc">
+<p>Tolerance at which to raise errors for mismatched geometry end-points vis-a-vis corresponding node coordinates. Prior to conversion, this method will check edge geometry end-points for alignment with the corresponding end-point nodes. Where these don’t align within the given tolerance an exception will be raised. Otherwise, if within the tolerance, the conversion function will snap the geometry end-points to the corresponding node coordinates so that downstream exceptions are not subsequently raised. It is preferable to minimise graph manipulation prior to conversion to a <code>cityseer</code> compatible <code>MultiGraph</code> otherwise particularly large tolerances may be required, and this may lead to some unexpected or undesirable effects due to aggressive snapping.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">directed</div>
+    <div class="type">bool</div>
+  </div>
+  <div class="desc">
+<p>If <code>True</code>, return a <code>MultiDiGraph</code> preserving one-way edge directionality from OSMnx. If <code>False</code> (default), return an undirected <code>MultiGraph</code>.</p></div><p></p>
+</div>
+<h3 id="returns-6"><a aria-label="Link to this section" href="#returns-6"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>Returns</h3>
+<div class="param-set">
+  <div class="def">
+    <div class="name"></div>
+    <div class="type">nx.MultiGraph | nx.MultiDiGraph</div>
+  </div>
+  <div class="desc">
+<p>A <code>cityseer</code> compatible <code>networkX</code> graph with <code>x</code> and <code>y</code> node attributes and <code>geom</code> edge attributes.</p></div><p></p>
+</div>
+</div>
+<div class="function">
+<h2 id="nx-from-open-roads"><a aria-label="Link to this section" href="#nx-from-open-roads"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>nx_from_open_roads</h2>
+<div class="content">
+<span class="name">nx_from_open_roads</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">open_roads_path</span>
+    <span class="pc">:</span>
+    <span class="pa"> str | pathlib._local.Path</span>
+  </div>
+  <div class="param">
+    <span class="pn">road_node_layer_key</span>
+    <span class="pc">:</span>
+    <span class="pa"> str = 'road_node'</span>
+  </div>
+  <div class="param">
+    <span class="pn">road_link_layer_key</span>
+    <span class="pc">:</span>
+    <span class="pa"> str = 'road_link'</span>
+  </div>
+  <div class="param">
+    <span class="pn">target_bbox</span>
+    <span class="pc">:</span>
+    <span class="pa"> tuple[int, int, int, int] | tuple[float, float, float, float] | None = None</span>
+  </div>
+  <span class="pt">)->[</span>
+  <span class="pr">MultiGraph</span>
+  <span class="pt">]</span>
+</div>
+</div>
+<p>Generates a <code>networkX</code> <code>MultiGraph</code> from an OS Open Roads dataset.</p>
+<h3 id="parameters-7"><a aria-label="Link to this section" href="#parameters-7"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>Parameters</h3>
+<div class="param-set">
+  <div class="def">
+    <div class="name">open_roads_path</div>
+    <div class="type">str | Path</div>
+  </div>
+  <div class="desc">
+<p>A valid relative filepath from which to load the OS Open Roads dataset.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">target_bbox</div>
+    <div class="type">tuple[int]</div>
+  </div>
+  <div class="desc">
+<p>A tuple of integers or floats representing the <code>(minx, miny, maxx, maxy)</code> bounding box extents for which to load the dataset, as expected by <code>geopandas.read_file</code>. Set to <code>None</code> for no bounding box.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">road_node_layer_key</div>
+    <div class="type">str</div>
+  </div>
+  <div class="desc">
+<p>The <code>GPKG</code> layer key for the OS Open Roads road nodes layer. This may change from time to time.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">road_link_layer_key</div>
+    <div class="type">str</div>
+  </div>
+  <div class="desc">
+<p>The <code>GPKG</code> layer key for the OS Open Roads road links layer. This may change from time to time.</p></div><p></p>
+</div>
+<h3 id="returns-7"><a aria-label="Link to this section" href="#returns-7"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>Returns</h3>
+<div class="param-set">
+  <div class="def">
+    <div class="name"></div>
+    <div class="type">nx.MultiGraph</div>
+  </div>
+  <div class="desc">
+<p>A <code>cityseer</code> compatible <code>networkX</code> graph with <code>x</code> and <code>y</code> node attributes and <code>geom</code> edge attributes.</p></div><p></p>
+</div>
+</div>
+<div class="function">
+<h2 id="network-structure-from-nx"><a aria-label="Link to this section" href="#network-structure-from-nx"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>network_structure_from_nx</h2>
+<div class="content">
+<span class="name">network_structure_from_nx</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">nx_multigraph</span>
+    <span class="pc">:</span>
+    <span class="pa"> networkx.classes.multigraph.MultiGraph</span>
+  </div>
+  <div class="param">
+    <span class="pn">crs</span>
+    <span class="pc">:</span>
+    <span class="pa"> None = None</span>
+  </div>
+  <span class="pt">)->[</span>
+  <span class="pr">GeoDataFrame</span>
+  <span class="pr">GeoDataFrame</span>
+  <span class="pr">NetworkStructure</span>
+  <span class="pt">]</span>
+</div>
+</div>
+<p>Transpose a <code>networkX</code> <code>MultiGraph</code> (or <code>MultiDiGraph</code>) into a <code>gpd.GeoDataFrame</code> and <code>NetworkStructure</code> for use by <code>cityseer</code>.</p>
+<p>Calculates length and angle attributes, as well as in and out bearings, and stores this information in the returned data maps. Optional <code>z</code> node attributes (elevation) are supported; when present on both endpoints of an edge, a slope-based walking impedance (Tobler’s hiking function) is automatically applied during centrality computations.</p>
+<p>When a <code>MultiDiGraph</code> is passed, the resulting <code>NetworkStructure</code> will be marked as directed and edges will respect the graph’s edge directionality. Note that the graph cleaning and simplification functions in the <code>graphs</code> module do not preserve directionality, so a <code>MultiDiGraph</code> should not be passed through those functions before calling this method.</p>
+<h3 id="parameters-8"><a aria-label="Link to this section" href="#parameters-8"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>Parameters</h3>
+<div class="param-set">
+  <div class="def">
+    <div class="name">nx_multigraph</div>
+    <div class="type">nx.MultiGraph</div>
+  </div>
+  <div class="desc">
+<p>A <code>networkX</code> <code>MultiGraph</code> or <code>MultiDiGraph</code> in a projected coordinate system, containing <code>x</code> and <code>y</code> node attributes, and <code>geom</code> edge attributes containing <code>LineString</code> geoms. Nodes may optionally include a <code>z</code> attribute for elevation. When a <code>MultiDiGraph</code> is provided, the resulting <code>NetworkStructure</code> is directed.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">crs</div>
+    <div class="type">None</div>
+  </div>
+  <div class="desc">
+<p>The <code>crs</code> parameter is deprecated and will be removed in a future release. If your network is generated via cityseer from OSM or GeoPandas then CRS handling is automatic. Otherwise, the CRS can be set directly in the graph if necessary at G.graph[“crs”]; for example: G.graph[“crs”] = 4326</p></div><p></p>
+</div>
+<h3 id="returns-8"><a aria-label="Link to this section" href="#returns-8"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>Returns</h3>
+<div class="param-set">
+  <div class="def">
+    <div class="name"></div>
+    <div class="type">gpd.GeoDataFrame</div>
+  </div>
+  <div class="desc">
+<p>A <code>gpd.GeoDataFrame</code> with <code>live</code>, <code>weight</code>, and <code>geometry</code> attributes. The original <code>networkX</code> graph’s node keys will be used for the <code>GeoDataFrame</code> index. If <code>nx_multigraph</code> is a dual graph prepared with <a href="/tools/graphs#nx-to-dual"><code>graphs.nx_to_dual</code></a> then the corresponding primal edge <code>LineString</code> geometry will be set as the <code>GeoPandas</code> geometry for visualisation purposes using <code>primal_edge</code> for the column name. The dual node <code>Point</code> geometry will be saved in <code>WKT</code> format to the <code>dual_node</code> column.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name"></div>
+    <div class="type">gpd.GeoDataFrame</div>
+  </div>
+  <div class="desc">
+<p>A <code>gpd.GeoDataFrame</code> with <code>ns_edge_idx</code>, <code>start_ns_node_idx</code>, <code>end_ns_node_idx</code>, <code>edge_idx</code>, <code>nx_start_node_key</code> ,<code>nx_end_node_key</code>, <code>imp_factor</code>, <code>total_bearing</code>, <code>geom</code> attributes.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name"></div>
+    <div class="type">rustalgos.graph.NetworkStructure</div>
+  </div>
+  <div class="desc">
+<p>A <a href="/rustalgos/graph#networkstructure"><code>rustalgos.graph.NetworkStructure</code></a> instance.</p></div><p></p>
+</div>
+</div>
+<div class="function">
+<h2 id="network-structure-from-gpd"><a aria-label="Link to this section" href="#network-structure-from-gpd"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>network_structure_from_gpd</h2>
+<div class="content">
+<span class="name">network_structure_from_gpd</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">nodes_gdf</span>
+    <span class="pc">:</span>
+    <span class="pa"> geopandas.geodataframe.GeoDataFrame</span>
+  </div>
+  <div class="param">
+    <span class="pn">edges_gdf</span>
+    <span class="pc">:</span>
+    <span class="pa"> geopandas.geodataframe.GeoDataFrame</span>
+  </div>
+  <span class="pt">)->[</span>
+  <span class="pr">NetworkStructure</span>
+  <span class="pt">]</span>
+</div>
+</div>
+<p>Reassembles a <code>NetworkStructure</code> from cityseer nodes and edges GeoDataFrames. This method is intended for use with “circular” workflows, where a <code>cityseer</code> NetworkX graph has been converted into <code>cityseer</code> nodes and edges GeoDataFrames using <a href="#network-structure-from-nx"><code>network_structure_from_nx</code></a>. If the resultant GeoDataFrames are saved to disk and reloaded, then this method can be used to recreate the associated <code>NetworkStructure</code> which is required for optimised (<code>rust</code>) functions.</p>
+<h3 id="parameters-9"><a aria-label="Link to this section" href="#parameters-9"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>Parameters</h3>
+<div class="param-set">
+  <div class="def">
+    <div class="name">nodes_gdf</div>
+    <div class="type">gpd.GeoDataFrame</div>
+  </div>
+  <div class="desc">
+<p>A cityseer created nodes <code>gpd.GeoDataFrame</code> where the originating <code>networkX</code> graph’s node keys have been saved as the DataFrame index, and where the columns contain <code>x</code>, <code>y</code>, <code>live</code>, and <code>weight</code> attributes.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">edges_gdf</div>
+    <div class="type">gpd.GeoDataFrame</div>
+  </div>
+  <div class="desc">
+<p>A cityseer created edges <code>gpd.GeoDataFrame</code> with <code>start_ns_node_idx</code>, <code>end_ns_node_idx</code>, <code>edge_idx</code>, <code>nx_start_node_key</code>, <code>nx_end_node_key</code>, <code>imp_factor</code> attributes.</p></div><p></p>
+</div>
+<h3 id="returns-9"><a aria-label="Link to this section" href="#returns-9"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>Returns</h3>
+<div class="param-set">
+  <div class="def">
+    <div class="name"></div>
+    <div class="type">rustalgos.graph.NetworkStructure</div>
+  </div>
+  <div class="desc">
+<p>A <a href="/rustalgos/graph#networkstructure"><code>rustalgos.graph.NetworkStructure</code></a> instance.</p></div><p></p>
+</div>
+</div>
+<div class="function">
+<h2 id="add-transport-gtfs"><a aria-label="Link to this section" href="#add-transport-gtfs"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>add_transport_gtfs</h2>
+<div class="content">
+<span class="name">add_transport_gtfs</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">gtfs_data_path</span>
+    <span class="pc">:</span>
+    <span class="pa"> str</span>
+  </div>
+  <div class="param">
+    <span class="pn">network_structure</span>
+    <span class="pc">:</span>
+    <span class="pa"> NetworkStructure</span>
+  </div>
+  <div class="param">
+    <span class="pn">network_crs</span>
+    <span class="pc">:</span>
+    <span class="pa"> int</span>
+  </div>
+  <div class="param">
+    <span class="pn">max_netw_assign_dist</span>
+    <span class="pc">:</span>
+    <span class="pa"> int = 400</span>
+  </div>
+  <span class="pt">)->[</span>
+  <span class="pr">NetworkStructure</span>
+  <span class="pr">DataFrame</span>
+  <span class="pr">DataFrame</span>
+  <span class="pt">]</span>
+</div>
+</div>
+<p>Add GTFS data to network structure. > This function is still in development and may change in future releases. Testing is ongoing.</p>
+</div>
+<div class="function">
+<h2 id="nx-from-cityseer-geopandas"><a aria-label="Link to this section" href="#nx-from-cityseer-geopandas"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>nx_from_cityseer_geopandas</h2>
+<div class="content">
+<span class="name">nx_from_cityseer_geopandas</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">nodes_gdf</span>
+    <span class="pc">:</span>
+    <span class="pa"> geopandas.geodataframe.GeoDataFrame</span>
+  </div>
+  <div class="param">
+    <span class="pn">edges_gdf</span>
+    <span class="pc">:</span>
+    <span class="pa"> geopandas.geodataframe.GeoDataFrame</span>
+  </div>
+  <span class="pt">)->[</span>
+  <span class="pr">MultiGraph</span>
+  <span class="pt">]</span>
+</div>
+</div>
+<p>Write <code>cityseer</code> nodes and edges <code>GeoDataFrames</code> to a <code>networkX</code> <code>MultiGraph</code>. This method is intended for use with “circular” workflows, where a <code>cityseer</code> NetworkX graph has been converted into <code>cityseer</code> nodes and edges GeoDataFrames using <a href="#network-structure-from-nx"><code>network_structure_from_nx</code></a>. Once metrics have been computed then this method can be used to convert the nodes and edges GeoDataFrames back into a <code>cityseer</code> compatible <code>networkX</code> graph with the computed metrics intact. This is useful when intending to visualise or export the metrics as a <code>networkX</code> graph.</p>
+<p>If importing a generic <code>gpd.GeoDataFrame</code> LineString dataset, then use the <a href="#nx-from-generic-geopandas">nx_from_generic_geopandas</a> instead.</p>
+<h3 id="parameters-10"><a aria-label="Link to this section" href="#parameters-10"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>Parameters</h3>
+<div class="param-set">
+  <div class="def">
+    <div class="name">nodes_gdf</div>
+    <div class="type">gpd.GeoDataFrame</div>
+  </div>
+  <div class="desc">
+<p>A <code>gpd.GeoDataFrame</code> with <code>live</code>, <code>weight</code>, and Point <code>geometry</code> attributes. The index will be used for the returned <code>networkX</code> graph’s node keys.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">edges_gdf</div>
+    <div class="type">gpd.GeoDataFrame</div>
+  </div>
+  <div class="desc">
+<p>An edges <code>gpd.GeoDataFrame</code> as derived from <a href="#network-structure-from-nx"><code>network_structure_from_nx</code></a>.</p></div><p></p>
+</div>
+<h3 id="returns-10"><a aria-label="Link to this section" href="#returns-10"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>Returns</h3>
+<div class="param-set">
+  <div class="def">
+    <div class="name"></div>
+    <div class="type">nx.MultiGraph</div>
+  </div>
+  <div class="desc">
+<p>A <code>networkX</code> graph with geometries and attributes as copied from the input <code>GeoDataFrames</code>.</p></div><p></p>
+</div>
+</div>
+<div class="function">
+<h2 id="geopandas-from-nx"><a aria-label="Link to this section" href="#geopandas-from-nx"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>geopandas_from_nx</h2>
+<div class="content">
+<span class="name">geopandas_from_nx</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">nx_multigraph</span>
+    <span class="pc">:</span>
+    <span class="pa"> networkx.classes.multigraph.MultiGraph</span>
+  </div>
+  <div class="param">
+    <span class="pn">crs</span>
+    <span class="pc">:</span>
+    <span class="pa"> None = None</span>
+  </div>
+  <span class="pt">)->[</span>
+  <span class="pr">GeoDataFrame</span>
+  <span class="pt">]</span>
+</div>
+</div>
+<p>Transpose a <code>cityseer</code> <code>networkX</code> <code>MultiGraph</code> into a <code>gpd.GeoDataFrame</code> representing the network edges. Converts the <code>geom</code> attribute attached to each edge into a GeoPandas GeoDataFrame. This is useful when inspecting or cleaning the network in QGIS. It can then be reimported with <a href="#nx-from-generic-geopandas"><code>nx_from_generic_geopandas</code></a></p>
+<h3 id="parameters-11"><a aria-label="Link to this section" href="#parameters-11"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>Parameters</h3>
+<div class="param-set">
+  <div class="def">
+    <div class="name">nx_multigraph</div>
+    <div class="type">nx.MultiGraph</div>
+  </div>
+  <div class="desc">
+<p>A <code>networkX</code> <code>MultiGraph</code> in a projected coordinate system, containing <code>x</code> and <code>y</code> node attributes, and <code>geom</code> edge attributes containing <code>LineString</code> geoms.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">crs</div>
+    <div class="type">None</div>
+  </div>
+  <div class="desc">
+<p>The <code>crs</code> parameter is deprecated and will be removed in a future release. If your network is generated via cityseer from OSM or GeoPandas then CRS handling is automatic. Otherwise, the CRS can be set directly in the graph if necessary at G.graph[“crs”]; for example: G.graph[“crs”] = 4326</p></div><p></p>
+</div>
+<h3 id="returns-11"><a aria-label="Link to this section" href="#returns-11"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>Returns</h3>
+<div class="param-set">
+  <div class="def">
+    <div class="name"></div>
+    <div class="type">gpd.GeoDataFrame</div>
+  </div>
+  <div class="desc">
+<p>A <code>gpd.GeoDataFrame</code> with <code>edge_idx</code> and <code>geom</code> attributes.</p></div><p></p>
+</div>
+</div>
+<div class="function">
+<h2 id="nx-from-generic-geopandas"><a aria-label="Link to this section" href="#nx-from-generic-geopandas"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>nx_from_generic_geopandas</h2>
+<div class="content">
+<span class="name">nx_from_generic_geopandas</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">gdf_network</span>
+    <span class="pc">:</span>
+    <span class="pa"> geopandas.geodataframe.GeoDataFrame</span>
+  </div>
+  <div class="param">
+    <span class="pn">drop_self_loops_dist</span>
+    <span class="pc">:</span>
+    <span class="pa"> int = 50</span>
+  </div>
+  <span class="pt">)->[</span>
+  <span class="pr">MultiGraph</span>
+  <span class="pt">]</span>
+</div>
+</div>
+<p>Converts a generic LineString <code>gpd.GeoDataFrame</code> to a <code>cityseer</code> compatible <code>networkX</code> <code>MultiGraph</code>. The <code>gpd.GeoDataFrame</code> should be provided in the “primal” form, where edges represent LineString geometries.</p>
+<h3 id="parameters-12"><a aria-label="Link to this section" href="#parameters-12"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>Parameters</h3>
+<div class="param-set">
+  <div class="def">
+    <div class="name">gdf_network</div>
+    <div class="type">gpd.GeoDataFrame</div>
+  </div>
+  <div class="desc">
+<p>A LineString <code>gpd.GeoDataFrame</code>.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">drop_self_loops_dist</div>
+    <div class="type">int</div>
+  </div>
+  <div class="desc">
+<p>Drop looping street segments shorter than specified distance. 20m by default.</p></div><p></p>
+</div>
+<h3 id="returns-12"><a aria-label="Link to this section" href="#returns-12"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>Returns</h3>
+<div class="param-set">
+  <div class="def">
+    <div class="name"></div>
+    <div class="type">nx.MultiGraph</div>
+  </div>
+  <div class="desc">
+<p>A <code>cityseer</code> compatible <code>networkX</code> graph with <code>x</code> and <code>y</code> node attributes and <code>geom</code> edge attributes.</p></div><p></p>
+</div>
+</div>
+</section> <div class="w-full flex items-center pt-12"> <footer class="text-xxs font-light text-light-grey">
+Copyright © 2018-present Gareth Simons
+</footer> </div> </div> </div>  </main> </body> </html>

@@ -1,0 +1,972 @@
+<!DOCTYPE html><html lang="en-GB" data-astro-cid-dmey6y7i> <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="author" content="Benchmark Urbanism (Cityseer Ltd.)"><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"><!-- favicons --><link rel="icon" href="/favicons/favicon.ico"><link rel="icon" href="/favicons/icon.svg" type="image/svg+xml"><link rel="apple-touch-icon" href="/favicons/apple-touch-icon.png"><link rel="manifest" href="/manifest.webmanifest"><link rel="preconnect" href="https://fonts.gstatic.com"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Raleway:ital,wght@0,200;0,300;0,400;0,500;0,600;0,700;1,300&display=swap"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@200;300;400;500;600;700&display=swap"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16/dist/katex.min.css"><!-- SEO --><title>cityseer — plot</title><meta name="description" content="API reference for cityseer.tools.plot: plotting utilities for network visualisation."><meta name="keywords" content="cityseer, urban, metrics, analytics, network analysis, centrality, accessibility, pedestrian, urban design, planning, GIS, Python, Rust"><link rel="canonical" href="https://cityseer.benchmarkurbanism.com/tools/plot"><!-- Open Graph --><meta property="og:title" content="cityseer — plot"><meta property="og:description" content="API reference for cityseer.tools.plot: plotting utilities for network visualisation."><meta property="og:type" content="website"><meta property="og:url" content="https://cityseer.benchmarkurbanism.com/tools/plot"><meta property="og:image" content="https://cityseer.benchmarkurbanism.com/logos/cityseer_logo_light_red.png"><meta property="og:site_name" content="cityseer"><meta property="og:locale" content="en_GB"><!-- Twitter Card --><meta name="twitter:card" content="summary"><meta name="twitter:title" content="cityseer — plot"><meta name="twitter:description" content="API reference for cityseer.tools.plot: plotting utilities for network visualisation."><meta name="twitter:image" content="https://cityseer.benchmarkurbanism.com/logos/cityseer_logo_light_red.png"><!-- JSON-LD Structured Data --><script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"cityseer","applicationCategory":"DeveloperApplication","operatingSystem":"Cross-platform","url":"https://cityseer.benchmarkurbanism.com","description":"Cityseer API is a collection of computational tools for fine-grained network and land-use analysis, useful for assessing the morphological precursors to vibrant neighbourhoods. It is underpinned by rigorous network-based methods that have been developed from the ground-up specifically for hyperlocal analysis at the pedestrian scale.","author":{"@type":"Organization","name":"Benchmark Urbanism","url":"https://benchmarkurbanism.com"},"license":"https://www.gnu.org/licenses/agpl-3.0.html","programmingLanguage":["Python","Rust"],"offers":{"@type":"Offer","price":"0","priceCurrency":"USD"}}</script><link rel="stylesheet" href="/_astro/CommonLayout.DvW0gENx.css"><style>/*! tailwindcss v4.3.2 | MIT License | https://tailwindcss.com */
+@layer properties{@supports (((-webkit-hyphens:none)) and (not (margin-trim:inline))) or ((-moz-orient:inline) and (not (color:rgb(from red r g b)))){*,:before,:after,::backdrop{--tw-scale-x:1;--tw-scale-y:1;--tw-scale-z:1;--tw-border-style:solid}}}#repo-link[data-astro-cid-gf3o2gw7]{width:100%;color:var(--color-light-grey,#a8a8a8);transition-property:all;transition-timing-function:var(--tw-ease,var(--default-transition-timing-function,cubic-bezier(.4, 0, .2, 1)));transition-duration:var(--tw-duration,var(--default-transition-duration,.15s));flex-direction:column;align-items:center;display:flex}#repo-link[data-astro-cid-gf3o2gw7]:hover{--tw-scale-x:105%;--tw-scale-y:105%;--tw-scale-z:105%;scale:var(--tw-scale-x) var(--tw-scale-y);color:var(--color-theme,#d32333)}@property --tw-scale-x{syntax:"*";inherits:false;initial-value:1}@property --tw-scale-y{syntax:"*";inherits:false;initial-value:1}@property --tw-scale-z{syntax:"*";inherits:false;initial-value:1}#stripe[data-astro-cid-ddyhvr7a]{border-left-style:var(--tw-border-style);border-left-width:1px;border-color:var(--border-color-mid-grey,#404040);padding-inline:var(--spacing,.25rem);padding-block:calc(var(--spacing,.25rem) * 3);writing-mode:vertical-lr;position:sticky;top:0}@property --tw-border-style{syntax:"*";inherits:false;initial-value:solid}
+</style><link rel="stylesheet" href="/_astro/PageLayout.CXkTWSKU.css"><script type="module" src="/_astro/page.CZ9xv0XX.js"></script></head> <body data-astro-cid-dmey6y7i> <main id="app-container" data-astro-cid-dmey6y7i>  <div id="cols" data-astro-cid-xa52sxzc> <div id="nav-col" data-astro-cid-xa52sxzc> <div class="flex flex-col items-end object-contain" data-astro-cid-xa52sxzc> <a href="/" title="home" class="object-contain transition-all hover:scale-105" data-astro-cid-xa52sxzc> <img src="/_astro/cityseer_logo_light_red.CnItq_gG.png" alt="logo" class="h-full w-full max-w-xs px-4 py-10" data-astro-cid-xa52sxzc> </a> <div id="site-search" class="w-full px-4 pb-2"></div> <script type="module">var e=(function(){let e=typeof document<`u`&&document.createElement(`link`).relList;return e&&e.supports&&e.supports(`modulepreload`)?`modulepreload`:`preload`})(),t=function(e){return`/`+e},n={},r=function(r,i,a){let o=Promise.resolve();if(i&&i.length>0){let r=document.getElementsByTagName(`link`),s=document.querySelector(`meta[property=csp-nonce]`),c=s?.nonce||s?.getAttribute(`nonce`);function l(e){return Promise.all(e.map(e=>Promise.resolve(e).then(e=>({status:`fulfilled`,value:e}),e=>({status:`rejected`,reason:e}))))}function u(e){return import.meta.resolve?import.meta.resolve(e):new URL(e,new URL(`../../../src/node/plugins/importAnalysisBuild.ts`,import.meta.url)).href}o=l(i.map(i=>{if(i=t(i,a),i=u(i),i in n)return;n[i]=!0;let o=i.endsWith(`.css`);for(let e=r.length-1;e>=0;e--){let t=r[e];if(t.href===i&&(!o||t.rel===`stylesheet`))return}let s=document.createElement(`link`);if(s.rel=o?`stylesheet`:e,o||(s.as=`script`),s.crossOrigin=``,s.href=i,c&&s.setAttribute(`nonce`,c),document.head.appendChild(s),o)return new Promise((e,t)=>{s.addEventListener(`load`,e),s.addEventListener(`error`,()=>t(Error(`Unable to preload CSS for ${i}`)))})}))}function s(e){let t=new Event(`vite:preloadError`,{cancelable:!0});if(t.payload=e,window.dispatchEvent(t),!t.defaultPrevented)throw e}return o.then(e=>{for(let t of e||[])t.status===`rejected`&&s(t.reason);return r().catch(s)})};(async()=>{let e=document.getElementById(`site-search`);if(e)try{await r(()=>import(`/pagefind/pagefind-ui.js`),__VITE_PRELOAD__);let e=window.PagefindUI;if(!e)throw Error(`PagefindUI unavailable`);let t=document.createElement(`link`);t.rel=`stylesheet`,t.href=`/pagefind/pagefind-ui.css`,document.head.appendChild(t),new e({element:`#site-search`,showImages:!1,showSubResults:!0,resetStyles:!1})}catch{e.style.display=`none`}})();</script> <style>astro-island,astro-slot,astro-static-slot{display:contents}</style><script>(()=>{var a=(s,i,o)=>{let r=async()=>{await(await s())()},t=typeof i.value=="object"?i.value:void 0,c={rootMargin:t==null?void 0:t.rootMargin},n=new IntersectionObserver(e=>{for(let l of e)if(l.isIntersecting){n.disconnect(),r();break}},c);for(let e of o.children)n.observe(e)};(self.Astro||(self.Astro={})).visible=a;window.dispatchEvent(new Event("astro:visible"));})();</script><script>(()=>{var g=Object.defineProperty;var w=(c,s,d)=>s in c?g(c,s,{enumerable:!0,configurable:!0,writable:!0,value:d}):c[s]=d;var l=(c,s,d)=>w(c,typeof s!="symbol"?s+"":s,d);var E=new Set(["__proto__","constructor","prototype"]);{let c={0:t=>y(t),1:t=>d(t),2:t=>new RegExp(t),3:t=>new Date(t),4:t=>new Map(d(t)),5:t=>new Set(d(t)),6:t=>BigInt(t),7:t=>new URL(t),8:t=>new Uint8Array(t),9:t=>new Uint16Array(t),10:t=>new Uint32Array(t),11:t=>Number.POSITIVE_INFINITY*t},s=t=>{let[p,e]=t;return p in c?c[p](e):void 0},d=t=>t.map(s),y=t=>typeof t!="object"||t===null?t:Object.fromEntries(Object.entries(t).map(([p,e])=>[p,s(e)]));class f extends HTMLElement{constructor(){super(...arguments);l(this,"Component");l(this,"hydrator");l(this,"hydrate",async()=>{var b;if(!this.hydrator||!this.isConnected)return;let e=(b=this.parentElement)==null?void 0:b.closest("astro-island[ssr]");if(e){e.addEventListener("astro:hydrate",this.hydrate,{once:!0});return}let n=this.querySelectorAll("astro-slot"),r={},i=this.querySelectorAll("template[data-astro-template]");for(let o of i){let a=o.closest(this.tagName);a!=null&&a.isSameNode(this)&&(r[o.getAttribute("data-astro-template")||"default"]=o.innerHTML,o.remove())}for(let o of n){let a=o.closest(this.tagName);a!=null&&a.isSameNode(this)&&(r[o.getAttribute("name")||"default"]=o.innerHTML)}let u;try{u=this.hasAttribute("props")?y(JSON.parse(this.getAttribute("props"))):{}}catch(o){let a=this.getAttribute("component-url")||"<unknown>",v=this.getAttribute("component-export");throw v&&(a+=` (export ${v})`),console.error(`[hydrate] Error parsing props for component ${a}`,this.getAttribute("props"),o),o}let h;await this.hydrator(this)(this.Component,u,r,{client:this.getAttribute("client")}),this.removeAttribute("ssr"),this.dispatchEvent(new CustomEvent("astro:hydrate"))});l(this,"unmount",()=>{this.isConnected||this.dispatchEvent(new CustomEvent("astro:unmount"))})}disconnectedCallback(){document.removeEventListener("astro:after-swap",this.unmount),document.addEventListener("astro:after-swap",this.unmount,{once:!0})}connectedCallback(){if(!this.hasAttribute("await-children")||document.readyState==="interactive"||document.readyState==="complete")this.childrenConnectedCallback();else{let e=()=>{document.removeEventListener("DOMContentLoaded",e),n.disconnect(),this.childrenConnectedCallback()},n=new MutationObserver(()=>{var r;((r=this.lastChild)==null?void 0:r.nodeType)===Node.COMMENT_NODE&&this.lastChild.nodeValue==="astro:end"&&(this.lastChild.remove(),e())});n.observe(this,{childList:!0}),document.addEventListener("DOMContentLoaded",e)}}async childrenConnectedCallback(){let e=this.getAttribute("before-hydration-url");e&&await import(e),this.start()}getRetryImportUrl(e){let n=new URL(e,document.baseURI),r=`astro-retry=${Date.now()}`,i=n.hash.replace(/^#/,"");return n.hash=i?`${i}&${r}`:r,n.toString()}async importWithRetry(e){try{return await import(e)}catch(n){return await new Promise(r=>setTimeout(r,1e3)),import(this.getRetryImportUrl(e))}}handleHydrationError(e){let n=this.getAttribute("component-url"),r=new CustomEvent("astro:hydration-error",{cancelable:!0,bubbles:!0,composed:!0,detail:{error:e,componentUrl:n}});this.dispatchEvent(r)&&console.error(`[astro-island] Error hydrating ${n}`,e)}async start(){let e=JSON.parse(this.getAttribute("opts")),n=this.getAttribute("client");if(Astro[n]===void 0){window.addEventListener(`astro:${n}`,()=>this.start(),{once:!0});return}try{await Astro[n](async()=>{let r=this.getAttribute("renderer-url");try{let[i,{default:u}]=await Promise.all([this.importWithRetry(this.getAttribute("component-url")),r?this.importWithRetry(r):Promise.resolve({default:()=>()=>{}})]),h=this.getAttribute("component-export")||"default";if(h.includes(".")){this.Component=i;for(let m of h.split(".")){if(E.has(m)||!this.Component||typeof this.Component!="object"&&typeof this.Component!="function"||!Object.hasOwn(this.Component,m))throw new Error(`Invalid component export path: ${h}`);this.Component=this.Component[m]}}else{if(E.has(h))throw new Error(`Invalid component export path: ${h}`);this.Component=i[h]}return this.hydrator=u,this.hydrate}catch(i){return this.handleHydrationError(i),()=>{}}},e,this)}catch(r){this.handleHydrationError(r)}}attributeChangedCallback(){this.hydrate()}}l(f,"observedAttributes",["props"]),customElements.get("astro-island")||customElements.define("astro-island",f)}})();</script><astro-island uid="Z1w87at" prefix="s0" component-url="/_astro/NavColumn.BCcG9Imd.js" component-export="default" renderer-url="/_astro/client.CdL3hvDT.js" props="{&quot;sections&quot;:[1,[[0,{&quot;id&quot;:[0,&quot;start&quot;],&quot;label&quot;:[0,&quot;Getting Started&quot;],&quot;base&quot;:[0,&quot;/start&quot;],&quot;groups&quot;:[1,[[0,{&quot;items&quot;:[1,[[0,{&quot;path&quot;:[0,&quot;/start&quot;],&quot;label&quot;:[0,&quot;Overview&quot;]}]]]}],[0,{&quot;title&quot;:[0,&quot;Python 101&quot;],&quot;items&quot;:[1,[[0,{&quot;path&quot;:[0,&quot;/start/1-notebooks&quot;],&quot;label&quot;:[0,&quot;1 · Notebooks&quot;]}],[0,{&quot;path&quot;:[0,&quot;/start/2-basics&quot;],&quot;label&quot;:[0,&quot;2 · Python Basics&quot;]}],[0,{&quot;path&quot;:[0,&quot;/start/3-spatial&quot;],&quot;label&quot;:[0,&quot;3 · Spatial Data&quot;]}],[0,{&quot;path&quot;:[0,&quot;/start/4-geopandas&quot;],&quot;label&quot;:[0,&quot;4 · GeoPandas&quot;]}],[0,{&quot;path&quot;:[0,&quot;/start/5-urban&quot;],&quot;label&quot;:[0,&quot;5 · Urban Analytics&quot;]}],[0,{&quot;path&quot;:[0,&quot;/start/6-data-science&quot;],&quot;label&quot;:[0,&quot;6 · Data Science&quot;]}]]]}]]]}],[0,{&quot;id&quot;:[0,&quot;guide&quot;],&quot;label&quot;:[0,&quot;Guide&quot;],&quot;base&quot;:[0,&quot;/guide/fundamentals&quot;],&quot;groups&quot;:[1,[[0,{&quot;items&quot;:[1,[[0,{&quot;path&quot;:[0,&quot;/guide/fundamentals&quot;],&quot;label&quot;:[0,&quot;Fundamentals&quot;]}],[0,{&quot;path&quot;:[0,&quot;/guide/how-to&quot;],&quot;label&quot;:[0,&quot;How do I…?&quot;]}],[0,{&quot;path&quot;:[0,&quot;/guide/networks&quot;],&quot;label&quot;:[0,&quot;Networks&quot;]}],[0,{&quot;path&quot;:[0,&quot;/guide/cleaning&quot;],&quot;label&quot;:[0,&quot;Network Cleaning&quot;]}],[0,{&quot;path&quot;:[0,&quot;/guide/centrality&quot;],&quot;label&quot;:[0,&quot;Centrality&quot;]}],[0,{&quot;path&quot;:[0,&quot;/guide/flows&quot;],&quot;label&quot;:[0,&quot;Origin-Destination Flows&quot;]}],[0,{&quot;path&quot;:[0,&quot;/guide/land-use&quot;],&quot;label&quot;:[0,&quot;Land-Use&quot;]}],[0,{&quot;path&quot;:[0,&quot;/guide/interpretation&quot;],&quot;label&quot;:[0,&quot;Interpretation&quot;]}],[0,{&quot;path&quot;:[0,&quot;/guide/troubleshooting&quot;],&quot;label&quot;:[0,&quot;Troubleshooting&quot;]}],[0,{&quot;path&quot;:[0,&quot;/guide/migration&quot;],&quot;label&quot;:[0,&quot;v4 to v5 Migration&quot;]}]]]}]]]}],[0,{&quot;id&quot;:[0,&quot;plugin&quot;],&quot;label&quot;:[0,&quot;QGIS Plugin&quot;],&quot;base&quot;:[0,&quot;/plugin&quot;],&quot;groups&quot;:[1,[[0,{&quot;items&quot;:[1,[[0,{&quot;path&quot;:[0,&quot;/plugin&quot;],&quot;label&quot;:[0,&quot;Overview&quot;]}]]]}],[0,{&quot;title&quot;:[0,&quot;Algorithms&quot;],&quot;items&quot;:[1,[[0,{&quot;path&quot;:[0,&quot;/plugin/centrality&quot;],&quot;label&quot;:[0,&quot;Network Centrality&quot;]}],[0,{&quot;path&quot;:[0,&quot;/plugin/demand&quot;],&quot;label&quot;:[0,&quot;Demand Betweenness&quot;]}],[0,{&quot;path&quot;:[0,&quot;/plugin/accessibility&quot;],&quot;label&quot;:[0,&quot;Accessibility&quot;]}],[0,{&quot;path&quot;:[0,&quot;/plugin/mixed-uses&quot;],&quot;label&quot;:[0,&quot;Mixed Uses&quot;]}],[0,{&quot;path&quot;:[0,&quot;/plugin/statistics&quot;],&quot;label&quot;:[0,&quot;Statistics&quot;]}]]]}]]]}],[0,{&quot;id&quot;:[0,&quot;examples&quot;],&quot;label&quot;:[0,&quot;Examples&quot;],&quot;base&quot;:[0,&quot;/examples&quot;],&quot;groups&quot;:[1,[[0,{&quot;items&quot;:[1,[[0,{&quot;path&quot;:[0,&quot;/examples&quot;],&quot;label&quot;:[0,&quot;Overview&quot;]}]]]}],[0,{&quot;title&quot;:[0,&quot;Recipes&quot;],&quot;items&quot;:[1,[[0,{&quot;path&quot;:[0,&quot;/examples/networks&quot;],&quot;label&quot;:[0,&quot;Network Preparation&quot;]}],[0,{&quot;path&quot;:[0,&quot;/examples/centrality&quot;],&quot;label&quot;:[0,&quot;Centrality&quot;]}],[0,{&quot;path&quot;:[0,&quot;/examples/flows&quot;],&quot;label&quot;:[0,&quot;Origin-Destination Flows&quot;]}],[0,{&quot;path&quot;:[0,&quot;/examples/accessibility&quot;],&quot;label&quot;:[0,&quot;Accessibility&quot;]}],[0,{&quot;path&quot;:[0,&quot;/examples/stats&quot;],&quot;label&quot;:[0,&quot;Statistics&quot;]}],[0,{&quot;path&quot;:[0,&quot;/examples/visibility&quot;],&quot;label&quot;:[0,&quot;Visibility&quot;]}],[0,{&quot;path&quot;:[0,&quot;/examples/continuity&quot;],&quot;label&quot;:[0,&quot;Continuity&quot;]}]]]}],[0,{&quot;items&quot;:[1,[[0,{&quot;path&quot;:[0,&quot;/examples/datasets&quot;],&quot;label&quot;:[0,&quot;Datasets&quot;]}]]]}]]]}],[0,{&quot;id&quot;:[0,&quot;api&quot;],&quot;label&quot;:[0,&quot;API Reference&quot;],&quot;base&quot;:[0,&quot;/api/network&quot;],&quot;groups&quot;:[1,[[0,{&quot;title&quot;:[0,&quot;High-level&quot;],&quot;items&quot;:[1,[[0,{&quot;path&quot;:[0,&quot;/api/network&quot;],&quot;label&quot;:[0,&quot;CityNetwork&quot;]}],[0,{&quot;path&quot;:[0,&quot;/api/decay&quot;],&quot;label&quot;:[0,&quot;decay&quot;]}]]]}],[0,{&quot;title&quot;:[0,&quot;Tools&quot;],&quot;items&quot;:[1,[[0,{&quot;path&quot;:[0,&quot;/tools/io&quot;],&quot;label&quot;:[0,&quot;io&quot;]}],[0,{&quot;path&quot;:[0,&quot;/tools/graphs&quot;],&quot;label&quot;:[0,&quot;graphs&quot;]}],[0,{&quot;path&quot;:[0,&quot;/tools/plot&quot;],&quot;label&quot;:[0,&quot;plot&quot;]}],[0,{&quot;path&quot;:[0,&quot;/tools/mock&quot;],&quot;label&quot;:[0,&quot;mock&quot;]}],[0,{&quot;path&quot;:[0,&quot;/tools/util&quot;],&quot;label&quot;:[0,&quot;util&quot;]}]]]}],[0,{&quot;title&quot;:[0,&quot;Metrics&quot;],&quot;items&quot;:[1,[[0,{&quot;path&quot;:[0,&quot;/metrics/networks&quot;],&quot;label&quot;:[0,&quot;networks&quot;]}],[0,{&quot;path&quot;:[0,&quot;/metrics/layers&quot;],&quot;label&quot;:[0,&quot;layers&quot;]}],[0,{&quot;path&quot;:[0,&quot;/metrics/observe&quot;],&quot;label&quot;:[0,&quot;observe&quot;]}],[0,{&quot;path&quot;:[0,&quot;/metrics/visibility&quot;],&quot;label&quot;:[0,&quot;visibility&quot;]}],[0,{&quot;path&quot;:[0,&quot;/metrics/sampling&quot;],&quot;label&quot;:[0,&quot;sampling&quot;]}]]]}],[0,{&quot;title&quot;:[0,&quot;Rust Algos&quot;],&quot;items&quot;:[1,[[0,{&quot;path&quot;:[0,&quot;/rustalgos/rustalgos&quot;],&quot;label&quot;:[0,&quot;rustalgos&quot;]}],[0,{&quot;path&quot;:[0,&quot;/rustalgos/graph&quot;],&quot;label&quot;:[0,&quot;graph&quot;]}],[0,{&quot;path&quot;:[0,&quot;/rustalgos/centrality&quot;],&quot;label&quot;:[0,&quot;centrality&quot;]}],[0,{&quot;path&quot;:[0,&quot;/rustalgos/diversity&quot;],&quot;label&quot;:[0,&quot;diversity&quot;]}],[0,{&quot;path&quot;:[0,&quot;/rustalgos/data&quot;],&quot;label&quot;:[0,&quot;data&quot;]}],[0,{&quot;path&quot;:[0,&quot;/rustalgos/viewshed&quot;],&quot;label&quot;:[0,&quot;viewshed&quot;]}]]]}],[0,{&quot;items&quot;:[1,[[0,{&quot;path&quot;:[0,&quot;/api/glossary&quot;],&quot;label&quot;:[0,&quot;Glossary&quot;]}]]]}]]]}]]],&quot;activeSectionId&quot;:[0,&quot;api&quot;],&quot;currentPath&quot;:[0,&quot;/tools/plot&quot;],&quot;data-astro-cid-xa52sxzc&quot;:[0,true]}" ssr client="visible" opts="{&quot;name&quot;:&quot;NavColumn&quot;,&quot;value&quot;:true}" await-children><nav id="nav-tree" data-astro-cid-xa52sxzc="true" data-v-89398da1><!--[--><!--]--></nav><!--astro:end--></astro-island> <div class="grow" data-astro-cid-xa52sxzc></div> <div class="self-start px-8 py-2" data-astro-cid-xa52sxzc> <a id="repo-link" href="https://github.com/benchmark-urbanism/cityseer-api/" target="_blank" data-astro-cid-gf3o2gw7> <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 496 512" class="text-theme w-12" data-astro-cid-gf3o2gw7="true"><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6c-3.3.3-5.6-1.3-5.6-3.6c0-2 2.3-3.6 5.2-3.6c3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9c2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9c.3 2 2.9 3.3 5.9 2.6c2.9-.7 4.9-2.6 4.6-4.6c-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2c12.8 2.3 17.3-5.6 17.3-12.1c0-6.2-.3-40.4-.3-61.4c0 0-70 15-84.7-29.8c0 0-11.4-29.1-27.8-36.6c0 0-22.9-15.7 1.6-15.4c0 0 24.9 2 38.6 25.8c21.9 38.6 58.6 27.5 72.9 20.9c2.3-16 8.8-27.1 16-33.7c-55.9-6.2-112.3-14.3-112.3-110.5c0-27.5 7.6-41.3 23.6-58.9c-2.6-6.5-11.1-33.3 2.6-67.9c20.9-6.5 69 27 69 27c20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27c13.7 34.7 5.2 61.4 2.6 67.9c16 17.7 25.8 31.5 25.8 58.9c0 96.5-58.9 104.2-114.8 110.5c9.2 7.9 17 22.9 17 46.4c0 33.7-.3 75.4-.3 83.6c0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252C496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2c1.6 1.6 3.9 2.3 5.2 1c1.3-1 1-3.3-.7-5.2c-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9c1.6 1 3.6.7 4.3-.7c.7-1.3-.3-2.9-2.3-3.9c-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2c2.3 2.3 5.2 2.6 6.5 1c1.3-1.3.7-4.3-1.3-6.2c-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9c1.6 2.3 4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2c-1.4-2.3-4-3.3-5.6-2z" fill="currentColor"></path></svg> <h2 class="py-4 leading-none" data-astro-cid-gf3o2gw7>Github</h2> </a> </div> </div> <div id="stripe" data-astro-cid-ddyhvr7a> <h2 class="py-0" data-astro-cid-ddyhvr7a>Cityseer API Docs</h2> </div> </div> <div id="content-col" data-pagefind-body data-astro-cid-xa52sxzc> <section class="module">
+<h1 id="plot"><a aria-label="Link to this section" href="#plot"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>plot</h1>
+<p>Convenience methods for plotting graphs within the cityseer API context. Custom behaviour can be achieved by directly manipulating the underlying <a href="https://networkx.github.io"><code>NetworkX</code></a> and <a href="https://matplotlib.org"><code>matplotlib</code></a> figures. This module is predominately used for basic plots or visual verification of behaviour in code tests. Users are encouraged to use matplotlib or other plotting packages directly where possible.</p>
+<div class="function">
+<h2 id="plot-nx-primal-or-dual"><a aria-label="Link to this section" href="#plot-nx-primal-or-dual"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>plot_nx_primal_or_dual</h2>
+<div class="content">
+<span class="name">plot_nx_primal_or_dual</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">primal_graph</span>
+  </div>
+  <div class="param">
+    <span class="pn">dual_graph</span>
+  </div>
+  <div class="param">
+    <span class="pn">path</span>
+    <span class="pc">:</span>
+    <span class="pa"> str | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">labels</span>
+    <span class="pc">:</span>
+    <span class="pa"> bool = False</span>
+  </div>
+  <div class="param">
+    <span class="pn">primal_node_size</span>
+    <span class="pc">:</span>
+    <span class="pa"> int = 30</span>
+  </div>
+  <div class="param">
+    <span class="pn">primal_node_colour</span>
+    <span class="pc">:</span>
+    <span class="pa"> str | ArrayLike | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">primal_edge_colour</span>
+    <span class="pc">:</span>
+    <span class="pa"> str | ArrayLike | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">dual_node_size</span>
+    <span class="pc">:</span>
+    <span class="pa"> int = 30</span>
+  </div>
+  <div class="param">
+    <span class="pn">dual_node_colour</span>
+    <span class="pc">:</span>
+    <span class="pa"> str | ArrayLike | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">dual_edge_colour</span>
+    <span class="pc">:</span>
+    <span class="pa"> str | ArrayLike | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">primal_edge_width</span>
+    <span class="pc">:</span>
+    <span class="pa"> int | float | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">dual_edge_width</span>
+    <span class="pc">:</span>
+    <span class="pa"> int | float | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">plot_geoms</span>
+    <span class="pc">:</span>
+    <span class="pa"> bool = True</span>
+  </div>
+  <div class="param">
+    <span class="pn">x_lim</span>
+    <span class="pc">:</span>
+    <span class="pa"> tuple[float, float] | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">y_lim</span>
+    <span class="pc">:</span>
+    <span class="pa"> tuple[float, float] | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">ax</span>
+    <span class="pc">:</span>
+    <span class="pa"> matplotlib.axes._axes.Axes | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">**kwargs</span>
+  </div>
+  <span class="pt">)</span>
+</div>
+</div>
+<p>Plot a primal or dual cityseer graph.</p>
+<h3 id="parameters"><a aria-label="Link to this section" href="#parameters"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>Parameters</h3>
+<div class="param-set">
+  <div class="def">
+    <div class="name">primal_graph</div>
+    <div class="type">MultiGraph</div>
+  </div>
+  <div class="desc">
+<p>An optional <code>NetworkX</code> MultiGraph to plot in the primal representation. Defaults to None.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">dual_graph</div>
+    <div class="type">MultiGraph</div>
+  </div>
+  <div class="desc">
+<p>An optional <code>NetworkX</code> MultiGraph to plot in the dual representation. Defaults to None.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">path</div>
+    <div class="type">str</div>
+  </div>
+  <div class="desc">
+<p>An optional filepath: if provided, the image will be saved to the path instead of being displayed. Defaults to None.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">labels</div>
+    <div class="type">bool</div>
+  </div>
+  <div class="desc">
+<p>Whether to display node labels. Defaults to False.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">primal_node_size</div>
+    <div class="type">int</div>
+  </div>
+  <div class="desc">
+<p>The diameter for the primal graph’s nodes.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">primal_node_colour</div>
+    <div class="type">str | float | ndarray</div>
+  </div>
+  <div class="desc">
+<p>Primal node colour or colours. When passing an iterable of colours, the number of colours should match the order and number of nodes in the MultiGraph. The colours are passed to the underlying <a href="https://networkx.github.io/documentation/networkx-1.10/reference/generated/networkx.drawing.nx_pylab.draw_networkx.html#draw-networkx"><code>draw_networkx</code></a> method and should be formatted accordingly. Defaults to None.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">primal_edge_colour</div>
+    <div class="type">str | float | ndarray</div>
+  </div>
+  <div class="desc">
+<p>Primal edge colour or colours. When passing an iterable of colours, the number of colours should match the order and number of edges in the MultiGraph. The colours are passed to the underlying <a href="https://networkx.github.io/documentation/networkx-1.10/reference/generated/networkx.drawing.nx_pylab.draw_networkx.html#draw-networkx"><code>draw_networkx</code></a> method and should be formatted accordingly. Defaults to None.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">dual_node_size</div>
+    <div class="type">int</div>
+  </div>
+  <div class="desc">
+<p>The diameter for the dual graph’s nodes.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">dual_node_colour</div>
+    <div class="type">str | float | ndarray</div>
+  </div>
+  <div class="desc">
+<p>Dual node colour or colours. When passing a list of colours, the number of colours should match the order and number of nodes in the MultiGraph. The colours are passed to the underlying <a href="https://networkx.github.io/documentation/networkx-1.10/reference/generated/networkx.drawing.nx_pylab.draw_networkx.html#draw-networkx"><code>draw_networkx</code></a> method and should be formatted accordingly. Defaults to None.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">dual_edge_colour</div>
+    <div class="type">str | float | ndarray</div>
+  </div>
+  <div class="desc">
+<p>Dual edge colour or colours. When passing an iterable of colours, the number of colours should match the order and number of edges in the MultiGraph. The colours are passed to the underlying <a href="https://networkx.github.io/documentation/networkx-1.10/reference/generated/networkx.drawing.nx_pylab.draw_networkx.html#draw-networkx"><code>draw_networkx</code></a> method and should be formatted accordingly. Defaults to None.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">primal_edge_width</div>
+    <div class="type">float</div>
+  </div>
+  <div class="desc">
+<p>Linewidths for the primal edge. Defaults to None.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">dual_edge_width</div>
+    <div class="type">float</div>
+  </div>
+  <div class="desc">
+<p>Linewidths for the dual edge. Defaults to None.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">plot_geoms</div>
+    <div class="type">bool</div>
+  </div>
+  <div class="desc">
+<p>Whether to plot the edge geometries. If set to <code>False</code>, straight lines will be drawn from node-to-node to represent edges. Defaults to True.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">x_lim</div>
+    <div class="type">tuple[float, float]</div>
+  </div>
+  <div class="desc">
+<p>A tuple or list with the minimum and maxium <code>x</code> extents to be plotted. Defaults to None.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">y_lim</div>
+    <div class="type">tuple[float, float]</div>
+  </div>
+  <div class="desc">
+<p>A tuple or list with the minimum and maxium <code>y</code> extents to be plotted. Defaults to None.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">ax</div>
+    <div class="type">plt.Axes</div>
+  </div>
+  <div class="desc">
+<p>An optional <code>matplotlib</code> <code>ax</code> to which to plot. If not provided, a figure and ax will be generated.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">**kwargs</div>
+    <div class="type">None</div>
+  </div>
+  <div class="desc">
+<p><code>kwargs</code> which will be passed to the <code>matplotlib</code> figure parameters. If provided, these will override the default figure size or dpi parameters.</p></div><p></p>
+</div>
+<h3 id="notes"><a aria-label="Link to this section" href="#notes"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>Notes</h3>
+<p>Plot either or both primal and dual representations of a <code>networkX MultiGraph</code>. Only call this function directly if explicitly printing both primal and dual graphs. Otherwise, use the simplified <a href="/tools/plot#plot-nx"><code>plot_nx</code></a> method instead.</p>
+<pre class="astro-code material-theme-darker" style="background-color:#212121;color:#EEFFFF; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="py"><code><span class="line"><span style="color:#89DDFF;font-style:italic">from</span><span style="color:#EEFFFF"> cityseer</span><span style="color:#89DDFF">.</span><span style="color:#EEFFFF">tools </span><span style="color:#89DDFF;font-style:italic">import</span><span style="color:#EEFFFF"> mock</span><span style="color:#89DDFF">,</span><span style="color:#EEFFFF"> graphs</span><span style="color:#89DDFF">,</span><span style="color:#EEFFFF"> plot</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#EEFFFF">G </span><span style="color:#89DDFF">=</span><span style="color:#EEFFFF"> mock</span><span style="color:#89DDFF">.</span><span style="color:#82AAFF">mock_graph</span><span style="color:#89DDFF">()</span></span>
+<span class="line"><span style="color:#EEFFFF">G_simple </span><span style="color:#89DDFF">=</span><span style="color:#EEFFFF"> graphs</span><span style="color:#89DDFF">.</span><span style="color:#82AAFF">nx_simple_geoms</span><span style="color:#89DDFF">(</span><span style="color:#82AAFF">G</span><span style="color:#89DDFF">)</span></span>
+<span class="line"><span style="color:#EEFFFF">G_dual </span><span style="color:#89DDFF">=</span><span style="color:#EEFFFF"> graphs</span><span style="color:#89DDFF">.</span><span style="color:#82AAFF">nx_to_dual</span><span style="color:#89DDFF">(</span><span style="color:#82AAFF">G_simple</span><span style="color:#89DDFF">)</span></span>
+<span class="line"><span style="color:#EEFFFF">plot</span><span style="color:#89DDFF">.</span><span style="color:#82AAFF">plot_nx_primal_or_dual</span><span style="color:#89DDFF">(</span><span style="color:#82AAFF">G_simple</span><span style="color:#89DDFF">,</span><span style="color:#82AAFF"> G_dual</span><span style="color:#89DDFF">,</span><span style="color:#EEFFFF;font-style:italic"> plot_geoms</span><span style="color:#89DDFF">=False)</span></span></code></pre>
+<p><img src="/images/graph_dual.png" alt="Example primal and dual graph plot."> <em>A dual graph in blue overlaid on the source primal graph in red.</em></p>
+</div>
+<div class="function">
+<h2 id="plot-nx"><a aria-label="Link to this section" href="#plot-nx"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>plot_nx</h2>
+<div class="content">
+<span class="name">plot_nx</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">nx_multigraph</span>
+  </div>
+  <div class="param">
+    <span class="pn">path</span>
+    <span class="pc">:</span>
+    <span class="pa"> str | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">labels</span>
+    <span class="pc">:</span>
+    <span class="pa"> bool = False</span>
+  </div>
+  <div class="param">
+    <span class="pn">node_size</span>
+    <span class="pc">:</span>
+    <span class="pa"> int = 20</span>
+  </div>
+  <div class="param">
+    <span class="pn">node_colour</span>
+    <span class="pc">:</span>
+    <span class="pa"> str | ArrayLike | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">edge_colour</span>
+    <span class="pc">:</span>
+    <span class="pa"> str | ArrayLike | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">edge_width</span>
+    <span class="pc">:</span>
+    <span class="pa"> int | float | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">plot_geoms</span>
+    <span class="pc">:</span>
+    <span class="pa"> bool = False</span>
+  </div>
+  <div class="param">
+    <span class="pn">x_lim</span>
+    <span class="pc">:</span>
+    <span class="pa"> tuple[float, float] | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">y_lim</span>
+    <span class="pc">:</span>
+    <span class="pa"> tuple[float, float] | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">ax</span>
+    <span class="pc">:</span>
+    <span class="pa"> matplotlib.axes._axes.Axes | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">**kwargs</span>
+  </div>
+  <span class="pt">)</span>
+</div>
+</div>
+<p>Plot a <code>networkX</code> MultiGraph.</p>
+<h3 id="parameters-1"><a aria-label="Link to this section" href="#parameters-1"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>Parameters</h3>
+<div class="param-set">
+  <div class="def">
+    <div class="name">nx_multigraph</div>
+    <div class="type">MultiGraph</div>
+  </div>
+  <div class="desc">
+<p>A <code>NetworkX</code> MultiGraph.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">path</div>
+    <div class="type">str</div>
+  </div>
+  <div class="desc">
+<p>An optional filepath: if provided, the image will be saved to the path instead of being displayed. Defaults to None.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">labels</div>
+    <div class="type">bool</div>
+  </div>
+  <div class="desc">
+<p>Whether to display node labels. Defaults to False.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">node_size</div>
+    <div class="type">int</div>
+  </div>
+  <div class="desc">
+<p>The diameter for the graph’s nodes.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">node_colour</div>
+    <div class="type">str | float | ndarray</div>
+  </div>
+  <div class="desc">
+<p>Node colour or colours. When passing an iterable of colours, the number of colours should match the order and number of nodes in the MultiGraph. The colours are passed to the underlying <a href="https://networkx.github.io/documentation/networkx-1.10/reference/generated/networkx.drawing.nx_pylab.draw_networkx.html#draw-networkx"><code>draw_networkx</code></a> method and should be formatted accordingly. Defaults to None.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">edge_colour</div>
+    <div class="type">str | float | ndarray</div>
+  </div>
+  <div class="desc">
+<p>Edges colour as a <code>matplotlib</code> compatible colour string. Defaults to None.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">edge_width</div>
+    <div class="type">float</div>
+  </div>
+  <div class="desc">
+<p>Linewidths for edges. Defaults to None.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">plot_geoms</div>
+    <div class="type">bool</div>
+  </div>
+  <div class="desc">
+<p>Whether to plot the edge geometries. If set to <code>False</code>, straight lines will be drawn from node-to-node to represent edges. Defaults to True.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">x_lim</div>
+    <div class="type">tuple[float, float]</div>
+  </div>
+  <div class="desc">
+<p>A tuple or list with the minimum and maximum <code>x</code> extents to be plotted. Defaults to None.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">y_lim</div>
+    <div class="type">tuple[float, float]</div>
+  </div>
+  <div class="desc">
+<p>A tuple or list with the minimum and maximum <code>y</code> extents to be plotted. Defaults to None.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">ax</div>
+    <div class="type">plt.Axes</div>
+  </div>
+  <div class="desc">
+<p>An optional <code>matplotlib</code> <code>ax</code> to which to plot. If not provided, a figure and ax will be generated.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">**kwargs</div>
+    <div class="type">None</div>
+  </div>
+  <div class="desc">
+<p><code>kwargs</code> which will be passed to the <code>matplotlib</code> figure parameters. If provided, these will override the default figure size or dpi parameters.</p></div><p></p>
+</div>
+<h3 id="notes-1"><a aria-label="Link to this section" href="#notes-1"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>Notes</h3>
+<pre class="astro-code material-theme-darker" style="background-color:#212121;color:#EEFFFF; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="py"><code><span class="line"><span style="color:#89DDFF;font-style:italic">from</span><span style="color:#EEFFFF"> cityseer</span><span style="color:#89DDFF">.</span><span style="color:#EEFFFF">tools </span><span style="color:#89DDFF;font-style:italic">import</span><span style="color:#EEFFFF"> mock</span><span style="color:#89DDFF">,</span><span style="color:#EEFFFF"> graphs</span><span style="color:#89DDFF">,</span><span style="color:#EEFFFF"> plot</span><span style="color:#89DDFF">,</span><span style="color:#EEFFFF"> io</span></span>
+<span class="line"><span style="color:#89DDFF;font-style:italic">from</span><span style="color:#EEFFFF"> cityseer</span><span style="color:#89DDFF">.</span><span style="color:#EEFFFF">metrics </span><span style="color:#89DDFF;font-style:italic">import</span><span style="color:#EEFFFF"> networks</span></span>
+<span class="line"><span style="color:#89DDFF;font-style:italic">from</span><span style="color:#EEFFFF"> matplotlib </span><span style="color:#89DDFF;font-style:italic">import</span><span style="color:#EEFFFF"> colors</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#545454;font-style:italic"># generate a MultiGraph and compute closeness</span></span>
+<span class="line"><span style="color:#EEFFFF">G </span><span style="color:#89DDFF">=</span><span style="color:#EEFFFF"> mock</span><span style="color:#89DDFF">.</span><span style="color:#82AAFF">mock_graph</span><span style="color:#89DDFF">()</span></span>
+<span class="line"><span style="color:#EEFFFF">G </span><span style="color:#89DDFF">=</span><span style="color:#EEFFFF"> graphs</span><span style="color:#89DDFF">.</span><span style="color:#82AAFF">nx_simple_geoms</span><span style="color:#89DDFF">(</span><span style="color:#82AAFF">G</span><span style="color:#89DDFF">)</span></span>
+<span class="line"><span style="color:#EEFFFF">G </span><span style="color:#89DDFF">=</span><span style="color:#EEFFFF"> graphs</span><span style="color:#89DDFF">.</span><span style="color:#82AAFF">nx_decompose</span><span style="color:#89DDFF">(</span><span style="color:#82AAFF">G</span><span style="color:#89DDFF">,</span><span style="color:#F78C6C"> 50</span><span style="color:#89DDFF">)</span></span>
+<span class="line"><span style="color:#EEFFFF">nodes_gdf</span><span style="color:#89DDFF">,</span><span style="color:#EEFFFF"> edges_gdf</span><span style="color:#89DDFF">,</span><span style="color:#EEFFFF"> network_structure </span><span style="color:#89DDFF">=</span><span style="color:#EEFFFF"> io</span><span style="color:#89DDFF">.</span><span style="color:#82AAFF">network_structure_from_nx</span><span style="color:#89DDFF">(</span><span style="color:#82AAFF">G</span><span style="color:#89DDFF">)</span></span>
+<span class="line"><span style="color:#EEFFFF">networks</span><span style="color:#89DDFF">.</span><span style="color:#82AAFF">centrality_shortest</span><span style="color:#89DDFF">(</span><span style="color:#EEFFFF;font-style:italic">network_structure</span><span style="color:#89DDFF">=</span><span style="color:#82AAFF">network_structure</span><span style="color:#89DDFF">,</span><span style="color:#EEFFFF;font-style:italic"> nodes_gdf</span><span style="color:#89DDFF">=</span><span style="color:#82AAFF">nodes_gdf</span><span style="color:#89DDFF">,</span><span style="color:#EEFFFF;font-style:italic"> distances</span><span style="color:#89DDFF">=[</span><span style="color:#F78C6C">800</span><span style="color:#89DDFF">])</span></span>
+<span class="line"><span style="color:#EEFFFF">G_after </span><span style="color:#89DDFF">=</span><span style="color:#EEFFFF"> io</span><span style="color:#89DDFF">.</span><span style="color:#82AAFF">nx_from_cityseer_geopandas</span><span style="color:#89DDFF">(</span><span style="color:#82AAFF">nodes_gdf</span><span style="color:#89DDFF">,</span><span style="color:#82AAFF"> edges_gdf</span><span style="color:#89DDFF">)</span></span>
+<span class="line"><span style="color:#545454;font-style:italic"># let's extract and normalise the values</span></span>
+<span class="line"><span style="color:#EEFFFF">vals </span><span style="color:#89DDFF">=</span><span style="color:#89DDFF"> []</span></span>
+<span class="line"><span style="color:#89DDFF;font-style:italic">for</span><span style="color:#EEFFFF"> node</span><span style="color:#89DDFF">,</span><span style="color:#EEFFFF"> data </span><span style="color:#89DDFF;font-style:italic">in</span><span style="color:#EEFFFF"> G_after</span><span style="color:#89DDFF">.</span><span style="color:#82AAFF">nodes</span><span style="color:#89DDFF">(</span><span style="color:#EEFFFF;font-style:italic">data</span><span style="color:#89DDFF">=True):</span></span>
+<span class="line"><span style="color:#EEFFFF">    vals</span><span style="color:#89DDFF">.</span><span style="color:#82AAFF">append</span><span style="color:#89DDFF">(</span><span style="color:#82AAFF">data</span><span style="color:#89DDFF">[</span><span style="color:#89DDFF">"</span><span style="color:#C3E88D">cc_harmonic_800</span><span style="color:#89DDFF">"</span><span style="color:#89DDFF">])</span></span>
+<span class="line"><span style="color:#545454;font-style:italic"># let's create a custom colourmap using matplotlib</span></span>
+<span class="line"><span style="color:#EEFFFF">cmap </span><span style="color:#89DDFF">=</span><span style="color:#EEFFFF"> colors</span><span style="color:#89DDFF">.</span><span style="color:#F07178">LinearSegmentedColormap</span><span style="color:#89DDFF">.</span><span style="color:#82AAFF">from_list</span><span style="color:#89DDFF">(</span></span>
+<span class="line"><span style="color:#89DDFF">    "</span><span style="color:#C3E88D">cityseer</span><span style="color:#89DDFF">"</span><span style="color:#89DDFF">,</span><span style="color:#89DDFF"> [(</span><span style="color:#F78C6C">100</span><span style="color:#89DDFF"> /</span><span style="color:#F78C6C"> 255</span><span style="color:#89DDFF">,</span><span style="color:#F78C6C"> 193</span><span style="color:#89DDFF"> /</span><span style="color:#F78C6C"> 255</span><span style="color:#89DDFF">,</span><span style="color:#F78C6C"> 255</span><span style="color:#89DDFF"> /</span><span style="color:#F78C6C"> 255</span><span style="color:#89DDFF">,</span><span style="color:#F78C6C"> 255</span><span style="color:#89DDFF"> /</span><span style="color:#F78C6C"> 255</span><span style="color:#89DDFF">),</span><span style="color:#89DDFF"> (</span><span style="color:#F78C6C">211</span><span style="color:#89DDFF"> /</span><span style="color:#F78C6C"> 255</span><span style="color:#89DDFF">,</span><span style="color:#F78C6C"> 47</span><span style="color:#89DDFF"> /</span><span style="color:#F78C6C"> 255</span><span style="color:#89DDFF">,</span><span style="color:#F78C6C"> 47</span><span style="color:#89DDFF"> /</span><span style="color:#F78C6C"> 255</span><span style="color:#89DDFF">,</span><span style="color:#F78C6C"> 1</span><span style="color:#89DDFF"> /</span><span style="color:#F78C6C"> 255</span><span style="color:#89DDFF">)]</span></span>
+<span class="line"><span style="color:#89DDFF">)</span></span>
+<span class="line"><span style="color:#545454;font-style:italic"># normalise the values</span></span>
+<span class="line"><span style="color:#EEFFFF">vals </span><span style="color:#89DDFF">=</span><span style="color:#EEFFFF"> colors</span><span style="color:#89DDFF">.</span><span style="color:#82AAFF">Normalize</span><span style="color:#89DDFF">()(</span><span style="color:#82AAFF">vals</span><span style="color:#89DDFF">)</span></span>
+<span class="line"><span style="color:#545454;font-style:italic"># cast against the colour map</span></span>
+<span class="line"><span style="color:#EEFFFF">cols </span><span style="color:#89DDFF">=</span><span style="color:#82AAFF"> cmap</span><span style="color:#89DDFF">(</span><span style="color:#82AAFF">vals</span><span style="color:#89DDFF">)</span></span>
+<span class="line"><span style="color:#545454;font-style:italic"># plot</span></span>
+<span class="line"><span style="color:#EEFFFF">plot</span><span style="color:#89DDFF">.</span><span style="color:#82AAFF">plot_nx</span><span style="color:#89DDFF">(</span><span style="color:#82AAFF">G_after</span><span style="color:#89DDFF">,</span><span style="color:#EEFFFF;font-style:italic"> node_colour</span><span style="color:#89DDFF">=</span><span style="color:#82AAFF">cols</span><span style="color:#89DDFF">)</span></span></code></pre>
+<p><img src="/images/graph_colour.png" alt="Example Colour Plot."> <em>Colour plot of 800m harmonic closeness centrality on a 50m decomposed graph.</em></p>
+</div>
+<div class="function">
+<h2 id="plot-assignment"><a aria-label="Link to this section" href="#plot-assignment"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>plot_assignment</h2>
+<div class="content">
+<span class="name">plot_assignment</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">network_structure</span>
+    <span class="pc">:</span>
+    <span class="pa"> NetworkStructure</span>
+  </div>
+  <div class="param">
+    <span class="pn">nx_multigraph</span>
+  </div>
+  <div class="param">
+    <span class="pn">data_map</span>
+    <span class="pc">:</span>
+    <span class="pa"> DataMap</span>
+  </div>
+  <div class="param">
+    <span class="pn">path</span>
+    <span class="pc">:</span>
+    <span class="pa"> str | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">node_colour</span>
+    <span class="pc">:</span>
+    <span class="pa"> str | ArrayLike | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">node_labels</span>
+    <span class="pc">:</span>
+    <span class="pa"> bool = False</span>
+  </div>
+  <div class="param">
+    <span class="pn">data_labels</span>
+    <span class="pc">:</span>
+    <span class="pa"> ArrayLike | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">**kwargs</span>
+  </div>
+  <span class="pt">)</span>
+</div>
+</div>
+<p>Plot a <code>network_structure</code> and <code>data_gdf</code> for visualising assignment of data points to respective nodes.</p>
+<div class="box warning"><p>This method is primarily intended for package testing and development.</p></div>
+<h3 id="parameters-2"><a aria-label="Link to this section" href="#parameters-2"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>Parameters</h3>
+<div class="param-set">
+  <div class="def">
+    <div class="name">network_structure</div>
+    <div class="type">rustalgos.graph.NetworkStructure</div>
+  </div>
+  <div class="desc">
+<p>A <a href="/rustalgos/graph#networkstructure"><code>rustalgos.graph.NetworkStructure</code></a> instance.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">nx_multigraph</div>
+    <div class="type">MultiGraph</div>
+  </div>
+  <div class="desc">
+<p>A <code>NetworkX</code> MultiGraph.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">data_map</div>
+    <div class="type">DataMap</div>
+  </div>
+  <div class="desc">
+<p>A <code>rustalgos.data.DataMap</code> object with data entries for plotting.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">path</div>
+    <div class="type">str</div>
+  </div>
+  <div class="desc">
+<p>An optional filepath: if provided, the image will be saved to the path instead of being displayed. Defaults to None.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">node_colour</div>
+    <div class="type">str | float | ndarray</div>
+  </div>
+  <div class="desc">
+<p>Node colour or colours. When passing a list of colours, the number of colours should match the order and number of nodes in the MultiGraph. The colours are passed to the underlying <a href="https://networkx.github.io/documentation/networkx-1.10/reference/generated/networkx.drawing.nx_pylab.draw_networkx.html#draw-networkx"><code>draw_networkx</code></a> method and should be formatted accordingly. Defaults to None.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">node_labels</div>
+    <div class="type">bool</div>
+  </div>
+  <div class="desc">
+<p>Whether to plot the node labels. Defaults to False.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">data_labels</div>
+    <div class="type">ndarray[int | str]</div>
+  </div>
+  <div class="desc">
+<p>An optional iterable of categorical data labels which will be mapped to colours. The number of labels should match the number of data points in <code>data_layer</code>. Defaults to None.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">**kwargs</div>
+    <div class="type">None</div>
+  </div>
+  <div class="desc">
+<p><code>kwargs</code> which will be passed to the <code>matplotlib</code> figure parameters. If provided, these will override the default figure size or dpi parameters.</p></div><p></p>
+</div>
+<h3 id="notes-2"><a aria-label="Link to this section" href="#notes-2"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>Notes</h3>
+<p><img src="/images/assignment_plot.png" alt="Example assignment plot."> <em>An assignment plot to a 50m decomposed graph, with the data points coloured by categorical labels.</em></p>
+</div>
+<div class="function">
+<h2 id="plot-network-structure"><a aria-label="Link to this section" href="#plot-network-structure"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>plot_network_structure</h2>
+<div class="content">
+<span class="name">plot_network_structure</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">network_structure</span>
+    <span class="pc">:</span>
+    <span class="pa"> NetworkStructure</span>
+  </div>
+  <div class="param">
+    <span class="pn">data_map</span>
+    <span class="pc">:</span>
+    <span class="pa"> DataMap | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">poly</span>
+    <span class="pc">:</span>
+    <span class="pa"> shapely.geometry.polygon.Polygon | None = None</span>
+  </div>
+  <span class="pt">)</span>
+</div>
+</div>
+<p>Plot a graph from raw <code>cityseer</code> network structure.</p>
+<div class="box note"><p>Note that this function is subject to frequent revision pending short-term development requirements. It is used
+mainly to visually confirm the correct behaviour of particular algorithms during the software development cycle.</p></div>
+<h3 id="parameters-3"><a aria-label="Link to this section" href="#parameters-3"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>Parameters</h3>
+<div class="param-set">
+  <div class="def">
+    <div class="name">network_structure</div>
+    <div class="type">rustalgos.graph.NetworkStructure</div>
+  </div>
+  <div class="desc">
+<p>A <a href="/rustalgos/graph#networkstructure"><code>rustalgos.graph.NetworkStructure</code></a> instance.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">data_map</div>
+    <div class="type">DataMap</div>
+  </div>
+  <div class="desc">
+<p>An optional <code>rustalgos.data.DataMap</code> object with data entries for plotting.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">poly</div>
+    <div class="type">geometry.Polygon</div>
+  </div>
+  <div class="desc">
+<p>An optional polygon. Defaults to None.</p></div><p></p>
+</div>
+</div>
+<div class="function">
+<h2 id="plot-scatter"><a aria-label="Link to this section" href="#plot-scatter"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>plot_scatter</h2>
+<div class="content">
+<span class="name">plot_scatter</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">ax</span>
+    <span class="pc">:</span>
+    <span class="pa"> matplotlib.axes._axes.Axes</span>
+  </div>
+  <div class="param">
+    <span class="pn">xs</span>
+    <span class="pc">:</span>
+    <span class="pa"> list[float] | ArrayLike</span>
+  </div>
+  <div class="param">
+    <span class="pn">ys</span>
+    <span class="pc">:</span>
+    <span class="pa"> list[float] | ArrayLike</span>
+  </div>
+  <div class="param">
+    <span class="pn">vals</span>
+    <span class="pc">:</span>
+    <span class="pa"> ArrayLike</span>
+  </div>
+  <div class="param">
+    <span class="pn">bbox_extents</span>
+    <span class="pc">:</span>
+    <span class="pa"> tuple[int, int, int, int] | tuple[float, float, float, float]</span>
+  </div>
+  <div class="param">
+    <span class="pn">perc_range</span>
+    <span class="pc">:</span>
+    <span class="pa"> tuple[float, float] = (0.01, 99.99)</span>
+  </div>
+  <div class="param">
+    <span class="pn">cmap_key</span>
+    <span class="pc">:</span>
+    <span class="pa"> str = 'viridis'</span>
+  </div>
+  <div class="param">
+    <span class="pn">shape_exp</span>
+    <span class="pc">:</span>
+    <span class="pa"> float = 1</span>
+  </div>
+  <div class="param">
+    <span class="pn">s_min</span>
+    <span class="pc">:</span>
+    <span class="pa"> float = 0.1</span>
+  </div>
+  <div class="param">
+    <span class="pn">s_max</span>
+    <span class="pc">:</span>
+    <span class="pa"> float = 1</span>
+  </div>
+  <div class="param">
+    <span class="pn">rasterized</span>
+    <span class="pc">:</span>
+    <span class="pa"> bool = True</span>
+  </div>
+  <div class="param">
+    <span class="pn">face_colour</span>
+    <span class="pc">:</span>
+    <span class="pa"> str = '#111'</span>
+  </div>
+  <span class="pt">)</span>
+</div>
+</div>
+<p>Convenience plotting function for plotting outputs from examples in the Cityseer Guide.</p>
+<h3 id="parameters-4"><a aria-label="Link to this section" href="#parameters-4"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>Parameters</h3>
+<div class="param-set">
+  <div class="def">
+    <div class="name">ax</div>
+    <div class="type">plt.Axes</div>
+  </div>
+  <div class="desc">
+<p>A ‘matplotlib’ <code>Ax</code> to which to plot.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">xs</div>
+    <div class="type">ndarray[float]</div>
+  </div>
+  <div class="desc">
+<p>A numpy array of floats representing the <code>x</code> coordinates for points to plot.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">ys</div>
+    <div class="type">ndarray[float]</div>
+  </div>
+  <div class="desc">
+<p>A numpy array of floats representing the <code>y</code> coordinates for points to plot.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">vals</div>
+    <div class="type">ndarray[float]</div>
+  </div>
+  <div class="desc">
+<p>A numpy array of floats representing the data values for the provided points.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">bbox_extents</div>
+    <div class="type">tuple[int, int, int, int]</div>
+  </div>
+  <div class="desc">
+<p>A tuple or list containing the <code>[s, w, n, e]</code> bounding box extents for clipping the plot.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">perc_range</div>
+    <div class="type">tuple[float, float]</div>
+  </div>
+  <div class="desc">
+<p>A tuple of two floats, representing the minimum and maximum percentiles at which to clip the data.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">cmap_key</div>
+    <div class="type">str</div>
+  </div>
+  <div class="desc">
+<p>A <code>matplotlib</code> colour map key.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">shape_exp</div>
+    <div class="type">float</div>
+  </div>
+  <div class="desc">
+<p>A float representing an exponential for reshaping the values distribution. Defaults to 1 which returns the values as provided. An exponential greater than or less than 1 will shape the values distribution accordingly.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">s_min</div>
+    <div class="type">float</div>
+  </div>
+  <div class="desc">
+<p>A float representing the minimum size for a plotted point.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">s_max</div>
+    <div class="type">float</div>
+  </div>
+  <div class="desc">
+<p>A float representing the maximum size for a plotted point.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">rasterized</div>
+    <div class="type">bool</div>
+  </div>
+  <div class="desc">
+<p>Whether or not to rasterise the output. Recommended for plots with a large number of points.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">face_colour</div>
+    <div class="type">str</div>
+  </div>
+  <div class="desc">
+<p>A hex or other valid <code>matplotlib</code> colour value for the ax and figure faces (backgrounds).</p></div><p></p>
+</div>
+</div>
+<div class="function">
+<h2 id="plot-nx-edges"><a aria-label="Link to this section" href="#plot-nx-edges"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>plot_nx_edges</h2>
+<div class="content">
+<span class="name">plot_nx_edges</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">ax</span>
+    <span class="pc">:</span>
+    <span class="pa"> matplotlib.axes._axes.Axes</span>
+  </div>
+  <div class="param">
+    <span class="pn">nx_multigraph</span>
+    <span class="pc">:</span>
+    <span class="pa"> networkx.classes.multigraph.MultiGraph</span>
+  </div>
+  <div class="param">
+    <span class="pn">edge_metrics_key</span>
+    <span class="pc">:</span>
+    <span class="pa"> str</span>
+  </div>
+  <div class="param">
+    <span class="pn">bbox_extents</span>
+    <span class="pc">:</span>
+    <span class="pa"> tuple[int, int, int, int] | tuple[float, float, float, float]</span>
+  </div>
+  <div class="param">
+    <span class="pn">perc_range</span>
+    <span class="pc">:</span>
+    <span class="pa"> tuple[float, float] = (0.01, 99.99)</span>
+  </div>
+  <div class="param">
+    <span class="pn">cmap_key</span>
+    <span class="pc">:</span>
+    <span class="pa"> str = 'viridis'</span>
+  </div>
+  <div class="param">
+    <span class="pn">shape_exp</span>
+    <span class="pc">:</span>
+    <span class="pa"> float = 1</span>
+  </div>
+  <div class="param">
+    <span class="pn">lw_min</span>
+    <span class="pc">:</span>
+    <span class="pa"> float = 0.1</span>
+  </div>
+  <div class="param">
+    <span class="pn">lw_max</span>
+    <span class="pc">:</span>
+    <span class="pa"> float = 1</span>
+  </div>
+  <div class="param">
+    <span class="pn">edge_label_key</span>
+    <span class="pc">:</span>
+    <span class="pa"> str | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">colour_by_categorical</span>
+    <span class="pc">:</span>
+    <span class="pa"> bool = False</span>
+  </div>
+  <div class="param">
+    <span class="pn">max_n_categorical</span>
+    <span class="pc">:</span>
+    <span class="pa"> int = 10</span>
+  </div>
+  <div class="param">
+    <span class="pn">rasterized</span>
+    <span class="pc">:</span>
+    <span class="pa"> bool = True</span>
+  </div>
+  <div class="param">
+    <span class="pn">face_colour</span>
+    <span class="pc">:</span>
+    <span class="pa"> str = '#111'</span>
+  </div>
+  <div class="param">
+    <span class="pn">invert_plot_order</span>
+    <span class="pc">:</span>
+    <span class="pa"> bool = False</span>
+  </div>
+  <span class="pt">)</span>
+</div>
+</div>
+<p>Convenience plotting function for plotting outputs from examples in the Cityseer Guide.</p>
+<h3 id="parameters-5"><a aria-label="Link to this section" href="#parameters-5"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>Parameters</h3>
+<div class="param-set">
+  <div class="def">
+    <div class="name">ax</div>
+    <div class="type">plt.Axes</div>
+  </div>
+  <div class="desc">
+<p>A ‘matplotlib’ <code>Ax</code> to which to plot.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">nx_multigraph</div>
+    <div class="type">MultiGraph</div>
+  </div>
+  <div class="desc">
+<p>A <code>NetworkX</code> MultiGraph.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">edge_metrics_key</div>
+    <div class="type">str</div>
+  </div>
+  <div class="desc">
+<p>An edge key for the provided <code>nx_multigraph</code>. Plotted values will be retrieved from this edge key.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">bbox_extents</div>
+    <div class="type">tuple[int, int, int, int]</div>
+  </div>
+  <div class="desc">
+<p>A tuple or list containing the <code>[s, w, n, e]</code> bounding box extents for clipping the plot.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">perc_range</div>
+    <div class="type">tuple[float, float]</div>
+  </div>
+  <div class="desc">
+<p>A tuple of two floats, representing the minimum and maximum percentiles at which to clip the data.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">cmap_key</div>
+    <div class="type">str</div>
+  </div>
+  <div class="desc">
+<p>A <code>matplotlib</code> colour map key.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">shape_exp</div>
+    <div class="type">float</div>
+  </div>
+  <div class="desc">
+<p>A float representing an exponential for reshaping the values distribution. Defaults to 1 which returns the values as provided. An exponential greater than or less than 1 will shape the values distribution accordingly.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">lw_min</div>
+    <div class="type">float</div>
+  </div>
+  <div class="desc">
+<p>A float representing the minimum line width for a plotted edge.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">lw_max</div>
+    <div class="type">float</div>
+  </div>
+  <div class="desc">
+<p>A float representing the maximum line width for a plotted edge.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">edge_label_key</div>
+    <div class="type">str</div>
+  </div>
+  <div class="desc">
+<p>A key for retrieving categorical labels from edges.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">colour_by_categorical</div>
+    <div class="type">bool</div>
+  </div>
+  <div class="desc">
+<p>Whether to plot colours by categorical. This requires an <code>edge_label_key</code> parameter.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">max_n_categorical</div>
+    <div class="type">int</div>
+  </div>
+  <div class="desc">
+<p>The number of categorical values (sorted in decreasing order) to plot.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">rasterized</div>
+    <div class="type">bool</div>
+  </div>
+  <div class="desc">
+<p>Whether or not to rasterise the output. Recommended for plots with a large number of edges.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">face_colour</div>
+    <div class="type">str</div>
+  </div>
+  <div class="desc">
+<p>A hex or other valid <code>matplotlib</code> colour value for the ax and figure faces (backgrounds).</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">invert_plot_order</div>
+    <div class="type">bool</div>
+  </div>
+  <div class="desc">
+<p>Whether to invert the plot order, e.g. if using an inverse colour map.</p></div><p></p>
+</div>
+</div>
+</section> <div class="w-full flex items-center pt-12"> <footer class="text-xxs font-light text-light-grey">
+Copyright © 2018-present Gareth Simons
+</footer> </div> </div> </div>  </main> </body> </html>

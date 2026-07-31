@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://cityseer.benchmarkurbanism.com/sitemap-index.xml

@@ -1,0 +1,34 @@
+MultipleDefinitionError: The variable 'g' was defined by another cell
+MultipleDefinitionError: The variable 'g' was defined by another cell
+MultipleDefinitionError: The variable 'g' was defined by another cell
+
+Parsing geometries:   0%|          | 0/6418 [00:00<?, ?it/s]
+Parsing geometries:  15%|█▌        | 981/6418 [00:00<00:00, 8966.09it/s]
+Parsing geometries:  35%|███▌      | 2262/6418 [00:00<00:00, 11013.61it/s]
+Parsing geometries:  53%|█████▎    | 3370/6418 [00:00<00:00, 10339.48it/s]
+Parsing geometries:  69%|██████▊   | 4411/6418 [00:00<00:00, 9377.71it/s] 
+Parsing geometries:  85%|████████▍ | 5448/6418 [00:00<00:00, 9699.83it/s]
+Parsing geometries: 100%|██████████| 6418/6418 [00:00<00:00, 9939.57it/s]
+
+Building nodes:   0%|          | 0/6410 [00:00<?, ?it/s]
+Building nodes:  27%|██▋       | 1747/6410 [00:00<00:00, 17178.33it/s]
+Building nodes:  54%|█████▍    | 3465/6410 [00:00<00:00, 13658.19it/s]
+Building nodes:  76%|███████▌  | 4874/6410 [00:00<00:00, 13165.62it/s]
+Building nodes:  97%|█████████▋| 6211/6410 [00:00<00:00, 13177.25it/s]
+Building nodes: 100%|██████████| 6410/6410 [00:00<00:00, 13447.27it/s]
+
+Building edges:   0%|          | 0/14903 [00:00<?, ?it/s]
+Building edges:   7%|▋         | 1113/14903 [00:00<00:01, 11128.42it/s]
+Building edges:  17%|█▋        | 2600/14903 [00:00<00:00, 12587.92it/s]
+Building edges:  28%|██▊       | 4156/14903 [00:00<00:00, 13689.51it/s]
+Building edges:  37%|███▋      | 5524/14903 [00:00<00:00, 13142.96it/s]
+Building edges:  46%|████▌     | 6840/14903 [00:00<00:00, 11645.32it/s]
+Building edges:  56%|█████▌    | 8345/14903 [00:00<00:00, 12678.34it/s]
+Building edges:  67%|██████▋   | 9915/14903 [00:00<00:00, 13591.53it/s]
+Building edges:  76%|███████▌  | 11300/14903 [00:00<00:00, 12453.95it/s]
+Building edges:  84%|████████▍ | 12577/14903 [00:01<00:00, 5329.38it/s] 
+Building edges:  92%|█████████▏| 13753/14903 [00:01<00:00, 6128.65it/s]
+Building edges: 100%|██████████| 14903/14903 [00:01<00:00, 8917.14it/s]
+Error: Export was successful, but some cells failed to execute.
+/Users/dev/.local/share/uv/python/cpython-3.13.13-macos-aarch64-none/lib/python3.13/multiprocessing/resource_tracker.py:400: UserWarning: resource_tracker: There appear to be 1 leaked semaphore objects to clean up at shutdown: {'/loky-26629-6f7lzo8t'}
+  warnings.warn(

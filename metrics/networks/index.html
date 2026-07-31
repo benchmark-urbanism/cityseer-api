@@ -1,0 +1,1424 @@
+<!DOCTYPE html><html lang="en-GB" data-astro-cid-dmey6y7i> <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="author" content="Benchmark Urbanism (Cityseer Ltd.)"><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"><!-- favicons --><link rel="icon" href="/favicons/favicon.ico"><link rel="icon" href="/favicons/icon.svg" type="image/svg+xml"><link rel="apple-touch-icon" href="/favicons/apple-touch-icon.png"><link rel="manifest" href="/manifest.webmanifest"><link rel="preconnect" href="https://fonts.gstatic.com"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Raleway:ital,wght@0,200;0,300;0,400;0,500;0,600;0,700;1,300&display=swap"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@200;300;400;500;600;700&display=swap"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16/dist/katex.min.css"><!-- SEO --><title>cityseer — networks</title><meta name="description" content="API reference for cityseer.metrics.networks: shortest-path and simplest-path node centrality, segment centrality, and OD-weighted betweenness."><meta name="keywords" content="cityseer, urban, metrics, analytics, network analysis, centrality, accessibility, pedestrian, urban design, planning, GIS, Python, Rust"><link rel="canonical" href="https://cityseer.benchmarkurbanism.com/metrics/networks"><!-- Open Graph --><meta property="og:title" content="cityseer — networks"><meta property="og:description" content="API reference for cityseer.metrics.networks: shortest-path and simplest-path node centrality, segment centrality, and OD-weighted betweenness."><meta property="og:type" content="website"><meta property="og:url" content="https://cityseer.benchmarkurbanism.com/metrics/networks"><meta property="og:image" content="https://cityseer.benchmarkurbanism.com/logos/cityseer_logo_light_red.png"><meta property="og:site_name" content="cityseer"><meta property="og:locale" content="en_GB"><!-- Twitter Card --><meta name="twitter:card" content="summary"><meta name="twitter:title" content="cityseer — networks"><meta name="twitter:description" content="API reference for cityseer.metrics.networks: shortest-path and simplest-path node centrality, segment centrality, and OD-weighted betweenness."><meta name="twitter:image" content="https://cityseer.benchmarkurbanism.com/logos/cityseer_logo_light_red.png"><!-- JSON-LD Structured Data --><script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"cityseer","applicationCategory":"DeveloperApplication","operatingSystem":"Cross-platform","url":"https://cityseer.benchmarkurbanism.com","description":"Cityseer API is a collection of computational tools for fine-grained network and land-use analysis, useful for assessing the morphological precursors to vibrant neighbourhoods. It is underpinned by rigorous network-based methods that have been developed from the ground-up specifically for hyperlocal analysis at the pedestrian scale.","author":{"@type":"Organization","name":"Benchmark Urbanism","url":"https://benchmarkurbanism.com"},"license":"https://www.gnu.org/licenses/agpl-3.0.html","programmingLanguage":["Python","Rust"],"offers":{"@type":"Offer","price":"0","priceCurrency":"USD"}}</script><link rel="stylesheet" href="/_astro/CommonLayout.DvW0gENx.css"><style>/*! tailwindcss v4.3.2 | MIT License | https://tailwindcss.com */
+@layer properties{@supports (((-webkit-hyphens:none)) and (not (margin-trim:inline))) or ((-moz-orient:inline) and (not (color:rgb(from red r g b)))){*,:before,:after,::backdrop{--tw-scale-x:1;--tw-scale-y:1;--tw-scale-z:1;--tw-border-style:solid}}}#repo-link[data-astro-cid-gf3o2gw7]{width:100%;color:var(--color-light-grey,#a8a8a8);transition-property:all;transition-timing-function:var(--tw-ease,var(--default-transition-timing-function,cubic-bezier(.4, 0, .2, 1)));transition-duration:var(--tw-duration,var(--default-transition-duration,.15s));flex-direction:column;align-items:center;display:flex}#repo-link[data-astro-cid-gf3o2gw7]:hover{--tw-scale-x:105%;--tw-scale-y:105%;--tw-scale-z:105%;scale:var(--tw-scale-x) var(--tw-scale-y);color:var(--color-theme,#d32333)}@property --tw-scale-x{syntax:"*";inherits:false;initial-value:1}@property --tw-scale-y{syntax:"*";inherits:false;initial-value:1}@property --tw-scale-z{syntax:"*";inherits:false;initial-value:1}#stripe[data-astro-cid-ddyhvr7a]{border-left-style:var(--tw-border-style);border-left-width:1px;border-color:var(--border-color-mid-grey,#404040);padding-inline:var(--spacing,.25rem);padding-block:calc(var(--spacing,.25rem) * 3);writing-mode:vertical-lr;position:sticky;top:0}@property --tw-border-style{syntax:"*";inherits:false;initial-value:solid}
+</style><link rel="stylesheet" href="/_astro/PageLayout.CXkTWSKU.css"><script type="module" src="/_astro/page.CZ9xv0XX.js"></script></head> <body data-astro-cid-dmey6y7i> <main id="app-container" data-astro-cid-dmey6y7i>  <div id="cols" data-astro-cid-xa52sxzc> <div id="nav-col" data-astro-cid-xa52sxzc> <div class="flex flex-col items-end object-contain" data-astro-cid-xa52sxzc> <a href="/" title="home" class="object-contain transition-all hover:scale-105" data-astro-cid-xa52sxzc> <img src="/_astro/cityseer_logo_light_red.CnItq_gG.png" alt="logo" class="h-full w-full max-w-xs px-4 py-10" data-astro-cid-xa52sxzc> </a> <div id="site-search" class="w-full px-4 pb-2"></div> <script type="module">var e=(function(){let e=typeof document<`u`&&document.createElement(`link`).relList;return e&&e.supports&&e.supports(`modulepreload`)?`modulepreload`:`preload`})(),t=function(e){return`/`+e},n={},r=function(r,i,a){let o=Promise.resolve();if(i&&i.length>0){let r=document.getElementsByTagName(`link`),s=document.querySelector(`meta[property=csp-nonce]`),c=s?.nonce||s?.getAttribute(`nonce`);function l(e){return Promise.all(e.map(e=>Promise.resolve(e).then(e=>({status:`fulfilled`,value:e}),e=>({status:`rejected`,reason:e}))))}function u(e){return import.meta.resolve?import.meta.resolve(e):new URL(e,new URL(`../../../src/node/plugins/importAnalysisBuild.ts`,import.meta.url)).href}o=l(i.map(i=>{if(i=t(i,a),i=u(i),i in n)return;n[i]=!0;let o=i.endsWith(`.css`);for(let e=r.length-1;e>=0;e--){let t=r[e];if(t.href===i&&(!o||t.rel===`stylesheet`))return}let s=document.createElement(`link`);if(s.rel=o?`stylesheet`:e,o||(s.as=`script`),s.crossOrigin=``,s.href=i,c&&s.setAttribute(`nonce`,c),document.head.appendChild(s),o)return new Promise((e,t)=>{s.addEventListener(`load`,e),s.addEventListener(`error`,()=>t(Error(`Unable to preload CSS for ${i}`)))})}))}function s(e){let t=new Event(`vite:preloadError`,{cancelable:!0});if(t.payload=e,window.dispatchEvent(t),!t.defaultPrevented)throw e}return o.then(e=>{for(let t of e||[])t.status===`rejected`&&s(t.reason);return r().catch(s)})};(async()=>{let e=document.getElementById(`site-search`);if(e)try{await r(()=>import(`/pagefind/pagefind-ui.js`),__VITE_PRELOAD__);let e=window.PagefindUI;if(!e)throw Error(`PagefindUI unavailable`);let t=document.createElement(`link`);t.rel=`stylesheet`,t.href=`/pagefind/pagefind-ui.css`,document.head.appendChild(t),new e({element:`#site-search`,showImages:!1,showSubResults:!0,resetStyles:!1})}catch{e.style.display=`none`}})();</script> <style>astro-island,astro-slot,astro-static-slot{display:contents}</style><script>(()=>{var a=(s,i,o)=>{let r=async()=>{await(await s())()},t=typeof i.value=="object"?i.value:void 0,c={rootMargin:t==null?void 0:t.rootMargin},n=new IntersectionObserver(e=>{for(let l of e)if(l.isIntersecting){n.disconnect(),r();break}},c);for(let e of o.children)n.observe(e)};(self.Astro||(self.Astro={})).visible=a;window.dispatchEvent(new Event("astro:visible"));})();</script><script>(()=>{var g=Object.defineProperty;var w=(c,s,d)=>s in c?g(c,s,{enumerable:!0,configurable:!0,writable:!0,value:d}):c[s]=d;var l=(c,s,d)=>w(c,typeof s!="symbol"?s+"":s,d);var E=new Set(["__proto__","constructor","prototype"]);{let c={0:t=>y(t),1:t=>d(t),2:t=>new RegExp(t),3:t=>new Date(t),4:t=>new Map(d(t)),5:t=>new Set(d(t)),6:t=>BigInt(t),7:t=>new URL(t),8:t=>new Uint8Array(t),9:t=>new Uint16Array(t),10:t=>new Uint32Array(t),11:t=>Number.POSITIVE_INFINITY*t},s=t=>{let[p,e]=t;return p in c?c[p](e):void 0},d=t=>t.map(s),y=t=>typeof t!="object"||t===null?t:Object.fromEntries(Object.entries(t).map(([p,e])=>[p,s(e)]));class f extends HTMLElement{constructor(){super(...arguments);l(this,"Component");l(this,"hydrator");l(this,"hydrate",async()=>{var b;if(!this.hydrator||!this.isConnected)return;let e=(b=this.parentElement)==null?void 0:b.closest("astro-island[ssr]");if(e){e.addEventListener("astro:hydrate",this.hydrate,{once:!0});return}let n=this.querySelectorAll("astro-slot"),r={},i=this.querySelectorAll("template[data-astro-template]");for(let o of i){let a=o.closest(this.tagName);a!=null&&a.isSameNode(this)&&(r[o.getAttribute("data-astro-template")||"default"]=o.innerHTML,o.remove())}for(let o of n){let a=o.closest(this.tagName);a!=null&&a.isSameNode(this)&&(r[o.getAttribute("name")||"default"]=o.innerHTML)}let u;try{u=this.hasAttribute("props")?y(JSON.parse(this.getAttribute("props"))):{}}catch(o){let a=this.getAttribute("component-url")||"<unknown>",v=this.getAttribute("component-export");throw v&&(a+=` (export ${v})`),console.error(`[hydrate] Error parsing props for component ${a}`,this.getAttribute("props"),o),o}let h;await this.hydrator(this)(this.Component,u,r,{client:this.getAttribute("client")}),this.removeAttribute("ssr"),this.dispatchEvent(new CustomEvent("astro:hydrate"))});l(this,"unmount",()=>{this.isConnected||this.dispatchEvent(new CustomEvent("astro:unmount"))})}disconnectedCallback(){document.removeEventListener("astro:after-swap",this.unmount),document.addEventListener("astro:after-swap",this.unmount,{once:!0})}connectedCallback(){if(!this.hasAttribute("await-children")||document.readyState==="interactive"||document.readyState==="complete")this.childrenConnectedCallback();else{let e=()=>{document.removeEventListener("DOMContentLoaded",e),n.disconnect(),this.childrenConnectedCallback()},n=new MutationObserver(()=>{var r;((r=this.lastChild)==null?void 0:r.nodeType)===Node.COMMENT_NODE&&this.lastChild.nodeValue==="astro:end"&&(this.lastChild.remove(),e())});n.observe(this,{childList:!0}),document.addEventListener("DOMContentLoaded",e)}}async childrenConnectedCallback(){let e=this.getAttribute("before-hydration-url");e&&await import(e),this.start()}getRetryImportUrl(e){let n=new URL(e,document.baseURI),r=`astro-retry=${Date.now()}`,i=n.hash.replace(/^#/,"");return n.hash=i?`${i}&${r}`:r,n.toString()}async importWithRetry(e){try{return await import(e)}catch(n){return await new Promise(r=>setTimeout(r,1e3)),import(this.getRetryImportUrl(e))}}handleHydrationError(e){let n=this.getAttribute("component-url"),r=new CustomEvent("astro:hydration-error",{cancelable:!0,bubbles:!0,composed:!0,detail:{error:e,componentUrl:n}});this.dispatchEvent(r)&&console.error(`[astro-island] Error hydrating ${n}`,e)}async start(){let e=JSON.parse(this.getAttribute("opts")),n=this.getAttribute("client");if(Astro[n]===void 0){window.addEventListener(`astro:${n}`,()=>this.start(),{once:!0});return}try{await Astro[n](async()=>{let r=this.getAttribute("renderer-url");try{let[i,{default:u}]=await Promise.all([this.importWithRetry(this.getAttribute("component-url")),r?this.importWithRetry(r):Promise.resolve({default:()=>()=>{}})]),h=this.getAttribute("component-export")||"default";if(h.includes(".")){this.Component=i;for(let m of h.split(".")){if(E.has(m)||!this.Component||typeof this.Component!="object"&&typeof this.Component!="function"||!Object.hasOwn(this.Component,m))throw new Error(`Invalid component export path: ${h}`);this.Component=this.Component[m]}}else{if(E.has(h))throw new Error(`Invalid component export path: ${h}`);this.Component=i[h]}return this.hydrator=u,this.hydrate}catch(i){return this.handleHydrationError(i),()=>{}}},e,this)}catch(r){this.handleHydrationError(r)}}attributeChangedCallback(){this.hydrate()}}l(f,"observedAttributes",["props"]),customElements.get("astro-island")||customElements.define("astro-island",f)}})();</script><astro-island uid="1kiAYu" prefix="s0" component-url="/_astro/NavColumn.BCcG9Imd.js" component-export="default" renderer-url="/_astro/client.CdL3hvDT.js" props="{&quot;sections&quot;:[1,[[0,{&quot;id&quot;:[0,&quot;start&quot;],&quot;label&quot;:[0,&quot;Getting Started&quot;],&quot;base&quot;:[0,&quot;/start&quot;],&quot;groups&quot;:[1,[[0,{&quot;items&quot;:[1,[[0,{&quot;path&quot;:[0,&quot;/start&quot;],&quot;label&quot;:[0,&quot;Overview&quot;]}]]]}],[0,{&quot;title&quot;:[0,&quot;Python 101&quot;],&quot;items&quot;:[1,[[0,{&quot;path&quot;:[0,&quot;/start/1-notebooks&quot;],&quot;label&quot;:[0,&quot;1 · Notebooks&quot;]}],[0,{&quot;path&quot;:[0,&quot;/start/2-basics&quot;],&quot;label&quot;:[0,&quot;2 · Python Basics&quot;]}],[0,{&quot;path&quot;:[0,&quot;/start/3-spatial&quot;],&quot;label&quot;:[0,&quot;3 · Spatial Data&quot;]}],[0,{&quot;path&quot;:[0,&quot;/start/4-geopandas&quot;],&quot;label&quot;:[0,&quot;4 · GeoPandas&quot;]}],[0,{&quot;path&quot;:[0,&quot;/start/5-urban&quot;],&quot;label&quot;:[0,&quot;5 · Urban Analytics&quot;]}],[0,{&quot;path&quot;:[0,&quot;/start/6-data-science&quot;],&quot;label&quot;:[0,&quot;6 · Data Science&quot;]}]]]}]]]}],[0,{&quot;id&quot;:[0,&quot;guide&quot;],&quot;label&quot;:[0,&quot;Guide&quot;],&quot;base&quot;:[0,&quot;/guide/fundamentals&quot;],&quot;groups&quot;:[1,[[0,{&quot;items&quot;:[1,[[0,{&quot;path&quot;:[0,&quot;/guide/fundamentals&quot;],&quot;label&quot;:[0,&quot;Fundamentals&quot;]}],[0,{&quot;path&quot;:[0,&quot;/guide/how-to&quot;],&quot;label&quot;:[0,&quot;How do I…?&quot;]}],[0,{&quot;path&quot;:[0,&quot;/guide/networks&quot;],&quot;label&quot;:[0,&quot;Networks&quot;]}],[0,{&quot;path&quot;:[0,&quot;/guide/cleaning&quot;],&quot;label&quot;:[0,&quot;Network Cleaning&quot;]}],[0,{&quot;path&quot;:[0,&quot;/guide/centrality&quot;],&quot;label&quot;:[0,&quot;Centrality&quot;]}],[0,{&quot;path&quot;:[0,&quot;/guide/flows&quot;],&quot;label&quot;:[0,&quot;Origin-Destination Flows&quot;]}],[0,{&quot;path&quot;:[0,&quot;/guide/land-use&quot;],&quot;label&quot;:[0,&quot;Land-Use&quot;]}],[0,{&quot;path&quot;:[0,&quot;/guide/interpretation&quot;],&quot;label&quot;:[0,&quot;Interpretation&quot;]}],[0,{&quot;path&quot;:[0,&quot;/guide/troubleshooting&quot;],&quot;label&quot;:[0,&quot;Troubleshooting&quot;]}],[0,{&quot;path&quot;:[0,&quot;/guide/migration&quot;],&quot;label&quot;:[0,&quot;v4 to v5 Migration&quot;]}]]]}]]]}],[0,{&quot;id&quot;:[0,&quot;plugin&quot;],&quot;label&quot;:[0,&quot;QGIS Plugin&quot;],&quot;base&quot;:[0,&quot;/plugin&quot;],&quot;groups&quot;:[1,[[0,{&quot;items&quot;:[1,[[0,{&quot;path&quot;:[0,&quot;/plugin&quot;],&quot;label&quot;:[0,&quot;Overview&quot;]}]]]}],[0,{&quot;title&quot;:[0,&quot;Algorithms&quot;],&quot;items&quot;:[1,[[0,{&quot;path&quot;:[0,&quot;/plugin/centrality&quot;],&quot;label&quot;:[0,&quot;Network Centrality&quot;]}],[0,{&quot;path&quot;:[0,&quot;/plugin/demand&quot;],&quot;label&quot;:[0,&quot;Demand Betweenness&quot;]}],[0,{&quot;path&quot;:[0,&quot;/plugin/accessibility&quot;],&quot;label&quot;:[0,&quot;Accessibility&quot;]}],[0,{&quot;path&quot;:[0,&quot;/plugin/mixed-uses&quot;],&quot;label&quot;:[0,&quot;Mixed Uses&quot;]}],[0,{&quot;path&quot;:[0,&quot;/plugin/statistics&quot;],&quot;label&quot;:[0,&quot;Statistics&quot;]}]]]}]]]}],[0,{&quot;id&quot;:[0,&quot;examples&quot;],&quot;label&quot;:[0,&quot;Examples&quot;],&quot;base&quot;:[0,&quot;/examples&quot;],&quot;groups&quot;:[1,[[0,{&quot;items&quot;:[1,[[0,{&quot;path&quot;:[0,&quot;/examples&quot;],&quot;label&quot;:[0,&quot;Overview&quot;]}]]]}],[0,{&quot;title&quot;:[0,&quot;Recipes&quot;],&quot;items&quot;:[1,[[0,{&quot;path&quot;:[0,&quot;/examples/networks&quot;],&quot;label&quot;:[0,&quot;Network Preparation&quot;]}],[0,{&quot;path&quot;:[0,&quot;/examples/centrality&quot;],&quot;label&quot;:[0,&quot;Centrality&quot;]}],[0,{&quot;path&quot;:[0,&quot;/examples/flows&quot;],&quot;label&quot;:[0,&quot;Origin-Destination Flows&quot;]}],[0,{&quot;path&quot;:[0,&quot;/examples/accessibility&quot;],&quot;label&quot;:[0,&quot;Accessibility&quot;]}],[0,{&quot;path&quot;:[0,&quot;/examples/stats&quot;],&quot;label&quot;:[0,&quot;Statistics&quot;]}],[0,{&quot;path&quot;:[0,&quot;/examples/visibility&quot;],&quot;label&quot;:[0,&quot;Visibility&quot;]}],[0,{&quot;path&quot;:[0,&quot;/examples/continuity&quot;],&quot;label&quot;:[0,&quot;Continuity&quot;]}]]]}],[0,{&quot;items&quot;:[1,[[0,{&quot;path&quot;:[0,&quot;/examples/datasets&quot;],&quot;label&quot;:[0,&quot;Datasets&quot;]}]]]}]]]}],[0,{&quot;id&quot;:[0,&quot;api&quot;],&quot;label&quot;:[0,&quot;API Reference&quot;],&quot;base&quot;:[0,&quot;/api/network&quot;],&quot;groups&quot;:[1,[[0,{&quot;title&quot;:[0,&quot;High-level&quot;],&quot;items&quot;:[1,[[0,{&quot;path&quot;:[0,&quot;/api/network&quot;],&quot;label&quot;:[0,&quot;CityNetwork&quot;]}],[0,{&quot;path&quot;:[0,&quot;/api/decay&quot;],&quot;label&quot;:[0,&quot;decay&quot;]}]]]}],[0,{&quot;title&quot;:[0,&quot;Tools&quot;],&quot;items&quot;:[1,[[0,{&quot;path&quot;:[0,&quot;/tools/io&quot;],&quot;label&quot;:[0,&quot;io&quot;]}],[0,{&quot;path&quot;:[0,&quot;/tools/graphs&quot;],&quot;label&quot;:[0,&quot;graphs&quot;]}],[0,{&quot;path&quot;:[0,&quot;/tools/plot&quot;],&quot;label&quot;:[0,&quot;plot&quot;]}],[0,{&quot;path&quot;:[0,&quot;/tools/mock&quot;],&quot;label&quot;:[0,&quot;mock&quot;]}],[0,{&quot;path&quot;:[0,&quot;/tools/util&quot;],&quot;label&quot;:[0,&quot;util&quot;]}]]]}],[0,{&quot;title&quot;:[0,&quot;Metrics&quot;],&quot;items&quot;:[1,[[0,{&quot;path&quot;:[0,&quot;/metrics/networks&quot;],&quot;label&quot;:[0,&quot;networks&quot;]}],[0,{&quot;path&quot;:[0,&quot;/metrics/layers&quot;],&quot;label&quot;:[0,&quot;layers&quot;]}],[0,{&quot;path&quot;:[0,&quot;/metrics/observe&quot;],&quot;label&quot;:[0,&quot;observe&quot;]}],[0,{&quot;path&quot;:[0,&quot;/metrics/visibility&quot;],&quot;label&quot;:[0,&quot;visibility&quot;]}],[0,{&quot;path&quot;:[0,&quot;/metrics/sampling&quot;],&quot;label&quot;:[0,&quot;sampling&quot;]}]]]}],[0,{&quot;title&quot;:[0,&quot;Rust Algos&quot;],&quot;items&quot;:[1,[[0,{&quot;path&quot;:[0,&quot;/rustalgos/rustalgos&quot;],&quot;label&quot;:[0,&quot;rustalgos&quot;]}],[0,{&quot;path&quot;:[0,&quot;/rustalgos/graph&quot;],&quot;label&quot;:[0,&quot;graph&quot;]}],[0,{&quot;path&quot;:[0,&quot;/rustalgos/centrality&quot;],&quot;label&quot;:[0,&quot;centrality&quot;]}],[0,{&quot;path&quot;:[0,&quot;/rustalgos/diversity&quot;],&quot;label&quot;:[0,&quot;diversity&quot;]}],[0,{&quot;path&quot;:[0,&quot;/rustalgos/data&quot;],&quot;label&quot;:[0,&quot;data&quot;]}],[0,{&quot;path&quot;:[0,&quot;/rustalgos/viewshed&quot;],&quot;label&quot;:[0,&quot;viewshed&quot;]}]]]}],[0,{&quot;items&quot;:[1,[[0,{&quot;path&quot;:[0,&quot;/api/glossary&quot;],&quot;label&quot;:[0,&quot;Glossary&quot;]}]]]}]]]}]]],&quot;activeSectionId&quot;:[0,&quot;api&quot;],&quot;currentPath&quot;:[0,&quot;/metrics/networks&quot;],&quot;data-astro-cid-xa52sxzc&quot;:[0,true]}" ssr client="visible" opts="{&quot;name&quot;:&quot;NavColumn&quot;,&quot;value&quot;:true}" await-children><nav id="nav-tree" data-astro-cid-xa52sxzc="true" data-v-89398da1><!--[--><!--]--></nav><!--astro:end--></astro-island> <div class="grow" data-astro-cid-xa52sxzc></div> <div class="self-start px-8 py-2" data-astro-cid-xa52sxzc> <a id="repo-link" href="https://github.com/benchmark-urbanism/cityseer-api/" target="_blank" data-astro-cid-gf3o2gw7> <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 496 512" class="text-theme w-12" data-astro-cid-gf3o2gw7="true"><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6c-3.3.3-5.6-1.3-5.6-3.6c0-2 2.3-3.6 5.2-3.6c3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9c2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9c.3 2 2.9 3.3 5.9 2.6c2.9-.7 4.9-2.6 4.6-4.6c-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2c12.8 2.3 17.3-5.6 17.3-12.1c0-6.2-.3-40.4-.3-61.4c0 0-70 15-84.7-29.8c0 0-11.4-29.1-27.8-36.6c0 0-22.9-15.7 1.6-15.4c0 0 24.9 2 38.6 25.8c21.9 38.6 58.6 27.5 72.9 20.9c2.3-16 8.8-27.1 16-33.7c-55.9-6.2-112.3-14.3-112.3-110.5c0-27.5 7.6-41.3 23.6-58.9c-2.6-6.5-11.1-33.3 2.6-67.9c20.9-6.5 69 27 69 27c20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27c13.7 34.7 5.2 61.4 2.6 67.9c16 17.7 25.8 31.5 25.8 58.9c0 96.5-58.9 104.2-114.8 110.5c9.2 7.9 17 22.9 17 46.4c0 33.7-.3 75.4-.3 83.6c0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252C496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2c1.6 1.6 3.9 2.3 5.2 1c1.3-1 1-3.3-.7-5.2c-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9c1.6 1 3.6.7 4.3-.7c.7-1.3-.3-2.9-2.3-3.9c-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2c2.3 2.3 5.2 2.6 6.5 1c1.3-1.3.7-4.3-1.3-6.2c-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9c1.6 2.3 4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2c-1.4-2.3-4-3.3-5.6-2z" fill="currentColor"></path></svg> <h2 class="py-4 leading-none" data-astro-cid-gf3o2gw7>Github</h2> </a> </div> </div> <div id="stripe" data-astro-cid-ddyhvr7a> <h2 class="py-0" data-astro-cid-ddyhvr7a>Cityseer API Docs</h2> </div> </div> <div id="content-col" data-pagefind-body data-astro-cid-xa52sxzc> <section class="module">
+<h1 id="networks"><a aria-label="Link to this section" href="#networks"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>networks</h1>
+<p>Compute network centralities. If you are using <code>cityseer</code> for the first time, use the <a href="/api/network"><code>CityNetwork</code></a> class instead of this module: it builds the network automatically (including cleaning and the dual graph) and exposes the same centrality methods. The functions here are the lower-level functional API, for direct control over the <code>NetworkStructure</code> and nodes <code>GeoDataFrame</code>.</p>
+<p>Two centrality functions are available, using shortest-path (metric) or simplest-path (angular) heuristics:</p>
+<ul>
+<li><a href="#centrality-shortest"><code>centrality_shortest</code></a></li>
+<li><a href="#centrality-simplest"><code>centrality_simplest</code></a></li>
+</ul>
+<p><a href="#node-centrality-shortest"><code>node_centrality_shortest</code></a>, <a href="#node-centrality-simplest"><code>node_centrality_simplest</code></a>, and <a href="#segment-centrality"><code>segment_centrality</code></a> are <strong>deprecated</strong>. They are backwards-compatibility shims for pre-5.0 code and will be removed in a future major release; do not use them in new work.</p>
+<p>Metrics are specified as <code>{name: expression}</code> dicts using variables <code>c</code> (cost) and <code>p</code> (normalised progress). For shortest paths, <code>c</code> is metric distance and <code>p = c / threshold</code>. For simplest paths, <code>c</code> is angular cost and <code>p</code> is normalised time progress.</p>
+<p>Four categories of metrics are supported:</p>
+<ul>
+<li><strong>closeness</strong>: per-reached-node accumulation (e.g. <code>{"harmonic": "1/c", "density": "1"}</code>)</li>
+<li><strong>betweenness</strong>: target seed weight in Brandes backpropagation (e.g. <code>{"betweenness": "1"}</code>)</li>
+<li><strong>cycles</strong>: circuit rank (boolean flag)</li>
+<li><strong>postprocess</strong>: derived from computed columns in Python (e.g. <code>{"hillier": "density**2 / farness"}</code>)</li>
+</ul>
+<p>Pass <code>None</code> for defaults or <code>{}</code> to skip a category.</p>
+<p>Per-node <code>weight</code> values (default <code>1.0</code>, set on the nodes <code>GeoDataFrame</code> or read from NetworkX node attributes) apply gravity-style weighting to centrality: closeness weights each reachable node by its destination weight (so <code>density</code> becomes <code>sum_j w_j</code> rather than a plain count), and betweenness weights each origin-destination pair by the product of its endpoint weights. The same weighting is applied identically whether or not sampling is used. Land-use, mixed-use, and statistical aggregations are intentionally <em>not</em> node-weighted.</p>
+<p>When <code>segment_weighted=True</code>, node weights are temporarily set to the primal edge (street segment) lengths so that centrality measures reflect total reachable street length rather than node counts (closeness by destination length, betweenness by the product of endpoint lengths). This is a convenience preset over the per-node <code>weight</code> mechanism and requires a dual graph representation.</p>
+<p>When <code>sample=True</code>, only a subset of nodes are used as sources for centrality computation, with results corrected to approximate the full computation.</p>
+<div class="box note"><p>Cautions that apply when computing centralities with these lower-level functions:</p><ul>
+<li>Columns prefixed <code>cc_</code> are managed by cityseer: recomputing a metric for the same distance overwrites the
+matching <code>cc_</code> columns in place (intended for re-runs). Don’t store your own data under this prefix.</li>
+<li>Centralities can be distorted by messy graph topologies such as unnecessary intermediate points along streets
+(used to describe road curvature) or overly complex representations of street intersections. Clean the network
+first using the <a href="/tools/graphs"><code>graph</code></a> module (see the
+<a href="/guide/fundamentals#automatic-graph-cleaning">automatic graph cleaning</a> for examples).</li>
+<li><code>harmonic</code> closeness sums inverse distances (<code>1/c</code>), so a pair of nodes separated by only a few metres
+contributes a very large value, and a pair below 1 m can inflate a node’s score severely. <code>CityNetwork</code>
+construction removes near-duplicate edges and short self-loops automatically; when building the network manually,
+consolidate nearby nodes (see <a href="/tools/graphs#nx-consolidate-nodes"><code>nx_consolidate_nodes</code></a>) before computing
+harmonic closeness.</li>
+<li>Simplest (angular) measures require a dual graph representation. <code>CityNetwork</code> builds the dual automatically;
+this step only applies to the manual method, where primal graphs must be converted with
+<a href="/tools/graphs#nx-to-dual"><code>graphs.nx_to_dual</code></a> before ingestion.</li>
+<li>Metrics should only be compared across networks that use the same graph representation (both primal or both
+dual), because the differing number of nodes and edges between representations affects the metric values. For
+example, a four-way intersection consisting of one node with four edges on a primal graph translates to four
+nodes and six edges on the dual. This effect is amplified for denser regions of the network.</li>
+<li>Standard closeness and normalised closeness do not work well with distance-bounded analysis. Use harmonic
+closeness or Hillier normalisation instead.</li>
+</ul></div>
+<div class="function">
+<h2 id="centrality-shortest"><a aria-label="Link to this section" href="#centrality-shortest"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>centrality_shortest</h2>
+<div class="content">
+<span class="name">centrality_shortest</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">network_structure</span>
+    <span class="pc">:</span>
+    <span class="pa"> NetworkStructure</span>
+  </div>
+  <div class="param">
+    <span class="pn">nodes_gdf</span>
+    <span class="pc">:</span>
+    <span class="pa"> geopandas.geodataframe.GeoDataFrame</span>
+  </div>
+  <div class="param">
+    <span class="pn">distances</span>
+    <span class="pc">:</span>
+    <span class="pa"> list[int] | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">minutes</span>
+    <span class="pc">:</span>
+    <span class="pa"> list[float] | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">closeness</span>
+    <span class="pc">:</span>
+    <span class="pa"> dict[str, str] | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">betweenness</span>
+    <span class="pc">:</span>
+    <span class="pa"> dict[str, str] | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">cycles</span>
+    <span class="pc">:</span>
+    <span class="pa"> bool = True</span>
+  </div>
+  <div class="param">
+    <span class="pn">postprocess</span>
+    <span class="pc">:</span>
+    <span class="pa"> dict[str, str] | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">speed_m_s</span>
+    <span class="pc">:</span>
+    <span class="pa"> float = 1.33333</span>
+  </div>
+  <div class="param">
+    <span class="pn">tolerance</span>
+    <span class="pc">:</span>
+    <span class="pa"> float | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">segment_weighted</span>
+    <span class="pc">:</span>
+    <span class="pa"> bool = False</span>
+  </div>
+  <div class="param">
+    <span class="pn">random_seed</span>
+    <span class="pc">:</span>
+    <span class="pa"> int | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">sample</span>
+    <span class="pc">:</span>
+    <span class="pa"> bool = False</span>
+  </div>
+  <div class="param">
+    <span class="pn">epsilon</span>
+    <span class="pc">:</span>
+    <span class="pa"> float | None = None</span>
+  </div>
+  <span class="pt">)->[</span>
+  <span class="pr">GeoDataFrame</span>
+  <span class="pt">]</span>
+</div>
+</div>
+<p>Compute centrality using shortest paths with a single Dijkstra per source. Metrics are specified as <code>{name: expression}</code> dicts. Expressions use two variables:</p>
+<ul>
+<li><code>c</code>: the raw cost (metric distance in metres for shortest-path analysis)</li>
+<li><code>p</code>: normalised progress from 0 at the source to 1 at the distance threshold (<code>p = c / threshold</code>)</li>
+</ul>
+<p>Pass <code>None</code> for defaults or <code>{}</code> to skip a category.</p>
+<p>Tip: compute only what you need — a smaller <code>closeness</code> / <code>betweenness</code> dict, <code>{}</code> to skip a whole category, or <code>cycles=False</code> — evaluates fewer expressions and emits fewer columns.</p>
+<h3 id="parameters"><a aria-label="Link to this section" href="#parameters"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>Parameters</h3>
+<div class="param-set">
+  <div class="def">
+    <div class="name">network_structure</div>
+    <div class="type">None</div>
+  </div>
+  <div class="desc">
+<p>A <a href="/rustalgos/graph#networkstructure"><code>rustalgos.graph.NetworkStructure</code></a>.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">nodes_gdf</div>
+    <div class="type">None</div>
+  </div>
+  <div class="desc">
+<p>A <a href="https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe"><code>GeoDataFrame</code></a> representing nodes. The outputs of calculations will be written to this <code>GeoDataFrame</code>.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">distances</div>
+    <div class="type">list[int]</div>
+  </div>
+  <div class="desc">
+<p>Distance thresholds in metres at which to compute centrality measures.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">minutes</div>
+    <div class="type">list[float]</div>
+  </div>
+  <div class="desc">
+<p>Walking times in minutes; converted to distance thresholds using <code>speed_m_s</code>.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">closeness</div>
+    <div class="type">dict[str, str]</div>
+  </div>
+  <div class="desc">
+<p>Closeness metric expressions. Each entry is <code>{name: expr(c, p)}</code>, accumulated per reached node. <code>None</code> uses defaults: density, farness, harmonic, decay.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">betweenness</div>
+    <div class="type">dict[str, str]</div>
+  </div>
+  <div class="desc">
+<p>Betweenness metric expressions. Each entry is <code>{name: expr(c, p)}</code>, used as the weight assigned to each destination when accumulating betweenness contributions along shortest paths. <code>None</code> uses defaults: betweenness, betweenness_decay.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">cycles</div>
+    <div class="type">bool</div>
+  </div>
+  <div class="desc">
+<p>If True, compute circuit rank (cycle count) for each node. Default True.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">postprocess</div>
+    <div class="type">dict[str, str]</div>
+  </div>
+  <div class="desc">
+<p>Derived metrics computed in Python from the closeness/betweenness results. <code>None</code> uses default: <code>{&#x26;quot;hillier&#x26;quot;: &#x26;quot;density**2 / farness&#x26;quot;}</code>.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">speed_m_s</div>
+    <div class="type">float</div>
+  </div>
+  <div class="desc">
+<p>Speed in metres per second for converting <code>minutes</code> to distance thresholds.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">tolerance</div>
+    <div class="type">float</div>
+  </div>
+  <div class="desc">
+<p>Relative tolerance for betweenness path equality, as a percentage (e.g. 1.0 = 1%).</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">segment_weighted</div>
+    <div class="type">bool</div>
+  </div>
+  <div class="desc">
+<p>If True, weight by primal edge (street segment) lengths. Requires a dual graph.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">random_seed</div>
+    <div class="type">int</div>
+  </div>
+  <div class="desc">
+<p>Optional seed for reproducible sampling.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">sample</div>
+    <div class="type">bool</div>
+  </div>
+  <div class="desc">
+<p>If True, enables adaptive sampling at longer distance thresholds.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">epsilon</div>
+    <div class="type">float</div>
+  </div>
+  <div class="desc">
+<p>Error tolerance for sampling. Defaults to <code>sampling.HOEFFDING_EPSILON</code> (0.05).</p></div><p></p>
+</div>
+<h3 id="returns"><a aria-label="Link to this section" href="#returns"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>Returns</h3>
+<div class="param-set">
+  <div class="def">
+    <div class="name">nodes_gdf</div>
+    <div class="type">GeoDataFrame</div>
+  </div>
+  <div class="desc">
+<p>The input <code>nodes_gdf</code> parameter is returned with additional centrality columns.</p></div><p></p>
+</div>
+<h3 id="notes"><a aria-label="Link to this section" href="#notes"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>Notes</h3>
+<pre class="astro-code material-theme-darker" style="background-color:#212121;color:#EEFFFF; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="python"><code><span class="line"><span style="color:#89DDFF;font-style:italic">from</span><span style="color:#EEFFFF"> cityseer</span><span style="color:#89DDFF">.</span><span style="color:#EEFFFF">tools </span><span style="color:#89DDFF;font-style:italic">import</span><span style="color:#EEFFFF"> mock</span><span style="color:#89DDFF">,</span><span style="color:#EEFFFF"> graphs</span><span style="color:#89DDFF">,</span><span style="color:#EEFFFF"> io</span></span>
+<span class="line"><span style="color:#89DDFF;font-style:italic">from</span><span style="color:#EEFFFF"> cityseer</span><span style="color:#89DDFF">.</span><span style="color:#EEFFFF">metrics </span><span style="color:#89DDFF;font-style:italic">import</span><span style="color:#EEFFFF"> networks</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#EEFFFF">G </span><span style="color:#89DDFF">=</span><span style="color:#EEFFFF"> mock</span><span style="color:#89DDFF">.</span><span style="color:#82AAFF">mock_graph</span><span style="color:#89DDFF">()</span></span>
+<span class="line"><span style="color:#EEFFFF">G </span><span style="color:#89DDFF">=</span><span style="color:#EEFFFF"> graphs</span><span style="color:#89DDFF">.</span><span style="color:#82AAFF">nx_simple_geoms</span><span style="color:#89DDFF">(</span><span style="color:#82AAFF">G</span><span style="color:#89DDFF">)</span></span>
+<span class="line"><span style="color:#EEFFFF">nodes_gdf</span><span style="color:#89DDFF">,</span><span style="color:#EEFFFF"> edges_gdf</span><span style="color:#89DDFF">,</span><span style="color:#EEFFFF"> network_structure </span><span style="color:#89DDFF">=</span><span style="color:#EEFFFF"> io</span><span style="color:#89DDFF">.</span><span style="color:#82AAFF">network_structure_from_nx</span><span style="color:#89DDFF">(</span><span style="color:#82AAFF">G</span><span style="color:#89DDFF">)</span></span>
+<span class="line"><span style="color:#EEFFFF">nodes_gdf </span><span style="color:#89DDFF">=</span><span style="color:#EEFFFF"> networks</span><span style="color:#89DDFF">.</span><span style="color:#82AAFF">centrality_shortest</span><span style="color:#89DDFF">(</span></span>
+<span class="line"><span style="color:#82AAFF">    network_structure</span><span style="color:#89DDFF">,</span></span>
+<span class="line"><span style="color:#82AAFF">    nodes_gdf</span><span style="color:#89DDFF">,</span></span>
+<span class="line"><span style="color:#EEFFFF;font-style:italic">    distances</span><span style="color:#89DDFF">=[</span><span style="color:#F78C6C">400</span><span style="color:#89DDFF">,</span><span style="color:#F78C6C"> 800</span><span style="color:#89DDFF">],</span></span>
+<span class="line"><span style="color:#89DDFF">)</span></span>
+<span class="line"><span style="color:#82AAFF">print</span><span style="color:#89DDFF">(</span><span style="color:#82AAFF">nodes_gdf</span><span style="color:#89DDFF">[[</span><span style="color:#89DDFF">"</span><span style="color:#C3E88D">cc_harmonic_400</span><span style="color:#89DDFF">"</span><span style="color:#89DDFF">,</span><span style="color:#89DDFF"> "</span><span style="color:#C3E88D">cc_betweenness_800</span><span style="color:#89DDFF">"</span><span style="color:#89DDFF">]])</span></span></code></pre>
+</div>
+<div class="function">
+<h2 id="build-od-matrix"><a aria-label="Link to this section" href="#build-od-matrix"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>build_od_matrix</h2>
+<div class="content">
+<span class="name">build_od_matrix</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">od_df</span>
+    <span class="pc">:</span>
+    <span class="pa"> pandas.DataFrame</span>
+  </div>
+  <div class="param">
+    <span class="pn">zones_gdf</span>
+    <span class="pc">:</span>
+    <span class="pa"> geopandas.geodataframe.GeoDataFrame</span>
+  </div>
+  <div class="param">
+    <span class="pn">network_structure</span>
+    <span class="pc">:</span>
+    <span class="pa"> NetworkStructure</span>
+  </div>
+  <div class="param">
+    <span class="pn">origin_col</span>
+    <span class="pc">:</span>
+    <span class="pa"> str</span>
+  </div>
+  <div class="param">
+    <span class="pn">destination_col</span>
+    <span class="pc">:</span>
+    <span class="pa"> str</span>
+  </div>
+  <div class="param">
+    <span class="pn">weight_col</span>
+    <span class="pc">:</span>
+    <span class="pa"> str</span>
+  </div>
+  <div class="param">
+    <span class="pn">zone_id_col</span>
+    <span class="pc">:</span>
+    <span class="pa"> str | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">max_netw_assign_dist</span>
+    <span class="pc">:</span>
+    <span class="pa"> float = 500.0</span>
+  </div>
+  <div class="param">
+    <span class="pn">barriers_gdf</span>
+    <span class="pc">:</span>
+    <span class="pa"> geopandas.geodataframe.GeoDataFrame | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">n_nearest_candidates</span>
+    <span class="pc">:</span>
+    <span class="pa"> int = 50</span>
+  </div>
+  <span class="pt">)->[</span>
+  <span class="pr">OdMatrix</span>
+  <span class="pt">]</span>
+</div>
+</div>
+<p>Build an OdMatrix from OD flow data and zone boundaries. Computes zone centroids, assigns them to the network with the shared data-layer workflow (<a href="/metrics/layers#build-data-map"><code>build_data_map</code></a> — the same representation-aware assignment used by accessibility, mixed-uses, stats, and <code>betweenness_demand</code>), and constructs a sparse OD weight matrix for use with <code>betweenness_od</code>. Each zone is represented by its nearest assigned network node.</p>
+<h3 id="parameters-1"><a aria-label="Link to this section" href="#parameters-1"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>Parameters</h3>
+<div class="param-set">
+  <div class="def">
+    <div class="name">od_df</div>
+    <div class="type">pd.DataFrame</div>
+  </div>
+  <div class="desc">
+<p>Origin-destination flow data with columns for origin zone, destination zone, and weight.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">zones_gdf</div>
+    <div class="type">gpd.GeoDataFrame</div>
+  </div>
+  <div class="desc">
+<p>Zone boundaries (polygons) or centroids (points). Must be in a projected CRS matching the network, or in <code>EPSG:4326</code> (will be auto-reprojected).</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">network_structure</div>
+    <div class="type">rustalgos.graph.NetworkStructure</div>
+  </div>
+  <div class="desc">
+<p>The network to assign zone centroids to.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">origin_col</div>
+    <div class="type">str</div>
+  </div>
+  <div class="desc">
+<p>Column in od_df containing origin zone identifiers.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">destination_col</div>
+    <div class="type">str</div>
+  </div>
+  <div class="desc">
+<p>Column in od_df containing destination zone identifiers.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">weight_col</div>
+    <div class="type">str</div>
+  </div>
+  <div class="desc">
+<p>Column in od_df containing trip weights (e.g., number of bicycle commuters).</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">zone_id_col</div>
+    <div class="type">str | None</div>
+  </div>
+  <div class="desc">
+<p>Column in zones_gdf containing zone identifiers matching origin_col/destination_col. If None, uses the GeoDataFrame index.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">max_netw_assign_dist</div>
+    <div class="type">float</div>
+  </div>
+  <div class="desc">
+<p>Maximum distance (in CRS units, typically metres) for assigning a centroid to the network. Centroids with no valid assignment within this distance are excluded with a warning.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">barriers_gdf</div>
+    <div class="type">gpd.GeoDataFrame | None</div>
+  </div>
+  <div class="desc">
+<p>Optional barriers to respect during assignment, as in the data layers.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">n_nearest_candidates</div>
+    <div class="type">int</div>
+  </div>
+  <div class="desc">
+<p>The number of nearest candidate edges to consider when assigning centroids to the network, as in the data layers.</p></div><p></p>
+</div>
+<h3 id="returns-1"><a aria-label="Link to this section" href="#returns-1"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>Returns</h3>
+<div class="param-set">
+  <div class="def">
+    <div class="name"></div>
+    <div class="type">rustalgos.centrality.OdMatrix</div>
+  </div>
+  <div class="desc">
+<p>Sparse OD matrix ready for use with <code>betweenness_od</code>.</p></div><p></p>
+</div>
+</div>
+<div class="function">
+<h2 id="betweenness-od"><a aria-label="Link to this section" href="#betweenness-od"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>betweenness_od</h2>
+<div class="content">
+<span class="name">betweenness_od</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">network_structure</span>
+    <span class="pc">:</span>
+    <span class="pa"> NetworkStructure</span>
+  </div>
+  <div class="param">
+    <span class="pn">nodes_gdf</span>
+    <span class="pc">:</span>
+    <span class="pa"> geopandas.geodataframe.GeoDataFrame</span>
+  </div>
+  <div class="param">
+    <span class="pn">od_matrix</span>
+    <span class="pc">:</span>
+    <span class="pa"> OdMatrix</span>
+  </div>
+  <div class="param">
+    <span class="pn">distances</span>
+    <span class="pc">:</span>
+    <span class="pa"> list[int] | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">minutes</span>
+    <span class="pc">:</span>
+    <span class="pa"> list[float] | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">betweenness</span>
+    <span class="pc">:</span>
+    <span class="pa"> dict[str, str] | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">speed_m_s</span>
+    <span class="pc">:</span>
+    <span class="pa"> float = 1.33333</span>
+  </div>
+  <div class="param">
+    <span class="pn">tolerance</span>
+    <span class="pc">:</span>
+    <span class="pa"> float | None = None</span>
+  </div>
+  <span class="pt">)->[</span>
+  <span class="pr">GeoDataFrame</span>
+  <span class="pt">]</span>
+</div>
+</div>
+<p>Compute OD-weighted betweenness centrality using the shortest path heuristic.</p>
+<h3 id="parameters-2"><a aria-label="Link to this section" href="#parameters-2"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>Parameters</h3>
+<div class="param-set">
+  <div class="def">
+    <div class="name">network_structure</div>
+    <div class="type">None</div>
+  </div>
+  <div class="desc">
+<p>A <a href="/rustalgos/graph#networkstructure"><code>rustalgos.graph.NetworkStructure</code></a>.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">nodes_gdf</div>
+    <div class="type">None</div>
+  </div>
+  <div class="desc">
+<p>A <a href="https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe"><code>GeoDataFrame</code></a> representing nodes. The outputs of calculations will be written to this <code>GeoDataFrame</code>.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">od_matrix</div>
+    <div class="type">None</div>
+  </div>
+  <div class="desc">
+<p>An <a href="/rustalgos/centrality#odmatrix"><code>OdMatrix</code></a> mapping (origin, destination) node pairs to trip weights. Build with <a href="/metrics/networks#build-od-matrix"><code>build_od_matrix</code></a>.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">distances</div>
+    <div class="type">list[int]</div>
+  </div>
+  <div class="desc">
+<p>Distance thresholds in metres at which to compute betweenness.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">minutes</div>
+    <div class="type">list[float]</div>
+  </div>
+  <div class="desc">
+<p>Walking times in minutes; converted to distance thresholds using <code>speed_m_s</code>.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">betweenness</div>
+    <div class="type">dict[str, str]</div>
+  </div>
+  <div class="desc">
+<p>Betweenness metric expressions. <code>None</code> uses defaults: betweenness, betweenness_decay.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">speed_m_s</div>
+    <div class="type">float</div>
+  </div>
+  <div class="desc">
+<p>Speed in metres per second for converting <code>minutes</code> to distance thresholds.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">tolerance</div>
+    <div class="type">float</div>
+  </div>
+  <div class="desc">
+<p>Relative tolerance for path equality, as a percentage.</p></div><p></p>
+</div>
+<h3 id="returns-2"><a aria-label="Link to this section" href="#returns-2"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>Returns</h3>
+<div class="param-set">
+  <div class="def">
+    <div class="name">nodes_gdf</div>
+    <div class="type">GeoDataFrame</div>
+  </div>
+  <div class="desc">
+<p>The input <code>nodes_gdf</code> parameter is returned with additional betweenness columns.</p></div><p></p>
+</div>
+</div>
+<div class="function">
+<h2 id="betweenness-demand"><a aria-label="Link to this section" href="#betweenness-demand"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>betweenness_demand</h2>
+<div class="content">
+<span class="name">betweenness_demand</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">network_structure</span>
+    <span class="pc">:</span>
+    <span class="pa"> NetworkStructure</span>
+  </div>
+  <div class="param">
+    <span class="pn">nodes_gdf</span>
+    <span class="pc">:</span>
+    <span class="pa"> geopandas.geodataframe.GeoDataFrame</span>
+  </div>
+  <div class="param">
+    <span class="pn">origins_gdf</span>
+    <span class="pc">:</span>
+    <span class="pa"> geopandas.geodataframe.GeoDataFrame</span>
+  </div>
+  <div class="param">
+    <span class="pn">destinations_gdf</span>
+    <span class="pc">:</span>
+    <span class="pa"> geopandas.geodataframe.GeoDataFrame</span>
+  </div>
+  <div class="param">
+    <span class="pn">origin_weight_col</span>
+    <span class="pc">:</span>
+    <span class="pa"> str</span>
+  </div>
+  <div class="param">
+    <span class="pn">destination_weight_col</span>
+    <span class="pc">:</span>
+    <span class="pa"> str</span>
+  </div>
+  <div class="param">
+    <span class="pn">distances</span>
+    <span class="pc">:</span>
+    <span class="pa"> list[int] | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">minutes</span>
+    <span class="pc">:</span>
+    <span class="pa"> list[float] | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">decay_fn</span>
+    <span class="pc">:</span>
+    <span class="pa"> str = 'exp(-4 * p)'</span>
+  </div>
+  <div class="param">
+    <span class="pn">closest_destination</span>
+    <span class="pc">:</span>
+    <span class="pa"> bool = False</span>
+  </div>
+  <div class="param">
+    <span class="pn">participation</span>
+    <span class="pc">:</span>
+    <span class="pa"> float = 1.0</span>
+  </div>
+  <div class="param">
+    <span class="pn">metric_name</span>
+    <span class="pc">:</span>
+    <span class="pa"> str = 'demand'</span>
+  </div>
+  <div class="param">
+    <span class="pn">max_netw_assign_dist</span>
+    <span class="pc">:</span>
+    <span class="pa"> float = 100.0</span>
+  </div>
+  <div class="param">
+    <span class="pn">barriers_gdf</span>
+    <span class="pc">:</span>
+    <span class="pa"> geopandas.geodataframe.GeoDataFrame | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">n_nearest_candidates</span>
+    <span class="pc">:</span>
+    <span class="pa"> int = 50</span>
+  </div>
+  <div class="param">
+    <span class="pn">speed_m_s</span>
+    <span class="pc">:</span>
+    <span class="pa"> float = 1.33333</span>
+  </div>
+  <div class="param">
+    <span class="pn">tolerance</span>
+    <span class="pc">:</span>
+    <span class="pa"> float | None = None</span>
+  </div>
+  <span class="pt">)->[</span>
+  <span class="pr">GeoDataFrame</span>
+  <span class="pt">]</span>
+</div>
+</div>
+<p>Compute demand-weighted (flow) betweenness from a spatial interaction model. Trips are allocated between weighted origins (e.g. population) and weighted destinations (e.g. attractors) using a <strong>singly (origin-)constrained</strong> spatial interaction model, then routed along shortest network paths so that intermediate nodes accumulate the flow that passes through them. For each origin <span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>o</mi></mrow><annotation encoding="application/x-tex">o</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.4306em;"></span><span class="mord mathnormal">o</span></span></span></span> and reachable destination <span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>d</mi></mrow><annotation encoding="application/x-tex">d</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.6944em;"></span><span class="mord mathnormal">d</span></span></span></span> the allocated flow is</p>
+<span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><msub><mi>W</mi><mrow><mi>o</mi><mi>d</mi></mrow></msub><mo>=</mo><msub><mi>W</mi><mi>o</mi></msub><mo>⋅</mo><mfrac><mrow><msub><mi>W</mi><mi>d</mi></msub><mo>⋅</mo><mi>f</mi><mo stretchy="false">(</mo><msub><mi>c</mi><mrow><mi>o</mi><mi>d</mi></mrow></msub><mo stretchy="false">)</mo></mrow><mrow><mi>K</mi><mo>+</mo><munder><mo>∑</mo><msup><mi>d</mi><mo mathvariant="normal" lspace="0em" rspace="0em">′</mo></msup></munder><msub><mi>W</mi><msup><mi>d</mi><mo mathvariant="normal" lspace="0em" rspace="0em">′</mo></msup></msub><mo>⋅</mo><mi>f</mi><mo stretchy="false">(</mo><msub><mi>c</mi><mrow><mi>o</mi><msup><mi>d</mi><mo mathvariant="normal" lspace="0em" rspace="0em">′</mo></msup></mrow></msub><mo stretchy="false">)</mo></mrow></mfrac></mrow><annotation encoding="application/x-tex">W_{od} = W_o \cdot \frac{W_d \cdot f(c_{od})}{K + \sum_{d'} W_{d'} \cdot f(c_{od'})}</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8333em;vertical-align:-0.15em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.13889em;">W</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3361em;"><span style="top:-2.55em;margin-left:-0.1389em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">o</span><span class="mord mathnormal mtight">d</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:0.8333em;vertical-align:-0.15em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.13889em;">W</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.1514em;"><span style="top:-2.55em;margin-left:-0.1389em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight">o</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">⋅</span><span class="mspace" style="margin-right:0.2222em;"></span></span><span class="base"><span class="strut" style="height:2.4127em;vertical-align:-0.9857em;"></span><span class="mord"><span class="mopen nulldelimiter"></span><span class="mfrac"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.427em;"><span style="top:-2.314em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.07153em;">K</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">+</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mop"><span class="mop op-symbol small-op" style="position:relative;top:0em;">∑</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.1864em;"><span style="top:-2.4003em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight"><span class="mord mathnormal mtight">d</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.6828em;"><span style="top:-2.786em;margin-right:0.0714em;"><span class="pstrut" style="height:2.5em;"></span><span class="sizing reset-size3 size1 mtight"><span class="mord mtight"><span class="mord mtight">′</span></span></span></span></span></span></span></span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.2997em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.13889em;">W</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3361em;"><span style="top:-2.55em;margin-left:-0.1389em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight"><span class="mord mathnormal mtight">d</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.6828em;"><span style="top:-2.786em;margin-right:0.0714em;"><span class="pstrut" style="height:2.5em;"></span><span class="sizing reset-size3 size1 mtight"><span class="mord mtight"><span class="mord mtight">′</span></span></span></span></span></span></span></span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">⋅</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mord mathnormal" style="margin-right:0.10764em;">f</span><span class="mopen">(</span><span class="mord"><span class="mord mathnormal">c</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3361em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">o</span><span class="mord mtight"><span class="mord mathnormal mtight">d</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.6828em;"><span style="top:-2.786em;margin-right:0.0714em;"><span class="pstrut" style="height:2.5em;"></span><span class="sizing reset-size3 size1 mtight"><span class="mord mtight"><span class="mord mtight">′</span></span></span></span></span></span></span></span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mclose">)</span></span></span><span style="top:-3.23em;"><span class="pstrut" style="height:3em;"></span><span class="frac-line" style="border-bottom-width:0.04em;"></span></span><span style="top:-3.677em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord"><span class="mord mathnormal" style="margin-right:0.13889em;">W</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3361em;"><span style="top:-2.55em;margin-left:-0.1389em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight">d</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">⋅</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mord mathnormal" style="margin-right:0.10764em;">f</span><span class="mopen">(</span><span class="mord"><span class="mord mathnormal">c</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3361em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">o</span><span class="mord mathnormal mtight">d</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mclose">)</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.9857em;"><span></span></span></span></span></span><span class="mclose nulldelimiter"></span></span></span></span></span></span>
+<p>where <span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>f</mi></mrow><annotation encoding="application/x-tex">f</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8889em;vertical-align:-0.1944em;"></span><span class="mord mathnormal" style="margin-right:0.10764em;">f</span></span></span></span> is <code>decay_fn</code>, <span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>c</mi><mrow><mi>o</mi><mi>d</mi></mrow></msub></mrow><annotation encoding="application/x-tex">c_{od}</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.5806em;vertical-align:-0.15em;"></span><span class="mord"><span class="mord mathnormal">c</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3361em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">o</span><span class="mord mathnormal mtight">d</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span></span></span></span> is the network distance, and <span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>K</mi></mrow><annotation encoding="application/x-tex">K</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.6833em;"></span><span class="mord mathnormal" style="margin-right:0.07153em;">K</span></span></span></span> is a stay-home alternative in the destination choice set, derived from the <code>participation</code> share. At full participation (<span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>K</mi><mo>=</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">K = 0</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.6833em;"></span><span class="mord mathnormal" style="margin-right:0.07153em;">K</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:0.6444em;"></span><span class="mord">0</span></span></span></span>, the default) each origin’s full weight is conserved and distributed across reachable destinations (destination totals are not constrained — that would require a doubly-constrained / Furness model), and the gravity model is the classic instance of this form, recovered with an exponential <code>decay_fn</code>. Below full participation each origin participates at rate <span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>A</mi><mi>o</mi></msub><mi mathvariant="normal">/</mi><mo stretchy="false">(</mo><mi>K</mi><mo>+</mo><msub><mi>A</mi><mi>o</mi></msub><mo stretchy="false">)</mo></mrow><annotation encoding="application/x-tex">A_o / (K + A_o)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord"><span class="mord mathnormal">A</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.1514em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight">o</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mord">/</span><span class="mopen">(</span><span class="mord mathnormal" style="margin-right:0.07153em;">K</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">+</span><span class="mspace" style="margin-right:0.2222em;"></span></span><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord"><span class="mord mathnormal">A</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.1514em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight">o</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mclose">)</span></span></span></span>, where <span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>A</mi><mi>o</mi></msub></mrow><annotation encoding="application/x-tex">A_o</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8333em;vertical-align:-0.15em;"></span><span class="mord"><span class="mord mathnormal">A</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.1514em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight">o</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span></span></span></span> is its accessibility <span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mo>∑</mo><msup><mi>d</mi><mo mathvariant="normal" lspace="0em" rspace="0em">′</mo></msup></msub><msub><mi>W</mi><msup><mi>d</mi><mo mathvariant="normal" lspace="0em" rspace="0em">′</mo></msup></msub><mi>f</mi><mo stretchy="false">(</mo><msub><mi>c</mi><mrow><mi>o</mi><msup><mi>d</mi><mo mathvariant="normal" lspace="0em" rspace="0em">′</mo></msup></mrow></msub><mo stretchy="false">)</mo></mrow><annotation encoding="application/x-tex">\sum_{d'} W_{d'} f(c_{od'})</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1.0497em;vertical-align:-0.2997em;"></span><span class="mop"><span class="mop op-symbol small-op" style="position:relative;top:0em;">∑</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.1864em;"><span style="top:-2.4003em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight"><span class="mord mathnormal mtight">d</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.6828em;"><span style="top:-2.786em;margin-right:0.0714em;"><span class="pstrut" style="height:2.5em;"></span><span class="sizing reset-size3 size1 mtight"><span class="mord mtight"><span class="mord mtight">′</span></span></span></span></span></span></span></span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.2997em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.13889em;">W</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3361em;"><span style="top:-2.55em;margin-left:-0.1389em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight"><span class="mord mathnormal mtight">d</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.6828em;"><span style="top:-2.786em;margin-right:0.0714em;"><span class="pstrut" style="height:2.5em;"></span><span class="sizing reset-size3 size1 mtight"><span class="mord mtight"><span class="mord mtight">′</span></span></span></span></span></span></span></span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mord mathnormal" style="margin-right:0.10764em;">f</span><span class="mopen">(</span><span class="mord"><span class="mord mathnormal">c</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3361em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">o</span><span class="mord mtight"><span class="mord mathnormal mtight">d</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.6828em;"><span style="top:-2.786em;margin-right:0.0714em;"><span class="pstrut" style="height:2.5em;"></span><span class="sizing reset-size3 size1 mtight"><span class="mord mtight"><span class="mord mtight">′</span></span></span></span></span></span></span></span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mclose">)</span></span></span></span>, so trip generation falls where accessibility is low.</p>
+<p>This is the modelled-matrix counterpart to <a href="#betweenness-od"><code>betweenness_od</code></a>: rather than supplying an explicit OD matrix, the per-pair weights are derived from the network distances revealed during routing, computed in a single traversal per origin.</p>
+<h3 id="parameters-3"><a aria-label="Link to this section" href="#parameters-3"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>Parameters</h3>
+<div class="param-set">
+  <div class="def">
+    <div class="name">network_structure</div>
+    <div class="type">None</div>
+  </div>
+  <div class="desc">
+<p>A <a href="/rustalgos/graph#networkstructure"><code>rustalgos.graph.NetworkStructure</code></a>.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">nodes_gdf</div>
+    <div class="type">None</div>
+  </div>
+  <div class="desc">
+<p>A nodes <code>GeoDataFrame</code>; flow betweenness columns are written to it and it is returned.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">origins_gdf</div>
+    <div class="type">None</div>
+  </div>
+  <div class="desc">
+<p>A <code>GeoDataFrame</code> of demand origins (points or centroids).</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">destinations_gdf</div>
+    <div class="type">None</div>
+  </div>
+  <div class="desc">
+<p>A <code>GeoDataFrame</code> of demand destinations / attractors (points or centroids).</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">origin_weight_col</div>
+    <div class="type">None</div>
+  </div>
+  <div class="desc">
+<p>Column in <code>origins_gdf</code> giving each origin’s weight (e.g. population).</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">destination_weight_col</div>
+    <div class="type">None</div>
+  </div>
+  <div class="desc">
+<p>Column in <code>destinations_gdf</code> giving each destination’s attractiveness weight.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">distances</div>
+    <div class="type">list[int]</div>
+  </div>
+  <div class="desc">
+<p>Distance thresholds in metres at which to compute flow betweenness.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">minutes</div>
+    <div class="type">list[float]</div>
+  </div>
+  <div class="desc">
+<p>Walking times in minutes; converted to distance thresholds using <code>speed_m_s</code>.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">decay_fn</div>
+    <div class="type">str</div>
+  </div>
+  <div class="desc">
+<p>Distance-decay expression for the allocation, using <code>c</code> (metric cost) and <code>p</code> (normalised progress = <code>c / threshold</code>). Defaults to <code>&#x26;quot;exp(-4 * p)&#x26;quot;</code> (scale-free, re-normalised per threshold). For a classic gravity model on absolute distance use e.g. <code>&#x26;quot;exp(-0.002 * c)&#x26;quot;</code>. Because the allocation is normalised per origin, this expression only shapes destination choice; it cannot scale an origin’s total outflow. Use <code>betweenness</code> expressions for that.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">closest_destination</div>
+    <div class="type">bool</div>
+  </div>
+  <div class="desc">
+<p>If <code>True</code>, each origin routes its participating weight to its single nearest reachable destination instead of allocating across all of them.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">participation</div>
+    <div class="type">float</div>
+  </div>
+  <div class="desc">
+<p>The share of people at a <em>typical</em> location who make a trip, in <span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false">(</mo><mn>0</mn><mo separator="true">,</mo><mn>1</mn><mo stretchy="false">]</mo></mrow><annotation encoding="application/x-tex">(0, 1]</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mopen">(</span><span class="mord">0</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord">1</span><span class="mclose">]</span></span></span></span>. The default <code>1.0</code> is full participation: every origin’s full weight travels (the classic conserved model, at no extra cost). Below <code>1.0</code>, a stay-home option enters the destination choice set — think of staying home as one phantom destination competing with everything an origin can reach: <code>participation=0.2</code> means “at a location of median accessibility, one in five people travels”, and locations with better or worse access participate proportionately more or less, so trip generation becomes accessibility-elastic. The underlying stay-home weight is derived internally per distance threshold from the run’s own median origin accessibility (<span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>K</mi><mo>=</mo><msub><mi>A</mi><mrow><mi>m</mi><mi>e</mi><mi>d</mi></mrow></msub><mo>⋅</mo><mo stretchy="false">(</mo><mn>1</mn><mo>−</mo><mi>s</mi><mo stretchy="false">)</mo><mi mathvariant="normal">/</mi><mi>s</mi></mrow><annotation encoding="application/x-tex">K = A_{med} \cdot (1 - s) / s</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.6833em;"></span><span class="mord mathnormal" style="margin-right:0.07153em;">K</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:0.8333em;vertical-align:-0.15em;"></span><span class="mord"><span class="mord mathnormal">A</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3361em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">m</span><span class="mord mathnormal mtight">e</span><span class="mord mathnormal mtight">d</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">⋅</span><span class="mspace" style="margin-right:0.2222em;"></span></span><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mopen">(</span><span class="mord">1</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">−</span><span class="mspace" style="margin-right:0.2222em;"></span></span><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathnormal">s</span><span class="mclose">)</span><span class="mord">/</span><span class="mord mathnormal">s</span></span></span></span>, logged per run), so the setting transfers across datasets and thresholds. For pedestrian flows, walking mode shares suggest starting around <code>0.2</code> (European cities range roughly 0.15 to 0.3); use a local travel survey’s share when available. Results are not knife-edge in this setting. Costs one extra traversal sweep when below <code>1.0</code>, and note that output flows are then participating weights rather than total weights.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">metric_name</div>
+    <div class="type">str</div>
+  </div>
+  <div class="desc">
+<p>Name used for the output column (<code>cc_{metric_name}_{distance}</code>). Defaults to <code>&#x26;quot;demand&#x26;quot;</code>.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">max_netw_assign_dist</div>
+    <div class="type">float</div>
+  </div>
+  <div class="desc">
+<p>Maximum assignment distance for origin/destination points. Points are assigned to the network with the same workflow as the data layers (<a href="/metrics/layers#build-data-map"><code>build_data_map</code></a>: representation-aware nearest-street assignment, with assignment offsets included in all routed distances — allocation and radius cutoffs alike); points with no valid assignment within this distance are dropped.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">barriers_gdf</div>
+    <div class="type">GeoDataFrame</div>
+  </div>
+  <div class="desc">
+<p>Optional barriers to respect during assignment, as in the data layers.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">n_nearest_candidates</div>
+    <div class="type">int</div>
+  </div>
+  <div class="desc">
+<p>The number of nearest candidate edges to consider when assigning points to the network, as in the data layers.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">speed_m_s</div>
+    <div class="type">float</div>
+  </div>
+  <div class="desc">
+<p>Speed in metres per second for converting <code>minutes</code> to distance thresholds.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">tolerance</div>
+    <div class="type">float</div>
+  </div>
+  <div class="desc">
+<p>Relative tolerance for shortest-path equality, as a percentage. Paths within this margin of the shortest are treated as ties and flow splits across them, so this is the multipath control — the counterpart of a detour ratio in other tools (a 5% tolerance corresponds to a 1.05 detour ratio). Small tolerances can improve conserved-flow fits by spreading flow off knife-edge shortest paths; large ones blur the routing.</p></div><p></p>
+</div>
+<h3 id="returns-3"><a aria-label="Link to this section" href="#returns-3"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>Returns</h3>
+<div class="param-set">
+  <div class="def">
+    <div class="name">nodes_gdf</div>
+    <div class="type">GeoDataFrame</div>
+  </div>
+  <div class="desc">
+<p>The input <code>nodes_gdf</code> with a flow-betweenness column added per distance threshold.</p></div><p></p>
+</div>
+</div>
+<div class="function">
+<h2 id="centrality-simplest"><a aria-label="Link to this section" href="#centrality-simplest"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>centrality_simplest</h2>
+<div class="content">
+<span class="name">centrality_simplest</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">network_structure</span>
+    <span class="pc">:</span>
+    <span class="pa"> NetworkStructure</span>
+  </div>
+  <div class="param">
+    <span class="pn">nodes_gdf</span>
+    <span class="pc">:</span>
+    <span class="pa"> geopandas.geodataframe.GeoDataFrame</span>
+  </div>
+  <div class="param">
+    <span class="pn">distances</span>
+    <span class="pc">:</span>
+    <span class="pa"> list[int] | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">minutes</span>
+    <span class="pc">:</span>
+    <span class="pa"> list[float] | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">closeness</span>
+    <span class="pc">:</span>
+    <span class="pa"> dict[str, str] | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">betweenness</span>
+    <span class="pc">:</span>
+    <span class="pa"> dict[str, str] | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">postprocess</span>
+    <span class="pc">:</span>
+    <span class="pa"> dict[str, str] | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">speed_m_s</span>
+    <span class="pc">:</span>
+    <span class="pa"> float = 1.33333</span>
+  </div>
+  <div class="param">
+    <span class="pn">tolerance</span>
+    <span class="pc">:</span>
+    <span class="pa"> float | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">segment_weighted</span>
+    <span class="pc">:</span>
+    <span class="pa"> bool = False</span>
+  </div>
+  <div class="param">
+    <span class="pn">random_seed</span>
+    <span class="pc">:</span>
+    <span class="pa"> int | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">sample</span>
+    <span class="pc">:</span>
+    <span class="pa"> bool = False</span>
+  </div>
+  <div class="param">
+    <span class="pn">epsilon</span>
+    <span class="pc">:</span>
+    <span class="pa"> float | None = None</span>
+  </div>
+  <span class="pt">)->[</span>
+  <span class="pr">GeoDataFrame</span>
+  <span class="pt">]</span>
+</div>
+</div>
+<p>Compute centrality using simplest (angular) paths with a single Dijkstra per source. Expressions use <code>c</code> (angular cost) and <code>p</code> (normalised time progress).</p>
+<p>Tip: compute only what you need — pass a smaller <code>closeness</code> / <code>betweenness</code> dict, or <code>{}</code> to skip a whole category — to evaluate fewer expressions and emit fewer columns.</p>
+<h3 id="parameters-4"><a aria-label="Link to this section" href="#parameters-4"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>Parameters</h3>
+<div class="param-set">
+  <div class="def">
+    <div class="name">network_structure</div>
+    <div class="type">None</div>
+  </div>
+  <div class="desc">
+<p>A <a href="/rustalgos/graph#networkstructure"><code>rustalgos.graph.NetworkStructure</code></a>.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">nodes_gdf</div>
+    <div class="type">None</div>
+  </div>
+  <div class="desc">
+<p>A <a href="https://geopandas.org/en/stable/docs/user_guide/data_structures.html#geodataframe"><code>GeoDataFrame</code></a> representing nodes. The outputs of calculations will be written to this <code>GeoDataFrame</code>.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">distances</div>
+    <div class="type">list[int]</div>
+  </div>
+  <div class="desc">
+<p>Distance thresholds in metres at which to compute centrality measures.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">minutes</div>
+    <div class="type">list[float]</div>
+  </div>
+  <div class="desc">
+<p>Walking times in minutes; converted to distance thresholds using <code>speed_m_s</code>.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">closeness</div>
+    <div class="type">dict[str, str]</div>
+  </div>
+  <div class="desc">
+<p>Closeness metric expressions. <code>None</code> uses defaults: density, farness, harmonic.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">betweenness</div>
+    <div class="type">dict[str, str]</div>
+  </div>
+  <div class="desc">
+<p>Betweenness metric expressions. <code>None</code> uses defaults: betweenness.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">postprocess</div>
+    <div class="type">dict[str, str]</div>
+  </div>
+  <div class="desc">
+<p>Derived metrics. <code>None</code> uses default: <code>{&#x26;quot;hillier&#x26;quot;: &#x26;quot;density**2 / farness&#x26;quot;}</code>.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">speed_m_s</div>
+    <div class="type">float</div>
+  </div>
+  <div class="desc">
+<p>Speed in metres per second for converting <code>minutes</code> to distance thresholds.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">tolerance</div>
+    <div class="type">float</div>
+  </div>
+  <div class="desc">
+<p>Relative tolerance for angular betweenness path equality, as a percentage.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">segment_weighted</div>
+    <div class="type">bool</div>
+  </div>
+  <div class="desc">
+<p>If True, weight by primal edge (street segment) lengths. Requires a dual graph.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">random_seed</div>
+    <div class="type">int</div>
+  </div>
+  <div class="desc">
+<p>Optional seed for reproducible sampling.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">sample</div>
+    <div class="type">bool</div>
+  </div>
+  <div class="desc">
+<p>If True, enables adaptive sampling at longer distance thresholds.</p></div><p></p>
+</div>
+<div class="param-set">
+  <div class="def">
+    <div class="name">epsilon</div>
+    <div class="type">float</div>
+  </div>
+  <div class="desc">
+<p>Error tolerance for sampling. Defaults to <code>sampling.HOEFFDING_EPSILON</code> (0.05).</p></div><p></p>
+</div>
+<h3 id="returns-4"><a aria-label="Link to this section" href="#returns-4"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>Returns</h3>
+<div class="param-set">
+  <div class="def">
+    <div class="name">nodes_gdf</div>
+    <div class="type">GeoDataFrame</div>
+  </div>
+  <div class="desc">
+<p>The input <code>nodes_gdf</code> parameter is returned with additional centrality columns.</p></div><p></p>
+</div>
+<h3 id="notes-1"><a aria-label="Link to this section" href="#notes-1"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>Notes</h3>
+<pre class="astro-code material-theme-darker" style="background-color:#212121;color:#EEFFFF; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="python"><code><span class="line"><span style="color:#89DDFF;font-style:italic">from</span><span style="color:#EEFFFF"> cityseer</span><span style="color:#89DDFF">.</span><span style="color:#EEFFFF">tools </span><span style="color:#89DDFF;font-style:italic">import</span><span style="color:#EEFFFF"> mock</span><span style="color:#89DDFF">,</span><span style="color:#EEFFFF"> graphs</span><span style="color:#89DDFF">,</span><span style="color:#EEFFFF"> io</span></span>
+<span class="line"><span style="color:#89DDFF;font-style:italic">from</span><span style="color:#EEFFFF"> cityseer</span><span style="color:#89DDFF">.</span><span style="color:#EEFFFF">metrics </span><span style="color:#89DDFF;font-style:italic">import</span><span style="color:#EEFFFF"> networks</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#EEFFFF">G </span><span style="color:#89DDFF">=</span><span style="color:#EEFFFF"> mock</span><span style="color:#89DDFF">.</span><span style="color:#82AAFF">mock_graph</span><span style="color:#89DDFF">()</span></span>
+<span class="line"><span style="color:#EEFFFF">G </span><span style="color:#89DDFF">=</span><span style="color:#EEFFFF"> graphs</span><span style="color:#89DDFF">.</span><span style="color:#82AAFF">nx_simple_geoms</span><span style="color:#89DDFF">(</span><span style="color:#82AAFF">G</span><span style="color:#89DDFF">)</span></span>
+<span class="line"><span style="color:#EEFFFF">G_dual </span><span style="color:#89DDFF">=</span><span style="color:#EEFFFF"> graphs</span><span style="color:#89DDFF">.</span><span style="color:#82AAFF">nx_to_dual</span><span style="color:#89DDFF">(</span><span style="color:#82AAFF">G</span><span style="color:#89DDFF">)</span></span>
+<span class="line"><span style="color:#EEFFFF">nodes_gdf</span><span style="color:#89DDFF">,</span><span style="color:#EEFFFF"> edges_gdf</span><span style="color:#89DDFF">,</span><span style="color:#EEFFFF"> network_structure </span><span style="color:#89DDFF">=</span><span style="color:#EEFFFF"> io</span><span style="color:#89DDFF">.</span><span style="color:#82AAFF">network_structure_from_nx</span><span style="color:#89DDFF">(</span><span style="color:#82AAFF">G_dual</span><span style="color:#89DDFF">)</span></span>
+<span class="line"><span style="color:#EEFFFF">nodes_gdf </span><span style="color:#89DDFF">=</span><span style="color:#EEFFFF"> networks</span><span style="color:#89DDFF">.</span><span style="color:#82AAFF">centrality_simplest</span><span style="color:#89DDFF">(</span></span>
+<span class="line"><span style="color:#82AAFF">    network_structure</span><span style="color:#89DDFF">,</span></span>
+<span class="line"><span style="color:#82AAFF">    nodes_gdf</span><span style="color:#89DDFF">,</span></span>
+<span class="line"><span style="color:#EEFFFF;font-style:italic">    distances</span><span style="color:#89DDFF">=[</span><span style="color:#F78C6C">400</span><span style="color:#89DDFF">,</span><span style="color:#F78C6C"> 800</span><span style="color:#89DDFF">],</span></span>
+<span class="line"><span style="color:#89DDFF">)</span></span>
+<span class="line"><span style="color:#82AAFF">print</span><span style="color:#89DDFF">(</span><span style="color:#82AAFF">nodes_gdf</span><span style="color:#89DDFF">[[</span><span style="color:#89DDFF">"</span><span style="color:#C3E88D">cc_harmonic_400_ang</span><span style="color:#89DDFF">"</span><span style="color:#89DDFF">,</span><span style="color:#89DDFF"> "</span><span style="color:#C3E88D">cc_betweenness_800_ang</span><span style="color:#89DDFF">"</span><span style="color:#89DDFF">]])</span></span></code></pre>
+</div>
+<div class="function">
+<h2 id="closeness-shortest"><a aria-label="Link to this section" href="#closeness-shortest"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>closeness_shortest</h2>
+<div class="content">
+<span class="name">closeness_shortest</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">network_structure</span>
+    <span class="pc">:</span>
+    <span class="pa"> NetworkStructure</span>
+  </div>
+  <div class="param">
+    <span class="pn">nodes_gdf</span>
+    <span class="pc">:</span>
+    <span class="pa"> geopandas.geodataframe.GeoDataFrame</span>
+  </div>
+  <div class="param">
+    <span class="pn">distances</span>
+    <span class="pc">:</span>
+    <span class="pa"> list[int] | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">minutes</span>
+    <span class="pc">:</span>
+    <span class="pa"> list[float] | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">speed_m_s</span>
+    <span class="pc">:</span>
+    <span class="pa"> float = 1.33333</span>
+  </div>
+  <div class="param">
+    <span class="pn">tolerance</span>
+    <span class="pc">:</span>
+    <span class="pa"> float | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">random_seed</span>
+    <span class="pc">:</span>
+    <span class="pa"> int | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">sample</span>
+    <span class="pc">:</span>
+    <span class="pa"> bool = False</span>
+  </div>
+  <div class="param">
+    <span class="pn">epsilon</span>
+    <span class="pc">:</span>
+    <span class="pa"> float | None = None</span>
+  </div>
+  <span class="pt">)->[</span>
+  <span class="pr">GeoDataFrame</span>
+  <span class="pt">]</span>
+</div>
+</div>
+<p>Compute closeness centrality using shortest paths. Wraps <code>centrality_shortest</code> with betweenness disabled; see it for parameter descriptions.</p>
+</div>
+<div class="function">
+<h2 id="closeness-simplest"><a aria-label="Link to this section" href="#closeness-simplest"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>closeness_simplest</h2>
+<div class="content">
+<span class="name">closeness_simplest</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">network_structure</span>
+    <span class="pc">:</span>
+    <span class="pa"> NetworkStructure</span>
+  </div>
+  <div class="param">
+    <span class="pn">nodes_gdf</span>
+    <span class="pc">:</span>
+    <span class="pa"> geopandas.geodataframe.GeoDataFrame</span>
+  </div>
+  <div class="param">
+    <span class="pn">distances</span>
+    <span class="pc">:</span>
+    <span class="pa"> list[int] | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">minutes</span>
+    <span class="pc">:</span>
+    <span class="pa"> list[float] | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">speed_m_s</span>
+    <span class="pc">:</span>
+    <span class="pa"> float = 1.33333</span>
+  </div>
+  <div class="param">
+    <span class="pn">tolerance</span>
+    <span class="pc">:</span>
+    <span class="pa"> float | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">random_seed</span>
+    <span class="pc">:</span>
+    <span class="pa"> int | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">sample</span>
+    <span class="pc">:</span>
+    <span class="pa"> bool = False</span>
+  </div>
+  <div class="param">
+    <span class="pn">epsilon</span>
+    <span class="pc">:</span>
+    <span class="pa"> float | None = None</span>
+  </div>
+  <span class="pt">)->[</span>
+  <span class="pr">GeoDataFrame</span>
+  <span class="pt">]</span>
+</div>
+</div>
+<p>Compute closeness centrality using simplest (angular) paths. Wraps <code>centrality_simplest</code> with betweenness disabled; see it for parameter descriptions.</p>
+</div>
+<div class="function">
+<h2 id="betweenness-shortest"><a aria-label="Link to this section" href="#betweenness-shortest"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>betweenness_shortest</h2>
+<div class="content">
+<span class="name">betweenness_shortest</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">network_structure</span>
+    <span class="pc">:</span>
+    <span class="pa"> NetworkStructure</span>
+  </div>
+  <div class="param">
+    <span class="pn">nodes_gdf</span>
+    <span class="pc">:</span>
+    <span class="pa"> geopandas.geodataframe.GeoDataFrame</span>
+  </div>
+  <div class="param">
+    <span class="pn">distances</span>
+    <span class="pc">:</span>
+    <span class="pa"> list[int] | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">minutes</span>
+    <span class="pc">:</span>
+    <span class="pa"> list[float] | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">speed_m_s</span>
+    <span class="pc">:</span>
+    <span class="pa"> float = 1.33333</span>
+  </div>
+  <div class="param">
+    <span class="pn">tolerance</span>
+    <span class="pc">:</span>
+    <span class="pa"> float | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">random_seed</span>
+    <span class="pc">:</span>
+    <span class="pa"> int | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">sample</span>
+    <span class="pc">:</span>
+    <span class="pa"> bool = False</span>
+  </div>
+  <div class="param">
+    <span class="pn">epsilon</span>
+    <span class="pc">:</span>
+    <span class="pa"> float | None = None</span>
+  </div>
+  <span class="pt">)->[</span>
+  <span class="pr">GeoDataFrame</span>
+  <span class="pt">]</span>
+</div>
+</div>
+<p>Compute betweenness centrality using shortest paths. Wraps <code>centrality_shortest</code> with closeness disabled; see it for parameter descriptions.</p>
+</div>
+<div class="function">
+<h2 id="betweenness-simplest"><a aria-label="Link to this section" href="#betweenness-simplest"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>betweenness_simplest</h2>
+<div class="content">
+<span class="name">betweenness_simplest</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">network_structure</span>
+    <span class="pc">:</span>
+    <span class="pa"> NetworkStructure</span>
+  </div>
+  <div class="param">
+    <span class="pn">nodes_gdf</span>
+    <span class="pc">:</span>
+    <span class="pa"> geopandas.geodataframe.GeoDataFrame</span>
+  </div>
+  <div class="param">
+    <span class="pn">distances</span>
+    <span class="pc">:</span>
+    <span class="pa"> list[int] | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">minutes</span>
+    <span class="pc">:</span>
+    <span class="pa"> list[float] | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">speed_m_s</span>
+    <span class="pc">:</span>
+    <span class="pa"> float = 1.33333</span>
+  </div>
+  <div class="param">
+    <span class="pn">tolerance</span>
+    <span class="pc">:</span>
+    <span class="pa"> float | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">random_seed</span>
+    <span class="pc">:</span>
+    <span class="pa"> int | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">sample</span>
+    <span class="pc">:</span>
+    <span class="pa"> bool = False</span>
+  </div>
+  <div class="param">
+    <span class="pn">epsilon</span>
+    <span class="pc">:</span>
+    <span class="pa"> float | None = None</span>
+  </div>
+  <span class="pt">)->[</span>
+  <span class="pr">GeoDataFrame</span>
+  <span class="pt">]</span>
+</div>
+</div>
+<p>Compute betweenness centrality using simplest (angular) paths. Wraps <code>centrality_simplest</code> with closeness disabled; see it for parameter descriptions.</p>
+</div>
+<div class="function">
+<h2 id="node-centrality-shortest"><a aria-label="Link to this section" href="#node-centrality-shortest"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>node_centrality_shortest</h2>
+<div class="content">
+<span class="name">node_centrality_shortest</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">network_structure</span>
+    <span class="pc">:</span>
+    <span class="pa"> NetworkStructure</span>
+  </div>
+  <div class="param">
+    <span class="pn">nodes_gdf</span>
+    <span class="pc">:</span>
+    <span class="pa"> geopandas.geodataframe.GeoDataFrame</span>
+  </div>
+  <div class="param">
+    <span class="pn">distances</span>
+    <span class="pc">:</span>
+    <span class="pa"> list[int] | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">betas</span>
+    <span class="pc">:</span>
+    <span class="pa"> list[float] | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">minutes</span>
+    <span class="pc">:</span>
+    <span class="pa"> list[float] | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">compute_closeness</span>
+    <span class="pc">:</span>
+    <span class="pa"> bool = True</span>
+  </div>
+  <div class="param">
+    <span class="pn">compute_betweenness</span>
+    <span class="pc">:</span>
+    <span class="pa"> bool = True</span>
+  </div>
+  <div class="param">
+    <span class="pn">min_threshold_wt</span>
+    <span class="pc">:</span>
+    <span class="pa"> float = 0.01831563888873418</span>
+  </div>
+  <div class="param">
+    <span class="pn">speed_m_s</span>
+    <span class="pc">:</span>
+    <span class="pa"> float = 1.33333</span>
+  </div>
+  <div class="param">
+    <span class="pn">tolerance</span>
+    <span class="pc">:</span>
+    <span class="pa"> float | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">random_seed</span>
+    <span class="pc">:</span>
+    <span class="pa"> int | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">sample</span>
+    <span class="pc">:</span>
+    <span class="pa"> bool = False</span>
+  </div>
+  <div class="param">
+    <span class="pn">epsilon</span>
+    <span class="pc">:</span>
+    <span class="pa"> float | None = None</span>
+  </div>
+  <span class="pt">)->[</span>
+  <span class="pr">GeoDataFrame</span>
+  <span class="pt">]</span>
+</div>
+</div>
+<p>Deprecated 4.24 alias for <a href="#centrality-shortest"><code>centrality_shortest</code></a>.</p>
+<h3 id="deprecated"><a aria-label="Link to this section" href="#deprecated"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>Deprecated</h3>
+<p>Since version 5.0. Use <code>centrality_shortest</code> with <code>closeness</code> / <code>betweenness</code> expression dicts. This shim preserves
+the 4.24 output (columns <code>cc_density</code>, <code>cc_farness</code>, <code>cc_harmonic</code>, <code>cc_beta</code>, <code>cc_cycles</code>,
+<code>cc_hillier</code>, <code>cc_betweenness</code>, <code>cc_betweenness_beta</code>) and will be removed in a future major release.
+See <a href="https://github.com/benchmark-urbanism/cityseer-api/blob/master/COMPATIBILITY.md">COMPATIBILITY.md</a>.</p>
+</div>
+<div class="function">
+<h2 id="node-centrality-simplest"><a aria-label="Link to this section" href="#node-centrality-simplest"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>node_centrality_simplest</h2>
+<div class="content">
+<span class="name">node_centrality_simplest</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">network_structure</span>
+    <span class="pc">:</span>
+    <span class="pa"> NetworkStructure</span>
+  </div>
+  <div class="param">
+    <span class="pn">nodes_gdf</span>
+    <span class="pc">:</span>
+    <span class="pa"> geopandas.geodataframe.GeoDataFrame</span>
+  </div>
+  <div class="param">
+    <span class="pn">distances</span>
+    <span class="pc">:</span>
+    <span class="pa"> list[int] | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">betas</span>
+    <span class="pc">:</span>
+    <span class="pa"> list[float] | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">minutes</span>
+    <span class="pc">:</span>
+    <span class="pa"> list[float] | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">compute_closeness</span>
+    <span class="pc">:</span>
+    <span class="pa"> bool = True</span>
+  </div>
+  <div class="param">
+    <span class="pn">compute_betweenness</span>
+    <span class="pc">:</span>
+    <span class="pa"> bool = True</span>
+  </div>
+  <div class="param">
+    <span class="pn">min_threshold_wt</span>
+    <span class="pc">:</span>
+    <span class="pa"> float = 0.01831563888873418</span>
+  </div>
+  <div class="param">
+    <span class="pn">speed_m_s</span>
+    <span class="pc">:</span>
+    <span class="pa"> float = 1.33333</span>
+  </div>
+  <div class="param">
+    <span class="pn">angular_scaling_unit</span>
+    <span class="pc">:</span>
+    <span class="pa"> float = 90</span>
+  </div>
+  <div class="param">
+    <span class="pn">farness_scaling_offset</span>
+    <span class="pc">:</span>
+    <span class="pa"> float = 1</span>
+  </div>
+  <div class="param">
+    <span class="pn">tolerance</span>
+    <span class="pc">:</span>
+    <span class="pa"> float | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">random_seed</span>
+    <span class="pc">:</span>
+    <span class="pa"> int | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">sample</span>
+    <span class="pc">:</span>
+    <span class="pa"> bool = False</span>
+  </div>
+  <div class="param">
+    <span class="pn">epsilon</span>
+    <span class="pc">:</span>
+    <span class="pa"> float | None = None</span>
+  </div>
+  <span class="pt">)->[</span>
+  <span class="pr">GeoDataFrame</span>
+  <span class="pt">]</span>
+</div>
+</div>
+<p>Deprecated 4.24 alias for <a href="#centrality-simplest"><code>centrality_simplest</code></a>.</p>
+<h3 id="deprecated-1"><a aria-label="Link to this section" href="#deprecated-1"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>Deprecated</h3>
+<p>Since version 5.0. Use <code>centrality_simplest</code> with <code>closeness</code> / <code>betweenness</code> expression dicts. This shim preserves the
+4.24 output (angular columns <code>cc_density_ang</code>, <code>cc_farness_ang</code>, <code>cc_harmonic_ang</code>, <code>cc_hillier_ang</code>,
+<code>cc_betweenness_ang</code>) and will be removed in a future major release. See <a href="https://github.com/benchmark-urbanism/cityseer-api/blob/master/COMPATIBILITY.md">COMPATIBILITY.md</a>.</p>
+</div>
+<div class="function">
+<h2 id="segment-centrality"><a aria-label="Link to this section" href="#segment-centrality"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>segment_centrality</h2>
+<div class="content">
+<span class="name">segment_centrality</span><div class="signature multiline">
+  <span class="pt">(</span>
+  <div class="param">
+    <span class="pn">*_args</span>
+  </div>
+  <div class="param">
+    <span class="pn">**_kwargs</span>
+  </div>
+  <span class="pt">)->[</span>
+  <span class="pr">GeoDataFrame</span>
+  <span class="pt">]</span>
+</div>
+</div>
+<p>Removed in 5.0; raises with guidance.</p>
+<h3 id="deprecated-2"><a aria-label="Link to this section" href="#deprecated-2"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" width="15px" height="15px" class="heading-icon"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg></a>Deprecated</h3>
+<p>Since version 5.0. The continuous-segment engine (<code>segment_density</code> / <code>harmonic</code> / <code>beta</code> / <code>betweenness</code>) was removed
+at the low level, so the old numbers cannot be reproduced. The nearest equivalent is
+<code>centrality_shortest(..., segment_weighted=True)</code> — a different calculation. See <a href="https://github.com/benchmark-urbanism/cityseer-api/blob/master/COMPATIBILITY.md">COMPATIBILITY.md</a>.</p>
+</div>
+</section> <div class="w-full flex items-center pt-12"> <footer class="text-xxs font-light text-light-grey">
+Copyright © 2018-present Gareth Simons
+</footer> </div> </div> </div>  </main> </body> </html>

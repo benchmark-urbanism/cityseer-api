@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head><base target="_top"><style id="cs-figure-guard">img{height:auto!important;align-self:center;object-fit:contain}</style>
+    <meta charset="utf-8" />
+    <link rel="icon" crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/favicon.ico" />
+    <!-- Preload is necessary because we show these images when we disconnect from the server,
+    but at that point we cannot load these images from the server -->
+    <link rel="preload" crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/gradient-yHQUC_QB.png" as="image" />
+    <link rel="preload" crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/noise-60BoTA8O.png" as="image" />
+    <!-- Preload the fonts -->
+    <link rel="preload" crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/Lora-VariableFont_wght-CZceb_kH.woff2" as="font" type="font/woff2" crossorigin="anonymous" />
+    <link rel="preload" crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/PTSans-Regular-Bam3NpBI.woff2" as="font" type="font/woff2" crossorigin="anonymous" />
+    <link rel="preload" crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/PTSans-Bold-C_DwAp7Z.woff2" as="font" type="font/woff2" crossorigin="anonymous" />
+    <link rel="preload" crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/FiraMono-Regular-CEsLFVD9.woff2" as="font" type="font/woff2" crossorigin="anonymous" />
+    <link rel="preload" crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/FiraMono-Medium-D5MAsWEG.woff2" as="font" type="font/woff2" crossorigin="anonymous" />
+    <link rel="preload" crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/FiraMono-Bold-C6PDArdf.woff2" as="font" type="font/woff2" crossorigin="anonymous" />
+
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#000000" />
+    <meta name="description" content="a marimo app" />
+    <link rel="apple-touch-icon" crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/apple-touch-icon.png" />
+    <link rel="manifest" crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/manifest.json" />
+
+    <script data-marimo="true">
+      function __resizeIframe(obj) {
+        const scrollbarHeight = 20; // Max between windows, mac, and linux
+
+        function setHeight() {
+          // Guard against race condition where iframe isn't ready
+          if (!obj.contentWindow?.document?.documentElement) {
+            return;
+          }
+          const element = obj.contentWindow.document.documentElement;
+          // If there is no vertical scrollbar, we don't need to resize the iframe
+          if (element.scrollHeight === element.clientHeight) {
+            return;
+          }
+
+          // Create a new height that includes the scrollbar height if it's visible
+          const hasHorizontalScrollbar = element.scrollWidth > element.clientWidth;
+          const newHeight = element.scrollHeight + (hasHorizontalScrollbar ? scrollbarHeight : 0);
+
+          // Only update the height if it's different from the current height
+          if (obj.style.height !== `${newHeight}px`) {
+            obj.style.height = `${newHeight}px`;
+          }
+        }
+
+        // Resize the iframe to the height of the content and bottom scrollbar height
+        setHeight();
+
+        // Resize the iframe when the content changes
+        const resizeObserver = new ResizeObserver((_entries) => {
+          setHeight();
+        });
+        // Only observe if iframe content is ready
+        if (obj.contentWindow?.document?.body) {
+          resizeObserver.observe(obj.contentWindow.document.body);
+        }
+      }
+    </script>
+    <marimo-filename hidden>vis_osm.py</marimo-filename>
+    <!-- TODO(Trevor): Legacy, required by VS Code plugin. Remove when plugin is updated (see marimo/server/_templates/template.py) -->
+    <marimo-version data-version="{{ version }}" hidden></marimo-version>
+    <marimo-user-config data-config="{{ user_config }}" hidden></marimo-user-config>
+    <marimo-server-token data-token="{{ server_token }}" hidden></marimo-server-token>
+    <!-- /TODO -->
+    <title>vis osm</title>
+    <script type="module" crossorigin crossorigin="anonymous" src="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/index-iAj2M3os.js"></script>
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/preload-helper-y72bE5iF.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/chunk-LvLJmgfZ.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/react-Bj1aDYRI.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/compiler-runtime-B3qBwwSJ.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/jsx-runtime-PbYoItBR.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/useEventListener-BakX-tnw.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/defaultLocale-CuYNS33t.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/precisionRound-CCOoIlcP.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/defaultLocale-CGfP-Ye3.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/vega-loader.browser-BJ9oKrvH.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/utils-BIlJBJIu.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/clsx-BtEcuwwV.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/cn-X2M2usMq.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/badge-CFAaMy0O.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/button-BF7GSjhW.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/react-dom-CSu739Rf.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/fullscreen-BXI8V5i6.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/menu-items-CQMqwayA.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/dist-DCqDlsgq.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/createLucideIcon-BTp1tQDO.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/check-DQmqoJgr.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/x-9vLEgLY6.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/select-Cjly7tmx.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/tooltip-CgQpRVyN.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/use-toast-BH8bU9Xf.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/useEvent-D91BmmQi.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/invariant-C2E8KCbD.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/isObject-DvLSfCY5.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/_baseFor-DKD1r8uL.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/merge-_9WLTEyt.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/zod-H_cgTO0M.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/utils-Dev6I_Kv.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/Deferred-CfyqLOPG.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/uuid-BukULOeS.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/DeferredRequestRegistry-EP9ZArpv.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/constants-B9JJ72XE.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/session-B6_8umQX.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/config-BE150fVL.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/requests-KshNNAOp.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/useLifecycle-Baf35rp4.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/useNonce-0SWz6w4W.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/useTheme-CWoNQwFz.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/arrays-DWxvyYxP.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/strings-DvZlHYnD.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/once-CXj_gH7S.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/capabilities-CjNGDxxx.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/createReducer-3wF4dU7I.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/paths-kNeJ8nbe.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/dist-Dez1I5M9.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/dist-B0WqBUnf.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/dist-CwfKvuyQ.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/dist-D-o1OXc9.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/dist-BZhJ1bTM.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/dist-Bj9Iedc0.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/dist-DHMtQYxT.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/dist-DnIl7RU-.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/dist-CfGDksO-.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/stex-C6JeW1YI.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/toDate-DCE7d2fN.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/purify.es-DdxMtdqK.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/cjs-DXo9vDEJ.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/isSymbol-BT6B8Bon.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/now-CsYTPAhW.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/debounce-OiXznToA.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/database-zap-DIlSqcdp.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/main-DmhaVp6Y.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/cells-DQ5n6Zef.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/ErrorBoundary-Bo313Z9X.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/kbd-BCXa3Ocm.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/useInstallPackage-DEHK-C20.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/alert-dialog-CC0gG4Av.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/dialog-Dr_Y1zNi.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/useDebounce-BlBSYv0n.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/numbers-BKZTJMZ6.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/SSRProvider-DrpctNAg.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/context-DE_5rdOV.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/useNumberFormatter-DCM-63YT.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/usePress-mjvipKvz.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/input-b2KTOk0X.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/ImperativeModal-MQnbMIO2.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/cell-link-LArpBcY-.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/multi-map-9ogswH46.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/alert-Bjh7v4lb.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/chevron-right-C7RH0Nc7.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/dropdown-menu-DfGLyCbP.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/links-DK7te6sJ.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/useRunCells-bcK6jTD2.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/copy-CyasABTK.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/copy-IBNGDypD.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/copy-icon-BCIGtBo0.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/RenderHTML-BLBwT24G.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/datasource-BT-L2LDD.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/state-VxOqftwq.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/package-BoMcg6sy.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/sparkles-DctOjjEz.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/MarimoErrorOutput-DcImOp4r.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/eye-off-DI0EQXw0.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/refresh-cw-DcEasnos.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/tree-actions-CjikjOBA.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/spinner-DTBVbtl-.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/html-to-image-CmK-WSPG.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/focus-Dol5ybck.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/useAsyncData-CT1LpOBD.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/LazyAnyLanguageCodeMirror-CUQODgGJ.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/micromark-factory-space-P--XWZhg.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/chunk-5FQGJX7Z-C6VN0dQj.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/markdown-renderer-f3mfGw8u.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/command-CsbsBLBw.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/field-CA9HCE2Y.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/popover-DMNO6Poc.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/errors-48KFPvCp.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/download-rKGlekSQ.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/table-Fk_msRcD.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/useIframeCapabilities-DuGyzPVb.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/error-banner-C4DZksWV.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/formats-Dkhsq416.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/en-US-DZwIjHwu.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/isValid-Cgon0fXK.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/dates-CnrjjcMO.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/extends-2LbFKIQQ.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/emotion-is-prop-valid.esm-DiQGBfwj.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/useDateFormatter-CANi6nSX.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/react-icons.esm-C2u-_EAQ.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/RSPContexts-CXueMbRb.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/table-DxdydCSG.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/ellipsis-D0iYysLh.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/external-link-BktyywYg.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/message-circle-D_YIPPZo.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/plus-CExKUszm.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/trash-2-CjPoUZCP.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/react-resizable-panels.browser.esm-CgWOEYeG.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/JsonOutput-DTeVFctC.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/chart-no-axes-column-DVEV2j1H.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/square-function-CPbVtjKW.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/spec-BzxoPflZ.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/column-preview-VcOeHtkt.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/icons-D3YFXNmD.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/radio-group-D7RG9Px_.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/floating-outline-CPTvLHMl.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/objectWithoutPropertiesLoose-Msf1n32r.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/esm-DSv-aO_T.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/readonly-python-code-DHJTIc4H.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/file-headphone-CUN2DC78.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/file-BvoBtS_V.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/image-jhXeQEgs.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/file-icons-DBMviz_K.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/switch-DHhZkGEv.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/events-BRbNg7Li.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/globals-BDWM3c_z.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/share-vrPro738.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/blob-dGUJ3Bw8.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/memoize-Tp7rARFe.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/get-C-qh_et5.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/_baseSet-CsW0tABf.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/state-D7fu7IC3.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/label-CFvCMYuj.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/textarea-DD5BwHTh.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/refresh-ccw-CUkO1Vlo.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/form-B9I9mpZy.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/renderShortcut-CKbqJyj4.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/useBoolean-48bgGoSa.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/useDeepCompareMemoize-zUHU--0D.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/types-xF5uWODg.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/semaphore-FlZezxaf.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/fileToBase64-Doh9J-g6.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/pathUtils-ANiMIEDI.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/prop-types-D_pYuT11.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/es-Cy7KBUrF.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/_hasPath-hMc_3QZy.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/hasIn-CSsM95b1.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/flatten-Bd5tsfm_.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/pick-D1xb4gl6.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/code-xml-tqeFGeKJ.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/house-DkdBWh44.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/square-DPWHdF_-.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/triangle-alert-CV7pqa1o.js">
+    <link rel="modulepreload" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/bundle.esm-BULc9l6b.js">
+    <link rel="stylesheet" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/cells-BVzo2MHf.css">
+    <link rel="stylesheet" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/markdown-renderer-DdDKmWlR.css">
+    <link rel="stylesheet" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/JsonOutput-BQtz7-np.css">
+    <link rel="stylesheet" crossorigin crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/@marimo-team/frontend@0.23.13/dist/assets/index-CaelsqOA.css">
+  
+<script data-marimo="true">
+    Object.defineProperty(window, "__MARIMO_STATIC__", {
+        value: Object.freeze({
+            files: Object.freeze({}),
+            modelNotifications: Object.freeze([]),
+        }),
+        writable: false,
+        configurable: false,
+    });
+</script>
+
+<script data-marimo="true">
+    Object.defineProperty(window, "__MARIMO_EXPORT_CONTEXT__", {
+        value: Object.freeze({
+            trusted: true,
+            notebookCode: "import marimo\n\n__generated_with = \"0.23.13\"\napp = marimo.App()\n\n\n@app.cell\ndef _():\n    import marimo as mo\n\n    return (mo,)\n\n\n@app.cell(hide_code=True)\ndef _(mo):\n    mo.md(r\"\"\"\n    # Visibility from OSM Data\n\n    Generate a visibility analysis from OpenStreetMap (OSM) data.\n\n    Network data \u00a9 [OpenStreetMap](https://www.openstreetmap.org/copyright) contributors, available under the Open Database Licence.\n\n    Visibility analysis is provided by the standalone `visibility` module; it is not wrapped by the higher-level `CityNetwork` class.\n    \"\"\")\n    return\n\n\n@app.cell\ndef _():\n    from cityseer.metrics import visibility\n\n    return (visibility,)\n\n\n@app.cell(hide_code=True)\ndef _(mo):\n    mo.md(r\"\"\"\n    Use the [`visibility.visibility_from_osm`](https://cityseer.benchmarkurbanism.com/metrics/visibility#visibility-from-osm) method to run a visibility analysis over building footprints downloaded from OSM.\n\n    Pay particular attention to:\n\n    - The `bounds_wgs` parameter, which defines the geographical area to analyse in longitude and latitude. The order is left, bottom, right, top.\n    - The `out_path` parameter, which specifies where to save the output files. The directory must exist. Outputs are written in GeoTIFF format (`.tif`), which can be opened in QGIS.\n    - The `to_crs_code` parameter, which specifies the coordinate reference system (CRS) of the output. The default is the local UTM zone, but any valid CRS code can be used.\n    - The `view_distance` and `resolution` parameters, which control the analysis granularity.\n\n    There is a performance trade-off between the bounds, view distance, and resolution: a larger view distance or finer resolution gives more detailed output but takes longer to compute and requires more memory.\n    \"\"\")\n    return\n\n\n@app.cell\ndef _(visibility):\n    visibility.visibility_from_osm(\n        bounds_wgs=(18.41077, -33.93154, 18.42755, -33.91626),\n        out_path=\"images/ct_vis\",\n        to_crs_code=None,  # defaults to local UTM\n        view_distance=100,  # can use a larger view distance - but slower\n        resolution=2,  # set resolution - e.g. 2m\n    )\n    return\n\n\n@app.cell(hide_code=True)\ndef _(mo):\n    mo.md(r\"\"\"\n    The analysis writes a GeoTIFF per measure, plus a rasterised-buildings file for checking the inputs:\n\n    - A `density` measure: the number of visible pixels.\n    - A `farness` measure: the summed distance to visible pixels, which favours farther views (up to `view_distance`).\n    - A `harmonic` closeness measure: the summed inverse distance to visible pixels, which favours close adjacency to open spaces.\n    \"\"\")\n    return\n\n\n@app.cell(hide_code=True)\ndef _(mo):\n    mo.md(r\"\"\"\n    The output below shows `farness`, with building rooftops included.\n    \"\"\")\n    return\n\n\n@app.cell(hide_code=True)\ndef _(mo):\n    mo.md(r\"\"\"\n    \u003Cimg src=\"images/ct_farness_100_2.png\" style=\"width:100%;\"\u003E\n    \"\"\")\n    return\n\n\n@app.cell(hide_code=True)\ndef _(mo):\n    mo.md(r\"\"\"\n    Higher visibility values indicate more open street environments with fewer obstructions, while lower values indicate more enclosed streets surrounded by buildings.\n    \"\"\")\n    return\n\n\n@app.cell(hide_code=True)\ndef _(mo):\n    mo.md(r\"\"\"\n    ## Conclusion\n\n    This notebook generated a visibility analysis directly from OpenStreetMap building footprints using `visibility_from_osm`. The method produces density, farness, and harmonic closeness rasters that quantify visual openness and enclosure across the urban area, written as GeoTIFF files for use in QGIS or further analysis.\n\n    **Next steps:** To use building data from files, see [Visibility from GeoPandas](https://cityseer.benchmarkurbanism.com/examples/visibility/vis-gpd).\n    \"\"\")\n    return\n\n\nif __name__ == \"__main__\":\n    app.run()\n",
+        }),
+        writable: false,
+        configurable: false,
+    });
+</script>
+</head>
+  <body>
+    <div id="root"></div>
+    <!-- This is a portal for the data editor to render in -->
+    <div id="portal" data-testid="glide-portal" style="position: fixed; left: 0; top: 0; z-index: 9999"></div>
+    <script data-marimo="true">
+      Object.defineProperty(window, "__MARIMO_MOUNT_CONFIG__", {
+        value: Object.freeze({
+            "filename": "vis_osm.py",
+            "cwd": "",
+            "lspWorkspace": null,
+            "mode": "read",
+            "version": "0.23.13",
+            "serverToken": "static",
+            "config": {"ai": {"custom_providers": {}, "enabled": true, "models": {"custom_models": [], "displayed_models": []}}, "completion": {"activate_on_typing": true, "auto_close_pairs": true, "copilot": false, "signature_hint_on_typing": false}, "diagnostics": {"sql_linter": true}, "display": {"cell_output": "below", "code_editor_font_size": 14, "dataframes": "rich", "default_table_max_columns": 50, "default_table_page_size": 10, "default_width": "medium", "reference_highlighting": true, "theme": "light"}, "formatting": {"line_length": 79}, "keymap": {"overrides": {}, "preset": "default"}, "language_servers": {"pylsp": {"enable_flake8": false, "enable_mypy": true, "enable_pydocstyle": false, "enable_pyflakes": false, "enable_pylint": false, "enable_ruff": true, "enabled": false}}, "mcp": {"mcpServers": {}, "presets": []}, "package_management": {"manager": "uv"}, "runtime": {"auto_instantiate": false, "auto_reload": "off", "default_csv_encoding": "utf-8", "default_sql_output": "auto", "on_cell_change": "autorun", "output_max_bytes": 8000000, "reactive_tests": true, "show_tracebacks": false, "std_stream_max_bytes": 1000000, "watcher_on_save": "lazy"}, "save": {"autosave": "after_delay", "autosave_delay": 1000, "format_on_save": false}, "server": {"browser": "default", "follow_symlink": false}, "snippets": {"custom_paths": [], "include_default_snippets": true}},
+            "configOverrides": {},
+            "appConfig": {"sql_output": "auto", "width": "compact"},
+            "view": {"showAppCode": true},
+            "notebook": {"cells": [{"code": "import marimo as mo", "code_hash": "1d0db38904205bec4d6f6f6a1f6cec3e", "config": {"column": null, "disabled": false, "hide_code": false}, "id": "Hbol", "name": "_"}, {"code": "mo.md(r\"\"\"\n# Visibility from OSM Data\n\nGenerate a visibility analysis from OpenStreetMap (OSM) data.\n\nNetwork data \u00a9 [OpenStreetMap](https://www.openstreetmap.org/copyright) contributors, available under the Open Database Licence.\n\nVisibility analysis is provided by the standalone `visibility` module; it is not wrapped by the higher-level `CityNetwork` class.\n\"\"\")", "code_hash": "0981d12d31dd6ee97505ec73747dbe61", "config": {"column": null, "disabled": false, "hide_code": true}, "id": "MJUe", "name": "_"}, {"code": "from cityseer.metrics import visibility", "code_hash": "b2ba984967ec167b11ddf105e9e54506", "config": {"column": null, "disabled": false, "hide_code": false}, "id": "vblA", "name": "_"}, {"code": "mo.md(r\"\"\"\nUse the [`visibility.visibility_from_osm`](https://cityseer.benchmarkurbanism.com/metrics/visibility#visibility-from-osm) method to run a visibility analysis over building footprints downloaded from OSM.\n\nPay particular attention to:\n\n- The `bounds_wgs` parameter, which defines the geographical area to analyse in longitude and latitude. The order is left, bottom, right, top.\n- The `out_path` parameter, which specifies where to save the output files. The directory must exist. Outputs are written in GeoTIFF format (`.tif`), which can be opened in QGIS.\n- The `to_crs_code` parameter, which specifies the coordinate reference system (CRS) of the output. The default is the local UTM zone, but any valid CRS code can be used.\n- The `view_distance` and `resolution` parameters, which control the analysis granularity.\n\nThere is a performance trade-off between the bounds, view distance, and resolution: a larger view distance or finer resolution gives more detailed output but takes longer to compute and requires more memory.\n\"\"\")", "code_hash": "14e76877e1659409b8e28e1233587b69", "config": {"column": null, "disabled": false, "hide_code": true}, "id": "bkHC", "name": "_"}, {"code": "visibility.visibility_from_osm(\n    bounds_wgs=(18.41077, -33.93154, 18.42755, -33.91626),\n    out_path=\"images/ct_vis\",\n    to_crs_code=None,  # defaults to local UTM\n    view_distance=100,  # can use a larger view distance - but slower\n    resolution=2,  # set resolution - e.g. 2m\n)", "code_hash": "6771796d0ba1b4cd43573362e46ff246", "config": {"column": null, "disabled": false, "hide_code": false}, "id": "lEQa", "name": "_"}, {"code": "mo.md(r\"\"\"\nThe analysis writes a GeoTIFF per measure, plus a rasterised-buildings file for checking the inputs:\n\n- A `density` measure: the number of visible pixels.\n- A `farness` measure: the summed distance to visible pixels, which favours farther views (up to `view_distance`).\n- A `harmonic` closeness measure: the summed inverse distance to visible pixels, which favours close adjacency to open spaces.\n\"\"\")", "code_hash": "dd4ee3187657376015e49aabc6425dd4", "config": {"column": null, "disabled": false, "hide_code": true}, "id": "PKri", "name": "_"}, {"code": "mo.md(r\"\"\"\nThe output below shows `farness`, with building rooftops included.\n\"\"\")", "code_hash": "be5fdaa575790a5bf45a5c0ea90bb265", "config": {"column": null, "disabled": false, "hide_code": true}, "id": "Xref", "name": "_"}, {"code": "mo.md(r\"\"\"\n\u003Cimg src=\"images/ct_farness_100_2.png\" style=\"width:100%;\"\u003E\n\"\"\")", "code_hash": "c0ab7c78fa5752cc480bc3b216cbb2d5", "config": {"column": null, "disabled": false, "hide_code": true}, "id": "SFPL", "name": "_"}, {"code": "mo.md(r\"\"\"\nHigher visibility values indicate more open street environments with fewer obstructions, while lower values indicate more enclosed streets surrounded by buildings.\n\"\"\")", "code_hash": "49d48ae1f1aba114fb9ea500bad7c5ed", "config": {"column": null, "disabled": false, "hide_code": true}, "id": "BYtC", "name": "_"}, {"code": "mo.md(r\"\"\"\n## Conclusion\n\nThis notebook generated a visibility analysis directly from OpenStreetMap building footprints using `visibility_from_osm`. The method produces density, farness, and harmonic closeness rasters that quantify visual openness and enclosure across the urban area, written as GeoTIFF files for use in QGIS or further analysis.\n\n**Next steps:** To use building data from files, see [Visibility from GeoPandas](https://cityseer.benchmarkurbanism.com/examples/visibility/vis-gpd).\n\"\"\")", "code_hash": "cb463e01c9fb79341c5decd83a95c567", "config": {"column": null, "disabled": false, "hide_code": true}, "id": "RGSE", "name": "_"}], "metadata": {"marimo_version": "0.23.13"}, "version": "1"},
+            "session": {"cells": [{"code_hash": "1d0db38904205bec4d6f6f6a1f6cec3e", "console": [], "id": "Hbol", "outputs": [{"data": {"text/plain": ""}, "type": "data"}]}, {"code_hash": "0981d12d31dd6ee97505ec73747dbe61", "console": [], "id": "MJUe", "outputs": [{"data": {"text/markdown": "\u003Cspan class=\"markdown prose dark:prose-invert contents\"\u003E\u003Ch1 id=\"visibility-from-osm-data\"\u003EVisibility from OSM Data\u003C/h1\u003E\n\u003Cspan class=\"paragraph\"\u003EGenerate a visibility analysis from OpenStreetMap (OSM) data.\u003C/span\u003E\n\u003Cspan class=\"paragraph\"\u003ENetwork data \u00a9 \u003Ca href=\"https://www.openstreetmap.org/copyright\" rel=\"noopener noreferrer\" target=\"_blank\"\u003EOpenStreetMap\u003C/a\u003E contributors, available under the Open Database Licence.\u003C/span\u003E\n\u003Cspan class=\"paragraph\"\u003EVisibility analysis is provided by the standalone \u003Ccode\u003Evisibility\u003C/code\u003E module; it is not wrapped by the higher-level \u003Ccode\u003ECityNetwork\u003C/code\u003E class.\u003C/span\u003E\u003C/span\u003E"}, "type": "data"}]}, {"code_hash": "b2ba984967ec167b11ddf105e9e54506", "console": [], "id": "vblA", "outputs": [{"data": {"text/plain": ""}, "type": "data"}]}, {"code_hash": "14e76877e1659409b8e28e1233587b69", "console": [], "id": "bkHC", "outputs": [{"data": {"text/markdown": "\u003Cspan class=\"markdown prose dark:prose-invert contents\"\u003E\u003Cspan class=\"paragraph\"\u003EUse the \u003Ca href=\"https://cityseer.benchmarkurbanism.com/metrics/visibility#visibility-from-osm\" rel=\"noopener noreferrer\" target=\"_blank\"\u003E\u003Ccode\u003Evisibility.visibility_from_osm\u003C/code\u003E\u003C/a\u003E method to run a visibility analysis over building footprints downloaded from OSM.\u003C/span\u003E\n\u003Cspan class=\"paragraph\"\u003EPay particular attention to:\u003C/span\u003E\n\u003Cul\u003E\n\u003Cli\u003EThe \u003Ccode\u003Ebounds_wgs\u003C/code\u003E parameter, which defines the geographical area to analyse in longitude and latitude. The order is left, bottom, right, top.\u003C/li\u003E\n\u003Cli\u003EThe \u003Ccode\u003Eout_path\u003C/code\u003E parameter, which specifies where to save the output files. The directory must exist. Outputs are written in GeoTIFF format (\u003Ccode\u003E.tif\u003C/code\u003E), which can be opened in QGIS.\u003C/li\u003E\n\u003Cli\u003EThe \u003Ccode\u003Eto_crs_code\u003C/code\u003E parameter, which specifies the coordinate reference system (CRS) of the output. The default is the local UTM zone, but any valid CRS code can be used.\u003C/li\u003E\n\u003Cli\u003EThe \u003Ccode\u003Eview_distance\u003C/code\u003E and \u003Ccode\u003Eresolution\u003C/code\u003E parameters, which control the analysis granularity.\u003C/li\u003E\n\u003C/ul\u003E\n\u003Cspan class=\"paragraph\"\u003EThere is a performance trade-off between the bounds, view distance, and resolution: a larger view distance or finer resolution gives more detailed output but takes longer to compute and requires more memory.\u003C/span\u003E\u003C/span\u003E"}, "type": "data"}]}, {"code_hash": "6771796d0ba1b4cd43573362e46ff246", "console": [], "id": "lEQa", "outputs": [{"data": {"text/plain": ""}, "type": "data"}]}, {"code_hash": "dd4ee3187657376015e49aabc6425dd4", "console": [], "id": "PKri", "outputs": [{"data": {"text/markdown": "\u003Cspan class=\"markdown prose dark:prose-invert contents\"\u003E\u003Cspan class=\"paragraph\"\u003EThe analysis writes a GeoTIFF per measure, plus a rasterised-buildings file for checking the inputs:\u003C/span\u003E\n\u003Cul\u003E\n\u003Cli\u003EA \u003Ccode\u003Edensity\u003C/code\u003E measure: the number of visible pixels.\u003C/li\u003E\n\u003Cli\u003EA \u003Ccode\u003Efarness\u003C/code\u003E measure: the summed distance to visible pixels, which favours farther views (up to \u003Ccode\u003Eview_distance\u003C/code\u003E).\u003C/li\u003E\n\u003Cli\u003EA \u003Ccode\u003Eharmonic\u003C/code\u003E closeness measure: the summed inverse distance to visible pixels, which favours close adjacency to open spaces.\u003C/li\u003E\n\u003C/ul\u003E\u003C/span\u003E"}, "type": "data"}]}, {"code_hash": "be5fdaa575790a5bf45a5c0ea90bb265", "console": [], "id": "Xref", "outputs": [{"data": {"text/markdown": "\u003Cspan class=\"markdown prose dark:prose-invert contents\"\u003E\u003Cspan class=\"paragraph\"\u003EThe output below shows \u003Ccode\u003Efarness\u003C/code\u003E, with building rooftops included.\u003C/span\u003E\u003C/span\u003E"}, "type": "data"}]}, {"code_hash": "c0ab7c78fa5752cc480bc3b216cbb2d5", "console": [], "id": "SFPL", "outputs": [{"data": {"text/markdown": "\u003Cspan class=\"markdown prose dark:prose-invert contents\"\u003E\u003Cspan class=\"paragraph\"\u003E\u003Cimg src=\"images/ct_farness_100_2.png\" style=\"width:100%;\"\u003E\u003C/span\u003E\u003C/span\u003E"}, "type": "data"}]}, {"code_hash": "49d48ae1f1aba114fb9ea500bad7c5ed", "console": [], "id": "BYtC", "outputs": [{"data": {"text/markdown": "\u003Cspan class=\"markdown prose dark:prose-invert contents\"\u003E\u003Cspan class=\"paragraph\"\u003EHigher visibility values indicate more open street environments with fewer obstructions, while lower values indicate more enclosed streets surrounded by buildings.\u003C/span\u003E\u003C/span\u003E"}, "type": "data"}]}, {"code_hash": "cb463e01c9fb79341c5decd83a95c567", "console": [], "id": "RGSE", "outputs": [{"data": {"text/markdown": "\u003Cspan class=\"markdown prose dark:prose-invert contents\"\u003E\u003Ch2 id=\"conclusion\"\u003EConclusion\u003C/h2\u003E\n\u003Cspan class=\"paragraph\"\u003EThis notebook generated a visibility analysis directly from OpenStreetMap building footprints using \u003Ccode\u003Evisibility_from_osm\u003C/code\u003E. The method produces density, farness, and harmonic closeness rasters that quantify visual openness and enclosure across the urban area, written as GeoTIFF files for use in QGIS or further analysis.\u003C/span\u003E\n\u003Cspan class=\"paragraph\"\u003E\u003Cstrong\u003ENext steps:\u003C/strong\u003E To use building data from files, see \u003Ca href=\"https://cityseer.benchmarkurbanism.com/examples/visibility/vis-gpd\" rel=\"noopener noreferrer\" target=\"_blank\"\u003EVisibility from GeoPandas\u003C/a\u003E.\u003C/span\u003E\u003C/span\u003E"}, "type": "data"}]}], "metadata": {"marimo_version": "0.23.13", "script_metadata_hash": null}, "version": "1"},
+            "runtimeConfig": null,
+        }),
+        writable: false,
+        configurable: false,
+      });
+    </script>
+  
+<marimo-code hidden="">
+    import%20marimo%0A%0A__generated_with%20%3D%20%220.23.13%22%0Aapp%20%3D%20marimo.App()%0A%0A%0A%40app.cell%0Adef%20_()%3A%0A%20%20%20%20import%20marimo%20as%20mo%0A%0A%20%20%20%20return%20(mo%2C)%0A%0A%0A%40app.cell(hide_code%3DTrue)%0Adef%20_(mo)%3A%0A%20%20%20%20mo.md(r%22%22%22%0A%20%20%20%20%23%20Visibility%20from%20OSM%20Data%0A%0A%20%20%20%20Generate%20a%20visibility%20analysis%20from%20OpenStreetMap%20(OSM)%20data.%0A%0A%20%20%20%20Network%20data%20%C2%A9%20%5BOpenStreetMap%5D(https%3A%2F%2Fwww.openstreetmap.org%2Fcopyright)%20contributors%2C%20available%20under%20the%20Open%20Database%20Licence.%0A%0A%20%20%20%20Visibility%20analysis%20is%20provided%20by%20the%20standalone%20%60visibility%60%20module%3B%20it%20is%20not%20wrapped%20by%20the%20higher-level%20%60CityNetwork%60%20class.%0A%20%20%20%20%22%22%22)%0A%20%20%20%20return%0A%0A%0A%40app.cell%0Adef%20_()%3A%0A%20%20%20%20from%20cityseer.metrics%20import%20visibility%0A%0A%20%20%20%20return%20(visibility%2C)%0A%0A%0A%40app.cell(hide_code%3DTrue)%0Adef%20_(mo)%3A%0A%20%20%20%20mo.md(r%22%22%22%0A%20%20%20%20Use%20the%20%5B%60visibility.visibility_from_osm%60%5D(https%3A%2F%2Fcityseer.benchmarkurbanism.com%2Fmetrics%2Fvisibility%23visibility-from-osm)%20method%20to%20run%20a%20visibility%20analysis%20over%20building%20footprints%20downloaded%20from%20OSM.%0A%0A%20%20%20%20Pay%20particular%20attention%20to%3A%0A%0A%20%20%20%20-%20The%20%60bounds_wgs%60%20parameter%2C%20which%20defines%20the%20geographical%20area%20to%20analyse%20in%20longitude%20and%20latitude.%20The%20order%20is%20left%2C%20bottom%2C%20right%2C%20top.%0A%20%20%20%20-%20The%20%60out_path%60%20parameter%2C%20which%20specifies%20where%20to%20save%20the%20output%20files.%20The%20directory%20must%20exist.%20Outputs%20are%20written%20in%20GeoTIFF%20format%20(%60.tif%60)%2C%20which%20can%20be%20opened%20in%20QGIS.%0A%20%20%20%20-%20The%20%60to_crs_code%60%20parameter%2C%20which%20specifies%20the%20coordinate%20reference%20system%20(CRS)%20of%20the%20output.%20The%20default%20is%20the%20local%20UTM%20zone%2C%20but%20any%20valid%20CRS%20code%20can%20be%20used.%0A%20%20%20%20-%20The%20%60view_distance%60%20and%20%60resolution%60%20parameters%2C%20which%20control%20the%20analysis%20granularity.%0A%0A%20%20%20%20There%20is%20a%20performance%20trade-off%20between%20the%20bounds%2C%20view%20distance%2C%20and%20resolution%3A%20a%20larger%20view%20distance%20or%20finer%20resolution%20gives%20more%20detailed%20output%20but%20takes%20longer%20to%20compute%20and%20requires%20more%20memory.%0A%20%20%20%20%22%22%22)%0A%20%20%20%20return%0A%0A%0A%40app.cell%0Adef%20_(visibility)%3A%0A%20%20%20%20visibility.visibility_from_osm(%0A%20%20%20%20%20%20%20%20bounds_wgs%3D(18.41077%2C%20-33.93154%2C%2018.42755%2C%20-33.91626)%2C%0A%20%20%20%20%20%20%20%20out_path%3D%22images%2Fct_vis%22%2C%0A%20%20%20%20%20%20%20%20to_crs_code%3DNone%2C%20%20%23%20defaults%20to%20local%20UTM%0A%20%20%20%20%20%20%20%20view_distance%3D100%2C%20%20%23%20can%20use%20a%20larger%20view%20distance%20-%20but%20slower%0A%20%20%20%20%20%20%20%20resolution%3D2%2C%20%20%23%20set%20resolution%20-%20e.g.%202m%0A%20%20%20%20)%0A%20%20%20%20return%0A%0A%0A%40app.cell(hide_code%3DTrue)%0Adef%20_(mo)%3A%0A%20%20%20%20mo.md(r%22%22%22%0A%20%20%20%20The%20analysis%20writes%20a%20GeoTIFF%20per%20measure%2C%20plus%20a%20rasterised-buildings%20file%20for%20checking%20the%20inputs%3A%0A%0A%20%20%20%20-%20A%20%60density%60%20measure%3A%20the%20number%20of%20visible%20pixels.%0A%20%20%20%20-%20A%20%60farness%60%20measure%3A%20the%20summed%20distance%20to%20visible%20pixels%2C%20which%20favours%20farther%20views%20(up%20to%20%60view_distance%60).%0A%20%20%20%20-%20A%20%60harmonic%60%20closeness%20measure%3A%20the%20summed%20inverse%20distance%20to%20visible%20pixels%2C%20which%20favours%20close%20adjacency%20to%20open%20spaces.%0A%20%20%20%20%22%22%22)%0A%20%20%20%20return%0A%0A%0A%40app.cell(hide_code%3DTrue)%0Adef%20_(mo)%3A%0A%20%20%20%20mo.md(r%22%22%22%0A%20%20%20%20The%20output%20below%20shows%20%60farness%60%2C%20with%20building%20rooftops%20included.%0A%20%20%20%20%22%22%22)%0A%20%20%20%20return%0A%0A%0A%40app.cell(hide_code%3DTrue)%0Adef%20_(mo)%3A%0A%20%20%20%20mo.md(r%22%22%22%0A%20%20%20%20%3Cimg%20src%3D%22images%2Fct_farness_100_2.png%22%20style%3D%22width%3A100%25%3B%22%3E%0A%20%20%20%20%22%22%22)%0A%20%20%20%20return%0A%0A%0A%40app.cell(hide_code%3DTrue)%0Adef%20_(mo)%3A%0A%20%20%20%20mo.md(r%22%22%22%0A%20%20%20%20Higher%20visibility%20values%20indicate%20more%20open%20street%20environments%20with%20fewer%20obstructions%2C%20while%20lower%20values%20indicate%20more%20enclosed%20streets%20surrounded%20by%20buildings.%0A%20%20%20%20%22%22%22)%0A%20%20%20%20return%0A%0A%0A%40app.cell(hide_code%3DTrue)%0Adef%20_(mo)%3A%0A%20%20%20%20mo.md(r%22%22%22%0A%20%20%20%20%23%23%20Conclusion%0A%0A%20%20%20%20This%20notebook%20generated%20a%20visibility%20analysis%20directly%20from%20OpenStreetMap%20building%20footprints%20using%20%60visibility_from_osm%60.%20The%20method%20produces%20density%2C%20farness%2C%20and%20harmonic%20closeness%20rasters%20that%20quantify%20visual%20openness%20and%20enclosure%20across%20the%20urban%20area%2C%20written%20as%20GeoTIFF%20files%20for%20use%20in%20QGIS%20or%20further%20analysis.%0A%0A%20%20%20%20**Next%20steps%3A**%20To%20use%20building%20data%20from%20files%2C%20see%20%5BVisibility%20from%20GeoPandas%5D(https%3A%2F%2Fcityseer.benchmarkurbanism.com%2Fexamples%2Fvisibility%2Fvis-gpd).%0A%20%20%20%20%22%22%22)%0A%20%20%20%20return%0A%0A%0Aif%20__name__%20%3D%3D%20%22__main__%22%3A%0A%20%20%20%20app.run()%0A
+</marimo-code>
+
+<marimo-code-hash hidden="">3666b657c48d62ca258ac16742f86b3f</marimo-code-hash>
+</body>
+</html>

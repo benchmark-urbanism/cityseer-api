@@ -1,0 +1,4 @@
+MultipleDefinitionError: The variable 'streets' was defined by another cell
+MultipleDefinitionError: The variable 'streets' was defined by another cell
+MarimoExceptionRaisedError: Name `streets` is not defined. It was expected to be defined in 
+Error: Export was successful, but some cells failed to execute.
