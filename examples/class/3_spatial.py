@@ -136,7 +136,7 @@ def _(line, pt):
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
-    Crucially, Shapely operates using Cartesian coordinates. For accurate distance calculations or predicate operations, ensure your geometries are in a projected coordinate reference system and that they share the same system.
+    Note that Shapely operates using Cartesian coordinates. For accurate distance calculations or predicate operations, ensure your geometries are in a projected coordinate reference system and that they share the same system.
 
     The Shapely documentation provides comprehensive details on all available operations and predicates. For instance, the [`geometry.Point`](https://shapely.readthedocs.io/en/stable/reference/shapely.Point.html#shapely.Point) page describes everything related to point geometries.
     """)

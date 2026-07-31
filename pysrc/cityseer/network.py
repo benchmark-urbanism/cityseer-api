@@ -273,7 +273,7 @@ class CityNetwork:
 
     # 4. Compute land-use accessibility
     landuses_gdf = gpd.read_file("landuses.gpkg")
-    cn, landuses_gdf = cn.compute_accessibilities(
+    cn = cn.compute_accessibilities(
         data_gdf=landuses_gdf,
         landuse_column_label="category",
         accessibility_keys=["retail", "park"],
@@ -283,7 +283,7 @@ class CityNetwork:
 
     # 5. Compute statistical aggregations
     prices_gdf = gpd.read_file("property_prices.gpkg")
-    cn, prices_gdf = cn.compute_stats(
+    cn = cn.compute_stats(
         data_gdf=prices_gdf,
         stats_column_labels=["price"],
         distances=[800, 1600],
@@ -1307,9 +1307,20 @@ class CityNetwork:
         )
         return self
 
-    def compute_accessibilities(
-        self, data_gdf: gpd.GeoDataFrame, **kwargs: Any
-    ) -> tuple[CityNetwork, gpd.GeoDataFrame]:
+    def __iter__(self):
+        # Migration guard (v5.8.0): compute_accessibilities / compute_mixed_uses / compute_stats
+        # once returned a (CityNetwork, data_gdf) tuple, a carry-over from when assignment details were
+        # written back onto the data frame. They now return the CityNetwork itself so calls can be
+        # chained. Unpacking two values would iterate the CityNetwork, so raise a clear message
+        # instead of the default "cannot unpack" error.
+        raise TypeError(
+            "CityNetwork is not iterable. As of v5.8.0, compute_accessibilities, compute_mixed_uses, "
+            "and compute_stats return the CityNetwork itself (chainable) rather than a "
+            "(CityNetwork, data_gdf) tuple; the second value was a legacy return that is no longer "
+            "produced. Replace `cn, data = cn.compute_...(...)` with `cn = cn.compute_...(...)`."
+        )
+
+    def compute_accessibilities(self, data_gdf: gpd.GeoDataFrame, **kwargs: Any) -> CityNetwork:
         """Compute land-use accessibility metrics.
 
         Counts how many instances of each specified land-use category (e.g. retail, parks) are reachable
@@ -1330,15 +1341,13 @@ class CityNetwork:
         -------
         self: CityNetwork
             Returns self with accessibility columns added to ``nodes_gdf``.
-        data_gdf: GeoDataFrame
-            The input data GeoDataFrame with nearest network assignments.
 
         Examples
         --------
         ```python
         from cityseer import decay
 
-        cn, landuses_gdf = cn.compute_accessibilities(
+        cn = cn.compute_accessibilities(
             data_gdf=landuses_gdf,
             landuse_column_label="category",
             accessibility_keys=["retail", "cafe", "park"],
@@ -1354,15 +1363,15 @@ class CityNetwork:
         # New-API default: a single (unweighted) column. The functional layers.* calls keep the
         # legacy two-column (_nw + _wt) default; pass decay_fn here for weighting or both columns.
         kwargs.setdefault("decay_fn", "1")
-        self._nodes_gdf, data_gdf = layers.compute_accessibilities(
+        self._nodes_gdf = layers.compute_accessibilities(
             data_gdf=data_gdf,
             nodes_gdf=self._nodes_gdf,
             network_structure=self._network_structure,
             **kwargs,
         )
-        return self, data_gdf
+        return self
 
-    def compute_mixed_uses(self, data_gdf: gpd.GeoDataFrame, **kwargs: Any) -> tuple[CityNetwork, gpd.GeoDataFrame]:
+    def compute_mixed_uses(self, data_gdf: gpd.GeoDataFrame, **kwargs: Any) -> CityNetwork:
         """Compute mixed-use diversity metrics.
 
         Measures the diversity of land-use categories reachable from each node using Hill numbers:
@@ -1385,13 +1394,11 @@ class CityNetwork:
         -------
         self: CityNetwork
             Returns self with mixed-use columns added to ``nodes_gdf``.
-        data_gdf: GeoDataFrame
-            The input data GeoDataFrame with nearest network assignments.
 
         Examples
         --------
         ```python
-        cn, landuses_gdf = cn.compute_mixed_uses(
+        cn = cn.compute_mixed_uses(
             data_gdf=landuses_gdf,
             landuse_column_label="category",
             distances=[400, 800],
@@ -1401,15 +1408,15 @@ class CityNetwork:
         ```
         """
         kwargs.setdefault("decay_fn", "1")  # new-API single-column default (functional keeps _nw + _wt)
-        self._nodes_gdf, data_gdf = layers.compute_mixed_uses(
+        self._nodes_gdf = layers.compute_mixed_uses(
             data_gdf=data_gdf,
             nodes_gdf=self._nodes_gdf,
             network_structure=self._network_structure,
             **kwargs,
         )
-        return self, data_gdf
+        return self
 
-    def compute_stats(self, data_gdf: gpd.GeoDataFrame, **kwargs: Any) -> tuple[CityNetwork, gpd.GeoDataFrame]:
+    def compute_stats(self, data_gdf: gpd.GeoDataFrame, **kwargs: Any) -> CityNetwork:
         """Compute statistical aggregations of numerical data over the network.
 
         Aggregates numerical attributes (e.g. property prices, floor areas) within network-distance
@@ -1430,15 +1437,13 @@ class CityNetwork:
         -------
         self: CityNetwork
             Returns self with statistical columns added to ``nodes_gdf``.
-        data_gdf: GeoDataFrame
-            The input data GeoDataFrame with nearest network assignments.
 
         Examples
         --------
         ```python
         from cityseer import decay
 
-        cn, prices_gdf = cn.compute_stats(
+        cn = cn.compute_stats(
             data_gdf=prices_gdf,
             stats_column_labels=["price", "floor_area"],
             distances=[800, 1600],
@@ -1451,13 +1456,13 @@ class CityNetwork:
         ```
         """
         kwargs.setdefault("decay_fn", "1")  # new-API single-column default (functional keeps _nw + _wt)
-        self._nodes_gdf, data_gdf = layers.compute_stats(
+        self._nodes_gdf = layers.compute_stats(
             data_gdf=data_gdf,
             nodes_gdf=self._nodes_gdf,
             network_structure=self._network_structure,
             **kwargs,
         )
-        return self, data_gdf
+        return self
 
     def add_gtfs(
         self,

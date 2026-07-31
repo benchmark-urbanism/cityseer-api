@@ -96,7 +96,7 @@ def _(mo):
     mo.md(r"""
     This notebook demonstrated how to convert a primal street network graph into its dual representation using `nx_to_dual`. In the dual graph, edges become nodes and new edges are formed by splitting and welding geometries across intersections, preserving accurate street geometries for metric and angular distance calculations. The dual representation is especially useful for visualising street-level centrality results.
 
-    To continue into analysis, hand the *primal* graph to the high-level API with [`CityNetwork.from_nx`](https://cityseer.benchmarkurbanism.com/api/network#from_nx): it performs this dual conversion automatically and exposes the centrality and land-use methods.
+    To continue into analysis, hand the *primal* graph to the high-level API with [`CityNetwork.from_nx`](https://cityseer.benchmarkurbanism.com/api/network#from-nx): it performs this dual conversion automatically and exposes the centrality and land-use methods.
 
     **Next steps:** The dual representation is recommended for centrality analysis; see [Metric Centrality](https://cityseer.benchmarkurbanism.com/examples/centrality/gpd-metric-centrality).
     """)

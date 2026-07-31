@@ -70,9 +70,9 @@ def _(mo):
     mo.md(r"""
     ## Conclusion
 
-    This notebook demonstrated how to convert an `osmnx` MultiDiGraph into a `cityseer`-compatible `networkx` MultiGraph using the `nx_from_osm_nx` function. This allows you to leverage `osmnx` for network retrieval while using `cityseer` for downstream analysis such as centrality and accessibility computations.
+    This notebook demonstrated how to convert an `osmnx` MultiDiGraph into a `cityseer`-compatible `networkx` MultiGraph using the `nx_from_osm_nx` function. This lets you use `osmnx` for network retrieval and `cityseer` for downstream analysis such as centrality and accessibility computations.
 
-    To continue into analysis, hand the prepared graph to the high-level API with [`CityNetwork.from_nx`](https://cityseer.benchmarkurbanism.com/api/network#from_nx), which builds the dual network and exposes the centrality and land-use methods.
+    To continue into analysis, hand the prepared graph to the high-level API with [`CityNetwork.from_nx`](https://cityseer.benchmarkurbanism.com/api/network#from-nx), which builds the dual network and exposes the centrality and land-use methods.
 
     **Next steps:** See also [momepy conversion](https://cityseer.benchmarkurbanism.com/examples/networks/momepy-to-cityseer) or proceed to [Network Centrality](https://cityseer.benchmarkurbanism.com/examples/centrality) to compute metrics.
     """)

@@ -110,7 +110,7 @@ def _(mo):
 
     This notebook demonstrated how to retrieve an administrative or neighbourhood boundary from OpenStreetMap using an OSM relation ID via `osmnx`, and then use that boundary to create a `cityseer`-compatible street network graph. This approach is convenient when a well-defined boundary already exists in OSM, avoiding the need to supply a custom boundary file.
 
-    To continue into analysis, hand the prepared graph to the high-level API with [`CityNetwork.from_nx`](https://cityseer.benchmarkurbanism.com/api/network#from_nx), which builds the dual network and exposes the centrality and land-use methods.
+    To continue into analysis, hand the prepared graph to the high-level API with [`CityNetwork.from_nx`](https://cityseer.benchmarkurbanism.com/api/network#from-nx), which builds the dual network and exposes the centrality and land-use methods.
 
     **Next steps:** To create a network from a custom streets dataset, see [Streets Dataset](https://cityseer.benchmarkurbanism.com/examples/networks/network-from-streets).
     """)

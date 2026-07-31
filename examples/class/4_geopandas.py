@@ -174,7 +174,7 @@ def _(gdf_cities_idx):
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
-    A particularly powerful feature of GeoDataFrames is the ability to filter rows based on their properties. To do this, you create a boolean mask, which can then be used to exclude rows you are not interested in. For instance, if you want to filter the cities to include only those with a latitude greater than 40, you can proceed as follows:
+    GeoDataFrames can filter rows based on their properties. To do this, you create a boolean mask, which can then be used to exclude rows you are not interested in. For instance, if you want to filter the cities to include only those with a latitude greater than 40, you can proceed as follows:
     """)
     return
 

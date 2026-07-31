@@ -368,9 +368,19 @@ print(nodes_gdf[["cc_harmonic_400", "cc_betweenness_800"]])
     <span class="pa"> str | None = None</span>
   </div>
   <div class="param">
-    <span class="pn">max_snap_dist</span>
+    <span class="pn">max_netw_assign_dist</span>
     <span class="pc">:</span>
     <span class="pa"> float = 500.0</span>
+  </div>
+  <div class="param">
+    <span class="pn">barriers_gdf</span>
+    <span class="pc">:</span>
+    <span class="pa"> geopandas.geodataframe.GeoDataFrame | None = None</span>
+  </div>
+  <div class="param">
+    <span class="pn">n_nearest_candidates</span>
+    <span class="pc">:</span>
+    <span class="pa"> int = 50</span>
   </div>
   <span class="pt">)-&gt;[</span>
   <span class="pr">OdMatrix</span>
@@ -379,7 +389,7 @@ print(nodes_gdf[["cc_harmonic_400", "cc_betweenness_800"]])
 </div>
 
 
- Build an OdMatrix from OD flow data and zone boundaries. Computes zone centroids, snaps them to the nearest network nodes, and constructs a sparse OD weight matrix for use with `betweenness_od`.
+ Build an OdMatrix from OD flow data and zone boundaries. Computes zone centroids, assigns them to the network with the shared data-layer workflow ([`build_data_map`](/metrics/layers#build_data_map) — the same representation-aware assignment used by accessibility, mixed-uses, stats, and `betweenness_demand`), and constructs a sparse OD weight matrix for use with `betweenness_od`. Each zone is represented by its nearest assigned network node.
 ### Parameters
 <div class="param-set">
   <div class="def">
@@ -408,7 +418,7 @@ print(nodes_gdf[["cc_harmonic_400", "cc_betweenness_800"]])
   </div>
   <div class="desc">
 
- The network to snap zone centroids to.</div>
+ The network to assign zone centroids to.</div>
 </div>
 
 <div class="param-set">
@@ -453,12 +463,32 @@ print(nodes_gdf[["cc_harmonic_400", "cc_betweenness_800"]])
 
 <div class="param-set">
   <div class="def">
-    <div class="name">max_snap_dist</div>
+    <div class="name">max_netw_assign_dist</div>
     <div class="type">float</div>
   </div>
   <div class="desc">
 
- Maximum distance (in CRS units, typically metres) for snapping a centroid to a network node. Centroids beyond this distance are excluded with a warning.</div>
+ Maximum distance (in CRS units, typically metres) for assigning a centroid to the network. Centroids with no valid assignment within this distance are excluded with a warning.</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">barriers_gdf</div>
+    <div class="type">gpd.GeoDataFrame | None</div>
+  </div>
+  <div class="desc">
+
+ Optional barriers to respect during assignment, as in the data layers.</div>
+</div>
+
+<div class="param-set">
+  <div class="def">
+    <div class="name">n_nearest_candidates</div>
+    <div class="type">int</div>
+  </div>
+  <div class="desc">
+
+ The number of nearest candidate edges to consider when assigning centroids to the network, as in the data layers.</div>
 </div>
 
 ### Returns
@@ -1232,7 +1262,7 @@ print(nodes_gdf[["cc_harmonic_400_ang", "cc_betweenness_800_ang"]])
 </div>
 
 
- Compute closeness centrality using shortest paths. Wraps `centrality_shortest` with betweenness disabled.
+ Compute closeness centrality using shortest paths. Wraps `centrality_shortest` with betweenness disabled; see it for parameter descriptions.
 
 </div>
 
@@ -1297,7 +1327,7 @@ print(nodes_gdf[["cc_harmonic_400_ang", "cc_betweenness_800_ang"]])
 </div>
 
 
- Compute closeness centrality using simplest (angular) paths. Wraps `centrality_simplest` with betweenness disabled.
+ Compute closeness centrality using simplest (angular) paths. Wraps `centrality_simplest` with betweenness disabled; see it for parameter descriptions.
 
 </div>
 
@@ -1362,7 +1392,7 @@ print(nodes_gdf[["cc_harmonic_400_ang", "cc_betweenness_800_ang"]])
 </div>
 
 
- Compute betweenness centrality using shortest paths. Wraps `centrality_shortest` with closeness disabled.
+ Compute betweenness centrality using shortest paths. Wraps `centrality_shortest` with closeness disabled; see it for parameter descriptions.
 
 </div>
 
@@ -1427,7 +1457,7 @@ print(nodes_gdf[["cc_harmonic_400_ang", "cc_betweenness_800_ang"]])
 </div>
 
 
- Compute betweenness centrality using simplest (angular) paths. Wraps `centrality_simplest` with closeness disabled.
+ Compute betweenness centrality using simplest (angular) paths. Wraps `centrality_simplest` with closeness disabled; see it for parameter descriptions.
 
 </div>
 

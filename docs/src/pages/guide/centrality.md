@@ -4,7 +4,19 @@ layout: '@src/layouts/PageLayout.astro'
 
 # Centrality
 
-Centrality metrics quantify the structural importance of each location in the street network. `cityseer` computes multiple centrality measures simultaneously for any combination of distance thresholds in a single pass.
+Centrality metrics describe each location's position in the street network: how easily it reaches its surroundings, and how much movement passes through it. `cityseer` computes multiple centrality measures simultaneously for any combination of distance thresholds in a single pass.
+
+## Closeness and betweenness
+
+Most centrality measures answer one of two questions.
+
+**Closeness** asks how near a location is to everywhere it can reach within the threshold. A street within a short walk of many destinations scores high; one at the end of a long cul-de-sac scores low. High closeness marks places that are well-placed to reach their surroundings, typically local centres.
+
+**Betweenness** asks how many of the shortest routes between other places pass through a location. A street that lies on the way between many origins and destinations scores high and carries through-movement; a quiet back street that no route uses scores low. High betweenness marks the through-routes and high streets.
+
+The two often diverge. A local centre can be easy to reach from its neighbourhood (high closeness) without lying on any through-route (low betweenness); a bypass can carry heavy through-movement (high betweenness) while being cut off from its immediate surroundings (low closeness). Computing both, at several distance thresholds, is usually more informative than either alone.
+
+The rest of this page covers how these measures are defined and read: the expression engine, the default metrics, and the shortest-path and angular variants.
 
 The examples on this page use the [`CityNetwork`](/api/network) methods, which are the recommended interface: network construction, cleaning, and the dual graph are handled automatically. The same computations exist as lower-level functions in [`metrics.networks`](/metrics/networks) for direct control over the network structures. The older `node_centrality_shortest`, `node_centrality_simplest`, and `segment_centrality` functions are deprecated: they exist only for backwards compatibility with pre-5.0 code (see the [migration guide](/guide/migration)).
 
@@ -13,7 +25,7 @@ The examples on this page use the [`CityNetwork`](/api/network) methods, which a
 Metrics are defined as `{name: expression}` dictionaries using two variables:
 
 - **`c`** (cost): the raw routing cost to each reached node. For shortest paths, `c` is the metric distance in metres. For simplest paths, `c` is the cumulative angular change in degrees.
-- **`p`** (progress): normalised progress from 0 at the source to 1 at the distance threshold. For shortest paths, `p = c / threshold`. For simplest paths, `p = elapsed_time / max_time`.
+- **`p`** (progress): normalised progress from 0 at the source to 1 at the threshold. For shortest paths this is `p = c / threshold`. For simplest paths the routing cost `c` is angular, so `p` instead tracks the metric budget consumed (`elapsed_time / max_time`), not the angular change.
 
 Metrics fall into four categories:
 
@@ -80,7 +92,7 @@ Pass `None` to use the defaults for a category, or `{}` to skip it entirely. The
 
 | Column | Expression | Formula | Description |
 | --- | --- | --- | --- |
-| `cc_hillier_{d}_ang` | `"density**2 / farness"` | $n^2 / \sum_j (1 + c_j / 90)$ | Hillier normalisation for angular metrics. The Hillier formula is also known as _integration_ in the space syntax community, and is more or less a simplified form of improved closeness centrality. |
+| `cc_hillier_{d}_ang` | `"density**2 / farness"` | $n^2 / \sum_j (1 + c_j / 90)$ | A node-count normalisation of angular closeness ($n^2$ over angular farness). This is one classical form of what space syntax calls _integration_. |
 
 Simplest-path centrality does not apply decay-weighted forms by default. Angular cost is cumulative turning, which does not decrease continuously with distance, so it is not a meaningful basis for distance decay. If you need a decay-weighted or otherwise custom angular metric, define it with a [custom expression](#custom-metrics).
 
@@ -122,7 +134,7 @@ Every node carries a `weight` (default `1.0`). Set it on the nodes `GeoDataFrame
 The same weighting is applied identically whether or not [adaptive sampling](#adaptive-sampling) is used. With the default weights of `1.0` the results are unchanged from an unweighted analysis.
 
 :::note
-Node weights affect **centrality only**. Land-use accessibility, mixed-use diversity, and statistical aggregations are intentionally *not* node-weighted; they weight reachable land-use data points (optionally by [distance decay](/guide/land-use#decay-functions)), not network nodes.
+Node weights affect **centrality only**. Land-use accessibility, mixed-use diversity, and statistical aggregations are intentionally *not* node-weighted; they weight reachable land-use data features (optionally by [distance decay](/guide/land-use#decay-functions)), not network nodes.
 :::
 
 ## Segment-weighted centrality
@@ -160,13 +172,13 @@ Standard betweenness treats every node pair equally. When you have real or model
 - [OSM Centrality](/examples/centrality/osm-centrality) -- end-to-end from OpenStreetMap
 - [Custom Expressions](/examples/centrality/custom-expressions) -- defining custom metrics, selecting only what you need, postprocess, and statistic selection
 - [Sampled Centrality](/examples/centrality/sampled-centrality) -- adaptive sampling on a large network, validated against exact results
-- [OD Betweenness](/examples/centrality/od-betweenness) -- demand-weighted flows from a singly constrained spatial interaction model
+- [Demand Betweenness](/examples/flows/demand-flows) -- demand-weighted flows from a singly constrained spatial interaction model
 
-## Performance and Scale
+## Performance and scale
 
 The underlying algorithms are parallelised in Rust and scale to large networks. Computation scales with the number of edges, the number of distance thresholds, and the reachability at each threshold. Simplest-path (angular) centrality is typically faster than shortest-path because angular routing explores fewer paths. For large networks at long distance thresholds, consider [adaptive sampling](#adaptive-sampling).
 
-## Adaptive Sampling
+## Adaptive sampling
 
 For large networks at long distance thresholds, `cityseer` offers an experimental adaptive sampling feature. Rather than using every node as a source, each node is included with its own probability derived from its measured local reach: a cheap pilot polls the network with bounded shortest-path traversals from a small sample of sources to estimate each node's reach, and the Hoeffding inequality converts that reach into the minimum sampling rate needed to keep the approximation error within a specified tolerance. Sparse areas are sampled more heavily and dense areas less, so precision is uniform across the network. Results are corrected using inverse-probability weighting (IPW): if a node had a 25% chance of being selected as a source, its contribution is multiplied by 4 (the reciprocal of 0.25), so that the sampled subset approximates the result of using all nodes without bias.
 

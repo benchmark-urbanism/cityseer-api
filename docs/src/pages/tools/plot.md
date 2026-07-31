@@ -489,7 +489,7 @@ from cityseer.tools import mock, graphs, plot, io
 from cityseer.metrics import networks
 from matplotlib import colors
 
-# generate a MultiGraph and compute gravity
+# generate a MultiGraph and compute closeness
 G = mock.mock_graph()
 G = graphs.nx_simple_geoms(G)
 G = graphs.nx_decompose(G, 50)
@@ -499,7 +499,7 @@ G_after = io.nx_from_cityseer_geopandas(nodes_gdf, edges_gdf)
 # let's extract and normalise the values
 vals = []
 for node, data in G_after.nodes(data=True):
-    vals.append(data["cc_beta_800"])
+    vals.append(data["cc_harmonic_800"])
 # let's create a custom colourmap using matplotlib
 cmap = colors.LinearSegmentedColormap.from_list(
     "cityseer", [(100 / 255, 193 / 255, 255 / 255, 255 / 255), (211 / 255, 47 / 255, 47 / 255, 1 / 255)]
@@ -513,7 +513,7 @@ plot.plot_nx(G_after, node_colour=cols)
 ```
 
 
-![Example Colour Plot.](/images/graph_colour.png) _Colour plot of 800m gravity index centrality on a 50m decomposed graph._
+![Example Colour Plot.](/images/graph_colour.png) _Colour plot of 800m harmonic closeness centrality on a 50m decomposed graph._
 
 </div>
 

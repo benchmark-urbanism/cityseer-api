@@ -43,6 +43,26 @@ def _require_dual_for_angular(
         )
 
 
+# functions that have already emitted the v5.8.0 return-change note this session
+_RETURN_NOTE_EMITTED: set[str] = set()
+
+
+def _note_return_change(fn_name: str) -> None:
+    """Log a one-time note that the data-layer return changed in v5.8.0.
+
+    Emitted once per function per session, at INFO level so it shows in normal console
+    output without touching the warnings machinery. Remove after the v5.8 cycle.
+    """
+    if fn_name in _RETURN_NOTE_EMITTED:
+        return
+    _RETURN_NOTE_EMITTED.add(fn_name)
+    logger.info(
+        f"Note: as of v5.8.0, {fn_name} returns the nodes GeoDataFrame only "
+        "(the CityNetwork method returns the CityNetwork itself); the legacy data_gdf "
+        "second return value has been removed."
+    )
+
+
 def _resolve_decay_fns(decay_fn: str | dict[str, str] | None) -> tuple[list[str], list[str], bool]:
     """Resolve ``decay_fn`` into aligned ``(labels, expressions, legacy_tail)``.
 
@@ -218,7 +238,7 @@ def compute_accessibilities(
     n_nearest_candidates: int = 50,
     speed_m_s: float = SPEED_M_S,
     decay_fn: str | dict[str, str] | None = None,
-) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
+) -> gpd.GeoDataFrame:
     r"""
     Compute land-use accessibilities for the specified land-use classification keys over the street network.
 
@@ -288,8 +308,6 @@ def compute_accessibilities(
         The input `node_gdf` parameter is returned with additional columns populated with the calculated metrics. Two
         columns will be returned for each input landuse class and distance combination; a count of reachable
         locations, and the smallest distance to the nearest location.
-    data_gdf: GeoDataFrame
-        The input `data_gdf` is returned with two additional columns: `nearest_assigned` and `next_nearest_assign`.
 
     Examples
     --------
@@ -304,7 +322,7 @@ def compute_accessibilities(
     print(nodes_gdf.head())
     landuses_gdf = mock.mock_landuse_categorical_data(G)
     print(landuses_gdf.head())
-    nodes_gdf, landuses_gdf = layers.compute_accessibilities(
+    nodes_gdf = layers.compute_accessibilities(
         data_gdf=landuses_gdf,
         landuse_column_label="categorical_landuses",
         accessibility_keys=["a", "c"],
@@ -327,6 +345,7 @@ def compute_accessibilities(
     """
     if angular:
         _require_dual_for_angular(network_structure, "compute_accessibilities")
+    _note_return_change("compute_accessibilities")
     logger.info(f"Computing land-use accessibility for: {', '.join(accessibility_keys)}")
     # drop uncategorised (NaN) points, then assign to network
     data_src = _landuse_data_source(data_gdf, landuse_column_label)
@@ -380,7 +399,7 @@ def compute_accessibilities(
     temp_df = pd.DataFrame(temp_data, index=acc_results[0].node_keys_py)
     nodes_gdf.loc[gdf_idx, temp_df.columns] = temp_df.loc[gdf_idx, temp_df.columns]
 
-    return nodes_gdf, data_gdf
+    return nodes_gdf
 
 
 def compute_mixed_uses(
@@ -400,7 +419,7 @@ def compute_mixed_uses(
     n_nearest_candidates: int = 50,
     speed_m_s: float = SPEED_M_S,
     decay_fn: str | dict[str, str] | None = None,
-) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
+) -> gpd.GeoDataFrame:
     r"""
     Compute landuse metrics.
 
@@ -482,8 +501,6 @@ def compute_mixed_uses(
     -------
     nodes_gdf: GeoDataFrame
         The input `node_gdf` parameter is returned with additional columns populated with the calculated metrics.
-    data_gdf: GeoDataFrame
-        The input `data_gdf` is returned with two additional columns: `nearest_assigned` and `next_nearest_assign`.
 
     Examples
     --------
@@ -522,7 +539,7 @@ def compute_mixed_uses(
     print(nodes_gdf.head())
     landuses_gdf = mock.mock_landuse_categorical_data(G)
     print(landuses_gdf.head())
-    nodes_gdf, landuses_gdf = layers.compute_mixed_uses(
+    nodes_gdf = layers.compute_mixed_uses(
         data_gdf=landuses_gdf,
         landuse_column_label="categorical_landuses",
         nodes_gdf=nodes_gdf,
@@ -547,6 +564,7 @@ def compute_mixed_uses(
     """
     if angular:
         _require_dual_for_angular(network_structure, "compute_mixed_uses")
+    _note_return_change("compute_mixed_uses")
     logger.info("Computing mixed-use measures.")
     # drop uncategorised (NaN) points, then assign to network
     data_src = _landuse_data_source(data_gdf, landuse_column_label)
@@ -607,7 +625,7 @@ def compute_mixed_uses(
     temp_df = pd.DataFrame(temp_data, index=results[0].node_keys_py)
     nodes_gdf.loc[gdf_idx, temp_df.columns] = temp_df.loc[gdf_idx, temp_df.columns]
 
-    return nodes_gdf, data_gdf
+    return nodes_gdf
 
 
 def compute_stats(
@@ -625,7 +643,7 @@ def compute_stats(
     speed_m_s: float = SPEED_M_S,
     decay_fn: str | dict[str, str] | None = None,
     measures: list[str] | None = None,
-) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
+) -> gpd.GeoDataFrame:
     r"""
     Compute numerical statistics over the street network.
 
@@ -699,8 +717,6 @@ def compute_stats(
     -------
     nodes_gdf: GeoDataFrame
         The input `node_gdf` parameter is returned with additional columns populated with the calculated metrics.
-    data_gdf: GeoDataFrame
-        The input `data_gdf` is returned with two additional columns: `nearest_assigned` and `next_nearest_assign`.
 
     Examples
     --------
@@ -717,7 +733,7 @@ def compute_stats(
     print(nodes_gdf.head())
     numerical_gdf = mock.mock_numerical_data(G, num_arrs=3)
     print(numerical_gdf.head())
-    nodes_gdf, numerical_gdf = layers.compute_stats(
+    nodes_gdf = layers.compute_stats(
         data_gdf=numerical_gdf,
         stats_column_labels=["mock_numerical_1"],
         nodes_gdf=nodes_gdf,
@@ -733,7 +749,7 @@ def compute_stats(
     Custom decay using the `p` variable directly (Gaussian peaking at 400m within a 1200m cutoff):
 
     ```python
-    nodes_gdf, numerical_gdf = layers.compute_stats(
+    nodes_gdf = layers.compute_stats(
         data_gdf=numerical_gdf,
         stats_column_labels=["mock_numerical_1"],
         nodes_gdf=nodes_gdf,
@@ -748,7 +764,7 @@ def compute_stats(
     ```python
     from cityseer import decay
 
-    nodes_gdf, numerical_gdf = layers.compute_stats(
+    nodes_gdf = layers.compute_stats(
         data_gdf=numerical_gdf,
         stats_column_labels=["mock_numerical_1"],
         nodes_gdf=nodes_gdf,
@@ -761,7 +777,7 @@ def compute_stats(
     Flat (unweighted) metrics:
 
     ```python
-    nodes_gdf, numerical_gdf = layers.compute_stats(
+    nodes_gdf = layers.compute_stats(
         data_gdf=numerical_gdf,
         stats_column_labels=["mock_numerical_1"],
         nodes_gdf=nodes_gdf,
@@ -779,7 +795,7 @@ def compute_stats(
     - `mean`
     - `count`
     - `median`
-    - `variance`
+    - `var` (variance)
     - `mad` (median absolute deviation)
 
     The decay function (default exponential, or custom via `decay_fn`) controls how
@@ -793,6 +809,7 @@ def compute_stats(
     """
     if angular:
         _require_dual_for_angular(network_structure, "compute_stats")
+    _note_return_change("compute_stats")
     logger.info("Computing statistics.")
     # assign to network
     data_map = build_data_map(
@@ -851,4 +868,4 @@ def compute_stats(
     temp_df = pd.DataFrame(temp_data, index=stats_results[0].node_keys_py)
     nodes_gdf.loc[gdf_idx, temp_df.columns] = temp_df.loc[gdf_idx, temp_df.columns]
 
-    return nodes_gdf, data_gdf
+    return nodes_gdf

@@ -118,7 +118,7 @@ def _(mo):
 
     This notebook demonstrated how to create a street network graph from OpenStreetMap by buffering a longitude/latitude coordinate to a specified radius using `buffered_point_poly`. This approach is useful when you have a centre-point and want to extract the surrounding network within a given distance, with options for both WGS84 and projected UTM boundaries.
 
-    To continue into analysis, hand the prepared graph to the high-level API with [`CityNetwork.from_nx`](https://cityseer.benchmarkurbanism.com/api/network#from_nx), which builds the dual network and exposes the centrality and land-use methods.
+    To continue into analysis, hand the prepared graph to the high-level API with [`CityNetwork.from_nx`](https://cityseer.benchmarkurbanism.com/api/network#from-nx), which builds the dual network and exposes the centrality and land-use methods.
 
     **Next steps:** To use a custom boundary file instead, see [Boundary File](https://cityseer.benchmarkurbanism.com/examples/networks/network-from-bounds).
     """)

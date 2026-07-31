@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import copy
 import logging
-from typing import Any
+from typing import Any, cast
 
 import networkx as nx
 import numpy as np
@@ -230,7 +230,7 @@ def street_continuity(
     if method not in available_targets:
         raise ValueError(f"Method of {method} is not recognised.")
 
-    method_report = StreetContinuityReport(method=method)  # type: ignore
+    method_report = StreetContinuityReport(method=method)
 
     logger.info(f"Calculating metrics for {method}.")
     # iter edges
@@ -261,7 +261,7 @@ def street_continuity(
                     visited_edges: set[str] = set()
                     _recurse_edges(
                         nx_multi_copy,
-                        method,  # type: ignore
+                        cast("str", method),
                         match_target,
                         a_nd_key,
                         b_nd_key,
@@ -279,7 +279,7 @@ def street_continuity(
                 )
     # copy to networkx input graph
     nx_multi_copy = _continuity_report_to_nx(
-        edge_key=method,  # type: ignore
+        edge_key=method,
         nx_multigraph=nx_multi_copy,
         continuity_report=method_report,
     )

@@ -48,7 +48,7 @@ def _(mo):
     mo.md(r"""
     To start, follow the same approach as shown in the network examples to create the network. The full bundled network is clipped to a 2km study area around the city centre, buffered by the maximum analysis distance so that nodes near the study edge keep their full catchments. Since decomposition multiplies the number of network nodes, this example works with a district rather than the whole city; the statistics are computed per node from local catchments, so the results within the study area are unaffected.
 
-    The graph is decomposed with [`nx_decompose`](https://cityseer.benchmarkurbanism.com/tools/graphs#nx_decompose) so that statistics are sampled at a higher spatial resolution, then handed to `CityNetwork.from_nx`; the `boundary` argument marks the nodes inside the study area as `live`.
+    The graph is decomposed with [`nx_decompose`](https://cityseer.benchmarkurbanism.com/tools/graphs#nx-decompose) so that statistics are sampled at a higher spatial resolution, then handed to `CityNetwork.from_nx`; the `boundary` argument marks the nodes inside the study area as `live`.
     """)
     return
 
@@ -90,7 +90,7 @@ def _(buffered_poly, gpd):
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
-    Use the [`compute_stats`](https://cityseer.benchmarkurbanism.com/api/network#compute_stats) method to compute statistics for numeric columns in the `GeoDataFrame`, specified with the `stats_column_labels` argument. The statistics are aggregated over the network using network distances. The `measures` argument selects which statistics to compute; without it, the full set of `count`, `sum`, `min`, `max`, `mean`, `median`, `mad` (median absolute deviation) and `var` is generated.
+    Use the [`compute_stats`](https://cityseer.benchmarkurbanism.com/api/network#compute-stats) method to compute statistics for numeric columns in the `GeoDataFrame`, specified with the `stats_column_labels` argument. The statistics are aggregated over the network using network distances. The `measures` argument selects which statistics to compute; without it, the full set of `count`, `sum`, `min`, `max`, `mean`, `median`, `mad` (median absolute deviation) and `var` is generated.
     """)
     return
 
@@ -98,14 +98,14 @@ def _(mo):
 @app.cell
 def _(bldgs_gpd, cn):
     distances = [100, 200]
-    _cn, bldgs_gpd_1 = cn.compute_stats(
+    cn.compute_stats(
         bldgs_gpd,
         stats_column_labels=["area", "perimeter", "compactness", "orientation", "shape_index"],
         distances=distances,
         measures=["mean", "median", "mad", "var"],
     )
     nodes_gdf_1 = cn.to_geopandas()
-    return bldgs_gpd_1, nodes_gdf_1
+    return (nodes_gdf_1,)
 
 
 @app.cell(hide_code=True)
@@ -204,14 +204,14 @@ def _(nodes_gdf_1, np, plt, sns):
 
 
 @app.cell
-def _(bldgs_gpd_1, nodes_gdf_1, plt):
+def _(bldgs_gpd, nodes_gdf_1, plt):
     g = nodes_gdf_1[nodes_gdf_1.live].copy()
     g["_r"] = g["cc_orientation_median_200"].rank(pct=True)
     g = g.sort_values("_r")
     _fig, _ax = plt.subplots(1, 1, figsize=(7, 7), dpi=150)
     g.plot(ax=_ax, color=plt.get_cmap("OrRd")(g["_r"]), linewidth=0.15 + 2.25 * g["_r"])
     # buildings as light-grey context
-    bldgs_gpd_1.plot(color="#cccccc", edgecolor="#bbbbbb", linewidth=0.1, ax=_ax)
+    bldgs_gpd.plot(color="#cccccc", edgecolor="#bbbbbb", linewidth=0.1, ax=_ax)
     _ax.set_title("Median building orientation, 200 m", loc="left")
     _ax.set_xlim(438500, 438500 + 3500)
     _ax.set_ylim(4472500, 4472500 + 3500)

@@ -18,7 +18,7 @@ def _(mo):
 
     This notebook demonstrates how to calculate metric (shortest-path) distance centralities for a network loaded from OpenStreetMap (OSM) data. We will create a network from a buffered point, compute centrality measures, and visualise the results.
 
-    The [`CityNetwork.from_osm`](https://cityseer.benchmarkurbanism.com/api/network#from_osm) constructor wraps the download, cleaning, and dual graph conversion behind a single call. For control over the intermediate steps, see the [network preparation recipes](https://cityseer.benchmarkurbanism.com/examples/networks).
+    The [`CityNetwork.from_osm`](https://cityseer.benchmarkurbanism.com/api/network#from-osm) constructor wraps the download, cleaning, and dual graph conversion behind a single call. For control over the intermediate steps, see the [network preparation recipes](https://cityseer.benchmarkurbanism.com/examples/networks).
 
     Network data © [OpenStreetMap](https://www.openstreetmap.org/copyright) contributors, available under the Open Database Licence.
     """)
@@ -56,7 +56,7 @@ def _(CityNetwork, io):
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
-    Use the [`centrality_shortest`](https://cityseer.benchmarkurbanism.com/api/network#centrality_shortest) method to calculate shortest metric distance centralities. By default it computes a single harmonic closeness and a single betweenness; here the `closeness` expression dictionary and `postprocess` are used to additionally derive the Hillier normalisation, which requires the `density` and `farness` components.
+    Use the [`centrality_shortest`](https://cityseer.benchmarkurbanism.com/api/network#centrality-shortest) method to calculate shortest metric distance centralities. By default it computes a single harmonic closeness and a single betweenness; here the `closeness` expression dictionary and `postprocess` are used to additionally derive the Hillier normalisation, which requires the `density` and `farness` components.
 
     > Use angular centralities with caution on automatically cleaned OSM networks, preferably only after visual inspection and manual cleaning.
     """)
@@ -139,7 +139,7 @@ def _(nodes_gdf_1, plt):
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
-    Betweenness highlights the streets that carry the most through-traffic potential. Notice how major roads and bridges tend to score highest, as they serve as critical links in the network.
+    Betweenness highlights the streets that carry the most through-traffic potential. Notice how major roads and bridges tend to score highest, since many routes converge on them.
     """)
     return
 

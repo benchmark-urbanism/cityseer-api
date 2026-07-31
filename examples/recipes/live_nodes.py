@@ -18,7 +18,7 @@ def _(mo):
 
     Use a boundary polygon to demarcate the study area from the buffered surrounding extents that are included to avoid edge rolloff. The algorithms continue to route through the parts of the network outside the boundary (thereby preventing edge rolloff), but results are only reported for nodes inside it.
 
-    The high-level [`CityNetwork`](https://cityseer.benchmarkurbanism.com/api/network) class provides the [`set_boundary`](https://cityseer.benchmarkurbanism.com/api/network#set_boundary) method for this purpose. Under the hood it sets a `live` attribute per node: nodes inside the boundary are `live=True` and reported; nodes outside are `live=False` and used for routing only.
+    The high-level [`CityNetwork`](https://cityseer.benchmarkurbanism.com/api/network) class provides the [`set_boundary`](https://cityseer.benchmarkurbanism.com/api/network#set-boundary) method for this purpose. Under the hood it sets a `live` attribute per node: nodes inside the boundary are `live=True` and reported; nodes outside are `live=False` and used for routing only.
 
     Network data © [OpenStreetMap](https://www.openstreetmap.org/copyright) contributors, available under the Open Database Licence.
     """)
@@ -69,7 +69,7 @@ def _(poly_utm):
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
-    The buffer polygon can then be used as an argument for retrieving the OSM network with the [`from_osm`](https://cityseer.benchmarkurbanism.com/api/network#from_osm) constructor. The `poly_crs_code` and `to_crs_code` parameters need to be set so that the constructor knows which CRS the input geometry is in, and which CRS to convert the network to.
+    The buffer polygon can then be used as an argument for retrieving the OSM network with the [`from_osm`](https://cityseer.benchmarkurbanism.com/api/network#from-osm) constructor. The `poly_crs_code` and `to_crs_code` parameters need to be set so that the constructor knows which CRS the input geometry is in, and which CRS to convert the network to.
     """)
     return
 

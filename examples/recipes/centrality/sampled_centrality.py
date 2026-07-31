@@ -44,7 +44,7 @@ def _(mo):
     mo.md(r"""
     ## Network preparation
 
-    We use the full bundled street network (province clip, roughly 20km around the city) and mark nodes inside the municipal boundary as live via the `boundary` argument. Live status matters here for two reasons: results are only reported for live nodes, and for closeness the exact mode skips dead nodes as sources, which keeps the exact baseline affordable. This is the standard buffered-network setup described in the [edge rolloff](https://cityseer.benchmarkurbanism.com/guide/fundamentals#edge-rolloff) section.
+    We use the full bundled street network (province clip, roughly 20km around the city) and mark nodes inside the municipal boundary as live via the `boundary` argument. Live status serves two purposes here: results are only reported for live nodes, and for closeness the exact computation skips non-live nodes as sources, which keeps the exact baseline affordable. This is the standard buffered-network setup described in the [edge rolloff](https://cityseer.benchmarkurbanism.com/guide/fundamentals#edge-rolloff) section.
     """)
     return
 
@@ -100,7 +100,7 @@ def _(mo):
     - **rank agreement** (Spearman rho): whether the sampled results order locations the same way, which is what most comparative analyses rely on;
     - **relative error**: the per-node deviation of the sampled estimate from the exact value.
 
-    The default tolerance `epsilon=0.05` is calibrated so that rank agreement holds at Spearman rho of at least 0.95 on networks spanning the density range from metropolitan grids to sparse suburbs. Tighten `epsilon` for stricter agreement at higher cost, for example `epsilon=0.03`; very sparse networks may need this.
+    The default tolerance `epsilon=0.05` is calibrated so that rank agreement holds at Spearman rho of at least 0.95 on networks spanning the density range from metropolitan grids to sparse suburbs. Tighten `epsilon` for stricter agreement at higher cost, or loosen it for exploratory work where speed is the priority.
     """)
     return
 
@@ -171,7 +171,7 @@ def _(mo):
     - Sampling is opt-in (`sample=True`) and applies per distance threshold; you can mix short exact thresholds and long sampled thresholds in one call.
     - `epsilon` trades cost against precision; `random_seed` gives reproducible draws.
     - The work test means `sample=True` is safe to leave on: where sampling would not help, the exact path is used automatically.
-    - The same parameters are available on [`centrality_simplest`](https://cityseer.benchmarkurbanism.com/api/network#centrality_simplest) and on the lower-level functional `networks` module.
+    - The same parameters are available on [`centrality_simplest`](https://cityseer.benchmarkurbanism.com/api/network#centrality-simplest) and on the lower-level functional `networks` module.
     - Sampling is experimental: behaviour and defaults may change between releases.
     """)
     return

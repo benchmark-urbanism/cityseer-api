@@ -49,6 +49,15 @@ function replaceUnderscoresInIds() {
         // Replace underscores with dashes in the id property
         node.properties.id = node.properties.id.replace(/_/g, '-')
       }
+      // normalise internal link fragments the same way, so #compute_stats and
+      // #compute-stats both resolve against the dash-formed heading ids above
+      if (node.tagName === 'a' && node.properties && typeof node.properties.href === 'string') {
+        const href = node.properties.href
+        if (!/^[a-z]+:/.test(href) && href.includes('#')) {
+          const [path, frag] = href.split('#')
+          node.properties.href = `${path}#${frag.replace(/_/g, '-')}`
+        }
+      }
     })
   }
 }

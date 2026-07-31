@@ -37,7 +37,7 @@ def _():
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
-    Load the streets and clip them to a buffered study area. The `boundary` argument to [`from_geopandas`](https://cityseer.benchmarkurbanism.com/api/network#from_geopandas) marks the nodes inside the study area as `live`; the surrounding non-live nodes prevent edge rolloff, since they are used for routing but metrics are not computed for them. Because each node's centrality depends only on its catchment within the largest analysis distance, a district plus a sufficiently large buffer reproduces the city-wide values for the live nodes at far lower cost. See the [live nodes example](https://cityseer.benchmarkurbanism.com/examples/recipes/live-nodes) for more details.
+    Load the streets and clip them to a buffered study area. The `boundary` argument to [`from_geopandas`](https://cityseer.benchmarkurbanism.com/api/network#from-geopandas) marks the nodes inside the study area as `live`; the surrounding non-live nodes prevent edge rolloff, since they are used for routing but metrics are not computed for them. Because each node's centrality depends only on its catchment within the largest analysis distance, a district plus a sufficiently large buffer reproduces the city-wide values for the live nodes at far lower cost. See the [live nodes example](https://cityseer.benchmarkurbanism.com/examples/recipes/live-nodes) for more details.
     """)
     return
 
@@ -61,9 +61,9 @@ def _(CityNetwork, gpd):
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
-    Use the [`centrality_shortest`](https://cityseer.benchmarkurbanism.com/api/network#centrality_shortest) method to calculate shortest metric distance centralities. It can calculate centralities for numerous distances at once via the `distances` parameter, which accepts a list of distances. By default it computes a single harmonic closeness and a single betweenness; further metrics can be requested through the expression dictionaries shown later in this notebook.
+    Use the [`centrality_shortest`](https://cityseer.benchmarkurbanism.com/api/network#centrality-shortest) method to calculate shortest metric distance centralities. It can calculate centralities for numerous distances at once via the `distances` parameter, which accepts a list of distances. By default it computes a single harmonic closeness and a single betweenness; further metrics can be requested through the expression dictionaries shown later in this notebook.
 
-    Results are written to the network's internal nodes `GeoDataFrame` as columns named `cc_{centrality}_{distance}`, and `to_geopandas` returns them joined to the original street LineString geometries. Standard `geopandas` functionality can be used to explore, visualise, or save the results. See the [documentation](https://cityseer.benchmarkurbanism.com/metrics/networks#centrality_shortest) for more information on the available centrality formulations.
+    Results are written to the network's internal nodes `GeoDataFrame` as columns named `cc_{centrality}_{distance}`, and `to_geopandas` returns them joined to the original street LineString geometries. Standard `geopandas` functionality can be used to explore, visualise, or save the results. See the [documentation](https://cityseer.benchmarkurbanism.com/metrics/networks#centrality-shortest) for more information on the available centrality formulations.
     """)
     return
 

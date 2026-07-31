@@ -16,11 +16,10 @@ def _(mo):
     mo.md(r"""
     # Elevation Effects on Centrality
 
-    Compare centrality results with and without Z coordinates (elevation). When nodes have `z` attributes, cityseer automatically applies Tobler's hiking function during pathfinding: uphill segments become costlier and gentle downhill segments become slightly cheaper. This reshapes which paths are optimal and therefore changes centrality values.
+    Compare centrality results with and without Z coordinates (elevation). When nodes have `z` attributes, cityseer automatically applies Tobler's hiking function during pathfinding: uphill segments become costlier and gentle downhill segments become slightly cheaper. For the angular analysis used here, the slope penalty reduces how far each traversal can reach within the distance budget, and the changed reach changes the centrality values.
 
     The flat/hilly comparison needs direct manipulation of the graph geometry, so each variant is prepared with the lower-level `tools` modules and then bridged into the high-level [`CityNetwork`](https://cityseer.benchmarkurbanism.com/api/network) class with `from_nx`, which builds the dual graph and computes the centralities.
 
-    > 3D elevation support requires cityseer v4.24.0 or later.
 
     The bundled datasets and their source attributions are documented on the [datasets page](https://cityseer.benchmarkurbanism.com/examples/datasets).
     """)
@@ -116,7 +115,7 @@ def _(mo):
     mo.md(r"""
     ## Compute centrality: flat vs hilly
 
-    Run simplest-path (angular) closeness and betweenness at a 1000m threshold for both versions. Each primal graph variant is bridged into the high-level API with [`CityNetwork.from_nx`](https://cityseer.benchmarkurbanism.com/api/network#from_nx), which builds the dual graph required for angular centrality, and [`centrality_simplest`](https://cityseer.benchmarkurbanism.com/api/network#centrality_simplest) computes the centralities.
+    Run simplest-path (angular) closeness and betweenness at a 1000m threshold for both versions. Each primal graph variant is bridged into the high-level API with [`CityNetwork.from_nx`](https://cityseer.benchmarkurbanism.com/api/network#from-nx), which builds the dual graph required for angular centrality, and [`centrality_simplest`](https://cityseer.benchmarkurbanism.com/api/network#centrality-simplest) computes the centralities.
     """)
     return
 

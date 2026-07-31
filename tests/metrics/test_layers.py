@@ -68,7 +68,7 @@ def test_compute_accessibilities(primal_graph, dual_graph):
         network_structure = network_structure_dual if angular else network_structure_primal
         for data_id_col in [None, "data_id"]:
             for key_set in (["a"], ["b"], ["a", "b"]):
-                nodes_gdf, data_gdf = layers.compute_accessibilities(
+                nodes_gdf = layers.compute_accessibilities(
                     data_gdf,  # type: ignore
                     "categorical_landuses",
                     key_set,
@@ -140,7 +140,7 @@ def test_compute_mixed_uses(primal_graph, dual_graph):
         for angular in [False, True]:
             nodes_gdf = nodes_gdf_dual.copy() if angular else nodes_gdf_primal.copy()
             network_structure = network_structure_dual if angular else network_structure_primal
-            nodes_gdf, data_gdf = layers.compute_mixed_uses(
+            nodes_gdf = layers.compute_mixed_uses(
                 data_gdf,
                 "categorical_landuses",
                 nodes_gdf,
@@ -213,7 +213,7 @@ def test_layer_methods_skip_missing_landuse(primal_graph):
     assert data_nan["categorical_landuses"].isna().any()
 
     keys = ["a", "b"]
-    acc_nan, ret_gdf = layers.compute_accessibilities(
+    acc_nan = layers.compute_accessibilities(
         data_nan.copy(),
         "categorical_landuses",
         keys,
@@ -222,7 +222,7 @@ def test_layer_methods_skip_missing_landuse(primal_graph):
         distances=distances,
         decay_fn="1",
     )
-    acc_dropped, _ = layers.compute_accessibilities(
+    acc_dropped = layers.compute_accessibilities(
         data_dropped.copy(),
         "categorical_landuses",
         keys,
@@ -231,14 +231,12 @@ def test_layer_methods_skip_missing_landuse(primal_graph):
         distances=distances,
         decay_fn="1",
     )
-    # the returned data frame is the caller's, unchanged (NaN rows preserved)
-    assert ret_gdf["categorical_landuses"].isna().any()
     for key in keys:
         for dist_key in distances:
             col = config.prep_gdf_key(key, dist_key, False)
             assert np.allclose(acc_nan[col].values, acc_dropped[col].values, atol=config.ATOL, rtol=config.RTOL)
 
-    mu_nan, _ = layers.compute_mixed_uses(
+    mu_nan = layers.compute_mixed_uses(
         data_nan.copy(),
         "categorical_landuses",
         nodes_gdf.copy(),
@@ -249,7 +247,7 @@ def test_layer_methods_skip_missing_landuse(primal_graph):
         compute_gini=True,
         decay_fn="1",
     )
-    mu_dropped, _ = layers.compute_mixed_uses(
+    mu_dropped = layers.compute_mixed_uses(
         data_dropped.copy(),
         "categorical_landuses",
         nodes_gdf.copy(),
@@ -282,10 +280,10 @@ def test_compute_stats_skips_nan(primal_graph):
     data_dropped = data_nan.dropna(subset=[col])
     assert data_nan[col].isna().any()
 
-    res_nan, _ = layers.compute_stats(
+    res_nan = layers.compute_stats(
         data_nan.copy(), [col], nodes_gdf.copy(), network_structure, distances=distances, decay_fn="1"
     )
-    res_dropped, _ = layers.compute_stats(
+    res_dropped = layers.compute_stats(
         data_dropped.copy(), [col], nodes_gdf.copy(), network_structure, distances=distances, decay_fn="1"
     )
     for measure in ["sum", "mean", "count"]:
@@ -315,7 +313,7 @@ def test_compute_stats(primal_graph, dual_graph):
                 max_netw_assign_dist=max_assign_dist,
                 data_id_col=None,
             )
-            nodes_gdf, data_gdf = layers.compute_stats(
+            nodes_gdf = layers.compute_stats(
                 data_gdf,
                 ["mock_numerical_1", "mock_numerical_2"],
                 nodes_gdf,
@@ -435,10 +433,10 @@ def test_custom_decay_fn(primal_graph):
     col_mean = config.prep_gdf_key("mock_numerical_1_mean", 800)
     col_acc = config.prep_gdf_key("a", 800)
     # --- compute_stats ---
-    n_default, _ = layers.compute_stats(
+    n_default = layers.compute_stats(
         numerical_gdf, ["mock_numerical_1"], nodes_gdf.copy(), network_structure, distances=distances, decay_fn="1"
     )
-    n_exp, _ = layers.compute_stats(
+    n_exp = layers.compute_stats(
         numerical_gdf,
         ["mock_numerical_1"],
         nodes_gdf.copy(),
@@ -446,7 +444,7 @@ def test_custom_decay_fn(primal_graph):
         distances=distances,
         decay_fn=decay.exponential(),
     )
-    n_linear, _ = layers.compute_stats(
+    n_linear = layers.compute_stats(
         numerical_gdf,
         ["mock_numerical_1"],
         nodes_gdf.copy(),
@@ -461,7 +459,7 @@ def test_custom_decay_fn(primal_graph):
     # exponential and linear should also differ from each other
     assert not np.allclose(n_exp[col_mean].dropna(), n_linear[col_mean].dropna(), atol=0.1)
     # --- compute_accessibilities ---
-    a_default, _ = layers.compute_accessibilities(
+    a_default = layers.compute_accessibilities(
         landuse_gdf,
         "categorical_landuses",
         ["a"],
@@ -470,7 +468,7 @@ def test_custom_decay_fn(primal_graph):
         distances=distances,
         decay_fn="1",
     )
-    a_linear, _ = layers.compute_accessibilities(
+    a_linear = layers.compute_accessibilities(
         landuse_gdf,
         "categorical_landuses",
         ["a"],
@@ -481,7 +479,7 @@ def test_custom_decay_fn(primal_graph):
     )
     assert not np.allclose(a_default[col_acc].dropna(), a_linear[col_acc].dropna(), atol=0.1)
     # --- helper-generated expressions ---
-    n_gauss, _ = layers.compute_stats(
+    n_gauss = layers.compute_stats(
         numerical_gdf,
         ["mock_numerical_1"],
         nodes_gdf.copy(),
@@ -519,7 +517,7 @@ def test_per_label_decay_fns(primal_graph):
     flat = decay.flat()
 
     # --- compute_stats: dict form vs two separate single-decay calls ---
-    combo, _ = layers.compute_stats(
+    combo = layers.compute_stats(
         numerical_gdf,
         ["mock_numerical_1"],
         nodes_gdf.copy(),
@@ -527,7 +525,7 @@ def test_per_label_decay_fns(primal_graph):
         distances=distances,
         decay_fn={"grav": gauss, "raw": flat},
     )
-    sep_g, _ = layers.compute_stats(
+    sep_g = layers.compute_stats(
         numerical_gdf,
         ["mock_numerical_1"],
         nodes_gdf.copy(),
@@ -535,7 +533,7 @@ def test_per_label_decay_fns(primal_graph):
         distances=distances,
         decay_fn=gauss,
     )
-    sep_f, _ = layers.compute_stats(
+    sep_f = layers.compute_stats(
         numerical_gdf,
         ["mock_numerical_1"],
         nodes_gdf.copy(),
@@ -558,7 +556,7 @@ def test_per_label_decay_fns(primal_graph):
     assert not np.allclose(combo[g800].dropna(), combo[r800].dropna(), atol=0.1)
 
     # --- back-compat: str/None forms produce the original unsuffixed column names ---
-    bc, _ = layers.compute_stats(
+    bc = layers.compute_stats(
         numerical_gdf,
         ["mock_numerical_1"],
         nodes_gdf.copy(),
@@ -570,7 +568,7 @@ def test_per_label_decay_fns(primal_graph):
     assert config.prep_gdf_key("mock_numerical_1_mean_grav", 800) not in bc.columns
 
     # --- compute_accessibilities: dict form vs separate ---
-    a_combo, _ = layers.compute_accessibilities(
+    a_combo = layers.compute_accessibilities(
         landuse_gdf,
         "categorical_landuses",
         ["a"],
@@ -579,7 +577,7 @@ def test_per_label_decay_fns(primal_graph):
         distances=distances,
         decay_fn={"grav": gauss, "raw": flat},
     )
-    a_sep_g, _ = layers.compute_accessibilities(
+    a_sep_g = layers.compute_accessibilities(
         landuse_gdf,
         "categorical_landuses",
         ["a"],
@@ -598,7 +596,7 @@ def test_per_label_decay_fns(primal_graph):
         )
 
     # --- compute_mixed_uses: dict form vs separate ---
-    m_combo, _ = layers.compute_mixed_uses(
+    m_combo = layers.compute_mixed_uses(
         landuse_gdf,
         "categorical_landuses",
         nodes_gdf.copy(),
@@ -606,7 +604,7 @@ def test_per_label_decay_fns(primal_graph):
         distances=distances,
         decay_fn={"grav": gauss, "raw": flat},
     )
-    m_sep_g, _ = layers.compute_mixed_uses(
+    m_sep_g = layers.compute_mixed_uses(
         landuse_gdf,
         "categorical_landuses",
         nodes_gdf.copy(),
@@ -644,10 +642,10 @@ def test_stats_measures_selection(primal_graph):
     distances = [400, 800]
     all_measures = ["sum", "mean", "count", "var", "median", "mad", "max", "min"]
 
-    full, _ = layers.compute_stats(
+    full = layers.compute_stats(
         numerical_gdf, ["mock_numerical_1"], nodes_gdf.copy(), network_structure, distances=distances, decay_fn="1"
     )
-    sub, _ = layers.compute_stats(
+    sub = layers.compute_stats(
         numerical_gdf,
         ["mock_numerical_1"],
         nodes_gdf.copy(),
@@ -691,7 +689,7 @@ def test_stats_measures_selection(primal_graph):
             measures=[],
         )
     # composes with the decay dict
-    combo, _ = layers.compute_stats(
+    combo = layers.compute_stats(
         numerical_gdf,
         ["mock_numerical_1"],
         nodes_gdf.copy(),
@@ -717,10 +715,10 @@ def test_compute_accessibilities_default_back_compat(primal_graph):
         distances=distances,
     )
     # bare default -> both legacy columns
-    default_gdf, _ = layers.compute_accessibilities(nodes_gdf=nodes_gdf.copy(), **common)
+    default_gdf = layers.compute_accessibilities(nodes_gdf=nodes_gdf.copy(), **common)
     # explicit single-decay equivalents: "1" is the unweighted (_nw), exp(-4*p) is the weighted (_wt)
-    nw_gdf, _ = layers.compute_accessibilities(nodes_gdf=nodes_gdf.copy(), decay_fn="1", **common)
-    wt_gdf, _ = layers.compute_accessibilities(nodes_gdf=nodes_gdf.copy(), decay_fn="exp(-4 * p)", **common)
+    nw_gdf = layers.compute_accessibilities(nodes_gdf=nodes_gdf.copy(), decay_fn="1", **common)
+    wt_gdf = layers.compute_accessibilities(nodes_gdf=nodes_gdf.copy(), decay_fn="exp(-4 * p)", **common)
     for d in distances:
         assert f"cc_a_{d}_nw" in default_gdf
         assert f"cc_a_{d}_wt" in default_gdf

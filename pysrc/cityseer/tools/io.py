@@ -579,8 +579,6 @@ def osm_graph_from_poly(
         An optional `pyproj` compatible `str` or `int` representing a valid CRS for the generated network returned from
         this function. If this parameter is provided, then the network will be converted to the specified CRS. If not
         provided, then the OSM network will be projected into a local UTM coordinate reference system.
-    buffer_dist: int
-        A distance to use for buffering and cleaning operations. 15m by default.
     custom_request: str
         An optional custom OSM request. If provided, this must include a "geom_osm" string formatting key for inserting
         the geometry passed to the OSM API query. See the discussion below.
@@ -588,7 +586,7 @@ def osm_graph_from_poly(
         Whether to automatically simplify the OSM graph.
     final_clean_distances: tuple[int]
         A tuple of distances to use for the final cleaning step. These will be applied incrementally.
-        (6, 12) by default.
+        (4, 8) by default.
     remove_disconnected: int
         Remove disconnected components containing fewer nodes than specified. 100 nodes by default.
     cycleways: bool
@@ -991,8 +989,8 @@ def nx_from_open_roads(
     open_roads_path: str | Path
         A valid relative filepath from which to load the OS Open Roads dataset.
     target_bbox: tuple[int]
-        A tuple of integers or floats representing the `[s, w, n, e]` bounding box extents for which to load the
-        dataset. Set to `None` for no bounding box.
+        A tuple of integers or floats representing the `(minx, miny, maxx, maxy)` bounding box extents for which to
+        load the dataset, as expected by `geopandas.read_file`. Set to `None` for no bounding box.
     road_node_layer_key: str
         The `GPKG` layer key for the OS Open Roads road nodes layer. This may change from time to time.
     road_link_layer_key: str

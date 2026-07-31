@@ -25,10 +25,10 @@ def local_analysis(line_geom: geometry.LineString, location_key: str) -> None:
     G_multigraph = io.osm_graph_from_poly(extent_buff, poly_crs_code=27700, to_crs_code=27700, simplify=True)
     # decomposition is the one tools-level step CityNetwork does not expose
     G_decomp = graphs.nx_decompose(G_multigraph, 10)
-    # CityNetwork builds the dual graph automatically (angular centrality requires it,
-    # and shortest-path centrality runs on the dual as well); the boundary marks nodes
-    # inside the extent as live
-    cn = CityNetwork.from_nx(G_decomp, boundary=extent)
+    # CityNetwork builds the dual graph automatically; the boundary marks nodes inside
+    # the extent as live. remove_fillers=False keeps the decomposed degree-2 nodes,
+    # which the default filler-welding would otherwise undo
+    cn = CityNetwork.from_nx(G_decomp, boundary=extent, remove_fillers=False)
     cn = cn.centrality_shortest(distances=[500, 1000, 2500, 5000])
     cn = cn.centrality_simplest(distances=[500, 1000, 2500, 5000])
 
@@ -239,7 +239,7 @@ def local_analysis(line_geom: geometry.LineString, location_key: str) -> None:
     landuses_gdf = landuses_gdf[["cat_key", "geom"]]
     landuses_gdf.to_file(f"../temp/{location_key}_places.gpkg")
     # compute accessibilities
-    cn, landuses_gdf = cn.compute_accessibilities(
+    cn = cn.compute_accessibilities(
         landuses_gdf,
         landuse_column_label="cat_key",
         accessibility_keys=list(SCHEMA.keys()),

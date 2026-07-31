@@ -1131,7 +1131,7 @@ def nx_consolidate_nodes(
         A `networkX` `MultiGraph` with a `crs` attribute denoting a projected coordinate system, containing `x` and `y`
         node attributes, and `geom` edge attributes containing `LineString` geoms.
     buffer_dist: float
-        The buffer distance to be used for consolidating nearby nodes. Defaults to 5.
+        The buffer distance to be used for consolidating nearby nodes. Defaults to 12.
     neighbour_policy: str
         Whether all nodes within the buffer distance are merged, or only "direct" or "indirect" neighbours. Defaults to
         None which will consider all nodes.
@@ -1326,7 +1326,33 @@ def nx_snap_gapped_endings(
     osm_matched_tags_only: bool = False,
     tag_cache: dict[tuple[NodeKey, str], set[str | int]] | None = None,
 ) -> nx.MultiGraph:
-    """ """
+    """
+    Snap gapped dead-end endings to nearby dead-end endings.
+
+    Where two dead-end (degree-1) endings fall within `buffer_dist` of each other, the endings are snapped together to
+    close the gap. This repairs small breaks between segments that should connect, for example digitisation gaps in OSM
+    pedestrian routes.
+
+    Parameters
+    ----------
+    nx_multigraph: MultiGraph
+        A `networkX` `MultiGraph` with a `crs` attribute denoting a projected coordinate system, containing `x` and `y`
+        node attributes, and `geom` edge attributes containing `LineString` geoms.
+    buffer_dist: float
+        The maximum distance between two dead-end endings for them to be snapped together. Defaults to 12.
+    osm_hwy_target_tags: list[str]
+        An optional list of OpenStreetMap target highway tags. If provided, only endings whose neighbouring edges
+        contain a matching tag are considered. Requires a graph prepared via
+        [`io.osm_graph_from_poly`](/tools/io#osm_graph_from_poly).
+    osm_matched_tags_only: bool
+        Whether to only snap endings with shared OSM `name` or `ref` tags. False by default. Requires a graph prepared
+        via [`io.osm_graph_from_poly`](/tools/io#osm_graph_from_poly).
+
+    Returns
+    -------
+    MultiGraph
+        A `networkX` `MultiGraph` with gapped dead-end endings snapped together.
+    """
 
     _multi_graph = util.validate_cityseer_networkx_graph(nx_multigraph)
     # if using OSM tags heuristic
@@ -1468,7 +1494,7 @@ def nx_split_opposing_geoms(
         A `networkX` `MultiGraph` with a `crs` attribute denoting a projected coordinate system, containing `x` and `y`
         node attributes, and `geom` edge attributes containing `LineString` geoms.
     buffer_dist: int
-        The buffer distance to be used for splitting nearby nodes. Defaults to 5.
+        The buffer distance to be used for splitting nearby nodes. Defaults to 12.
     merge_edges_by_midline: bool
         Whether to merge parallel edges by an imaginary centreline. If set to False, then the shortest edge will be
         retained as the new geometry and the longer edges will be discarded. Defaults to True.
@@ -1494,6 +1520,9 @@ def nx_split_opposing_geoms(
     squash_nodes: bool
         Whether to automatically squash new node pairings resulting from splitting a nearby edge. If set to `False` then
         a line will be added instead. Defaults to `True`.
+    centroid_by_itx: bool
+        Whether to place the merged centroid using through-route intersections, as in
+        [`nx_consolidate_nodes`](#nx_consolidate_nodes). Defaults to `False`.
     simplify_by_max_angle: int
         The optional maximum angle to permit for a given edge. Angles greater than this will be reduced.
 

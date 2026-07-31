@@ -35,7 +35,7 @@ def _():
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
-    Use the [`visibility.visibility_from_osm`](https://cityseer.benchmarkurbanism.com/metrics/visibility#visibility_from_osm) method to run a visibility analysis over building footprints downloaded from OSM.
+    Use the [`visibility.visibility_from_osm`](https://cityseer.benchmarkurbanism.com/metrics/visibility#visibility-from-osm) method to run a visibility analysis over building footprints downloaded from OSM.
 
     Pay particular attention to:
 
@@ -64,7 +64,7 @@ def _(visibility):
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
-    The analysis writes three files:
+    The analysis writes a GeoTIFF per measure, plus a rasterised-buildings file for checking the inputs:
 
     - A `density` measure: the number of visible pixels.
     - A `farness` measure: the summed distance to visible pixels, which favours farther views (up to `view_distance`).

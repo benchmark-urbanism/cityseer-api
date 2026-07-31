@@ -12,7 +12,7 @@ layout: ../../layouts/PageLayout.astro
 from cityseer import decay
 from cityseer.metrics import layers
 
-nodes_gdf, data_gdf = layers.compute_stats(
+nodes_gdf = layers.compute_stats(
     ...,
     distances=[1200],
     decay_fn=decay.gaussian(peak=400, cutoff=1200, std=150),

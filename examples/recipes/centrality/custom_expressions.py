@@ -77,7 +77,7 @@ def _(mo):
     - `c`: the raw network cost to a reached node - metres for shortest-path analysis, degrees of cumulative turning for simplest-path (angular) analysis;
     - `p`: normalised progress from `0` at the source to `1` at the distance threshold (`p = c / threshold`).
 
-    Expressions may use the functions `exp`, `ln`, `log10`, `sqrt`, `abs`, `floor`, `ceil`, `round`, `sin`, `cos`, `tan`, and the constants `pi` and `e`.
+    Expressions may use the functions `exp`, `ln`, `log10`, `sqrt`, `abs`, `floor`, `ceil`, `round`, `sin`, `cos`, `tan`, and the constants `PI` and `E` (uppercase).
 
     The two metric categories aggregate differently:
 
@@ -225,7 +225,7 @@ def _(cn, data_dir, gpd):
 
     bldgs_gpd = gpd.read_file(data_dir / "madrid_buildings" / "madrid_bldgs.gpkg")
     _before = set(cn.nodes_gdf.columns)
-    _cn, bldgs_assigned = cn.compute_stats(
+    cn.compute_stats(
         bldgs_gpd,
         stats_column_labels=["mean_height"],
         distances=[400, 800],

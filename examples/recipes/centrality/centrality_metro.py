@@ -71,7 +71,7 @@ def _(cn_base):
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
-    Build a second network from the same clipped streets and use [`add_gtfs`](https://cityseer.benchmarkurbanism.com/api/network#add_gtfs) to load the bundled metro GTFS data. This adds metro stops as nodes and segment travel times as edges, enabling the shortest-path algorithms to route through the metro network. The method takes the GTFS directory path; the network CRS is used automatically. For direct access to the derived stop and headway tables, the lower-level [`io.add_transport_gtfs`](https://cityseer.benchmarkurbanism.com/tools/io#add_transport_gtfs) function returns them explicitly.
+    Build a second network from the same clipped streets and use [`add_gtfs`](https://cityseer.benchmarkurbanism.com/api/network#add-gtfs) to load the bundled metro GTFS data. This adds metro stops as nodes and segment travel times as edges, enabling the shortest-path algorithms to route through the metro network. The method takes the GTFS directory path; the network CRS is used automatically. For direct access to the derived stop and headway tables, the lower-level [`io.add_transport_gtfs`](https://cityseer.benchmarkurbanism.com/tools/io#add-transport-gtfs) function returns them explicitly.
     """)
     return
 
@@ -159,7 +159,7 @@ def _(base_gdf, metro_gdf, plt, stops_gdf):
         g = g.sort_values("_r")
         g.plot(ax=_ax, color=plt.get_cmap("OrRd")(g["_r"]), linewidth=0.15 + 2.25 * g["_r"])
         _ax.set_title(_title, loc="left")
-        # transit stops as neutral dark markers; red now signifies flow intensity
+        # transit stops as neutral dark markers; red signifies harmonic closeness
         stops_gdf.plot(ax=_ax, color="#333333", markersize=1)
     # difference panel: signed, diverging, colour bar kept
     try:

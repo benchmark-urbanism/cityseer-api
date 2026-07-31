@@ -1,3 +1,43 @@
+# v5.8.0 Release Notes
+
+A tidy-up release that retires a legacy return value from the data-layer methods. Earlier versions wrote assignment details onto the data GeoDataFrame and returned it; since the representation-aware assignment of v5.6.1 that information lives in the Rust `DataMap`, so the returned frame is no longer needed. Migration is a one-line change.
+
+## Breaking Changes
+
+- **Data-layer methods no longer return the data GeoDataFrame.** `compute_accessibilities`, `compute_mixed_uses`, and `compute_stats` previously returned a two-value tuple whose second element was the data GeoDataFrame, a carry-over from when assignment details were written back onto it. That assignment now lives entirely in the Rust `DataMap`, so the second value is no longer needed and has been removed. On `CityNetwork` the methods now return the `CityNetwork` itself, so they chain like `centrality_shortest`; on the functional `layers` API they return the `nodes_gdf`.
+
+  ```python
+  # before
+  cn, data_gdf = cn.compute_accessibilities(...)
+  nodes_gdf, data_gdf = layers.compute_stats(...)
+  # after
+  cn = cn.compute_accessibilities(...)
+  nodes_gdf = layers.compute_stats(...)
+  ```
+
+  Unpacking a `CityNetwork` into two values now raises a `TypeError` that names this change. To inspect or plot assignment for debugging, build a `DataMap` with `layers.build_data_map(...)` and pass it to `tools.plot.plot_assignment`; that path is unchanged.
+
+- **Documentation**: the Land-Use guide gains a "How distances to data features are measured" section covering point, line, and polygon assignment and the primal versus dual distance offset, with figures.
+
+# v5.7.2 Release Notes
+
+A packaging fix. Newer `maturin` declares `License-File: LICENSE.txt` in the sdist metadata but does not include the root license file in the tarball, so PyPI rejects the upload under PEP 639. The sdist now includes `LICENSE.txt`. No functional or API change.
+
+(v5.7.0 and v5.7.1 were not published, their CI failed on a `ty` check and this packaging issue respectively, so this release also carries the v5.7.0 `build_od_matrix` harmonisation described below.)
+
+# v5.7.1 Release Notes
+
+A patch release. `ty` type-check compatibility: a blanket `# type: ignore` in `observe.street_continuity`, which newer `ty` versions narrow and flag as unused, is replaced with an explicit cast. No functional or API change.
+
+(v5.7.0 was not published — its CI failed on the above `ty` check — so this release also carries the v5.7.0 `build_od_matrix` harmonisation described below.)
+
+# v5.7.0 Release Notes
+
+A feature release harmonising `build_od_matrix` with the rest of the library, so the explicit origin-destination path now shares the assignment used by the demand model and the data layers.
+
+- **`build_od_matrix` harmonisation**: zone centroids are assigned through the data layers' `DataMap` workflow (`build_data_map` / `assign_data_to_network`) instead of a bespoke nearest-node snap, so assignment is representation-aware (primal vs dual) and barrier-valid. `max_netw_assign_dist` replaces `max_snap_dist`, and `barriers_gdf` / `n_nearest_candidates` are now supported, matching the rest of the library. Each zone is represented by its nearest assigned network node, so `OdMatrix` and `betweenness_od` are unchanged and existing OD results are effectively the same.
+- **Documentation**: the origin-destination and demand-flow examples and guides are updated to describe the shared assignment (rather than a nearest-node snap), and the demand recipe notes the `participation` lever added in 5.6.1.
+
 # v5.6.1 Release Notes
 
 A feature release harmonising `betweenness_demand` with the rest of the library: shared point-to-network assignment, a participation (outside) option for trip generation, and a representation-aware upgrade to assignment shared by all data layers.

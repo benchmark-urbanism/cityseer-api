@@ -406,7 +406,7 @@ def test_citynetwork_accessibility_single_column_default(primal_graph):
     from cityseer.tools import mock
 
     data_gdf = mock.mock_landuse_categorical_data(primal_graph)
-    cn, _ = CityNetwork.from_nx(primal_graph).compute_accessibilities(
+    cn = CityNetwork.from_nx(primal_graph).compute_accessibilities(
         data_gdf, landuse_column_label="categorical_landuses", accessibility_keys=["a"], distances=[400]
     )
     cols = cn.nodes_gdf.columns

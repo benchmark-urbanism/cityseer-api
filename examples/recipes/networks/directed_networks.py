@@ -135,7 +135,7 @@ def _(mo):
     mo.md(r"""
     ## Practical notes
 
-    - Directed mode composes with the other v5 features: expression dictionaries, [demand-weighted betweenness](https://cityseer.benchmarkurbanism.com/examples/centrality/od-betweenness), edge impedances, and elevation-aware costs all work on directed networks.
+    - Directed mode composes with the other v5 features: expression dictionaries, [demand-weighted betweenness](https://cityseer.benchmarkurbanism.com/examples/flows/demand-flows), edge impedances, and elevation-aware costs all work on directed networks.
     - For a GeoDataFrame source, set `oneway=True` on the one-way features and check the digitised direction of the geometry: one-way streets flow in LineString coordinate order.
     - Keep pedestrian analyses undirected; footways are not directional, and one-way restrictions apply to vehicles.
     """)

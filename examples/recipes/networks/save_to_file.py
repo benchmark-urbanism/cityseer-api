@@ -106,7 +106,7 @@ def _(mo):
     mo.md(r"""
     This notebook demonstrated how to convert a `cityseer`-prepared `networkx` graph into a `geopandas` GeoDataFrame using `geopandas_from_nx`, and then save it to disk as a GeoPackage file. This workflow is useful for exporting networks for inspection in GIS applications such as QGIS or for sharing datasets with collaborators.
 
-    When working with the high-level [`CityNetwork`](https://cityseer.benchmarkurbanism.com/api/network) class, networks and computed metrics can instead be persisted with its `save` method and restored with `CityNetwork.load`. To continue into analysis, hand the prepared graph to the high-level API with [`CityNetwork.from_nx`](https://cityseer.benchmarkurbanism.com/api/network#from_nx), which builds the dual network and exposes the centrality and land-use methods.
+    When working with the high-level [`CityNetwork`](https://cityseer.benchmarkurbanism.com/api/network) class, networks and computed metrics can instead be persisted with its `save` method and restored with `CityNetwork.load`. To continue into analysis, hand the prepared graph to the high-level API with [`CityNetwork.from_nx`](https://cityseer.benchmarkurbanism.com/api/network#from-nx), which builds the dual network and exposes the centrality and land-use methods.
 
     **Next steps:** For analysis, see [Network Centrality](https://cityseer.benchmarkurbanism.com/examples/centrality) or [Accessibility](https://cityseer.benchmarkurbanism.com/examples/accessibility).
     """)

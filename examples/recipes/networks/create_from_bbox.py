@@ -139,7 +139,7 @@ def _(mo):
     mo.md(r"""
     This notebook demonstrated how to create a `networkx` street network graph from OpenStreetMap data using a bounding box defined as a `shapely` Polygon. It covered specifying custom CRS codes for both the input polygon and the output graph, as well as toggling automatic network simplification on or off.
 
-    To continue into analysis, hand the prepared graph to the high-level API with [`CityNetwork.from_nx`](https://cityseer.benchmarkurbanism.com/api/network#from_nx), which builds the dual network and exposes the centrality and land-use methods.
+    To continue into analysis, hand the prepared graph to the high-level API with [`CityNetwork.from_nx`](https://cityseer.benchmarkurbanism.com/api/network#from-nx), which builds the dual network and exposes the centrality and land-use methods.
 
     **Next steps:** To create a network from a buffered point instead, see [Buffered Point](https://cityseer.benchmarkurbanism.com/examples/networks/create-from-buffered-point).
     """)

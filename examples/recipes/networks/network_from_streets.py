@@ -167,7 +167,7 @@ def _(mo):
 
     This notebook demonstrated how to load a custom street network file (e.g. GeoPackage or shapefile) using `geopandas` and convert it to a `cityseer`-compatible `networkx` graph with `nx_from_generic_geopandas`. It covered handling MultiLineString geometries by exploding them to LineStrings, verifying the CRS, and optionally reprojecting the resulting graph.
 
-    To continue into analysis, hand the prepared graph to the high-level API with [`CityNetwork.from_nx`](https://cityseer.benchmarkurbanism.com/api/network#from_nx), which builds the dual network and exposes the centrality and land-use methods.
+    To continue into analysis, hand the prepared graph to the high-level API with [`CityNetwork.from_nx`](https://cityseer.benchmarkurbanism.com/api/network#from-nx), which builds the dual network and exposes the centrality and land-use methods.
 
     **Next steps:** To convert networks from other libraries, see [osmnx conversion](https://cityseer.benchmarkurbanism.com/examples/networks/osmnx-to-cityseer) or [momepy conversion](https://cityseer.benchmarkurbanism.com/examples/networks/momepy-to-cityseer).
     """)
