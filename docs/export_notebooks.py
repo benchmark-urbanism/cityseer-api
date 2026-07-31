@@ -218,10 +218,15 @@ def main() -> int:
 
     if manifest:
         MANIFEST_PATH.parent.mkdir(parents=True, exist_ok=True)
-        # merge with any prior manifest so filtered runs don't drop other entries
+        # merge with any prior manifest so filtered runs don't drop other entries;
+        # prune entries whose source notebook no longer exists (deleted recipes)
         prior = []
         if MANIFEST_PATH.exists():
-            prior = [m for m in json.loads(MANIFEST_PATH.read_text()) if m["slug"] not in {n["slug"] for n in manifest}]
+            prior = [
+                m
+                for m in json.loads(MANIFEST_PATH.read_text())
+                if m["slug"] not in {n["slug"] for n in manifest} and (REPO_ROOT / "examples" / m["source"]).exists()
+            ]
         merged = sorted(prior + manifest, key=lambda m: (m["section"], m["topic"], m["slug"]))
         MANIFEST_PATH.write_text(json.dumps(merged, indent=2))
         print(f"manifest: {MANIFEST_PATH} ({len(merged)} entries)")

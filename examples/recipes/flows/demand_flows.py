@@ -18,7 +18,7 @@ def _(mo):
 
     Standard betweenness treats every origin-destination pair as equally important. This recipe instead **models** the demand between weighted origins and destinations, then routes it across the network so each street accumulates the through-movement that passes along it. See the [Origin-Destination Flows guide](https://cityseer.benchmarkurbanism.com/guide/flows) for the background.
 
-    [`betweenness_demand`](https://cityseer.benchmarkurbanism.com/metrics/networks#betweenness_demand) uses a **singly (origin-)constrained** spatial interaction model. Each origin distributes its full weight $W_o$ across the destinations it can reach, giving each a share proportional to its attractiveness $W_d$ discounted by the network cost of getting there:
+    [`betweenness_demand`](https://cityseer.benchmarkurbanism.com/metrics/networks#betweenness-demand) uses a **singly (origin-)constrained** spatial interaction model. Each origin distributes its full weight $W_o$ across the destinations it can reach, giving each a share proportional to its attractiveness $W_d$ discounted by the network cost of getting there:
 
     $$W_{od} = W_o \cdot \frac{W_d \, f(c_{od})}{\sum_{d'} W_{d'} \, f(c_{od'})}$$
 
@@ -149,7 +149,7 @@ def _(mo):
     - swap the destination set (parks, schools, transit stops), or weight destinations by a capacity column such as floorspace;
     - adjust the deterrence: a steeper decay (`"exp(-0.008 * c)"`) localises flows, a flat function (`"1"`) removes distance deterrence entirely;
     - lower `participation` below its default of `1.0` (for example `0.2`) to make trip generation accessibility-elastic: a stay-home option enters each origin's choice set, so locations with poorer access generate fewer trips;
-    - when you have observed flows rather than modelled demand, route an explicit matrix with [`build_od_matrix`](https://cityseer.benchmarkurbanism.com/api/network#build_od_matrix) and [`betweenness_od`](https://cityseer.benchmarkurbanism.com/api/network#betweenness_od);
+    - when you have observed flows rather than modelled demand, route an explicit matrix with [`build_od_matrix`](https://cityseer.benchmarkurbanism.com/api/network#build-od-matrix) and [`betweenness_od`](https://cityseer.benchmarkurbanism.com/api/network#betweenness-od);
     - compare against the uniform betweenness baseline from the [metric centrality recipe](https://cityseer.benchmarkurbanism.com/examples/centrality/gpd-metric-centrality) to see how demand weighting shifts the pattern.
     """)
     return

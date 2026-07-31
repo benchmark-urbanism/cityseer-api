@@ -28,8 +28,8 @@ def _(mo):
     The recommended entry point is the high-level [`CityNetwork`](https://cityseer.benchmarkurbanism.com/api/network) class, which wraps network preparation and metrics behind a lean interface:
 
     1. **Build a network** with a constructor such as `CityNetwork.from_osm` (download from OpenStreetMap), `from_geopandas` (a `GeoDataFrame` of LineStrings), or `from_nx` (a `networkx` graph). Graph cleaning and dual-graph construction are handled automatically.
-    2. **Compute metrics** — centrality, accessibility, mixed uses, or statistics. Methods return `self`, so calls can be chained.
-    3. **Export results** — `to_geopandas()` returns a `GeoDataFrame` with the original street geometries and all computed columns, ready for plotting or saving.
+    2. **Compute metrics**: centrality, accessibility, mixed uses, or statistics. Methods return `self`, so calls can be chained.
+    3. **Export results**: `to_geopandas()` returns a `GeoDataFrame` with the original street geometries and all computed columns, ready for plotting or saving.
 
     The lower-level API (`cityseer.tools`, `cityseer.metrics`) offers step-by-step control over graph cleaning, network construction, and metric computation. It is covered by the [Network Preparation](https://cityseer.benchmarkurbanism.com/examples/networks) recipes and is useful when integrating `cityseer` into an existing `networkx` pipeline.
 
@@ -50,14 +50,14 @@ def _(mo):
                                        CD
     ```
 
-    > **Important:**
-    > **Angular centrality measures require the dual graph.** `CityNetwork` builds the dual graph automatically. When using the lower-level API, convert a primal graph with [`graphs.nx_to_dual`](https://cityseer.benchmarkurbanism.com/tools/graphs#nx-to-dual) before computing angular centralities; see the [dual graph recipe](https://cityseer.benchmarkurbanism.com/examples/networks/create-dual-graph).
+    > **Note:**
+    > `CityNetwork` builds the dual graph automatically. The lower-level metric functions expect the dual for angular analysis: convert a primal graph with [`graphs.nx_to_dual`](https://cityseer.benchmarkurbanism.com/tools/graphs#nx-to-dual) before computing angular centralities; see the [dual graph recipe](https://cityseer.benchmarkurbanism.com/examples/networks/create-dual-graph).
 
     ### Where results are stored
 
     `CityNetwork` exposes a `nodes_gdf` property: one row per street segment (dual node), with computed metrics added as columns. For mapping and export, `to_geopandas()` returns the same columns joined to the original LineString geometries.
 
-    In the lower-level API, [`network_structure_from_nx`](https://cityseer.benchmarkurbanism.com/tools/io#network-structure-from-nx) converts a `networkx` graph into a nodes `GeoDataFrame`, an edges `GeoDataFrame`, and a `NetworkStructure` — the internal Rust data structure used by the metric functions. The `NetworkStructure` can be reused across multiple metric computations as long as the network does not change.
+    In the lower-level API, [`network_structure_from_nx`](https://cityseer.benchmarkurbanism.com/tools/io#network-structure-from-nx) converts a `networkx` graph into a nodes `GeoDataFrame`, an edges `GeoDataFrame`, and a `NetworkStructure` (the internal Rust data structure used by the metric functions). The `NetworkStructure` can be reused across multiple metric computations as long as the network does not change.
 
     ### Distance thresholds
 
@@ -92,12 +92,9 @@ def _(mo):
 def _():
     import os
 
+    # set before importing cityseer: QUIET_MODE is read at import time
     os.environ["CITYSEER_QUIET_MODE"] = "1"
-    return
 
-
-@app.cell
-def _():
     import matplotlib.pyplot as plt
     from cityseer.network import CityNetwork
     from cityseer.tools import io
@@ -130,7 +127,7 @@ def _():
 def _(mo):
     mo.md(r"""
     > **Note:**
-    > Building the network produces log messages showing the cleaning steps. These are normal and can be safely ignored. To suppress them, add `import logging; logging.getLogger("cityseer").setLevel(logging.WARNING)` beforehand.
+    > Building the network normally produces log messages showing the cleaning steps; they are informational and safe to ignore. This notebook suppresses them by setting the `CITYSEER_QUIET_MODE` environment variable before importing `cityseer`, which is why none appear above.
 
     ## Choosing a coordinate reference system
 
@@ -150,12 +147,12 @@ def _(mo):
 
     With these concepts in hand, you are ready to explore the recipes:
 
-    - [Network Preparation](https://cityseer.benchmarkurbanism.com/examples/networks) — create networks from various data sources.
-    - [Network Centrality](https://cityseer.benchmarkurbanism.com/examples/centrality) — metric and angular centrality.
-    - [Accessibility](https://cityseer.benchmarkurbanism.com/examples/accessibility) — landuse accessibility and mixed-use metrics.
-    - [Statistics](https://cityseer.benchmarkurbanism.com/examples/stats) — aggregate numeric properties over the network.
-    - [Visibility](https://cityseer.benchmarkurbanism.com/examples/visibility) — street enclosure and openness.
-    - [Continuity](https://cityseer.benchmarkurbanism.com/examples/continuity) — street name and route continuity.
+    - [Network Preparation](https://cityseer.benchmarkurbanism.com/examples/networks): create networks from various data sources.
+    - [Network Centrality](https://cityseer.benchmarkurbanism.com/examples/centrality): metric and angular centrality.
+    - [Accessibility](https://cityseer.benchmarkurbanism.com/examples/accessibility): landuse accessibility and mixed-use metrics.
+    - [Statistics](https://cityseer.benchmarkurbanism.com/examples/stats): aggregate numeric properties over the network.
+    - [Visibility](https://cityseer.benchmarkurbanism.com/examples/visibility): street enclosure and openness.
+    - [Continuity](https://cityseer.benchmarkurbanism.com/examples/continuity): street name and route continuity.
     """)
     return
 

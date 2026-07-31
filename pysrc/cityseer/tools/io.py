@@ -989,8 +989,8 @@ def nx_from_open_roads(
     open_roads_path: str | Path
         A valid relative filepath from which to load the OS Open Roads dataset.
     target_bbox: tuple[int]
-        A tuple of integers or floats representing the `[s, w, n, e]` bounding box extents for which to load the
-        dataset. Set to `None` for no bounding box.
+        A tuple of integers or floats representing the `(minx, miny, maxx, maxy)` bounding box extents for which to
+        load the dataset, as expected by `geopandas.read_file`. Set to `None` for no bounding box.
     road_node_layer_key: str
         The `GPKG` layer key for the OS Open Roads road nodes layer. This may change from time to time.
     road_link_layer_key: str

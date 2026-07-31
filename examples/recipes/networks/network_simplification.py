@@ -402,7 +402,7 @@ def _(mo):
 
     This notebook demonstrated several approaches to network simplification, ranging from automatic simplification via `osm_graph_from_poly` with default or custom parameters, to fully manual control using individual functions from the `graphs` module. Simplification helps prevent distortions in centrality measures by consolidating complex intersections, removing danglers, and merging parallel edges while preserving accurate street geometries.
 
-    To continue into analysis, hand the prepared graph to the high-level API with [`CityNetwork.from_nx`](https://cityseer.benchmarkurbanism.com/api/network#from_nx), which builds the dual network and exposes the centrality and land-use methods.
+    To continue into analysis, hand the prepared graph to the high-level API with [`CityNetwork.from_nx`](https://cityseer.benchmarkurbanism.com/api/network#from-nx), which builds the dual network and exposes the centrality and land-use methods.
 
     **Next steps:** Once simplified, proceed to compute [Network Centrality](https://cityseer.benchmarkurbanism.com/examples/centrality) or other metrics.
     """)

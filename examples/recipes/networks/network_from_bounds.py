@@ -188,7 +188,7 @@ def _(mo):
     mo.md(r"""
     This notebook demonstrated how to load a custom boundary file (e.g. GeoPackage or shapefile) with `geopandas`, prepare the geometry through union, simplification, and buffering, and then use it to download and create an OSM street network graph. Buffering the boundary by the analysis distance is recommended to prevent edge rolloff effects in subsequent centrality or accessibility calculations.
 
-    To continue into analysis, hand the prepared graph to the high-level API with [`CityNetwork.from_nx`](https://cityseer.benchmarkurbanism.com/api/network#from_nx), which builds the dual network and exposes the centrality and land-use methods.
+    To continue into analysis, hand the prepared graph to the high-level API with [`CityNetwork.from_nx`](https://cityseer.benchmarkurbanism.com/api/network#from-nx), which builds the dual network and exposes the centrality and land-use methods.
 
     **Next steps:** To use an OSM relation ID instead, see [Relation ID](https://cityseer.benchmarkurbanism.com/examples/networks/network-from-relation-id).
     """)

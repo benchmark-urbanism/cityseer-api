@@ -37,7 +37,7 @@ def _():
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
-    Load the streets and clip them to a buffered study area. The `boundary` argument to [`from_geopandas`](https://cityseer.benchmarkurbanism.com/api/network#from_geopandas) marks the nodes inside the study area as `live`; the surrounding non-live nodes prevent edge rolloff, since they are used for routing but metrics are not computed for them. Because each node's centrality depends only on its catchment within the largest analysis distance, a district plus a sufficiently large buffer reproduces the city-wide values for the live nodes at far lower cost. See the [live nodes example](https://cityseer.benchmarkurbanism.com/examples/recipes/live-nodes) for more details.
+    Load the streets and clip them to a buffered study area. The `boundary` argument to [`from_geopandas`](https://cityseer.benchmarkurbanism.com/api/network#from-geopandas) marks the nodes inside the study area as `live`; the surrounding non-live nodes prevent edge rolloff, since they are used for routing but metrics are not computed for them. Because each node's centrality depends only on its catchment within the largest analysis distance, a district plus a sufficiently large buffer reproduces the city-wide values for the live nodes at far lower cost. See the [live nodes example](https://cityseer.benchmarkurbanism.com/examples/recipes/live-nodes) for more details.
     """)
     return
 
@@ -61,7 +61,7 @@ def _(CityNetwork, gpd):
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
-    Use the [`centrality_simplest`](https://cityseer.benchmarkurbanism.com/api/network#centrality_simplest) method to calculate angular (geometric or "simplest") distance centralities. Angular analysis requires the dual graph, which `CityNetwork` builds automatically during construction.
+    Use the [`centrality_simplest`](https://cityseer.benchmarkurbanism.com/api/network#centrality-simplest) method to calculate angular (geometric or "simplest") distance centralities. Angular analysis requires the dual graph, which `CityNetwork` builds automatically during construction.
 
     The method can calculate centralities for numerous distances at once via the `distances` parameter, which accepts a list of distances. By default it computes a single angular harmonic closeness and a single angular betweenness.
 

@@ -1320,9 +1320,7 @@ class CityNetwork:
             "produced. Replace `cn, data = cn.compute_...(...)` with `cn = cn.compute_...(...)`."
         )
 
-    def compute_accessibilities(
-        self, data_gdf: gpd.GeoDataFrame, **kwargs: Any
-    ) -> CityNetwork:
+    def compute_accessibilities(self, data_gdf: gpd.GeoDataFrame, **kwargs: Any) -> CityNetwork:
         """Compute land-use accessibility metrics.
 
         Counts how many instances of each specified land-use category (e.g. retail, parks) are reachable

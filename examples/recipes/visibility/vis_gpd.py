@@ -57,7 +57,7 @@ def _(bldgs_gdf):
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
-    Use the [`visibility.visibility_from_gpd`](https://cityseer.benchmarkurbanism.com/metrics/visibility#visibility_from_gpd) method to run a visibility analysis over the provided building polygons.
+    Use the [`visibility.visibility_from_gpd`](https://cityseer.benchmarkurbanism.com/metrics/visibility#visibility-from-gpd) method to run a visibility analysis over the provided building polygons.
 
     Pay particular attention to:
 
@@ -89,7 +89,7 @@ def _(bldgs_gdf, visibility):
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
-    The analysis writes three files:
+    The analysis writes a GeoTIFF per measure, plus a rasterised-buildings file for checking the inputs:
 
     - A `density` measure: the number of visible pixels.
     - A `farness` measure: the summed distance to visible pixels, which favours farther views (up to `view_distance`).
@@ -101,7 +101,7 @@ def _(mo):
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
-    The output below shows `farness`, with values clipped to de-accentuate rooftops while recovering detail at ground level.
+    The output below shows `farness`, with values clipped to de-accentuate rooftops while recovering detail at ground level. The figure was rendered at resolution 1 (1m cells); the notebook runs at the coarser resolution 2 to keep the runtime short, so a fresh run reproduces the pattern at lower detail.
     """)
     return
 

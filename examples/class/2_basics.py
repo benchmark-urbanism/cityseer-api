@@ -706,7 +706,7 @@ def _(mo):
     mo.md(r"""
     ### Loops
 
-    Loops are fantastic for avoiding repetitive code. They are essential for processing items in collections and can be combined with conditionals to apply logic selectively to each item.
+    Loops avoid repetitive code. They process items in collections and can be combined with conditionals to apply logic selectively to each item.
 
     #### `for` Loops
 
@@ -871,7 +871,7 @@ def _():
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
-    In later sections, we'll be making extensive use of powerful libraries such as `geopandas` and `numpy`, which are imported as modules.
+    In later sections, we'll be making extensive use of libraries such as `geopandas` and `numpy`, which are imported as modules.
 
     ## Common Errors
 

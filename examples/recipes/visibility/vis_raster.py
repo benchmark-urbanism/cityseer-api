@@ -35,7 +35,7 @@ def _():
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
-    Use the [`visibility.visibility_from_raster`](https://cityseer.benchmarkurbanism.com/metrics/visibility#visibility_from_raster) method to run a visibility analysis over the provided raster.
+    Use the [`visibility.visibility_from_raster`](https://cityseer.benchmarkurbanism.com/metrics/visibility#visibility-from-raster) method to run a visibility analysis over the provided raster.
 
     Pay particular attention to:
 

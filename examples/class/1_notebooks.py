@@ -149,7 +149,7 @@ def _(mo):
     1. **Cells re-run automatically.** If you change `city_name` to `"Barcelona"` in its defining cell and run it, every cell that uses `city_name` re-runs with the new value. You never end up with stale results from cells that were run in the wrong order, which is a common source of confusion in traditional notebooks.
     2. **A variable can be defined in only one cell.** If two cells both assigned to `city_name`, marimo would not know which value the other cells should use, so it reports an error. To fix such an error, either use a different variable name or combine the two definitions into one cell.
 
-    Because of these rules, the position of a cell on the page does not determine when it runs; what matters is which variables connect it to other cells. Notebooks are nevertheless easier to read when they flow from top to bottom, so these lessons are arranged that way.
+    Because of these rules, the position of a cell on the page does not determine when it runs; the variables connecting it to other cells do. Notebooks are nevertheless easier to read when they flow from top to bottom, so these lessons are arranged that way.
 
     A small dependency chain as an example:
     """)

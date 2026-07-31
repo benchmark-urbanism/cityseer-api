@@ -88,7 +88,7 @@ def _(cn_base, prems_gpd):
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
-    Build a second network from the same clipped streets and load the bundled metro GTFS data with [`add_gtfs`](https://cityseer.benchmarkurbanism.com/api/network#add_gtfs). This adds metro stops as nodes and segment travel times as edges.
+    Build a second network from the same clipped streets and load the bundled metro GTFS data with [`add_gtfs`](https://cityseer.benchmarkurbanism.com/api/network#add-gtfs). This adds metro stops as nodes and segment travel times as edges.
     """)
     return
 

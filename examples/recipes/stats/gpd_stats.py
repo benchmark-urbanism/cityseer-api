@@ -48,7 +48,7 @@ def _(mo):
     mo.md(r"""
     To start, follow the same approach as shown in the network examples to create the network. The full bundled network is clipped to a 2km study area around the city centre, buffered by the maximum analysis distance so that nodes near the study edge keep their full catchments. Since decomposition multiplies the number of network nodes, this example works with a district rather than the whole city; the statistics are computed per node from local catchments, so the results within the study area are unaffected.
 
-    The graph is decomposed with [`nx_decompose`](https://cityseer.benchmarkurbanism.com/tools/graphs#nx_decompose) so that statistics are sampled at a higher spatial resolution, then handed to `CityNetwork.from_nx`; the `boundary` argument marks the nodes inside the study area as `live`.
+    The graph is decomposed with [`nx_decompose`](https://cityseer.benchmarkurbanism.com/tools/graphs#nx-decompose) so that statistics are sampled at a higher spatial resolution, then handed to `CityNetwork.from_nx`; the `boundary` argument marks the nodes inside the study area as `live`.
     """)
     return
 
@@ -90,7 +90,7 @@ def _(buffered_poly, gpd):
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
-    Use the [`compute_stats`](https://cityseer.benchmarkurbanism.com/api/network#compute_stats) method to compute statistics for numeric columns in the `GeoDataFrame`, specified with the `stats_column_labels` argument. The statistics are aggregated over the network using network distances. The `measures` argument selects which statistics to compute; without it, the full set of `count`, `sum`, `min`, `max`, `mean`, `median`, `mad` (median absolute deviation) and `var` is generated.
+    Use the [`compute_stats`](https://cityseer.benchmarkurbanism.com/api/network#compute-stats) method to compute statistics for numeric columns in the `GeoDataFrame`, specified with the `stats_column_labels` argument. The statistics are aggregated over the network using network distances. The `measures` argument selects which statistics to compute; without it, the full set of `count`, `sum`, `min`, `max`, `mean`, `median`, `mad` (median absolute deviation) and `var` is generated.
     """)
     return
 

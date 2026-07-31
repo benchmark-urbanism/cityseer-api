@@ -18,8 +18,8 @@ def _(mo):
 
     This recipe maps cycle-commute through-movement across central London two ways, from observed trips and from modelled trips, using only open data.
 
-    - **Observed**: the [Propensity to Cycle Tool](https://www.pct.bike/) (PCT) gives journey-to-work bicycle counts between MSOA zones. [`betweenness_od`](https://cityseer.benchmarkurbanism.com/api/network#betweenness_od) routes that explicit matrix.
-    - **Modelled**: [`betweenness_demand`](https://cityseer.benchmarkurbanism.com/api/network#betweenness_demand) allocates trips from weighted origins to weighted destinations with a singly-constrained gravity model, then routes them. No matrix is supplied.
+    - **Observed**: the [Propensity to Cycle Tool](https://www.pct.bike/) (PCT) gives journey-to-work bicycle counts between MSOA zones. [`betweenness_od`](https://cityseer.benchmarkurbanism.com/api/network#betweenness-od) routes that explicit matrix.
+    - **Modelled**: [`betweenness_demand`](https://cityseer.benchmarkurbanism.com/api/network#betweenness-demand) allocates trips from weighted origins to weighted destinations with a singly-constrained gravity model, then routes them. No matrix is supplied.
 
     Modelling the flows lets us check the model against the observed pattern, and calibrate the two decay levers separately: the distance decay `beta` shapes destination choice, and `participation` scales how many trips are generated.
 
@@ -254,7 +254,7 @@ def _(mo):
     3. Run **Cityseer &rsaquo; Demand Betweenness (OD Flow)** with:
         - *Origins layer* and *Origin weight field* set to the residents mass.
         - *Destinations layer* and *Destination weight field* set to the workplace mass.
-        - *Decay function* `exp(-0.0002 * c)` and *Participation* `0.09`, matching the calibrated values above.
+        - *Decay function* and *Participation* set to the calibrated values printed above (of the form `exp(-beta * c)` and the participation share).
         - *Distance thresholds* `20000`.
 
     The algorithm writes a demand-weighted betweenness column per threshold onto the network, the same quantity `betweenness_demand` returns here. The explicit-matrix path (`betweenness_od`) is library-only for now; in QGIS, model the flows with the demand algorithm.

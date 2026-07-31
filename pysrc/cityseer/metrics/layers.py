@@ -43,6 +43,26 @@ def _require_dual_for_angular(
         )
 
 
+# functions that have already emitted the v5.8.0 return-change note this session
+_RETURN_NOTE_EMITTED: set[str] = set()
+
+
+def _note_return_change(fn_name: str) -> None:
+    """Log a one-time note that the data-layer return changed in v5.8.0.
+
+    Emitted once per function per session, at INFO level so it shows in normal console
+    output without touching the warnings machinery. Remove after the v5.8 cycle.
+    """
+    if fn_name in _RETURN_NOTE_EMITTED:
+        return
+    _RETURN_NOTE_EMITTED.add(fn_name)
+    logger.info(
+        f"Note: as of v5.8.0, {fn_name} returns the nodes GeoDataFrame only "
+        "(the CityNetwork method returns the CityNetwork itself); the legacy data_gdf "
+        "second return value has been removed."
+    )
+
+
 def _resolve_decay_fns(decay_fn: str | dict[str, str] | None) -> tuple[list[str], list[str], bool]:
     """Resolve ``decay_fn`` into aligned ``(labels, expressions, legacy_tail)``.
 
@@ -325,6 +345,7 @@ def compute_accessibilities(
     """
     if angular:
         _require_dual_for_angular(network_structure, "compute_accessibilities")
+    _note_return_change("compute_accessibilities")
     logger.info(f"Computing land-use accessibility for: {', '.join(accessibility_keys)}")
     # drop uncategorised (NaN) points, then assign to network
     data_src = _landuse_data_source(data_gdf, landuse_column_label)
@@ -543,6 +564,7 @@ def compute_mixed_uses(
     """
     if angular:
         _require_dual_for_angular(network_structure, "compute_mixed_uses")
+    _note_return_change("compute_mixed_uses")
     logger.info("Computing mixed-use measures.")
     # drop uncategorised (NaN) points, then assign to network
     data_src = _landuse_data_source(data_gdf, landuse_column_label)
@@ -787,6 +809,7 @@ def compute_stats(
     """
     if angular:
         _require_dual_for_angular(network_structure, "compute_stats")
+    _note_return_change("compute_stats")
     logger.info("Computing statistics.")
     # assign to network
     data_map = build_data_map(

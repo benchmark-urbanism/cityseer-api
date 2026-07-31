@@ -18,7 +18,7 @@ def _(mo):
 
     Calculate landuse accessibility to pubs and restaurants for London using OpenStreetMap data.
 
-    This recipe uses the high-level [`CityNetwork`](https://cityseer.benchmarkurbanism.com/api/network) class, whose [`from_osm`](https://cityseer.benchmarkurbanism.com/api/network#from_osm) constructor wraps the OSM download, cleaning, and network preparation behind a single call.
+    This recipe uses the high-level [`CityNetwork`](https://cityseer.benchmarkurbanism.com/api/network) class, whose [`from_osm`](https://cityseer.benchmarkurbanism.com/api/network#from-osm) constructor wraps the OSM download, cleaning, and network preparation behind a single call.
 
     Network data © [OpenStreetMap](https://www.openstreetmap.org/copyright) contributors, available under the Open Database Licence.
     """)
@@ -93,7 +93,7 @@ def _(data_gdf):
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
-    Once the landuse and network data has been prepared, use the [`compute_accessibilities`](https://cityseer.benchmarkurbanism.com/api/network#compute_accessibilities) method to compute accessibilities to landuses. The `landuse_column_label` and the target accessibility keys should correspond to the data in the input GeoDataFrame. `to_geopandas` returns the results joined to the original street LineString geometries.
+    Once the landuse and network data has been prepared, use the [`compute_accessibilities`](https://cityseer.benchmarkurbanism.com/api/network#compute-accessibilities) method to compute accessibilities to landuses. The `landuse_column_label` and the target accessibility keys should correspond to the data in the input GeoDataFrame. `to_geopandas` returns the results joined to the original street LineString geometries.
     """)
     return
 
@@ -115,7 +115,7 @@ def _(cn, data_gdf_1):
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
-    The output columns are named `cc_{key}_{distance}`, where the keys correspond to the input accessibility keys and the distances to the input distances. By default the counts are unweighted; pass a `decay_fn` expression such as `"exp(-4 * p)"` for distance-weighted counts. A further `cc_{key}_nearest_max_{distance}` column gives the distance to the nearest instance of each landuse.
+    The output columns are named `cc_{key}_{distance}`, where the keys correspond to the input accessibility keys and the distances to the input distances. By default the counts are unweighted; pass a `decay_fn` expression such as `"exp(-4 * p)"` for distance-weighted counts. A further `cc_{key}_nearest_max_{distance}` column, written at the largest distance threshold only, gives the distance to the nearest instance of each landuse.
 
     Standard GeoPandas functionality can be used to explore, visualise, or save the results.
     """)

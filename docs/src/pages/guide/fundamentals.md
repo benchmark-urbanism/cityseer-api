@@ -44,7 +44,7 @@ When you create a network with the [`CityNetwork`](/api/network) class described
 Internally it uses a dual representation rather than a primal one. In the **primal** graph, junctions are nodes and streets are edges; the **dual** inverts this, so each street segment becomes a node at its midpoint and each junction becomes a connection between these midpoints. The geometry linking the midpoints stays faithful to the distances and angular changes along the network. The reason for the dual is that results are easier to reason about on the street segments themselves than on junctions, which dilute the influence of the streets entering them and which are harder to visualise intuitively. See [Networks](/guide/networks) for the fuller treatment.
 
 :::note
-For advanced users: the lower-level API builds these structures directly. [`network_structure_from_nx`](/tools/io#network-structure-from-nx) produces nodes and edges `GeoDataFrames` plus the internal `NetworkStructure`, and [`graphs.nx_to_dual`](/tools/graphs#nx_to_dual) produces the dual representation. The [network preparation recipes](/examples/networks) teach this route step by step, with each recipe handing the prepared graph back to `CityNetwork.from_nx`.
+For advanced users: the lower-level API builds these structures directly. [`network_structure_from_nx`](/tools/io#network_structure_from_nx) produces nodes and edges `GeoDataFrames` plus the internal `NetworkStructure`, and [`graphs.nx_to_dual`](/tools/graphs#nx_to_dual) produces the dual representation. The [network preparation recipes](/examples/networks) teach this route step by step, with each recipe handing the prepared graph back to `CityNetwork.from_nx`.
 :::
 
 ## Distance thresholds

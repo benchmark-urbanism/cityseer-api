@@ -37,7 +37,7 @@ def _():
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
-    To start, build the network with the [`from_geopandas`](https://cityseer.benchmarkurbanism.com/api/network#from_geopandas) constructor. The full bundled network is clipped to a 2km study area around the city centre, buffered by the maximum analysis distance so that nodes near the study edge keep their full catchments; mixed uses are computed per node from local catchments, so a district gives the same results as the whole city at a fraction of the cost. The `boundary` argument marks the nodes inside the study area as `live`.
+    To start, build the network with the [`from_geopandas`](https://cityseer.benchmarkurbanism.com/api/network#from-geopandas) constructor. The full bundled network is clipped to a 2km study area around the city centre, buffered by the maximum analysis distance so that nodes near the study edge keep their full catchments; mixed uses are computed per node from local catchments, so a district gives the same results as the whole city at a fraction of the cost. The `boundary` argument marks the nodes inside the study area as `live`.
     """)
     return
 
@@ -91,7 +91,7 @@ def _(prems_gpd):
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
-    Once the landuse and network data has been prepared, use the [`compute_mixed_uses`](https://cityseer.benchmarkurbanism.com/api/network#compute_mixed_uses) method to compute mixed-use diversity. The `landuse_column_label` should correspond to the data in the input GeoDataFrame. `to_geopandas` returns the results joined to the original street LineString geometries.
+    Once the landuse and network data has been prepared, use the [`compute_mixed_uses`](https://cityseer.benchmarkurbanism.com/api/network#compute-mixed-uses) method to compute mixed-use diversity. The `landuse_column_label` should correspond to the data in the input GeoDataFrame. `to_geopandas` returns the results joined to the original street LineString geometries.
     """)
     return
 
@@ -112,7 +112,7 @@ def _(cn, prems_gpd):
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
-    The output columns are named `cc_{key}_{distance}`, where the keys correspond to the [form of mixed-use measure](https://cityseer.benchmarkurbanism.com/metrics/layers#compute_mixed_uses) and the distances to the input distances. By default the measures are unweighted; pass a `decay_fn` expression such as `"exp(-4 * p)"` for distance-weighted variants.
+    The output columns are named `cc_{key}_{distance}`, where the keys correspond to the [form of mixed-use measure](https://cityseer.benchmarkurbanism.com/metrics/layers#compute-mixed-uses) and the distances to the input distances. By default the measures are unweighted; pass a `decay_fn` expression such as `"exp(-4 * p)"` for distance-weighted variants.
 
     Standard GeoPandas functionality can be used to explore, visualise, or save the results.
     """)

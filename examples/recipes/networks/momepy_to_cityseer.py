@@ -79,7 +79,7 @@ def _(mo):
 
     This notebook demonstrated how to convert a `momepy` street network (stored as a `geopandas` GeoDataFrame of LineStrings) into a `cityseer`-compatible `networkx` graph using `nx_from_generic_geopandas`. The same approach applies to any LineString-based street dataset loaded through `geopandas`.
 
-    To continue into analysis, hand the prepared graph to the high-level API with [`CityNetwork.from_nx`](https://cityseer.benchmarkurbanism.com/api/network#from_nx), which builds the dual network and exposes the centrality and land-use methods.
+    To continue into analysis, hand the prepared graph to the high-level API with [`CityNetwork.from_nx`](https://cityseer.benchmarkurbanism.com/api/network#from-nx), which builds the dual network and exposes the centrality and land-use methods.
 
     **Next steps:** Once your network is ready, proceed to [Network Centrality](https://cityseer.benchmarkurbanism.com/examples/centrality) to compute metrics.
     """)

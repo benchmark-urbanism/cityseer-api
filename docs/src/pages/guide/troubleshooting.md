@@ -69,6 +69,20 @@ Also confirm the data layer covers the buffered network extent (see [Edge Rollof
 
 With `CityNetwork`, accessibility counts are plain (unweighted) by default: a shop 50m away counts the same as one 750m away. Pass a `decay_fn` expression so that nearer features contribute more; the lower-level `layers` functions instead default to emitting both variants, suffixed `_nw` (non-weighted) and `_wt` (decay-weighted). Use a decay for proximity-sensitive questions such as walkability; use a plain count when presence alone is the question, such as counting all parks within reach. See [Decay Functions](/guide/land-use#decay-functions).
 
+## Unpacking errors after upgrading to v5.8
+
+The data-layer methods (`compute_accessibilities`, `compute_mixed_uses`, `compute_stats`) no longer return the data `GeoDataFrame` as a second value; that was a legacy return, and the assignment information now lives internally. Code written against earlier versions that unpacks two values fails in one of two ways:
+
+- With `CityNetwork`, `cn, data = cn.compute_...(...)` raises a `TypeError` explaining the change directly.
+- With the functional `layers` API, `nodes_gdf, data_gdf = layers.compute_...(...)` raises `ValueError: too many values to unpack (expected 2)`, because the single returned `GeoDataFrame` is being iterated.
+
+The fix is the same in both cases: assign the single return value.
+
+```python
+cn = cn.compute_accessibilities(...)          # CityNetwork: returns self, chainable
+nodes_gdf = layers.compute_stats(...)         # functional API: returns nodes_gdf
+```
+
 ## Angular centrality raises an error
 
 Simplest-path (angular) analysis requires a dual graph, where street segments are nodes and turning angles can be tracked between them. Calling an angular function on a primal graph raises an error stating that a dual graph is required.

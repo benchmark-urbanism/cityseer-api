@@ -36,16 +36,18 @@ DATA = "#f5a623"
 INK = "#f1f1f1"
 MUTE = "#a8a8a8"
 
-plt.rcParams.update({
-    "figure.facecolor": BG,
-    "savefig.facecolor": BG,
-    "font.family": "sans-serif",
-    "font.sans-serif": ["Raleway", "Helvetica Neue", "Arial", "DejaVu Sans", "sans-serif"],
-    "font.size": 12,
-    "text.color": INK,
-    "svg.fonttype": "none",
-    "savefig.dpi": 200,
-})
+plt.rcParams.update(
+    {
+        "figure.facecolor": BG,
+        "savefig.facecolor": BG,
+        "font.family": "sans-serif",
+        "font.sans-serif": ["Raleway", "Helvetica Neue", "Arial", "DejaVu Sans", "sans-serif"],
+        "font.size": 12,
+        "text.color": INK,
+        "svg.fonttype": "none",
+        "savefig.dpi": 200,
+    }
+)
 MINUS = "−"
 
 
@@ -88,14 +90,16 @@ def leg(ax, p_from, p_to, label=None):
 
 
 def dim(ax, x0, x1, y, label):
-    ax.annotate("", xy=(x0, y), xytext=(x1, y),
-                arrowprops=dict(arrowstyle="<->", color=DATA, lw=1.5, shrinkA=0, shrinkB=0))
+    ax.annotate(
+        "", xy=(x0, y), xytext=(x1, y), arrowprops=dict(arrowstyle="<->", color=DATA, lw=1.5, shrinkA=0, shrinkB=0)
+    )
     ax.text((x0 + x1) / 2, y - 0.42, label, ha="center", va="center", color=DATA, fontsize=11.5, style="italic")
 
 
 def figure_legend(fig, handles):
-    leg = fig.legend(handles=handles, loc="lower center", ncol=len(handles), frameon=False,
-                     bbox_to_anchor=(0.5, -0.02), fontsize=11)
+    leg = fig.legend(
+        handles=handles, loc="lower center", ncol=len(handles), frameon=False, bbox_to_anchor=(0.5, -0.02), fontsize=11
+    )
     for t in leg.get_texts():
         t.set_color(MUTE)
 
@@ -134,13 +138,16 @@ def make_fig1():
     panel_primal(axes[0])
     panel_dual(axes[1])
     fig.subplots_adjust(left=0.02, right=0.98, top=0.90, bottom=0.16, wspace=0.06)
-    figure_legend(fig, [
-        Line2D([], [], color=STREET, lw=2.4, label="street"),
-        Line2D([], [], marker="o", ls="none", ms=9, c=PRIMAL, mec=BG, label="junction node"),
-        Line2D([], [], marker="D", ls="none", ms=9, c=DUAL, mec=BG, label="segment node (dual)"),
-        Line2D([], [], marker="s", ls="none", ms=9, c=DATA, mec=BG, label="data point"),
-        Line2D([], [], color=DATA, lw=2.0, ls=(0, (2, 2)), label="measured"),
-    ])
+    figure_legend(
+        fig,
+        [
+            Line2D([], [], color=STREET, lw=2.4, label="street"),
+            Line2D([], [], marker="o", ls="none", ms=9, c=PRIMAL, mec=BG, label="junction node"),
+            Line2D([], [], marker="D", ls="none", ms=9, c=DUAL, mec=BG, label="segment node (dual)"),
+            Line2D([], [], marker="s", ls="none", ms=9, c=DATA, mec=BG, label="data point"),
+            Line2D([], [], color=DATA, lw=2.0, ls=(0, (2, 2)), label="measured"),
+        ],
+    )
     for ext in ("svg",):
         fig.savefig(os.path.join(OUT, f"data_distance_schematic.{ext}"), bbox_inches="tight", facecolor=BG)
     plt.close(fig)
@@ -150,9 +157,9 @@ def make_fig1():
 def u_streets(ax):
     """Three streets framing the feature; returns the four junction coordinates."""
     j = [(1.3, 1.3), (6.7, 1.3), (1.3, 4.7), (6.7, 4.7)]
-    street(ax, j[0], j[1])   # bottom
-    street(ax, j[0], j[2])   # left
-    street(ax, j[1], j[3])   # right
+    street(ax, j[0], j[1])  # bottom
+    street(ax, j[0], j[2])  # left
+    street(ax, j[1], j[3])  # right
     return j
 
 
@@ -160,9 +167,9 @@ def panel_point_count(ax):
     base(ax, "Point · nearest street only")
     j = u_streets(ax)
     P, F = (4.0, 2.4), (4.0, 1.3)
-    leg(ax, P, F)                       # binds to the single nearest street
+    leg(ax, P, F)  # binds to the single nearest street
     datamark(ax, P)
-    for c in (j[0], j[1]):              # that street's two junctions are reached
+    for c in (j[0], j[1]):  # that street's two junctions are reached
         ring(ax, c)
     for c in j:
         dot(ax, c, PRIMAL)
@@ -174,10 +181,10 @@ def panel_polygon_count(ax):
     park = [(2.7, 2.2), (5.3, 2.2), (5.3, 3.8), (2.7, 3.8)]
     ax.add_patch(Polygon(park, closed=True, facecolor=DATA, alpha=0.20, edgecolor=DATA, lw=2.0, zorder=3))
     ax.text(4.0, 3.6, "polygon", ha="center", va="center", color=DATA, fontweight="bold", fontsize=12)
-    leg(ax, (4.0, 2.2), (4.0, 1.3))     # a setback leg to each street it faces
+    leg(ax, (4.0, 2.2), (4.0, 1.3))  # a setback leg to each street it faces
     leg(ax, (2.7, 2.9), (1.3, 2.9))
     leg(ax, (5.3, 2.9), (6.7, 2.9))
-    for c in j:                         # every reached street's junctions
+    for c in j:  # every reached street's junctions
         ring(ax, c)
         dot(ax, c, PRIMAL)
 
@@ -187,13 +194,16 @@ def make_fig2():
     panel_point_count(axes[0])
     panel_polygon_count(axes[1])
     fig.subplots_adjust(left=0.02, right=0.98, top=0.90, bottom=0.16, wspace=0.06)
-    figure_legend(fig, [
-        Line2D([], [], color=STREET, lw=2.4, label="street"),
-        Line2D([], [], marker="o", ls="none", ms=9, c=PRIMAL, mec=BG, label="junction node"),
-        Line2D([], [], marker="o", ls="none", ms=13, mfc="none", mec=DATA, mew=2.0, label="node reached"),
-        Line2D([], [], marker="s", ls="none", ms=9, c=DATA, mec=BG, label="data feature"),
-        Line2D([], [], color=DATA, lw=2.0, ls=(0, (2, 2)), label="setback to a street"),
-    ])
+    figure_legend(
+        fig,
+        [
+            Line2D([], [], color=STREET, lw=2.4, label="street"),
+            Line2D([], [], marker="o", ls="none", ms=9, c=PRIMAL, mec=BG, label="junction node"),
+            Line2D([], [], marker="o", ls="none", ms=13, mfc="none", mec=DATA, mew=2.0, label="node reached"),
+            Line2D([], [], marker="s", ls="none", ms=9, c=DATA, mec=BG, label="data feature"),
+            Line2D([], [], color=DATA, lw=2.0, ls=(0, (2, 2)), label="setback to a street"),
+        ],
+    )
     for ext in ("svg",):
         fig.savefig(os.path.join(OUT, f"data_polygon_schematic.{ext}"), bbox_inches="tight", facecolor=BG)
     plt.close(fig)
